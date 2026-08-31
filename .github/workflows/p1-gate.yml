@@ -1,4 +1,4 @@
-name: P5.2 Repository Ownership Gate
+name: P5.3 Migration Harness Gate
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  verify-p5-2:
+  verify-p5-3:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -18,9 +18,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Extract P5.2 candidate
+      - name: Extract P5.3 candidate
         run: |
-          unzip -o KAIROS_P5_2_REPOSITORY_FOUNDATION_CANDIDATE_2026-08-31.zip -d _extracted
+          unzip -o KAIROS_P5_3_MIGRATION_HARNESS_CANDIDATE_2026-08-31.zip -d _extracted
           SRC_DIR=$(find _extracted -maxdepth 3 -name package.json -exec dirname {} \; | head -n1)
           test -n "$SRC_DIR"
           shopt -s dotglob
@@ -75,11 +75,14 @@ jobs:
       - name: Run P5.2 repository-ownership contract
         run: npm run verify:p5:repositories
 
+      - name: Run P5.3 migration-harness contract
+        run: npm run verify:p5:migrations
+
       - name: Upload regression evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P5_2_REGRESSION_EVIDENCE
+          name: P5_3_REGRESSION_EVIDENCE
           path: P1_GATE_EVIDENCE.json
           if-no-files-found: warn
 
@@ -87,6 +90,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P5_2_PACKAGE_LOCK
+          name: P5_3_PACKAGE_LOCK
           path: package-lock.json
           if-no-files-found: warn
