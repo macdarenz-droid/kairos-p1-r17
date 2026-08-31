@@ -1,4 +1,4 @@
-name: P7.4 Activation Receipt Proof Gate
+name: P7.4R1 Activation Receipt Proof Typing Fix Gate
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  verify-p7-4:
+  verify-p7-4r1:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -18,9 +18,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Extract P7.4 candidate
+      - name: Extract P7.4R1 candidate
         run: |
-          unzip -o KAIROS_P7_4_ACTIVATION_RECEIPT_PROOF_CANDIDATE_2026-08-31.zip -d _extracted
+          unzip -o KAIROS_P7_4R1_ARRAYBUFFER_TYPING_FIX_CANDIDATE_2026-08-31.zip -d _extracted
           SRC_DIR=$(find _extracted -maxdepth 3 -name package.json -exec dirname {} \; | head -n1)
           test -n "$SRC_DIR"
           shopt -s dotglob
@@ -115,7 +115,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P7_4_REGRESSION_EVIDENCE
+          name: P7_4R1_REGRESSION_EVIDENCE
           path: P1_GATE_EVIDENCE.json
           if-no-files-found: warn
 
@@ -123,6 +123,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P7_4_PACKAGE_LOCK
+          name: P7_4R1_PACKAGE_LOCK
           path: package-lock.json
           if-no-files-found: warn
