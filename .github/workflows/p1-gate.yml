@@ -1,4 +1,4 @@
-name: P7.6 Activation Gate Presentation Gate
+name: P7.6R1 Activation Gate Test Cleanup Fix Gate
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  verify-p7-6:
+  verify-p7-6r1:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -20,7 +20,7 @@ jobs:
 
       - name: Extract P7.6 candidate
         run: |
-          unzip -o KAIROS_P7_6_ACTIVATION_GATE_CANDIDATE_2026-08-31.zip -d _extracted
+          unzip -o KAIROS_P7_6R1_TEST_CLEANUP_FIX_CANDIDATE_2026-08-31.zip -d _extracted
           SRC_DIR=$(find _extracted -maxdepth 3 -name package.json -exec dirname {} \; | head -n1)
           test -n "$SRC_DIR"
           shopt -s dotglob
@@ -121,7 +121,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P7_6_REGRESSION_EVIDENCE
+          name: P7_6R1_REGRESSION_EVIDENCE
           path: P1_GATE_EVIDENCE.json
           if-no-files-found: warn
 
@@ -129,6 +129,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P7_6_PACKAGE_LOCK
+          name: P7_6R1_PACKAGE_LOCK
           path: package-lock.json
           if-no-files-found: warn
