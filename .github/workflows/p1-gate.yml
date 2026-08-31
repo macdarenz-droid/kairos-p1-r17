@@ -1,4 +1,4 @@
-name: P2.3R3 Accessibility Verification Ownership Gate
+name: P3.1 Theme Ownership Resolution Gate
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  verify-p2-3r3:
+  verify-p3-1:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -18,9 +18,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Extract P2.3R3 candidate
+      - name: Extract P3.1 candidate
         run: |
-          unzip -o KAIROS_P2_3R3_ACCESSIBILITY_VERIFICATION_OWNERSHIP_FIX_CANDIDATE_2026-08-31.zip -d _extracted
+          unzip -o KAIROS_P3_1_THEME_OWNERSHIP_RESOLUTION_CANDIDATE_2026-08-31.zip -d _extracted
           SRC_DIR=$(find _extracted -maxdepth 3 -name package.json -exec dirname {} \; | head -n1)
           test -n "$SRC_DIR"
           shopt -s dotglob
@@ -42,19 +42,22 @@ jobs:
       - name: Re-run P2.2 primitive typography contract
         run: npm run verify:p2:primitives
 
-      - name: Run P2.3 accessibility interaction contract
+      - name: Re-run P2.3 accessibility interaction contract
         run: npm run verify:p2:accessibility
+
+      - name: Run P3.1 theme-engine contract
+        run: npm run verify:p3:theme-engine
 
       - name: Upload regression evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P2_3R3_REGRESSION_EVIDENCE
+          name: P3_1_REGRESSION_EVIDENCE
           path: P1_GATE_EVIDENCE.json
 
       - name: Upload verified package lock
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P2_3R3_PACKAGE_LOCK
+          name: P3_1_PACKAGE_LOCK
           path: package-lock.json
