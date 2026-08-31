@@ -1,4 +1,4 @@
-name: P7.6R1 Activation Gate Test Cleanup Fix Gate
+name: P7.7 Activation Deployment Contract Gate
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  verify-p7-6r1:
+  verify-p7-7:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -18,9 +18,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Extract P7.6 candidate
+      - name: Extract P7.7 candidate
         run: |
-          unzip -o KAIROS_P7_6R1_TEST_CLEANUP_FIX_CANDIDATE_2026-08-31.zip -d _extracted
+          unzip -o KAIROS_P7_7_ACTIVATION_DEPLOYMENT_CONTRACT_CANDIDATE_2026-08-31.zip -d _extracted
           SRC_DIR=$(find _extracted -maxdepth 3 -name package.json -exec dirname {} \; | head -n1)
           test -n "$SRC_DIR"
           shopt -s dotglob
@@ -114,14 +114,17 @@ jobs:
       - name: Re-run P7.5 activation-coordinator contract
         run: npm run verify:p7:activation-coordinator
 
-      - name: Run P7.6 activation-gate contract
+      - name: Re-run P7.6 activation-gate contract
         run: npm run verify:p7:activation-gate
+
+      - name: Run P7.7 activation-deployment contract
+        run: npm run verify:p7:activation-deployment
 
       - name: Upload regression evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P7_6R1_REGRESSION_EVIDENCE
+          name: P7_7_REGRESSION_EVIDENCE
           path: P1_GATE_EVIDENCE.json
           if-no-files-found: warn
 
@@ -129,6 +132,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P7_6R1_PACKAGE_LOCK
+          name: P7_7_PACKAGE_LOCK
           path: package-lock.json
           if-no-files-found: warn
