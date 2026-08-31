@@ -1,4 +1,4 @@
-name: P5.3R1 Migration Harness Typing Fix Gate
+name: P5.4 Database Integrity Foundation Gate
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  verify-p5-3r1:
+  verify-p5-4:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -18,9 +18,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Extract P5.3R1 candidate
+      - name: Extract P5.4 candidate
         run: |
-          unzip -o KAIROS_P5_3R1_MIGRATION_TYPING_FIX_CANDIDATE_2026-08-31.zip -d _extracted
+          unzip -o KAIROS_P5_4_DATABASE_INTEGRITY_CANDIDATE_2026-08-31.zip -d _extracted
           SRC_DIR=$(find _extracted -maxdepth 3 -name package.json -exec dirname {} \; | head -n1)
           test -n "$SRC_DIR"
           shopt -s dotglob
@@ -75,14 +75,17 @@ jobs:
       - name: Re-run P5.2 repository-ownership contract
         run: npm run verify:p5:repositories
 
-      - name: Run P5.3 migration-harness contract
+      - name: Re-run P5.3 migration-harness contract
         run: npm run verify:p5:migrations
+
+      - name: Run P5.4 database-integrity contract
+        run: npm run verify:p5:integrity
 
       - name: Upload regression evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P5_3R1_REGRESSION_EVIDENCE
+          name: P5_4_REGRESSION_EVIDENCE
           path: P1_GATE_EVIDENCE.json
           if-no-files-found: warn
 
@@ -90,6 +93,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P5_3R1_PACKAGE_LOCK
+          name: P5_4_PACKAGE_LOCK
           path: package-lock.json
           if-no-files-found: warn
