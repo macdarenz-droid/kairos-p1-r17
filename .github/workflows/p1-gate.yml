@@ -1,4 +1,4 @@
-name: P4.3 Storage Durability Status Gate
+name: P5.1 Dexie Database Kernel Gate
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  verify-p4-3:
+  verify-p5-1:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -18,9 +18,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Extract P4.3 candidate
+      - name: Extract P5.1 candidate
         run: |
-          unzip -o KAIROS_P4_3_STORAGE_DURABILITY_STATUS_CANDIDATE_2026-08-31.zip -d _extracted
+          unzip -o KAIROS_P5_1_DEXIE_DATABASE_KERNEL_CANDIDATE_2026-08-31.zip -d _extracted
           SRC_DIR=$(find _extracted -maxdepth 3 -name package.json -exec dirname {} \; | head -n1)
           test -n "$SRC_DIR"
           shopt -s dotglob
@@ -66,14 +66,17 @@ jobs:
       - name: Re-run P4.2 service-worker app-shell contract
         run: npm run verify:p4:service-worker
 
-      - name: Run P4.3 storage-durability contract
+      - name: Re-run P4.3 storage-durability contract
         run: npm run verify:p4:storage-durability
+
+      - name: Run P5.1 database-kernel contract
+        run: npm run verify:p5:database-kernel
 
       - name: Upload regression evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P4_3_REGRESSION_EVIDENCE
+          name: P5_1_REGRESSION_EVIDENCE
           path: P1_GATE_EVIDENCE.json
           if-no-files-found: warn
 
@@ -81,6 +84,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P4_3_PACKAGE_LOCK
+          name: P5_1_PACKAGE_LOCK
           path: package-lock.json
           if-no-files-found: warn
