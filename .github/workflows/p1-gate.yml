@@ -1,4 +1,4 @@
-name: P3.1 Theme Ownership Resolution Gate
+name: P3.1R1 Theme Token Typing Fix Gate
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  verify-p3-1:
+  verify-p3-1r1:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -18,9 +18,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Extract P3.1 candidate
+      - name: Extract P3.1R1 candidate
         run: |
-          unzip -o KAIROS_P3_1_THEME_OWNERSHIP_RESOLUTION_CANDIDATE_2026-08-31.zip -d _extracted
+          unzip -o KAIROS_P3_1R1_THEME_TOKEN_TYPING_FIX_CANDIDATE_2026-08-31.zip -d _extracted
           SRC_DIR=$(find _extracted -maxdepth 3 -name package.json -exec dirname {} \; | head -n1)
           test -n "$SRC_DIR"
           shopt -s dotglob
@@ -52,12 +52,12 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P3_1_REGRESSION_EVIDENCE
+          name: P3_1R1_REGRESSION_EVIDENCE
           path: P1_GATE_EVIDENCE.json
 
       - name: Upload verified package lock
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P3_1_PACKAGE_LOCK
+          name: P3_1R1_PACKAGE_LOCK
           path: package-lock.json
