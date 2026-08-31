@@ -33,7 +33,7 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: "22.16.0"
-          cache: ''
+          cache: false
 
       - name: Run the authoritative P1 gate
         run: npm run verify:p1
