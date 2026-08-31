@@ -1,4 +1,4 @@
-name: P3.4R1 Narrow Storage Guard Fix Gate
+name: P3.5 Chart Theme Adapter Gate
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  verify-p3-4r1:
+  verify-p3-5:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -18,9 +18,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Extract P3.4R1 candidate
+      - name: Extract P3.5 candidate
         run: |
-          unzip -o KAIROS_P3_4R1_NARROW_STORAGE_GUARD_FIX_CANDIDATE_2026-08-31.zip -d _extracted
+          unzip -o KAIROS_P3_5_CHART_THEME_ADAPTER_CANDIDATE_2026-08-31.zip -d _extracted
           SRC_DIR=$(find _extracted -maxdepth 3 -name package.json -exec dirname {} \; | head -n1)
           test -n "$SRC_DIR"
           shopt -s dotglob
@@ -54,14 +54,17 @@ jobs:
       - name: Re-run P3.3 active-theme canary contract
         run: npm run verify:p3:theme-canary
 
-      - name: Run P3.4 persistent-theme preference contract
+      - name: Re-run P3.4 persistent-theme preference contract
         run: npm run verify:p3:theme-preference
+
+      - name: Run P3.5 chart-theme adapter contract
+        run: npm run verify:p3:chart-theme-adapter
 
       - name: Upload regression evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P3_4R1_REGRESSION_EVIDENCE
+          name: P3_5_REGRESSION_EVIDENCE
           path: P1_GATE_EVIDENCE.json
           if-no-files-found: warn
 
@@ -69,6 +72,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P3_4R1_PACKAGE_LOCK
+          name: P3_5_PACKAGE_LOCK
           path: package-lock.json
           if-no-files-found: warn
