@@ -1,4 +1,4 @@
-name: P3.2R1 Theme Barrel Export Fix Gate
+name: P3.3 Active Theme Canary Contract Gate
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  verify-p3-2r1:
+  verify-p3-3:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -18,9 +18,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Extract P3.2R1 candidate
+      - name: Extract P3.3 candidate
         run: |
-          unzip -o KAIROS_P3_2R1_THEME_BARREL_EXPORT_FIX_CANDIDATE_2026-08-31.zip -d _extracted
+          unzip -o KAIROS_P3_3_ACTIVE_THEME_CANARY_CONTRACT_CANDIDATE_2026-08-31.zip -d _extracted
           SRC_DIR=$(find _extracted -maxdepth 3 -name package.json -exec dirname {} \; | head -n1)
           test -n "$SRC_DIR"
           shopt -s dotglob
@@ -48,19 +48,22 @@ jobs:
       - name: Re-run P3.1 theme-engine contract
         run: npm run verify:p3:theme-engine
 
-      - name: Run P3.2 active-theme registry contract
+      - name: Re-run P3.2 active-theme registry contract
         run: npm run verify:p3:active-themes
+
+      - name: Run P3.3 active-theme canary contract
+        run: npm run verify:p3:theme-canary
 
       - name: Upload regression evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P3_2R1_REGRESSION_EVIDENCE
+          name: P3_3_REGRESSION_EVIDENCE
           path: P1_GATE_EVIDENCE.json
 
       - name: Upload verified package lock
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P3_2R1_PACKAGE_LOCK
+          name: P3_3_PACKAGE_LOCK
           path: package-lock.json
