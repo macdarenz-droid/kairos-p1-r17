@@ -1,4 +1,4 @@
-name: P7.1 Activation Contract Foundation Gate
+name: P7.2 Activation Receipt Persistence Gate
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  verify-p7-1:
+  verify-p7-2:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -18,9 +18,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Extract P7.1 candidate
+      - name: Extract P7.2 candidate
         run: |
-          unzip -o KAIROS_P7_1_ACTIVATION_CONTRACT_CANDIDATE_2026-08-31.zip -d _extracted
+          unzip -o KAIROS_P7_2_ACTIVATION_RECEIPT_PERSISTENCE_CANDIDATE_2026-08-31.zip -d _extracted
           SRC_DIR=$(find _extracted -maxdepth 3 -name package.json -exec dirname {} \; | head -n1)
           test -n "$SRC_DIR"
           shopt -s dotglob
@@ -99,14 +99,17 @@ jobs:
       - name: Re-run P6.5 restore-verification contract
         run: npm run verify:p6:restore-verification
 
-      - name: Run P7.1 activation-contract verification
+      - name: Re-run P7.1 activation-contract contract
         run: npm run verify:p7:activation-contract
+
+      - name: Run P7.2 activation-persistence contract
+        run: npm run verify:p7:activation-persistence
 
       - name: Upload regression evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P7_1_REGRESSION_EVIDENCE
+          name: P7_2_REGRESSION_EVIDENCE
           path: P1_GATE_EVIDENCE.json
           if-no-files-found: warn
 
@@ -114,6 +117,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P7_1_PACKAGE_LOCK
+          name: P7_2_PACKAGE_LOCK
           path: package-lock.json
           if-no-files-found: warn
