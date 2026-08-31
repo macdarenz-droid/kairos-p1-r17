@@ -1,4 +1,4 @@
-name: P7.4R1 Activation Receipt Proof Typing Fix Gate
+name: P7.5 Activation Coordinator Foundation Gate
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  verify-p7-4r1:
+  verify-p7-5:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -18,9 +18,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Extract P7.4R1 candidate
+      - name: Extract P7.5 candidate
         run: |
-          unzip -o KAIROS_P7_4R1_ARRAYBUFFER_TYPING_FIX_CANDIDATE_2026-08-31.zip -d _extracted
+          unzip -o KAIROS_P7_5_ACTIVATION_COORDINATOR_CANDIDATE_2026-08-31.zip -d _extracted
           SRC_DIR=$(find _extracted -maxdepth 3 -name package.json -exec dirname {} \; | head -n1)
           test -n "$SRC_DIR"
           shopt -s dotglob
@@ -108,14 +108,17 @@ jobs:
       - name: Re-run P7.3 remote-activation adapter contract
         run: npm run verify:p7:remote-activation
 
-      - name: Run P7.4 activation-receipt proof contract
+      - name: Re-run P7.4 activation-receipt proof contract
         run: npm run verify:p7:receipt-proof
+
+      - name: Run P7.5 activation-coordinator contract
+        run: npm run verify:p7:activation-coordinator
 
       - name: Upload regression evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P7_4R1_REGRESSION_EVIDENCE
+          name: P7_5_REGRESSION_EVIDENCE
           path: P1_GATE_EVIDENCE.json
           if-no-files-found: warn
 
@@ -123,6 +126,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P7_4R1_PACKAGE_LOCK
+          name: P7_5_PACKAGE_LOCK
           path: package-lock.json
           if-no-files-found: warn
