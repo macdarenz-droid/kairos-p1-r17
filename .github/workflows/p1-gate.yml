@@ -36,4 +36,4 @@ jobs:
           package-manager-cache: false
 
       - name: Run the authoritative P1 gate
-        run: npm run verify:p1
+        run: npm run release:p1
