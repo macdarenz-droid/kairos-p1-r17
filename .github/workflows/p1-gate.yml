@@ -1,4 +1,4 @@
-name: P3.1R1 Theme Token Typing Fix Gate
+name: P3.2 Active Theme Registry Gate
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  verify-p3-1r1:
+  verify-p3-2:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -18,9 +18,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Extract P3.1R1 candidate
+      - name: Extract P3.2 candidate
         run: |
-          unzip -o KAIROS_P3_1R1_THEME_TOKEN_TYPING_FIX_CANDIDATE_2026-08-31.zip -d _extracted
+          unzip -o KAIROS_P3_2_ACTIVE_THEME_REGISTRY_CANDIDATE_2026-08-31.zip -d _extracted
           SRC_DIR=$(find _extracted -maxdepth 3 -name package.json -exec dirname {} \; | head -n1)
           test -n "$SRC_DIR"
           shopt -s dotglob
@@ -45,19 +45,22 @@ jobs:
       - name: Re-run P2.3 accessibility interaction contract
         run: npm run verify:p2:accessibility
 
-      - name: Run P3.1 theme-engine contract
+      - name: Re-run P3.1 theme-engine contract
         run: npm run verify:p3:theme-engine
+
+      - name: Run P3.2 active-theme registry contract
+        run: npm run verify:p3:active-themes
 
       - name: Upload regression evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P3_1R1_REGRESSION_EVIDENCE
+          name: P3_2_REGRESSION_EVIDENCE
           path: P1_GATE_EVIDENCE.json
 
       - name: Upload verified package lock
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P3_1R1_PACKAGE_LOCK
+          name: P3_2_PACKAGE_LOCK
           path: package-lock.json
