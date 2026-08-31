@@ -1,4 +1,4 @@
-name: P3.4 Persistent Theme Preference Gate
+name: P3.4R1 Narrow Storage Guard Fix Gate
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  verify-p3-4:
+  verify-p3-4r1:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -18,9 +18,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Extract P3.4 candidate
+      - name: Extract P3.4R1 candidate
         run: |
-          unzip -o KAIROS_P3_4_PERSISTENT_THEME_PREFERENCE_CANDIDATE_2026-08-31.zip -d _extracted
+          unzip -o KAIROS_P3_4R1_NARROW_STORAGE_GUARD_FIX_CANDIDATE_2026-08-31.zip -d _extracted
           SRC_DIR=$(find _extracted -maxdepth 3 -name package.json -exec dirname {} \; | head -n1)
           test -n "$SRC_DIR"
           shopt -s dotglob
@@ -61,7 +61,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P3_4_REGRESSION_EVIDENCE
+          name: P3_4R1_REGRESSION_EVIDENCE
           path: P1_GATE_EVIDENCE.json
           if-no-files-found: warn
 
@@ -69,6 +69,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P3_4_PACKAGE_LOCK
+          name: P3_4R1_PACKAGE_LOCK
           path: package-lock.json
           if-no-files-found: warn
