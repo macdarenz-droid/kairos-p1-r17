@@ -1,4 +1,4 @@
-name: P1 Project Shell Gate
+name: P2.1 Design System Foundation Gate
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  verify-p1:
+  verify-p2-1:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -18,33 +18,37 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Extract R18 candidate
+      - name: Extract P2.1 candidate
         run: |
-          unzip -o KAIROS_P1_PROJECT_SHELL_CANDIDATE_R18_2026-08-31.zip -d _extracted
+          unzip -o KAIROS_P2_1_DESIGN_SYSTEM_FOUNDATION_CANDIDATE_2026-08-31.zip -d _extracted
           SRC_DIR=$(find _extracted -maxdepth 3 -name package.json -exec dirname {} \; | head -n1)
+          test -n "$SRC_DIR"
           shopt -s dotglob
           cp -r "$SRC_DIR"/* .
           rm -rf _extracted
 
-      - name: Use the locked P1 Node toolchain
+      - name: Use locked Node toolchain
         uses: actions/setup-node@v6
         with:
           node-version: "22.16.0"
           package-manager-cache: false
 
-      - name: Run the authoritative P1 gate
+      - name: Re-run authoritative P1 regression gate
         run: npm run release:p1
 
-      - name: Upload P1 gate evidence
+      - name: Run P2.1 design-system contract
+        run: npm run verify:p2:design-system
+
+      - name: Upload P1 regression evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P1_GATE_EVIDENCE
+          name: P2_1_P1_REGRESSION_EVIDENCE
           path: P1_GATE_EVIDENCE.json
 
-      - name: Upload generated package lock
+      - name: Upload verified package lock
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P1_PACKAGE_LOCK
+          name: P2_1_PACKAGE_LOCK
           path: package-lock.json
