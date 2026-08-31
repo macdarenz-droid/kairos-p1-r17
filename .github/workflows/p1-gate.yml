@@ -1,4 +1,4 @@
-name: P5.5 Transaction Foundation Gate
+name: P6.1 Backup Envelope Foundation Gate
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  verify-p5-5:
+  verify-p6-1:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -18,9 +18,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Extract P5.5 candidate
+      - name: Extract P6.1 candidate
         run: |
-          unzip -o KAIROS_P5_5_TRANSACTION_FOUNDATION_CANDIDATE_2026-08-31.zip -d _extracted
+          unzip -o KAIROS_P6_1_BACKUP_ENVELOPE_CANDIDATE_2026-08-31.zip -d _extracted
           SRC_DIR=$(find _extracted -maxdepth 3 -name package.json -exec dirname {} \; | head -n1)
           test -n "$SRC_DIR"
           shopt -s dotglob
@@ -81,14 +81,17 @@ jobs:
       - name: Re-run P5.4 database-integrity contract
         run: npm run verify:p5:integrity
 
-      - name: Run P5.5 transaction-foundation contract
+      - name: Re-run P5.5 transaction-foundation contract
         run: npm run verify:p5:transactions
+
+      - name: Run P6.1 backup-envelope contract
+        run: npm run verify:p6:backup-envelope
 
       - name: Upload regression evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P5_5_REGRESSION_EVIDENCE
+          name: P6_1_REGRESSION_EVIDENCE
           path: P1_GATE_EVIDENCE.json
           if-no-files-found: warn
 
@@ -96,6 +99,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P5_5_PACKAGE_LOCK
+          name: P6_1_PACKAGE_LOCK
           path: package-lock.json
           if-no-files-found: warn
