@@ -29,6 +29,12 @@ jobs:
             rm -rf _extracted "$ZIP_FILE"
           fi
 
+      - name: Apply verified P1 patch — diagnostics.test.ts readonly cast
+        run: |
+          sed -i \
+            's/as Array<{ event: string; context?: Record<string, unknown> }>/as unknown as Array<{ event: string; context?: Record<string, unknown> }>/' \
+            tests/diagnostics.test.ts
+
       - name: Use the locked P1 Node toolchain
         uses: actions/setup-node@v6
         with:
