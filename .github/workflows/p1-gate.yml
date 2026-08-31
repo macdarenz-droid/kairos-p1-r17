@@ -1,4 +1,4 @@
-name: P6.2 Database Snapshot Export Gate
+name: P6.3 Restore Preflight Recovery Gate
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  verify-p6-2:
+  verify-p6-3:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -18,9 +18,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Extract P6.2 candidate
+      - name: Extract P6.3 candidate
         run: |
-          unzip -o KAIROS_P6_2_DATABASE_SNAPSHOT_CANDIDATE_2026-08-31.zip -d _extracted
+          unzip -o KAIROS_P6_3_RESTORE_PREFLIGHT_RECOVERY_CANDIDATE_2026-08-31.zip -d _extracted
           SRC_DIR=$(find _extracted -maxdepth 3 -name package.json -exec dirname {} \; | head -n1)
           test -n "$SRC_DIR"
           shopt -s dotglob
@@ -35,48 +35,69 @@ jobs:
 
       - name: Re-run authoritative P1 regression gate
         run: npm run release:p1
+
       - name: Re-run P2.1 design-system contract
         run: npm run verify:p2:design-system
+
       - name: Re-run P2.2 primitive typography contract
         run: npm run verify:p2:primitives
+
       - name: Re-run P2.3 accessibility interaction contract
         run: npm run verify:p2:accessibility
+
       - name: Re-run P3.1 theme-engine contract
         run: npm run verify:p3:theme-engine
+
       - name: Re-run P3.2 active-theme registry contract
         run: npm run verify:p3:active-themes
+
       - name: Re-run P3.3 active-theme canary contract
         run: npm run verify:p3:theme-canary
+
       - name: Re-run P3.4 persistent-theme preference contract
         run: npm run verify:p3:theme-preference
+
       - name: Re-run P3.5 chart-theme adapter contract
         run: npm run verify:p3:chart-theme-adapter
+
       - name: Re-run P4.1 manifest install-identity contract
         run: npm run verify:p4:manifest
+
       - name: Re-run P4.2 service-worker app-shell contract
         run: npm run verify:p4:service-worker
+
       - name: Re-run P4.3 storage-durability contract
         run: npm run verify:p4:storage-durability
+
       - name: Re-run P5.1 database-kernel contract
         run: npm run verify:p5:database-kernel
+
       - name: Re-run P5.2 repository-ownership contract
         run: npm run verify:p5:repositories
+
       - name: Re-run P5.3 migration-harness contract
         run: npm run verify:p5:migrations
+
       - name: Re-run P5.4 database-integrity contract
         run: npm run verify:p5:integrity
+
       - name: Re-run P5.5 transaction-foundation contract
         run: npm run verify:p5:transactions
+
       - name: Re-run P6.1 backup-envelope contract
         run: npm run verify:p6:backup-envelope
-      - name: Run P6.2 database-snapshot contract
+
+      - name: Re-run P6.2 database-snapshot contract
         run: npm run verify:p6:backup-snapshot
+
+      - name: Run P6.3 restore-preflight recovery contract
+        run: npm run verify:p6:restore-preflight
 
       - name: Upload regression evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P6_2_REGRESSION_EVIDENCE
+          name: P6_3_REGRESSION_EVIDENCE
           path: P1_GATE_EVIDENCE.json
           if-no-files-found: warn
 
@@ -84,6 +105,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P6_2_PACKAGE_LOCK
+          name: P6_3_PACKAGE_LOCK
           path: package-lock.json
           if-no-files-found: warn
