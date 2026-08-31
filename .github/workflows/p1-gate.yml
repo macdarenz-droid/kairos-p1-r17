@@ -1,4 +1,4 @@
-name: P2.2 Primitive Typography Foundation Gate
+name: P2.3 Accessibility Interaction Foundation Gate
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  verify-p2-2:
+  verify-p2-3:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -18,9 +18,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Extract P2.2 candidate
+      - name: Extract P2.3 candidate
         run: |
-          unzip -o KAIROS_P2_2_PRIMITIVE_TYPOGRAPHY_FOUNDATION_CANDIDATE_2026-08-31.zip -d _extracted
+          unzip -o KAIROS_P2_3_ACCESSIBILITY_INTERACTION_FOUNDATION_CANDIDATE_2026-08-31.zip -d _extracted
           SRC_DIR=$(find _extracted -maxdepth 3 -name package.json -exec dirname {} \; | head -n1)
           test -n "$SRC_DIR"
           shopt -s dotglob
@@ -39,19 +39,22 @@ jobs:
       - name: Re-run P2.1 design-system contract
         run: npm run verify:p2:design-system
 
-      - name: Run P2.2 primitive typography contract
+      - name: Re-run P2.2 primitive typography contract
         run: npm run verify:p2:primitives
+
+      - name: Run P2.3 accessibility interaction contract
+        run: npm run verify:p2:accessibility
 
       - name: Upload regression evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P2_2_REGRESSION_EVIDENCE
+          name: P2_3_REGRESSION_EVIDENCE
           path: P1_GATE_EVIDENCE.json
 
       - name: Upload verified package lock
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P2_2_PACKAGE_LOCK
+          name: P2_3_PACKAGE_LOCK
           path: package-lock.json
