@@ -43,3 +43,10 @@ jobs:
 
       - name: Run the authoritative P1 gate
         run: npm run release:p1
+
+      - name: Upload P1 gate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: P1_GATE_EVIDENCE
+          path: P1_GATE_EVIDENCE.json
