@@ -1,4 +1,4 @@
-name: P6.4R1 Transactional Restore Fix Gate
+name: P6.4R2 Transactional Restore Typing Fix Gate
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  verify-p6-4r1:
+  verify-p6-4r2:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -18,9 +18,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Extract P6.4R1 candidate
+      - name: Extract P6.4R2 candidate
         run: |
-          unzip -o KAIROS_P6_4R1_TRANSACTIONAL_RESTORE_FIX_CANDIDATE_2026-08-31.zip -d _extracted
+          unzip -o KAIROS_P6_4R2_TRANSACTIONAL_RESTORE_TYPING_FIX_CANDIDATE_2026-08-31.zip -d _extracted
           SRC_DIR=$(find _extracted -maxdepth 3 -name package.json -exec dirname {} \; | head -n1)
           test -n "$SRC_DIR"
           shopt -s dotglob
@@ -93,14 +93,14 @@ jobs:
       - name: Re-run P6.3 restore-preflight recovery contract
         run: npm run verify:p6:restore-preflight
 
-      - name: Run P6.4R1 transactional-restore contract
+      - name: Run P6.4R2 transactional-restore contract
         run: npm run verify:p6:restore-replacement
 
       - name: Upload regression evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P6_4R1_REGRESSION_EVIDENCE
+          name: P6_4R2_REGRESSION_EVIDENCE
           path: P1_GATE_EVIDENCE.json
           if-no-files-found: warn
 
@@ -108,6 +108,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P6_4R1_PACKAGE_LOCK
+          name: P6_4R2_PACKAGE_LOCK
           path: package-lock.json
           if-no-files-found: warn
