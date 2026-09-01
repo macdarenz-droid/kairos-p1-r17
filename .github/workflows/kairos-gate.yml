@@ -1,4 +1,4 @@
-# KAIROS P11.3 GATE — BASE P11.2 — CANDIDATE P11.3
+# KAIROS P11.4 GATE — BASE P11.3 — CANDIDATE P11.4
 name: Kairos Controlled Roadmap Gate
 
 on:
@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - 'KAIROS_P11_3_EXECUTION_BALANCE_VALIDATION_CANDIDATE_2026-09-01.zip'
+      - 'KAIROS_P11_4_FLAT_TRADE_GROSS_REALIZED_PNL_CANDIDATE_2026-09-01.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -14,8 +14,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P11_2_EXECUTION_AGGREGATION_CANDIDATE_2026-09-01.zip
-  CANDIDATE_ZIP: KAIROS_P11_3_EXECUTION_BALANCE_VALIDATION_CANDIDATE_2026-09-01.zip
+  BASE_ZIP: KAIROS_P11_3_EXECUTION_BALANCE_VALIDATION_CANDIDATE_2026-09-01.zip
+  CANDIDATE_ZIP: KAIROS_P11_4_FLAT_TRADE_GROSS_REALIZED_PNL_CANDIDATE_2026-09-01.zip
 
 jobs:
   verify-current-candidate:
@@ -51,12 +51,12 @@ jobs:
           base = Path('.gate-base/kairos_p76')
           cand = Path('.gate-candidate/kairos_p76')
           allowed = {
-            'KAIROS_P11_3_EXECUTION_BALANCE_VALIDATION_REPORT_2026-09-01.md',
+            'KAIROS_P11_4_FLAT_TRADE_GROSS_REALIZED_PNL_REPORT_2026-09-01.md',
             'package.json',
-            'scripts/verify-p11-execution-balance.mjs',
-            'src/domain/calculations/executionBalance.ts',
+            'scripts/verify-p11-gross-realized-pnl.mjs',
+            'src/domain/calculations/grossRealizedPnl.ts',
             'src/domain/calculations/index.ts',
-            'tests/execution-balance.test.ts',
+            'tests/gross-realized-pnl.test.ts',
           }
           def digest(p): return hashlib.sha256(p.read_bytes()).hexdigest()
           b = {str(p.relative_to(base)): digest(p) for p in base.rglob('*') if p.is_file()}
@@ -173,9 +173,13 @@ jobs:
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p11:execution-aggregation
 
-      - name: P11.3 execution balance verification
+      - name: P11.3 regression
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p11:execution-balance
+
+      - name: P11.4 flat-trade gross realized P&L verification
+        working-directory: .gate-candidate/kairos_p76
+        run: npm run verify:p11:gross-realized-pnl
 
       - name: Upload candidate
         uses: actions/upload-artifact@v4
@@ -189,5 +193,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P11_3_EXECUTION_BALANCE_VALIDATION_REPORT_2026-09-01.md
+          path: .gate-candidate/kairos_p76/KAIROS_P11_4_FLAT_TRADE_GROSS_REALIZED_PNL_REPORT_2026-09-01.md
           if-no-files-found: error
