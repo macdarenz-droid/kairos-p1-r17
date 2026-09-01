@@ -2,9 +2,6 @@ name: P7.8 Activation Authority Source Foundation Gate
 
 on:
   workflow_dispatch:
-  push:
-    branches: ["main"]
-  pull_request:
 
 permissions:
   contents: read
