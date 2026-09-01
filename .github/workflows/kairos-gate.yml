@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - 'KAIROS_P9_2R4_ACTIVATION_BACKUP_COUNT_CONTRACT_REPAIR_CANDIDATE_2026-09-01.zip'
+      - 'KAIROS_P10_1_MANUAL_TRADE_SAVE_COMMAND_FOUNDATION_CANDIDATE_2026-09-01.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P9_1_TRADE_DOMAIN_FOUNDATION_CANDIDATE_2026-09-01.zip
-  CANDIDATE_ZIP: KAIROS_P9_2R4_ACTIVATION_BACKUP_COUNT_CONTRACT_REPAIR_CANDIDATE_2026-09-01.zip
+  BASE_ZIP: KAIROS_P9_2R4_ACTIVATION_BACKUP_COUNT_CONTRACT_REPAIR_CANDIDATE_2026-09-01.zip
+  CANDIDATE_ZIP: KAIROS_P10_1_MANUAL_TRADE_SAVE_COMMAND_FOUNDATION_CANDIDATE_2026-09-01.zip
 
 jobs:
   verify-current-candidate:
@@ -50,71 +50,38 @@ jobs:
           base = Path('.gate-base/kairos_p76')
           cand = Path('.gate-candidate/kairos_p76')
           allowed = {
-            'KAIROS_P9_2R4_ACTIVATION_BACKUP_COUNT_CONTRACT_REPAIR_REPORT_2026-09-01.md',
+            'KAIROS_P10_1_MANUAL_TRADE_SAVE_COMMAND_FOUNDATION_REPORT_2026-09-01.md',
             'package.json',
-            'scripts/verify-p5-database-kernel.mjs',
-            'scripts/verify-p5-integrity.mjs',
-            'scripts/verify-p5-migrations.mjs',
-            'scripts/verify-p5-repositories.mjs',
-            'scripts/verify-p5-transactions.mjs',
-            'scripts/verify-p6-backup-envelope.mjs',
-            'scripts/verify-p6-backup-snapshot.mjs',
-            'scripts/verify-p6-restore-preflight.mjs',
-            'scripts/verify-p6-restore-replacement.mjs',
-            'scripts/verify-p6-restore-verification.mjs',
-            'scripts/verify-p7-activation-persistence.mjs',
-            'scripts/verify-p9-trade-persistence.mjs',
-            'src/data/backup/backupEnvelope.ts',
-            'src/data/backup/backupFormat.ts',
-            'src/data/backup/backupSerialization.ts',
-            'src/data/backup/backupSnapshot.ts',
-            'src/data/backup/backupValidation.ts',
-            'src/data/backup/restorePreflight.ts',
-            'src/data/backup/restoreReplacement.ts',
-            'src/data/backup/restoreVerification.ts',
-            'src/data/database/KairosDatabase.ts',
-            'src/data/database/integrity.ts',
-            'src/data/database/migrations.ts',
-            'src/data/database/schema.ts',
-            'src/data/database/transactions.ts',
-            'src/data/repositories/TradeRepositories.ts',
-            'src/data/repositories/index.ts',
-            'tests/backup-envelope.test.ts',
-            'tests/backup-snapshot.test.ts',
-            'tests/activation-persistence.test.ts',
-            'tests/database-kernel.test.ts',
-            'tests/database-migrations.test.ts',
-            'tests/database-transactions.test.ts',
-            'tests/metadata-repository.test.ts',
-            'tests/restore-preflight.test.ts',
-            'tests/restore-replacement.test.ts',
-            'tests/restore-verification.test.ts',
-            'tests/trade-persistence.test.ts',
+            'scripts/verify-p10-manual-trade-save-command.mjs',
+            'src/app/buildInfo.ts',
+            'src/application/trades/index.ts',
+            'src/application/trades/saveManualTrade.ts',
+            'tests/manual-trade-save-command.test.ts',
           }
           def digest(p): return hashlib.sha256(p.read_bytes()).hexdigest()
           b = {str(p.relative_to(base)): digest(p) for p in base.rglob('*') if p.is_file()}
           c = {str(p.relative_to(cand)): digest(p) for p in cand.rglob('*') if p.is_file()}
           changed = {p for p in b.keys() | c.keys() if b.get(p) != c.get(p)}
           unexpected = changed - allowed
-          required = allowed
+          missing = allowed - changed
           print('Changed files:')
           for p in sorted(changed): print(' -', p)
           if unexpected:
             print('Unexpected changes:', sorted(unexpected), file=sys.stderr)
             sys.exit(1)
-          missing = required - changed
           if missing:
             print('Required changes missing:', sorted(missing), file=sys.stderr)
             sys.exit(1)
           forbidden_prefixes = (
-            'src/app/',
+            'src/data/',
             'src/design-system/',
             'src/domain/trades/',
+            'src/features/activation/',
             'src/services/activation/',
           )
           forbidden = [p for p in changed if p.startswith(forbidden_prefixes)]
           if forbidden:
-            print('Out-of-scope implementation area changed:', forbidden, file=sys.stderr)
+            print('Protected implementation area changed:', forbidden, file=sys.stderr)
             sys.exit(1)
           PY
 
@@ -191,13 +158,15 @@ jobs:
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p8:navigation-shell
 
-      - name: P9.1 trade domain verification
+      - name: P9 regression
         working-directory: .gate-candidate/kairos_p76
-        run: npm run verify:p9:trade-domain
+        run: |
+          npm run verify:p9:trade-domain
+          npm run verify:p9:trade-persistence
 
-      - name: P9.2 trade persistence verification
+      - name: P10.1 manual trade save command verification
         working-directory: .gate-candidate/kairos_p76
-        run: npm run verify:p9:trade-persistence
+        run: npm run verify:p10:manual-trade-save-command
 
       - name: Upload candidate
         uses: actions/upload-artifact@v4
@@ -211,5 +180,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P9_2R4_ACTIVATION_BACKUP_COUNT_CONTRACT_REPAIR_REPORT_2026-09-01.md
+          path: .gate-candidate/kairos_p76/KAIROS_P10_1_MANUAL_TRADE_SAVE_COMMAND_FOUNDATION_REPORT_2026-09-01.md
           if-no-files-found: error
