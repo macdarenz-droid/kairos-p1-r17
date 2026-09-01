@@ -1,0 +1,110 @@
+html { background: var(--kairos-background-depth); }
+body {
+  min-width: 20rem;
+  background: var(--kairos-background-base);
+  color: var(--kairos-text-primary);
+  font-family: var(--kairos-font-sans);
+}
+.kairos-shell {
+  min-height: 100dvh;
+  background:
+    radial-gradient(circle at top, var(--kairos-accent-soft), transparent 34rem),
+    linear-gradient(180deg, var(--kairos-background-base), var(--kairos-background-depth));
+}
+.kairos-shell__header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding-top: env(safe-area-inset-top, 0px);
+  border-bottom: 1px solid var(--kairos-border-subtle);
+  background: var(--kairos-surface-card);
+}
+.kairos-shell__header-inner {
+  min-height: var(--kairos-control-lg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--kairos-space-4);
+  padding: var(--kairos-space-3) var(--kairos-layout-page-padding);
+}
+.kairos-shell__brand { font-size: var(--kairos-font-size-lg); letter-spacing: -0.02em; }
+.kairos-shell__version { color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-xs); }
+.kairos-shell__content {
+  width: min(100%, 72rem);
+  margin: 0 auto;
+  padding:
+    var(--kairos-space-8)
+    var(--kairos-layout-page-padding)
+    calc(var(--kairos-layout-navigation-height) + var(--kairos-space-8) + env(safe-area-inset-bottom, 0px));
+}
+.kairos-route { width: 100%; max-width: 48rem; margin: 0 auto; }
+.kairos-route h1 { margin: 0; font-size: var(--kairos-font-size-xxl); line-height: var(--kairos-line-height-tight); }
+.kairos-route p { margin: var(--kairos-space-3) 0 0; color: var(--kairos-text-secondary); line-height: var(--kairos-line-height-relaxed); }
+.kairos-shell__navigation {
+  position: fixed;
+  z-index: 30;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  border-top: 1px solid var(--kairos-border-subtle);
+  background: var(--kairos-surface-card);
+}
+.kairos-shell__navigation-inner {
+  min-height: var(--kairos-layout-navigation-height);
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: stretch;
+  margin: 0 auto;
+}
+.kairos-shell__nav-link {
+  min-width: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--kairos-space-2) var(--kairos-space-1);
+  color: var(--kairos-text-secondary);
+  font-size: var(--kairos-font-size-xs);
+  font-weight: var(--kairos-font-weight-medium);
+  line-height: var(--kairos-line-height-tight);
+  text-align: center;
+  text-decoration: none;
+  transition: color var(--kairos-motion-fast) ease, background-color var(--kairos-motion-fast) ease;
+}
+.kairos-shell__nav-link--active { background: var(--kairos-accent-soft); color: var(--kairos-accent-primary); }
+.kairos-more-links { display: grid; gap: var(--kairos-space-2); margin-top: var(--kairos-space-8); }
+.kairos-more-links__item {
+  min-height: var(--kairos-control-lg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--kairos-space-4);
+  padding: var(--kairos-space-3) var(--kairos-space-4);
+  border: 1px solid var(--kairos-border-subtle);
+  border-radius: var(--kairos-radius-md);
+  background: var(--kairos-surface-card);
+  color: var(--kairos-text-primary);
+  text-decoration: none;
+}
+@media (min-width: 48rem) {
+  .kairos-shell { padding-left: 13rem; }
+  .kairos-shell__header { margin-left: -13rem; }
+  .kairos-shell__header-inner { padding-right: var(--kairos-space-6); padding-left: var(--kairos-space-6); }
+  .kairos-shell__navigation {
+    top: calc(var(--kairos-control-lg) + (var(--kairos-space-3) * 2) + env(safe-area-inset-top, 0px));
+    right: auto;
+    width: 13rem;
+    padding: var(--kairos-space-4);
+    border-top: 0;
+    border-right: 1px solid var(--kairos-border-subtle);
+  }
+  .kairos-shell__navigation-inner { min-height: 0; display: grid; grid-template-columns: 1fr; align-content: start; gap: var(--kairos-space-2); }
+  .kairos-shell__nav-link {
+    min-height: var(--kairos-control-md);
+    place-items: center start;
+    padding: var(--kairos-space-3) var(--kairos-space-4);
+    border-radius: var(--kairos-radius-md);
+    font-size: var(--kairos-font-size-sm);
+    text-align: left;
+  }
+  .kairos-shell__content { padding: var(--kairos-space-10) var(--kairos-space-8); }
+}
