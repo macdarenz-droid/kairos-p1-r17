@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - 'KAIROS_P10_1R1_RESULT_NARROWING_REPAIR_CANDIDATE_2026-09-01.zip'
+      - 'KAIROS_P10_2_MANUAL_TRADE_DRAFT_FOUNDATION_CANDIDATE_2026-09-01.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P9_2R4_ACTIVATION_BACKUP_COUNT_CONTRACT_REPAIR_CANDIDATE_2026-09-01.zip
-  CANDIDATE_ZIP: KAIROS_P10_1R1_RESULT_NARROWING_REPAIR_CANDIDATE_2026-09-01.zip
+  BASE_ZIP: KAIROS_P10_1R1_RESULT_NARROWING_REPAIR_CANDIDATE_2026-09-01.zip
+  CANDIDATE_ZIP: KAIROS_P10_2_MANUAL_TRADE_DRAFT_FOUNDATION_CANDIDATE_2026-09-01.zip
 
 jobs:
   verify-current-candidate:
@@ -50,13 +50,13 @@ jobs:
           base = Path('.gate-base/kairos_p76')
           cand = Path('.gate-candidate/kairos_p76')
           allowed = {
-            'KAIROS_P10_1R1_RESULT_NARROWING_REPAIR_REPORT_2026-09-01.md',
+            'KAIROS_P10_2_MANUAL_TRADE_DRAFT_FOUNDATION_REPORT_2026-09-01.md',
             'package.json',
-            'scripts/verify-p10-manual-trade-save-command.mjs',
+            'scripts/verify-p10-manual-trade-draft.mjs',
             'src/app/buildInfo.ts',
             'src/application/trades/index.ts',
-            'src/application/trades/saveManualTrade.ts',
-            'tests/manual-trade-save-command.test.ts',
+            'src/application/trades/manualTradeDraft.ts',
+            'tests/manual-trade-draft.test.ts',
           }
           def digest(p): return hashlib.sha256(p.read_bytes()).hexdigest()
           b = {str(p.relative_to(base)): digest(p) for p in base.rglob('*') if p.is_file()}
@@ -164,9 +164,13 @@ jobs:
           npm run verify:p9:trade-domain
           npm run verify:p9:trade-persistence
 
-      - name: P10.1 manual trade save command verification
+      - name: P10.1 regression
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p10:manual-trade-save-command
+
+      - name: P10.2 manual trade draft verification
+        working-directory: .gate-candidate/kairos_p76
+        run: npm run verify:p10:manual-trade-draft
 
       - name: Upload candidate
         uses: actions/upload-artifact@v4
@@ -180,5 +184,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P10_1R1_RESULT_NARROWING_REPAIR_REPORT_2026-09-01.md
+          path: .gate-candidate/kairos_p76/KAIROS_P10_2_MANUAL_TRADE_DRAFT_FOUNDATION_REPORT_2026-09-01.md
           if-no-files-found: error
