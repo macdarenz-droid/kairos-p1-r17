@@ -1,4 +1,4 @@
-# KAIROS P12.1 GATE — BASE P11.24 — CANDIDATE P12.1
+# KAIROS P12.1R1 GATE — BASE P11.24 — CANDIDATE P12.1R1
 name: Kairos Controlled Roadmap Gate
 
 on:
@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - 'KAIROS_P12_1_JOURNAL_HISTORY_QUERY_FOUNDATION_CANDIDATE_2026-09-02.zip'
+      - 'KAIROS_P12_1R1_JOURNAL_HISTORY_QUERY_SCOPE_REPAIR_CANDIDATE_2026-09-02.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -15,7 +15,7 @@ permissions:
 
 env:
   BASE_ZIP: KAIROS_P11_24_CALCULATION_BRAIN_CLOSURE_CANDIDATE_2026-09-02.zip
-  CANDIDATE_ZIP: KAIROS_P12_1_JOURNAL_HISTORY_QUERY_FOUNDATION_CANDIDATE_2026-09-02.zip
+  CANDIDATE_ZIP: KAIROS_P12_1R1_JOURNAL_HISTORY_QUERY_SCOPE_REPAIR_CANDIDATE_2026-09-02.zip
 
 jobs:
   verify-current-candidate:
@@ -47,9 +47,9 @@ jobs:
           base=Path('.gate-base/kairos_p76')
           cand=Path('.gate-candidate/kairos_p76')
           required={
-            'KAIROS_P12_1_JOURNAL_HISTORY_QUERY_FOUNDATION_REPORT_2026-09-02.md',
+            'KAIROS_P12_1R1_JOURNAL_HISTORY_QUERY_SCOPE_REPAIR_REPORT_2026-09-02.md',
             'package.json',
-            'scripts/verify-p12-journal-history-query.mjs',
+            'scripts/verify-p12-journal-history-query-scope-repair.mjs',
             'src/application/journal/historyQuery.ts',
             'src/application/journal/index.ts',
             'tests/journal-history-query.test.ts',
@@ -76,7 +76,7 @@ jobs:
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression P1 through P12.1
+      - name: Full controlled roadmap regression P1 through P12.1R1
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
@@ -88,8 +88,8 @@ jobs:
             console.error('Missing P11.24 closure verifier');
             process.exit(1);
           }
-          if (!scripts.includes('verify:p12:journal-history-query')) {
-            console.error('Missing P12.1 journal history verifier');
+          if (!scripts.includes('verify:p12:journal-history-query-scope-repair')) {
+            console.error('Missing P12.1R1 journal history scope repair verifier');
             process.exit(1);
           }
           for (const script of scripts) {
@@ -98,9 +98,9 @@ jobs:
             if (result.status !== 0) process.exit(result.status || 1);
           }
           NODE
-      - name: P12.1 Journal History query verification
+      - name: P12.1R1 Journal History scope repair verification
         working-directory: .gate-candidate/kairos_p76
-        run: npm run verify:p12:journal-history-query
+        run: npm run verify:p12:journal-history-query-scope-repair
       - name: Upload candidate
         uses: actions/upload-artifact@v4
         with:
@@ -112,5 +112,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P12_1_JOURNAL_HISTORY_QUERY_FOUNDATION_REPORT_2026-09-02.md
+          path: .gate-candidate/kairos_p76/KAIROS_P12_1R1_JOURNAL_HISTORY_QUERY_SCOPE_REPAIR_REPORT_2026-09-02.md
           if-no-files-found: error
