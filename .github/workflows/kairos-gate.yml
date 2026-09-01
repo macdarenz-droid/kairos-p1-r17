@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - 'KAIROS_P9_2R1_TRADE_PERSISTENCE_TEST_CONTRACT_REPAIR_CANDIDATE_2026-09-01.zip'
+      - 'KAIROS_P9_2R2_RECOVERY_COMPATIBILITY_REPAIR_CANDIDATE_2026-09-01.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -14,7 +14,7 @@ permissions:
 
 env:
   BASE_ZIP: KAIROS_P9_1_TRADE_DOMAIN_FOUNDATION_CANDIDATE_2026-09-01.zip
-  CANDIDATE_ZIP: KAIROS_P9_2R1_TRADE_PERSISTENCE_TEST_CONTRACT_REPAIR_CANDIDATE_2026-09-01.zip
+  CANDIDATE_ZIP: KAIROS_P9_2R2_RECOVERY_COMPATIBILITY_REPAIR_CANDIDATE_2026-09-01.zip
 
 jobs:
   verify-current-candidate:
@@ -50,7 +50,7 @@ jobs:
           base = Path('.gate-base/kairos_p76')
           cand = Path('.gate-candidate/kairos_p76')
           allowed = {
-            'KAIROS_P9_2R1_TRADE_PERSISTENCE_TEST_CONTRACT_REPAIR_REPORT_2026-09-01.md',
+            'KAIROS_P9_2R2_RECOVERY_COMPATIBILITY_REPAIR_REPORT_2026-09-01.md',
             'package.json',
             'scripts/verify-p5-database-kernel.mjs',
             'scripts/verify-p5-integrity.mjs',
@@ -58,8 +58,20 @@ jobs:
             'scripts/verify-p5-repositories.mjs',
             'scripts/verify-p5-transactions.mjs',
             'scripts/verify-p6-backup-envelope.mjs',
+            'scripts/verify-p6-backup-snapshot.mjs',
+            'scripts/verify-p6-restore-preflight.mjs',
+            'scripts/verify-p6-restore-replacement.mjs',
+            'scripts/verify-p6-restore-verification.mjs',
             'scripts/verify-p7-activation-persistence.mjs',
             'scripts/verify-p9-trade-persistence.mjs',
+            'src/data/backup/backupEnvelope.ts',
+            'src/data/backup/backupFormat.ts',
+            'src/data/backup/backupSerialization.ts',
+            'src/data/backup/backupSnapshot.ts',
+            'src/data/backup/backupValidation.ts',
+            'src/data/backup/restorePreflight.ts',
+            'src/data/backup/restoreReplacement.ts',
+            'src/data/backup/restoreVerification.ts',
             'src/data/database/KairosDatabase.ts',
             'src/data/database/integrity.ts',
             'src/data/database/migrations.ts',
@@ -67,10 +79,13 @@ jobs:
             'src/data/database/transactions.ts',
             'src/data/repositories/TradeRepositories.ts',
             'src/data/repositories/index.ts',
+            'tests/backup-envelope.test.ts',
+            'tests/backup-snapshot.test.ts',
             'tests/database-kernel.test.ts',
             'tests/database-migrations.test.ts',
             'tests/database-transactions.test.ts',
             'tests/metadata-repository.test.ts',
+            'tests/restore-preflight.test.ts',
             'tests/restore-replacement.test.ts',
             'tests/restore-verification.test.ts',
             'tests/trade-persistence.test.ts',
@@ -195,5 +210,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P9_2R1_TRADE_PERSISTENCE_TEST_CONTRACT_REPAIR_REPORT_2026-09-01.md
+          path: .gate-candidate/kairos_p76/KAIROS_P9_2R2_RECOVERY_COMPATIBILITY_REPAIR_REPORT_2026-09-01.md
           if-no-files-found: error
