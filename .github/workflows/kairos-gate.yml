@@ -1,4 +1,4 @@
-# KAIROS P12.2 GATE — BASE P12.1R1 — CANDIDATE P12.2
+# KAIROS P12.2R1 GATE — BASE P12.1R1 — CANDIDATE P12.2R1
 name: Kairos Controlled Roadmap Gate
 
 on:
@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - 'KAIROS_P12_2_INDEXED_BOUNDED_JOURNAL_HISTORY_QUERY_CANDIDATE_2026-09-02.zip'
+      - 'KAIROS_P12_2R1_INDEXED_BOUNDED_JOURNAL_HISTORY_QUERY_REPAIR_CANDIDATE_2026-09-02.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -15,7 +15,7 @@ permissions:
 
 env:
   BASE_ZIP: KAIROS_P12_1R1_JOURNAL_HISTORY_QUERY_SCOPE_REPAIR_CANDIDATE_2026-09-02.zip
-  CANDIDATE_ZIP: KAIROS_P12_2_INDEXED_BOUNDED_JOURNAL_HISTORY_QUERY_CANDIDATE_2026-09-02.zip
+  CANDIDATE_ZIP: KAIROS_P12_2R1_INDEXED_BOUNDED_JOURNAL_HISTORY_QUERY_REPAIR_CANDIDATE_2026-09-02.zip
 
 jobs:
   verify-current-candidate:
@@ -47,7 +47,7 @@ jobs:
           base=Path('.gate-base/kairos_p76')
           cand=Path('.gate-candidate/kairos_p76')
           required={
-            'KAIROS_P12_2_INDEXED_BOUNDED_JOURNAL_HISTORY_QUERY_REPORT_2026-09-02.md',
+            'KAIROS_P12_2R1_INDEXED_BOUNDED_JOURNAL_HISTORY_QUERY_REPAIR_REPORT_2026-09-02.md',
             'package.json',
             'scripts/verify-p12-journal-history-indexed-bound.mjs',
             'scripts/verify-p12-journal-history-query-scope-repair.mjs',
@@ -77,7 +77,7 @@ jobs:
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression P1 through P12.2
+      - name: Full controlled roadmap regression P1 through P12.2R1
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
@@ -94,7 +94,7 @@ jobs:
             if (result.status !== 0) process.exit(result.status || 1);
           }
           NODE
-      - name: P12.2 Indexed bounded journal history verification
+      - name: P12.2R1 Indexed bounded journal history verification
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p12:journal-history-indexed-bound
       - name: Upload candidate
@@ -108,5 +108,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P12_2_INDEXED_BOUNDED_JOURNAL_HISTORY_QUERY_REPORT_2026-09-02.md
+          path: .gate-candidate/kairos_p76/KAIROS_P12_2R1_INDEXED_BOUNDED_JOURNAL_HISTORY_QUERY_REPAIR_REPORT_2026-09-02.md
           if-no-files-found: error
