@@ -1,0 +1,182 @@
+name: Kairos Expose P9.2R4 Locked Source Tree
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/expose-p9r4-src.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kairos-expose-p9r4-src
+  cancel-in-progress: false
+
+env:
+  BASE_ZIP: KAIROS_P9_2R4_ACTIVATION_BACKUP_COUNT_CONTRACT_REPAIR_CANDIDATE_2026-09-01.zip
+  BASE_ZIP_SHA256: 146bb9f9401b2cd6222c3da5adb554c49bd7946db6cf31c4877c9f72007c72a7
+  EXPECTED_SRC_TREE_SHA256: e708abe31fc919ee01642cfb8adc749dcffe9546a5618d3513add968f7110c6c
+  EXPECTED_SRC_FILE_COUNT: '72'
+
+jobs:
+  expose-locked-source:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Verify authoritative P9.2R4 package
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f "$BASE_ZIP"
+          echo "$BASE_ZIP_SHA256  $BASE_ZIP" | sha256sum -c -
+
+      - name: Extract authoritative source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .source-extract
+          mkdir .source-extract
+          unzip -q "$BASE_ZIP" -d .source-extract
+          test -d .source-extract/kairos_p76/src
+
+      - name: Verify source tree identity before publishing
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib
+          import os
+          import sys
+
+          root = Path('.source-extract/kairos_p76/src')
+          files = sorted(p for p in root.rglob('*') if p.is_file())
+          expected_count = int(os.environ['EXPECTED_SRC_FILE_COUNT'])
+          if len(files) != expected_count:
+              print(f'Expected {expected_count} source files, found {len(files)}', file=sys.stderr)
+              sys.exit(1)
+
+          digest = hashlib.sha256()
+          for path in files:
+              relative = path.relative_to(root).as_posix().encode('utf-8')
+              file_hash = hashlib.sha256(path.read_bytes()).digest()
+              digest.update(relative)
+              digest.update(b'\0')
+              digest.update(file_hash)
+              digest.update(b'\n')
+
+          actual = digest.hexdigest()
+          expected = os.environ['EXPECTED_SRC_TREE_SHA256']
+          print('Source tree SHA-256:', actual)
+          if actual != expected:
+              print(f'Source tree identity mismatch: expected {expected}', file=sys.stderr)
+              sys.exit(1)
+          PY
+
+      - name: Refuse to overwrite a different root source tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -d src ]; then
+            python - <<'PY'
+            from pathlib import Path
+            import hashlib
+            import os
+            import sys
+
+            root = Path('src')
+            files = sorted(p for p in root.rglob('*') if p.is_file())
+            digest = hashlib.sha256()
+            for path in files:
+                relative = path.relative_to(root).as_posix().encode('utf-8')
+                file_hash = hashlib.sha256(path.read_bytes()).digest()
+                digest.update(relative)
+                digest.update(b'\0')
+                digest.update(file_hash)
+                digest.update(b'\n')
+            actual = digest.hexdigest()
+            expected = os.environ['EXPECTED_SRC_TREE_SHA256']
+            if actual == expected and len(files) == int(os.environ['EXPECTED_SRC_FILE_COUNT']):
+                print('Root src/ already exactly matches locked P9.2R4 source.')
+                sys.exit(0)
+            print('Refusing to overwrite an existing non-matching src/ tree.', file=sys.stderr)
+            print('Existing src tree SHA-256:', actual, file=sys.stderr)
+            sys.exit(1)
+            PY
+          fi
+
+      - name: Publish exact locked source to repository root
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -d src ]; then
+            cp -a .source-extract/kairos_p76/src ./src
+          fi
+
+      - name: Verify published tree and controlled scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib
+          import os
+          import subprocess
+          import sys
+
+          root = Path('src')
+          files = sorted(p for p in root.rglob('*') if p.is_file())
+          if len(files) != int(os.environ['EXPECTED_SRC_FILE_COUNT']):
+              print('Published source file count mismatch.', file=sys.stderr)
+              sys.exit(1)
+
+          digest = hashlib.sha256()
+          for path in files:
+              relative = path.relative_to(root).as_posix().encode('utf-8')
+              file_hash = hashlib.sha256(path.read_bytes()).digest()
+              digest.update(relative)
+              digest.update(b'\0')
+              digest.update(file_hash)
+              digest.update(b'\n')
+
+          actual = digest.hexdigest()
+          expected = os.environ['EXPECTED_SRC_TREE_SHA256']
+          print('Published src tree SHA-256:', actual)
+          if actual != expected:
+              print('Published source tree does not match authoritative P9.2R4.', file=sys.stderr)
+              sys.exit(1)
+
+          status = subprocess.check_output(['git', 'status', '--porcelain'], text=True).splitlines()
+          changed = []
+          for line in status:
+              path = line[3:]
+              if ' -> ' in path:
+                  path = path.split(' -> ', 1)[1]
+              changed.append(path)
+          unexpected = [p for p in changed if not (p == 'src' or p.startswith('src/'))]
+          if unexpected:
+              print('Unexpected working-tree changes:', unexpected, file=sys.stderr)
+              sys.exit(1)
+          print(f'Controlled source exposure: {len(files)} files, src/ only.')
+          PY
+
+      - name: Commit visible source tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- src && [ -z "$(git ls-files --others --exclude-standard src)" ]; then
+            echo 'No source-tree commit needed; src/ is already published.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src
+          git commit -m 'Expose locked P9.2R4 Kairos source tree'
+          git push origin HEAD:main
