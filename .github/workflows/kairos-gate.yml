@@ -1,4 +1,4 @@
-# KAIROS P11.8 GATE — BASE P11.7 — CANDIDATE P11.8
+# KAIROS P11.9 GATE — BASE P11.8 — CANDIDATE P11.9
 name: Kairos Controlled Roadmap Gate
 
 on:
@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - 'KAIROS_P11_8_RISK_PRICE_DISTANCE_PRIMITIVE_CANDIDATE_2026-09-01.zip'
+      - 'KAIROS_P11_9_MARKET_SPECIFIC_CALCULATION_POLICY_BOUNDARY_CANDIDATE_2026-09-01.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -14,8 +14,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P11_7_R_MULTIPLE_CALCULATOR_PRIMITIVE_CANDIDATE_2026-09-01.zip
-  CANDIDATE_ZIP: KAIROS_P11_8_RISK_PRICE_DISTANCE_PRIMITIVE_CANDIDATE_2026-09-01.zip
+  BASE_ZIP: KAIROS_P11_8_RISK_PRICE_DISTANCE_PRIMITIVE_CANDIDATE_2026-09-01.zip
+  CANDIDATE_ZIP: KAIROS_P11_9_MARKET_SPECIFIC_CALCULATION_POLICY_BOUNDARY_CANDIDATE_2026-09-01.zip
 
 jobs:
   verify-current-candidate:
@@ -51,12 +51,12 @@ jobs:
           base=Path('.gate-base/kairos_p76')
           cand=Path('.gate-candidate/kairos_p76')
           allowed={
-            'KAIROS_P11_8_RISK_PRICE_DISTANCE_PRIMITIVE_REPORT_2026-09-01.md',
+            'KAIROS_P11_9_MARKET_SPECIFIC_CALCULATION_POLICY_BOUNDARY_REPORT_2026-09-01.md',
             'package.json',
-            'scripts/verify-p11-risk-calculator.mjs',
+            'scripts/verify-p11-market-specific-calculation-policy.mjs',
             'src/domain/calculations/index.ts',
-            'src/domain/calculations/riskCalculator.ts',
-            'tests/risk-calculator.test.ts',
+            'src/domain/calculations/marketSpecificCalculationPolicy.ts',
+            'tests/market-specific-calculation-policy.test.ts',
           }
           def digest(p): return hashlib.sha256(p.read_bytes()).hexdigest()
           b={str(p.relative_to(base)):digest(p) for p in base.rglob('*') if p.is_file()}
@@ -193,9 +193,13 @@ jobs:
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p11:r-multiple-calculator
 
-      - name: P11.8 risk price-distance primitive verification
+      - name: P11.8 regression
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p11:risk-calculator
+
+      - name: P11.9 market-specific calculation policy boundary verification
+        working-directory: .gate-candidate/kairos_p76
+        run: npm run verify:p11:market-specific-policy
 
       - name: Upload candidate
         uses: actions/upload-artifact@v4
@@ -209,5 +213,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P11_8_RISK_PRICE_DISTANCE_PRIMITIVE_REPORT_2026-09-01.md
+          path: .gate-candidate/kairos_p76/KAIROS_P11_9_MARKET_SPECIFIC_CALCULATION_POLICY_BOUNDARY_REPORT_2026-09-01.md
           if-no-files-found: error
