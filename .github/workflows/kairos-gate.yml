@@ -1,4 +1,4 @@
-# KAIROS P11.17R1 GATE — BASE P11.16 — CANDIDATE P11.17R1
+# KAIROS P11.18 GATE — BASE P11.17R1 — CANDIDATE P11.18
 name: Kairos Controlled Roadmap Gate
 
 on:
@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - 'KAIROS_P11_17R1_FEE_CURRENCY_EVIDENCE_REPAIR_CANDIDATE_2026-09-01.zip'
+      - 'KAIROS_P11_18_TRADE_METRICS_FEE_EVIDENCE_WIRING_CANDIDATE_2026-09-01.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -14,8 +14,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P11_16_NET_PNL_PRIMITIVE_CANDIDATE_2026-09-01.zip
-  CANDIDATE_ZIP: KAIROS_P11_17R1_FEE_CURRENCY_EVIDENCE_REPAIR_CANDIDATE_2026-09-01.zip
+  BASE_ZIP: KAIROS_P11_17R1_FEE_CURRENCY_EVIDENCE_REPAIR_CANDIDATE_2026-09-01.zip
+  CANDIDATE_ZIP: KAIROS_P11_18_TRADE_METRICS_FEE_EVIDENCE_WIRING_CANDIDATE_2026-09-01.zip
 
 jobs:
   verify-current-candidate:
@@ -51,12 +51,15 @@ jobs:
           base=Path('.gate-base/kairos_p76')
           cand=Path('.gate-candidate/kairos_p76')
           allowed={
-            'KAIROS_P11_17R1_FEE_CURRENCY_EVIDENCE_REPAIR_REPORT_2026-09-01.md',
+            'KAIROS_P11_18_TRADE_METRICS_FEE_EVIDENCE_WIRING_REPORT_2026-09-01.md',
             'package.json',
-            'scripts/verify-p11-fee-currency-evidence.mjs',
-            'src/domain/calculations/feeCalculator.ts',
-            'tests/fee-calculator.test.ts',
-            'tests/fee-currency-evidence.test.ts',
+            'scripts/verify-p11-trade-metrics.mjs',
+            'scripts/verify-p11-trade-metrics-risk-evidence.mjs',
+            'scripts/verify-p11-trade-metrics-fee-evidence.mjs',
+            'src/domain/calculations/tradeMetrics.ts',
+            'tests/trade-metrics.test.ts',
+            'tests/trade-metrics-risk-evidence.test.ts',
+            'tests/trade-metrics-fee-evidence.test.ts',
           }
           def digest(p): return hashlib.sha256(p.read_bytes()).hexdigest()
           b={str(p.relative_to(base)):digest(p) for p in base.rglob('*') if p.is_file()}
@@ -229,9 +232,13 @@ jobs:
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p11:net-pnl-calculator
 
-      - name: P11.17R1 fee currency evidence repair verification
+      - name: P11.17R1 regression
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p11:fee-currency-evidence
+
+      - name: P11.18 TradeMetrics fee evidence verification
+        working-directory: .gate-candidate/kairos_p76
+        run: npm run verify:p11:trade-metrics-fee-evidence
 
       - name: Upload candidate
         uses: actions/upload-artifact@v4
@@ -245,5 +252,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P11_17R1_FEE_CURRENCY_EVIDENCE_REPAIR_REPORT_2026-09-01.md
+          path: .gate-candidate/kairos_p76/KAIROS_P11_18_TRADE_METRICS_FEE_EVIDENCE_WIRING_REPORT_2026-09-01.md
           if-no-files-found: error
