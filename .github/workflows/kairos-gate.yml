@@ -1,4 +1,4 @@
-# KAIROS P11.18 GATE — BASE P11.17R1 — CANDIDATE P11.18
+# KAIROS P11.18R1 GATE — BASE P11.17R1 — CANDIDATE P11.18R1
 name: Kairos Controlled Roadmap Gate
 
 on:
@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - 'KAIROS_P11_18_TRADE_METRICS_FEE_EVIDENCE_WIRING_CANDIDATE_2026-09-01.zip'
+      - 'KAIROS_P11_18R1_TRADE_METRICS_FEE_EVIDENCE_WIRING_REPAIR_CANDIDATE_2026-09-01.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -15,7 +15,7 @@ permissions:
 
 env:
   BASE_ZIP: KAIROS_P11_17R1_FEE_CURRENCY_EVIDENCE_REPAIR_CANDIDATE_2026-09-01.zip
-  CANDIDATE_ZIP: KAIROS_P11_18_TRADE_METRICS_FEE_EVIDENCE_WIRING_CANDIDATE_2026-09-01.zip
+  CANDIDATE_ZIP: KAIROS_P11_18R1_TRADE_METRICS_FEE_EVIDENCE_WIRING_REPAIR_CANDIDATE_2026-09-01.zip
 
 jobs:
   verify-current-candidate:
@@ -23,17 +23,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Use locked Node toolchain
         uses: actions/setup-node@v4
         with:
           node-version: 22.16.0
-
       - name: Verify npm version
         run: |
           npm install --global npm@10.9.2
           test "$(npm --version)" = "10.9.2"
-
       - name: Extract authoritative base and candidate
         run: |
           rm -rf .gate-base .gate-candidate
@@ -42,7 +39,6 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-
       - name: Confirm controlled patch scope
         run: |
           python - <<'PY'
@@ -50,56 +46,46 @@ jobs:
           import hashlib, sys
           base=Path('.gate-base/kairos_p76')
           cand=Path('.gate-candidate/kairos_p76')
-          allowed={
-            'KAIROS_P11_18_TRADE_METRICS_FEE_EVIDENCE_WIRING_REPORT_2026-09-01.md',
+          required={
+            'KAIROS_P11_18R1_TRADE_METRICS_FEE_EVIDENCE_WIRING_REPAIR_REPORT_2026-09-01.md',
             'package.json',
             'scripts/verify-p11-trade-metrics.mjs',
             'scripts/verify-p11-trade-metrics-risk-evidence.mjs',
             'scripts/verify-p11-trade-metrics-fee-evidence.mjs',
             'src/domain/calculations/tradeMetrics.ts',
-            'tests/trade-metrics.test.ts',
-            'tests/trade-metrics-risk-evidence.test.ts',
             'tests/trade-metrics-fee-evidence.test.ts',
           }
           def digest(p): return hashlib.sha256(p.read_bytes()).hexdigest()
           b={str(p.relative_to(base)):digest(p) for p in base.rglob('*') if p.is_file()}
           c={str(p.relative_to(cand)):digest(p) for p in cand.rglob('*') if p.is_file()}
           changed={p for p in b.keys()|c.keys() if b.get(p)!=c.get(p)}
-          unexpected=changed-allowed
-          missing=allowed-changed
+          unexpected=changed-required
+          missing=required-changed
           print('Changed files:')
           for p in sorted(changed): print(' -',p)
           if unexpected:
-            print('Unexpected changes:',sorted(unexpected),file=sys.stderr)
-            sys.exit(1)
+            print('Unexpected changes:',sorted(unexpected),file=sys.stderr); sys.exit(1)
           if missing:
-            print('Required changes missing:',sorted(missing),file=sys.stderr)
-            sys.exit(1)
+            print('Required changes missing:',sorted(missing),file=sys.stderr); sys.exit(1)
           PY
-
       - name: Install candidate deterministically
         working-directory: .gate-candidate/kairos_p76
         run: npm ci
-
       - name: Build
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
-
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-
       - name: P1 regression
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p1
-
       - name: P2 regression
         working-directory: .gate-candidate/kairos_p76
         run: |
           npm run verify:p2:design-system
           npm run verify:p2:primitives
           npm run verify:p2:accessibility
-
       - name: P3 regression
         working-directory: .gate-candidate/kairos_p76
         run: |
@@ -107,14 +93,12 @@ jobs:
           npm run verify:p3:theme-canary
           npm run verify:p3:theme-preference
           npm run verify:p3:chart-theme-adapter
-
       - name: P4 regression
         working-directory: .gate-candidate/kairos_p76
         run: |
           npm run verify:p4:manifest
           npm run verify:p4:service-worker
           npm run verify:p4:storage-durability
-
       - name: P5 regression
         working-directory: .gate-candidate/kairos_p76
         run: |
@@ -123,7 +107,6 @@ jobs:
           npm run verify:p5:migrations
           npm run verify:p5:integrity
           npm run verify:p5:transactions
-
       - name: P6 regression
         working-directory: .gate-candidate/kairos_p76
         run: |
@@ -132,7 +115,6 @@ jobs:
           npm run verify:p6:restore-preflight
           npm run verify:p6:restore-replacement
           npm run verify:p6:restore-verification
-
       - name: P7 regression
         working-directory: .gate-candidate/kairos_p76
         run: |
@@ -145,112 +127,87 @@ jobs:
           npm run verify:p7:activation-deployment
           npm run verify:p7:activation-backend-source
           npm run verify:p7:activation-cors
-
       - name: P8 regression
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p8:navigation-shell
-
       - name: P9 regression
         working-directory: .gate-candidate/kairos_p76
         run: |
           npm run verify:p9:trade-domain
           npm run verify:p9:trade-persistence
-
       - name: P10.1 regression
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p10:manual-trade-save-command
-
       - name: P10.2 regression
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p10:manual-trade-draft
-
       - name: P10.3R2 regression
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p10:manual-trade-journal-route
-
       - name: P11.1R2 regression
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p11:decimal-kernel
-
       - name: P11.2 regression
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p11:execution-aggregation
-
       - name: P11.3 regression
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p11:execution-balance
-
       - name: P11.4 regression
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p11:gross-realized-pnl
-
       - name: P11.5 regression
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p11:trade-metrics
-
       - name: P11.6 regression
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p11:percentage-calculator
-
       - name: P11.7 regression
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p11:r-multiple-calculator
-
       - name: P11.8 regression
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p11:risk-calculator
-
       - name: P11.9 regression
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p11:market-specific-policy
-
       - name: P11.10 regression
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p11:position-size-calculator
-
       - name: P11.11 regression
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p11:leverage-calculator
-
       - name: P11.12 regression
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p11:initial-risk-amount
-
       - name: P11.13 regression
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p11:risk-performance-calculator
-
       - name: P11.14 regression
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p11:trade-metrics-risk-evidence
-
       - name: P11.15 regression
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p11:fee-calculator
-
       - name: P11.16 regression
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p11:net-pnl-calculator
-
       - name: P11.17R1 regression
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p11:fee-currency-evidence
-
-      - name: P11.18 TradeMetrics fee evidence verification
+      - name: P11.18R1 TradeMetrics fee evidence repair verification
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p11:trade-metrics-fee-evidence
-
       - name: Upload candidate
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_CURRENT_CANDIDATE
           path: ${{ env.CANDIDATE_ZIP }}
           if-no-files-found: error
-
       - name: Upload gate evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P11_18_TRADE_METRICS_FEE_EVIDENCE_WIRING_REPORT_2026-09-01.md
+          path: .gate-candidate/kairos_p76/KAIROS_P11_18R1_TRADE_METRICS_FEE_EVIDENCE_WIRING_REPAIR_REPORT_2026-09-01.md
           if-no-files-found: error
