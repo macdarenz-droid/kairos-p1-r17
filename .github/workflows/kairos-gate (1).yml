@@ -1,0 +1,179 @@
+name: Kairos Controlled Roadmap Gate
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'KAIROS_P9_1_TRADE_DOMAIN_FOUNDATION_CANDIDATE_2026-09-01.zip'
+      - '.github/workflows/kairos-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BASE_ZIP: KAIROS_P8_1R1_PRESENTATION_OWNERSHIP_FIX_CANDIDATE_2026-09-01.zip
+  CANDIDATE_ZIP: KAIROS_P9_1_TRADE_DOMAIN_FOUNDATION_CANDIDATE_2026-09-01.zip
+
+jobs:
+  verify-current-candidate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use locked Node toolchain
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+
+      - name: Verify npm version
+        run: |
+          npm install --global npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+
+      - name: Extract authoritative base and candidate
+        run: |
+          rm -rf .gate-base .gate-candidate
+          mkdir .gate-base .gate-candidate
+          unzip -q "$BASE_ZIP" -d .gate-base
+          unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
+          test -f .gate-base/kairos_p76/package.json
+          test -f .gate-candidate/kairos_p76/package.json
+
+      - name: Confirm controlled patch scope
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib, sys
+          base = Path('.gate-base/kairos_p76')
+          cand = Path('.gate-candidate/kairos_p76')
+          allowed = {
+            'KAIROS_P9_1_TRADE_DOMAIN_FOUNDATION_REPORT_2026-09-01.md',
+            'package.json',
+            'scripts/verify-p9-trade-domain.mjs',
+            'src/domain/trades/index.ts',
+            'src/domain/trades/tradeIdentity.ts',
+            'src/domain/trades/tradeTypes.ts',
+            'src/domain/trades/tradeValidation.ts',
+            'tests/trade-domain.test.ts',
+          }
+          def digest(p): return hashlib.sha256(p.read_bytes()).hexdigest()
+          b = {str(p.relative_to(base)): digest(p) for p in base.rglob('*') if p.is_file()}
+          c = {str(p.relative_to(cand)): digest(p) for p in cand.rglob('*') if p.is_file()}
+          changed = {p for p in b.keys() | c.keys() if b.get(p) != c.get(p)}
+          unexpected = changed - allowed
+          required = allowed
+          print('Changed files:')
+          for p in sorted(changed): print(' -', p)
+          if unexpected:
+            print('Unexpected changes:', sorted(unexpected), file=sys.stderr)
+            sys.exit(1)
+          missing = required - changed
+          if missing:
+            print('Required changes missing:', sorted(missing), file=sys.stderr)
+            sys.exit(1)
+          protected_prefixes = (
+            'src/data/database/',
+            'src/activation/',
+            'src/app/',
+            'src/design-system/',
+          )
+          protected = [p for p in changed if p.startswith(protected_prefixes)]
+          if protected:
+            print('Protected implementation area changed:', protected, file=sys.stderr)
+            sys.exit(1)
+          PY
+
+      - name: Install candidate deterministically
+        working-directory: .gate-candidate/kairos_p76
+        run: npm ci
+
+      - name: Build
+        working-directory: .gate-candidate/kairos_p76
+        run: npm run build
+
+      - name: Full unit regression
+        working-directory: .gate-candidate/kairos_p76
+        run: npm test
+
+      - name: P1 regression
+        working-directory: .gate-candidate/kairos_p76
+        run: npm run verify:p1
+
+      - name: P2 regression
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          npm run verify:p2:design-system
+          npm run verify:p2:primitives
+          npm run verify:p2:accessibility
+
+      - name: P3 regression
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          npm run verify:p3:theme-engine
+          npm run verify:p3:theme-canary
+          npm run verify:p3:theme-preference
+          npm run verify:p3:chart-theme-adapter
+
+      - name: P4 regression
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          npm run verify:p4:manifest
+          npm run verify:p4:service-worker
+          npm run verify:p4:storage-durability
+
+      - name: P5 regression
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          npm run verify:p5:database-kernel
+          npm run verify:p5:repositories
+          npm run verify:p5:migrations
+          npm run verify:p5:integrity
+          npm run verify:p5:transactions
+
+      - name: P6 regression
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          npm run verify:p6:backup-envelope
+          npm run verify:p6:backup-snapshot
+          npm run verify:p6:restore-preflight
+          npm run verify:p6:restore-replacement
+          npm run verify:p6:restore-verification
+
+      - name: P7 regression
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          npm run verify:p7:activation-contract
+          npm run verify:p7:activation-persistence
+          npm run verify:p7:remote-activation
+          npm run verify:p7:receipt-proof
+          npm run verify:p7:activation-coordinator
+          npm run verify:p7:activation-gate
+          npm run verify:p7:activation-deployment
+          npm run verify:p7:activation-backend-source
+          npm run verify:p7:activation-cors
+
+      - name: P8 regression
+        working-directory: .gate-candidate/kairos_p76
+        run: npm run verify:p8:navigation-shell
+
+      - name: P9.1 trade domain verification
+        working-directory: .gate-candidate/kairos_p76
+        run: npm run verify:p9:trade-domain
+
+      - name: Upload candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: KAIROS_CURRENT_CANDIDATE
+          path: ${{ env.CANDIDATE_ZIP }}
+          if-no-files-found: error
+
+      - name: Upload gate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: KAIROS_GATE_EVIDENCE
+          path: .gate-candidate/kairos_p76/KAIROS_P9_1_TRADE_DOMAIN_FOUNDATION_REPORT_2026-09-01.md
+          if-no-files-found: error
