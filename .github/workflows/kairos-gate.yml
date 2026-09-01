@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - 'KAIROS_P9_2R3_RESTORE_RESULT_COMPATIBILITY_REPAIR_CANDIDATE_2026-09-01.zip'
+      - 'KAIROS_P9_2R4_ACTIVATION_BACKUP_COUNT_CONTRACT_REPAIR_CANDIDATE_2026-09-01.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -14,7 +14,7 @@ permissions:
 
 env:
   BASE_ZIP: KAIROS_P9_1_TRADE_DOMAIN_FOUNDATION_CANDIDATE_2026-09-01.zip
-  CANDIDATE_ZIP: KAIROS_P9_2R3_RESTORE_RESULT_COMPATIBILITY_REPAIR_CANDIDATE_2026-09-01.zip
+  CANDIDATE_ZIP: KAIROS_P9_2R4_ACTIVATION_BACKUP_COUNT_CONTRACT_REPAIR_CANDIDATE_2026-09-01.zip
 
 jobs:
   verify-current-candidate:
@@ -50,7 +50,7 @@ jobs:
           base = Path('.gate-base/kairos_p76')
           cand = Path('.gate-candidate/kairos_p76')
           allowed = {
-            'KAIROS_P9_2R3_RESTORE_RESULT_COMPATIBILITY_REPAIR_REPORT_2026-09-01.md',
+            'KAIROS_P9_2R4_ACTIVATION_BACKUP_COUNT_CONTRACT_REPAIR_REPORT_2026-09-01.md',
             'package.json',
             'scripts/verify-p5-database-kernel.mjs',
             'scripts/verify-p5-integrity.mjs',
@@ -81,6 +81,7 @@ jobs:
             'src/data/repositories/index.ts',
             'tests/backup-envelope.test.ts',
             'tests/backup-snapshot.test.ts',
+            'tests/activation-persistence.test.ts',
             'tests/database-kernel.test.ts',
             'tests/database-migrations.test.ts',
             'tests/database-transactions.test.ts',
@@ -210,5 +211,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P9_2R3_RESTORE_RESULT_COMPATIBILITY_REPAIR_REPORT_2026-09-01.md
+          path: .gate-candidate/kairos_p76/KAIROS_P9_2R4_ACTIVATION_BACKUP_COUNT_CONTRACT_REPAIR_REPORT_2026-09-01.md
           if-no-files-found: error
