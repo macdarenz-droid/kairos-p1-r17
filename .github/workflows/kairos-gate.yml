@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'KAIROS_P8_1R1_PRESENTATION_OWNERSHIP_FIX_CANDIDATE_2026-09-01.zip'
+      - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
 permissions:
