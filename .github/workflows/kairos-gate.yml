@@ -1,4 +1,4 @@
-# KAIROS P12.4 GATE — BASE P12.3R1 — CANDIDATE P12.4
+# KAIROS P12.4R1 GATE — BASE P12.3R1 — CANDIDATE P12.4R1
 name: Kairos Controlled Roadmap Gate
 
 on:
@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - 'KAIROS_P12_4_INDEXED_JOURNAL_STATUS_FILTER_FOUNDATION_CANDIDATE_2026-09-02.zip'
+      - 'KAIROS_P12_4R1_INDEXED_JOURNAL_STATUS_FILTER_BACKUP_COMPATIBILITY_REPAIR_CANDIDATE_2026-09-02.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -15,7 +15,7 @@ permissions:
 
 env:
   BASE_ZIP: KAIROS_P12_3R1_JOURNAL_HISTORY_ROUTE_ACCESSIBILITY_REPAIR_CANDIDATE_2026-09-02.zip
-  CANDIDATE_ZIP: KAIROS_P12_4_INDEXED_JOURNAL_STATUS_FILTER_FOUNDATION_CANDIDATE_2026-09-02.zip
+  CANDIDATE_ZIP: KAIROS_P12_4R1_INDEXED_JOURNAL_STATUS_FILTER_BACKUP_COMPATIBILITY_REPAIR_CANDIDATE_2026-09-02.zip
 
 jobs:
   verify-current-candidate:
@@ -47,16 +47,31 @@ jobs:
           base=Path('.gate-base/kairos_p76')
           cand=Path('.gate-candidate/kairos_p76')
           required={
-            'KAIROS_P12_4_INDEXED_JOURNAL_STATUS_FILTER_FOUNDATION_REPORT_2026-09-02.md',
+            'KAIROS_P12_4R1_INDEXED_JOURNAL_STATUS_FILTER_BACKUP_COMPATIBILITY_REPAIR_REPORT_2026-09-02.md',
             'package.json',
+            'scripts/verify-p12-journal-history-status-index-backup-repair.mjs',
             'scripts/verify-p12-journal-history-status-index.mjs',
             'src/application/journal/historyQuery.ts',
+            'src/data/backup/backupEnvelope.ts',
+            'src/data/backup/backupFormat.ts',
+            'src/data/backup/backupSnapshot.ts',
+            'src/data/backup/backupValidation.ts',
+            'src/data/backup/restorePreflight.ts',
             'src/data/database/index.ts',
             'src/data/database/migrations.ts',
             'src/data/database/schema.ts',
             'src/data/repositories/TradeRepositories.ts',
+            'tests/backup-envelope.test.ts',
+            'tests/backup-snapshot.test.ts',
+            'tests/database-kernel.test.ts',
             'tests/database-migrations.test.ts',
+            'tests/database-transactions.test.ts',
             'tests/journal-history-query.test.ts',
+            'tests/metadata-repository.test.ts',
+            'tests/restore-preflight.test.ts',
+            'tests/restore-replacement.test.ts',
+            'tests/restore-verification.test.ts',
+            'tests/trade-persistence.test.ts',
           }
           def digest(p): return hashlib.sha256(p.read_bytes()).hexdigest()
           b={str(p.relative_to(base)):digest(p) for p in base.rglob('*') if p.is_file()}
@@ -80,7 +95,7 @@ jobs:
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression P1 through P12.4
+      - name: Full controlled roadmap regression P1 through P12.4R1
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
@@ -88,7 +103,7 @@ jobs:
           const { spawnSync } = require('node:child_process');
           const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
           const scripts = Object.keys(pkg.scripts || {}).filter((name) => name.startsWith('verify:p'));
-          for (const required of ['verify:p11:calculation-brain-closure','verify:p12:journal-history-query-scope-repair','verify:p12:journal-history-indexed-bound','verify:p12:journal-history-route-repair','verify:p12:journal-history-status-index']) {
+          for (const required of ['verify:p11:calculation-brain-closure','verify:p12:journal-history-query-scope-repair','verify:p12:journal-history-indexed-bound','verify:p12:journal-history-route-repair','verify:p12:journal-history-status-index','verify:p12:journal-history-status-index-backup-repair']) {
             if (!scripts.includes(required)) { console.error(`Missing ${required}`); process.exit(1); }
           }
           for (const script of scripts) {
@@ -97,9 +112,9 @@ jobs:
             if (result.status !== 0) process.exit(result.status || 1);
           }
           NODE
-      - name: P12.4 Indexed journal status filter verification
+      - name: P12.4R1 status index and backup compatibility verification
         working-directory: .gate-candidate/kairos_p76
-        run: npm run verify:p12:journal-history-status-index
+        run: npm run verify:p12:journal-history-status-index-backup-repair
       - name: Upload candidate
         uses: actions/upload-artifact@v4
         with:
@@ -111,5 +126,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P12_4_INDEXED_JOURNAL_STATUS_FILTER_FOUNDATION_REPORT_2026-09-02.md
+          path: .gate-candidate/kairos_p76/KAIROS_P12_4R1_INDEXED_JOURNAL_STATUS_FILTER_BACKUP_COMPATIBILITY_REPAIR_REPORT_2026-09-02.md
           if-no-files-found: error
