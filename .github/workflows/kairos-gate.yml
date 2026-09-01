@@ -1,4 +1,4 @@
-# KAIROS P11.17 GATE — BASE P11.16 — CANDIDATE P11.17
+# KAIROS P11.17R1 GATE — BASE P11.16 — CANDIDATE P11.17R1
 name: Kairos Controlled Roadmap Gate
 
 on:
@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - 'KAIROS_P11_17_FEE_CURRENCY_EVIDENCE_CANDIDATE_2026-09-01.zip'
+      - 'KAIROS_P11_17R1_FEE_CURRENCY_EVIDENCE_REPAIR_CANDIDATE_2026-09-01.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -15,7 +15,7 @@ permissions:
 
 env:
   BASE_ZIP: KAIROS_P11_16_NET_PNL_PRIMITIVE_CANDIDATE_2026-09-01.zip
-  CANDIDATE_ZIP: KAIROS_P11_17_FEE_CURRENCY_EVIDENCE_CANDIDATE_2026-09-01.zip
+  CANDIDATE_ZIP: KAIROS_P11_17R1_FEE_CURRENCY_EVIDENCE_REPAIR_CANDIDATE_2026-09-01.zip
 
 jobs:
   verify-current-candidate:
@@ -51,7 +51,7 @@ jobs:
           base=Path('.gate-base/kairos_p76')
           cand=Path('.gate-candidate/kairos_p76')
           allowed={
-            'KAIROS_P11_17_FEE_CURRENCY_EVIDENCE_REPORT_2026-09-01.md',
+            'KAIROS_P11_17R1_FEE_CURRENCY_EVIDENCE_REPAIR_REPORT_2026-09-01.md',
             'package.json',
             'scripts/verify-p11-fee-currency-evidence.mjs',
             'src/domain/calculations/feeCalculator.ts',
@@ -229,7 +229,7 @@ jobs:
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p11:net-pnl-calculator
 
-      - name: P11.17 fee currency evidence verification
+      - name: P11.17R1 fee currency evidence repair verification
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p11:fee-currency-evidence
 
@@ -245,5 +245,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P11_17_FEE_CURRENCY_EVIDENCE_REPORT_2026-09-01.md
+          path: .gate-candidate/kairos_p76/KAIROS_P11_17R1_FEE_CURRENCY_EVIDENCE_REPAIR_REPORT_2026-09-01.md
           if-no-files-found: error
