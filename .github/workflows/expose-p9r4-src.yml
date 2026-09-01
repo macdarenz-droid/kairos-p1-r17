@@ -125,6 +125,7 @@ jobs:
           if [ ! -d src ]; then
             cp -a .source-extract/kairos_p76/src ./src
           fi
+          rm -rf .source-extract
 
       - name: Verify published tree and controlled scope
         shell: bash
