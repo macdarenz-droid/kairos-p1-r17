@@ -1,11 +1,11 @@
-# KAIROS P14.7R1 GATE — BASE P14.6R2 — CANDIDATE P14.7R1
+# KAIROS P14.7R2 GATE — BASE P14.6R2 — CANDIDATE P14.7R2
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P14_7R1_JOURNAL_TRADE_MAP_FIXTURE_CONTRACT_REPAIR_CANDIDATE_2026-09-03.zip'
+      - 'KAIROS_P14_7R2_JOURNAL_TRADE_MAP_HISTORICAL_PRESENTATION_SELECTOR_REPAIR_CANDIDATE_2026-09-03.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -14,7 +14,7 @@ permissions:
 
 env:
   BASE_ZIP: KAIROS_P14_6R2_JOURNAL_TRADE_MAP_ACCESSIBLE_NAME_SELECTOR_REPAIR_CANDIDATE_2026-09-03.zip
-  CANDIDATE_ZIP: KAIROS_P14_7R1_JOURNAL_TRADE_MAP_FIXTURE_CONTRACT_REPAIR_CANDIDATE_2026-09-03.zip
+  CANDIDATE_ZIP: KAIROS_P14_7R2_JOURNAL_TRADE_MAP_HISTORICAL_PRESENTATION_SELECTOR_REPAIR_CANDIDATE_2026-09-03.zip
 
 jobs:
   verify-current-candidate:
@@ -34,13 +34,21 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm controlled P14.7R1 scope
+      - name: Confirm controlled P14.7R2 scope
         run: |
           python - <<'PY'
           from pathlib import Path
           import hashlib,sys
           b=Path('.gate-base/kairos_p76'); c=Path('.gate-candidate/kairos_p76')
-          required={'KAIROS_P14_7R1_JOURNAL_TRADE_MAP_FIXTURE_CONTRACT_REPAIR_CANDIDATE_REPORT_2026-09-03.md','package.json','scripts/verify-p14-7-journal-trade-map-execution-time.mjs','src/app/JournalTradeMap.tsx','src/app/journalRoute.css','tests/journal-trade-map-execution-time.test.tsx'}
+          required={
+            'KAIROS_P14_7R2_JOURNAL_TRADE_MAP_HISTORICAL_PRESENTATION_SELECTOR_REPAIR_CANDIDATE_REPORT_2026-09-03.md',
+            'package.json',
+            'scripts/verify-p14-7-journal-trade-map-execution-time.mjs',
+            'src/app/JournalTradeMap.tsx',
+            'src/app/journalRoute.css',
+            'tests/journal-trade-map-execution-time.test.tsx',
+            'tests/journal-trade-map-presentation.test.tsx',
+          }
           def h(p): return hashlib.sha256(p.read_bytes()).hexdigest()
           x={str(p.relative_to(b)):h(p) for p in b.rglob('*') if p.is_file()}; y={str(p.relative_to(c)):h(p) for p in c.rglob('*') if p.is_file()}
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
@@ -57,7 +65,7 @@ jobs:
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression P1 through P14.7R1
+      - name: Full controlled roadmap regression P1 through P14.7R2
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
@@ -65,7 +73,7 @@ jobs:
           for(const r of ['verify:p1','verify:p5:database-kernel','verify:p9:trade-persistence','verify:p10:manual-trade-journal-route','verify:p11:calculation-brain-closure','verify:p12:journal-history-closure','verify:p12:journal-history-heavy-performance','verify:p13:20-visual-pnl-system-closure','verify:p14:1r1-trade-visualizer-fixture-contract','verify:p14:2-trade-visualizer-display-semantics','verify:p14:3-journal-trade-visualizer-projection','verify:p14:4-journal-trade-map-presentation','verify:p14:5-journal-trade-map-svg-shell','verify:p14:6-journal-trade-map-marker-semantics','verify:p14:7-journal-trade-map-execution-time']) if(!s.includes(r)){console.error('Missing '+r);process.exit(1)}
           for(const x of s){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
           NODE
-      - name: P14.7R1 execution time verifier/runtime
+      - name: P14.7R2 execution time verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
           npm run verify:p14:7-journal-trade-map-execution-time
@@ -97,4 +105,4 @@ jobs:
       - name: Upload gate evidence
         if: always()
         uses: actions/upload-artifact@v4
-        with: { name: KAIROS_GATE_EVIDENCE, path: '.gate-candidate/kairos_p76/KAIROS_P14_7R1_JOURNAL_TRADE_MAP_FIXTURE_CONTRACT_REPAIR_CANDIDATE_REPORT_2026-09-03.md', if-no-files-found: error }
+        with: { name: KAIROS_GATE_EVIDENCE, path: '.gate-candidate/kairos_p76/KAIROS_P14_7R2_JOURNAL_TRADE_MAP_HISTORICAL_PRESENTATION_SELECTOR_REPAIR_CANDIDATE_REPORT_2026-09-03.md', if-no-files-found: error }
