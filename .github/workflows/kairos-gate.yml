@@ -1,4 +1,4 @@
-# KAIROS P13.5 GATE — BASE P13.4R1 — CANDIDATE P13.5
+# KAIROS P13.5R1 GATE — BASE P13.4R1 — CANDIDATE P13.5R1
 name: Kairos Controlled Roadmap Gate
 
 on:
@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - 'KAIROS_P13_5_VISUAL_PNL_AGGREGATION_SUMMARY_CANDIDATE_2026-09-02.zip'
+      - 'KAIROS_P13_5R1_DECIMALSTRING_TEST_FIXTURE_CONTRACT_REPAIR_CANDIDATE_2026-09-02.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -15,7 +15,7 @@ permissions:
 
 env:
   BASE_ZIP: KAIROS_P13_4R1_VISUAL_PNL_EMPTY_AMOUNTS_TUPLE_REPAIR_CANDIDATE_2026-09-02.zip
-  CANDIDATE_ZIP: KAIROS_P13_5_VISUAL_PNL_AGGREGATION_SUMMARY_CANDIDATE_2026-09-02.zip
+  CANDIDATE_ZIP: KAIROS_P13_5R1_DECIMALSTRING_TEST_FIXTURE_CONTRACT_REPAIR_CANDIDATE_2026-09-02.zip
 
 jobs:
   verify-current-candidate:
@@ -39,7 +39,7 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm controlled P13.5 scope
+      - name: Confirm controlled P13.5R1 cumulative scope
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -47,8 +47,10 @@ jobs:
           base=Path('.gate-base/kairos_p76'); cand=Path('.gate-candidate/kairos_p76')
           required={
             'KAIROS_P13_5_VISUAL_PNL_AGGREGATION_SUMMARY_REPORT_2026-09-02.md',
+            'KAIROS_P13_5R1_DECIMALSTRING_TEST_FIXTURE_CONTRACT_REPAIR_REPORT_2026-09-02.md',
             'package.json',
             'scripts/verify-p13-5-visual-pnl-aggregation-summary.mjs',
+            'scripts/verify-p13-5r1-decimalstring-fixture-contract.mjs',
             'src/application/visual-pnl/aggregationSummary.ts',
             'src/application/visual-pnl/index.ts',
             'tests/visual-pnl-aggregation-summary.test.ts',
@@ -70,18 +72,21 @@ jobs:
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression P1 through P13.5
+      - name: Full controlled roadmap regression P1 through P13.5R1
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
           const { readFileSync } = require('node:fs'); const { spawnSync } = require('node:child_process');
           const pkg=JSON.parse(readFileSync('package.json','utf8'));
           const scripts=Object.keys(pkg.scripts||{}).filter(n=>n.startsWith('verify:p'));
-          for (const required of ['verify:p1','verify:p5:database-kernel','verify:p9:trade-persistence','verify:p11:calculation-brain-closure','verify:p12:journal-history-closure','verify:p12:journal-history-heavy-performance','verify:p13:visual-pnl-outcome-projection','verify:p13:journal-visual-pnl-projection','verify:p13:journal-visual-pnl-presentation','verify:p13:3r1-fixture-contract','verify:p13:3r2-scoped-outcome-selector','verify:p13:visual-pnl-aggregation-eligibility','verify:p13:4r1-empty-amounts-tuple','verify:p13:5-visual-pnl-aggregation-summary']) {
+          for (const required of ['verify:p1','verify:p5:database-kernel','verify:p9:trade-persistence','verify:p11:calculation-brain-closure','verify:p12:journal-history-closure','verify:p12:journal-history-heavy-performance','verify:p13:visual-pnl-outcome-projection','verify:p13:journal-visual-pnl-projection','verify:p13:journal-visual-pnl-presentation','verify:p13:3r1-fixture-contract','verify:p13:3r2-scoped-outcome-selector','verify:p13:visual-pnl-aggregation-eligibility','verify:p13:4r1-empty-amounts-tuple','verify:p13:5-visual-pnl-aggregation-summary','verify:p13:5r1-decimalstring-fixture-contract']) {
             if (!scripts.includes(required)) { console.error(`Missing ${required}`); process.exit(1); }
           }
           for (const script of scripts) { console.log(`\n=== ${script} ===`); const r=spawnSync('npm',['run',script],{stdio:'inherit'}); if(r.status!==0) process.exit(r.status||1); }
           NODE
+      - name: P13.5R1 DecimalString fixture contract verification
+        working-directory: .gate-candidate/kairos_p76
+        run: npm run verify:p13:5r1-decimalstring-fixture-contract
       - name: P13.5 aggregation summary verification
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p13:5-visual-pnl-aggregation-summary
@@ -120,5 +125,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P13_5_VISUAL_PNL_AGGREGATION_SUMMARY_REPORT_2026-09-02.md
+          path: .gate-candidate/kairos_p76/KAIROS_P13_5R1_DECIMALSTRING_TEST_FIXTURE_CONTRACT_REPAIR_REPORT_2026-09-02.md
           if-no-files-found: error
