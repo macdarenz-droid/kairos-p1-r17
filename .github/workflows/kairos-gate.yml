@@ -1,4 +1,4 @@
-# KAIROS P13.16 GATE — BASE P13.15 — CANDIDATE P13.16
+# KAIROS P13.17 GATE — BASE P13.16 — CANDIDATE P13.17
 name: Kairos Controlled Roadmap Gate
 
 on:
@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - 'KAIROS_P13_16_VISUAL_PNL_PERFORMANCE_SUMMARY_PRESENTATION_CANDIDATE_2026-09-02.zip'
+      - 'KAIROS_P13_17_VISUAL_PNL_PROGRESS_SERIES_SEMANTICS_CANDIDATE_2026-09-02.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -14,8 +14,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P13_15_VISUAL_PNL_DAILY_PERFORMANCE_SUMMARY_CANDIDATE_2026-09-02.zip
-  CANDIDATE_ZIP: KAIROS_P13_16_VISUAL_PNL_PERFORMANCE_SUMMARY_PRESENTATION_CANDIDATE_2026-09-02.zip
+  BASE_ZIP: KAIROS_P13_16_VISUAL_PNL_PERFORMANCE_SUMMARY_PRESENTATION_CANDIDATE_2026-09-02.zip
+  CANDIDATE_ZIP: KAIROS_P13_17_VISUAL_PNL_PROGRESS_SERIES_SEMANTICS_CANDIDATE_2026-09-02.zip
 
 jobs:
   verify-current-candidate:
@@ -39,20 +39,19 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm controlled P13.16 scope
+      - name: Confirm controlled P13.17 scope
         run: |
           python - <<'PY'
           from pathlib import Path
           import hashlib, sys
           base=Path('.gate-base/kairos_p76'); cand=Path('.gate-candidate/kairos_p76')
           required={
-            'KAIROS_P13_16_VISUAL_PNL_PERFORMANCE_SUMMARY_PRESENTATION_REPORT_2026-09-02.md',
+            'KAIROS_P13_17_VISUAL_PNL_PROGRESS_SERIES_SEMANTICS_REPORT_2026-09-02.md',
             'package.json',
-            'scripts/verify-p13-16-performance-summary-presentation.mjs',
-            'src/app/JournalDailyResults.tsx',
-            'src/app/VisualPnlPerformanceSummary.tsx',
-            'src/app/journalRoute.css',
-            'tests/visual-pnl-performance-summary-presentation.test.tsx',
+            'scripts/verify-p13-17-progress-series-semantics.mjs',
+            'src/application/visual-pnl/index.ts',
+            'src/application/visual-pnl/progressSeries.ts',
+            'tests/visual-pnl-progress-series.test.ts',
           }
           def digest(p): return hashlib.sha256(p.read_bytes()).hexdigest()
           b={str(p.relative_to(base)):digest(p) for p in base.rglob('*') if p.is_file()}
@@ -71,22 +70,25 @@ jobs:
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression P1 through P13.16
+      - name: Full controlled roadmap regression P1 through P13.17
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
           const { readFileSync } = require('node:fs'); const { spawnSync } = require('node:child_process');
           const pkg=JSON.parse(readFileSync('package.json','utf8'));
           const scripts=Object.keys(pkg.scripts||{}).filter(n=>n.startsWith('verify:p'));
-          for (const required of ['verify:p1','verify:p5:database-kernel','verify:p9:trade-persistence','verify:p10:manual-trade-journal-route','verify:p11:calculation-brain-closure','verify:p12:journal-history-closure','verify:p12:journal-history-heavy-performance','verify:p13:visual-pnl-outcome-projection','verify:p13:journal-visual-pnl-projection','verify:p13:journal-visual-pnl-presentation','verify:p13:3r1-fixture-contract','verify:p13:3r2-scoped-outcome-selector','verify:p13:visual-pnl-aggregation-eligibility','verify:p13:4r1-empty-amounts-tuple','verify:p13:5-visual-pnl-aggregation-summary','verify:p13:5r1-decimalstring-fixture-contract','verify:p13:6-visual-pnl-day-bucket-semantics','verify:p13:7-visual-pnl-daily-summary-composition','verify:p13:8-journal-daily-summary-query-wiring','verify:p13:9-visual-pnl-calendar-presentation','verify:p13:10r1-visual-pnl-time-zone-metadata-ownership','verify:p13:11r1-journal-daily-results-boundary','verify:p13:12-explicit-time-zone-settings','verify:p13:12r2-accessible-name-test-contract','verify:p13:13-daily-streak-semantics','verify:p13:14-streak-presentation','verify:p13:15-daily-performance-summary','verify:p13:16-performance-summary-presentation']) {
+          for (const required of ['verify:p1','verify:p5:database-kernel','verify:p9:trade-persistence','verify:p10:manual-trade-journal-route','verify:p11:calculation-brain-closure','verify:p12:journal-history-closure','verify:p12:journal-history-heavy-performance','verify:p13:visual-pnl-outcome-projection','verify:p13:journal-visual-pnl-projection','verify:p13:journal-visual-pnl-presentation','verify:p13:3r1-fixture-contract','verify:p13:3r2-scoped-outcome-selector','verify:p13:visual-pnl-aggregation-eligibility','verify:p13:4r1-empty-amounts-tuple','verify:p13:5-visual-pnl-aggregation-summary','verify:p13:5r1-decimalstring-fixture-contract','verify:p13:6-visual-pnl-day-bucket-semantics','verify:p13:7-visual-pnl-daily-summary-composition','verify:p13:8-journal-daily-summary-query-wiring','verify:p13:9-visual-pnl-calendar-presentation','verify:p13:10r1-visual-pnl-time-zone-metadata-ownership','verify:p13:11r1-journal-daily-results-boundary','verify:p13:12-explicit-time-zone-settings','verify:p13:12r2-accessible-name-test-contract','verify:p13:13-daily-streak-semantics','verify:p13:14-streak-presentation','verify:p13:15-daily-performance-summary','verify:p13:16-performance-summary-presentation','verify:p13:17-progress-series-semantics']) {
             if (!scripts.includes(required)) { console.error(`Missing ${required}`); process.exit(1); }
           }
           for (const script of scripts) { console.log(`\n=== ${script} ===`); const r=spawnSync('npm',['run',script],{stdio:'inherit'}); if(r.status!==0) process.exit(r.status||1); }
           NODE
-      - name: P13.16 performance summary presentation verification
+      - name: P13.17 progress-series semantics verification
         working-directory: .gate-candidate/kairos_p76
-        run: npm run verify:p13:16-performance-summary-presentation
-      - name: P13.16 performance summary runtime tests
+        run: npm run verify:p13:17-progress-series-semantics
+      - name: P13.17 progress-series runtime tests
+        working-directory: .gate-candidate/kairos_p76
+        run: npx vitest run tests/visual-pnl-progress-series.test.ts
+      - name: P13.16 performance summary presentation regression
         working-directory: .gate-candidate/kairos_p76
         run: npx vitest run tests/visual-pnl-performance-summary-presentation.test.tsx
       - name: P13.15 daily performance summary regression
@@ -139,5 +141,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P13_16_VISUAL_PNL_PERFORMANCE_SUMMARY_PRESENTATION_REPORT_2026-09-02.md
+          path: .gate-candidate/kairos_p76/KAIROS_P13_17_VISUAL_PNL_PROGRESS_SERIES_SEMANTICS_REPORT_2026-09-02.md
           if-no-files-found: error
