@@ -1,4 +1,4 @@
-# KAIROS P12.6 GATE — BASE P12.5 — CANDIDATE P12.6
+# KAIROS P12.6R1 GATE — BASE P12.5 — CANDIDATE P12.6R1
 name: Kairos Controlled Roadmap Gate
 
 on:
@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - 'KAIROS_P12_6_JOURNAL_HISTORY_HEAVY_PERFORMANCE_CANARY_CANDIDATE_2026-09-02.zip'
+      - 'KAIROS_P12_6R1_JOURNAL_HISTORY_HEAVY_PERFORMANCE_CANARY_TEST_CONTRACT_REPAIR_CANDIDATE_2026-09-02.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -15,7 +15,7 @@ permissions:
 
 env:
   BASE_ZIP: KAIROS_P12_5_JOURNAL_STATUS_FILTER_UI_WIRING_CANDIDATE_2026-09-02.zip
-  CANDIDATE_ZIP: KAIROS_P12_6_JOURNAL_HISTORY_HEAVY_PERFORMANCE_CANARY_CANDIDATE_2026-09-02.zip
+  CANDIDATE_ZIP: KAIROS_P12_6R1_JOURNAL_HISTORY_HEAVY_PERFORMANCE_CANARY_TEST_CONTRACT_REPAIR_CANDIDATE_2026-09-02.zip
 
 jobs:
   verify-current-candidate:
@@ -39,7 +39,7 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm controlled patch scope
+      - name: Confirm controlled repair scope
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -47,7 +47,7 @@ jobs:
           base=Path('.gate-base/kairos_p76')
           cand=Path('.gate-candidate/kairos_p76')
           required={
-            'KAIROS_P12_6_JOURNAL_HISTORY_HEAVY_PERFORMANCE_CANARY_REPORT_2026-09-02.md',
+            'KAIROS_P12_6R1_JOURNAL_HISTORY_HEAVY_PERFORMANCE_CANARY_TEST_CONTRACT_REPAIR_REPORT_2026-09-02.md',
             'package.json',
             'scripts/verify-p12-journal-history-heavy-performance.mjs',
             'tests/journal-history-performance.test.tsx',
@@ -74,7 +74,7 @@ jobs:
       - name: Full unit regression including USER_HEAVY canary
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression P1 through P12.6
+      - name: Full controlled roadmap regression P1 through P12.6R1
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
@@ -91,10 +91,10 @@ jobs:
             if (result.status !== 0) process.exit(result.status || 1);
           }
           NODE
-      - name: P12.6 USER_HEAVY journal performance verification
+      - name: P12.6R1 USER_HEAVY journal performance verification
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p12:journal-history-heavy-performance
-      - name: Run P12.6 USER_HEAVY timing canary explicitly
+      - name: Run P12.6R1 USER_HEAVY timing canary explicitly
         working-directory: .gate-candidate/kairos_p76
         run: npx vitest run tests/journal-history-performance.test.tsx
       - name: Upload candidate
@@ -108,5 +108,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P12_6_JOURNAL_HISTORY_HEAVY_PERFORMANCE_CANARY_REPORT_2026-09-02.md
+          path: .gate-candidate/kairos_p76/KAIROS_P12_6R1_JOURNAL_HISTORY_HEAVY_PERFORMANCE_CANARY_TEST_CONTRACT_REPAIR_REPORT_2026-09-02.md
           if-no-files-found: error
