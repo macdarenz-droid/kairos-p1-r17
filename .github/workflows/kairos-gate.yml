@@ -41,7 +41,7 @@ jobs:
           import hashlib,sys
           b=Path('.gate-base/kairos_p76'); c=Path('.gate-candidate/kairos_p76')
           required={
-            'KAIROS_P15_2_MARKET_DATA_OBSERVATION_SEMANTICS_REPORT_2026-09-03.md',
+            'KAIROS_P15_2_MARKET_DATA_OBSERVATION_SEMANTICS_CANDIDATE_REPORT_2026-09-03.md',
             'package.json',
             'scripts/verify-p15-2-market-data-observation-semantics.mjs',
             'src/services/market-data/index.ts',
@@ -104,4 +104,4 @@ jobs:
       - name: Upload gate evidence
         if: always()
         uses: actions/upload-artifact@v4
-        with: { name: KAIROS_GATE_EVIDENCE, path: '.gate-candidate/kairos_p76/KAIROS_P15_2_MARKET_DATA_OBSERVATION_SEMANTICS_REPORT_2026-09-03.md', if-no-files-found: error }
+        with: { name: KAIROS_GATE_EVIDENCE, path: '.gate-candidate/kairos_p76/KAIROS_P15_2_MARKET_DATA_OBSERVATION_SEMANTICS_CANDIDATE_REPORT_2026-09-03.md', if-no-files-found: error }
