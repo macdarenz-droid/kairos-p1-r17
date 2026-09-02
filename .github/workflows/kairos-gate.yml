@@ -1,4 +1,4 @@
-# KAIROS P13.3 GATE — BASE P13.2 — CANDIDATE P13.3
+# KAIROS P13.3R1 GATE — BASE P13.2 — FAILED PREDECESSOR P13.3 — CANDIDATE P13.3R1
 name: Kairos Controlled Roadmap Gate
 
 on:
@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - 'KAIROS_P13_3_JOURNAL_VISUAL_PNL_PRESENTATION_WIRING_CANDIDATE_2026-09-02.zip'
+      - 'KAIROS_P13_3R1_JOURNAL_VISUAL_PNL_TEST_FIXTURE_CONTRACT_REPAIR_CANDIDATE_2026-09-02.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -15,7 +15,7 @@ permissions:
 
 env:
   BASE_ZIP: KAIROS_P13_2_JOURNAL_VISUAL_PNL_PROJECTION_WIRING_CANDIDATE_2026-09-02.zip
-  CANDIDATE_ZIP: KAIROS_P13_3_JOURNAL_VISUAL_PNL_PRESENTATION_WIRING_CANDIDATE_2026-09-02.zip
+  CANDIDATE_ZIP: KAIROS_P13_3R1_JOURNAL_VISUAL_PNL_TEST_FIXTURE_CONTRACT_REPAIR_CANDIDATE_2026-09-02.zip
 
 jobs:
   verify-current-candidate:
@@ -39,7 +39,7 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm controlled P13.3 scope
+      - name: Confirm controlled P13.3R1 scope
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -48,8 +48,10 @@ jobs:
           cand=Path('.gate-candidate/kairos_p76')
           required={
             'KAIROS_P13_3_JOURNAL_VISUAL_PNL_PRESENTATION_WIRING_REPORT_2026-09-02.md',
+            'KAIROS_P13_3R1_JOURNAL_VISUAL_PNL_TEST_FIXTURE_CONTRACT_REPAIR_REPORT_2026-09-02.md',
             'package.json',
             'scripts/verify-p13-journal-visual-pnl-presentation.mjs',
+            'scripts/verify-p13-journal-visual-pnl-test-fixture-contract-repair.mjs',
             'src/app/JournalHistoryList.tsx',
             'src/app/journalRoute.css',
             'tests/journal-visual-pnl-presentation.test.tsx',
@@ -76,7 +78,7 @@ jobs:
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression P1 through P13.3
+      - name: Full controlled roadmap regression P1 through P13.3R1
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
@@ -84,7 +86,7 @@ jobs:
           const { spawnSync } = require('node:child_process');
           const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
           const scripts = Object.keys(pkg.scripts || {}).filter((name) => name.startsWith('verify:p'));
-          for (const required of ['verify:p1','verify:p5:database-kernel','verify:p9:trade-persistence','verify:p11:calculation-brain-closure','verify:p12:journal-history-closure','verify:p12:journal-history-heavy-performance','verify:p13:visual-pnl-outcome-projection','verify:p13:journal-visual-pnl-projection','verify:p13:journal-visual-pnl-presentation']) {
+          for (const required of ['verify:p1','verify:p5:database-kernel','verify:p9:trade-persistence','verify:p11:calculation-brain-closure','verify:p12:journal-history-closure','verify:p12:journal-history-heavy-performance','verify:p13:visual-pnl-outcome-projection','verify:p13:journal-visual-pnl-projection','verify:p13:journal-visual-pnl-presentation','verify:p13:journal-visual-pnl-test-fixture-contract-repair']) {
             if (!scripts.includes(required)) { console.error(`Missing ${required}`); process.exit(1); }
           }
           for (const script of scripts) {
@@ -93,6 +95,9 @@ jobs:
             if (result.status !== 0) process.exit(result.status || 1);
           }
           NODE
+      - name: P13.3R1 fixture contract repair verification
+        working-directory: .gate-candidate/kairos_p76
+        run: npm run verify:p13:journal-visual-pnl-test-fixture-contract-repair
       - name: P13.3 Journal Visual P&L presentation verification
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p13:journal-visual-pnl-presentation
@@ -102,7 +107,7 @@ jobs:
       - name: Re-run P13.1R3 outcome projection tests
         working-directory: .gate-candidate/kairos_p76
         run: npx vitest run tests/visual-pnl-outcome-projection.test.ts
-      - name: Run P13.3 journal Visual P&L presentation tests explicitly
+      - name: Run repaired P13.3 journal Visual P&L presentation tests explicitly
         working-directory: .gate-candidate/kairos_p76
         run: npx vitest run tests/journal-visual-pnl-presentation.test.tsx
       - name: Re-run P13.2 journal Visual P&L projection tests explicitly
@@ -125,5 +130,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P13_3_JOURNAL_VISUAL_PNL_PRESENTATION_WIRING_REPORT_2026-09-02.md
+          path: .gate-candidate/kairos_p76/KAIROS_P13_3R1_JOURNAL_VISUAL_PNL_TEST_FIXTURE_CONTRACT_REPAIR_REPORT_2026-09-02.md
           if-no-files-found: error
