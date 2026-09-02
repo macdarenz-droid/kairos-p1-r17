@@ -47,10 +47,10 @@ jobs:
           required={
             'KAIROS_P14_7_JOURNAL_TRADE_MAP_ACTUAL_EXIT_EXECUTION_TIME_CANDIDATE_REPORT_2026-09-03.md',
             'package.json',
-            'scripts/verify-p14-7-journal-trade-map-actual-exit-time.mjs',
+            'scripts/verify-p14-7-journal-trade-map-execution-time.mjs',
             'src/app/JournalTradeMap.tsx',
             'src/app/journalRoute.css',
-            'tests/journal-trade-map-actual-exit-time.test.tsx',
+            'tests/journal-trade-map-execution-time.test.tsx',
           }
           def digest(p): return hashlib.sha256(p.read_bytes()).hexdigest()
           b={str(p.relative_to(base)):digest(p) for p in base.rglob('*') if p.is_file()}
@@ -76,17 +76,17 @@ jobs:
           const { readFileSync } = require('node:fs'); const { spawnSync } = require('node:child_process');
           const pkg=JSON.parse(readFileSync('package.json','utf8'));
           const scripts=Object.keys(pkg.scripts||{}).filter(n=>n.startsWith('verify:p'));
-          for (const required of ['verify:p1','verify:p5:database-kernel','verify:p9:trade-persistence','verify:p10:manual-trade-journal-route','verify:p11:calculation-brain-closure','verify:p12:journal-history-closure','verify:p12:journal-history-heavy-performance','verify:p13:20-visual-pnl-system-closure','verify:p14:1r1-trade-visualizer-fixture-contract','verify:p14:2-trade-visualizer-display-semantics','verify:p14:3-journal-trade-visualizer-projection','verify:p14:4-journal-trade-map-presentation','verify:p14:5-journal-trade-map-svg-shell','verify:p14:6-journal-trade-map-marker-semantics','verify:p14:7-journal-trade-map-actual-exit-time']) {
+          for (const required of ['verify:p1','verify:p5:database-kernel','verify:p9:trade-persistence','verify:p10:manual-trade-journal-route','verify:p11:calculation-brain-closure','verify:p12:journal-history-closure','verify:p12:journal-history-heavy-performance','verify:p13:20-visual-pnl-system-closure','verify:p14:1r1-trade-visualizer-fixture-contract','verify:p14:2-trade-visualizer-display-semantics','verify:p14:3-journal-trade-visualizer-projection','verify:p14:4-journal-trade-map-presentation','verify:p14:5-journal-trade-map-svg-shell','verify:p14:6-journal-trade-map-marker-semantics','verify:p14:7-journal-trade-map-execution-time']) {
             if (!scripts.includes(required)) { console.error(`Missing ${required}`); process.exit(1); }
           }
           for (const script of scripts) { console.log(`\n=== ${script} ===`); const r=spawnSync('npm',['run',script],{stdio:'inherit'}); if(r.status!==0) process.exit(r.status||1); }
           NODE
       - name: P14.7 actual exit execution time verification
         working-directory: .gate-candidate/kairos_p76
-        run: npm run verify:p14:7-journal-trade-map-actual-exit-time
+        run: npm run verify:p14:7-journal-trade-map-execution-time
       - name: P14.7 actual exit execution time runtime tests
         working-directory: .gate-candidate/kairos_p76
-        run: npx vitest run tests/journal-trade-map-actual-exit-time.test.tsx
+        run: npx vitest run tests/journal-trade-map-execution-time.test.tsx
       - name: P14.6R2 categorical marker semantics regression
         working-directory: .gate-candidate/kairos_p76
         run: |
