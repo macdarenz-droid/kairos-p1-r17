@@ -1,4 +1,4 @@
-# KAIROS P13.10 GATE — BASE P13.9 — CANDIDATE P13.10
+# KAIROS P13.10R1 GATE — BASE P13.9 — CANDIDATE P13.10R1
 name: Kairos Controlled Roadmap Gate
 
 on:
@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - 'KAIROS_P13_10_VISUAL_PNL_TIME_ZONE_PREFERENCE_CANDIDATE_2026-09-02.zip'
+      - 'KAIROS_P13_10R1_VISUAL_PNL_TIME_ZONE_METADATA_OWNERSHIP_REPAIR_CANDIDATE_2026-09-02.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -15,7 +15,7 @@ permissions:
 
 env:
   BASE_ZIP: KAIROS_P13_9_VISUAL_PNL_CALENDAR_PRESENTATION_CONTRACT_CANDIDATE_2026-09-02.zip
-  CANDIDATE_ZIP: KAIROS_P13_10_VISUAL_PNL_TIME_ZONE_PREFERENCE_CANDIDATE_2026-09-02.zip
+  CANDIDATE_ZIP: KAIROS_P13_10R1_VISUAL_PNL_TIME_ZONE_METADATA_OWNERSHIP_REPAIR_CANDIDATE_2026-09-02.zip
 
 jobs:
   verify-current-candidate:
@@ -39,16 +39,16 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm controlled P13.10 scope
+      - name: Confirm controlled P13.10R1 scope
         run: |
           python - <<'PY'
           from pathlib import Path
           import hashlib, sys
           base=Path('.gate-base/kairos_p76'); cand=Path('.gate-candidate/kairos_p76')
           required={
-            'KAIROS_P13_10_VISUAL_PNL_TIME_ZONE_PREFERENCE_REPORT_2026-09-02.md',
+            'KAIROS_P13_10R1_VISUAL_PNL_TIME_ZONE_METADATA_OWNERSHIP_REPAIR_REPORT_2026-09-02.md',
             'package.json',
-            'scripts/verify-p13-10-visual-pnl-time-zone-preference.mjs',
+            'scripts/verify-p13-10r1-visual-pnl-time-zone-metadata-ownership.mjs',
             'src/application/visual-pnl/index.ts',
             'src/application/visual-pnl/timeZonePreference.ts',
             'tests/visual-pnl-time-zone-preference.test.ts',
@@ -70,24 +70,27 @@ jobs:
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression P1 through P13.10
+      - name: Full controlled roadmap regression P1 through P13.10R1
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
           const { readFileSync } = require('node:fs'); const { spawnSync } = require('node:child_process');
           const pkg=JSON.parse(readFileSync('package.json','utf8'));
           const scripts=Object.keys(pkg.scripts||{}).filter(n=>n.startsWith('verify:p'));
-          for (const required of ['verify:p1','verify:p5:database-kernel','verify:p9:trade-persistence','verify:p11:calculation-brain-closure','verify:p12:journal-history-closure','verify:p12:journal-history-heavy-performance','verify:p13:visual-pnl-outcome-projection','verify:p13:journal-visual-pnl-projection','verify:p13:journal-visual-pnl-presentation','verify:p13:3r1-fixture-contract','verify:p13:3r2-scoped-outcome-selector','verify:p13:visual-pnl-aggregation-eligibility','verify:p13:4r1-empty-amounts-tuple','verify:p13:5-visual-pnl-aggregation-summary','verify:p13:5r1-decimalstring-fixture-contract','verify:p13:6-visual-pnl-day-bucket-semantics','verify:p13:7-visual-pnl-daily-summary-composition','verify:p13:8-journal-daily-summary-query-wiring','verify:p13:9-visual-pnl-calendar-presentation','verify:p13:10-visual-pnl-time-zone-preference']) {
+          for (const required of ['verify:p1','verify:p5:database-kernel','verify:p9:trade-persistence','verify:p11:calculation-brain-closure','verify:p12:journal-history-closure','verify:p12:journal-history-heavy-performance','verify:p13:visual-pnl-outcome-projection','verify:p13:journal-visual-pnl-projection','verify:p13:journal-visual-pnl-presentation','verify:p13:3r1-fixture-contract','verify:p13:3r2-scoped-outcome-selector','verify:p13:visual-pnl-aggregation-eligibility','verify:p13:4r1-empty-amounts-tuple','verify:p13:5-visual-pnl-aggregation-summary','verify:p13:5r1-decimalstring-fixture-contract','verify:p13:6-visual-pnl-day-bucket-semantics','verify:p13:7-visual-pnl-daily-summary-composition','verify:p13:8-journal-daily-summary-query-wiring','verify:p13:9-visual-pnl-calendar-presentation','verify:p13:10r1-visual-pnl-time-zone-metadata-ownership']) {
             if (!scripts.includes(required)) { console.error(`Missing ${required}`); process.exit(1); }
           }
           for (const script of scripts) { console.log(`\n=== ${script} ===`); const r=spawnSync('npm',['run',script],{stdio:'inherit'}); if(r.status!==0) process.exit(r.status||1); }
           NODE
-      - name: P13.10 timezone preference verification
+      - name: P13.10R1 timezone metadata ownership verification
         working-directory: .gate-candidate/kairos_p76
-        run: npm run verify:p13:10-visual-pnl-time-zone-preference
-      - name: P13.10 timezone preference tests
+        run: npm run verify:p13:10r1-visual-pnl-time-zone-metadata-ownership
+      - name: P13.10R1 timezone preference tests
         working-directory: .gate-candidate/kairos_p76
         run: npx vitest run tests/visual-pnl-time-zone-preference.test.ts
+      - name: Historical P1 ownership verifier regression
+        working-directory: .gate-candidate/kairos_p76
+        run: npm run verify:static
       - name: P13.9 calendar presentation regression
         working-directory: .gate-candidate/kairos_p76
         run: npx vitest run tests/visual-pnl-calendar-presentation.test.tsx
@@ -100,24 +103,6 @@ jobs:
       - name: P13.6 day-bucket semantics regression
         working-directory: .gate-candidate/kairos_p76
         run: npx vitest run tests/visual-pnl-day-bucket.test.ts
-      - name: P13.5R1 DecimalString fixture regression
-        working-directory: .gate-candidate/kairos_p76
-        run: npm run verify:p13:5r1-decimalstring-fixture-contract
-      - name: P13.5 aggregation summary regression
-        working-directory: .gate-candidate/kairos_p76
-        run: npx vitest run tests/visual-pnl-aggregation-summary.test.ts
-      - name: P13.4 aggregation eligibility regression
-        working-directory: .gate-candidate/kairos_p76
-        run: npx vitest run tests/visual-pnl-aggregation-eligibility.test.ts
-      - name: P13.3R2 presentation regression
-        working-directory: .gate-candidate/kairos_p76
-        run: npx vitest run tests/journal-visual-pnl-presentation.test.tsx
-      - name: P13.2 journal projection regression
-        working-directory: .gate-candidate/kairos_p76
-        run: npx vitest run tests/journal-visual-pnl-projection.test.ts
-      - name: P13.1R3 outcome projection regression
-        working-directory: .gate-candidate/kairos_p76
-        run: npx vitest run tests/visual-pnl-outcome-projection.test.ts
       - name: Journal History closure integration
         working-directory: .gate-candidate/kairos_p76
         run: npx vitest run tests/journal-history-closure.test.tsx
@@ -135,5 +120,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P13_10_VISUAL_PNL_TIME_ZONE_PREFERENCE_REPORT_2026-09-02.md
+          path: .gate-candidate/kairos_p76/KAIROS_P13_10R1_VISUAL_PNL_TIME_ZONE_METADATA_OWNERSHIP_REPAIR_REPORT_2026-09-02.md
           if-no-files-found: error
