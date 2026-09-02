@@ -51,7 +51,7 @@ jobs:
             'KAIROS_P13_3R1_JOURNAL_VISUAL_PNL_TEST_FIXTURE_CONTRACT_REPAIR_REPORT_2026-09-02.md',
             'package.json',
             'scripts/verify-p13-journal-visual-pnl-presentation.mjs',
-            'scripts/verify-p13-journal-visual-pnl-test-fixture-contract-repair.mjs',
+            'scripts/verify-p13-3r1-fixture-contract.mjs',
             'src/app/JournalHistoryList.tsx',
             'src/app/journalRoute.css',
             'tests/journal-visual-pnl-presentation.test.tsx',
@@ -86,7 +86,7 @@ jobs:
           const { spawnSync } = require('node:child_process');
           const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
           const scripts = Object.keys(pkg.scripts || {}).filter((name) => name.startsWith('verify:p'));
-          for (const required of ['verify:p1','verify:p5:database-kernel','verify:p9:trade-persistence','verify:p11:calculation-brain-closure','verify:p12:journal-history-closure','verify:p12:journal-history-heavy-performance','verify:p13:visual-pnl-outcome-projection','verify:p13:journal-visual-pnl-projection','verify:p13:journal-visual-pnl-presentation','verify:p13:journal-visual-pnl-test-fixture-contract-repair']) {
+          for (const required of ['verify:p1','verify:p5:database-kernel','verify:p9:trade-persistence','verify:p11:calculation-brain-closure','verify:p12:journal-history-closure','verify:p12:journal-history-heavy-performance','verify:p13:visual-pnl-outcome-projection','verify:p13:journal-visual-pnl-projection','verify:p13:journal-visual-pnl-presentation','verify:p13:3r1-fixture-contract']) {
             if (!scripts.includes(required)) { console.error(`Missing ${required}`); process.exit(1); }
           }
           for (const script of scripts) {
@@ -97,7 +97,7 @@ jobs:
           NODE
       - name: P13.3R1 fixture contract repair verification
         working-directory: .gate-candidate/kairos_p76
-        run: npm run verify:p13:journal-visual-pnl-test-fixture-contract-repair
+        run: npm run verify:p13:3r1-fixture-contract
       - name: P13.3 Journal Visual P&L presentation verification
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p13:journal-visual-pnl-presentation
