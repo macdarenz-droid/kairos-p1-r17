@@ -1,11 +1,11 @@
-# KAIROS P14.5R2 GATE — BASE P14.4R1 — CANDIDATE P14.5R2
+# KAIROS P14.6 GATE — BASE P14.5R2 — CANDIDATE P14.6
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P14_5R2_JOURNAL_TRADE_MAP_HISTORICAL_SELECTOR_COMPATIBILITY_REPAIR_CANDIDATE_2026-09-03.zip'
+      - 'KAIROS_P14_6_JOURNAL_TRADE_MAP_CATEGORICAL_MARKER_SEMANTICS_CANDIDATE_2026-09-03.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P14_4R1_JOURNAL_TRADE_MAP_FIXTURE_CONTRACT_REPAIR_CANDIDATE_2026-09-02.zip
-  CANDIDATE_ZIP: KAIROS_P14_5R2_JOURNAL_TRADE_MAP_HISTORICAL_SELECTOR_COMPATIBILITY_REPAIR_CANDIDATE_2026-09-03.zip
+  BASE_ZIP: KAIROS_P14_5R2_JOURNAL_TRADE_MAP_HISTORICAL_SELECTOR_COMPATIBILITY_REPAIR_CANDIDATE_2026-09-03.zip
+  CANDIDATE_ZIP: KAIROS_P14_6_JOURNAL_TRADE_MAP_CATEGORICAL_MARKER_SEMANTICS_CANDIDATE_2026-09-03.zip
 
 jobs:
   verify-current-candidate:
@@ -38,21 +38,19 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm controlled P14.5R2 scope
+      - name: Confirm controlled P14.6 scope
         run: |
           python - <<'PY'
           from pathlib import Path
           import hashlib, sys
           base=Path('.gate-base/kairos_p76'); cand=Path('.gate-candidate/kairos_p76')
           required={
-            'KAIROS_P14_5R2_JOURNAL_TRADE_MAP_HISTORICAL_SELECTOR_COMPATIBILITY_REPAIR_CANDIDATE_REPORT_2026-09-03.md',
+            'KAIROS_P14_6_JOURNAL_TRADE_MAP_CATEGORICAL_MARKER_SEMANTICS_CANDIDATE_REPORT_2026-09-03.md',
             'package.json',
-            'scripts/verify-p14-5-journal-trade-map-svg-shell.mjs',
-            'src/app/JournalTradeMap.tsx',
+            'scripts/verify-p14-6-journal-trade-map-marker-semantics.mjs',
             'src/app/JournalTradeMapGraphic.tsx',
             'src/app/journalRoute.css',
-            'tests/journal-trade-map-graphic.test.tsx',
-            'tests/journal-trade-map-presentation.test.tsx',
+            'tests/journal-trade-map-marker-semantics.test.tsx',
           }
           def digest(p): return hashlib.sha256(p.read_bytes()).hexdigest()
           b={str(p.relative_to(base)):digest(p) for p in base.rglob('*') if p.is_file()}
@@ -71,24 +69,29 @@ jobs:
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression P1 through P14.5R2
+      - name: Full controlled roadmap regression P1 through P14.6
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
           const { readFileSync } = require('node:fs'); const { spawnSync } = require('node:child_process');
           const pkg=JSON.parse(readFileSync('package.json','utf8'));
           const scripts=Object.keys(pkg.scripts||{}).filter(n=>n.startsWith('verify:p'));
-          for (const required of ['verify:p1','verify:p5:database-kernel','verify:p9:trade-persistence','verify:p10:manual-trade-journal-route','verify:p11:calculation-brain-closure','verify:p12:journal-history-closure','verify:p12:journal-history-heavy-performance','verify:p13:20-visual-pnl-system-closure','verify:p14:1r1-trade-visualizer-fixture-contract','verify:p14:2-trade-visualizer-display-semantics','verify:p14:3-journal-trade-visualizer-projection','verify:p14:4-journal-trade-map-presentation','verify:p14:5-journal-trade-map-svg-shell']) {
+          for (const required of ['verify:p1','verify:p5:database-kernel','verify:p9:trade-persistence','verify:p10:manual-trade-journal-route','verify:p11:calculation-brain-closure','verify:p12:journal-history-closure','verify:p12:journal-history-heavy-performance','verify:p13:20-visual-pnl-system-closure','verify:p14:1r1-trade-visualizer-fixture-contract','verify:p14:2-trade-visualizer-display-semantics','verify:p14:3-journal-trade-visualizer-projection','verify:p14:4-journal-trade-map-presentation','verify:p14:5-journal-trade-map-svg-shell','verify:p14:6-journal-trade-map-marker-semantics']) {
             if (!scripts.includes(required)) { console.error(`Missing ${required}`); process.exit(1); }
           }
           for (const script of scripts) { console.log(`\n=== ${script} ===`); const r=spawnSync('npm',['run',script],{stdio:'inherit'}); if(r.status!==0) process.exit(r.status||1); }
           NODE
-      - name: P14.5R2 Journal Trade Map SVG shell verification
+      - name: P14.6 categorical marker semantics verification
         working-directory: .gate-candidate/kairos_p76
-        run: npm run verify:p14:5-journal-trade-map-svg-shell
-      - name: P14.5R2 Journal Trade Map SVG runtime tests
+        run: npm run verify:p14:6-journal-trade-map-marker-semantics
+      - name: P14.6 categorical marker semantics runtime tests
         working-directory: .gate-candidate/kairos_p76
-        run: npx vitest run tests/journal-trade-map-graphic.test.tsx
+        run: npx vitest run tests/journal-trade-map-marker-semantics.test.tsx
+      - name: P14.5R2 SVG shell regression
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          npm run verify:p14:5-journal-trade-map-svg-shell
+          npx vitest run tests/journal-trade-map-graphic.test.tsx
       - name: P14.4R1 Journal Trade Map presentation regression
         working-directory: .gate-candidate/kairos_p76
         run: |
@@ -135,5 +138,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P14_5R2_JOURNAL_TRADE_MAP_HISTORICAL_SELECTOR_COMPATIBILITY_REPAIR_CANDIDATE_REPORT_2026-09-03.md
+          path: .gate-candidate/kairos_p76/KAIROS_P14_6_JOURNAL_TRADE_MAP_CATEGORICAL_MARKER_SEMANTICS_CANDIDATE_REPORT_2026-09-03.md
           if-no-files-found: error
