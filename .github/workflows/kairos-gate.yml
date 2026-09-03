@@ -1,11 +1,11 @@
-# KAIROS P18.10 GATE — AUTHORITATIVE BASE P18.9 — CANDIDATE P18.10
+# KAIROS P18.10R1 GATE — AUTHORITATIVE BASE P18.9 — CANDIDATE P18.10R1
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P18_10_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_DRAWING_LAYER_COMPOSITION_CANDIDATE_2026-09-04.zip'
+      - 'KAIROS_P18_10R1_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_DRAWING_LAYER_TYPE_CONTRACT_REPAIR_CANDIDATE_2026-09-04.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -14,7 +14,7 @@ permissions:
 
 env:
   BASE_ZIP: KAIROS_P18_9_LIGHTWEIGHT_CHARTS_V5_PROVIDER_SERIES_RESOLUTION_BINDING_CANDIDATE_2026-09-04.zip
-  CANDIDATE_ZIP: KAIROS_P18_10_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_DRAWING_LAYER_COMPOSITION_CANDIDATE_2026-09-04.zip
+  CANDIDATE_ZIP: KAIROS_P18_10R1_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_DRAWING_LAYER_TYPE_CONTRACT_REPAIR_CANDIDATE_2026-09-04.zip
 
 jobs:
   verify-current-candidate:
@@ -35,7 +35,7 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm exact controlled P18.10 scope from authoritative P18.9
+      - name: Confirm exact controlled P18.10R1 scope from authoritative P18.9
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -47,7 +47,7 @@ jobs:
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           print('\n'.join(sorted(changed)))
           expected={
-            'KAIROS_P18_10_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_DRAWING_LAYER_COMPOSITION_REPORT_2026-09-04.md',
+            'KAIROS_P18_10R1_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_DRAWING_LAYER_TYPE_CONTRACT_REPAIR_REPORT_2026-09-04.md',
             'package.json',
             'scripts/verify-p18-10-lightweight-charts-v5-trend-line-drawing-layer-composition.mjs',
             'src/features/chart/index.ts',
@@ -55,7 +55,7 @@ jobs:
             'tests/lightweight-charts-v5-trend-line-drawing-layer-composition.test.ts',
           }
           if changed != expected:
-            print('P18.10 exact scope mismatch',file=sys.stderr)
+            print('P18.10R1 exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             sys.exit(1)
@@ -74,7 +74,7 @@ jobs:
       - name: Production build
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
-      - name: Dedicated P18.10 trend line drawing layer composition verifier/runtime
+      - name: Dedicated P18.10R1 trend line drawing layer type-contract verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
           npm run verify:p18:10-lightweight-charts-v5-trend-line-drawing-layer-composition
@@ -91,7 +91,7 @@ jobs:
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression through P18.10
+      - name: Full controlled roadmap regression through P18.10R1
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
@@ -140,5 +140,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P18_10_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_DRAWING_LAYER_COMPOSITION_REPORT_2026-09-04.md
+          path: .gate-candidate/kairos_p76/KAIROS_P18_10R1_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_DRAWING_LAYER_TYPE_CONTRACT_REPAIR_REPORT_2026-09-04.md
           if-no-files-found: error
