@@ -1,11 +1,11 @@
-# KAIROS P18.1 GATE — AUTHORITATIVE BASE P17.16 — CANDIDATE P18.1
+# KAIROS P18.1R1 GATE — AUTHORITATIVE BASE P17.16 — CANDIDATE P18.1R1
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P18_1_CHART_DRAWING_CONTRACT_FOUNDATION_CANDIDATE_2026-09-03.zip'
+      - 'KAIROS_P18_1R1_CHART_DRAWING_DECIMALSTRING_TEST_REPAIR_CANDIDATE_2026-09-03.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -14,7 +14,7 @@ permissions:
 
 env:
   BASE_ZIP: KAIROS_P17_16_CHART_ENGINE_SYSTEM_CLOSURE_CANDIDATE_2026-09-03.zip
-  CANDIDATE_ZIP: KAIROS_P18_1_CHART_DRAWING_CONTRACT_FOUNDATION_CANDIDATE_2026-09-03.zip
+  CANDIDATE_ZIP: KAIROS_P18_1R1_CHART_DRAWING_DECIMALSTRING_TEST_REPAIR_CANDIDATE_2026-09-03.zip
 
 jobs:
   verify-current-candidate:
@@ -35,7 +35,7 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm exact controlled P18.1 scope from authoritative P17.16
+      - name: Confirm exact controlled P18.1R1 scope from authoritative P17.16
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -55,7 +55,7 @@ jobs:
             'tests/chart-drawing-contract.test.ts',
           }
           if changed != expected:
-            print('P18.1 exact scope mismatch',file=sys.stderr)
+            print('P18.1R1 exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             sys.exit(1)
@@ -74,7 +74,7 @@ jobs:
       - name: Production build
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
-      - name: Dedicated P18.1 chart drawing contract verifier/runtime
+      - name: Dedicated P18.1R1 chart drawing contract verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
           npm run verify:p18:1-chart-drawing-contract-foundation
@@ -82,7 +82,7 @@ jobs:
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression through P18.1
+      - name: Full controlled roadmap regression through P18.1R1
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
