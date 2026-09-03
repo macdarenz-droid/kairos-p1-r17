@@ -1,11 +1,11 @@
-# KAIROS P17.15 GATE — AUTHORITATIVE BASE P17.14R2 — CANDIDATE P17.15
+# KAIROS P17.16 GATE — AUTHORITATIVE BASE P17.15 — CANDIDATE P17.16
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P17_15_CHART_VIEWPORT_HISTORY_DEMAND_COMPOSITION_CANDIDATE_2026-09-03.zip'
+      - 'KAIROS_P17_16_CHART_ENGINE_SYSTEM_CLOSURE_CANDIDATE_2026-09-03.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P17_14R2_SERIES_LOGICAL_RANGE_SCOPE_AND_ARTIFACT_REPAIR_CANDIDATE_2026-09-03.zip
-  CANDIDATE_ZIP: KAIROS_P17_15_CHART_VIEWPORT_HISTORY_DEMAND_COMPOSITION_CANDIDATE_2026-09-03.zip
+  BASE_ZIP: KAIROS_P17_15_CHART_VIEWPORT_HISTORY_DEMAND_COMPOSITION_CANDIDATE_2026-09-03.zip
+  CANDIDATE_ZIP: KAIROS_P17_16_CHART_ENGINE_SYSTEM_CLOSURE_CANDIDATE_2026-09-03.zip
 
 jobs:
   verify-current-candidate:
@@ -35,7 +35,7 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm exact controlled P17.15 scope from authoritative P17.14R2
+      - name: Confirm exact controlled P17.16 scope from authoritative P17.15
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -47,15 +47,12 @@ jobs:
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           print('\n'.join(sorted(changed)))
           expected={
-            'KAIROS_P17_15_CHART_VIEWPORT_HISTORY_DEMAND_COMPOSITION_REPORT_2026-09-03.md',
+            'KAIROS_P17_16_CHART_ENGINE_SYSTEM_CLOSURE_REPORT_2026-09-03.md',
             'package.json',
-            'scripts/verify-p17-15-chart-viewport-history-demand.mjs',
-            'src/features/chart/chartViewportHistoryDemand.ts',
-            'src/features/chart/index.ts',
-            'tests/chart-viewport-history-demand.test.ts',
+            'scripts/verify-p17-16-chart-engine-system-closure.mjs',
           }
           if changed != expected:
-            print('P17.15 exact scope mismatch',file=sys.stderr)
+            print('P17.16 exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             sys.exit(1)
@@ -74,26 +71,29 @@ jobs:
       - name: Production build
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
-      - name: Dedicated P17.15 viewport history demand verifier/runtime
+      - name: Dedicated P17.16 chart engine system closure verifier
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p17:16-chart-engine-system-closure
           npm run verify:p17:15-chart-viewport-history-demand
           npx vitest run tests/chart-viewport-history-demand.test.ts tests/lightweight-charts-v5-series-logical-range-coverage.test.ts tests/lightweight-charts-v5-visible-range.test.ts
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression through P17.15
+      - name: Full controlled roadmap regression through P17.16 system closure
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
           const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
           const p=JSON.parse(readFileSync('package.json'));const s=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:p'));
-          for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:14-series-logical-range-coverage','verify:p17:15-chart-viewport-history-demand']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
+          for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:15-chart-viewport-history-demand','verify:p17:16-chart-engine-system-closure']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
           for(const x of s){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
           NODE
-      - name: P17.14 through P17.1 runtime regressions
+      - name: P17.15 through P17.1 runtime regressions
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p17:15-chart-viewport-history-demand
+          npx vitest run tests/chart-viewport-history-demand.test.ts tests/lightweight-charts-v5-series-logical-range-coverage.test.ts tests/lightweight-charts-v5-visible-range.test.ts
           npm run verify:p17:14-series-logical-range-coverage
           npx vitest run tests/lightweight-charts-v5-series-logical-range-coverage.test.ts tests/lightweight-charts-v5-visible-range.test.ts tests/lightweight-charts-v5-module-adapter.test.ts
           npm run verify:p17:13-chart-visible-range-boundary
@@ -147,5 +147,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P17_15_CHART_VIEWPORT_HISTORY_DEMAND_COMPOSITION_REPORT_2026-09-03.md
+          path: .gate-candidate/kairos_p76/KAIROS_P17_16_CHART_ENGINE_SYSTEM_CLOSURE_REPORT_2026-09-03.md
           if-no-files-found: error
