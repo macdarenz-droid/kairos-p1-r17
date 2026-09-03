@@ -54,13 +54,15 @@ jobs:
             'src/features/chart/index.ts',
             'src/features/chart/lightweightChartsV5ModuleAdapter.ts',
             'src/features/chart/lightweightChartsV5VisibleRange.ts',
+            'tests/chart-engine-driver-incremental.test.ts',
+            'tests/lightweight-charts-v5-module-adapter.test.ts',
             'tests/lightweight-charts-v5-visible-range.test.ts',
           }
           unexpected=changed-allowed
           if unexpected:
             print('Unexpected P17.13 scope:',sorted(unexpected),file=sys.stderr);sys.exit(1)
           required={
-            'KAIROS_P17_13_CHART_VISIBLE_RANGE_BOUNDARY_REPORT_2026-09-03.md','package.json','scripts/verify-p17-13-chart-visible-range-boundary.mjs','src/features/chart/chartVisibleRange.ts','src/features/chart/index.ts','src/features/chart/lightweightChartsV5ModuleAdapter.ts','src/features/chart/lightweightChartsV5VisibleRange.ts','tests/lightweight-charts-v5-visible-range.test.ts'
+            'KAIROS_P17_13_CHART_VISIBLE_RANGE_BOUNDARY_REPORT_2026-09-03.md','package.json','scripts/verify-p17-13-chart-visible-range-boundary.mjs','src/features/chart/chartVisibleRange.ts','src/features/chart/index.ts','src/features/chart/lightweightChartsV5ModuleAdapter.ts','src/features/chart/lightweightChartsV5VisibleRange.ts','tests/chart-engine-driver-incremental.test.ts','tests/lightweight-charts-v5-module-adapter.test.ts','tests/lightweight-charts-v5-visible-range.test.ts'
           }
           if not required.issubset(changed):
             print('Missing expected P17.13 scope:',sorted(required-changed),file=sys.stderr);sys.exit(1)
