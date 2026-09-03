@@ -1,11 +1,11 @@
-# KAIROS P18.11 GATE — AUTHORITATIVE BASE P18.10R1 — CANDIDATE P18.11
+# KAIROS P18.12 GATE — AUTHORITATIVE BASE P18.11 — CANDIDATE P18.12
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P18_11_CHART_DRAWING_PRESENTATION_COORDINATION_CANDIDATE_2026-09-04.zip'
+      - 'KAIROS_P18_12_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_HIT_TEST_GEOMETRY_CANDIDATE_2026-09-04.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P18_10R1_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_DRAWING_LAYER_TYPE_CONTRACT_REPAIR_CANDIDATE_2026-09-04.zip
-  CANDIDATE_ZIP: KAIROS_P18_11_CHART_DRAWING_PRESENTATION_COORDINATION_CANDIDATE_2026-09-04.zip
+  BASE_ZIP: KAIROS_P18_11_CHART_DRAWING_PRESENTATION_COORDINATION_CANDIDATE_2026-09-04.zip
+  CANDIDATE_ZIP: KAIROS_P18_12_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_HIT_TEST_GEOMETRY_CANDIDATE_2026-09-04.zip
 
 jobs:
   verify-current-candidate:
@@ -35,7 +35,7 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm exact controlled P18.11 scope from authoritative P18.10R1
+      - name: Confirm exact controlled P18.12 scope from authoritative P18.11
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -47,15 +47,15 @@ jobs:
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           print('\n'.join(sorted(changed)))
           expected={
-            'KAIROS_P18_11_CHART_DRAWING_PRESENTATION_COORDINATION_REPORT_2026-09-04.md',
+            'KAIROS_P18_12_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_HIT_TEST_GEOMETRY_REPORT_2026-09-04.md',
             'package.json',
-            'scripts/verify-p18-11-chart-drawing-presentation-coordination.mjs',
-            'src/features/chart/chartDrawingPresentationPort.ts',
+            'scripts/verify-p18-12-lightweight-charts-v5-trend-line-hit-test.mjs',
             'src/features/chart/index.ts',
-            'tests/chart-drawing-presentation-port.test.ts',
+            'src/features/chart/lightweightChartsV5TrendLineHitTest.ts',
+            'tests/lightweight-charts-v5-trend-line-hit-test.test.ts',
           }
           if changed != expected:
-            print('P18.11 exact scope mismatch',file=sys.stderr)
+            print('P18.12 exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             sys.exit(1)
@@ -74,9 +74,10 @@ jobs:
       - name: Production build
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
-      - name: Dedicated P18.11 chart drawing presentation coordination verifier/runtime
+      - name: Dedicated P18.12 trend line hit-test geometry verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p18:12-lightweight-charts-v5-trend-line-hit-test
           npm run verify:p18:11-chart-drawing-presentation-coordination
           npm run verify:p18:10-lightweight-charts-v5-trend-line-drawing-layer-composition
           npm run verify:p18:9-lightweight-charts-v5-provider-series-resolution-binding
@@ -88,22 +89,24 @@ jobs:
           npm run verify:p18:3-chart-drawing-layer-port
           npm run verify:p18:2-chart-drawing-projection
           npm run verify:p18:1-chart-drawing-contract-foundation
-          npx vitest run tests/chart-drawing-presentation-port.test.ts tests/lightweight-charts-v5-trend-line-drawing-layer-composition.test.ts tests/lightweight-charts-v5-provider-series-resolution-binding.test.ts tests/lightweight-charts-v5-trend-line-primitive-factory.test.ts tests/lightweight-charts-v5-trend-line-primitive.test.ts tests/lightweight-charts-v5-trend-line-pane-renderer.test.ts tests/lightweight-charts-v5-trend-line-coordinate-projection.test.ts tests/lightweight-charts-v5-drawing-layer-driver.test.ts tests/chart-drawing-layer-port.test.ts tests/chart-drawing-projection.test.ts tests/chart-drawing-contract.test.ts
+          npx vitest run tests/lightweight-charts-v5-trend-line-hit-test.test.ts tests/chart-drawing-presentation-port.test.ts tests/lightweight-charts-v5-trend-line-drawing-layer-composition.test.ts tests/lightweight-charts-v5-provider-series-resolution-binding.test.ts tests/lightweight-charts-v5-trend-line-primitive-factory.test.ts tests/lightweight-charts-v5-trend-line-primitive.test.ts tests/lightweight-charts-v5-trend-line-pane-renderer.test.ts tests/lightweight-charts-v5-trend-line-coordinate-projection.test.ts tests/lightweight-charts-v5-drawing-layer-driver.test.ts tests/chart-drawing-layer-port.test.ts tests/chart-drawing-projection.test.ts tests/chart-drawing-contract.test.ts
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression through P18.11
+      - name: Full controlled roadmap regression through P18.12
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
           const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
           const p=JSON.parse(readFileSync('package.json'));const s=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:p'));
-          for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:16-chart-engine-system-closure','verify:p18:1-chart-drawing-contract-foundation','verify:p18:2-chart-drawing-projection','verify:p18:3-chart-drawing-layer-port','verify:p18:4-lightweight-charts-v5-drawing-layer-driver','verify:p18:5-lightweight-charts-v5-trend-line-coordinate-projection','verify:p18:6-lightweight-charts-v5-trend-line-pane-renderer','verify:p18:7-lightweight-charts-v5-trend-line-primitive','verify:p18:8-lightweight-charts-v5-trend-line-primitive-factory','verify:p18:9-lightweight-charts-v5-provider-series-resolution-binding','verify:p18:10-lightweight-charts-v5-trend-line-drawing-layer-composition','verify:p18:11-chart-drawing-presentation-coordination']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
+          for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:16-chart-engine-system-closure','verify:p18:1-chart-drawing-contract-foundation','verify:p18:2-chart-drawing-projection','verify:p18:3-chart-drawing-layer-port','verify:p18:4-lightweight-charts-v5-drawing-layer-driver','verify:p18:5-lightweight-charts-v5-trend-line-coordinate-projection','verify:p18:6-lightweight-charts-v5-trend-line-pane-renderer','verify:p18:7-lightweight-charts-v5-trend-line-primitive','verify:p18:8-lightweight-charts-v5-trend-line-primitive-factory','verify:p18:9-lightweight-charts-v5-provider-series-resolution-binding','verify:p18:10-lightweight-charts-v5-trend-line-drawing-layer-composition','verify:p18:11-chart-drawing-presentation-coordination','verify:p18:12-lightweight-charts-v5-trend-line-hit-test']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
           for(const x of s){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
           NODE
-      - name: P18.10R1 through P17 chart regressions
+      - name: P18.11 through P17 chart regressions
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p18:12-lightweight-charts-v5-trend-line-hit-test
+          npm run verify:p18:11-chart-drawing-presentation-coordination
           npm run verify:p18:10-lightweight-charts-v5-trend-line-drawing-layer-composition
           npm run verify:p18:9-lightweight-charts-v5-provider-series-resolution-binding
           npm run verify:p18:8-lightweight-charts-v5-trend-line-primitive-factory
@@ -114,7 +117,7 @@ jobs:
           npm run verify:p18:3-chart-drawing-layer-port
           npm run verify:p18:2-chart-drawing-projection
           npm run verify:p18:1-chart-drawing-contract-foundation
-          npx vitest run tests/chart-drawing-presentation-port.test.ts tests/lightweight-charts-v5-trend-line-drawing-layer-composition.test.ts tests/lightweight-charts-v5-provider-series-resolution-binding.test.ts tests/lightweight-charts-v5-trend-line-primitive-factory.test.ts tests/lightweight-charts-v5-trend-line-primitive.test.ts tests/lightweight-charts-v5-trend-line-pane-renderer.test.ts tests/lightweight-charts-v5-trend-line-coordinate-projection.test.ts tests/lightweight-charts-v5-drawing-layer-driver.test.ts tests/chart-drawing-layer-port.test.ts tests/chart-drawing-projection.test.ts tests/chart-drawing-contract.test.ts tests/chart-series-projection.test.ts tests/chart-render-contract.test.ts
+          npx vitest run tests/lightweight-charts-v5-trend-line-hit-test.test.ts tests/chart-drawing-presentation-port.test.ts tests/lightweight-charts-v5-trend-line-drawing-layer-composition.test.ts tests/lightweight-charts-v5-provider-series-resolution-binding.test.ts tests/lightweight-charts-v5-trend-line-primitive-factory.test.ts tests/lightweight-charts-v5-trend-line-primitive.test.ts tests/lightweight-charts-v5-trend-line-pane-renderer.test.ts tests/lightweight-charts-v5-trend-line-coordinate-projection.test.ts tests/lightweight-charts-v5-drawing-layer-driver.test.ts tests/chart-drawing-layer-port.test.ts tests/chart-drawing-projection.test.ts tests/chart-drawing-contract.test.ts tests/chart-series-projection.test.ts tests/chart-render-contract.test.ts
           npm run verify:p17:16-chart-engine-system-closure
           npm run verify:p17:15-chart-viewport-history-demand
       - name: Historical closures
@@ -142,5 +145,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P18_11_CHART_DRAWING_PRESENTATION_COORDINATION_REPORT_2026-09-04.md
+          path: .gate-candidate/kairos_p76/KAIROS_P18_12_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_HIT_TEST_GEOMETRY_REPORT_2026-09-04.md
           if-no-files-found: error
