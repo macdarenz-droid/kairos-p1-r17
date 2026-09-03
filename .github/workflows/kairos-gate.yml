@@ -1,11 +1,11 @@
-# KAIROS P16.7R2 REPAIR GATE — AUTHORITATIVE BASE P16.6 — CANDIDATE P16.7R2
+# KAIROS P16.7R3 REPAIR GATE — AUTHORITATIVE BASE P16.6 — CANDIDATE P16.7R3
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P16_7R2_BINANCE_SPOT_PUBLIC_STREAM_TRADE_MESSAGE_TYPE_CONTRACT_REPAIR_CANDIDATE_2026-09-03.zip'
+      - 'KAIROS_P16_7R3_BINANCE_SPOT_PUBLIC_STREAM_TRADE_MESSAGE_TIMESTAMP_EXPECTATION_REPAIR_CANDIDATE_2026-09-03.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -14,7 +14,7 @@ permissions:
 
 env:
   BASE_ZIP: KAIROS_P16_6_BINANCE_SPOT_PUBLIC_STREAM_EVENT_CLASSIFICATION_CANDIDATE_2026-09-03.zip
-  CANDIDATE_ZIP: KAIROS_P16_7R2_BINANCE_SPOT_PUBLIC_STREAM_TRADE_MESSAGE_TYPE_CONTRACT_REPAIR_CANDIDATE_2026-09-03.zip
+  CANDIDATE_ZIP: KAIROS_P16_7R3_BINANCE_SPOT_PUBLIC_STREAM_TRADE_MESSAGE_TIMESTAMP_EXPECTATION_REPAIR_CANDIDATE_2026-09-03.zip
 
 jobs:
   verify-current-candidate:
@@ -35,7 +35,7 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm controlled P16.7R2 scope from authoritative P16.6
+      - name: Confirm controlled P16.7R3 scope from authoritative P16.6
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -45,6 +45,7 @@ jobs:
             'KAIROS_P16_7_BINANCE_SPOT_PUBLIC_STREAM_TRADE_MESSAGE_COMPOSITION_REPORT_2026-09-03.md',
             'KAIROS_P16_7R1_BINANCE_SPOT_PUBLIC_STREAM_TRADE_MESSAGE_IMPORT_REPAIR_REPORT_2026-09-03.md',
             'KAIROS_P16_7R2_BINANCE_SPOT_PUBLIC_STREAM_TRADE_MESSAGE_TYPE_CONTRACT_REPAIR_REPORT_2026-09-03.md',
+            'KAIROS_P16_7R3_BINANCE_SPOT_PUBLIC_STREAM_TRADE_MESSAGE_TIMESTAMP_EXPECTATION_REPAIR_REPORT_2026-09-03.md',
             'package.json',
             'scripts/verify-p16-7-binance-spot-public-stream-trade-message.mjs',
             'src/services/market-data/index.ts',
@@ -67,7 +68,7 @@ jobs:
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression P1 through P16.7R2
+      - name: Full controlled roadmap regression P1 through P16.7R3
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
@@ -77,7 +78,7 @@ jobs:
           for(const r of required) if(!s.includes(r)){console.error('Missing '+r);process.exit(1)}
           for(const x of s){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
           NODE
-      - name: P16.7R2 repaired trade message verifier/runtime
+      - name: P16.7R3 repaired trade message verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
           npm run verify:p16:7-binance-spot-public-stream-trade-message
@@ -170,5 +171,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P16_7R2_BINANCE_SPOT_PUBLIC_STREAM_TRADE_MESSAGE_TYPE_CONTRACT_REPAIR_REPORT_2026-09-03.md
+          path: .gate-candidate/kairos_p76/KAIROS_P16_7R3_BINANCE_SPOT_PUBLIC_STREAM_TRADE_MESSAGE_TIMESTAMP_EXPECTATION_REPAIR_REPORT_2026-09-03.md
           if-no-files-found: error
