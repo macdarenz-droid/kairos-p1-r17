@@ -49,10 +49,10 @@ jobs:
           expected={
             'KAIROS_P18_3_CHART_DRAWING_LAYER_LIFECYCLE_PORT_REPORT_2026-09-03.md',
             'package.json',
-            'scripts/verify-p18-3-chart-drawing-layer-lifecycle.mjs',
-            'src/features/chart/chartDrawingLayer.ts',
+            'scripts/verify-p18-3-chart-drawing-layer-port.mjs',
+            'src/features/chart/chartDrawingLayerPort.ts',
             'src/features/chart/index.ts',
-            'tests/chart-drawing-layer.test.ts',
+            'tests/chart-drawing-layer-port.test.ts',
           }
           if changed != expected:
             print('P18.3 exact scope mismatch',file=sys.stderr)
@@ -74,13 +74,13 @@ jobs:
       - name: Production build
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
-      - name: Dedicated P18.3 chart drawing layer lifecycle verifier/runtime
+      - name: Dedicated P18.3 chart drawing layer port verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
-          npm run verify:p18:3-chart-drawing-layer-lifecycle
+          npm run verify:p18:3-chart-drawing-layer-port
           npm run verify:p18:2-chart-drawing-projection
           npm run verify:p18:1-chart-drawing-contract-foundation
-          npx vitest run tests/chart-drawing-layer.test.ts tests/chart-drawing-projection.test.ts tests/chart-drawing-contract.test.ts tests/chart-render-contract.test.ts
+          npx vitest run tests/chart-drawing-layer-port.test.ts tests/chart-drawing-projection.test.ts tests/chart-drawing-contract.test.ts tests/chart-render-contract.test.ts
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
@@ -90,7 +90,7 @@ jobs:
           node - <<'NODE'
           const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
           const p=JSON.parse(readFileSync('package.json'));const s=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:p'));
-          for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:16-chart-engine-system-closure','verify:p18:1-chart-drawing-contract-foundation','verify:p18:2-chart-drawing-projection','verify:p18:3-chart-drawing-layer-lifecycle']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
+          for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:16-chart-engine-system-closure','verify:p18:1-chart-drawing-contract-foundation','verify:p18:2-chart-drawing-projection','verify:p18:3-chart-drawing-layer-port']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
           for(const x of s){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
           NODE
       - name: P18.2, P18.1 and P17 chart regressions
