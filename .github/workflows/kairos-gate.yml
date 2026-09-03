@@ -49,18 +49,18 @@ jobs:
           allowed={
             'package.json',
             'src/features/chart/index.ts',
+            'src/features/chart/lightweightChartsV5ModuleAdapter.ts',
             'src/features/chart/lightweightChartsV5ProductionRenderer.ts',
-            'src/features/chart/responsiveChartSizing.ts',
-            'tests/responsive-chart-sizing.test.ts',
+            'tests/lightweight-charts-v5-responsive-sizing.test.ts',
             'scripts/verify-p17-11-responsive-chart-sizing.mjs',
             'KAIROS_P17_11_RESPONSIVE_CHART_SIZING_BOUNDARY_REPORT_2026-09-03.md'
           }
           unexpected=changed-allowed
+          missing=allowed-changed
           if unexpected:
             print('Unexpected P17.11 scope:',sorted(unexpected),file=sys.stderr);sys.exit(1)
-          if 'package.json' not in changed: sys.exit('Missing P17.11 package script change')
-          if not any(p.startswith('src/features/chart/') for p in changed): sys.exit('Missing chart sizing implementation')
-          if not any('p17-11' in p.lower() for p in changed): sys.exit('Missing P17.11 verifier/report evidence')
+          if missing:
+            print('Missing expected P17.11 scope:',sorted(missing),file=sys.stderr);sys.exit(1)
           PY
       - name: Install candidate deterministically
         working-directory: .gate-candidate/kairos_p76
@@ -81,9 +81,7 @@ jobs:
         run: |
           SCRIPT=$(node -e "const p=require('./package.json');const k=Object.keys(p.scripts||{}).find(k=>k.startsWith('verify:p17:11'));if(!k)process.exit(1);process.stdout.write(k)")
           npm run "$SCRIPT"
-          TEST=$(find tests -maxdepth 1 -type f \( -iname '*responsive*chart*' -o -iname '*sizing*' -o -iname '*p17*11*' \) | head -n1)
-          test -n "$TEST"
-          npx vitest run "$TEST"
+          npx vitest run tests/lightweight-charts-v5-responsive-sizing.test.ts
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
