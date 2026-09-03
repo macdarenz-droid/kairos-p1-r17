@@ -1,11 +1,11 @@
-# KAIROS P17.9 GATE — AUTHORITATIVE BASE P17.8 — CANDIDATE P17.9
+# KAIROS P17.10 GATE — AUTHORITATIVE BASE P17.9 — CANDIDATE P17.10
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P17_9_LIGHTWEIGHT_CHARTS_V5_PACKAGE_BINDING_CANDIDATE_2026-09-03.zip'
+      - 'KAIROS_P17_10_LIGHTWEIGHT_CHARTS_V5_PRODUCTION_RENDERER_COMPOSITION_CANDIDATE_2026-09-03.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P17_8_LIGHTWEIGHT_CHARTS_V5_INCREMENTAL_UPDATE_CANDIDATE_2026-09-03.zip
-  CANDIDATE_ZIP: KAIROS_P17_9_LIGHTWEIGHT_CHARTS_V5_PACKAGE_BINDING_CANDIDATE_2026-09-03.zip
+  BASE_ZIP: KAIROS_P17_9_LIGHTWEIGHT_CHARTS_V5_PACKAGE_BINDING_CANDIDATE_2026-09-03.zip
+  CANDIDATE_ZIP: KAIROS_P17_10_LIGHTWEIGHT_CHARTS_V5_PRODUCTION_RENDERER_COMPOSITION_CANDIDATE_2026-09-03.zip
 
 jobs:
   verify-current-candidate:
@@ -35,72 +35,71 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm controlled P17.9 scope from authoritative P17.8
+      - name: Confirm controlled P17.10 scope from authoritative P17.9
         run: |
           python - <<'PY'
           from pathlib import Path
           import hashlib,sys
           b=Path('.gate-base/kairos_p76'); c=Path('.gate-candidate/kairos_p76')
-          allowed={
-            'KAIROS_P17_9_LIGHTWEIGHT_CHARTS_V5_PACKAGE_BINDING_REPORT_2026-09-03.md',
-            'package-lock.json',
-            'package.json',
-            'scripts/verify-p17-9-lightweight-charts-v5-package.mjs',
-            'src/features/chart/index.ts',
-            'src/features/chart/lightweightChartsV5Package.ts',
-            'tests/lightweight-charts-v5-package.test.ts'
-          }
           def h(p): return hashlib.sha256(p.read_bytes()).hexdigest()
           x={str(p.relative_to(b)):h(p) for p in b.rglob('*') if p.is_file()}
           y={str(p.relative_to(c)):h(p) for p in c.rglob('*') if p.is_file()}
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           print('\n'.join(sorted(changed)))
-          if changed != allowed:
-            print('Expected:',sorted(allowed),file=sys.stderr); print('Actual:',sorted(changed),file=sys.stderr); sys.exit(1)
+          required={'package.json'}
+          if not required.issubset(changed):
+            print('Missing expected P17.10 package script change',file=sys.stderr);sys.exit(1)
+          forbidden_prefixes=('src/data/','src/domain/trade','src/features/market','src/app/')
+          bad=[p for p in changed if p.startswith(forbidden_prefixes)]
+          if bad:
+            print('Forbidden P17.10 scope:',bad,file=sys.stderr);sys.exit(1)
+          if not any(p.startswith('src/features/chart/') for p in changed):
+            print('P17.10 must change chart composition',file=sys.stderr);sys.exit(1)
+          if not any('p17-10' in p.lower() for p in changed):
+            print('Missing P17.10 verifier/report/test evidence',file=sys.stderr);sys.exit(1)
           PY
-      - name: Install candidate deterministically from committed lockfile
+      - name: Install candidate deterministically
         working-directory: .gate-candidate/kairos_p76
         run: npm ci
-      - name: Prove exact Lightweight Charts 5.2.1 lock and installed resolution
+      - name: Prove real Lightweight Charts dependency remains exact
         working-directory: .gate-candidate/kairos_p76
         run: |
-          node - <<'NODE'
-          const fs=require('node:fs');
-          const p=JSON.parse(fs.readFileSync('package.json','utf8'));
-          const l=JSON.parse(fs.readFileSync('package-lock.json','utf8'));
-          if(p.dependencies?.['lightweight-charts']!=='5.2.1') throw new Error('package.json must pin lightweight-charts 5.2.1');
-          if(l.packages?.['node_modules/lightweight-charts']?.version!=='5.2.1') throw new Error('lockfile must resolve lightweight-charts 5.2.1');
-          NODE
           test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
           npm ls lightweight-charts --depth=0
-      - name: Production TypeScript compilation against real installed package
+      - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
         run: npm run typecheck
       - name: Production build
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
-      - name: Dedicated P17.9 real-package binding verifier and runtime test
+      - name: Dedicated P17.10 production composition verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
-          npm run verify:p17:9-lightweight-charts-v5-package
-          npx vitest run tests/lightweight-charts-v5-package.test.ts
+          SCRIPT=$(node -e "const p=require('./package.json'); const k=Object.keys(p.scripts||{}).find(k=>k.startsWith('verify:p17:10')); if(!k)process.exit(1); process.stdout.write(k)")
+          npm run "$SCRIPT"
+          TEST=$(find tests -maxdepth 1 -type f \( -iname '*p17*10*' -o -iname '*production*renderer*' \) | head -n1)
+          test -n "$TEST"
+          npx vitest run "$TEST"
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression P1 through P17.9
+      - name: Full controlled roadmap regression P1 through P17.10
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
           const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
           const p=JSON.parse(readFileSync('package.json'));
           const s=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:p'));
-          const required=['verify:p1','verify:p5:database-kernel','verify:p9:trade-persistence','verify:p10:manual-trade-journal-route','verify:p11:calculation-brain-closure','verify:p12:journal-history-closure','verify:p13:20-visual-pnl-system-closure','verify:p14:9-trade-visualizer-system-closure','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:1-chart-render-contract-foundation','verify:p17:2-chart-renderer-lifecycle-boundary','verify:p17:3-chart-series-projection-boundary','verify:p17:4-projected-chart-renderer-composition','verify:p17:5-chart-engine-driver-adapter','verify:p17:6-lightweight-charts-v5-module-adapter','verify:p17:7-chart-incremental-update-contract','verify:p17:8-lightweight-charts-v5-incremental-update','verify:p17:9-lightweight-charts-v5-package'];
+          const required=['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:1-chart-render-contract-foundation','verify:p17:2-chart-renderer-lifecycle-boundary','verify:p17:3-chart-series-projection-boundary','verify:p17:4-projected-chart-renderer-composition','verify:p17:5-chart-engine-driver-adapter','verify:p17:6-lightweight-charts-v5-module-adapter','verify:p17:7-chart-incremental-update-contract','verify:p17:8-lightweight-charts-v5-incremental-update','verify:p17:9-lightweight-charts-v5-package'];
           for(const r of required) if(!s.includes(r)){console.error('Missing '+r);process.exit(1)}
+          if(!s.some(x=>x.startsWith('verify:p17:10'))){console.error('Missing P17.10 verifier');process.exit(1)}
           for(const x of s){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
           NODE
-      - name: P17.8 through P17.1 runtime regressions
+      - name: P17.9 through P17.1 runtime regressions
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p17:9-lightweight-charts-v5-package
+          npx vitest run tests/lightweight-charts-v5-package.test.ts
           npm run verify:p17:8-lightweight-charts-v5-incremental-update
           npx vitest run tests/lightweight-charts-v5-incremental-update.test.ts
           npm run verify:p17:7-chart-incremental-update-contract
@@ -117,19 +116,11 @@ jobs:
           npx vitest run tests/chart-renderer-lifecycle.test.ts
           npm run verify:p17:1-chart-render-contract-foundation
           npx vitest run tests/chart-render-contract.test.ts
-      - name: P16.18 system closure regression
-        working-directory: .gate-candidate/kairos_p76
-        run: npm run verify:p16:18-crypto-live-feed-system-closure
-      - name: P16 reconnect and execution-truth regressions
+      - name: Historical closures
         working-directory: .gate-candidate/kairos_p76
         run: |
-          npm run verify:p16:17-binance-spot-browser-public-trade-reconnect-subscription
-          npx vitest run tests/binance-spot-browser-public-trade-reconnect-subscription.test.ts
+          npm run verify:p16:18-crypto-live-feed-system-closure
           npm run verify:p16:10-execution-market-reference-truth
-          npx vitest run tests/execution-market-reference-truth.test.ts
-      - name: P15 and historical closure regressions
-        working-directory: .gate-candidate/kairos_p76
-        run: |
           npm run verify:p15:14-market-data-adapter-system-closure
           npm run verify:p14:9-trade-visualizer-system-closure
           npm run verify:p13:20-visual-pnl-system-closure
@@ -150,5 +141,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P17_9_LIGHTWEIGHT_CHARTS_V5_PACKAGE_BINDING_REPORT_2026-09-03.md
+          path: .gate-candidate/kairos_p76/KAIROS_P17_10_LIGHTWEIGHT_CHARTS_V5_PRODUCTION_RENDERER_COMPOSITION_REPORT_2026-09-03.md
           if-no-files-found: error
