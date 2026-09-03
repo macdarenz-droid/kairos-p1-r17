@@ -1,11 +1,11 @@
-# KAIROS P17.11 GATE — AUTHORITATIVE BASE P17.10 — CANDIDATE P17.11
+# KAIROS P17.12 GATE — AUTHORITATIVE BASE P17.11 — CANDIDATE P17.12
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P17_11_RESPONSIVE_CHART_SIZING_BOUNDARY_CANDIDATE_2026-09-03.zip'
+      - 'KAIROS_P17_12_INCREMENTAL_CHART_ENGINE_DRIVER_COMPOSITION_CANDIDATE_2026-09-03.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P17_10_LIGHTWEIGHT_CHARTS_V5_PRODUCTION_RENDERER_COMPOSITION_CANDIDATE_2026-09-03.zip
-  CANDIDATE_ZIP: KAIROS_P17_11_RESPONSIVE_CHART_SIZING_BOUNDARY_CANDIDATE_2026-09-03.zip
+  BASE_ZIP: KAIROS_P17_11_RESPONSIVE_CHART_SIZING_BOUNDARY_CANDIDATE_2026-09-03.zip
+  CANDIDATE_ZIP: KAIROS_P17_12_INCREMENTAL_CHART_ENGINE_DRIVER_COMPOSITION_CANDIDATE_2026-09-03.zip
 
 jobs:
   verify-current-candidate:
@@ -35,7 +35,7 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm controlled P17.11 scope from authoritative P17.10
+      - name: Confirm exact controlled P17.12 scope from authoritative P17.11
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -47,20 +47,19 @@ jobs:
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           print('\n'.join(sorted(changed)))
           allowed={
+            'KAIROS_P17_12_INCREMENTAL_CHART_ENGINE_DRIVER_COMPOSITION_REPORT_2026-09-03.md',
             'package.json',
+            'scripts/verify-p17-12-incremental-chart-engine-driver.mjs',
+            'src/features/chart/chartEngineDriver.ts',
             'src/features/chart/index.ts',
             'src/features/chart/lightweightChartsV5ModuleAdapter.ts',
-            'src/features/chart/lightweightChartsV5ProductionRenderer.ts',
-            'tests/lightweight-charts-v5-responsive-sizing.test.ts',
-            'scripts/verify-p17-11-responsive-chart-sizing.mjs',
-            'KAIROS_P17_11_RESPONSIVE_CHART_SIZING_BOUNDARY_REPORT_2026-09-03.md'
+            'tests/chart-engine-driver-incremental.test.ts',
+            'tests/chart-engine-driver.test.ts',
           }
-          unexpected=changed-allowed
-          missing=allowed-changed
-          if unexpected:
-            print('Unexpected P17.11 scope:',sorted(unexpected),file=sys.stderr);sys.exit(1)
-          if missing:
-            print('Missing expected P17.11 scope:',sorted(missing),file=sys.stderr);sys.exit(1)
+          if changed != allowed:
+            print('Unexpected:',sorted(changed-allowed),file=sys.stderr)
+            print('Missing:',sorted(allowed-changed),file=sys.stderr)
+            sys.exit(1)
           PY
       - name: Install candidate deterministically
         working-directory: .gate-candidate/kairos_p76
@@ -76,29 +75,28 @@ jobs:
       - name: Production build
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
-      - name: Dedicated P17.11 responsive sizing verifier/runtime
+      - name: Dedicated P17.12 incremental driver verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
-          SCRIPT=$(node -e "const p=require('./package.json');const k=Object.keys(p.scripts||{}).find(k=>k.startsWith('verify:p17:11'));if(!k)process.exit(1);process.stdout.write(k)")
-          npm run "$SCRIPT"
-          npx vitest run tests/lightweight-charts-v5-responsive-sizing.test.ts
+          npm run verify:p17:12-incremental-chart-engine-driver
+          npx vitest run tests/chart-engine-driver-incremental.test.ts tests/chart-engine-driver.test.ts tests/lightweight-charts-v5-incremental-update.test.ts
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression P1 through P17.11
+      - name: Full controlled roadmap regression through P17.12
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
           const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
           const p=JSON.parse(readFileSync('package.json'));const s=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:p'));
-          const required=['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:1-chart-render-contract-foundation','verify:p17:2-chart-renderer-lifecycle-boundary','verify:p17:3-chart-series-projection-boundary','verify:p17:4-projected-chart-renderer-composition','verify:p17:5-chart-engine-driver-adapter','verify:p17:6-lightweight-charts-v5-module-adapter','verify:p17:7-chart-incremental-update-contract','verify:p17:8-lightweight-charts-v5-incremental-update','verify:p17:9-lightweight-charts-v5-package'];
-          for(const r of required) if(!s.includes(r)){console.error('Missing '+r);process.exit(1)}
-          if(!s.some(x=>x.startsWith('verify:p17:10'))||!s.some(x=>x.startsWith('verify:p17:11'))){console.error('Missing P17.10/P17.11 verifier');process.exit(1)}
+          for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:12-incremental-chart-engine-driver']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
           for(const x of s){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
           NODE
-      - name: P17.10 through P17.1 runtime regressions
+      - name: P17.11 through P17.1 runtime regressions
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p17:11-responsive-chart-sizing
+          npx vitest run tests/lightweight-charts-v5-responsive-sizing.test.ts
           npm run verify:p17:10-lightweight-charts-v5-production-renderer
           npx vitest run tests/lightweight-charts-v5-production-renderer.test.ts
           npm run verify:p17:9-lightweight-charts-v5-package
@@ -144,5 +142,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P17_11_RESPONSIVE_CHART_SIZING_BOUNDARY_REPORT_2026-09-03.md
+          path: .gate-candidate/kairos_p76/KAIROS_P17_12_INCREMENTAL_CHART_ENGINE_DRIVER_COMPOSITION_REPORT_2026-09-03.md
           if-no-files-found: error
