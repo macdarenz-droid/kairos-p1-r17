@@ -1,11 +1,11 @@
-# KAIROS P17.2 GATE — AUTHORITATIVE BASE P17.1R2 — CANDIDATE P17.2
+# KAIROS P17.3 GATE — AUTHORITATIVE BASE P17.2 — CANDIDATE P17.3
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P17_2_CHART_RENDERER_LIFECYCLE_BOUNDARY_CANDIDATE_2026-09-03.zip'
+      - 'KAIROS_P17_3_CHART_SERIES_PROJECTION_BOUNDARY_CANDIDATE_2026-09-03.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P17_1R2_CHART_RENDER_CONTRACT_DECIMALSTRING_FIXTURE_REPAIR_CANDIDATE_2026-09-03.zip
-  CANDIDATE_ZIP: KAIROS_P17_2_CHART_RENDERER_LIFECYCLE_BOUNDARY_CANDIDATE_2026-09-03.zip
+  BASE_ZIP: KAIROS_P17_2_CHART_RENDERER_LIFECYCLE_BOUNDARY_CANDIDATE_2026-09-03.zip
+  CANDIDATE_ZIP: KAIROS_P17_3_CHART_SERIES_PROJECTION_BOUNDARY_CANDIDATE_2026-09-03.zip
 
 jobs:
   verify-current-candidate:
@@ -35,19 +35,19 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm controlled P17.2 scope from authoritative P17.1R2
+      - name: Confirm controlled P17.3 scope from authoritative P17.2
         run: |
           python - <<'PY'
           from pathlib import Path
           import hashlib,sys
           b=Path('.gate-base/kairos_p76'); c=Path('.gate-candidate/kairos_p76')
           allowed={
-            'KAIROS_P17_2_CHART_RENDERER_LIFECYCLE_BOUNDARY_REPORT_2026-09-03.md',
+            'KAIROS_P17_3_CHART_SERIES_PROJECTION_BOUNDARY_REPORT_2026-09-03.md',
             'package.json',
-            'scripts/verify-p17-2-chart-renderer-lifecycle-boundary.mjs',
-            'src/features/chart/chartRendererLifecycle.ts',
+            'scripts/verify-p17-3-chart-series-projection-boundary.mjs',
+            'src/features/chart/chartSeriesProjection.ts',
             'src/features/chart/index.ts',
-            'tests/chart-renderer-lifecycle.test.ts'
+            'tests/chart-series-projection.test.ts'
           }
           def h(p): return hashlib.sha256(p.read_bytes()).hexdigest()
           x={str(p.relative_to(b)):h(p) for p in b.rglob('*') if p.is_file()}
@@ -66,25 +66,27 @@ jobs:
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression P1 through P17.2
+      - name: Full controlled roadmap regression P1 through P17.3
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
           const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
           const p=JSON.parse(readFileSync('package.json'));
           const s=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:p'));
-          const required=['verify:p1','verify:p5:database-kernel','verify:p9:trade-persistence','verify:p10:manual-trade-journal-route','verify:p11:calculation-brain-closure','verify:p12:journal-history-closure','verify:p13:20-visual-pnl-system-closure','verify:p14:9-trade-visualizer-system-closure','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:1-chart-render-contract-foundation','verify:p17:2-chart-renderer-lifecycle-boundary'];
+          const required=['verify:p1','verify:p5:database-kernel','verify:p9:trade-persistence','verify:p10:manual-trade-journal-route','verify:p11:calculation-brain-closure','verify:p12:journal-history-closure','verify:p13:20-visual-pnl-system-closure','verify:p14:9-trade-visualizer-system-closure','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:1-chart-render-contract-foundation','verify:p17:2-chart-renderer-lifecycle-boundary','verify:p17:3-chart-series-projection-boundary'];
           for(const r of required) if(!s.includes(r)){console.error('Missing '+r);process.exit(1)}
           for(const x of s){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
           NODE
-      - name: P17.2 chart renderer lifecycle verifier/runtime
+      - name: P17.3 chart series projection verifier/runtime
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          npm run verify:p17:3-chart-series-projection-boundary
+          npx vitest run tests/chart-series-projection.test.ts
+      - name: P17.2 and P17.1 regressions
         working-directory: .gate-candidate/kairos_p76
         run: |
           npm run verify:p17:2-chart-renderer-lifecycle-boundary
           npx vitest run tests/chart-renderer-lifecycle.test.ts
-      - name: P17.1 chart render contract regression
-        working-directory: .gate-candidate/kairos_p76
-        run: |
           npm run verify:p17:1-chart-render-contract-foundation
           npx vitest run tests/chart-render-contract.test.ts
       - name: P16.18 system closure regression
@@ -117,5 +119,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P17_2_CHART_RENDERER_LIFECYCLE_BOUNDARY_REPORT_2026-09-03.md
+          path: .gate-candidate/kairos_p76/KAIROS_P17_3_CHART_SERIES_PROJECTION_BOUNDARY_REPORT_2026-09-03.md
           if-no-files-found: error
