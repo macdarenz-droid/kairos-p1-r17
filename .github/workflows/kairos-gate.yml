@@ -1,11 +1,11 @@
-# KAIROS P15.14 GATE — BASE P15.13R1 — CANDIDATE P15.14
+# KAIROS P16.1 GATE — BASE P15.14 — CANDIDATE P16.1
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P15_14_MARKET_DATA_ADAPTER_SYSTEM_CLOSURE_CANDIDATE_2026-09-03.zip'
+      - 'KAIROS_P16_1_BINANCE_SPOT_TRADE_STREAM_SEMANTICS_CANDIDATE_2026-09-03.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P15_13R1_MARKET_DATA_RECONNECT_EXECUTION_TEST_SIGNATURE_REPAIR_CANDIDATE_2026-09-03.zip
-  CANDIDATE_ZIP: KAIROS_P15_14_MARKET_DATA_ADAPTER_SYSTEM_CLOSURE_CANDIDATE_2026-09-03.zip
+  BASE_ZIP: KAIROS_P15_14_MARKET_DATA_ADAPTER_SYSTEM_CLOSURE_CANDIDATE_2026-09-03.zip
+  CANDIDATE_ZIP: KAIROS_P16_1_BINANCE_SPOT_TRADE_STREAM_SEMANTICS_CANDIDATE_2026-09-03.zip
 
 jobs:
   verify-current-candidate:
@@ -34,16 +34,19 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm controlled P15.14 scope
+      - name: Confirm controlled P16.1 scope
         run: |
           python - <<'PY'
           from pathlib import Path
           import hashlib,sys
           b=Path('.gate-base/kairos_p76'); c=Path('.gate-candidate/kairos_p76')
           required={
-            'KAIROS_P15_14_MARKET_DATA_ADAPTER_SYSTEM_CLOSURE_REPORT_2026-09-03.md',
+            'KAIROS_P16_1_BINANCE_SPOT_TRADE_STREAM_SEMANTICS_REPORT_2026-09-03.md',
             'package.json',
-            'scripts/verify-p15-14-market-data-adapter-system-closure.mjs',
+            'scripts/verify-p16-1-binance-spot-trade-stream.mjs',
+            'src/services/market-data/index.ts',
+            'src/services/market-data/providers/binance/binanceSpotTradeStream.ts',
+            'tests/binance-spot-trade-stream.test.ts',
           }
           def h(p): return hashlib.sha256(p.read_bytes()).hexdigest()
           x={str(p.relative_to(b)):h(p) for p in b.rglob('*') if p.is_file()}; y={str(p.relative_to(c)):h(p) for p in c.rglob('*') if p.is_file()}
@@ -61,16 +64,21 @@ jobs:
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression P1 through P15.14
+      - name: Full controlled roadmap regression P1 through P16.1
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
           const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
           const p=JSON.parse(readFileSync('package.json')); const s=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:p'));
-          for(const r of ['verify:p1','verify:p5:database-kernel','verify:p9:trade-persistence','verify:p10:manual-trade-journal-route','verify:p11:calculation-brain-closure','verify:p12:journal-history-closure','verify:p12:journal-history-heavy-performance','verify:p13:20-visual-pnl-system-closure','verify:p14:9-trade-visualizer-system-closure','verify:p15:1-market-data-adapter-interface','verify:p15:2-market-data-observation-semantics','verify:p15:3-market-data-subscription-lifecycle','verify:p15:4-market-data-connection-state','verify:p15:5-market-data-reconnect-policy','verify:p15:6-market-data-reconnect-scheduler','verify:p15:7-market-data-reconnect-jitter','verify:p15:8-market-data-reconnect-plan','verify:p15:9-market-data-reconnect-coordinator','verify:p15:10-market-data-reconnect-disposition','verify:p15:11-market-data-reconnect-intent','verify:p15:12-market-data-reconnect-attempt','verify:p15:13-market-data-reconnect-execution','verify:p15:14-market-data-adapter-system-closure']) if(!s.includes(r)){console.error('Missing '+r);process.exit(1)}
+          for(const r of ['verify:p1','verify:p5:database-kernel','verify:p9:trade-persistence','verify:p10:manual-trade-journal-route','verify:p11:calculation-brain-closure','verify:p12:journal-history-closure','verify:p12:journal-history-heavy-performance','verify:p13:20-visual-pnl-system-closure','verify:p14:9-trade-visualizer-system-closure','verify:p15:1-market-data-adapter-interface','verify:p15:2-market-data-observation-semantics','verify:p15:3-market-data-subscription-lifecycle','verify:p15:4-market-data-connection-state','verify:p15:5-market-data-reconnect-policy','verify:p15:6-market-data-reconnect-scheduler','verify:p15:7-market-data-reconnect-jitter','verify:p15:8-market-data-reconnect-plan','verify:p15:9-market-data-reconnect-coordinator','verify:p15:10-market-data-reconnect-disposition','verify:p15:11-market-data-reconnect-intent','verify:p15:12-market-data-reconnect-attempt','verify:p15:13-market-data-reconnect-execution','verify:p15:14-market-data-adapter-system-closure','verify:p16:1-binance-spot-trade-stream']) if(!s.includes(r)){console.error('Missing '+r);process.exit(1)}
           for(const x of s){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
           NODE
-      - name: P15.14 system closure verifier
+      - name: P16.1 Binance Spot trade stream verifier/runtime
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          npm run verify:p16:1-binance-spot-trade-stream
+          npx vitest run tests/binance-spot-trade-stream.test.ts
+      - name: P15.14 system closure regression
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p15:14-market-data-adapter-system-closure
       - name: P15.13R1 reconnect execution regression
@@ -160,4 +168,4 @@ jobs:
       - name: Upload gate evidence
         if: always()
         uses: actions/upload-artifact@v4
-        with: { name: KAIROS_GATE_EVIDENCE, path: '.gate-candidate/kairos_p76/KAIROS_P15_14_MARKET_DATA_ADAPTER_SYSTEM_CLOSURE_REPORT_2026-09-03.md', if-no-files-found: error }
+        with: { name: KAIROS_GATE_EVIDENCE, path: '.gate-candidate/kairos_p76/KAIROS_P16_1_BINANCE_SPOT_TRADE_STREAM_SEMANTICS_REPORT_2026-09-03.md', if-no-files-found: error }
