@@ -46,7 +46,7 @@ jobs:
           y={str(p.relative_to(c)):h(p) for p in c.rglob('*') if p.is_file()}
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           print('\n'.join(sorted(changed)))
-          allowed={
+          expected={
             'KAIROS_P17_13R1_CHART_VISIBLE_RANGE_TYPESCRIPT_COMPATIBILITY_REPAIR_REPORT_2026-09-03.md',
             'package.json',
             'scripts/verify-p17-13-chart-visible-range-boundary.mjs',
@@ -55,18 +55,14 @@ jobs:
             'src/features/chart/lightweightChartsV5ModuleAdapter.ts',
             'src/features/chart/lightweightChartsV5VisibleRange.ts',
             'tests/chart-engine-driver-incremental.test.ts',
-            'tests/lightweight-charts-v5-module-adapter.test.ts',
             'tests/lightweight-charts-v5-responsive-sizing.test.ts',
             'tests/lightweight-charts-v5-visible-range.test.ts',
           }
-          unexpected=changed-allowed
-          if unexpected:
-            print('Unexpected P17.13R1 scope:',sorted(unexpected),file=sys.stderr);sys.exit(1)
-          required={
-            'KAIROS_P17_13R1_CHART_VISIBLE_RANGE_TYPESCRIPT_COMPATIBILITY_REPAIR_REPORT_2026-09-03.md','package.json','scripts/verify-p17-13-chart-visible-range-boundary.mjs','src/features/chart/chartVisibleRange.ts','src/features/chart/index.ts','src/features/chart/lightweightChartsV5ModuleAdapter.ts','src/features/chart/lightweightChartsV5VisibleRange.ts','tests/lightweight-charts-v5-module-adapter.test.ts','tests/lightweight-charts-v5-responsive-sizing.test.ts','tests/lightweight-charts-v5-visible-range.test.ts'
-          }
-          if not required.issubset(changed):
-            print('Missing expected P17.13R1 scope:',sorted(required-changed),file=sys.stderr);sys.exit(1)
+          if changed != expected:
+            print('P17.13R1 exact scope mismatch',file=sys.stderr)
+            print('Unexpected:',sorted(changed-expected),file=sys.stderr)
+            print('Missing:',sorted(expected-changed),file=sys.stderr)
+            sys.exit(1)
           PY
       - name: Install candidate deterministically
         working-directory: .gate-candidate/kairos_p76
@@ -86,7 +82,7 @@ jobs:
         working-directory: .gate-candidate/kairos_p76
         run: |
           npm run verify:p17:13-chart-visible-range-boundary
-          npx vitest run tests/lightweight-charts-v5-visible-range.test.ts tests/lightweight-charts-v5-module-adapter.test.ts tests/lightweight-charts-v5-responsive-sizing.test.ts
+          npx vitest run tests/lightweight-charts-v5-visible-range.test.ts tests/lightweight-charts-v5-module-adapter.test.ts tests/lightweight-charts-v5-responsive-sizing.test.ts tests/chart-engine-driver-incremental.test.ts
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
