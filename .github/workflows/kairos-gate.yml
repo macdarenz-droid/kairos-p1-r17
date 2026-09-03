@@ -1,11 +1,11 @@
-# KAIROS P16.14 GATE — AUTHORITATIVE BASE P16.13 — CANDIDATE P16.14
+# KAIROS P16.15 GATE — AUTHORITATIVE BASE P16.14 — CANDIDATE P16.15
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P16_14_BINANCE_SPOT_SERVER_SHUTDOWN_RECONNECT_CAUSE_CANDIDATE_2026-09-03.zip'
+      - 'KAIROS_P16_15_BINANCE_SPOT_SERVER_SHUTDOWN_RECONNECT_EXECUTION_CANDIDATE_2026-09-03.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P16_13_BINANCE_SPOT_PUBLIC_STREAM_LIFECYCLE_CONNECTOR_CANDIDATE_2026-09-03.zip
-  CANDIDATE_ZIP: KAIROS_P16_14_BINANCE_SPOT_SERVER_SHUTDOWN_RECONNECT_CAUSE_CANDIDATE_2026-09-03.zip
+  BASE_ZIP: KAIROS_P16_14_BINANCE_SPOT_SERVER_SHUTDOWN_RECONNECT_CAUSE_CANDIDATE_2026-09-03.zip
+  CANDIDATE_ZIP: KAIROS_P16_15_BINANCE_SPOT_SERVER_SHUTDOWN_RECONNECT_EXECUTION_CANDIDATE_2026-09-03.zip
 
 jobs:
   verify-current-candidate:
@@ -35,19 +35,19 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm controlled P16.14 scope from authoritative P16.13
+      - name: Confirm controlled P16.15 scope from authoritative P16.14
         run: |
           python - <<'PY'
           from pathlib import Path
           import hashlib,sys
           b=Path('.gate-base/kairos_p76'); c=Path('.gate-candidate/kairos_p76')
           allowed={
-            'KAIROS_P16_14_BINANCE_SPOT_SERVER_SHUTDOWN_RECONNECT_CAUSE_REPORT_2026-09-03.md',
+            'KAIROS_P16_15_BINANCE_SPOT_SERVER_SHUTDOWN_RECONNECT_EXECUTION_REPORT_2026-09-03.md',
             'package.json',
-            'scripts/verify-p16-14-binance-spot-server-shutdown-reconnect-cause.mjs',
+            'scripts/verify-p16-15-binance-spot-server-shutdown-reconnect-execution.mjs',
             'src/services/market-data/index.ts',
-            'src/services/market-data/providers/binance/binanceSpotServerShutdownReconnectCause.ts',
-            'tests/binance-spot-server-shutdown-reconnect-cause.test.ts'
+            'src/services/market-data/providers/binance/binanceSpotServerShutdownReconnectExecution.ts',
+            'tests/binance-spot-server-shutdown-reconnect-execution.test.ts'
           }
           def h(p): return hashlib.sha256(p.read_bytes()).hexdigest()
           x={str(p.relative_to(b)):h(p) for p in b.rglob('*') if p.is_file()}
@@ -68,7 +68,7 @@ jobs:
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression P1 through P16.14
+      - name: Full controlled roadmap regression P1 through P16.15
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
@@ -88,12 +88,18 @@ jobs:
             'verify:p16:9-binance-spot-public-trade-subscription','verify:p16:10-execution-market-reference-truth',
             'verify:p16:11-p1-browser-transport-compatibility','verify:p16:12-binance-spot-browser-stream-connector',
             'verify:p16:13-binance-spot-public-stream-lifecycle-connector',
-            'verify:p16:14-binance-spot-server-shutdown-reconnect-cause'
+            'verify:p16:14-binance-spot-server-shutdown-reconnect-cause',
+            'verify:p16:15-binance-spot-server-shutdown-reconnect-execution'
           ];
           for(const r of required) if(!s.includes(r)){console.error('Missing '+r);process.exit(1)}
           for(const x of s){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
           NODE
-      - name: P16.14 serverShutdown reconnect-cause verifier/runtime
+      - name: P16.15 serverShutdown reconnect-execution verifier/runtime
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          npm run verify:p16:15-binance-spot-server-shutdown-reconnect-execution
+          npx vitest run tests/binance-spot-server-shutdown-reconnect-execution.test.ts
+      - name: P16.14 serverShutdown reconnect-cause regression
         working-directory: .gate-candidate/kairos_p76
         run: |
           npm run verify:p16:14-binance-spot-server-shutdown-reconnect-cause
@@ -152,5 +158,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P16_14_BINANCE_SPOT_SERVER_SHUTDOWN_RECONNECT_CAUSE_REPORT_2026-09-03.md
+          path: .gate-candidate/kairos_p76/KAIROS_P16_15_BINANCE_SPOT_SERVER_SHUTDOWN_RECONNECT_EXECUTION_REPORT_2026-09-03.md
           if-no-files-found: error
