@@ -1,11 +1,11 @@
-# KAIROS P15.13 GATE — BASE P15.12 — CANDIDATE P15.13
+# KAIROS P15.13R1 GATE — BASE P15.12 — CANDIDATE P15.13R1
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P15_13_MARKET_DATA_RECONNECT_EXECUTION_SEMANTICS_CANDIDATE_2026-09-03.zip'
+      - 'KAIROS_P15_13R1_MARKET_DATA_RECONNECT_EXECUTION_TEST_SIGNATURE_REPAIR_CANDIDATE_2026-09-03.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -14,7 +14,7 @@ permissions:
 
 env:
   BASE_ZIP: KAIROS_P15_12_MARKET_DATA_RECONNECT_ATTEMPT_SEMANTICS_CANDIDATE_2026-09-03.zip
-  CANDIDATE_ZIP: KAIROS_P15_13_MARKET_DATA_RECONNECT_EXECUTION_SEMANTICS_CANDIDATE_2026-09-03.zip
+  CANDIDATE_ZIP: KAIROS_P15_13R1_MARKET_DATA_RECONNECT_EXECUTION_TEST_SIGNATURE_REPAIR_CANDIDATE_2026-09-03.zip
 
 jobs:
   verify-current-candidate:
@@ -34,7 +34,7 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm controlled P15.13 scope
+      - name: Confirm controlled P15.13R1 scope
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -64,7 +64,7 @@ jobs:
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression P1 through P15.13
+      - name: Full controlled roadmap regression P1 through P15.13R1
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
@@ -72,7 +72,7 @@ jobs:
           for(const r of ['verify:p1','verify:p5:database-kernel','verify:p9:trade-persistence','verify:p10:manual-trade-journal-route','verify:p11:calculation-brain-closure','verify:p12:journal-history-closure','verify:p12:journal-history-heavy-performance','verify:p13:20-visual-pnl-system-closure','verify:p14:9-trade-visualizer-system-closure','verify:p15:1-market-data-adapter-interface','verify:p15:2-market-data-observation-semantics','verify:p15:3-market-data-subscription-lifecycle','verify:p15:4-market-data-connection-state','verify:p15:5-market-data-reconnect-policy','verify:p15:6-market-data-reconnect-scheduler','verify:p15:7-market-data-reconnect-jitter','verify:p15:8-market-data-reconnect-plan','verify:p15:9-market-data-reconnect-coordinator','verify:p15:10-market-data-reconnect-disposition','verify:p15:11-market-data-reconnect-intent','verify:p15:12-market-data-reconnect-attempt','verify:p15:13-market-data-reconnect-execution']) if(!s.includes(r)){console.error('Missing '+r);process.exit(1)}
           for(const x of s){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
           NODE
-      - name: P15.13 reconnect execution verifier/runtime
+      - name: P15.13R1 reconnect execution verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
           npm run verify:p15:13-market-data-reconnect-execution
