@@ -1,11 +1,11 @@
-# KAIROS P16.18 GATE — AUTHORITATIVE BASE P16.17R2 — CANDIDATE P16.18
+# KAIROS P17.1 GATE — AUTHORITATIVE BASE P16.18 — CANDIDATE P17.1
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P16_18_CRYPTO_LIVE_FEED_SYSTEM_CLOSURE_CANDIDATE_2026-09-03.zip'
+      - 'KAIROS_P17_1_CHART_RENDER_CONTRACT_FOUNDATION_CANDIDATE_2026-09-03.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P16_17R2_BINANCE_SPOT_BROWSER_WEBSOCKET_TEST_DOUBLE_REPAIR_CANDIDATE_2026-09-03.zip
-  CANDIDATE_ZIP: KAIROS_P16_18_CRYPTO_LIVE_FEED_SYSTEM_CLOSURE_CANDIDATE_2026-09-03.zip
+  BASE_ZIP: KAIROS_P16_18_CRYPTO_LIVE_FEED_SYSTEM_CLOSURE_CANDIDATE_2026-09-03.zip
+  CANDIDATE_ZIP: KAIROS_P17_1_CHART_RENDER_CONTRACT_FOUNDATION_CANDIDATE_2026-09-03.zip
 
 jobs:
   verify-current-candidate:
@@ -35,16 +35,19 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm controlled P16.18 scope from authoritative P16.17R2
+      - name: Confirm controlled P17.1 scope from authoritative P16.18
         run: |
           python - <<'PY'
           from pathlib import Path
           import hashlib,sys
           b=Path('.gate-base/kairos_p76'); c=Path('.gate-candidate/kairos_p76')
           allowed={
-            'KAIROS_P16_18_CRYPTO_LIVE_FEED_SYSTEM_CLOSURE_REPORT_2026-09-03.md',
+            'KAIROS_P17_1_CHART_RENDER_CONTRACT_FOUNDATION_REPORT_2026-09-03.md',
             'package.json',
-            'scripts/verify-p16-18-crypto-live-feed-system-closure.mjs'
+            'scripts/verify-p17-1-chart-render-contract-foundation.mjs',
+            'src/features/chart/chartRenderContract.ts',
+            'src/features/chart/index.ts',
+            'tests/chart-render-contract.test.ts'
           }
           def h(p): return hashlib.sha256(p.read_bytes()).hexdigest()
           x={str(p.relative_to(b)):h(p) for p in b.rglob('*') if p.is_file()}
@@ -63,47 +66,32 @@ jobs:
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression P1 through P16.18
+      - name: Full controlled roadmap regression P1 through P17.1
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
           const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
           const p=JSON.parse(readFileSync('package.json'));
           const s=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:p'));
-          const required=['verify:p1','verify:p5:database-kernel','verify:p9:trade-persistence','verify:p10:manual-trade-journal-route','verify:p11:calculation-brain-closure','verify:p12:journal-history-closure','verify:p13:20-visual-pnl-system-closure','verify:p14:9-trade-visualizer-system-closure','verify:p15:14-market-data-adapter-system-closure','verify:p16:17-binance-spot-browser-public-trade-reconnect-subscription','verify:p16:18-crypto-live-feed-system-closure'];
+          const required=['verify:p1','verify:p5:database-kernel','verify:p9:trade-persistence','verify:p10:manual-trade-journal-route','verify:p11:calculation-brain-closure','verify:p12:journal-history-closure','verify:p13:20-visual-pnl-system-closure','verify:p14:9-trade-visualizer-system-closure','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:1-chart-render-contract-foundation'];
           for(const r of required) if(!s.includes(r)){console.error('Missing '+r);process.exit(1)}
           for(const x of s){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
           NODE
-      - name: P16.18 system closure verifier
+      - name: P17.1 chart render contract verifier/runtime
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          npm run verify:p17:1-chart-render-contract-foundation
+          npx vitest run tests/chart-render-contract.test.ts
+      - name: P16.18 system closure regression
         working-directory: .gate-candidate/kairos_p76
         run: npm run verify:p16:18-crypto-live-feed-system-closure
-      - name: P16.17R2 reconnect subscription regression
+      - name: P16 reconnect/truth regressions
         working-directory: .gate-candidate/kairos_p76
         run: |
           npm run verify:p16:17-binance-spot-browser-public-trade-reconnect-subscription
           npx vitest run tests/binance-spot-browser-public-trade-reconnect-subscription.test.ts
-      - name: P16 browser transport and lifecycle regressions
-        working-directory: .gate-candidate/kairos_p76
-        run: |
-          npm run verify:p16:16-binance-spot-browser-public-trade-subscription
-          npm run verify:p16:15-binance-spot-server-shutdown-reconnect-execution
-          npm run verify:p16:14-binance-spot-server-shutdown-reconnect-cause
-          npm run verify:p16:13-binance-spot-public-stream-lifecycle-connector
-          npm run verify:p16:12-binance-spot-browser-stream-connector
-          npm run verify:p16:11-p1-browser-transport-compatibility
-      - name: P16 truth and feed regressions
-        working-directory: .gate-candidate/kairos_p76
-        run: |
           npm run verify:p16:10-execution-market-reference-truth
-          npm run verify:p16:9-binance-spot-public-trade-subscription
-          npm run verify:p16:8-binance-spot-public-stream-trade-delivery
-          npm run verify:p16:7-binance-spot-public-stream-trade-message
-          npm run verify:p16:6-binance-spot-public-stream-event
-          npm run verify:p16:5-binance-spot-public-stream-message-decode
-          npm run verify:p16:4-binance-spot-public-stream-connection
-          npm run verify:p16:3-binance-spot-public-stream-endpoint
-          npm run verify:p16:2-binance-spot-trade-observation
-          npm run verify:p16:1-binance-spot-trade-stream
+          npx vitest run tests/execution-market-reference-truth.test.ts
       - name: P15 and historical closure regressions
         working-directory: .gate-candidate/kairos_p76
         run: |
@@ -124,5 +112,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P16_18_CRYPTO_LIVE_FEED_SYSTEM_CLOSURE_REPORT_2026-09-03.md
+          path: .gate-candidate/kairos_p76/KAIROS_P17_1_CHART_RENDER_CONTRACT_FOUNDATION_REPORT_2026-09-03.md
           if-no-files-found: error
