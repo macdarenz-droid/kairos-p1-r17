@@ -1,11 +1,11 @@
-# KAIROS P17.14R1 GATE — AUTHORITATIVE BASE P17.13R2 — CANDIDATE P17.14R1
+# KAIROS P17.14R2 GATE — AUTHORITATIVE BASE P17.13R2 — CANDIDATE P17.14R2
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P17_14R1_SERIES_LOGICAL_RANGE_COVERAGE_PACKAGING_REPAIR_CANDIDATE_2026-09-03.zip'
+      - 'KAIROS_P17_14R2_SERIES_LOGICAL_RANGE_SCOPE_AND_ARTIFACT_REPAIR_CANDIDATE_2026-09-03.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -14,7 +14,7 @@ permissions:
 
 env:
   BASE_ZIP: KAIROS_P17_13R2_CHART_VISIBLE_RANGE_TYPED_MOCK_REPAIR_CANDIDATE_2026-09-03.zip
-  CANDIDATE_ZIP: KAIROS_P17_14R1_SERIES_LOGICAL_RANGE_COVERAGE_PACKAGING_REPAIR_CANDIDATE_2026-09-03.zip
+  CANDIDATE_ZIP: KAIROS_P17_14R2_SERIES_LOGICAL_RANGE_SCOPE_AND_ARTIFACT_REPAIR_CANDIDATE_2026-09-03.zip
 
 jobs:
   verify-current-candidate:
@@ -35,7 +35,7 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm exact controlled P17.14R1 scope from authoritative P17.13R2
+      - name: Confirm exact controlled P17.14R2 scope from authoritative P17.13R2
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -50,13 +50,13 @@ jobs:
             'KAIROS_P17_14_SERIES_LOGICAL_RANGE_COVERAGE_BOUNDARY_REPORT_2026-09-03.md',
             'package.json',
             'scripts/verify-p17-14-series-logical-range-coverage.mjs',
+            'src/features/chart/chartSeriesLogicalRangeCoverage.ts',
             'src/features/chart/index.ts',
-            'src/features/chart/lightweightChartsV5ModuleAdapter.ts',
-            'src/features/chart/lightweightChartsV5SeriesCoverage.ts',
-            'tests/lightweight-charts-v5-series-coverage.test.ts',
+            'src/features/chart/lightweightChartsV5SeriesLogicalRangeCoverage.ts',
+            'tests/lightweight-charts-v5-series-logical-range-coverage.test.ts',
           }
           if changed != expected:
-            print('P17.14R1 exact scope mismatch',file=sys.stderr)
+            print('P17.14R2 exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             sys.exit(1)
@@ -75,15 +75,15 @@ jobs:
       - name: Production build
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
-      - name: Dedicated P17.14R1 series logical range coverage verifier/runtime
+      - name: Dedicated P17.14R2 series logical range coverage verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
           npm run verify:p17:14-series-logical-range-coverage
-          npx vitest run tests/lightweight-charts-v5-series-coverage.test.ts tests/lightweight-charts-v5-visible-range.test.ts tests/lightweight-charts-v5-module-adapter.test.ts
+          npx vitest run tests/lightweight-charts-v5-series-logical-range-coverage.test.ts tests/lightweight-charts-v5-visible-range.test.ts tests/lightweight-charts-v5-module-adapter.test.ts
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression through P17.14R1
+      - name: Full controlled roadmap regression through P17.14R2
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
