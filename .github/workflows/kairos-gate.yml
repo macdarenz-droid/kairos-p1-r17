@@ -1,11 +1,11 @@
-# KAIROS P17.13R1 GATE — AUTHORITATIVE BASE P17.12 — REPAIR CANDIDATE P17.13R1
+# KAIROS P17.13R2 GATE — AUTHORITATIVE BASE P17.12 — REPAIR CANDIDATE P17.13R2
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P17_13R1_CHART_VISIBLE_RANGE_TYPESCRIPT_COMPATIBILITY_REPAIR_CANDIDATE_2026-09-03.zip'
+      - 'KAIROS_P17_13R2_CHART_VISIBLE_RANGE_TYPED_MOCK_REPAIR_CANDIDATE_2026-09-03.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -14,7 +14,7 @@ permissions:
 
 env:
   BASE_ZIP: KAIROS_P17_12_INCREMENTAL_CHART_ENGINE_DRIVER_COMPOSITION_CANDIDATE_2026-09-03.zip
-  CANDIDATE_ZIP: KAIROS_P17_13R1_CHART_VISIBLE_RANGE_TYPESCRIPT_COMPATIBILITY_REPAIR_CANDIDATE_2026-09-03.zip
+  CANDIDATE_ZIP: KAIROS_P17_13R2_CHART_VISIBLE_RANGE_TYPED_MOCK_REPAIR_CANDIDATE_2026-09-03.zip
 
 jobs:
   verify-current-candidate:
@@ -35,7 +35,7 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm exact controlled P17.13R1 scope from authoritative P17.12
+      - name: Confirm exact controlled P17.13R2 scope from authoritative P17.12
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -47,7 +47,7 @@ jobs:
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           print('\n'.join(sorted(changed)))
           expected={
-            'KAIROS_P17_13R1_CHART_VISIBLE_RANGE_TYPESCRIPT_COMPATIBILITY_REPAIR_REPORT_2026-09-03.md',
+            'KAIROS_P17_13R2_CHART_VISIBLE_RANGE_TYPED_MOCK_REPAIR_REPORT_2026-09-03.md',
             'package.json',
             'scripts/verify-p17-13-chart-visible-range-boundary.mjs',
             'src/features/chart/chartVisibleRange.ts',
@@ -55,11 +55,12 @@ jobs:
             'src/features/chart/lightweightChartsV5ModuleAdapter.ts',
             'src/features/chart/lightweightChartsV5VisibleRange.ts',
             'tests/chart-engine-driver-incremental.test.ts',
+            'tests/lightweight-charts-v5-module-adapter.test.ts',
             'tests/lightweight-charts-v5-responsive-sizing.test.ts',
             'tests/lightweight-charts-v5-visible-range.test.ts',
           }
           if changed != expected:
-            print('P17.13R1 exact scope mismatch',file=sys.stderr)
+            print('P17.13R2 exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             sys.exit(1)
@@ -78,7 +79,7 @@ jobs:
       - name: Production build
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
-      - name: Dedicated P17.13R1 visible range verifier/runtime
+      - name: Dedicated P17.13R2 visible range verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
           npm run verify:p17:13-chart-visible-range-boundary
@@ -86,7 +87,7 @@ jobs:
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression through P17.13R1
+      - name: Full controlled roadmap regression through P17.13R2
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
@@ -147,5 +148,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P17_13R1_CHART_VISIBLE_RANGE_TYPESCRIPT_COMPATIBILITY_REPAIR_REPORT_2026-09-03.md
+          path: .gate-candidate/kairos_p76/KAIROS_P17_13R2_CHART_VISIBLE_RANGE_TYPED_MOCK_REPAIR_REPORT_2026-09-03.md
           if-no-files-found: error
