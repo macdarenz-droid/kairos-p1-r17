@@ -1,11 +1,11 @@
-# KAIROS P18.1R1 GATE — AUTHORITATIVE BASE P17.16 — CANDIDATE P18.1R1
+# KAIROS P18.2 GATE — AUTHORITATIVE BASE P18.1R1 — CANDIDATE P18.2
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P18_1R1_CHART_DRAWING_DECIMALSTRING_TEST_REPAIR_CANDIDATE_2026-09-03.zip'
+      - 'KAIROS_P18_2_CHART_DRAWING_PROJECTION_BOUNDARY_CANDIDATE_2026-09-03.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P17_16_CHART_ENGINE_SYSTEM_CLOSURE_CANDIDATE_2026-09-03.zip
-  CANDIDATE_ZIP: KAIROS_P18_1R1_CHART_DRAWING_DECIMALSTRING_TEST_REPAIR_CANDIDATE_2026-09-03.zip
+  BASE_ZIP: KAIROS_P18_1R1_CHART_DRAWING_DECIMALSTRING_TEST_REPAIR_CANDIDATE_2026-09-03.zip
+  CANDIDATE_ZIP: KAIROS_P18_2_CHART_DRAWING_PROJECTION_BOUNDARY_CANDIDATE_2026-09-03.zip
 
 jobs:
   verify-current-candidate:
@@ -35,7 +35,7 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm exact controlled P18.1R1 scope from authoritative P17.16
+      - name: Confirm exact controlled P18.2 scope from authoritative P18.1R1
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -47,15 +47,15 @@ jobs:
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           print('\n'.join(sorted(changed)))
           expected={
-            'KAIROS_P18_1_CHART_DRAWING_CONTRACT_FOUNDATION_REPORT_2026-09-03.md',
+            'KAIROS_P18_2_CHART_DRAWING_PROJECTION_BOUNDARY_REPORT_2026-09-03.md',
             'package.json',
-            'scripts/verify-p18-1-chart-drawing-contract-foundation.mjs',
-            'src/features/chart/chartDrawingContract.ts',
+            'scripts/verify-p18-2-chart-drawing-projection.mjs',
+            'src/features/chart/chartDrawingProjection.ts',
             'src/features/chart/index.ts',
-            'tests/chart-drawing-contract.test.ts',
+            'tests/chart-drawing-projection.test.ts',
           }
           if changed != expected:
-            print('P18.1R1 exact scope mismatch',file=sys.stderr)
+            print('P18.2 exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             sys.exit(1)
@@ -74,26 +74,29 @@ jobs:
       - name: Production build
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
-      - name: Dedicated P18.1R1 chart drawing contract verifier/runtime
+      - name: Dedicated P18.2 chart drawing projection verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p18:2-chart-drawing-projection
           npm run verify:p18:1-chart-drawing-contract-foundation
-          npx vitest run tests/chart-drawing-contract.test.ts tests/chart-render-contract.test.ts tests/chart-series-projection.test.ts
+          npx vitest run tests/chart-drawing-projection.test.ts tests/chart-drawing-contract.test.ts tests/chart-series-projection.test.ts tests/chart-render-contract.test.ts
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression through P18.1R1
+      - name: Full controlled roadmap regression through P18.2
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
           const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
           const p=JSON.parse(readFileSync('package.json'));const s=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:p'));
-          for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:16-chart-engine-system-closure','verify:p18:1-chart-drawing-contract-foundation']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
+          for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:16-chart-engine-system-closure','verify:p18:1-chart-drawing-contract-foundation','verify:p18:2-chart-drawing-projection']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
           for(const x of s){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
           NODE
-      - name: P17 closure and chart runtime regressions
+      - name: P18.1 and P17 chart regressions
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p18:1-chart-drawing-contract-foundation
+          npx vitest run tests/chart-drawing-contract.test.ts tests/chart-series-projection.test.ts tests/chart-render-contract.test.ts
           npm run verify:p17:16-chart-engine-system-closure
           npm run verify:p17:15-chart-viewport-history-demand
           npx vitest run tests/chart-viewport-history-demand.test.ts tests/lightweight-charts-v5-series-logical-range-coverage.test.ts tests/lightweight-charts-v5-visible-range.test.ts tests/lightweight-charts-v5-production-renderer.test.ts tests/chart-engine-driver-incremental.test.ts
@@ -122,5 +125,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P18_1_CHART_DRAWING_CONTRACT_FOUNDATION_REPORT_2026-09-03.md
+          path: .gate-candidate/kairos_p76/KAIROS_P18_2_CHART_DRAWING_PROJECTION_BOUNDARY_REPORT_2026-09-03.md
           if-no-files-found: error
