@@ -1,11 +1,11 @@
-# KAIROS P18.22 GATE — AUTHORITATIVE BASE P18.21 — CANDIDATE P18.22
+# KAIROS P18.23 GATE — AUTHORITATIVE BASE P18.22 — CANDIDATE P18.23
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P18_22_CHART_DRAWING_INTERACTION_EVENT_CONTRACT_CANDIDATE_2026-09-04.zip'
+      - 'KAIROS_P18_23_CHART_DRAWING_INTERACTION_REDUCER_CANDIDATE_2026-09-04.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P18_21_CHART_DRAWING_INTERACTION_STATE_CONTRACT_CANDIDATE_2026-09-04.zip
-  CANDIDATE_ZIP: KAIROS_P18_22_CHART_DRAWING_INTERACTION_EVENT_CONTRACT_CANDIDATE_2026-09-04.zip
+  BASE_ZIP: KAIROS_P18_22_CHART_DRAWING_INTERACTION_EVENT_CONTRACT_CANDIDATE_2026-09-04.zip
+  CANDIDATE_ZIP: KAIROS_P18_23_CHART_DRAWING_INTERACTION_REDUCER_CANDIDATE_2026-09-04.zip
 
 jobs:
   verify-current-candidate:
@@ -35,7 +35,7 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm exact controlled P18.22 scope from authoritative P18.21
+      - name: Confirm exact controlled P18.23 scope from authoritative P18.22
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -47,15 +47,15 @@ jobs:
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           print('\n'.join(sorted(changed)))
           expected={
-            'KAIROS_P18_22_CHART_DRAWING_INTERACTION_EVENT_CONTRACT_REPORT_2026-09-04.md',
+            'KAIROS_P18_23_CHART_DRAWING_INTERACTION_REDUCER_REPORT_2026-09-04.md',
             'package.json',
-            'scripts/verify-p18-22-chart-drawing-interaction-event-contract.mjs',
-            'src/features/chart/chartDrawingInteractionEvent.ts',
+            'scripts/verify-p18-23-chart-drawing-interaction-reducer.mjs',
+            'src/features/chart/chartDrawingInteractionReducer.ts',
             'src/features/chart/index.ts',
-            'tests/chart-drawing-interaction-event.test.ts',
+            'tests/chart-drawing-interaction-reducer.test.ts',
           }
           if changed != expected:
-            print('P18.22 exact scope mismatch',file=sys.stderr)
+            print('P18.23 exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             sys.exit(1)
@@ -74,9 +74,10 @@ jobs:
       - name: Production build
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
-      - name: Dedicated P18.22 drawing interaction event contract verifier/runtime
+      - name: Dedicated P18.23 drawing interaction reducer verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p18:23-chart-drawing-interaction-reducer
           npm run verify:p18:22-chart-drawing-interaction-event-contract
           npm run verify:p18:21-chart-drawing-interaction-state-contract
           npm run verify:p18:20-chart-drawing-hover-presentation-integration
@@ -89,22 +90,23 @@ jobs:
           npm run verify:p18:13-lightweight-charts-v5-trend-line-primitive-hit-test-binding
           npm run verify:p18:12-lightweight-charts-v5-trend-line-hit-test
           npm run verify:p18:11-chart-drawing-presentation-coordination
-          npx vitest run tests/chart-drawing-interaction-event.test.ts tests/chart-drawing-interaction-contract.test.ts tests/chart-drawing-hover-presentation-integration.test.ts tests/chart-drawing-presentation-port.test.ts tests/lightweight-charts-v5-drawing-hover-port-composition.test.ts tests/chart-drawing-hover-port.test.ts tests/lightweight-charts-v5-drawing-hover-binding-composition.test.ts tests/lightweight-charts-v5-drawing-hover-subscription.test.ts tests/lightweight-charts-v5-drawing-hover-projection.test.ts
+          npx vitest run tests/chart-drawing-interaction-reducer.test.ts tests/chart-drawing-interaction-event.test.ts tests/chart-drawing-interaction-contract.test.ts tests/chart-drawing-hover-presentation-integration.test.ts tests/chart-drawing-presentation-port.test.ts tests/lightweight-charts-v5-drawing-hover-port-composition.test.ts tests/chart-drawing-hover-port.test.ts tests/lightweight-charts-v5-drawing-hover-binding-composition.test.ts tests/lightweight-charts-v5-drawing-hover-subscription.test.ts tests/lightweight-charts-v5-drawing-hover-projection.test.ts
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression through P18.22
+      - name: Full controlled roadmap regression through P18.23
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
           const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
           const p=JSON.parse(readFileSync('package.json'));const s=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:p'));
-          for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:16-chart-engine-system-closure','verify:p18:15-lightweight-charts-v5-drawing-hover-subscription','verify:p18:16-lightweight-charts-v5-provider-chart-resolution-binding','verify:p18:17-lightweight-charts-v5-drawing-hover-binding-composition','verify:p18:18-chart-drawing-hover-port','verify:p18:19-lightweight-charts-v5-drawing-hover-port-composition','verify:p18:20-chart-drawing-hover-presentation-integration','verify:p18:21-chart-drawing-interaction-state-contract','verify:p18:22-chart-drawing-interaction-event-contract']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
+          for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:16-chart-engine-system-closure','verify:p18:15-lightweight-charts-v5-drawing-hover-subscription','verify:p18:16-lightweight-charts-v5-provider-chart-resolution-binding','verify:p18:17-lightweight-charts-v5-drawing-hover-binding-composition','verify:p18:18-chart-drawing-hover-port','verify:p18:19-lightweight-charts-v5-drawing-hover-port-composition','verify:p18:20-chart-drawing-hover-presentation-integration','verify:p18:21-chart-drawing-interaction-state-contract','verify:p18:22-chart-drawing-interaction-event-contract','verify:p18:23-chart-drawing-interaction-reducer']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
           for(const x of s){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
           NODE
-      - name: P18.22 through P17 chart regressions
+      - name: P18.23 through P17 chart regressions
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p18:23-chart-drawing-interaction-reducer
           npm run verify:p18:22-chart-drawing-interaction-event-contract
           npm run verify:p18:21-chart-drawing-interaction-state-contract
           npm run verify:p18:20-chart-drawing-hover-presentation-integration
@@ -154,5 +156,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P18_22_CHART_DRAWING_INTERACTION_EVENT_CONTRACT_REPORT_2026-09-04.md
+          path: .gate-candidate/kairos_p76/KAIROS_P18_23_CHART_DRAWING_INTERACTION_REDUCER_REPORT_2026-09-04.md
           if-no-files-found: error
