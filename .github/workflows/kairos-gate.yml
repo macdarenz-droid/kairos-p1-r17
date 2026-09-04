@@ -1,11 +1,11 @@
-# KAIROS P18.18R1 GATE — AUTHORITATIVE BASE P18.17 — CANDIDATE P18.18R1
+# KAIROS P18.18R2 GATE — AUTHORITATIVE BASE P18.17 — CANDIDATE P18.18R2
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P18_18R1_CHART_DRAWING_HOVER_TEST_NARROWING_REPAIR_CANDIDATE_2026-09-04.zip'
+      - 'KAIROS_P18_18R2_CHART_DRAWING_HOVER_HISTORICAL_PROJECTION_COMPATIBILITY_REPAIR_CANDIDATE_2026-09-04.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -14,7 +14,7 @@ permissions:
 
 env:
   BASE_ZIP: KAIROS_P18_17_LIGHTWEIGHT_CHARTS_V5_DRAWING_HOVER_BINDING_COMPOSITION_CANDIDATE_2026-09-04.zip
-  CANDIDATE_ZIP: KAIROS_P18_18R1_CHART_DRAWING_HOVER_TEST_NARROWING_REPAIR_CANDIDATE_2026-09-04.zip
+  CANDIDATE_ZIP: KAIROS_P18_18R2_CHART_DRAWING_HOVER_HISTORICAL_PROJECTION_COMPATIBILITY_REPAIR_CANDIDATE_2026-09-04.zip
 
 jobs:
   verify-current-candidate:
@@ -35,7 +35,7 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm exact controlled P18.18R1 scope from authoritative P18.17
+      - name: Confirm exact controlled P18.18R2 scope from authoritative P18.17
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -47,7 +47,7 @@ jobs:
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           print('\n'.join(sorted(changed)))
           expected={
-            'KAIROS_P18_18R1_CHART_DRAWING_HOVER_TEST_NARROWING_REPAIR_REPORT_2026-09-04.md',
+            'KAIROS_P18_18R2_CHART_DRAWING_HOVER_HISTORICAL_PROJECTION_COMPATIBILITY_REPAIR_REPORT_2026-09-04.md',
             'package.json',
             'scripts/verify-p18-18-chart-drawing-hover-port.mjs',
             'src/features/chart/chartDrawingHoverPort.ts',
@@ -56,7 +56,7 @@ jobs:
             'tests/chart-drawing-hover-port.test.ts',
           }
           if changed != expected:
-            print('P18.18R1 exact scope mismatch',file=sys.stderr)
+            print('P18.18R2 exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             sys.exit(1)
@@ -90,7 +90,7 @@ jobs:
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression through P18.18R1
+      - name: Full controlled roadmap regression through P18.18R2
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
@@ -99,7 +99,7 @@ jobs:
           for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:16-chart-engine-system-closure','verify:p18:15-lightweight-charts-v5-drawing-hover-subscription','verify:p18:16-lightweight-charts-v5-provider-chart-resolution-binding','verify:p18:17-lightweight-charts-v5-drawing-hover-binding-composition','verify:p18:18-chart-drawing-hover-port']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
           for(const x of s){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
           NODE
-      - name: P18.18R1 through P17 chart regressions
+      - name: P18.18R2 through P17 chart regressions
         working-directory: .gate-candidate/kairos_p76
         run: |
           npm run verify:p18:18-chart-drawing-hover-port
@@ -147,5 +147,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P18_18R1_CHART_DRAWING_HOVER_TEST_NARROWING_REPAIR_REPORT_2026-09-04.md
+          path: .gate-candidate/kairos_p76/KAIROS_P18_18R2_CHART_DRAWING_HOVER_HISTORICAL_PROJECTION_COMPATIBILITY_REPAIR_REPORT_2026-09-04.md
           if-no-files-found: error
