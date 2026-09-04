@@ -1,0 +1,1215 @@
+KAIROS TRADING JOURNAL — MASTER CHAT TRANSFER / SELF-HANDOFF
+
+Date: 2026-09-03 Purpose: Transfer the current Kairos engineering state,
+command semantics, evidence discipline, research discipline, canonical
+gate workflow, architectural invariants, P17 lineage, current failure,
+communication style, and the user’s newest corrections into a fresh
+ChatGPT conversation without carrying forward the earlier bad habit of
+guessing or acting from memory.
+
+======================================================================
+0. ABSOLUTE RECEIVING-CHAT RULE — READ BEFORE ANY KAIROS OUTPUT
+======================================================================
+
+THIS IS A CONTROLLING ENGINEERING HANDOFF.
+
+For EVERY Kairos-related user message, the receiving ChatGPT must
+internally re-read the current controlling handoff/rules before doing
+any Kairos action or giving any Kairos project output.
+
+This includes short commands and ordinary questions: Up, Check, Check
+and continue, Continue, Fix, Clean, Update, Code, status questions,
+next-patch questions, architecture questions, gate edits, candidate
+creation, research, cleanup, GitHub checks, and repair work.
+
+The user does NOT want the assistant to announce this handoff read in
+every response. Do it internally. Show only important project results
+unless an exception or rule violation needs to be explained.
+
+ABSOLUTE EVIDENCE RULE: - NO GUESSING in this project. - Do not decide
+from chat memory when current handoff/repository/gate/source evidence
+can be read. - Do not guess a patch scope. - Do not guess an owner. - Do
+not guess a repair. - Do not guess the next patch. - Do not guess a gate
+requirement. - Do not infer success from local/static checks. - Do not
+invent a fixed number of remaining patches. - Do not use a failed
+candidate as authority.
+
+A decision must come from either: 1. current controlling handoff +
+current canonical repository/gate/source evidence; or 2. fresh
+authoritative research when the handoff/current source does not
+establish the answer.
+
+If neither supports the decision, STOP and collect evidence. Do not fill
+the gap with a plausible engineering guess.
+
+Required internal order before implementation/repair: HANDOFF -> CURRENT
+CANONICAL GITHUB TRUTH -> EXACT SOURCE/LOG EVIDENCE -> OWNER/DATA-FLOW
+TRACE -> CURRENT OFFICIAL RESEARCH WHEN RELEVANT -> SMALLEST CONTROLLED
+ACTION -> REGRESSION EVIDENCE.
+
+The user explicitly corrected the previous chat for violating this
+discipline. The lesson is permanent: following the process produced
+correct evidence; guessing produced avoidable defects. The receiving
+chat must not regress to the earlier manner.
+
+If the assistant violates the handoff again in the new chat, the user
+may require the entire bundle to be re-read from file one before
+anything else is touched.
+
+====================================================================== 1.
+PROJECT IDENTITY / CANONICAL CONTROL
+======================================================================
+
+Project: Kairos Trading Journal Repository:
+macdarenz-droid/kairos-p1-r17 Branch: main Canonical workflow:
+.github/workflows/kairos-gate.yml Workflow name: Kairos Controlled
+Roadmap Gate
+
+Kairos is a local-first/offline-first trading journal built through a
+strict controlled roadmap. Canonical GitHub Actions evidence decides
+promotion. A local PASS is evidence for a candidate only; it is never
+canonical authority.
+
+GOLDEN BASE RULE: The latest candidate that fully passed the canonical
+GitHub gate is authoritative. HOLD, queued, running, failed,
+locally-tested, or unverified candidates never replace it.
+
+======================================================================
+2. CURRENT STATE AT THIS HANDOFF — IMPORTANT
+======================================================================
+
+CURRENT AUTHORITATIVE PASS: P17.13R2 — Chart Visible Range Typed Mock
+Repair Canonical GitHub Run #189 Run ID: 33749565725 Gate/head commit
+SHA: d8ab48f9f78bbfc1fb69bf995ef435d4d65d0a0d Job ID: 100629752263
+Conclusion: SUCCESS
+
+Run #189 passed: - exact controlled P17.13R2 scope - deterministic npm
+install - exact lightweight-charts 5.2.1 verification - production
+TypeScript compilation - production build - dedicated P17.13R2
+visible-range verifier/runtime - full unit regression - full controlled
+roadmap regression through P17.13R2 - P17.12 through P17.1 runtime
+regressions - historical closures - candidate artifact upload -
+gate-evidence artifact upload
+
+Run #189 artifacts: KAIROS_GATE_EVIDENCE - artifact ID: 9891131815 -
+digest:
+sha256:a3a8bd73a0cba2bf2fb0f9531c5c0f12def987db076a91aa2da966d66cb2e40c
+
+KAIROS_CURRENT_CANDIDATE - artifact ID: 9891131407 - digest:
+sha256:fa12f17c08c322f9e1763ff6073c9832ee770dafae95244d277ac7d2f4ac56fe
+
+CURRENT FAILED / NON-AUTHORITATIVE CANDIDATE: P17.14 — Series Logical
+Range Coverage Boundary Filename:
+KAIROS_P17_14_SERIES_LOGICAL_RANGE_COVERAGE_BOUNDARY_CANDIDATE_2026-09-03.zip
+Original locally-created SHA-256:
+59c8a0161efbc7f3c67f4a8c53b23051697dbea0c8f88fcb6bbccd99a3241f43
+
+Canonical Run #190 Run ID: 33750947188 Gate commit SHA:
+0bb95c922d3ba822056d4b19ed7ac81f447f63ce Job ID: 100634110514
+Conclusion: FAILURE
+
+EXACT RUN #190 FAILURE EVIDENCE: The gate failed at step 5, “Extract
+authoritative base and candidate”. The workflow successfully unzipped
+both archives, then required: - .gate-base/kairos_p76/package.json -
+.gate-candidate/kairos_p76/package.json The candidate did not contain
+the required kairos_p76 root.
+
+The uploaded P17.14 ZIP was packaged with root directory:
+kairos_p17_14_work/ not: kairos_p76/
+
+Therefore .gate-candidate/kairos_p76/package.json did not exist and
+extraction validation exited 1.
+
+Gate evidence upload also failed because the workflow correctly looked
+for:
+.gate-candidate/kairos_p76/KAIROS_P17_14_SERIES_LOGICAL_RANGE_COVERAGE_BOUNDARY_REPORT_2026-09-03.md
+but the failed candidate used the wrong root directory.
+
+IMPORTANT CLASSIFICATION: P17.14 Run #190 is a CANDIDATE PACKAGING
+DEFECT, not evidence that the P17.14 production implementation itself is
+correct or incorrect. The canonical gate never reached exact scope, npm
+ci, TypeScript, build, runtime, unit, or regression verification.
+
+P17.14 is NOT authoritative. P17.13R2 remains authoritative. Do NOT
+advance to P17.15 while P17.14 is unresolved.
+
+Correct next repair must be evidence-driven from authoritative P17.13R2.
+The minimum known defect is archive structure. The repaired candidate
+must have exact kairos_p76/ root. Do not assume that fixing the ZIP root
+proves the production change; rerun the full canonical gate afterward.
+
+======================================================================
+3. THE USER’S NEWEST PRIORITY CORRECTIONS
+======================================================================
+
+These corrections override any earlier conversational habit that
+conflicts with them.
+
+A. ALWAYS READ THE HANDOFF BEFORE KAIROS WORK The assistant previously
+acted from remembered state and was corrected. The receiving chat must
+internally re-read the controlling handoff before every Kairos
+output/action.
+
+B. DO NOT SAY THE HANDOFF CHECK OUT LOUD EVERY TIME The user explicitly
+said they do not want every output to say that the main handoff was
+read. Perform it internally. Only surface it when necessary to explain a
+rule conflict, violation, recovery, or source-of-truth issue.
+
+C. ZERO-GUESS POLICY The user explicitly stated: “I DONT WANT ANY GUESS
+FROM THIS PROJECT. ALL NEEDS TO BE FOLLOWED IN HANDOFF OR RESEARCHED
+DEEPLY” Operational meaning: - handoff/current evidence first; - fresh
+authoritative research when needed; - no plausible filler; - no
+speculative repair; - no speculative next patch; - no invented scope.
+
+D. NEXT-PATCH COUNT QUESTIONS If asked “how many patches remain?”, do
+not invent a fixed count unless architecture/evidence actually fixes the
+count. Give the minimum proven requirement and clearly label possible
+incoming slices as possibilities rather than commitments.
+
+E. DETERMINE NEXT PATCH FROM MISSING RESPONSIBILITY, NOT NUMBER MOMENTUM
+A new patch is justified only when evidence shows an unresolved
+architectural responsibility, missing data/state flow, unproven
+production boundary, official API requirement, regression gap,
+lifecycle/performance requirement, or phase-closure dependency. If
+everything required for the phase is implemented and proven, do not
+invent another feature patch; create the required system-closure patch.
+
+======================================================================
+4. COMMAND PLAYBOOK — SHORT USER COMMANDS ARE PRECISE WORKFLOW TRIGGERS
+======================================================================
+
+The user intentionally uses terse commands. Do not ask them to restate
+the workflow.
+
+  ------------------------------
+  “Check” (including
+  Chk/Chrck/Chevk and obvious
+  typos)
+  ------------------------------
+  1. Internally re-read
+  controlling handoff/rules. 2.
+  Resolve current canonical
+  GitHub state fresh. 3. Inspect
+  exact run, run number/ID, head
+  SHA, job, relevant steps,
+  artifacts, and logs when
+  needed. 4. PASS: verify
+  canonical success and promote
+  candidate authoritative. 5.
+  FAIL: classify from evidence:
+  a. gate-definition defect ->
+  repair the gate automatically
+  when safely proven; b.
+  candidate defect -> create the
+  smallest controlled repair
+  from the last authoritative
+  PASS. 6. HOLD/queued/running
+  -> do not advance. 7. Never
+  stop at “I found the problem”
+  when the exact safe repair can
+  be performed under the Check
+  instruction. 8. Plain Check
+  after a PASS resolves/promotes
+  the current candidate; it does
+  not automatically create the
+  next roadmap feature unless
+  the user’s wording also
+  includes continue. 9.
+  Local/static checks are never
+  canonical PASS.
+
+  ------------------------------
+
+“Check and continue” / “Check, continue”
+
+THIS IS ONE ATOMIC INSTRUCTION. It never means “check, report, then wait
+for permission”.
+
+1.  Resolve canonical gate first.
+2.  PASS:
+    -   promote candidate authoritative;
+    -   immediately inspect current authoritative source/architecture;
+    -   research current official technology/API/library behavior where
+        relevant;
+    -   trace owner, pre-change flow, data/state flow, protected
+        boundaries, regressions;
+    -   determine exactly ONE next dependency-safe controlled slice;
+    -   actually implement it in the same turn;
+    -   test honestly;
+    -   package real candidate ZIP;
+    -   provide canonical filename + SHA-256 + direct download.
+3.  FAIL — gate defect:
+    -   prove exact gate defect from logs/evidence;
+    -   repair gate in same turn;
+    -   trigger/recheck as far as tooling permits;
+    -   HOLD only if canonical run remains unresolved.
+4.  FAIL — candidate defect:
+    -   repair current slice only, from last authoritative PASS;
+    -   do not advance;
+    -   package repaired candidate and report it.
+5.  HOLD/queued/running:
+    -   stop advancement. This is the normal reason no new patch is
+        created.
+6.  Never end after merely describing what the next patch “would” do
+    when a clean PASS requires continuation.
+
+  ------------------------------
+  “Continue”
+  ------------------------------
+  The user clarified that
+  Continue includes checking
+  GitHub and doing the next
+  process similarly.
+
+  1. Resolve current canonical
+  state fresh. 2. HOLD -> stop
+  advancement. 3. FAIL ->
+  evidence-based repair of
+  current candidate/gate; no
+  next phase/slice. 4. PASS ->
+  promote, research,
+  owner-trace, and actually
+  create exactly one next
+  dependency-safe controlled
+  patch in the same turn. 5.
+  Never jump phases. 6. Never
+  bundle unrelated
+  cleanup/refactors. 7. Never
+  choose a next patch from
+  guesswork or numbering alone.
+  ------------------------------
+
+“Up” / “uploaded”
+
+Meaning: the user uploaded the last ZIP the assistant provided.
+
+1.  Verify exact candidate ZIP exists in repo root. Manual upload may
+    take a short time; recheck before declaring missing.
+2.  Confirm last canonical PASS remains the base.
+3.  Fetch current .github/workflows/kairos-gate.yml.
+4.  Determine candidate-vs-base exact changed-file scope from actual
+    evidence, not assumption.
+5.  Update gate BASE_ZIP/CANDIDATE_ZIP and exact controlled scope.
+6.  Include deterministic install, production type/build checks, real
+    dependency/API verification where applicable, dedicated current
+    verifier/runtime, full relevant regression chain, historical
+    closures, candidate artifact, gate-evidence artifact.
+7.  Commit gate to main.
+8.  Immediately inspect triggered run.
+9.  Report PASS/FAIL/HOLD only from actual GitHub evidence.
+10. Do NOT create the next candidate during Up.
+11. Do not advance while the uploaded candidate gate is unresolved.
+12. Never delete active base/candidate during Up.
+
+  ------------------------------
+  “Fix”
+  ------------------------------
+  1. Resolve canonical gate
+  fresh. 2. Read exact failing
+  logs/evidence. 3. Prove root
+  cause before editing. 4.
+  Repair smallest exact defect
+  from last authoritative PASS.
+  5. Never repair by treating
+  the failed candidate as
+  authoritative. 6. Never guess
+  the repair.
+
+  ------------------------------
+
+“Clean”
+
+1.  Fetch repo root fresh.
+2.  Preserve source/config/workflows.
+3.  Preserve current authoritative base.
+4.  Preserve active candidate needed by current gate.
+5.  Preserve current phase closure checkpoints and enough immediate
+    rollback history.
+6.  Remove only verified superseded/failed ZIPs not required by active
+    gate.
+7.  Never mix cleanup into unresolved feature work if that could affect
+    evidence.
+8.  User wants periodic root cleanup so the repository does not become
+    cluttered.
+
+  ------------------------------
+  “Update”
+  ------------------------------
+  Resolve authority first when
+  status/continuation is
+  involved. Modify only the
+  current controlled slice. Do
+  not broaden scope.
+
+  ------------------------------
+
+“Code”
+
+Proceed with implementation of the current controlled slice under the
+full evidence/research/owner-trace workflow. It is not permission for
+broad refactoring.
+
+======================================================================
+5. EVIDENCE / RESEARCH / ROOT-CAUSE STANDARD
+======================================================================
+
+This is the behavior the user wants preserved from the good P17.9
+process.
+
+Before a new implementation slice: 1. Establish latest canonical PASS.
+2. Read the actual authoritative source involved. 3. Define objective.
+4. Research current official/primary technology/API/library behavior
+when relevant. 5. Identify authoritative owner(s). 6. Trace pre-change
+flow. 7. Define exact change. 8. Define explicit non-scope. 9. Trace
+resulting data/state flow. 10. Check persistence/security/theme/offline
+implications. 11. Determine regression scope from dependencies and
+changed ownership. 12. Consider performance/lifecycle implications. 13.
+Implement smallest coherent change. 14. Run only tests actually
+available; never claim unrun tests. 15. Package candidate. 16. HOLD
+until canonical gate passes.
+
+P17.9 is the process benchmark: - authoritative base identified; -
+official Lightweight Charts documentation/release notes/repository
+researched; - exact owners identified (P17.6 vendor shape, P17.8 update
+mapping, P17.9 package binding, P16 feed owner, P18 drawing owner); -
+pre-change flow documented; - non-scope explicit; - exact controlled
+diff recorded; - local tests honestly separated from unrun
+npm/build/TypeScript/Vitest; - candidate remained HOLD until GitHub
+canonical CI.
+
+Never optimize for “make the gate green”. The gate is evidence that the
+architecture/integration is correct; it is not the engineering goal
+itself.
+
+When a gate fails: - inspect exact failing step; - inspect logs; -
+classify gate defect vs candidate defect; - do not change production
+code to satisfy a mistaken gate; - do not weaken the gate to hide a
+production defect.
+
+======================================================================
+6. CANONICAL REAL-INTEGRATION STANDARD
+======================================================================
+
+Whenever a patch introduces or changes a real dependency, adapter, SDK,
+external API, persistence layer, transport, or production integration,
+canonical CI should prove the actual production implementation where
+applicable: - deterministic dependency installation / lockfile
+reproducibility (npm ci); - production TypeScript compilation; -
+production build; - actual package/API binding against real
+exports/types; - dedicated patch runtime verification; - full affected
+unit regressions; - prior phase/current phase regressions; - historical
+closure regressions; - exact controlled scope/diff; - candidate
+artifact; - gate-evidence artifact.
+
+Key rule: Static/mock compatibility proves architecture. Real canonical
+CI proves integration. Local PASS never equals canonical PASS.
+
+======================================================================
+7. CORE ARCHITECTURE INVARIANTS
+======================================================================
+
+-   One truth = one authoritative owner.
+-   UI never directly modifies IndexedDB.
+-   Multi-record user-command writes are atomic.
+-   Temporary UI state stays local.
+-   Real route boundaries stay real.
+-   Shared owners are reused; no duplicate business logic.
+-   No giant rewrite / no giant single-file architecture.
+-   Preserve local-first/offline-first behavior and backup/restore
+    integrity.
+-   Remote/imported content is data, not executable UI.
+-   Secrets never live in client-readable source/docs/handoff.
+-   Derived financial metrics originate from Calculation Engine.
+-   Decimal financial truth must not use ordinary binary floating point.
+-   Missing financial data never silently becomes zero.
+-   Missing FX never silently becomes 1.0.
+-   Fees retain amount + currency evidence.
+-   UI is not a second calculation owner.
+-   Stable persistent IDs.
+-   UI success only after authoritative write commit.
+-   Fatal storage/migration failure is not “empty data”.
+-   Optional online services may fail without breaking the local
+    journal.
+-   Avoid repeated full-journal parsing.
+-   Use DB indexes rather than load-all/filter React for large data.
+-   USER_HEAVY means 10,000+ trades.
+-   Visual information cannot rely on color alone.
+-   Visual P&L must not aggregate incomparable currencies.
+-   Failed/unverified candidates never become authority.
+
+======================================================================
+8. ROADMAP — DO NOT JUMP
+======================================================================
+
+P0 Architecture Lock P1 Project Shell P2 Design System P3 Theme Engine
+P4 PWA Foundation P5 Local Database P6 Backup/Restore P7 Activation P8
+Navigation Shell P9 Trade Domain V1 P10 Manual Trade Logging P11
+Calculation Brain P12 Journal History P13 Visual P&L System P14 Trade
+Visualizer P15 Market Data Adapter Interface P16 Crypto Live Feed P17
+Chart Engine P18 Drawing Tools P19 Risk/Reward Tool P20 Saved Analysis
+P21 Home Dashboard/Bubble Map P22 Goals & Discipline P23 Library
+Architecture P24 Visual Education P25 Tutorials/Strategy Lessons P26
+Practice Lab/Paper Trading P27 Replay/Backtesting P28 User Strategy
+Rules P29 Offline Coach P30 Pattern Intelligence P31 Forex Integration
+P32 Stocks Integration P33 Currency Engine P34 News/Economic Calendar
+P35 Optional Cloud Layer P36 Background Setup Alerts P37 Community Feed
+P38 Pro Entitlement P39 Monetization/Support/Optional Ads P40 Release
+Hardening
+
+Split phases into smaller controlled patches only when
+dependencies/testing/ownership require it. Do not add patches merely to
+create activity. P17 requires an explicit system-closure patch before
+entering P18.
+
+======================================================================
+9. P14/P15/P16/P17 TRUTH BOUNDARIES THAT MUST SURVIVE
+======================================================================
+
+P14 VISUAL TRUTH: Animation follows truth. Actual exit is authoritative
+execution. Planned/current/executed facts remain distinct. No invented
+price path/current price. Partial exits remain individual facts.
+Categorical visuals disclose not-to-scale until quantitative geometry
+exists.
+
+P15 MARKET-DATA RULES: - provider-neutral/replaceable; - external market
+observation never overwrites journal execution truth; - DecimalString
+upstream; - source timestamp nullable, receipt timestamp explicit; -
+journal works offline without market data; - freshness uses
+observedAt; - deterministic acquisition, no wall-clock ownership where
+avoidable; - close idempotent; - bounded reconnect decisions; - injected
+scheduler; - jitter uses external entropy; - no duplicate AbortSignal
+ownership.
+
+P16 RULES: - concrete provider behind P15; - public read-only first; -
+no secrets/account/order execution; - provider mapping is not journal
+execution truth; - Binance Spot first; - BTCUSDT is only a proving
+symbol and remains data/config-driven; - Spot and futures are distinct.
+
+EXECUTION VS MARKET REFERENCE: Journal execution truth and
+market-reference truth are separate owners. User/manual execution price
+remains authoritative for the user’s trade and drives
+P&L/R/fees/risk/statistics/trade markers. Binance market price is
+authoritative only as Binance market observation/history for venue/time.
+Differences are preserved, never silently reconciled. A candle close is
+not an expected fill. OHLC is an interval, not a fill. Fill inside
+high-low may be plausible; outside is discrepancy evidence only, never
+authority to rewrite the journal.
+
+======================================================================
+10. PREMIUM TRANSITION DECISION
+======================================================================
+
+User wants premium-feeling screen/dashboard transitions by final
+release. No new roadmap phase. - P8 owns navigation semantics +
+transition boundary. - P21 may consume shared transition semantics for
+dashboard-specific motion. - P40 owns app-wide premium motion polish,
+easing/duration consistency, swipe feel, jank removal, interrupted
+navigation behavior, reduced-motion accessibility, final cohesion.
+
+Motion is presentation-only: - authoritative route/render/data state
+changes first; - animation presents already-authoritative state; -
+animation never owns business/data/navigation truth; - no invented
+intermediate data states; - decorative transition state is ephemeral; -
+reduced motion preserves information/navigation semantics; - animation
+completion never gates journal commits, market observations, or route
+truth.
+
+======================================================================
+11. P17 CHART ENGINE LINEAGE
+======================================================================
+
+P17.1 initial — failed, never authoritative P17.1R1 — failed, never
+authoritative P17.1R2 — PASS #172 — ChartRenderModel contract P17.2 —
+PASS #173 — renderer lifecycle boundary P17.3 — PASS #174 —
+DecimalString/time projection boundary P17.4 — PASS #175 — projected
+chart renderer composition P17.5 — PASS #176 — provider-neutral chart
+engine driver seam P17.6 — PASS #177 — Lightweight Charts v5 injected
+module-shape adapter P17.7 — PASS #178 — provider-neutral incremental
+chart update contract P17.8 — PASS #179 — Lightweight Charts v5
+incremental update mapping P17.9 — PASS #180 — real
+lightweight-charts@5.2.1 package binding P17.10 — PASS #181 — production
+renderer composition P17.11 first gate #182 failed due gate defect;
+candidate not rejected on that basis P17.11 — PASS #183 — responsive
+chart sizing boundary P17.12 — PASS #184 — incremental chart engine
+driver composition P17.13 initial — failed TypeScript, never
+authoritative P17.13R1 — failed, never authoritative P17.13R2 — PASS
+#189 — CURRENT AUTHORITATIVE P17.14 — Run #190 FAILED at archive
+structure; NEVER authoritative
+
+Important P17.13R2 purpose: Repair typed mocks required after
+visible-range/timeScale contract additions while preserving the P17.13
+visible logical range boundary.
+
+P17.14 intended architectural purpose (still unproven canonically):
+Expose provider-neutral series logical-range coverage
+{barsBefore, barsAfter} | null, mapped from Lightweight Charts v5
+series.barsInLogicalRange(), so later history-demand decisions can be
+based on actual loaded-series coverage rather than guessing.
+
+P17.14 intentionally did NOT add: - history fetching; - preload
+thresholds; - Binance REST/API history; - candle aggregation; -
+persistence; - journal/execution truth changes; - calculations; -
+drawings/markers/P18; - navigation/theme/motion ownership.
+
+The architectural reason for P17.14 came from official Lightweight
+Charts v5.2 behavior: visible logical range observation alone does not
+tell Kairos how much loaded series data exists before/after the
+viewport; barsInLogicalRange() exposes that coverage. However, because
+Run #190 never reached production verification, the implementation must
+remain candidate-only until repaired and canonically gated.
+
+======================================================================
+12. CURRENT TOOLCHAIN
+======================================================================
+
+node engines >=22.12.0 canonical gate Node 22.16.0 npm 10.9.2 react
+19.2.8 react-dom 19.2.8 react-router 8.3.1 dexie 4.4.5 decimal.js 10.6.0
+vitest 4.1.11 typescript 7.0.2 vite 8.2.2 jsdom 30.0.1
+lightweight-charts 5.2.1 in current P17 production line
+
+Known engine/action warnings are not permission for opportunistic
+toolchain changes. Only change toolchain under a controlled
+evidence-backed patch.
+
+======================================================================
+13. OFFICIAL LIGHTWEIGHT CHARTS FACTS USED IN P17
+======================================================================
+
+Current documentation line used: Lightweight Charts v5.2; installed
+package 5.2.1. - npm package: lightweight-charts; TypeScript
+declarations included. - v5 series creation uses
+chart.addSeries(LineSeries) / chart.addSeries(CandlestickSeries). -
+series.setData() replaces all data. - series.update() is the intended
+incremental latest/new update path; repeatedly replacing full data can
+hurt performance. - IChartApi.remove() destroys chart resources. -
+autoSize uses ResizeObserver when available; explicit resize is ignored
+while autoSize is active. - time scale exposes visible/logical range
+APIs and subscriptions. - logical range may extend beyond loaded data
+and is useful for viewport-demand signaling. -
+series.barsInLogicalRange(range) returns series coverage information
+including barsBefore/barsAfter or null. - markers are a separate v5
+primitive (createSeriesMarkers). - plugin/drawing capability exists, but
+P18 owns drawings. P17 must not steal P18 ownership.
+
+Re-check current official docs when implementing later P17 slices; do
+not assume these facts remain current forever.
+
+======================================================================
+14. HOW TO DETERMINE WHETHER ANOTHER PATCH IS NEEDED
+======================================================================
+
+Do not decide from patch numbering. A new patch is justified only when
+at least one is proven: - phase responsibility remains unimplemented; -
+required data/state flow is not wired end-to-end; - ownership boundary
+is theoretical but not production-proven; - official API/library
+behavior requires another adapter/lifecycle seam; - tests reveal missing
+compatibility/lifecycle/performance/regression behavior; - phase cannot
+safely close without another dependency; - closure criteria remain
+unsatisfied.
+
+If all P17 responsibilities are implemented and proven, next step is P17
+SYSTEM CLOSURE, not an invented feature slice.
+
+Possible later P17 directions previously discussed, NOT commitments: -
+viewport/data-demand composition; - historical + live continuity; -
+chart session/lifecycle hardening; - production chart composition; -
+bounded-data/performance behavior if evidence requires it; - mandatory
+P17 system closure.
+
+These are only possibilities. The exact next slice must be selected from
+current source/evidence after P17.14 is resolved.
+
+======================================================================
+15. REWORK / REPAIR POLICY
+======================================================================
+
+If an earlier design needs revisiting: - do not rewrite canonical
+history; - patch forward from latest canonical PASS; - identify the real
+owner; - create a new controlled repair/amendment; - rerun regressions
+across affected dependencies.
+
+Failed candidates are evidence, not bases.
+
+======================================================================
+16. REPORTING / COMMUNICATION STYLE
+======================================================================
+
+The user wants concise normal outputs even though internal work must be
+deep. No emojis. Do not narrate routine handoff-reading. Do not dump
+long engineering reports unless requested.
+
+Preferred normal final format: - Status - Added / repaired / failed -
+Not added (when important) - Current authority - Candidate/gate
+filename, run ID, SHA when relevant - Next action - Direct candidate
+download when one was created
+
+Be decisive and concrete. No filler. No pretending. No “probably
+passed”. No success from screenshots when GitHub is connected. No claims
+for tests that were not run.
+
+When substantial work is happening, short progress notes are acceptable,
+but the final response must contain the actual result.
+
+======================================================================
+17. CLAUDE STATUS HANDOFF RULE
+======================================================================
+
+The user uses Claude as a parallel reviewer/design thinker, but GPT is
+the implementation/repository/gate owner.
+
+GPT owns: - code/patch creation; - candidate packaging; - GitHub gate
+edits; - canonical gate inspection; - PASS/HOLD/FAIL classification.
+
+Claude may review architecture/progress and future design, but does not
+override canonical gate truth.
+
+After meaningful patch/status work, provide a copy-ready
+KAIROS CLAUDE STATUS HANDOFF when useful. It should preserve: -
+previous/current authoritative patch; - current candidate; - what
+changed; - explicit non-scope; - local test status; - canonical GitHub
+status; - ownership/truth changes; - filename/SHA; - exact next
+action; - permanent architecture decisions.
+
+Normal user-facing response should remain short; the Claude block may
+carry detail.
+
+======================================================================
+18. REPOSITORY CLEANUP POLICY
+======================================================================
+
+User does not want repo root clutter. Periodically clean only when safe.
+Preserve: - source/config/workflows; - authoritative base; - active
+candidate; - current phase closure checkpoint; - enough immediate
+rollback history. Remove only proven superseded/failed candidates not
+needed by the active gate. Do not mix cleanup into unresolved candidate
+gating if it risks evidence/rollback.
+
+======================================================================
+19. EXACT NEXT ACTION FOR A FRESH CHAT
+======================================================================
+
+CURRENT STATE IS NOT “P17.14 HOLD” ANYMORE. Run #190 completed FAILURE.
+
+If the user’s first command is “Check”, “Continue”, “Check and
+continue”, or “Fix”: 1. Re-read this handoff internally. 2. Fetch
+current GitHub state and Run #190 fresh; do not rely solely on this text
+if repository state changed after handoff creation. 3. Confirm P17.13R2
+is still latest canonical PASS unless GitHub proves otherwise. 4.
+Confirm P17.14 Run #190 failure and inspect exact logs. 5. Classify
+exact known defect: P17.14 archive root is kairos_p17_14_work/ instead
+of required kairos_p76/. 6. Do NOT create P17.15. 7. Repair P17.14 only,
+from authoritative P17.13R2, preserving the intended controlled P17.14
+source changes only if current diff/source evidence proves them. 8.
+Package repaired archive with exact kairos_p76/ root. 9. Verify archive
+structure before handoff: unzip -l / equivalent must show
+kairos_p76/package.json. 10. Re-run dedicated local verifiers honestly
+where possible. 11. Produce a uniquely named P17.14 repair candidate
+(for example R1 only if current evidence supports that naming). 12.
+Provide filename + SHA-256 + direct download. 13. On subsequent Up,
+verify exact upload, gate repaired candidate from P17.13R2, and inspect
+canonical run. 14. Only after canonical PASS may another P17 slice be
+considered.
+
+If the user’s first command is “Up”: Do not assume which ZIP they
+uploaded. Verify repo root fresh. If they uploaded the already-failed
+original P17.14 again, do not pretend it is new. Resolve against current
+evidence.
+
+======================================================================
+20. FINAL RECEIVING-CHAT CONTRACT
+======================================================================
+
+You are continuing Kairos, not restarting it.
+
+Your operating instinct must be: READ -> VERIFY -> RESEARCH -> TRACE ->
+PATCH -> REGRESS -> GATE -> PROMOTE.
+
+Never: MEMORY -> ASSUME -> PATCH.
+
+The user’s highest-value correction in this chat is that rigorous
+process is not optional ceremony. It is what prevents wrong gates, wrong
+scopes, wrong fixes, wrong candidates, and false confidence.
+
+The new chat should feel like the strongest part of the previous chat: -
+evidence-backed; - senior-engineer level; - current-source aware; -
+research-first when technology behavior matters; - one controlled patch
+at a time; - strict authority lineage; - concise user-facing outputs; -
+deep internal verification; - no guessing.
+
+END OF MASTER SELF-HANDOFF
+======================================================================
+21. 2026-09-04 PRESERVATION UPDATE — P17 CLOSED / P18 DRAWING TOOLS ACTIVE
+======================================================================
+
+THIS SECTION SUPERSEDES STALE PATCH-STATUS STATEMENTS IN SECTIONS 2, 11,
+AND 19 ABOVE. The earlier sections are deliberately preserved as history
+and process evidence. Do not follow their old "current state" as live
+authority.
+
+Fresh-chat rule remains unchanged: resolve GitHub canonical truth fresh
+before acting. The status below is the latest known state at handoff
+creation, not a substitute for a fresh repository/gate read.
+
+P17 CHART ENGINE IS CLOSED.
+
+P17 continuation after the old handoff:
+- P17.14 original Run #190 FAILED because candidate archive root was
+  wrong. Candidate never authoritative.
+- P17.14R1 also failed exact-scope/artifact contamination and never
+  became authority.
+- P17.14R2 PASS #191 — Series Logical Range Coverage.
+- P17.15 PASS #193 — Chart Viewport History Demand.
+- P17.16 PASS #194 — Chart Engine System Closure.
+  Run ID: 33755336690
+  Job ID: 100648301270
+  Head SHA: f9ba3159f084a50894cccd6cf8cc64517b1f08b8
+
+P17 is therefore closed. Do not create new P17 feature slices unless a
+later controlled repair proves a regression in an existing P17 owner.
+
+P18 DRAWING TOOLS is the active roadmap phase.
+
+P18 lineage through the current repair:
+- P18.1 original failed; never authoritative.
+- P18.1R1 PASS #196 — test-only repair / drawing contract foundation.
+- P18.2 PASS #197 — chart drawing projection boundary.
+- P18.3 first gate #198 failed because of gate filename defect.
+- P18.3 gate-only repair PASS #199 — provider-neutral drawing-layer
+  lifecycle.
+- P18.4 PASS #200 — Lightweight Charts v5 drawing-layer driver.
+- P18.5 PASS #201 — trend-line coordinate projection.
+- P18.6 PASS #202 — trend-line pane renderer.
+- P18.7 first gate #203 failed because of gate filename defect.
+- P18.7 gate-only repair PASS #204 — trend-line primitive composition.
+- P18.8 PASS #205 — trend-line primitive factory.
+- P18.9 PASS #206 — provider series-resolution binding.
+- P18.10 FAIL #207 — candidate TypeScript defect; never authoritative.
+- P18.10R1 PASS #208 — type-contract repair.
+- P18.11 PASS #209 — chart drawing presentation coordination.
+- P18.12 PASS #210 — trend-line hit-test geometry.
+- P18.13 FAIL #211 — historical P18.7 verifier incompatibility; never
+  authoritative.
+- P18.13R1 PASS #212 — historical verifier compatibility repair +
+  primitive hit-test binding.
+- P18.14 PASS #213 — drawing hover event projection.
+- P18.15 #214 FAIL — gate exact-scope verifier filename defect.
+- P18.15 gate-only repair #215 reached TypeScript and exposed candidate
+  test-fixture contract defect.
+- P18.15R1 PASS #216 — drawing-hover subscription test-contract repair.
+- P18.16 PASS #217 — provider chart-resolution binding.
+- P18.17 PASS #218 — drawing-hover binding composition.
+- P18.18 FAIL #219 — current failed candidate; TypeScript test narrowing
+  defect. Never authoritative.
+- P18.18R1 — current repair candidate created locally and awaiting user
+  upload / canonical gate at handoff creation.
+
+CURRENT AUTHORITATIVE PASS AT HANDOFF CREATION:
+P18.17 — Lightweight Charts v5 Drawing Hover Binding Composition
+
+Canonical GitHub:
+- Workflow: Kairos Controlled Roadmap Gate
+- Run: #218
+- Run ID: 33845110303
+- Job ID: 100935183591
+- Head SHA: 5dbadf1bae32bbd2ce8236313f18b5ac5dc0e541
+- Conclusion: SUCCESS
+
+Run #218 passed every controlled stage:
+- exact P18.17 scope from authoritative P18.16
+- deterministic npm install
+- exact lightweight-charts@5.2.1 proof
+- production TypeScript
+- production build
+- dedicated P18.17 verifier/runtime
+- full unit regression
+- full controlled roadmap regression through P18.17
+- P18/P17 chart regressions
+- historical closures
+- candidate artifact
+- gate-evidence artifact
+
+Run #218 artifacts:
+KAIROS_CURRENT_CANDIDATE
+- artifact ID: 9926487183
+- digest:
+  sha256:6beddc5a43077bdb075c33e895b54e22ef5b8d34aff0c44bb23d0890dba9b3fe
+
+KAIROS_GATE_EVIDENCE
+- artifact ID: 9926487425
+- digest:
+  sha256:ea0a50ba8511e4e14b3fc8b4112894cfb22c3c6c2b9d0d8b7108b76e19cf790d
+
+Canonical P18.17 repo-root candidate:
+KAIROS_P18_17_LIGHTWEIGHT_CHARTS_V5_DRAWING_HOVER_BINDING_COMPOSITION_CANDIDATE_2026-09-04.zip
+
+======================================================================
+22. CURRENT P18.18 FAILURE / P18.18R1 REPAIR — EXACT STATE
+======================================================================
+
+P18.18 intended slice:
+CHART DRAWING HOVER LIFECYCLE PORT
+
+Intent:
+Introduce a provider-neutral lifecycle seam for ephemeral drawing-hover
+observation without leaking Lightweight Charts crosshair APIs into the
+neutral ChartEngineSeriesHandle or making hover presentation state into
+business/journal truth.
+
+P18.18 controlled responsibilities:
+- provider-neutral ChartDrawingHoverObservation
+- ChartDrawingHoverDriver / handle lifecycle
+- ChartDrawingHoverPort / session lifecycle
+- idempotent detach semantics
+- P18.14 hover projection aliases the neutral observation type without
+  changing runtime behavior
+
+P18.18 explicit non-scope:
+- no provider chart resolution ownership
+- no direct crosshair subscription implementation
+- no click selection
+- no drag/edit
+- no drawing truth mutation
+- no persistence
+- no calculations
+- no market acquisition
+- no journal truth
+- no toolbar state
+- no navigation
+- no autoscale policy
+- no presentation-session integration yet
+- no P19 Risk/Reward work
+
+Original P18.18 candidate:
+KAIROS_P18_18_CHART_DRAWING_HOVER_LIFECYCLE_PORT_CANDIDATE_2026-09-04.zip
+
+Repo-root blob SHA observed before gate:
+93e7cde9e5f2f6df8e9a1258ab52674ee4316ec4
+
+P18.18 gate:
+- Run #219
+- Run ID: 33847514610
+- Job ID: 100942588798
+- Gate/head SHA: 63e984e7a74c95c27ead833378adb874812e0f56
+- Conclusion: FAILURE
+
+Run #219 proved:
+PASS:
+- extraction
+- exact seven-file controlled scope
+- deterministic npm ci
+- exact lightweight-charts@5.2.1
+
+FAIL:
+- Production TypeScript compilation
+
+Exact TypeScript errors:
+tests/chart-drawing-hover-port.test.ts(54,5): error TS2349:
+This expression is not callable. Type 'never' has no call signatures.
+
+tests/chart-drawing-hover-port.test.ts(55,5): error TS2349:
+This expression is not callable. Type 'never' has no call signatures.
+
+Everything after TypeScript was skipped except always-run gate evidence.
+
+Classification:
+CANDIDATE TEST-CONTRACT / TYPE-NARROWING DEFECT.
+This is NOT evidence of a gate defect and NOT evidence of a production
+architecture defect.
+
+The repair was rebuilt from canonical P18.17. Production P18.18 changes
+were intentionally preserved; only the test listener capture/narrowing
+contract was repaired using an explicitly typed mutable reference plus
+a fail-closed attachment assertion.
+
+Current repair candidate:
+KAIROS_P18_18R1_CHART_DRAWING_HOVER_TEST_NARROWING_REPAIR_CANDIDATE_2026-09-04.zip
+
+Local SHA-256 at creation:
+4b40423b2e1be2187f9cde87b7a882cefb3898987ce4b1d6ef07ca97112340f8
+
+Known local verification for P18.18R1:
+- P18.18 dedicated verifier: PASS
+- P18.17 verifier: PASS
+- fresh npm ci exceeded the local execution window, therefore NO local
+  claim was made for TypeScript/build/full regression.
+
+IMPORTANT:
+At handoff creation, P18.18R1 has NOT been canonically promoted.
+P18.17 remains authority until GitHub proves P18.18R1 PASS.
+
+If the fresh-chat user's first command is "Up", verify the exact
+P18.18R1 ZIP exists at repository root before touching the gate. Then
+gate P18.18R1 FROM P18.17, not from failed P18.18.
+
+If first command is "Check", resolve current GitHub fresh. Do not assume
+the state remained unchanged after this handoff was created.
+
+======================================================================
+23. P18 OWNERSHIP MAP — PRESERVE THESE BOUNDARIES
+======================================================================
+
+P18 drawing work must preserve P17 provider neutrality and the one-owner
+rule.
+
+P17 ChartEngineSeriesHandle remains provider-neutral. It must NOT be
+expanded merely to expose Lightweight Charts vendor chart/drawing APIs.
+
+Current ownership:
+- P18.1: provider-neutral drawing truth contract.
+- P18.2: renderer-safe drawing projection; reuses P17.3 numeric/time
+  conversion boundary.
+- P18.3: provider-neutral drawing-layer attach/replace/destroy lifecycle.
+- P18.4: Lightweight Charts v5 attachPrimitive/detachPrimitive driver.
+- P18.5: sole trend-line coordinate projection owner.
+- P18.6: Canvas trend-line rendering owner.
+- P18.7 / P18.13R1: primitive rendering + hit-test binding.
+- P18.8: primitive factory.
+- P18.9: provider series identity resolution.
+- P18.10R1: local provider series -> primitive lifecycle composition.
+- P18.11: provider-neutral chart drawing presentation coordination.
+- P18.12: pure screen-space point-to-segment hit-test geometry.
+- P18.13R1: provider primitive hit-test adaptation.
+- P18.14: provider hoveredObjectId -> current-snapshot-filtered Kairos
+  drawing-hover projection.
+- P18.15R1: provider crosshair hover subscription lifecycle.
+- P18.16: neutral series handle -> exact provider chart identity
+  resolution, owned by the same provider-resource binding as P18.9.
+- P18.17: provider-specific drawing-hover binding composition using
+  existing P18.16 chart resolution + P18.15R1 subscription lifecycle +
+  P18.14 projection.
+- P18.18/P18.18R1 candidate: provider-neutral hover lifecycle port.
+
+Critical invariant:
+Vendor-specific drawing, chart resolution, crosshair event projection,
+subscription, primitive APIs, and hit-testing remain in vendor-specific
+P18 owners/composition. Do not contaminate P17 neutral boundaries.
+
+P18.11 presentation coordination already owns chart-series +
+drawing-layer replacement lifecycle. Hover observation must be composed
+without making P18.11 or UI a second owner of provider crosshair logic.
+
+======================================================================
+24. IMPORTANT OFFICIAL LIGHTWEIGHT CHARTS FACTS FOR CURRENT P18 WORK
+======================================================================
+
+Current line remains Lightweight Charts 5.2 / installed 5.2.1.
+
+Facts used in current drawing-hover work:
+- IChartApi exposes subscribeCrosshairMove(handler) and
+  unsubscribeCrosshairMove(handler).
+- provider event information can expose hoveredObjectId for primitive
+  external IDs / hit-test identity.
+- primitives remain provider/plugin presentation mechanisms, not Kairos
+  journal truth.
+- vendor APIs must stay behind the P18 provider-specific boundary.
+
+Research current official documentation again before any new slice whose
+correctness depends on API shape. Do not copy old docs from memory.
+
+======================================================================
+25. CANONICAL ARCHITECTURE MAP — EXACT PATH RULE
+======================================================================
+
+A canonical architecture map was added after the old handoff.
+
+EXACT repository path:
+docs/KAIROS_ARCHITECTURE_MAP.md
+
+Initial commit associated with establishing this path:
+bc9609570ab2834b724f8936e90b4fb831bf9d10
+
+Permanent rule from the user:
+- keep using this exact same path
+- edit this one file in place
+- never create a second architecture-map copy
+- never create dated architecture-map duplicates elsewhere
+- create /docs only if absent
+- code + canonical gates outrank descriptive map if they conflict
+- update the map at phase-closure gates
+- add/update ownership rows only after canonical PASS
+- if an owner moves, edit the existing row and record the move rather
+  than duplicating the owner
+
+Do not create a companion manifest merely because it seems useful.
+Only do so if current evidence establishes a need or the user asks.
+
+======================================================================
+26. ADDITIONAL CONVERSATION DECISIONS TO PRESERVE
+======================================================================
+
+A. DIRECT FILE HANDOFF STYLE
+The user corrected another chat for returning generic ZIP references
+instead of the actual artifact experience used in the strong chat.
+When creating a candidate/repair/handoff:
+- give the exact filename
+- give SHA-256
+- give a direct downloadable artifact link/file
+- do not merely tell the user that a ZIP exists
+- do not rename the canonical base casually
+
+B. REPO ROOT HYGIENE
+The user explicitly asked for repo cleanup from time to time so root
+does not fill with obsolete candidate ZIPs. Cleanup is controlled, not
+automatic destruction:
+- preserve current authoritative base
+- preserve active candidate
+- preserve current phase closure checkpoint + immediate rollback
+- preserve source/config/workflows/docs
+- remove only verified superseded/failed ZIPs not required by active
+  gate/evidence
+- never clean during an unresolved gate if it could remove rollback or
+  evidence needed for repair
+
+C. ARCHITECTURE-FIRST CHART/DRAWING DEVELOPMENT
+The user discussed chart/drawing capabilities and expects them to be
+built as controlled owners, not visual hacks. P18 interactions must
+remain presentation/analysis boundaries until later roadmap owners
+explicitly add persisted analysis or risk/reward truth.
+
+D. FAILED CANDIDATE LESSONS ARE PART OF THE PROCESS
+Several failures in P17/P18 were gate filename defects, packaging
+defects, historical-verifier incompatibilities, or test TypeScript
+contract defects. Preserve the classification discipline:
+- gate defect -> gate-only repair
+- candidate defect -> rebuild/repair from latest canonical PASS
+- never mutate production code just to appease a mistaken verifier
+- never weaken a verifier to conceal a production defect
+- historical verifiers may require controlled compatibility repair when
+  a later legitimate feature intentionally introduces syntax/API that
+  an old "future-forbidden" check permanently banned
+
+E. NO EARLY P19
+P19 Risk/Reward Tool has not started. Do not move into P19 until P18
+Drawing Tools reaches explicit system closure and canonical PASS.
+
+F. PREMIUM TRANSITIONS
+The prior premium-motion decision remains:
+P8 semantics / P21 local consumption / P40 global polish.
+Do not turn motion into navigation/business/data truth.
+
+======================================================================
+27. CURRENT TOOLCHAIN / WARNING CONTEXT — UPDATED
+======================================================================
+
+Canonical gate currently uses:
+- Node 22.16.0
+- npm 10.9.2
+- react 19.2.8
+- react-dom 19.2.8
+- react-router 8.3.1
+- dexie 4.4.5
+- decimal.js 10.6.0
+- vitest 4.1.11
+- typescript 7.0.2
+- vite 8.2.2
+- jsdom 30.0.1
+- lightweight-charts 5.2.1
+
+Known canonical warnings:
+- jsdom@30.0.1 declares Node ^22.22.2 || ^24.15.0 || >=26.0.0
+- react-router@8.3.1 declares Node >=22.22.0
+- undici@8.10.0 declares Node >=22.19.0
+while the controlled gate remains Node 22.16.0.
+
+These warnings have appeared in passing canonical runs and are NOT
+permission for opportunistic toolchain changes. Toolchain work requires
+its own evidence-backed controlled decision.
+
+GitHub Actions has also emitted action-runtime Node deprecation
+warnings. Again: do not broaden the active feature repair into a
+toolchain migration.
+
+======================================================================
+28. FRESH CHAT IMMEDIATE OPERATING STATE
+======================================================================
+
+At the instant this updated handoff was created:
+
+AUTHORITATIVE:
+P18.17 PASS #218
+Run ID 33845110303
+Head 5dbadf1bae32bbd2ce8236313f18b5ac5dc0e541
+
+FAILED EVIDENCE:
+P18.18 FAIL #219
+Run ID 33847514610
+Job ID 100942588798
+Head 63e984e7a74c95c27ead833378adb874812e0f56
+Failure = test TypeScript narrowing at lines 54/55, Type 'never' has no
+call signatures.
+
+CURRENT LOCAL REPAIR:
+KAIROS_P18_18R1_CHART_DRAWING_HOVER_TEST_NARROWING_REPAIR_CANDIDATE_2026-09-04.zip
+SHA-256:
+4b40423b2e1be2187f9cde87b7a882cefb3898987ce4b1d6ef07ca97112340f8
+
+EXPECTED NEXT USER ACTION AT CREATION:
+"Up"
+
+On Up:
+1. Read this handoff internally.
+2. Fetch GitHub current truth fresh.
+3. Verify exact P18.18R1 file at repo root.
+4. Verify P18.17 is still latest canonical PASS.
+5. Fetch current kairos-gate.yml.
+6. Re-prove exact P18.18R1-vs-P18.17 changed-file scope from real
+   archive evidence.
+7. Gate only P18.18R1 from P18.17.
+8. Include deterministic install, exact LWC 5.2.1, TypeScript, build,
+   P18.18 dedicated verifier, affected P18 regressions, full unit,
+   controlled roadmap, historical closures, candidate artifact, gate
+   evidence.
+9. Commit gate.
+10. Inspect triggered run immediately.
+11. Report PASS/FAIL/HOLD only.
+12. Do NOT create P18.19 during Up.
+
+If P18.18R1 passes and the user later says "Check. Continue":
+- promote P18.18R1
+- inspect current canonical source
+- trace remaining P18 responsibilities
+- research official APIs if relevant
+- determine exactly one next dependency-safe slice from missing
+  responsibility
+- do not assume P18.19 merely because numbering suggests it
+- if P18 is actually complete, the next required work is P18 system
+  closure, not invented feature work
+
+======================================================================
+29. RECEIVING GPT QUALITY BAR — PRESERVE THE CURRENT CHAT'S MANNER
+======================================================================
+
+The user explicitly wants the fresh GPT to work like the strong current
+chat, not the earlier weak manner.
+
+That means:
+- deep internal evidence work, concise external answer
+- exact canonical status, not remembered status
+- inspect GitHub instead of asking the user what happened
+- use exact filenames, run IDs, job IDs, SHAs, artifacts
+- root-cause from logs before repair
+- research official sources when technology/API behavior matters
+- trace owners/data flow before code
+- one controlled patch at a time
+- never advance on HOLD/FAIL
+- repair from latest canonical PASS
+- distinguish local evidence from canonical evidence
+- direct downloadable candidate output
+- do not stop at a vague status when the user's command requires a
+  concrete safe repair/continuation
+- do not perform unrelated cleanup/refactoring during a controlled
+  patch
+- never invent how many patches remain
+- close phases explicitly before entering the next roadmap phase
+
+The permanent internal loop is still:
+
+HANDOFF -> CURRENT CANONICAL GITHUB TRUTH -> EXACT SOURCE/LOG EVIDENCE
+-> OWNER/DATA-FLOW TRACE -> CURRENT OFFICIAL RESEARCH WHEN RELEVANT ->
+SMALLEST CONTROLLED ACTION -> REGRESSION EVIDENCE -> CANONICAL GATE ->
+PROMOTE
+
+Never:
+MEMORY -> ASSUME -> PATCH
+
+END OF 2026-09-04 PRESERVATION UPDATE
