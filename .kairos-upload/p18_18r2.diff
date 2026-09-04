@@ -1,0 +1,212 @@
+diff -ruN base/kairos_p76/KAIROS_P18_18R2_CHART_DRAWING_HOVER_HISTORICAL_PROJECTION_COMPATIBILITY_REPAIR_REPORT_2026-09-04.md r2/kairos_p76/KAIROS_P18_18R2_CHART_DRAWING_HOVER_HISTORICAL_PROJECTION_COMPATIBILITY_REPAIR_REPORT_2026-09-04.md
+--- base/kairos_p76/KAIROS_P18_18R2_CHART_DRAWING_HOVER_HISTORICAL_PROJECTION_COMPATIBILITY_REPAIR_REPORT_2026-09-04.md	1970-01-01 00:00:00.000000000 +0000
++++ r2/kairos_p76/KAIROS_P18_18R2_CHART_DRAWING_HOVER_HISTORICAL_PROJECTION_COMPATIBILITY_REPAIR_REPORT_2026-09-04.md	2026-09-04 08:33:12.000000000 +0000
+@@ -0,0 +1,14 @@
++# KAIROS P18.18R2 — Chart Drawing Hover Historical Projection Compatibility Repair
++
++## Authority
++- Authoritative base: canonical P18.17 PASS, workflow run #218 / 33845110303.
++- Failed P18.18 and P18.18R1 candidates are evidence only and are not used as authority.
++
++## Failure evidence
++Canonical P18.18R1 gate #221 passed exact scope, deterministic install, Lightweight Charts 5.2.1 proof, production TypeScript, production build, and the dedicated P18.18/P18.17/P18.16 checks. It then failed the historical P18.15 verifier because the P18.18 change had removed the canonical P18.14 `readonly kind: 'drawing-hover'` interface declaration that P18.15 verifies.
++
++## Repair
++P18.18R2 is rebuilt from canonical P18.17. It adds the provider-neutral hover lifecycle port and neutral hover observation, while preserving P18.14 as an interface that extends the neutral observation and explicitly retains the canonical drawing-hover fields. This keeps the new neutral ownership without altering P18.14 runtime behavior or invalidating the historical P18.15 contract.
++
++## Non-scope
++No provider chart resolution ownership, direct crosshair subscription implementation, click selection, drag/edit, drawing truth mutation, persistence, calculations, market acquisition, journal truth, toolbar state, navigation state, autoscale policy, presentation-session integration, or P19 behavior is added.
+diff -ruN base/kairos_p76/package.json r2/kairos_p76/package.json
+--- base/kairos_p76/package.json	2026-09-04 06:30:29.000000000 +0000
++++ r2/kairos_p76/package.json	2026-09-04 08:33:12.000000000 +0000
+@@ -191,7 +191,8 @@
+     "verify:p18:14-lightweight-charts-v5-drawing-hover-projection": "node scripts/verify-p18-14-lightweight-charts-v5-drawing-hover-projection.mjs",
+     "verify:p18:15-lightweight-charts-v5-drawing-hover-subscription": "node scripts/verify-p18-15-lightweight-charts-v5-drawing-hover-subscription.mjs",
+     "verify:p18:16-lightweight-charts-v5-provider-chart-resolution-binding": "node scripts/verify-p18-16-lightweight-charts-v5-provider-chart-resolution-binding.mjs",
+-    "verify:p18:17-lightweight-charts-v5-drawing-hover-binding-composition": "node scripts/verify-p18-17-lightweight-charts-v5-drawing-hover-binding-composition.mjs"
++    "verify:p18:17-lightweight-charts-v5-drawing-hover-binding-composition": "node scripts/verify-p18-17-lightweight-charts-v5-drawing-hover-binding-composition.mjs",
++    "verify:p18:18-chart-drawing-hover-port": "node scripts/verify-p18-18-chart-drawing-hover-port.mjs"
+   },
+   "dependencies": {
+     "react": "19.2.8",
+diff -ruN base/kairos_p76/scripts/verify-p18-18-chart-drawing-hover-port.mjs r2/kairos_p76/scripts/verify-p18-18-chart-drawing-hover-port.mjs
+--- base/kairos_p76/scripts/verify-p18-18-chart-drawing-hover-port.mjs	1970-01-01 00:00:00.000000000 +0000
++++ r2/kairos_p76/scripts/verify-p18-18-chart-drawing-hover-port.mjs	2026-09-04 08:33:12.000000000 +0000
+@@ -0,0 +1,35 @@
++import { readFileSync } from 'node:fs';
++
++const source = readFileSync('src/features/chart/chartDrawingHoverPort.ts', 'utf8');
++const projection = readFileSync('src/features/chart/lightweightChartsV5DrawingHoverProjection.ts', 'utf8');
++const test = readFileSync('tests/chart-drawing-hover-port.test.ts', 'utf8');
++const index = readFileSync('src/features/chart/index.ts', 'utf8');
++
++for (const token of [
++  'export interface ChartDrawingHoverObservation',
++  'export interface ChartDrawingHoverDriverHandle',
++  'export interface ChartDrawingHoverDriver',
++  'export interface ChartDrawingHoverSession',
++  'export interface ChartDrawingHoverPort',
++  'createChartDrawingHoverPortFromDriver',
++  'handle.detach()',
++  'if (destroyed) return;',
++]) {
++  if (!source.includes(token)) throw new Error(`P18.18 hover port missing: ${token}`);
++}
++if (!projection.includes('extends ChartDrawingHoverObservation')) {
++  throw new Error('P18.18 requires P18.14 hover projection to remain structurally compatible with the neutral observation');
++}
++if (!projection.includes("readonly kind: 'drawing-hover'")) {
++  throw new Error('P18.18 must preserve the canonical P18.14 projection contract');
++}
++for (const token of ['ChartDrawingHoverObservation', 'ChartDrawingHoverPort', 'createChartDrawingHoverPortFromDriver']) {
++  if (!index.includes(token)) throw new Error(`P18.18 export missing: ${token}`);
++}
++for (const token of ['hover-listener-not-attached', 'session.destroy();', 'toHaveBeenCalledTimes(1)']) {
++  if (!test.includes(token)) throw new Error(`P18.18 regression evidence missing: ${token}`);
++}
++for (const forbidden of ['subscribeCrosshairMove(', 'unsubscribeCrosshairMove(', 'resolveChart(', 'chart.subscribeClick(', 'selectedDrawingId', 'dragStart', 'localStorage.', 'indexedDB.']) {
++  if (source.includes(forbidden)) throw new Error(`P18.18 neutral scope violation: ${forbidden}`);
++}
++console.log('P18.18 chart drawing hover lifecycle port verification passed.');
+diff -ruN base/kairos_p76/src/features/chart/chartDrawingHoverPort.ts r2/kairos_p76/src/features/chart/chartDrawingHoverPort.ts
+--- base/kairos_p76/src/features/chart/chartDrawingHoverPort.ts	1970-01-01 00:00:00.000000000 +0000
++++ r2/kairos_p76/src/features/chart/chartDrawingHoverPort.ts	2026-09-04 08:33:11.000000000 +0000
+@@ -0,0 +1,58 @@
++import type { ChartEngineSeriesHandle } from './chartEngineDriver';
++import type { RendererChartDrawing } from './chartDrawingProjection';
++
++export interface ChartDrawingHoverObservation {
++  readonly kind: 'drawing-hover';
++  readonly drawingId: string;
++}
++
++export interface ChartDrawingHoverDriverHandle {
++  detach(): void;
++}
++
++export interface ChartDrawingHoverDriver {
++  attach(
++    series: ChartEngineSeriesHandle,
++    drawings: readonly RendererChartDrawing[],
++    onHover: (hover: ChartDrawingHoverObservation | null) => void,
++  ): ChartDrawingHoverDriverHandle;
++}
++
++export interface ChartDrawingHoverSession {
++  destroy(): void;
++}
++
++export interface ChartDrawingHoverPort {
++  attach(
++    series: ChartEngineSeriesHandle,
++    drawings: readonly RendererChartDrawing[],
++    onHover: (hover: ChartDrawingHoverObservation | null) => void,
++  ): ChartDrawingHoverSession;
++}
++
++/**
++ * P18.18 provider-neutral drawing-hover lifecycle invariant:
++ * - provider-specific chart resolution, crosshair subscription, and hoveredObjectId projection remain behind P18 provider bindings
++ * - the neutral port carries only the active chart-series handle, immutable renderer drawing input, and hover observations
++ * - destroy() detaches the provider-owned hover resource exactly once and is idempotent
++ * - this boundary owns no click selection, drag/edit, drawing truth mutation, persistence, calculations,
++ *   market acquisition, journal truth, toolbar state, navigation state, autoscale policy, or P19 behavior
++ */
++export function createChartDrawingHoverPortFromDriver(
++  driver: ChartDrawingHoverDriver,
++): ChartDrawingHoverPort {
++  return {
++    attach(series, drawings, onHover): ChartDrawingHoverSession {
++      const handle = driver.attach(series, drawings, onHover);
++      let destroyed = false;
++
++      return {
++        destroy(): void {
++          if (destroyed) return;
++          destroyed = true;
++          handle.detach();
++        },
++      };
++    },
++  };
++}
+diff -ruN base/kairos_p76/src/features/chart/index.ts r2/kairos_p76/src/features/chart/index.ts
+--- base/kairos_p76/src/features/chart/index.ts	2026-09-04 06:30:29.000000000 +0000
++++ r2/kairos_p76/src/features/chart/index.ts	2026-09-04 08:33:12.000000000 +0000
+@@ -164,3 +164,11 @@
+   type LightweightChartsV5DrawingHoverSubscription,
+ } from './lightweightChartsV5DrawingHoverSubscription';
+ export { createLightweightChartsV5DrawingHoverSubscriptionFromBinding } from './lightweightChartsV5DrawingHoverBindingComposition';
++export {
++  createChartDrawingHoverPortFromDriver,
++  type ChartDrawingHoverObservation,
++  type ChartDrawingHoverDriverHandle,
++  type ChartDrawingHoverDriver,
++  type ChartDrawingHoverSession,
++  type ChartDrawingHoverPort,
++} from './chartDrawingHoverPort';
+diff -ruN base/kairos_p76/src/features/chart/lightweightChartsV5DrawingHoverProjection.ts r2/kairos_p76/src/features/chart/lightweightChartsV5DrawingHoverProjection.ts
+--- base/kairos_p76/src/features/chart/lightweightChartsV5DrawingHoverProjection.ts	2026-09-04 00:53:10.000000000 +0000
++++ r2/kairos_p76/src/features/chart/lightweightChartsV5DrawingHoverProjection.ts	2026-09-04 08:33:12.000000000 +0000
+@@ -1,10 +1,11 @@
+ import type { RendererChartDrawing } from './chartDrawingProjection';
++import type { ChartDrawingHoverObservation } from './chartDrawingHoverPort';
+ 
+ export interface LightweightChartsV5DrawingMouseEvent {
+   readonly hoveredObjectId?: string;
+ }
+ 
+-export interface ChartDrawingHoverProjection {
++export interface ChartDrawingHoverProjection extends ChartDrawingHoverObservation {
+   readonly kind: 'drawing-hover';
+   readonly drawingId: string;
+ }
+diff -ruN base/kairos_p76/tests/chart-drawing-hover-port.test.ts r2/kairos_p76/tests/chart-drawing-hover-port.test.ts
+--- base/kairos_p76/tests/chart-drawing-hover-port.test.ts	1970-01-01 00:00:00.000000000 +0000
++++ r2/kairos_p76/tests/chart-drawing-hover-port.test.ts	2026-09-04 08:33:12.000000000 +0000
+@@ -0,0 +1,45 @@
++import { describe, expect, it, vi } from 'vitest';
++import type { ChartEngineSeriesHandle } from '../src/features/chart/chartEngineDriver';
++import type { RendererChartDrawing } from '../src/features/chart/chartDrawingProjection';
++import {
++  createChartDrawingHoverPortFromDriver,
++  type ChartDrawingHoverObservation,
++  type ChartDrawingHoverDriver,
++} from '../src/features/chart/chartDrawingHoverPort';
++
++const series = {} as ChartEngineSeriesHandle;
++const drawings: readonly RendererChartDrawing[] = [];
++
++describe('P18.18 chart drawing hover lifecycle port', () => {
++  it('delegates neutral attachment inputs and emits provider-neutral hover observations', () => {
++    const detach = vi.fn();
++    const captured: {
++      listener: ((hover: ChartDrawingHoverObservation | null) => void) | null;
++    } = { listener: null };
++
++    const driver: ChartDrawingHoverDriver = {
++      attach(attachedSeries, attachedDrawings, onHover) {
++        expect(attachedSeries).toBe(series);
++        expect(attachedDrawings).toBe(drawings);
++        captured.listener = onHover;
++        return { detach };
++      },
++    };
++
++    const onHover = vi.fn();
++    const session = createChartDrawingHoverPortFromDriver(driver).attach(series, drawings, onHover);
++    const listener = captured.listener;
++    expect(listener).not.toBeNull();
++    if (listener === null) throw new Error('hover-listener-not-attached');
++
++    listener({ kind: 'drawing-hover', drawingId: 'drawing-1' });
++    listener(null);
++
++    expect(onHover).toHaveBeenNthCalledWith(1, { kind: 'drawing-hover', drawingId: 'drawing-1' });
++    expect(onHover).toHaveBeenNthCalledWith(2, null);
++
++    session.destroy();
++    session.destroy();
++    expect(detach).toHaveBeenCalledTimes(1);
++  });
++});

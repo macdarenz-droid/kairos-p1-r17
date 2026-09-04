@@ -1,0 +1,99 @@
+name: Kairos Temporary Binary Candidate Upload Bridge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.kairos-upload/p18_18r2.diff'
+      - '.github/workflows/kairos-binary-upload.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  assemble-and-commit:
+    runs-on: ubuntu-latest
+    env:
+      BASE_RUN_ID: '33845110303'
+      BASE_ZIP: KAIROS_P18_17_LIGHTWEIGHT_CHARTS_V5_DRAWING_HOVER_BINDING_COMPOSITION_CANDIDATE_2026-09-04.zip
+      TARGET_ZIP: KAIROS_P18_18R2_CHART_DRAWING_HOVER_HISTORICAL_PROJECTION_COMPATIBILITY_REPAIR_CANDIDATE_2026-09-04.zip
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Download canonical P18.17 candidate artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/kairos-binary-upload
+          mkdir -p /tmp/kairos-binary-upload/base-art /tmp/kairos-binary-upload/work /tmp/kairos-binary-upload/original
+          gh run download "$BASE_RUN_ID" -R "$GITHUB_REPOSITORY" -n KAIROS_CURRENT_CANDIDATE -D /tmp/kairos-binary-upload/base-art
+          test -f "/tmp/kairos-binary-upload/base-art/$BASE_ZIP"
+          unzip -q "/tmp/kairos-binary-upload/base-art/$BASE_ZIP" -d /tmp/kairos-binary-upload/work
+          test -f /tmp/kairos-binary-upload/work/kairos_p76/package.json
+          cp -a /tmp/kairos-binary-upload/work/kairos_p76 /tmp/kairos-binary-upload/original/
+
+      - name: Apply controlled P18.18R2 repair patch
+        run: |
+          set -euo pipefail
+          cd /tmp/kairos-binary-upload/work
+          patch -p1 < "$GITHUB_WORKSPACE/.kairos-upload/p18_18r2.diff"
+
+      - name: Confirm exact seven-file scope from canonical P18.17
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib, sys
+          b=Path('/tmp/kairos-binary-upload/original/kairos_p76')
+          c=Path('/tmp/kairos-binary-upload/work/kairos_p76')
+          def h(p): return hashlib.sha256(p.read_bytes()).hexdigest()
+          x={str(p.relative_to(b)):h(p) for p in b.rglob('*') if p.is_file()}
+          y={str(p.relative_to(c)):h(p) for p in c.rglob('*') if p.is_file()}
+          changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
+          expected={
+            'KAIROS_P18_18R2_CHART_DRAWING_HOVER_HISTORICAL_PROJECTION_COMPATIBILITY_REPAIR_REPORT_2026-09-04.md',
+            'package.json',
+            'scripts/verify-p18-18-chart-drawing-hover-port.mjs',
+            'src/features/chart/chartDrawingHoverPort.ts',
+            'src/features/chart/index.ts',
+            'src/features/chart/lightweightChartsV5DrawingHoverProjection.ts',
+            'tests/chart-drawing-hover-port.test.ts',
+          }
+          print('\n'.join(sorted(changed)))
+          if changed != expected:
+            print('Upload bridge exact scope mismatch', file=sys.stderr)
+            print('Unexpected:', sorted(changed-expected), file=sys.stderr)
+            print('Missing:', sorted(expected-changed), file=sys.stderr)
+            sys.exit(1)
+          PY
+
+      - name: Run dependency-free repair verifiers
+        working-directory: /tmp/kairos-binary-upload/work/kairos_p76
+        run: |
+          set -euo pipefail
+          node scripts/verify-p18-18-chart-drawing-hover-port.mjs
+          node scripts/verify-p18-17-lightweight-charts-v5-drawing-hover-binding-composition.mjs
+          node scripts/verify-p18-15-lightweight-charts-v5-drawing-hover-subscription.mjs
+
+      - name: Package P18.18R2 candidate
+        run: |
+          set -euo pipefail
+          rm -f "$GITHUB_WORKSPACE/$TARGET_ZIP"
+          cd /tmp/kairos-binary-upload/work
+          zip -qr "$GITHUB_WORKSPACE/$TARGET_ZIP" kairos_p76
+          unzip -t "$GITHUB_WORKSPACE/$TARGET_ZIP" >/dev/null
+          echo "UPLOAD_BRIDGE_SHA256=$(sha256sum "$GITHUB_WORKSPACE/$TARGET_ZIP" | awk '{print $1}')"
+          echo "UPLOAD_BRIDGE_SIZE=$(stat -c '%s' "$GITHUB_WORKSPACE/$TARGET_ZIP")"
+
+      - name: Commit binary candidate to main
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "$TARGET_ZIP"
+          git commit -m 'Upload P18.18R2 candidate'
+          git push origin HEAD:main
