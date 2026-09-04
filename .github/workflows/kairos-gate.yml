@@ -49,7 +49,7 @@ jobs:
           expected={
             'KAIROS_P18_15_LIGHTWEIGHT_CHARTS_V5_DRAWING_HOVER_SUBSCRIPTION_LIFECYCLE_REPORT_2026-09-04.md',
             'package.json',
-            'scripts/verify-p18-15-lightweight-charts-v5-drawing-hover-subscription-lifecycle.mjs',
+            'scripts/verify-p18-15-lightweight-charts-v5-drawing-hover-subscription.mjs',
             'src/features/chart/index.ts',
             'src/features/chart/lightweightChartsV5DrawingHoverSubscription.ts',
             'tests/lightweight-charts-v5-drawing-hover-subscription.test.ts',
