@@ -95,6 +95,36 @@ jobs:
           npm run verify:p18:17-lightweight-charts-v5-drawing-hover-binding-composition
           npm run verify:p18:15-lightweight-charts-v5-drawing-hover-subscription
           npx vitest run tests/lightweight-charts-v5-drawing-hover-port-composition.test.ts tests/chart-drawing-hover-port.test.ts tests/lightweight-charts-v5-drawing-hover-binding-composition.test.ts tests/lightweight-charts-v5-drawing-hover-subscription.test.ts tests/lightweight-charts-v5-drawing-hover-projection.test.ts
+      - name: Remove generated verification artifacts and re-confirm exact source scope
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/kairos-binary-upload/work/kairos_p76/node_modules
+          rm -rf /tmp/kairos-binary-upload/work/kairos_p76/dist
+          find /tmp/kairos-binary-upload/work/kairos_p76 -type f -name '*.tsbuildinfo' -delete
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib, sys
+          b=Path('/tmp/kairos-binary-upload/original/kairos_p76')
+          c=Path('/tmp/kairos-binary-upload/work/kairos_p76')
+          def h(p): return hashlib.sha256(p.read_bytes()).hexdigest()
+          x={str(p.relative_to(b)):h(p) for p in b.rglob('*') if p.is_file()}
+          y={str(p.relative_to(c)):h(p) for p in c.rglob('*') if p.is_file()}
+          changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
+          expected={
+            'KAIROS_P18_19_LIGHTWEIGHT_CHARTS_V5_DRAWING_HOVER_PORT_COMPOSITION_REPORT_2026-09-04.md',
+            'package.json',
+            'scripts/verify-p18-19-lightweight-charts-v5-drawing-hover-port-composition.mjs',
+            'src/features/chart/index.ts',
+            'src/features/chart/lightweightChartsV5DrawingHoverPortComposition.ts',
+            'tests/lightweight-charts-v5-drawing-hover-port-composition.test.ts',
+          }
+          print('\n'.join(sorted(changed)))
+          if changed != expected:
+            print('P18.19 post-verification packaging scope mismatch', file=sys.stderr)
+            print('Unexpected:', sorted(changed-expected), file=sys.stderr)
+            print('Missing:', sorted(expected-changed), file=sys.stderr)
+            sys.exit(1)
+          PY
       - name: Package P18.19 candidate
         run: |
           set -euo pipefail
@@ -110,5 +140,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add "$TARGET_ZIP"
-          git commit -m 'Upload P18.19 candidate'
+          git commit -m 'Replace P18.19 candidate with clean verified archive'
           git push origin HEAD:main
