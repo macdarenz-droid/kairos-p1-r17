@@ -47,7 +47,7 @@ jobs:
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           print('\n'.join(sorted(changed)))
           expected={
-            'KAIROS_P18_18_CHART_DRAWING_HOVER_LIFECYCLE_PORT_REPORT_2026-09-04.md',
+            'KAIROS_P18_18R1_CHART_DRAWING_HOVER_TEST_NARROWING_REPAIR_REPORT_2026-09-04.md',
             'package.json',
             'scripts/verify-p18-18-chart-drawing-hover-port.mjs',
             'src/features/chart/chartDrawingHoverPort.ts',
@@ -147,5 +147,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P18_18_CHART_DRAWING_HOVER_LIFECYCLE_PORT_REPORT_2026-09-04.md
+          path: .gate-candidate/kairos_p76/KAIROS_P18_18R1_CHART_DRAWING_HOVER_TEST_NARROWING_REPAIR_REPORT_2026-09-04.md
           if-no-files-found: error
