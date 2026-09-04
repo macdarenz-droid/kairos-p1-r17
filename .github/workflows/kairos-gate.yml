@@ -1,11 +1,11 @@
-# KAIROS P18.15 GATE — AUTHORITATIVE BASE P18.14 — CANDIDATE P18.15
+# KAIROS P18.15R1 GATE — AUTHORITATIVE BASE P18.14 — CANDIDATE P18.15R1
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P18_15_LIGHTWEIGHT_CHARTS_V5_DRAWING_HOVER_SUBSCRIPTION_LIFECYCLE_CANDIDATE_2026-09-04.zip'
+      - 'KAIROS_P18_15R1_LIGHTWEIGHT_CHARTS_V5_DRAWING_HOVER_SUBSCRIPTION_TEST_CONTRACT_REPAIR_CANDIDATE_2026-09-04.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -14,7 +14,7 @@ permissions:
 
 env:
   BASE_ZIP: KAIROS_P18_14_LIGHTWEIGHT_CHARTS_V5_DRAWING_HOVER_EVENT_PROJECTION_CANDIDATE_2026-09-04.zip
-  CANDIDATE_ZIP: KAIROS_P18_15_LIGHTWEIGHT_CHARTS_V5_DRAWING_HOVER_SUBSCRIPTION_LIFECYCLE_CANDIDATE_2026-09-04.zip
+  CANDIDATE_ZIP: KAIROS_P18_15R1_LIGHTWEIGHT_CHARTS_V5_DRAWING_HOVER_SUBSCRIPTION_TEST_CONTRACT_REPAIR_CANDIDATE_2026-09-04.zip
 
 jobs:
   verify-current-candidate:
@@ -35,7 +35,7 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm exact controlled P18.15 scope from authoritative P18.14
+      - name: Confirm exact controlled P18.15R1 scope from authoritative P18.14
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -47,7 +47,7 @@ jobs:
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           print('\n'.join(sorted(changed)))
           expected={
-            'KAIROS_P18_15_LIGHTWEIGHT_CHARTS_V5_DRAWING_HOVER_SUBSCRIPTION_LIFECYCLE_REPORT_2026-09-04.md',
+            'KAIROS_P18_15R1_LIGHTWEIGHT_CHARTS_V5_DRAWING_HOVER_SUBSCRIPTION_TEST_CONTRACT_REPAIR_REPORT_2026-09-04.md',
             'package.json',
             'scripts/verify-p18-15-lightweight-charts-v5-drawing-hover-subscription.mjs',
             'src/features/chart/index.ts',
@@ -55,7 +55,7 @@ jobs:
             'tests/lightweight-charts-v5-drawing-hover-subscription.test.ts',
           }
           if changed != expected:
-            print('P18.15 exact scope mismatch',file=sys.stderr)
+            print('P18.15R1 exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             sys.exit(1)
@@ -74,10 +74,10 @@ jobs:
       - name: Production build
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
-      - name: Dedicated P18.15 drawing hover subscription lifecycle verifier/runtime
+      - name: Dedicated P18.15R1 drawing hover subscription lifecycle verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
-          npm run verify:p18:15-lightweight-charts-v5-drawing-hover-subscription-lifecycle
+          npm run verify:p18:15-lightweight-charts-v5-drawing-hover-subscription
           npm run verify:p18:14-lightweight-charts-v5-drawing-hover-projection
           npm run verify:p18:13-lightweight-charts-v5-trend-line-primitive-hit-test-binding
           npm run verify:p18:12-lightweight-charts-v5-trend-line-hit-test
@@ -90,19 +90,19 @@ jobs:
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression through P18.15
+      - name: Full controlled roadmap regression through P18.15R1
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
           const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
           const p=JSON.parse(readFileSync('package.json'));const s=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:p'));
-          for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:16-chart-engine-system-closure','verify:p18:13-lightweight-charts-v5-trend-line-primitive-hit-test-binding','verify:p18:14-lightweight-charts-v5-drawing-hover-projection','verify:p18:15-lightweight-charts-v5-drawing-hover-subscription-lifecycle']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
+          for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:16-chart-engine-system-closure','verify:p18:13-lightweight-charts-v5-trend-line-primitive-hit-test-binding','verify:p18:14-lightweight-charts-v5-drawing-hover-projection','verify:p18:15-lightweight-charts-v5-drawing-hover-subscription']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
           for(const x of s){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
           NODE
-      - name: P18.15 through P17 chart regressions
+      - name: P18.15R1 through P17 chart regressions
         working-directory: .gate-candidate/kairos_p76
         run: |
-          npm run verify:p18:15-lightweight-charts-v5-drawing-hover-subscription-lifecycle
+          npm run verify:p18:15-lightweight-charts-v5-drawing-hover-subscription
           npm run verify:p18:14-lightweight-charts-v5-drawing-hover-projection
           npm run verify:p18:13-lightweight-charts-v5-trend-line-primitive-hit-test-binding
           npm run verify:p18:12-lightweight-charts-v5-trend-line-hit-test
@@ -145,5 +145,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P18_15_LIGHTWEIGHT_CHARTS_V5_DRAWING_HOVER_SUBSCRIPTION_LIFECYCLE_REPORT_2026-09-04.md
+          path: .gate-candidate/kairos_p76/KAIROS_P18_15R1_LIGHTWEIGHT_CHARTS_V5_DRAWING_HOVER_SUBSCRIPTION_TEST_CONTRACT_REPAIR_REPORT_2026-09-04.md
           if-no-files-found: error
