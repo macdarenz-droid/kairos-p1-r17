@@ -1,0 +1,301 @@
+diff --git a/kairos_p76/KAIROS_P18_20_CHART_DRAWING_HOVER_PRESENTATION_INTEGRATION_REPORT_2026-09-04.md b/kairos_p76/KAIROS_P18_20_CHART_DRAWING_HOVER_PRESENTATION_INTEGRATION_REPORT_2026-09-04.md
+new file mode 100644
+index 0000000..4a52270
+--- /dev/null
++++ b/kairos_p76/KAIROS_P18_20_CHART_DRAWING_HOVER_PRESENTATION_INTEGRATION_REPORT_2026-09-04.md
+@@ -0,0 +1,29 @@
++# KAIROS P18.20 — Chart Drawing Hover Presentation Integration
++
++## Controlled base
++Canonical P18.19 PASS, GitHub Actions run #223 / 33858317732.
++
++## Proven missing responsibility
++P18.19 explicitly left presentation-session integration out of scope. The authoritative source therefore had a complete provider-neutral hover lifecycle and provider composition, but no lifecycle coordination between that hover session and the already-owned P18.11 chart/drawing presentation session.
++
++## Responsibility added
++P18.20 extends the existing P18.11 presentation lifecycle owner with an optional hover binding. On each replace, the hover session attaches to the exact freshly-created series handle and the exact renderer drawing snapshot after drawing-layer setup. On replacement/destroy, hover detaches before drawing-layer destruction and series removal. Partial hover-attachment failure cleans up drawing and series resources before rethrowing.
++
++## Ownership preserved
++- P18.11 remains the sole presentation resource ordering/cleanup owner.
++- P18.18 remains the provider-neutral hover lifecycle owner.
++- P18.19 remains the Lightweight Charts v5 hover-port composition owner.
++- P18.17/P18.16/P18.15/P18.14 retain provider resolution/subscription/projection ownership.
++- P18.20 adds no provider API implementation and no second drawing/hover truth owner.
++
++## Explicit non-scope
++No direct crosshair APIs, hoveredObjectId projection, click selection, drag/edit, drawing truth mutation, persistence, calculations, market acquisition, journal truth, toolbar state, navigation state, autoscale policy, P19 Risk/Reward behavior, dependency migration, or phase jump.
++
++## Changed-file contract
++Exactly six files relative to canonical P18.19:
++1. `KAIROS_P18_20_CHART_DRAWING_HOVER_PRESENTATION_INTEGRATION_REPORT_2026-09-04.md`
++2. `package.json`
++3. `scripts/verify-p18-20-chart-drawing-hover-presentation-integration.mjs`
++4. `src/features/chart/chartDrawingPresentationPort.ts`
++5. `src/features/chart/index.ts`
++6. `tests/chart-drawing-hover-presentation-integration.test.ts`
+diff --git a/kairos_p76/package.json b/kairos_p76/package.json
+index 161b9c5..c548f08 100644
+--- a/kairos_p76/package.json
++++ b/kairos_p76/package.json
+@@ -193,7 +193,8 @@
+     "verify:p18:16-lightweight-charts-v5-provider-chart-resolution-binding": "node scripts/verify-p18-16-lightweight-charts-v5-provider-chart-resolution-binding.mjs",
+     "verify:p18:17-lightweight-charts-v5-drawing-hover-binding-composition": "node scripts/verify-p18-17-lightweight-charts-v5-drawing-hover-binding-composition.mjs",
+     "verify:p18:18-chart-drawing-hover-port": "node scripts/verify-p18-18-chart-drawing-hover-port.mjs",
+-    "verify:p18:19-lightweight-charts-v5-drawing-hover-port-composition": "node scripts/verify-p18-19-lightweight-charts-v5-drawing-hover-port-composition.mjs"
++    "verify:p18:19-lightweight-charts-v5-drawing-hover-port-composition": "node scripts/verify-p18-19-lightweight-charts-v5-drawing-hover-port-composition.mjs",
++    "verify:p18:20-chart-drawing-hover-presentation-integration": "node scripts/verify-p18-20-chart-drawing-hover-presentation-integration.mjs"
+   },
+   "dependencies": {
+     "react": "19.2.8",
+diff --git a/kairos_p76/scripts/verify-p18-20-chart-drawing-hover-presentation-integration.mjs b/kairos_p76/scripts/verify-p18-20-chart-drawing-hover-presentation-integration.mjs
+new file mode 100644
+index 0000000..53c64d0
+--- /dev/null
++++ b/kairos_p76/scripts/verify-p18-20-chart-drawing-hover-presentation-integration.mjs
+@@ -0,0 +1,32 @@
++import { readFileSync } from 'node:fs';
++
++const source = readFileSync(new URL('../src/features/chart/chartDrawingPresentationPort.ts', import.meta.url), 'utf8');
++const index = readFileSync(new URL('../src/features/chart/index.ts', import.meta.url), 'utf8');
++
++for (const required of [
++  'ChartDrawingPresentationHoverBinding',
++  'activeHover: ChartDrawingHoverSession | null',
++  'activeHover.destroy()',
++  'hover.port.attach(nextSeries, drawings, hover.onHover)',
++  'nextHover.destroy()',
++  'activeHover = nextHover',
++]) {
++  if (!source.includes(required)) throw new Error(`p18.20-missing:${required}`);
++}
++
++const hoverDestroy = source.indexOf('activeHover.destroy()');
++const drawingDestroy = source.indexOf('activeDrawingLayer.destroy()');
++const seriesRemove = source.indexOf('chart.removeSeries(activeSeries)');
++if (!(hoverDestroy >= 0 && hoverDestroy < drawingDestroy && drawingDestroy < seriesRemove)) {
++  throw new Error('p18.20-resource-order-must-be-hover-drawing-series');
++}
++
++if (!index.includes('type ChartDrawingPresentationHoverBinding')) {
++  throw new Error('p18.20-index-export-missing');
++}
++
++for (const forbidden of ['subscribeCrosshairMove', 'unsubscribeCrosshairMove', 'hoveredObjectId', 'IndexedDB', 'localStorage', 'riskReward']) {
++  if (source.includes(forbidden)) throw new Error(`p18.20-forbidden-scope:${forbidden}`);
++}
++
++console.log('P18.20 chart drawing hover presentation integration verifier: PASS');
+diff --git a/kairos_p76/src/features/chart/chartDrawingPresentationPort.ts b/kairos_p76/src/features/chart/chartDrawingPresentationPort.ts
+index 5103137..243f23e 100644
+--- a/kairos_p76/src/features/chart/chartDrawingPresentationPort.ts
++++ b/kairos_p76/src/features/chart/chartDrawingPresentationPort.ts
+@@ -2,6 +2,11 @@ import type { ChartEngineDriver, ChartEngineSeriesHandle } from './chartEngineDr
+ import type { RendererSeriesProjection } from './chartSeriesProjection';
+ import type { ChartDrawingLayerPort, ChartDrawingLayerSession } from './chartDrawingLayerPort';
+ import type { RendererChartDrawing } from './chartDrawingProjection';
++import type {
++  ChartDrawingHoverObservation,
++  ChartDrawingHoverPort,
++  ChartDrawingHoverSession,
++} from './chartDrawingHoverPort';
+ 
+ export interface ChartDrawingPresentationSession {
+   replace(
+@@ -15,6 +20,11 @@ export interface ChartDrawingPresentationPort {
+   create(container: HTMLElement): ChartDrawingPresentationSession;
+ }
+ 
++export interface ChartDrawingPresentationHoverBinding {
++  readonly port: ChartDrawingHoverPort;
++  readonly onHover: (hover: ChartDrawingHoverObservation | null) => void;
++}
++
+ /**
+  * P18.11 provider-neutral presentation coordination invariant:
+  * - P17 ChartEngineDriver remains the series-resource owner
+@@ -22,21 +32,29 @@ export interface ChartDrawingPresentationPort {
+  * - each replace() builds one fresh series and one drawing-layer attachment for the same handle
+  * - the drawing layer is detached before its series is removed
+  * - failed replacement is cleaned up without promoting a partial active presentation
++ * - optional P18.20 hover integration attaches to the exact active series/drawing snapshot and detaches before drawing/series teardown
++ * - P18.18 remains the hover lifecycle owner; this boundary only coordinates resource ordering
+  * - this boundary owns no drawing truth, journal truth, market truth, persistence,
+  *   calculations, acquisition, interaction state, autoscale policy, or navigation state
+  */
+ export function createChartDrawingPresentationPort(
+   driver: ChartEngineDriver,
+   drawingLayer: ChartDrawingLayerPort,
++  hover?: ChartDrawingPresentationHoverBinding,
+ ): ChartDrawingPresentationPort {
+   return {
+     create(container: HTMLElement): ChartDrawingPresentationSession {
+       const chart = driver.createChart(container);
+       let activeSeries: ChartEngineSeriesHandle | null = null;
+       let activeDrawingLayer: ChartDrawingLayerSession | null = null;
++      let activeHover: ChartDrawingHoverSession | null = null;
+       let destroyed = false;
+ 
+       const clearActive = (): void => {
++        if (activeHover !== null) {
++          activeHover.destroy();
++          activeHover = null;
++        }
+         if (activeDrawingLayer !== null) {
+           activeDrawingLayer.destroy();
+           activeDrawingLayer = null;
+@@ -66,13 +84,19 @@ export function createChartDrawingPresentationPort(
+ 
+           let nextSeries: ChartEngineSeriesHandle | null = null;
+           let nextDrawingLayer: ChartDrawingLayerSession | null = null;
++          let nextHover: ChartDrawingHoverSession | null = null;
+           try {
+             nextSeries = createSeries(series);
+             nextDrawingLayer = drawingLayer.attach(nextSeries);
+             nextDrawingLayer.replaceDrawings(drawings);
++            if (hover !== undefined) {
++              nextHover = hover.port.attach(nextSeries, drawings, hover.onHover);
++            }
+             activeSeries = nextSeries;
+             activeDrawingLayer = nextDrawingLayer;
++            activeHover = nextHover;
+           } catch (error) {
++            if (nextHover !== null) nextHover.destroy();
+             if (nextDrawingLayer !== null) nextDrawingLayer.destroy();
+             if (nextSeries !== null) chart.removeSeries(nextSeries);
+             throw error;
+diff --git a/kairos_p76/src/features/chart/index.ts b/kairos_p76/src/features/chart/index.ts
+index 834ba38..ac5f934 100644
+--- a/kairos_p76/src/features/chart/index.ts
++++ b/kairos_p76/src/features/chart/index.ts
+@@ -147,6 +147,7 @@ export {
+   createChartDrawingPresentationPort,
+   type ChartDrawingPresentationSession,
+   type ChartDrawingPresentationPort,
++  type ChartDrawingPresentationHoverBinding,
+ } from './chartDrawingPresentationPort';
+ export {
+   hitTestLightweightChartsV5TrendLineSegments,
+diff --git a/kairos_p76/tests/chart-drawing-hover-presentation-integration.test.ts b/kairos_p76/tests/chart-drawing-hover-presentation-integration.test.ts
+new file mode 100644
+index 0000000..db18e91
+--- /dev/null
++++ b/kairos_p76/tests/chart-drawing-hover-presentation-integration.test.ts
+@@ -0,0 +1,118 @@
++import { describe, expect, it, vi } from 'vitest';
++import {
++  createChartDrawingPresentationPort,
++  type ChartDrawingHoverPort,
++  type ChartDrawingLayerPort,
++  type ChartEngineDriver,
++  type ChartEngineSeriesHandle,
++} from '../src/features/chart';
++
++function createHarness() {
++  const events: string[] = [];
++  let seriesCounter = 0;
++
++  const makeHandle = (): ChartEngineSeriesHandle => {
++    const id = `series-${++seriesCounter}`;
++    return {
++      setPriceLineData() { events.push(`set-line:${id}`); },
++      setCandleData() { events.push(`set-candles:${id}`); },
++      updatePriceLine() {},
++      updateCandle() {},
++    };
++  };
++
++  const driver: ChartEngineDriver = {
++    createChart() {
++      events.push('chart-create');
++      return {
++        addPriceLineSeries() { events.push('add-line'); return makeHandle(); },
++        addCandlestickSeries() { events.push('add-candles'); return makeHandle(); },
++        removeSeries() { events.push('remove-series'); },
++        remove() { events.push('chart-remove'); },
++      };
++    },
++  };
++
++  const drawingLayer: ChartDrawingLayerPort = {
++    attach() {
++      events.push('drawing-attach');
++      return {
++        replaceDrawings(drawings) { events.push(`drawings:${drawings.length}`); },
++        destroy() { events.push('drawing-destroy'); },
++      };
++    },
++  };
++
++  const hoverPort: ChartDrawingHoverPort = {
++    attach(_series, drawings, onHover) {
++      events.push(`hover-attach:${drawings.length}`);
++      onHover(null);
++      return { destroy() { events.push('hover-destroy'); } };
++    },
++  };
++
++  return { events, driver, drawingLayer, hoverPort };
++}
++
++const priceSeries = {
++  kind: 'price-line' as const,
++  data: [{ time: 1, value: 100 }],
++};
++
++const drawings = [{
++  id: 'trend-1',
++  kind: 'trend-line' as const,
++  start: { time: 1, value: 1 },
++  end: { time: 2, value: 2 },
++}];
++
++describe('P18.20 chart drawing hover presentation integration', () => {
++  it('attaches hover to the same active series/drawing snapshot after drawing presentation setup', () => {
++    const { events, driver, drawingLayer, hoverPort } = createHarness();
++    const onHover = vi.fn();
++    const session = createChartDrawingPresentationPort(driver, drawingLayer, {
++      port: hoverPort,
++      onHover,
++    }).create({} as HTMLElement);
++
++    session.replace(priceSeries, drawings);
++
++    expect(events).toEqual([
++      'chart-create',
++      'add-line',
++      'set-line:series-1',
++      'drawing-attach',
++      'drawings:1',
++      'hover-attach:1',
++    ]);
++    expect(onHover).toHaveBeenCalledWith(null);
++  });
++
++  it('detaches hover before drawing layer and series on replacement and destroy', () => {
++    const { events, driver, drawingLayer, hoverPort } = createHarness();
++    const session = createChartDrawingPresentationPort(driver, drawingLayer, {
++      port: hoverPort,
++      onHover() {},
++    }).create({} as HTMLElement);
++
++    session.replace(priceSeries, drawings);
++    session.replace(priceSeries, []);
++
++    const firstHoverDestroy = events.indexOf('hover-destroy');
++    const firstDrawingDestroy = events.indexOf('drawing-destroy');
++    const firstSeriesRemove = events.indexOf('remove-series');
++    expect(firstHoverDestroy).toBeGreaterThan(-1);
++    expect(firstDrawingDestroy).toBeGreaterThan(firstHoverDestroy);
++    expect(firstSeriesRemove).toBeGreaterThan(firstDrawingDestroy);
++
++    session.destroy();
++    session.destroy();
++    expect(events.slice(-4)).toEqual([
++      'hover-destroy',
++      'drawing-destroy',
++      'remove-series',
++      'chart-remove',
++    ]);
++    expect(events.filter((event) => event === 'chart-remove')).toHaveLength(1);
++  });
++});
