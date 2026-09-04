@@ -1,0 +1,114 @@
+name: Kairos Temporary Binary Candidate Upload Bridge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/kairos-binary-upload.yml'
+      - '.kairos-upload/p18_19.diff'
+
+permissions:
+  actions: read
+  contents: write
+
+env:
+  BASE_RUN_ID: '33855627608'
+  BASE_ZIP: KAIROS_P18_18R2_CHART_DRAWING_HOVER_HISTORICAL_PROJECTION_COMPATIBILITY_REPAIR_CANDIDATE_2026-09-04.zip
+  TARGET_ZIP: KAIROS_P18_19_LIGHTWEIGHT_CHARTS_V5_DRAWING_HOVER_PORT_COMPOSITION_CANDIDATE_2026-09-04.zip
+
+jobs:
+  assemble-verify-and-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - name: Verify npm version
+        run: |
+          npm install --global npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+      - name: Download canonical P18.18R2 candidate artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/kairos-binary-upload
+          mkdir -p /tmp/kairos-binary-upload/base-art /tmp/kairos-binary-upload/work /tmp/kairos-binary-upload/original
+          gh run download "$BASE_RUN_ID" -R "$GITHUB_REPOSITORY" -n KAIROS_CURRENT_CANDIDATE -D /tmp/kairos-binary-upload/base-art
+          test -f "/tmp/kairos-binary-upload/base-art/$BASE_ZIP"
+          unzip -q "/tmp/kairos-binary-upload/base-art/$BASE_ZIP" -d /tmp/kairos-binary-upload/work
+          test -f /tmp/kairos-binary-upload/work/kairos_p76/package.json
+          cp -a /tmp/kairos-binary-upload/work/kairos_p76 /tmp/kairos-binary-upload/original/
+      - name: Apply controlled P18.19 composition patch
+        run: |
+          set -euo pipefail
+          cd /tmp/kairos-binary-upload/work
+          patch -p1 < "$GITHUB_WORKSPACE/.kairos-upload/p18_19.diff"
+      - name: Confirm exact six-file scope from canonical P18.18R2
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib, sys
+          b=Path('/tmp/kairos-binary-upload/original/kairos_p76')
+          c=Path('/tmp/kairos-binary-upload/work/kairos_p76')
+          def h(p): return hashlib.sha256(p.read_bytes()).hexdigest()
+          x={str(p.relative_to(b)):h(p) for p in b.rglob('*') if p.is_file()}
+          y={str(p.relative_to(c)):h(p) for p in c.rglob('*') if p.is_file()}
+          changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
+          expected={
+            'KAIROS_P18_19_LIGHTWEIGHT_CHARTS_V5_DRAWING_HOVER_PORT_COMPOSITION_REPORT_2026-09-04.md',
+            'package.json',
+            'scripts/verify-p18-19-lightweight-charts-v5-drawing-hover-port-composition.mjs',
+            'src/features/chart/index.ts',
+            'src/features/chart/lightweightChartsV5DrawingHoverPortComposition.ts',
+            'tests/lightweight-charts-v5-drawing-hover-port-composition.test.ts',
+          }
+          print('\n'.join(sorted(changed)))
+          if changed != expected:
+            print('P18.19 upload bridge exact scope mismatch', file=sys.stderr)
+            print('Unexpected:', sorted(changed-expected), file=sys.stderr)
+            print('Missing:', sorted(expected-changed), file=sys.stderr)
+            sys.exit(1)
+          PY
+      - name: Install candidate deterministically
+        working-directory: /tmp/kairos-binary-upload/work/kairos_p76
+        run: npm ci
+      - name: Prove exact Lightweight Charts dependency
+        working-directory: /tmp/kairos-binary-upload/work/kairos_p76
+        run: |
+          test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
+          npm ls lightweight-charts --depth=0
+      - name: Production TypeScript and build
+        working-directory: /tmp/kairos-binary-upload/work/kairos_p76
+        run: |
+          npm run typecheck
+          npm run build
+      - name: P18.19 focused verification
+        working-directory: /tmp/kairos-binary-upload/work/kairos_p76
+        run: |
+          npm run verify:p18:19-lightweight-charts-v5-drawing-hover-port-composition
+          npm run verify:p18:18-chart-drawing-hover-port
+          npm run verify:p18:17-lightweight-charts-v5-drawing-hover-binding-composition
+          npm run verify:p18:15-lightweight-charts-v5-drawing-hover-subscription
+          npx vitest run tests/lightweight-charts-v5-drawing-hover-port-composition.test.ts tests/chart-drawing-hover-port.test.ts tests/lightweight-charts-v5-drawing-hover-binding-composition.test.ts tests/lightweight-charts-v5-drawing-hover-subscription.test.ts tests/lightweight-charts-v5-drawing-hover-projection.test.ts
+      - name: Package P18.19 candidate
+        run: |
+          set -euo pipefail
+          rm -f "$GITHUB_WORKSPACE/$TARGET_ZIP"
+          cd /tmp/kairos-binary-upload/work
+          zip -qr "$GITHUB_WORKSPACE/$TARGET_ZIP" kairos_p76
+          unzip -t "$GITHUB_WORKSPACE/$TARGET_ZIP" >/dev/null
+          echo "UPLOAD_BRIDGE_SHA256=$(sha256sum "$GITHUB_WORKSPACE/$TARGET_ZIP" | awk '{print $1}')"
+          echo "UPLOAD_BRIDGE_SIZE=$(stat -c '%s' "$GITHUB_WORKSPACE/$TARGET_ZIP")"
+      - name: Commit binary candidate to main
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "$TARGET_ZIP"
+          git commit -m 'Upload P18.19 candidate'
+          git push origin HEAD:main

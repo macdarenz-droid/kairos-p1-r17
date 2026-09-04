@@ -1,0 +1,213 @@
+--- a/kairos_p76/KAIROS_P18_19_LIGHTWEIGHT_CHARTS_V5_DRAWING_HOVER_PORT_COMPOSITION_REPORT_2026-09-04.md
++++ b/kairos_p76/KAIROS_P18_19_LIGHTWEIGHT_CHARTS_V5_DRAWING_HOVER_PORT_COMPOSITION_REPORT_2026-09-04.md
+@@ -0,0 +1,30 @@
++# KAIROS P18.19 — Lightweight Charts v5 Drawing Hover Port Composition
++
++## Controlled base
++Canonical P18.18R2 PASS, GitHub Actions run 33855627608.
++
++## Responsibility added
++Adds the single production composition that connects the provider-neutral P18.18 `ChartDrawingHoverPort` lifecycle to the already-owned P18.17 Lightweight Charts v5 drawing-hover binding.
++
++## Ownership preserved
++- P18.18 remains the provider-neutral hover lifecycle owner.
++- P18.17 remains the provider chart-resolution/subscription/projection composition owner.
++- P18.15 remains the exact subscribe/unsubscribe lifecycle owner.
++- P18.14 remains the hovered-object projection owner.
++- P18.16 remains the neutral-series-handle to provider-chart identity owner.
++- P18.19 only adapts the existing P18.17 subscription lifecycle to P18.18's driver contract.
++
++## Explicit non-scope
++No click selection, drag/edit, drawing mutation, persistence, calculations, market acquisition, journal truth, toolbar state, navigation state, autoscale policy, presentation-session integration, phase P19 Risk/Reward implementation, dependency migration, or provider API reimplementation.
++
++## Changed-file contract
++Exactly six files relative to canonical P18.18R2:
++1. `KAIROS_P18_19_LIGHTWEIGHT_CHARTS_V5_DRAWING_HOVER_PORT_COMPOSITION_REPORT_2026-09-04.md`
++2. `package.json`
++3. `scripts/verify-p18-19-lightweight-charts-v5-drawing-hover-port-composition.mjs`
++4. `src/features/chart/index.ts`
++5. `src/features/chart/lightweightChartsV5DrawingHoverPortComposition.ts`
++6. `tests/lightweight-charts-v5-drawing-hover-port-composition.test.ts`
++
++## Verification intent
++Dedicated verifier proves the new boundary delegates to P18.18/P18.17 and does not directly own provider crosshair APIs or unrelated truth. Canonical gate must additionally prove deterministic install, exact Lightweight Charts 5.2.1 dependency, TypeScript, production build, dedicated runtime tests, full unit regression, P18/P17 regression chain, and historical closures before promotion.
+--- a/kairos_p76/package.json
++++ b/kairos_p76/package.json
+@@ -192,7 +192,8 @@
+     "verify:p18:15-lightweight-charts-v5-drawing-hover-subscription": "node scripts/verify-p18-15-lightweight-charts-v5-drawing-hover-subscription.mjs",
+     "verify:p18:16-lightweight-charts-v5-provider-chart-resolution-binding": "node scripts/verify-p18-16-lightweight-charts-v5-provider-chart-resolution-binding.mjs",
+     "verify:p18:17-lightweight-charts-v5-drawing-hover-binding-composition": "node scripts/verify-p18-17-lightweight-charts-v5-drawing-hover-binding-composition.mjs",
+-    "verify:p18:18-chart-drawing-hover-port": "node scripts/verify-p18-18-chart-drawing-hover-port.mjs"
++    "verify:p18:18-chart-drawing-hover-port": "node scripts/verify-p18-18-chart-drawing-hover-port.mjs",
++    "verify:p18:19-lightweight-charts-v5-drawing-hover-port-composition": "node scripts/verify-p18-19-lightweight-charts-v5-drawing-hover-port-composition.mjs"
+   },
+   "dependencies": {
+     "react": "19.2.8",
+--- a/kairos_p76/scripts/verify-p18-19-lightweight-charts-v5-drawing-hover-port-composition.mjs
++++ b/kairos_p76/scripts/verify-p18-19-lightweight-charts-v5-drawing-hover-port-composition.mjs
+@@ -0,0 +1,37 @@
++import { readFileSync } from 'node:fs';
++
++const source = readFileSync('src/features/chart/lightweightChartsV5DrawingHoverPortComposition.ts', 'utf8');
++const index = readFileSync('src/features/chart/index.ts', 'utf8');
++const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
++
++for (const token of [
++  'createLightweightChartsV5DrawingHoverPort',
++  'createChartDrawingHoverPortFromDriver',
++  'createLightweightChartsV5DrawingHoverSubscriptionFromBinding',
++  "Pick<LightweightChartsV5DriverBinding, 'resolveChart'>",
++  'subscription.destroy()',
++]) {
++  if (!source.includes(token)) throw new Error(`P18.19 missing composition token: ${token}`);
++}
++
++for (const forbidden of [
++  'subscribeCrosshairMove(',
++  'unsubscribeCrosshairMove(',
++  'hoveredObjectId',
++  'attachPrimitive(',
++  'detachPrimitive(',
++  'indexedDB',
++  'localStorage',
++]) {
++  if (source.includes(forbidden)) throw new Error(`P18.19 re-owns forbidden responsibility: ${forbidden}`);
++}
++
++if (!index.includes("createLightweightChartsV5DrawingHoverPort } from './lightweightChartsV5DrawingHoverPortComposition'")) {
++  throw new Error('P18.19 chart barrel export missing');
++}
++
++if (pkg.scripts?.['verify:p18:19-lightweight-charts-v5-drawing-hover-port-composition'] !== 'node scripts/verify-p18-19-lightweight-charts-v5-drawing-hover-port-composition.mjs') {
++  throw new Error('P18.19 package verifier script missing');
++}
++
++console.log('P18.19 Lightweight Charts v5 drawing hover port composition verification passed.');
+--- a/kairos_p76/src/features/chart/index.ts
++++ b/kairos_p76/src/features/chart/index.ts
+@@ -172,3 +172,4 @@
+   type ChartDrawingHoverSession,
+   type ChartDrawingHoverPort,
+ } from './chartDrawingHoverPort';
++export { createLightweightChartsV5DrawingHoverPort } from './lightweightChartsV5DrawingHoverPortComposition';
+--- a/kairos_p76/src/features/chart/lightweightChartsV5DrawingHoverPortComposition.ts
++++ b/kairos_p76/src/features/chart/lightweightChartsV5DrawingHoverPortComposition.ts
+@@ -0,0 +1,40 @@
++import {
++  createChartDrawingHoverPortFromDriver,
++  type ChartDrawingHoverDriver,
++  type ChartDrawingHoverPort,
++} from './chartDrawingHoverPort';
++import { createLightweightChartsV5DrawingHoverSubscriptionFromBinding } from './lightweightChartsV5DrawingHoverBindingComposition';
++import type { LightweightChartsV5DriverBinding } from './lightweightChartsV5ModuleAdapter';
++
++/**
++ * P18.19 production drawing-hover port composition invariant:
++ * - P18.18 remains the provider-neutral hover lifecycle owner
++ * - P18.17 remains the provider chart-resolution/subscription/projection composition owner
++ * - this boundary only adapts the P18.17 subscription lifecycle to P18.18's neutral driver contract
++ * - provider subscribe/unsubscribe APIs are not reimplemented here
++ * - neutral ChartEngineSeriesHandle remains free of provider APIs
++ * - no click selection, drag/edit, drawing truth mutation, persistence, calculations,
++ *   market acquisition, journal truth, toolbar state, navigation state, autoscale policy, or P19-phase behavior lives here
++ */
++export function createLightweightChartsV5DrawingHoverPort(
++  binding: Pick<LightweightChartsV5DriverBinding, 'resolveChart'>,
++): ChartDrawingHoverPort {
++  const driver: ChartDrawingHoverDriver = {
++    attach(series, drawings, onHover) {
++      const subscription = createLightweightChartsV5DrawingHoverSubscriptionFromBinding(
++        binding,
++        series,
++        drawings,
++        onHover,
++      );
++
++      return {
++        detach(): void {
++          subscription.destroy();
++        },
++      };
++    },
++  };
++
++  return createChartDrawingHoverPortFromDriver(driver);
++}
+--- a/kairos_p76/tests/lightweight-charts-v5-drawing-hover-port-composition.test.ts
++++ b/kairos_p76/tests/lightweight-charts-v5-drawing-hover-port-composition.test.ts
+@@ -0,0 +1,75 @@
++import { describe, expect, it, vi } from 'vitest';
++import type { ChartEngineSeriesHandle } from '../src/features/chart/chartEngineDriver';
++import type { RendererChartDrawing } from '../src/features/chart/chartDrawingProjection';
++import {
++  createLightweightChartsV5DrawingHoverPort,
++  type LightweightChartsV5DrawingHoverEventHandler,
++} from '../src/features/chart';
++
++const series = {} as ChartEngineSeriesHandle;
++const drawings: readonly RendererChartDrawing[] = [
++  {
++    id: 'trend-1',
++    kind: 'trend-line',
++    start: { time: 100, value: 10 },
++    end: { time: 200, value: 20 },
++  },
++];
++
++function createHoverChartHarness() {
++  let handler: LightweightChartsV5DrawingHoverEventHandler | null = null;
++  const subscribeCrosshairMove = vi.fn((next: LightweightChartsV5DrawingHoverEventHandler) => {
++    handler = next;
++  });
++  const unsubscribeCrosshairMove = vi.fn((next: LightweightChartsV5DrawingHoverEventHandler) => {
++    expect(next).toBe(handler);
++  });
++
++  return {
++    chart: { subscribeCrosshairMove, unsubscribeCrosshairMove },
++    emit(event: { hoveredObjectId?: string }) {
++      if (handler === null) throw new Error('test-handler-not-subscribed');
++      handler(event);
++    },
++    subscribeCrosshairMove,
++    unsubscribeCrosshairMove,
++  };
++}
++
++describe('P18.19 Lightweight Charts v5 drawing hover port composition', () => {
++  it('connects the neutral hover port to the existing provider hover binding', () => {
++    const harness = createHoverChartHarness();
++    const resolveChart = vi.fn(() => harness.chart as never);
++    const onHover = vi.fn();
++
++    const session = createLightweightChartsV5DrawingHoverPort({ resolveChart }).attach(
++      series,
++      drawings,
++      onHover,
++    );
++
++    expect(resolveChart).toHaveBeenCalledTimes(1);
++    expect(resolveChart).toHaveBeenCalledWith(series);
++    expect(harness.subscribeCrosshairMove).toHaveBeenCalledTimes(1);
++
++    harness.emit({ hoveredObjectId: 'trend-1' });
++    expect(onHover).toHaveBeenLastCalledWith({ kind: 'drawing-hover', drawingId: 'trend-1' });
++
++    harness.emit({ hoveredObjectId: 'other-provider-object' });
++    expect(onHover).toHaveBeenLastCalledWith(null);
++
++    session.destroy();
++    session.destroy();
++    expect(harness.unsubscribeCrosshairMove).toHaveBeenCalledTimes(1);
++  });
++
++  it('fails closed through the existing provider binding when hover capability is unavailable', () => {
++    const onHover = vi.fn();
++    const port = createLightweightChartsV5DrawingHoverPort({ resolveChart: () => ({}) as never });
++
++    expect(() => port.attach(series, drawings, onHover)).toThrow(
++      'chart-drawing-hover-capability-unavailable',
++    );
++    expect(onHover).not.toHaveBeenCalled();
++  });
++});
