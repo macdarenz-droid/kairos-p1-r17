@@ -1,11 +1,11 @@
-# KAIROS P18.30 GATE — AUTHORITATIVE BASE P18.29 — CANDIDATE P18.30
+# KAIROS P18.31 GATE — AUTHORITATIVE BASE P18.30 — CANDIDATE P18.31
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P18_30_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_DRAFT_INTERACTION_COMPOSITION_CANDIDATE_2026-09-05.zip'
+      - 'KAIROS_P18_31_CHART_TREND_LINE_DRAFT_COMMIT_CONSTRUCTION_CANDIDATE_2026-09-05.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P18_29_CHART_TREND_LINE_DRAFT_INTERACTION_COORDINATION_CANDIDATE_2026-09-04.zip
-  CANDIDATE_ZIP: KAIROS_P18_30_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_DRAFT_INTERACTION_COMPOSITION_CANDIDATE_2026-09-05.zip
+  BASE_ZIP: KAIROS_P18_30_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_DRAFT_INTERACTION_COMPOSITION_CANDIDATE_2026-09-05.zip
+  CANDIDATE_ZIP: KAIROS_P18_31_CHART_TREND_LINE_DRAFT_COMMIT_CONSTRUCTION_CANDIDATE_2026-09-05.zip
 
 jobs:
   verify-current-candidate:
@@ -35,7 +35,7 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm exact controlled P18.30 scope from authoritative P18.29
+      - name: Confirm exact controlled P18.31 scope from authoritative P18.30
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -47,15 +47,15 @@ jobs:
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           print('\n'.join(sorted(changed)))
           expected={
-            'KAIROS_P18_30_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_DRAFT_INTERACTION_COMPOSITION_REPORT_2026-09-05.md',
+            'KAIROS_P18_31_CHART_TREND_LINE_DRAFT_COMMIT_CONSTRUCTION_REPORT_2026-09-05.md',
             'package.json',
-            'scripts/verify-p18-30-lightweight-charts-v5-trend-line-draft-interaction-composition.mjs',
+            'scripts/verify-p18-31-chart-trend-line-draft-commit-construction.mjs',
+            'src/features/chart/chartTrendLineDraftCommitConstruction.ts',
             'src/features/chart/index.ts',
-            'src/features/chart/lightweightChartsV5TrendLineDraftInteractionComposition.ts',
-            'tests/lightweight-charts-v5-trend-line-draft-interaction-composition.test.ts',
+            'tests/chart-trend-line-draft-commit-construction.test.ts',
           }
           if changed != expected:
-            print('P18.30 exact scope mismatch',file=sys.stderr)
+            print('P18.31 exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             sys.exit(1)
@@ -74,9 +74,10 @@ jobs:
       - name: Production build
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
-      - name: Dedicated P18.30 Lightweight Charts v5 trend-line draft interaction composition verifier/runtime
+      - name: Dedicated P18.31 chart trend-line draft commit construction verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p18:31-chart-trend-line-draft-commit-construction
           npm run verify:p18:30-lightweight-charts-v5-trend-line-draft-interaction-composition
           npm run verify:p18:29-chart-trend-line-draft-interaction-coordination
           npm run verify:p18:28-chart-trend-line-draft-anchor-collection
@@ -98,22 +99,23 @@ jobs:
           npm run verify:p18:13-lightweight-charts-v5-trend-line-primitive-hit-test-binding
           npm run verify:p18:12-lightweight-charts-v5-trend-line-hit-test
           npm run verify:p18:11-chart-drawing-presentation-coordination
-          npx vitest run tests/lightweight-charts-v5-trend-line-draft-interaction-composition.test.ts tests/chart-trend-line-draft-interaction-coordination.test.ts tests/chart-trend-line-draft-anchor-collection.test.ts tests/lightweight-charts-v5-drawing-click-binding-composition.test.ts tests/lightweight-charts-v5-drawing-click-subscription.test.ts tests/lightweight-charts-v5-drawing-anchor-projection.test.ts tests/chart-drawing-interaction-port.test.ts tests/chart-drawing-interaction-reducer.test.ts tests/chart-drawing-interaction-event.test.ts tests/chart-drawing-interaction-contract.test.ts tests/chart-drawing-hover-presentation-integration.test.ts tests/chart-drawing-presentation-port.test.ts tests/lightweight-charts-v5-drawing-hover-port-composition.test.ts tests/chart-drawing-hover-port.test.ts tests/lightweight-charts-v5-drawing-hover-binding-composition.test.ts tests/lightweight-charts-v5-drawing-hover-subscription.test.ts tests/lightweight-charts-v5-drawing-hover-projection.test.ts
+          npx vitest run tests/chart-trend-line-draft-commit-construction.test.ts tests/lightweight-charts-v5-trend-line-draft-interaction-composition.test.ts tests/chart-trend-line-draft-interaction-coordination.test.ts tests/chart-trend-line-draft-anchor-collection.test.ts tests/lightweight-charts-v5-drawing-click-binding-composition.test.ts tests/lightweight-charts-v5-drawing-click-subscription.test.ts tests/lightweight-charts-v5-drawing-anchor-projection.test.ts tests/chart-drawing-interaction-port.test.ts tests/chart-drawing-interaction-reducer.test.ts tests/chart-drawing-interaction-event.test.ts tests/chart-drawing-interaction-contract.test.ts tests/chart-drawing-hover-presentation-integration.test.ts tests/chart-drawing-presentation-port.test.ts tests/lightweight-charts-v5-drawing-hover-port-composition.test.ts tests/chart-drawing-hover-port.test.ts tests/lightweight-charts-v5-drawing-hover-binding-composition.test.ts tests/lightweight-charts-v5-drawing-hover-subscription.test.ts tests/lightweight-charts-v5-drawing-hover-projection.test.ts
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression through P18.30
+      - name: Full controlled roadmap regression through P18.31
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
           const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
           const p=JSON.parse(readFileSync('package.json'));const s=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:p'));
-          for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:16-chart-engine-system-closure','verify:p18:15-lightweight-charts-v5-drawing-hover-subscription','verify:p18:16-lightweight-charts-v5-provider-chart-resolution-binding','verify:p18:17-lightweight-charts-v5-drawing-hover-binding-composition','verify:p18:18-chart-drawing-hover-port','verify:p18:19-lightweight-charts-v5-drawing-hover-port-composition','verify:p18:20-chart-drawing-hover-presentation-integration','verify:p18:21-chart-drawing-interaction-state-contract','verify:p18:22-chart-drawing-interaction-event-contract','verify:p18:23-chart-drawing-interaction-reducer','verify:p18:24-chart-drawing-interaction-port','verify:p18:25-lightweight-charts-v5-drawing-anchor-projection','verify:p18:26-lightweight-charts-v5-drawing-click-subscription','verify:p18:27-lightweight-charts-v5-drawing-click-binding-composition','verify:p18:28-chart-trend-line-draft-anchor-collection','verify:p18:29-chart-trend-line-draft-interaction-coordination','verify:p18:30-lightweight-charts-v5-trend-line-draft-interaction-composition']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
+          for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:16-chart-engine-system-closure','verify:p18:15-lightweight-charts-v5-drawing-hover-subscription','verify:p18:16-lightweight-charts-v5-provider-chart-resolution-binding','verify:p18:17-lightweight-charts-v5-drawing-hover-binding-composition','verify:p18:18-chart-drawing-hover-port','verify:p18:19-lightweight-charts-v5-drawing-hover-port-composition','verify:p18:20-chart-drawing-hover-presentation-integration','verify:p18:21-chart-drawing-interaction-state-contract','verify:p18:22-chart-drawing-interaction-event-contract','verify:p18:23-chart-drawing-interaction-reducer','verify:p18:24-chart-drawing-interaction-port','verify:p18:25-lightweight-charts-v5-drawing-anchor-projection','verify:p18:26-lightweight-charts-v5-drawing-click-subscription','verify:p18:27-lightweight-charts-v5-drawing-click-binding-composition','verify:p18:28-chart-trend-line-draft-anchor-collection','verify:p18:29-chart-trend-line-draft-interaction-coordination','verify:p18:30-lightweight-charts-v5-trend-line-draft-interaction-composition','verify:p18:31-chart-trend-line-draft-commit-construction']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
           for(const x of s){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
           NODE
-      - name: P18.30 through P17 chart regressions
+      - name: P18.31 through P17 chart regressions
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p18:31-chart-trend-line-draft-commit-construction
           npm run verify:p18:30-lightweight-charts-v5-trend-line-draft-interaction-composition
           npm run verify:p18:29-chart-trend-line-draft-interaction-coordination
           npm run verify:p18:28-chart-trend-line-draft-anchor-collection
@@ -171,5 +173,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P18_30_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_DRAFT_INTERACTION_COMPOSITION_REPORT_2026-09-05.md
+          path: .gate-candidate/kairos_p76/KAIROS_P18_31_CHART_TREND_LINE_DRAFT_COMMIT_CONSTRUCTION_REPORT_2026-09-05.md
           if-no-files-found: error
