@@ -1,0 +1,155 @@
+name: Kairos P18.60 Deterministic Reconstruction Bridge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/p18-60-reconstruct.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reconstruct:
+    runs-on: ubuntu-24.04
+    env:
+      BASE_ZIP: KAIROS_P18_59_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_EDIT_CLICK_EXECUTION_LIFECYCLE_COMPOSITION_CANDIDATE_2026-09-06.zip
+      OUT_ZIP: KAIROS_P18_60_DRAWING_TOOLS_SYSTEM_CLOSURE_CANDIDATE_2026-09-06.zip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - name: Pin npm
+        run: |
+          npm install --global npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+      - name: Reconstruct closure from canonical P18.59
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .p18base .p18candidate
+          mkdir .p18base .p18candidate
+          unzip -q "$BASE_ZIP" -d .p18base
+          cp -a .p18base/. .p18candidate/
+          ROOT=.p18candidate/kairos_p76
+          test -f "$ROOT/package.json"
+
+          cat >> "$ROOT/docs/KAIROS_ARCHITECTURE_MAP.md" <<'EOF'
+
+## P18 Drawing Tools — system closure (P18.60)
+
+Canonical closure intent: P18 owns generic chart drawing and interaction machinery only: drawing lifecycle, projection/rendering, hover/hit testing, click evidence, selection, editing/deletion interaction infrastructure, and provider plumbing. P18 does not own Risk/Reward business truth, journal execution truth, or persistence semantics reserved for later roadmap phases. P19 may consume the generic P18 drawing machinery while owning Risk/Reward meaning and composition. This closure adds no new runtime/business owner; it closes the verified P18 responsibility set after P18.59.
+EOF
+
+          cat > "$ROOT/scripts/verify-p18-60-drawing-tools-system-closure.mjs" <<'EOF'
+import fs from 'node:fs';
+import path from 'node:path';
+
+const root = process.cwd();
+const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+const required = [
+  'verify:p18:24-chart-drawing-interaction-port',
+  'verify:p18:45-chart-drawing-deletion-coordination',
+  'verify:p18:51r3-chart-trend-line-edit-presentation-coordination-runtime-projection-expectation-repair',
+  'verify:p18:52-chart-drawing-deletion-presentation-coordination',
+  'verify:p18:53-chart-drawing-deletion-initiation-coordination',
+  'verify:p18:58-lightweight-charts-v5-trend-line-edit-endpoint-click-lifecycle-composition',
+  'verify:p18:59-lightweight-charts-v5-trend-line-edit-click-execution-lifecycle-composition',
+];
+for (const name of required) {
+  if (typeof pkg.scripts?.[name] !== 'string') throw new Error(`P18.60 closure missing historical verifier: ${name}`);
+}
+const map = fs.readFileSync(path.join(root, 'docs/KAIROS_ARCHITECTURE_MAP.md'), 'utf8');
+for (const phrase of ['P18 Drawing Tools — system closure (P18.60)', 'P18 does not own Risk/Reward business truth', 'P19 may consume the generic P18 drawing machinery']) {
+  if (!map.includes(phrase)) throw new Error(`P18.60 architecture closure evidence missing: ${phrase}`);
+}
+const forbidden = ['riskRewardTruth', 'historicalExecutionMutation', 'savedAnalysisPersistenceOwner'];
+const report = fs.readFileSync(path.join(root, 'KAIROS_P18_60_DRAWING_TOOLS_SYSTEM_CLOSURE_REPORT_2026-09-06.md'), 'utf8');
+for (const token of forbidden) if (report.includes(token)) throw new Error(`P18.60 closure leaked forbidden owner token: ${token}`);
+console.log('P18.60 Drawing Tools system closure verifier PASS');
+EOF
+
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const p='.p18candidate/kairos_p76/package.json';
+          const j=JSON.parse(fs.readFileSync(p,'utf8'));
+          j.scripts ||= {};
+          j.scripts['verify:p18:60-drawing-tools-system-closure']='node scripts/verify-p18-60-drawing-tools-system-closure.mjs';
+          fs.writeFileSync(p, JSON.stringify(j,null,2)+'\n');
+          NODE
+
+          cat > "$ROOT/KAIROS_P18_60_DRAWING_TOOLS_SYSTEM_CLOSURE_REPORT_2026-09-06.md" <<'EOF'
+# KAIROS P18.60 — Drawing Tools System Closure
+
+## Purpose
+Close P18 Drawing Tools without adding a new runtime or business-truth owner.
+
+## Authoritative base
+P18.59 — Lightweight Charts v5 Trend-Line Edit Click Execution Lifecycle Composition, canonical PASS.
+
+## Controlled closure delta
+- architecture map closure boundary
+- package verifier registration
+- dedicated P18.60 closure verifier
+- this closure report
+
+No production runtime source is changed by P18.60.
+
+## Ownership closure
+P18 remains generic drawing/interaction infrastructure. P14 retains truthful logged-trade visualization. P19 owns Risk/Reward semantics and its chart composition. Later persistence remains outside P18 unless separately authorized.
+
+## Required evidence
+Canonical gate must prove deterministic install, exact Lightweight Charts 5.2.1 dependency, production TypeScript/build, P18.60 dedicated verifier, full unit regression, full controlled roadmap verifier regression, P18/P17 chart regressions, historical closures, candidate artifact, and gate evidence artifact.
+
+## Promotion rule
+This report is not authority. Only a complete PASS of `Kairos Controlled Roadmap Gate` / `verify-current-candidate` promotes P18.60 and closes P18.
+EOF
+
+          python - <<'PY'
+          from pathlib import Path
+          import sys
+          def snap(root):
+              return {str(p.relative_to(root)):p.read_bytes() for p in root.rglob('*') if p.is_file()}
+          a=snap(Path('.p18base/kairos_p76')); b=snap(Path('.p18candidate/kairos_p76'))
+          changed={p for p in a.keys()|b.keys() if a.get(p)!=b.get(p)}
+          expected={
+            'KAIROS_P18_60_DRAWING_TOOLS_SYSTEM_CLOSURE_REPORT_2026-09-06.md',
+            'docs/KAIROS_ARCHITECTURE_MAP.md',
+            'package.json',
+            'scripts/verify-p18-60-drawing-tools-system-closure.mjs',
+          }
+          print('\n'.join(sorted(changed)))
+          if changed != expected:
+              print('P18.60 reconstruction scope mismatch', file=sys.stderr)
+              print('Unexpected:', sorted(changed-expected), file=sys.stderr)
+              print('Missing:', sorted(expected-changed), file=sys.stderr)
+              sys.exit(1)
+          PY
+
+      - name: Verify reconstructed candidate before packaging
+        working-directory: .p18candidate/kairos_p76
+        run: |
+          npm ci
+          test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
+          npm run build
+          npm run verify:p18:60-drawing-tools-system-closure
+          npm run verify:p18:59-lightweight-charts-v5-trend-line-edit-click-execution-lifecycle-composition
+          npm run verify:p18:58-lightweight-charts-v5-trend-line-edit-endpoint-click-lifecycle-composition
+          npm run verify:p17:16-chart-engine-system-closure
+          npm run verify:p1
+      - name: Package, integrity-check, replace corrupt candidate, and self-clean
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f "$OUT_ZIP"
+          (cd .p18candidate && zip -qr "../$OUT_ZIP" kairos_p76)
+          unzip -t "$OUT_ZIP"
+          sha256sum "$OUT_ZIP"
+          rm -f .github/workflows/p18-60-reconstruct.yml
+          git config user.name 'kairos-autonomous-bridge'
+          git config user.email 'actions@users.noreply.github.com'
+          git add "$OUT_ZIP" .github/workflows/p18-60-reconstruct.yml
+          git commit -m 'Repair P18.60 candidate by deterministic reconstruction from canonical P18.59'
+          git push
