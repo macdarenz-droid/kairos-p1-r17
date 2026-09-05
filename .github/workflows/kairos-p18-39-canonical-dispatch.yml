@@ -1,0 +1,28 @@
+name: Kairos Temporary P18.39 Canonical Dispatch
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/kairos-p18-39-canonical-dispatch.yml'
+
+permissions:
+  actions: write
+  contents: write
+
+jobs:
+  dispatch-canonical:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dispatch unchanged canonical gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run kairos-gate.yml --ref main
+      - name: Remove temporary dispatch helper
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/kairos-p18-39-canonical-dispatch.yml
+          git commit -m "Remove temporary P18.39 canonical dispatch helper"
+          git push origin HEAD:main
