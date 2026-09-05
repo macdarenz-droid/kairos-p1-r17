@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/kairos-p18-59-upload-bridge.yml'
-      - 'KAIROS_P18_59_UPLOAD_BRIDGE.patch.gz'
+      - '.kairos_bridge/p18_59/**'
 
 permissions:
   contents: write
@@ -28,36 +28,29 @@ jobs:
         run: |
           set -euo pipefail
           BASE='KAIROS_P18_58_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_EDIT_ENDPOINT_CLICK_LIFECYCLE_COMPOSITION_CANDIDATE_2026-09-06.zip'
-          PAYLOAD='KAIROS_P18_59_UPLOAD_BRIDGE.patch.gz'
           WORK="$RUNNER_TEMP/kairos-p18-59-bridge"
+          PATCH="$RUNNER_TEMP/p18-59.patch"
           rm -rf "$WORK"
           mkdir -p "$WORK"
+          : > "$PATCH"
           test -f "$BASE"
-          test -f "$PAYLOAD"
+          for part in .kairos_bridge/p18_59/part-00.b64 .kairos_bridge/p18_59/part-01.b64 .kairos_bridge/p18_59/part-02.b64 .kairos_bridge/p18_59/part-03.b64 .kairos_bridge/p18_59/part-04.b64 .kairos_bridge/p18_59/part-05.b64; do
+            test -s "$part"
+            base64 -d "$part" >> "$PATCH"
+          done
+          echo '320bbed03d863c00bc0dfcfc848f91d0279e29575ce022c5d2f3bc70d4a0948c  '"$PATCH" | sha256sum -c -
+
           unzip -q "$BASE" -d "$WORK"
           test -d "$WORK/kairos_p76"
           test "$(find "$WORK" -mindepth 1 -maxdepth 1 -printf '%f\n' | sort)" = 'kairos_p76'
-
-          # The preserved payload's gzip footer checksum/length is damaged. Emit
-          # whatever patch stream is present, then independently prove integrity
-          # by git apply --check, exact scope, and dedicated verifiers below.
-          set +e
-          gzip -dc "$PAYLOAD" > "$RUNNER_TEMP/p18-59.patch"
-          GZIP_STATUS=$?
-          set -e
-          if [ "$GZIP_STATUS" -ne 0 ]; then
-            echo "gzip container reported status $GZIP_STATUS; validating emitted patch independently"
-          fi
-          test -s "$RUNNER_TEMP/p18-59.patch"
-
           cd "$WORK/kairos_p76"
           git init -q
           git config user.name 'Kairos Bridge'
           git config user.email 'kairos-bridge@users.noreply.github.com'
           git add -A
           git commit -qm base
-          git apply --check "$RUNNER_TEMP/p18-59.patch"
-          git apply "$RUNNER_TEMP/p18-59.patch"
+          git apply --check "$PATCH"
+          git apply "$PATCH"
 
           git diff --name-status > "$RUNNER_TEMP/actual-scope.txt"
           cat > "$RUNNER_TEMP/expected-scope.txt" <<'EOF'
@@ -74,7 +67,14 @@ jobs:
 
           npm run verify:p18:59-lightweight-charts-v5-trend-line-edit-click-execution-lifecycle-composition
           npm run verify:p18:58-lightweight-charts-v5-trend-line-edit-endpoint-click-lifecycle-composition
-          npm run verify:p1
+          npm run verify:p18:57-lightweight-charts-v5-trend-line-edit-endpoint-click-coordination
+          npm run verify:p18:51r3-chart-trend-line-edit-presentation-coordination-runtime-projection-expectation-repair
+          npm run verify:p18:50-chart-trend-line-edit-coordination
+          npm run verify:p18:42-lightweight-charts-v5-drawing-selection-click-lifecycle-composition
+          npm run verify:p18:40-lightweight-charts-v5-drawing-click-evidence-fanout
+          npm run verify:p18:26-lightweight-charts-v5-drawing-click-subscription
+          npm run verify:toolchain
+          npm run verify:static
 
           if find . -type d \( -name node_modules -o -name dist -o -name coverage -o -name .vite \) -print -quit | grep -q .; then
             echo 'Generated dependency/build residue detected' >&2
@@ -85,7 +85,7 @@ jobs:
             exit 1
           fi
 
-      - name: Package and commit P18.59 candidate
+      - name: Package, reverify and commit P18.59 candidate
         shell: bash
         run: |
           set -euo pipefail
@@ -95,7 +95,6 @@ jobs:
           cd "$WORK"
           zip -X -qr "$GITHUB_WORKSPACE/$CANDIDATE" kairos_p76 -x 'kairos_p76/.git/*'
           unzip -t "$GITHUB_WORKSPACE/$CANDIDATE"
-          echo 'P18.59 bridge candidate identity:'
           wc -c "$GITHUB_WORKSPACE/$CANDIDATE"
           sha256sum "$GITHUB_WORKSPACE/$CANDIDATE"
 
@@ -105,12 +104,13 @@ jobs:
           cd "$RUNNER_TEMP/p18-59-fresh/kairos_p76"
           npm run verify:p18:59-lightweight-charts-v5-trend-line-edit-click-execution-lifecycle-composition
           npm run verify:p18:58-lightweight-charts-v5-trend-line-edit-endpoint-click-lifecycle-composition
-          npm run verify:p1
+          npm run verify:toolchain
+          npm run verify:static
 
           cd "$GITHUB_WORKSPACE"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git rm -f '.github/workflows/kairos-p18-59-upload-bridge.yml' 'KAIROS_P18_59_UPLOAD_BRIDGE.patch.gz'
+          git rm -rf '.github/workflows/kairos-p18-59-upload-bridge.yml' '.kairos_bridge/p18_59' 'KAIROS_P18_59_UPLOAD_BRIDGE.patch.gz'
           git add "$CANDIDATE"
-          git commit -m 'Upload P18.59 candidate via controlled bridge'
+          git commit -m 'Upload P18.59 candidate via controlled text bridge'
           git push origin HEAD:main
