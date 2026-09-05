@@ -1,11 +1,11 @@
-# KAIROS P18.46 GATE — AUTHORITATIVE BASE P18.45 — CANDIDATE P18.46
+# KAIROS P18.47 GATE — AUTHORITATIVE BASE P18.46 — CANDIDATE P18.47
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P18_46_CHART_DRAWING_PRESENTATION_DRAWING_REFRESH_CANDIDATE_2026-09-05.zip'
+      - 'KAIROS_P18_47_CHART_DRAWING_COLLECTION_PRESENTATION_DRAWING_REFRESH_COORDINATION_CANDIDATE_2026-09-05.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P18_45_CHART_DRAWING_DELETION_COORDINATION_CANDIDATE_2026-09-05.zip
-  CANDIDATE_ZIP: KAIROS_P18_46_CHART_DRAWING_PRESENTATION_DRAWING_REFRESH_CANDIDATE_2026-09-05.zip
+  BASE_ZIP: KAIROS_P18_46_CHART_DRAWING_PRESENTATION_DRAWING_REFRESH_CANDIDATE_2026-09-05.zip
+  CANDIDATE_ZIP: KAIROS_P18_47_CHART_DRAWING_COLLECTION_PRESENTATION_DRAWING_REFRESH_COORDINATION_CANDIDATE_2026-09-05.zip
 
 jobs:
   verify-current-candidate:
@@ -38,7 +38,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact controlled P18.46 scope from authoritative P18.45
+      - name: Confirm exact controlled P18.47 scope from authoritative P18.46
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -50,15 +50,16 @@ jobs:
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           print('\n'.join(sorted(changed)))
           expected={
-            'KAIROS_P18_46_CHART_DRAWING_PRESENTATION_DRAWING_REFRESH_REPORT_2026-09-05.md',
+            'KAIROS_P18_47_CHART_DRAWING_COLLECTION_PRESENTATION_DRAWING_REFRESH_COORDINATION_REPORT_2026-09-05.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'package.json',
-            'scripts/verify-p18-46-chart-drawing-presentation-drawing-refresh.mjs',
-            'src/features/chart/chartDrawingPresentationPort.ts',
-            'tests/chart-drawing-presentation-drawing-refresh.test.ts',
+            'scripts/verify-p18-47-chart-drawing-collection-presentation-drawing-refresh-coordination.mjs',
+            'src/features/chart/chartDrawingCollectionPresentationCoordination.ts',
+            'src/features/chart/index.ts',
+            'tests/chart-drawing-collection-presentation-drawing-refresh-coordination.test.ts',
           }
           if changed != expected:
-            print('P18.46 exact scope mismatch',file=sys.stderr)
+            print('P18.47 exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             sys.exit(1)
@@ -82,36 +83,34 @@ jobs:
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
 
-      - name: Dedicated P18.46 chart drawing presentation drawing refresh verifier/runtime
+      - name: Dedicated P18.47 chart drawing collection presentation drawing refresh coordination verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p18:47-chart-drawing-collection-presentation-drawing-refresh-coordination
           npm run verify:p18:46-chart-drawing-presentation-drawing-refresh
-          npm run verify:p18:45-chart-drawing-deletion-coordination
-          npm run verify:p18:44-chart-drawing-collection-mutation
-          npm run verify:p18:43-chart-drawing-selection-presentation-projection
-          npm run verify:p18:20-chart-drawing-hover-presentation-integration
-          npm run verify:p18:11-chart-drawing-presentation-coordination
           npm run verify:p18:37-chart-drawing-collection-presentation-coordination
           npm run verify:p18:36-chart-drawing-collection-projection
+          npm run verify:p18:20-chart-drawing-hover-presentation-integration
+          npm run verify:p18:11-chart-drawing-presentation-coordination
           npm run verify:p18:33-chart-drawing-collection
           npm run verify:p1
-          npx vitest run tests/chart-drawing-presentation-drawing-refresh.test.ts tests/chart-drawing-deletion-coordination.test.ts tests/chart-drawing-collection-mutation.test.ts tests/chart-drawing-selection-presentation-projection.test.ts tests/chart-drawing-collection-presentation-coordination.test.ts
+          npx vitest run tests/chart-drawing-collection-presentation-drawing-refresh-coordination.test.ts tests/chart-drawing-presentation-drawing-refresh.test.ts tests/chart-drawing-collection-presentation-coordination.test.ts tests/chart-drawing-projection.test.ts tests/chart-drawing-collection.test.ts
 
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
 
-      - name: Full controlled roadmap regression through P18.46
+      - name: Full controlled roadmap regression through P18.47
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
           const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
           const p=JSON.parse(readFileSync('package.json')); const s=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:p'));
-          for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:16-chart-engine-system-closure','verify:p18:45-chart-drawing-deletion-coordination','verify:p18:46-chart-drawing-presentation-drawing-refresh']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
+          for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:16-chart-engine-system-closure','verify:p18:46-chart-drawing-presentation-drawing-refresh','verify:p18:47-chart-drawing-collection-presentation-drawing-refresh-coordination']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
           for(const x of s){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
           NODE
 
-      - name: P18.46 through P17 chart regressions
+      - name: P18.47 through P17 chart regressions
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
@@ -149,5 +148,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P18_46_CHART_DRAWING_PRESENTATION_DRAWING_REFRESH_REPORT_2026-09-05.md
+          path: .gate-candidate/kairos_p76/KAIROS_P18_47_CHART_DRAWING_COLLECTION_PRESENTATION_DRAWING_REFRESH_COORDINATION_REPORT_2026-09-05.md
           if-no-files-found: error
