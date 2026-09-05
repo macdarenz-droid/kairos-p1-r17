@@ -1,4 +1,5 @@
 # KAIROS P18.60 GATE — AUTHORITATIVE BASE P18.59 — CANDIDATE P18.60
+# Retrigger only: candidate was reconstructed by Actions and is now present in main.
 name: Kairos Controlled Roadmap Gate
 
 on:
