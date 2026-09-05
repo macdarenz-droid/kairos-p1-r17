@@ -1,0 +1,106 @@
+name: Kairos P18.58 Verified Candidate Bridge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/kairos-p18-58-binary-bridge.yml'
+
+permissions:
+  contents: write
+
+env:
+  BASE_ZIP: KAIROS_P18_57_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_EDIT_ENDPOINT_CLICK_COORDINATION_CANDIDATE_2026-09-05.zip
+  CANDIDATE_ZIP: KAIROS_P18_58_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_EDIT_ENDPOINT_CLICK_LIFECYCLE_COMPOSITION_CANDIDATE_2026-09-06.zip
+  PATCH_SHA256: 0fb852deb78e2c8a6a53d8bab138d3d73cc85d2e6fd4dc6ea50344cee4310146
+  PATCH_GZIP_B64: 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
+
+jobs:
+  materialize-verified-candidate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Confirm bridge preconditions
+        run: |
+          test -f "$BASE_ZIP"
+          test ! -e "$CANDIDATE_ZIP"
+          test -f .github/workflows/kairos-p18-58-binary-bridge.yml
+
+      - name: Reconstruct exact reviewed P18.58 source delta
+        run: |
+          rm -rf .bridge && mkdir -p .bridge/base .bridge/candidate
+          printf '%s' "$PATCH_GZIP_B64" | base64 -d | gzip -d > .bridge/p18-58.patch
+          echo "$PATCH_SHA256  .bridge/p18-58.patch" | sha256sum -c -
+          unzip -q "$BASE_ZIP" -d .bridge/base
+          unzip -q "$BASE_ZIP" -d .bridge/candidate
+          test -f .bridge/candidate/kairos_p76/package.json
+          patch -s -p1 -d .bridge/candidate/kairos_p76 < .bridge/p18-58.patch
+
+      - name: Confirm exact seven-file scope
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib,sys
+          b=Path('.bridge/base/kairos_p76'); c=Path('.bridge/candidate/kairos_p76')
+          def h(p): return hashlib.sha256(p.read_bytes()).hexdigest()
+          x={str(p.relative_to(b)):h(p) for p in b.rglob('*') if p.is_file()}
+          y={str(p.relative_to(c)):h(p) for p in c.rglob('*') if p.is_file()}
+          changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
+          expected={
+            'KAIROS_P18_58_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_EDIT_ENDPOINT_CLICK_LIFECYCLE_COMPOSITION_REPORT_2026-09-06.md',
+            'docs/KAIROS_ARCHITECTURE_MAP.md',
+            'package.json',
+            'scripts/verify-p18-58-lightweight-charts-v5-trend-line-edit-endpoint-click-lifecycle-composition.mjs',
+            'src/features/chart/index.ts',
+            'src/features/chart/lightweightChartsV5TrendLineDraftInteractionComposition.ts',
+            'tests/lightweight-charts-v5-trend-line-edit-endpoint-click-lifecycle-composition.test.ts',
+          }
+          print('\n'.join(sorted(changed)))
+          if changed != expected:
+            print('bridge scope mismatch', file=sys.stderr)
+            print('Unexpected:', sorted(changed-expected), file=sys.stderr)
+            print('Missing:', sorted(expected-changed), file=sys.stderr)
+            sys.exit(1)
+          PY
+
+      - name: Run static ownership and historical compatibility evidence
+        working-directory: .bridge/candidate/kairos_p76
+        run: |
+          node scripts/verify-p18-58-lightweight-charts-v5-trend-line-edit-endpoint-click-lifecycle-composition.mjs
+          node scripts/verify-p18-57-lightweight-charts-v5-trend-line-edit-endpoint-click-coordination.mjs
+          node scripts/verify-p18-42-lightweight-charts-v5-drawing-selection-click-lifecycle-composition.mjs
+          node scripts/verify-p18-40-lightweight-charts-v5-drawing-click-evidence-fanout.mjs
+          node scripts/verify-p18-30-lightweight-charts-v5-trend-line-draft-interaction-composition.mjs
+          node scripts/verify-p18-27-lightweight-charts-v5-drawing-click-binding-composition.mjs
+          node scripts/verify-p18-26-lightweight-charts-v5-drawing-click-subscription.mjs
+          node scripts/verify-p18-24-chart-drawing-interaction-port.mjs
+          npm run verify:toolchain
+          npm run verify:static
+          node - <<'NODE'
+          const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
+          const p=JSON.parse(readFileSync('package.json')); const s=Object.keys(p.scripts||{}).filter(x=>/^verify:p18:/.test(x));
+          for(const x of s){const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
+          console.log('P18 verifier count:',s.length)
+          NODE
+
+      - name: Package candidate without generated residue
+        run: |
+          test ! -d .bridge/candidate/kairos_p76/node_modules
+          test ! -d .bridge/candidate/kairos_p76/dist
+          test ! -d .bridge/candidate/kairos_p76/coverage
+          find .bridge/candidate/kairos_p76 -name '*.tsbuildinfo' -o -name '*.log' | grep . && exit 1 || true
+          (cd .bridge/candidate && zip -X -qr -9 "../../$CANDIDATE_ZIP" kairos_p76)
+          unzip -tq "$CANDIDATE_ZIP"
+          test "$(unzip -Z1 "$CANDIDATE_ZIP" | head -1 | cut -d/ -f1)" = "kairos_p76"
+          sha256sum "$CANDIDATE_ZIP"
+          stat -c '%n %s bytes' "$CANDIDATE_ZIP"
+
+      - name: Commit exact binary candidate and remove temporary bridge
+        run: |
+          git config user.name 'Kairos Candidate Bridge'
+          git config user.email 'kairos-bridge@users.noreply.github.com'
+          git add "$CANDIDATE_ZIP"
+          git rm .github/workflows/kairos-p18-58-binary-bridge.yml
+          git commit -m 'Upload P18.58 candidate via verified binary bridge'
+          git push origin HEAD:main
