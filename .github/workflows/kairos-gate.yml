@@ -1,11 +1,11 @@
-# KAIROS P18.40 GATE — AUTHORITATIVE BASE P18.39 — CANDIDATE P18.40
+# KAIROS P18.41 GATE — AUTHORITATIVE BASE P18.40 — CANDIDATE P18.41
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P18_40_LIGHTWEIGHT_CHARTS_V5_DRAWING_CLICK_EVIDENCE_FANOUT_CANDIDATE_2026-09-05.zip'
+      - 'KAIROS_P18_41_LIGHTWEIGHT_CHARTS_V5_DRAWING_SELECTION_INTERACTION_COORDINATION_CANDIDATE_2026-09-05.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P18_39_LIGHTWEIGHT_CHARTS_V5_DRAWING_SELECTION_PROJECTION_CANDIDATE_2026-09-05.zip
-  CANDIDATE_ZIP: KAIROS_P18_40_LIGHTWEIGHT_CHARTS_V5_DRAWING_CLICK_EVIDENCE_FANOUT_CANDIDATE_2026-09-05.zip
+  BASE_ZIP: KAIROS_P18_40_LIGHTWEIGHT_CHARTS_V5_DRAWING_CLICK_EVIDENCE_FANOUT_CANDIDATE_2026-09-05.zip
+  CANDIDATE_ZIP: KAIROS_P18_41_LIGHTWEIGHT_CHARTS_V5_DRAWING_SELECTION_INTERACTION_COORDINATION_CANDIDATE_2026-09-05.zip
 
 jobs:
   verify-current-candidate:
@@ -35,7 +35,7 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm exact controlled P18.40 scope from authoritative P18.39
+      - name: Confirm exact controlled P18.41 scope from authoritative P18.40
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -47,17 +47,15 @@ jobs:
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           print('\n'.join(sorted(changed)))
           expected={
-            'KAIROS_P18_40_LIGHTWEIGHT_CHARTS_V5_DRAWING_CLICK_EVIDENCE_FANOUT_REPORT_2026-09-05.md',
+            'KAIROS_P18_41_LIGHTWEIGHT_CHARTS_V5_DRAWING_SELECTION_INTERACTION_COORDINATION_REPORT_2026-09-05.md',
             'package.json',
-            'scripts/verify-p18-40-lightweight-charts-v5-drawing-click-evidence-fanout.mjs',
+            'scripts/verify-p18-41-lightweight-charts-v5-drawing-selection-interaction-coordination.mjs',
             'src/features/chart/index.ts',
-            'src/features/chart/lightweightChartsV5DrawingClickBindingComposition.ts',
-            'src/features/chart/lightweightChartsV5DrawingClickSubscription.ts',
-            'tests/lightweight-charts-v5-drawing-click-binding-composition.test.ts',
-            'tests/lightweight-charts-v5-drawing-click-subscription.test.ts',
+            'src/features/chart/lightweightChartsV5DrawingSelectionInteractionCoordination.ts',
+            'tests/lightweight-charts-v5-drawing-selection-interaction-coordination.test.ts',
           }
           if changed != expected:
-            print('P18.40 exact scope mismatch',file=sys.stderr)
+            print('P18.41 exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             sys.exit(1)
@@ -76,9 +74,10 @@ jobs:
       - name: Production build
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
-      - name: Dedicated P18.40 Lightweight Charts v5 drawing click evidence fan-out verifier/runtime
+      - name: Dedicated P18.41 Lightweight Charts v5 drawing selection interaction coordination verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p18:41-lightweight-charts-v5-drawing-selection-interaction-coordination
           npm run verify:p18:40-lightweight-charts-v5-drawing-click-evidence-fanout
           npm run verify:p18:39-lightweight-charts-v5-drawing-selection-projection
           npm run verify:p18:38-chart-drawing-selection-interaction-semantics
@@ -111,22 +110,23 @@ jobs:
           npm run verify:p18:11-chart-drawing-presentation-coordination
           npm run verify:p18:2-chart-drawing-projection
           npm run verify:p1
-          npx vitest run tests/lightweight-charts-v5-drawing-click-binding-composition.test.ts tests/lightweight-charts-v5-drawing-click-subscription.test.ts tests/lightweight-charts-v5-drawing-selection-projection.test.ts tests/chart-drawing-selection-interaction.test.ts tests/chart-drawing-interaction-reducer.test.ts tests/chart-drawing-interaction-event.test.ts tests/chart-drawing-interaction-contract.test.ts tests/chart-drawing-interaction-port.test.ts tests/chart-drawing-collection-presentation-coordination.test.ts tests/chart-drawing-projection.test.ts tests/chart-trend-line-commit-collection-coordination.test.ts tests/chart-drawing-identity.test.ts tests/chart-drawing-collection.test.ts
+          npx vitest run tests/lightweight-charts-v5-drawing-selection-interaction-coordination.test.ts tests/lightweight-charts-v5-drawing-click-binding-composition.test.ts tests/lightweight-charts-v5-drawing-click-subscription.test.ts tests/lightweight-charts-v5-drawing-selection-projection.test.ts tests/chart-drawing-selection-interaction.test.ts tests/chart-drawing-interaction-reducer.test.ts tests/chart-drawing-interaction-event.test.ts tests/chart-drawing-interaction-contract.test.ts tests/chart-drawing-interaction-port.test.ts tests/chart-drawing-collection-presentation-coordination.test.ts tests/chart-drawing-projection.test.ts tests/chart-trend-line-commit-collection-coordination.test.ts tests/chart-drawing-identity.test.ts tests/chart-drawing-collection.test.ts
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression through P18.40
+      - name: Full controlled roadmap regression through P18.41
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
           const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
           const p=JSON.parse(readFileSync('package.json'));const s=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:p'));
-          for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:16-chart-engine-system-closure','verify:p18:39-lightweight-charts-v5-drawing-selection-projection','verify:p18:40-lightweight-charts-v5-drawing-click-evidence-fanout']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
+          for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:16-chart-engine-system-closure','verify:p18:39-lightweight-charts-v5-drawing-selection-projection','verify:p18:40-lightweight-charts-v5-drawing-click-evidence-fanout','verify:p18:41-lightweight-charts-v5-drawing-selection-interaction-coordination']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
           for(const x of s){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
           NODE
-      - name: P18.40 through P17 chart regressions
+      - name: P18.41 through P17 chart regressions
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p18:41-lightweight-charts-v5-drawing-selection-interaction-coordination
           npm run verify:p18:40-lightweight-charts-v5-drawing-click-evidence-fanout
           npm run verify:p18:39-lightweight-charts-v5-drawing-selection-projection
           npm run verify:p18:38-chart-drawing-selection-interaction-semantics
@@ -194,5 +194,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P18_40_LIGHTWEIGHT_CHARTS_V5_DRAWING_CLICK_EVIDENCE_FANOUT_REPORT_2026-09-05.md
+          path: .gate-candidate/kairos_p76/KAIROS_P18_41_LIGHTWEIGHT_CHARTS_V5_DRAWING_SELECTION_INTERACTION_COORDINATION_REPORT_2026-09-05.md
           if-no-files-found: error
