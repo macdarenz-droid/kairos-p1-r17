@@ -22,6 +22,17 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Pin canonical Node toolchain
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+
+      - name: Pin canonical npm toolchain
+        run: |
+          npm install --global npm@10.9.2
+          test "$(node --version)" = "v22.16.0"
+          test "$(npm --version)" = "10.9.2"
+
       - name: Reconstruct and independently prove P18.59
         shell: bash
         run: |
@@ -130,4 +141,4 @@ jobs:
           git commit -m 'Upload P18.59 candidate via integrity-first recovery bridge'
           git push origin HEAD:main
 
-# recovery-scope-index-refresh
+# recovery-canonical-toolchain-refresh
