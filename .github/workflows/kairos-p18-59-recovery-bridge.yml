@@ -1,0 +1,119 @@
+name: Kairos P18.59 Recovery Bridge (NON-CANONICAL)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/kairos-p18-59-recovery-bridge.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kairos-p18-59-recovery-bridge
+  cancel-in-progress: false
+
+jobs:
+  recover-verify-package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout recovery commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Reconstruct and independently prove P18.59
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='KAIROS_P18_58_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_EDIT_ENDPOINT_CLICK_LIFECYCLE_COMPOSITION_CANDIDATE_2026-09-06.zip'
+          WORK="$RUNNER_TEMP/kairos-p18-59-recovery"
+          PATCH="$RUNNER_TEMP/p18-59.patch"
+          rm -rf "$WORK"
+          mkdir -p "$WORK"
+          : > "$PATCH"
+          test -f "$BASE"
+          for part in .kairos_bridge/p18_59/part-00.b64 .kairos_bridge/p18_59/part-01.b64 .kairos_bridge/p18_59/part-02.b64 .kairos_bridge/p18_59/part-03.b64 .kairos_bridge/p18_59/part-04.b64 .kairos_bridge/p18_59/part-05.b64; do
+            test -s "$part"
+            base64 -d "$part" >> "$PATCH"
+          done
+          test -s "$PATCH"
+          echo 'Reconstructed payload identity:'
+          wc -c "$PATCH"
+          sha256sum "$PATCH"
+
+          unzip -q "$BASE" -d "$WORK"
+          test -d "$WORK/kairos_p76"
+          test "$(find "$WORK" -mindepth 1 -maxdepth 1 -printf '%f\n' | sort)" = 'kairos_p76'
+          cd "$WORK/kairos_p76"
+          git init -q
+          git config user.name 'Kairos Recovery Bridge'
+          git config user.email 'kairos-recovery@users.noreply.github.com'
+          git add -A
+          git commit -qm base
+          git apply --check "$PATCH"
+          git apply "$PATCH"
+
+          git diff --name-status > "$RUNNER_TEMP/actual-scope.txt"
+          cat > "$RUNNER_TEMP/expected-scope.txt" <<'EOF'
+          A	KAIROS_P18_59_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_EDIT_CLICK_EXECUTION_LIFECYCLE_COMPOSITION_REPORT_2026-09-06.md
+          M	docs/KAIROS_ARCHITECTURE_MAP.md
+          M	package.json
+          M	scripts/verify-p18-58-lightweight-charts-v5-trend-line-edit-endpoint-click-lifecycle-composition.mjs
+          A	scripts/verify-p18-59-lightweight-charts-v5-trend-line-edit-click-execution-lifecycle-composition.mjs
+          M	src/features/chart/index.ts
+          M	src/features/chart/lightweightChartsV5TrendLineDraftInteractionComposition.ts
+          A	tests/lightweight-charts-v5-trend-line-edit-click-execution-lifecycle-composition.test.ts
+          EOF
+          diff -u "$RUNNER_TEMP/expected-scope.txt" "$RUNNER_TEMP/actual-scope.txt"
+
+          npm run verify:p18:59-lightweight-charts-v5-trend-line-edit-click-execution-lifecycle-composition
+          npm run verify:p18:58-lightweight-charts-v5-trend-line-edit-endpoint-click-lifecycle-composition
+          npm run verify:p18:57-lightweight-charts-v5-trend-line-edit-endpoint-click-coordination
+          npm run verify:p18:51r3-chart-trend-line-edit-presentation-coordination-runtime-projection-expectation-repair
+          npm run verify:p18:50-chart-trend-line-edit-coordination
+          npm run verify:p18:42-lightweight-charts-v5-drawing-selection-click-lifecycle-composition
+          npm run verify:p18:40-lightweight-charts-v5-drawing-click-evidence-fanout
+          npm run verify:p18:26-lightweight-charts-v5-drawing-click-subscription
+          npm run verify:toolchain
+          npm run verify:static
+
+          if find . -type d \( -name node_modules -o -name dist -o -name coverage -o -name .vite \) -print -quit | grep -q .; then
+            echo 'Generated dependency/build residue detected' >&2
+            exit 1
+          fi
+          if find . -type f \( -name '*.tsbuildinfo' -o -name '*.log' \) -print -quit | grep -q .; then
+            echo 'Generated file residue detected' >&2
+            exit 1
+          fi
+
+      - name: Package, fresh-reverify, upload, clean bridge residue
+        shell: bash
+        run: |
+          set -euo pipefail
+          CANDIDATE='KAIROS_P18_59_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_EDIT_CLICK_EXECUTION_LIFECYCLE_COMPOSITION_CANDIDATE_2026-09-06.zip'
+          WORK="$RUNNER_TEMP/kairos-p18-59-recovery"
+          rm -f "$GITHUB_WORKSPACE/$CANDIDATE"
+          cd "$WORK"
+          zip -X -qr "$GITHUB_WORKSPACE/$CANDIDATE" kairos_p76 -x 'kairos_p76/.git/*'
+          unzip -t "$GITHUB_WORKSPACE/$CANDIDATE"
+          echo 'Fresh candidate identity:'
+          wc -c "$GITHUB_WORKSPACE/$CANDIDATE"
+          sha256sum "$GITHUB_WORKSPACE/$CANDIDATE"
+
+          rm -rf "$RUNNER_TEMP/p18-59-fresh"
+          mkdir -p "$RUNNER_TEMP/p18-59-fresh"
+          unzip -q "$GITHUB_WORKSPACE/$CANDIDATE" -d "$RUNNER_TEMP/p18-59-fresh"
+          cd "$RUNNER_TEMP/p18-59-fresh/kairos_p76"
+          npm run verify:p18:59-lightweight-charts-v5-trend-line-edit-click-execution-lifecycle-composition
+          npm run verify:p18:58-lightweight-charts-v5-trend-line-edit-endpoint-click-lifecycle-composition
+          npm run verify:toolchain
+          npm run verify:static
+
+          cd "$GITHUB_WORKSPACE"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm -rf '.github/workflows/kairos-p18-59-upload-bridge.yml' '.github/workflows/kairos-p18-59-recovery-bridge.yml' '.kairos_bridge/p18_59' 'KAIROS_P18_59_UPLOAD_BRIDGE.patch.gz'
+          git add "$CANDIDATE"
+          git commit -m 'Upload P18.59 candidate via integrity-first recovery bridge'
+          git push origin HEAD:main
