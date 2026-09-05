@@ -1,11 +1,11 @@
-# KAIROS P18.43 GATE — AUTHORITATIVE BASE P18.42 — CANDIDATE P18.43
+# KAIROS P18.44 GATE — AUTHORITATIVE BASE P18.43 — CANDIDATE P18.44
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P18_43_CHART_DRAWING_SELECTION_PRESENTATION_PROJECTION_CANDIDATE_2026-09-05.zip'
+      - 'KAIROS_P18_44_CHART_DRAWING_COLLECTION_MUTATION_CANDIDATE_2026-09-05.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P18_42_LIGHTWEIGHT_CHARTS_V5_DRAWING_SELECTION_CLICK_LIFECYCLE_COMPOSITION_CANDIDATE_2026-09-05.zip
-  CANDIDATE_ZIP: KAIROS_P18_43_CHART_DRAWING_SELECTION_PRESENTATION_PROJECTION_CANDIDATE_2026-09-05.zip
+  BASE_ZIP: KAIROS_P18_43_CHART_DRAWING_SELECTION_PRESENTATION_PROJECTION_CANDIDATE_2026-09-05.zip
+  CANDIDATE_ZIP: KAIROS_P18_44_CHART_DRAWING_COLLECTION_MUTATION_CANDIDATE_2026-09-05.zip
 
 jobs:
   verify-current-candidate:
@@ -24,10 +24,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22.16.0
+
       - name: Verify npm version
         run: |
           npm install --global npm@10.9.2
           test "$(npm --version)" = "10.9.2"
+
       - name: Extract authoritative base and candidate
         run: |
           rm -rf .gate-base .gate-candidate && mkdir .gate-base .gate-candidate
@@ -35,7 +37,8 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm exact controlled P18.43 scope from authoritative P18.42
+
+      - name: Confirm exact controlled P18.44 scope from authoritative P18.43
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -47,133 +50,76 @@ jobs:
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           print('\n'.join(sorted(changed)))
           expected={
-            'KAIROS_P18_43_CHART_DRAWING_SELECTION_PRESENTATION_PROJECTION_REPORT_2026-09-05.md',
+            'KAIROS_P18_44_CHART_DRAWING_COLLECTION_MUTATION_REPORT_2026-09-05.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'package.json',
-            'scripts/verify-p18-43-chart-drawing-selection-presentation-projection.mjs',
-            'src/features/chart/chartDrawingSelectionPresentationProjection.ts',
-            'src/features/chart/index.ts',
-            'tests/chart-drawing-selection-presentation-projection.test.ts',
+            'scripts/verify-p18-33-chart-drawing-collection.mjs',
+            'scripts/verify-p18-44-chart-drawing-collection-mutation.mjs',
+            'src/features/chart/chartDrawingCollection.ts',
+            'tests/chart-drawing-collection-mutation.test.ts',
           }
           if changed != expected:
-            print('P18.43 exact scope mismatch',file=sys.stderr)
+            print('P18.44 exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             sys.exit(1)
           PY
+
       - name: Install candidate deterministically
         working-directory: .gate-candidate/kairos_p76
         run: npm ci
+
       - name: Prove real Lightweight Charts dependency remains exact
         working-directory: .gate-candidate/kairos_p76
         run: |
           test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
           npm ls lightweight-charts --depth=0
+
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
         run: npm run typecheck
+
       - name: Production build
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
-      - name: Dedicated P18.43 chart drawing selection presentation projection verifier/runtime
+
+      - name: Dedicated P18.44 chart drawing collection mutation verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p18:44-chart-drawing-collection-mutation
           npm run verify:p18:43-chart-drawing-selection-presentation-projection
-          npm run verify:p18:42-lightweight-charts-v5-drawing-selection-click-lifecycle-composition
-          npm run verify:p18:41-lightweight-charts-v5-drawing-selection-interaction-coordination
-          npm run verify:p18:40-lightweight-charts-v5-drawing-click-evidence-fanout
-          npm run verify:p18:39-lightweight-charts-v5-drawing-selection-projection
-          npm run verify:p18:38-chart-drawing-selection-interaction-semantics
           npm run verify:p18:37-chart-drawing-collection-presentation-coordination
           npm run verify:p18:36-chart-drawing-collection-projection
           npm run verify:p18:35-chart-trend-line-commit-collection-coordination
-          npm run verify:p18:34-chart-drawing-identity
           npm run verify:p18:33-chart-drawing-collection
-          npm run verify:p18:32-chart-trend-line-draft-commit-coordination
-          npm run verify:p18:31-chart-trend-line-draft-commit-construction
-          npm run verify:p18:30-lightweight-charts-v5-trend-line-draft-interaction-composition
-          npm run verify:p18:29-chart-trend-line-draft-interaction-coordination
-          npm run verify:p18:28-chart-trend-line-draft-anchor-collection
-          npm run verify:p18:27-lightweight-charts-v5-drawing-click-binding-composition
-          npm run verify:p18:26-lightweight-charts-v5-drawing-click-subscription
-          npm run verify:p18:25-lightweight-charts-v5-drawing-anchor-projection
-          npm run verify:p18:24-chart-drawing-interaction-port
-          npm run verify:p18:23-chart-drawing-interaction-reducer
-          npm run verify:p18:22-chart-drawing-interaction-event-contract
-          npm run verify:p18:21-chart-drawing-interaction-state-contract
-          npm run verify:p18:20-chart-drawing-hover-presentation-integration
-          npm run verify:p18:19-lightweight-charts-v5-drawing-hover-port-composition
-          npm run verify:p18:18-chart-drawing-hover-port
-          npm run verify:p18:17-lightweight-charts-v5-drawing-hover-binding-composition
-          npm run verify:p18:16-lightweight-charts-v5-provider-chart-resolution-binding
-          npm run verify:p18:15-lightweight-charts-v5-drawing-hover-subscription
-          npm run verify:p18:14-lightweight-charts-v5-drawing-hover-projection
-          npm run verify:p18:13-lightweight-charts-v5-trend-line-primitive-hit-test-binding
-          npm run verify:p18:12-lightweight-charts-v5-trend-line-hit-test
-          npm run verify:p18:11-chart-drawing-presentation-coordination
-          npm run verify:p18:2-chart-drawing-projection
           npm run verify:p1
-          npx vitest run tests/chart-drawing-selection-presentation-projection.test.ts tests/lightweight-charts-v5-drawing-selection-click-lifecycle-composition.test.ts tests/lightweight-charts-v5-drawing-selection-interaction-coordination.test.ts tests/lightweight-charts-v5-drawing-click-binding-composition.test.ts tests/lightweight-charts-v5-drawing-click-subscription.test.ts tests/lightweight-charts-v5-drawing-selection-projection.test.ts tests/chart-drawing-selection-interaction.test.ts tests/chart-drawing-interaction-reducer.test.ts tests/chart-drawing-interaction-event.test.ts tests/chart-drawing-interaction-contract.test.ts tests/chart-drawing-interaction-port.test.ts tests/chart-drawing-collection-presentation-coordination.test.ts tests/chart-drawing-projection.test.ts tests/chart-trend-line-commit-collection-coordination.test.ts tests/chart-drawing-identity.test.ts tests/chart-drawing-collection.test.ts
+          npx vitest run tests/chart-drawing-collection-mutation.test.ts tests/chart-drawing-collection.test.ts tests/chart-drawing-selection-presentation-projection.test.ts tests/chart-drawing-collection-presentation-coordination.test.ts tests/chart-drawing-projection.test.ts tests/chart-trend-line-commit-collection-coordination.test.ts
+
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression through P18.43
+
+      - name: Full controlled roadmap regression through P18.44
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
           const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
-          const p=JSON.parse(readFileSync('package.json'));const s=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:p'));
-          for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:16-chart-engine-system-closure','verify:p18:39-lightweight-charts-v5-drawing-selection-projection','verify:p18:40-lightweight-charts-v5-drawing-click-evidence-fanout','verify:p18:41-lightweight-charts-v5-drawing-selection-interaction-coordination','verify:p18:42-lightweight-charts-v5-drawing-selection-click-lifecycle-composition','verify:p18:43-chart-drawing-selection-presentation-projection']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
+          const p=JSON.parse(readFileSync('package.json')); const s=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:p'));
+          for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:16-chart-engine-system-closure','verify:p18:43-chart-drawing-selection-presentation-projection','verify:p18:44-chart-drawing-collection-mutation']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
           for(const x of s){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
           NODE
-      - name: P18.43 through P17 chart regressions
+
+      - name: P18.44 through P17 chart regressions
         working-directory: .gate-candidate/kairos_p76
         run: |
-          npm run verify:p18:43-chart-drawing-selection-presentation-projection
-          npm run verify:p18:42-lightweight-charts-v5-drawing-selection-click-lifecycle-composition
-          npm run verify:p18:41-lightweight-charts-v5-drawing-selection-interaction-coordination
-          npm run verify:p18:40-lightweight-charts-v5-drawing-click-evidence-fanout
-          npm run verify:p18:39-lightweight-charts-v5-drawing-selection-projection
-          npm run verify:p18:38-chart-drawing-selection-interaction-semantics
-          npm run verify:p18:37-chart-drawing-collection-presentation-coordination
-          npm run verify:p18:36-chart-drawing-collection-projection
-          npm run verify:p18:35-chart-trend-line-commit-collection-coordination
-          npm run verify:p18:34-chart-drawing-identity
-          npm run verify:p18:33-chart-drawing-collection
-          npm run verify:p18:32-chart-trend-line-draft-commit-coordination
-          npm run verify:p18:31-chart-trend-line-draft-commit-construction
-          npm run verify:p18:30-lightweight-charts-v5-trend-line-draft-interaction-composition
-          npm run verify:p18:29-chart-trend-line-draft-interaction-coordination
-          npm run verify:p18:28-chart-trend-line-draft-anchor-collection
-          npm run verify:p18:27-lightweight-charts-v5-drawing-click-binding-composition
-          npm run verify:p18:26-lightweight-charts-v5-drawing-click-subscription
-          npm run verify:p18:25-lightweight-charts-v5-drawing-anchor-projection
-          npm run verify:p18:24-chart-drawing-interaction-port
-          npm run verify:p18:23-chart-drawing-interaction-reducer
-          npm run verify:p18:22-chart-drawing-interaction-event-contract
-          npm run verify:p18:21-chart-drawing-interaction-state-contract
-          npm run verify:p18:20-chart-drawing-hover-presentation-integration
-          npm run verify:p18:19-lightweight-charts-v5-drawing-hover-port-composition
-          npm run verify:p18:18-chart-drawing-hover-port
-          npm run verify:p18:17-lightweight-charts-v5-drawing-hover-binding-composition
-          npm run verify:p18:16-lightweight-charts-v5-provider-chart-resolution-binding
-          npm run verify:p18:15-lightweight-charts-v5-drawing-hover-subscription
-          npm run verify:p18:14-lightweight-charts-v5-drawing-hover-projection
-          npm run verify:p18:13-lightweight-charts-v5-trend-line-primitive-hit-test-binding
-          npm run verify:p18:12-lightweight-charts-v5-trend-line-hit-test
-          npm run verify:p18:11-chart-drawing-presentation-coordination
-          npm run verify:p18:10-lightweight-charts-v5-trend-line-drawing-layer-composition
-          npm run verify:p18:9-lightweight-charts-v5-provider-series-resolution-binding
-          npm run verify:p18:8-lightweight-charts-v5-trend-line-primitive-factory
-          npm run verify:p18:7-lightweight-charts-v5-trend-line-primitive
-          npm run verify:p18:6-lightweight-charts-v5-trend-line-pane-renderer
-          npm run verify:p18:5-lightweight-charts-v5-trend-line-coordinate-projection
-          npm run verify:p18:4-lightweight-charts-v5-drawing-layer-driver
-          npm run verify:p18:3-chart-drawing-layer-port
-          npm run verify:p18:2-chart-drawing-projection
-          npm run verify:p18:1-chart-drawing-contract-foundation
-          npm run verify:p17:16-chart-engine-system-closure
-          npm run verify:p17:15-chart-viewport-history-demand
+          node - <<'NODE'
+          const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
+          const p=JSON.parse(readFileSync('package.json')); const scripts=Object.keys(p.scripts||{});
+          const p18=scripts.filter(x=>/^verify:p18:\d+/.test(x)).sort((a,b)=>Number((b.match(/^verify:p18:(\d+)/)||[])[1])-Number((a.match(/^verify:p18:(\d+)/)||[])[1]));
+          for(const x of p18){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
+          for(const x of ['verify:p17:16-chart-engine-system-closure','verify:p17:15-chart-viewport-history-demand']){const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
+          NODE
+
       - name: Historical closures
         working-directory: .gate-candidate/kairos_p76
         run: |
@@ -188,16 +134,18 @@ jobs:
           npm run verify:p9:trade-persistence
           npm run verify:p1
           npm run verify:static
+
       - name: Upload candidate
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_CURRENT_CANDIDATE
           path: ${{ env.CANDIDATE_ZIP }}
           if-no-files-found: error
+
       - name: Upload gate evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P18_43_CHART_DRAWING_SELECTION_PRESENTATION_PROJECTION_REPORT_2026-09-05.md
+          path: .gate-candidate/kairos_p76/KAIROS_P18_44_CHART_DRAWING_COLLECTION_MUTATION_REPORT_2026-09-05.md
           if-no-files-found: error
