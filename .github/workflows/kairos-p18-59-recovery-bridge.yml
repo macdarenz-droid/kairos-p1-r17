@@ -64,6 +64,7 @@ jobs:
           git commit -qm base
           git apply --check "$PATCH"
           git apply "$PATCH"
+          git add -N .
 
           git diff --name-status > "$RUNNER_TEMP/actual-scope.txt"
           cat > "$RUNNER_TEMP/expected-scope.txt" <<'EOF'
@@ -129,4 +130,4 @@ jobs:
           git commit -m 'Upload P18.59 candidate via integrity-first recovery bridge'
           git push origin HEAD:main
 
-# recovery-tail-split-refresh
+# recovery-scope-index-refresh
