@@ -1,11 +1,11 @@
-# KAIROS P18.59 GATE — AUTHORITATIVE BASE P18.58 — CANDIDATE P18.59
+# KAIROS P18.60 GATE — AUTHORITATIVE BASE P18.59 — CANDIDATE P18.60
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P18_59_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_EDIT_CLICK_EXECUTION_LIFECYCLE_COMPOSITION_CANDIDATE_2026-09-06.zip'
+      - 'KAIROS_P18_60_DRAWING_TOOLS_SYSTEM_CLOSURE_CANDIDATE_2026-09-06.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P18_58_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_EDIT_ENDPOINT_CLICK_LIFECYCLE_COMPOSITION_CANDIDATE_2026-09-06.zip
-  CANDIDATE_ZIP: KAIROS_P18_59_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_EDIT_CLICK_EXECUTION_LIFECYCLE_COMPOSITION_CANDIDATE_2026-09-06.zip
+  BASE_ZIP: KAIROS_P18_59_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_EDIT_CLICK_EXECUTION_LIFECYCLE_COMPOSITION_CANDIDATE_2026-09-06.zip
+  CANDIDATE_ZIP: KAIROS_P18_60_DRAWING_TOOLS_SYSTEM_CLOSURE_CANDIDATE_2026-09-06.zip
 
 jobs:
   verify-current-candidate:
@@ -38,7 +38,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact controlled P18.59 scope from authoritative P18.58
+      - name: Confirm exact controlled P18.60 closure scope from authoritative P18.59
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -50,17 +50,13 @@ jobs:
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           print('\n'.join(sorted(changed)))
           expected={
-            'KAIROS_P18_59_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_EDIT_CLICK_EXECUTION_LIFECYCLE_COMPOSITION_REPORT_2026-09-06.md',
+            'KAIROS_P18_60_DRAWING_TOOLS_SYSTEM_CLOSURE_REPORT_2026-09-06.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'package.json',
-            'scripts/verify-p18-58-lightweight-charts-v5-trend-line-edit-endpoint-click-lifecycle-composition.mjs',
-            'scripts/verify-p18-59-lightweight-charts-v5-trend-line-edit-click-execution-lifecycle-composition.mjs',
-            'src/features/chart/index.ts',
-            'src/features/chart/lightweightChartsV5TrendLineDraftInteractionComposition.ts',
-            'tests/lightweight-charts-v5-trend-line-edit-click-execution-lifecycle-composition.test.ts',
+            'scripts/verify-p18-60-drawing-tools-system-closure.mjs',
           }
           if changed != expected:
-            print('P18.59 exact scope mismatch',file=sys.stderr)
+            print('P18.60 exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             sys.exit(1)
@@ -84,36 +80,34 @@ jobs:
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
 
-      - name: Dedicated P18.59 Lightweight Charts v5 trend-line edit click-execution lifecycle composition verifier/runtime
+      - name: Dedicated P18.60 Drawing Tools system-closure verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p18:60-drawing-tools-system-closure
           npm run verify:p18:59-lightweight-charts-v5-trend-line-edit-click-execution-lifecycle-composition
           npm run verify:p18:58-lightweight-charts-v5-trend-line-edit-endpoint-click-lifecycle-composition
-          npm run verify:p18:57-lightweight-charts-v5-trend-line-edit-endpoint-click-coordination
-          npm run verify:p18:42-lightweight-charts-v5-drawing-selection-click-lifecycle-composition
-          npm run verify:p18:40-lightweight-charts-v5-drawing-click-evidence-fanout
-          npm run verify:p18:30-lightweight-charts-v5-trend-line-draft-interaction-composition
-          npm run verify:p18:27-lightweight-charts-v5-drawing-click-binding-composition
-          npm run verify:p18:26-lightweight-charts-v5-drawing-click-subscription
+          npm run verify:p18:53-chart-drawing-deletion-initiation-coordination
+          npm run verify:p18:52-chart-drawing-deletion-presentation-coordination
+          npm run verify:p18:51r3-chart-trend-line-edit-presentation-coordination-runtime-projection-expectation-repair
+          npm run verify:p18:45-chart-drawing-deletion-coordination
           npm run verify:p18:24-chart-drawing-interaction-port
           npm run verify:p1
-          npx vitest run tests/lightweight-charts-v5-trend-line-edit-click-execution-lifecycle-composition.test.ts tests/lightweight-charts-v5-trend-line-edit-endpoint-click-lifecycle-composition.test.ts tests/lightweight-charts-v5-trend-line-edit-endpoint-click-coordination.test.ts tests/lightweight-charts-v5-drawing-selection-click-lifecycle-composition.test.ts tests/lightweight-charts-v5-drawing-click-binding-composition.test.ts tests/lightweight-charts-v5-drawing-click-subscription.test.ts tests/lightweight-charts-v5-trend-line-draft-interaction-composition.test.ts tests/chart-drawing-interaction-port.test.ts tests/chart-drawing-interaction-reducer.test.ts tests/chart-drawing-interaction-event.test.ts tests/chart-drawing-selection-interaction.test.ts
 
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
 
-      - name: Full controlled roadmap regression through P18.59
+      - name: Full controlled roadmap regression through P18.60
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
           const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
           const p=JSON.parse(readFileSync('package.json')); const s=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:p'));
-          for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:16-chart-engine-system-closure','verify:p18:58-lightweight-charts-v5-trend-line-edit-endpoint-click-lifecycle-composition','verify:p18:59-lightweight-charts-v5-trend-line-edit-click-execution-lifecycle-composition']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
+          for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:16-chart-engine-system-closure','verify:p18:59-lightweight-charts-v5-trend-line-edit-click-execution-lifecycle-composition','verify:p18:60-drawing-tools-system-closure']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
           for(const x of s){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
           NODE
 
-      - name: P18.59 through P17 chart regressions
+      - name: P18.60 through P17 chart regressions
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
@@ -127,6 +121,7 @@ jobs:
       - name: Historical closures
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p17:16-chart-engine-system-closure
           npm run verify:p16:18-crypto-live-feed-system-closure
           npm run verify:p16:10-execution-market-reference-truth
           npm run verify:p15:14-market-data-adapter-system-closure
@@ -151,5 +146,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P18_59_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_EDIT_CLICK_EXECUTION_LIFECYCLE_COMPOSITION_REPORT_2026-09-06.md
+          path: .gate-candidate/kairos_p76/KAIROS_P18_60_DRAWING_TOOLS_SYSTEM_CLOSURE_REPORT_2026-09-06.md
           if-no-files-found: error
