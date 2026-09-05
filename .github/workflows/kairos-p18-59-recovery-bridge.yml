@@ -33,7 +33,16 @@ jobs:
           mkdir -p "$WORK"
           : > "$PATCH"
           test -f "$BASE"
-          for part in .kairos_bridge/p18_59/part-00.b64 .kairos_bridge/p18_59/part-01.b64 .kairos_bridge/p18_59/part-02.b64 .kairos_bridge/p18_59/part-03.b64 .kairos_bridge/p18_59/part-04.b64 .kairos_bridge/p18_59/part-05.b64; do
+          for part in \
+            .kairos_bridge/p18_59/part-00.b64 \
+            .kairos_bridge/p18_59/part-01.b64 \
+            .kairos_bridge/p18_59/part-02.b64 \
+            .kairos_bridge/p18_59/part-03.b64 \
+            .kairos_bridge/p18_59/part-04.b64 \
+            .kairos_bridge/p18_59/tail-00.b64 \
+            .kairos_bridge/p18_59/tail-01.b64 \
+            .kairos_bridge/p18_59/tail-02.b64 \
+            .kairos_bridge/p18_59/tail-03.b64; do
             test -s "$part"
             base64 -d "$part" >> "$PATCH"
           done
@@ -41,6 +50,8 @@ jobs:
           echo 'Reconstructed payload identity:'
           wc -c "$PATCH"
           sha256sum "$PATCH"
+          test "$(wc -c < "$PATCH")" -eq 39201
+          echo "320bbed03d863c00bc0dfcfc848f91d0279e29575ce022c5d2f3bc70d4a0948c  $PATCH" | sha256sum -c -
 
           unzip -q "$BASE" -d "$WORK"
           test -d "$WORK/kairos_p76"
@@ -118,4 +129,4 @@ jobs:
           git commit -m 'Upload P18.59 candidate via integrity-first recovery bridge'
           git push origin HEAD:main
 
-# recovery-tail-refresh
+# recovery-tail-split-refresh
