@@ -1,0 +1,104 @@
+name: Kairos P18.59 Candidate Upload Bridge (NON-CANONICAL)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/kairos-p18-59-upload-bridge.yml'
+      - 'KAIROS_P18_59_UPLOAD_BRIDGE.patch.gz'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kairos-p18-59-upload-bridge
+  cancel-in-progress: false
+
+jobs:
+  reconstruct-and-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout bridge commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Reconstruct exact P18.59 source from canonical P18.58
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='KAIROS_P18_58_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_EDIT_ENDPOINT_CLICK_LIFECYCLE_COMPOSITION_CANDIDATE_2026-09-06.zip'
+          PAYLOAD='KAIROS_P18_59_UPLOAD_BRIDGE.patch.gz'
+          WORK="$RUNNER_TEMP/kairos-p18-59-bridge"
+          rm -rf "$WORK"
+          mkdir -p "$WORK"
+          test -f "$BASE"
+          test -f "$PAYLOAD"
+          unzip -q "$BASE" -d "$WORK"
+          test -d "$WORK/kairos_p76"
+          test "$(find "$WORK" -mindepth 1 -maxdepth 1 -printf '%f\n' | sort)" = 'kairos_p76'
+          gzip -dc "$PAYLOAD" > "$RUNNER_TEMP/p18-59.patch"
+          cd "$WORK/kairos_p76"
+          git init -q
+          git config user.name 'Kairos Bridge'
+          git config user.email 'kairos-bridge@users.noreply.github.com'
+          git add -A
+          git commit -qm base
+          git apply --check "$RUNNER_TEMP/p18-59.patch"
+          git apply "$RUNNER_TEMP/p18-59.patch"
+
+          git diff --name-status > "$RUNNER_TEMP/actual-scope.txt"
+          cat > "$RUNNER_TEMP/expected-scope.txt" <<'EOF'
+          A	KAIROS_P18_59_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_EDIT_CLICK_EXECUTION_LIFECYCLE_COMPOSITION_REPORT_2026-09-06.md
+          M	docs/KAIROS_ARCHITECTURE_MAP.md
+          M	package.json
+          M	scripts/verify-p18-58-lightweight-charts-v5-trend-line-edit-endpoint-click-lifecycle-composition.mjs
+          A	scripts/verify-p18-59-lightweight-charts-v5-trend-line-edit-click-execution-lifecycle-composition.mjs
+          M	src/features/chart/index.ts
+          M	src/features/chart/lightweightChartsV5TrendLineDraftInteractionComposition.ts
+          A	tests/lightweight-charts-v5-trend-line-edit-click-execution-lifecycle-composition.test.ts
+          EOF
+          diff -u "$RUNNER_TEMP/expected-scope.txt" "$RUNNER_TEMP/actual-scope.txt"
+
+          npm run verify:p18:59-lightweight-charts-v5-trend-line-edit-click-execution-lifecycle-composition
+          npm run verify:p18:58-lightweight-charts-v5-trend-line-edit-endpoint-click-lifecycle-composition
+          npm run verify:p1
+
+          if find . -type d \( -name node_modules -o -name dist -o -name coverage -o -name .vite \) -print -quit | grep -q .; then
+            echo 'Generated dependency/build residue detected' >&2
+            exit 1
+          fi
+          if find . -type f \( -name '*.tsbuildinfo' -o -name '*.log' \) -print -quit | grep -q .; then
+            echo 'Generated file residue detected' >&2
+            exit 1
+          fi
+
+      - name: Package and commit P18.59 candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          CANDIDATE='KAIROS_P18_59_LIGHTWEIGHT_CHARTS_V5_TREND_LINE_EDIT_CLICK_EXECUTION_LIFECYCLE_COMPOSITION_CANDIDATE_2026-09-06.zip'
+          WORK="$RUNNER_TEMP/kairos-p18-59-bridge"
+          rm -f "$GITHUB_WORKSPACE/$CANDIDATE"
+          cd "$WORK"
+          zip -X -qr "$GITHUB_WORKSPACE/$CANDIDATE" kairos_p76 -x 'kairos_p76/.git/*'
+          unzip -t "$GITHUB_WORKSPACE/$CANDIDATE"
+          echo 'P18.59 bridge candidate identity:'
+          wc -c "$GITHUB_WORKSPACE/$CANDIDATE"
+          sha256sum "$GITHUB_WORKSPACE/$CANDIDATE"
+
+          rm -rf "$RUNNER_TEMP/p18-59-fresh"
+          mkdir -p "$RUNNER_TEMP/p18-59-fresh"
+          unzip -q "$GITHUB_WORKSPACE/$CANDIDATE" -d "$RUNNER_TEMP/p18-59-fresh"
+          cd "$RUNNER_TEMP/p18-59-fresh/kairos_p76"
+          npm run verify:p18:59-lightweight-charts-v5-trend-line-edit-click-execution-lifecycle-composition
+          npm run verify:p18:58-lightweight-charts-v5-trend-line-edit-endpoint-click-lifecycle-composition
+          npm run verify:p1
+
+          cd "$GITHUB_WORKSPACE"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm -f '.github/workflows/kairos-p18-59-upload-bridge.yml' 'KAIROS_P18_59_UPLOAD_BRIDGE.patch.gz'
+          git add "$CANDIDATE"
+          git commit -m 'Upload P18.59 candidate via controlled bridge'
+          git push origin HEAD:main
