@@ -37,7 +37,9 @@ jobs:
           unzip -q "$BASE" -d "$WORK"
           test -d "$WORK/kairos_p76"
           test "$(find "$WORK" -mindepth 1 -maxdepth 1 -printf '%f\n' | sort)" = 'kairos_p76'
-          gzip -dc "$PAYLOAD" > "$RUNNER_TEMP/p18-59.patch"
+          base64 -d "$PAYLOAD" > "$RUNNER_TEMP/p18-59.patch.gz"
+          gzip -t "$RUNNER_TEMP/p18-59.patch.gz"
+          gzip -dc "$RUNNER_TEMP/p18-59.patch.gz" > "$RUNNER_TEMP/p18-59.patch"
           cd "$WORK/kairos_p76"
           git init -q
           git config user.name 'Kairos Bridge'
