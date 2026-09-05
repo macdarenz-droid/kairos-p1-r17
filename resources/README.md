@@ -16,5 +16,6 @@ Purpose: staging area for user-authored educational PDF resources intended for l
 | `KAIROS_TRADING_GLOSSARY_BEGINNER.pdf` | `43bf21039beafa25615020b940c861599868e0cf42b6c895dae99ebe377baee0` | 941319 | binary upload pending |
 | `KAIROS_RISK_MANAGEMENT_TRADING_PSYCHOLOGY.pdf` | `e83f496ecd32a19c97aad4c812ed4b0a313a115a53e8e87be6f0bf2c7969d2d8` | 1215630 | binary upload pending |
 | `KAIROS_MARKET_FUNDAMENTALS.pdf` | `dadc29709adef5c98a9d9e60a91d82d8a883f6554168eb49af65772c84d8524b` | 693607 | binary upload pending |
+| `KAIROS_PRICE_ACTION_FUNDAMENTALS.pdf` | `af372da4403b6a9772aa9e5b137a15a99d0aee603a6536f54f5ce8675b79307f` | 3903286 | binary upload pending |
 
 The queue records exact identities so binary assets can be verified after upload.
