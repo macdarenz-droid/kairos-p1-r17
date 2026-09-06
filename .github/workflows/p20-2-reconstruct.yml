@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 4
+          fetch-depth: 8
       - uses: actions/setup-node@v4
         with:
           node-version: '22.16.0'
@@ -35,17 +35,39 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf .p20base .p20candidate /tmp/p20_2.patch /tmp/p20_2.patch.b64
+          rm -rf .p20base .p20candidate /tmp/p20_2.patch /tmp/p20_2.source.yml
           mkdir .p20base .p20candidate
           unzip -q "$BASE_ZIP" -d .p20base
           cp -a .p20base/. .p20candidate/
 
           git cat-file -e "$PATCH_SOURCE_COMMIT^{commit}"
-          git show "$PATCH_SOURCE_COMMIT:.github/workflows/p20-2-reconstruct.yml" \
-            | awk "/<<'PATCH64'/{flag=1;next} /^[[:space:]]*PATCH64[[:space:]]*$/{flag=0} flag" \
-            | tr -d '[:space:]' > /tmp/p20_2.patch.b64
-          test -s /tmp/p20_2.patch.b64
-          base64 -d /tmp/p20_2.patch.b64 > /tmp/p20_2.patch
+          git show "$PATCH_SOURCE_COMMIT:.github/workflows/p20-2-reconstruct.yml" > /tmp/p20_2.source.yml
+          python3 - <<'PY'
+          from pathlib import Path
+          import base64, re
+          text = Path('/tmp/p20_2.source.yml').read_text()
+          marker = "cat > /tmp/p20_2.patch.b64 <<'PATCH64'"
+          start = text.find(marker)
+          if start < 0:
+              raise SystemExit('PATCH64 start marker not found')
+          start = text.find('\n', start) + 1
+          end_match = re.search(r'^\s*PATCH64\s*$', text[start:], re.M)
+          if not end_match:
+              raise SystemExit('PATCH64 end marker not found')
+          raw = text[start:start + end_match.start()]
+          compact = ''.join(raw.split())
+          if not compact or re.search(r'[^A-Za-z0-9+/=]', compact):
+              raise SystemExit('PATCH64 contains non-base64 characters after whitespace normalization')
+          compact += '=' * ((-len(compact)) % 4)
+          try:
+              decoded = base64.b64decode(compact, validate=True)
+          except Exception as exc:
+              raise SystemExit(f'PATCH64 strict decode failed: {exc}')
+          if not decoded.startswith(b'diff --git '):
+              raise SystemExit('decoded payload is not a git patch')
+          Path('/tmp/p20_2.patch').write_bytes(decoded)
+          print(f'decoded patch bytes={len(decoded)} sha256=' + __import__('hashlib').sha256(decoded).hexdigest())
+          PY
           test -s /tmp/p20_2.patch
 
           ROOT=.p20candidate/kairos_p76
