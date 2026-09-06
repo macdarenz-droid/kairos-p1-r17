@@ -52,9 +52,9 @@ Supervisor: `Kairos Supervisor [ACTIVE]`
 
 Worker contract: `KAIROS-FAST-V8-2026-09-06`
 
-Fresh main SHA at this snapshot: `42d8961c861b268cf1b406e96aad9ca40d893102`
+Fresh main SHA at this snapshot: `3a67408a9347f8d578eeab051c70dbca4395f58c`
 
-Main commit message: `Repair P18.60 candidate by deterministic reconstruction from canonical P18.59`
+Main commit message: `Retrigger canonical P18.60 gate for repaired candidate`
 
 Current roadmap phase: **P18 — Drawing Tools**
 
@@ -67,13 +67,25 @@ Latest full canonical PASS / GOLDEN known at this snapshot:
 - run ID `33988215113`
 - conclusion: **SUCCESS**
 
-Latest canonical P18.60 result known at this snapshot:
+Latest completed canonical P18.60 result:
 - run #272
 - run ID `33990305062`
 - conclusion: **FAILURE**
 - failure occurred at exact controlled P18.60 scope before install/build/test stages.
 
-Latest P18.60 helper/reconstruction result known at this snapshot:
+Current canonical P18.60 run:
+- run #273
+- run ID `34008964239`
+- job ID `101421261744`
+- workflow: `Kairos Controlled Roadmap Gate`
+- job: `verify-current-candidate`
+- head SHA: `3a67408a9347f8d578eeab051c70dbca4395f58c`
+- status at latest observation: **IN PROGRESS**
+- passed stages observed so far: setup/checkout, Node setup, npm 10.9.2 verification, base/candidate extraction, exact P18.60 controlled scope, deterministic `npm ci`, exact Lightweight Charts 5.2.1 dependency proof, production TypeScript compilation.
+- production build was in progress at the latest observation.
+- no canonical PASS is claimed until every required stage and both required artifacts are verified.
+
+Latest P18.60 helper/reconstruction result:
 - workflow: `Kairos P18.60 Deterministic Reconstruction Bridge`
 - run #6
 - run ID `34007925909`
@@ -98,23 +110,27 @@ Authoritative P18.59 candidate comparison:
 4. Helper repair commit `4fa1d639895d5a275f628d3b112c57cac8db01b5` changed the packaging boundary to remove generated output and re-prove exact delta before packaging.
 5. Helper run #6 (`34007925909`) completed successfully and committed the repaired candidate to `main` at `42d8961c861b268cf1b406e96aad9ca40d893102`.
 6. The repaired P18.60 ZIP is now **1,304,443 bytes**, close to the P18.59 baseline rather than ~48.48 MB. This proves the package-bloat symptom is removed; it does **not** itself constitute canonical PASS.
-7. At the latest fresh Actions query used to initialize/update this history, helper #6 was the newest workflow run and canonical #272 remained the newest canonical P18.60 run. No newer canonical gate for repaired main `42d8961c...` had been observed yet.
+7. The reconstructed candidate commit did not start the push-triggered canonical gate because `.github/workflows/p18-60-reconstruct.yml` commits/pushes using the default Actions checkout token (`GITHUB_TOKEN`). GitHub's official `GITHUB_TOKEN` documentation states that events caused by the repository `GITHUB_TOKEN` do not create another workflow run, except `workflow_dispatch` and `repository_dispatch`. Official reference: `https://docs.github.com/en/actions/security-for-github-actions/security-guides/automatic-token-authentication#using-the-github_token-in-a-workflow`.
+8. The canonical gate was already correctly targeted to P18.59 -> P18.60 and included both the candidate ZIP and gate file in its `push.paths`; therefore no semantic retarget was needed.
+9. A comment-only gate retrigger commit `3a67408a9347f8d578eeab051c70dbca4395f58c` successfully started canonical run #273 (`34008964239`).
+10. Run #273 has already passed the exact P18.60 scope check and deterministic install that the previous failed candidate did not survive, providing fresh evidence that the clean reconstruction addressed the prior packaging/scope failure. Final authority still depends on full canonical completion.
 
 ## Methods already attempted / do not blindly repeat
 
 - Do not repeat the old deterministic reconstruction that packages generated `node_modules`, `dist`, caches, or other build output.
 - Do not classify P18.60 as an npm/build defect from #272; those downstream stages were not reached.
 - Do not treat helper #6 green status as canonical candidate PASS.
-- Do not rebuild or rerun the old helper simply because there is no newer canonical run. First inspect the gate trigger/target/path/scope and exact repaired candidate identity.
-- P18.60 remains failed evidence only until the exact repaired candidate receives full canonical PASS.
+- Do not rebuild or rerun the old helper simply because there is no newer canonical run.
+- Do not rely on a helper workflow's ordinary `GITHUB_TOKEN` push to start another push-triggered workflow; GitHub intentionally suppresses that workflow recursion. Explicit dispatch or an independently-authenticated/user-originated gate-only retrigger is required when appropriate.
+- P18.60 remains non-authoritative until run #273 (or a later exact canonical run) fully passes every required stage and artifacts.
 
 ## Next safe action
 
-1. Re-read current `.github/workflows/kairos-gate.yml` trigger, candidate/base variables, and exact P18.60 scope against fresh `main`.
-2. Determine from workflow/source evidence why repaired main `42d8961c...` has not yet produced a newer canonical gate run; **do not guess**.
-3. If evidence proves a gate retarget/retrigger is required, perform the smallest gate-only action for the exact repaired P18.60 candidate.
-4. Keep **3-minute** worker cadence while this remains repair/pre-gate work.
-5. Switch to **12-minute** cadence only after the exact repaired candidate is verified and the exact canonical gate for it is confirmed queued/in-progress.
+1. Monitor exact canonical run #273 / `34008964239`; perform **no competing repository engineering mutation** while it is queued/in-progress.
+2. Verify every required stage plus both `KAIROS_CURRENT_CANDIDATE` and `KAIROS_GATE_EVIDENCE` before promotion.
+3. If #273 FAILS, fetch exact failing step/log and classify candidate-vs-gate defect from evidence before repair.
+4. If #273 PASSES, promote P18.60 as GOLDEN and explicit P18 SYSTEM CLOSURE only after full stage/artifact verification; only then may roadmap/source tracing move to P19.
+5. Planned cadence: **12 minutes** while exact canonical run #273 is queued/in-progress.
 
 ---
 
@@ -163,9 +179,25 @@ Authoritative P18.59 candidate comparison:
 - Canonical authority used: P18.59 run #270 / `33988215113` remains latest full PASS; P18.60 run #272 / `33990305062` remains failed evidence.
 - Fresh workflow evidence: helper run #6 / `34007925909` is SUCCESS but NON-CANONICAL; no newer canonical P18.60 run was observed in the latest Actions query.
 - Action: upgraded the hourly supervisor and fast-worker contract to V8 and made this repo history mandatory read-before-action / write-before-report continuity memory.
-- Verification actually observed: supervisor automation update succeeded; V8 contract automation update succeeded; this history file was fetched at blob `aac9db055ed8aa5d114ce0861d6bf8552e177995` before this conflict-safe replacement.
+- Verification actually observed: supervisor automation update succeeded; V8 contract automation update succeeded.
 - Engineering tests: none run by this continuity-policy process; no engineering code/candidate was changed.
 - Finding: richer repo-side history is required in addition to the compact Retry Ledger to prevent repeated discovery/approach loops across stateless one-time workers.
-- Unresolved evidence gap: repaired P18.60 candidate exists on `main`, but a newer canonical gate run for that exact repaired candidate has not yet been observed.
 - Next safe action: inspect the canonical gate trigger/target/scope against repaired main, then perform only the evidence-proven gate action needed to start the exact P18.60 canonical run.
-- Planned cadence: **3 minutes** until the exact canonical gate is confirmed queued/in-progress; then **12 minutes**.
+- Planned cadence: **3 minutes** until exact canonical gate queued/in-progress; then **12 minutes**.
+
+## 2026-09-06 — GITHUB_TOKEN recursion suppression diagnosed; canonical P18.60 run #273 started
+
+- Worker token: `W-20260906-AFK-V8-S9K4`.
+- Main SHA before process: `42d8961c861b268cf1b406e96aad9ca40d893102`.
+- Main SHA after gate-only retrigger: `3a67408a9347f8d578eeab051c70dbca4395f58c`.
+- Canonical/GOLDEN evidence: P18.59 run #270 / `33988215113` remains latest full canonical PASS; P18.60 run #272 / `33990305062` is failed evidence only.
+- Investigation: inspected current canonical gate and reconstruction workflow. The gate already targeted P18.59 -> P18.60 correctly. Reconstruction workflow used Actions checkout/default `GITHUB_TOKEN` to commit/push repaired candidate.
+- Official behavior confirmed: GitHub suppresses new workflow runs from events caused by a repository `GITHUB_TOKEN` (except `workflow_dispatch` / `repository_dispatch`), explaining why repaired commit `42d8961c...` did not start the push-triggered canonical gate.
+- Smallest safe action: changed only the non-semantic explanatory comment in `.github/workflows/kairos-gate.yml` and committed `Retrigger canonical P18.60 gate for repaired candidate`. No candidate semantics or gate checks were weakened.
+- Verification observed: canonical `Kairos Controlled Roadmap Gate` run #273 / `34008964239`, job `verify-current-candidate` / `101421261744`, started on head `3a67408a...` and is IN PROGRESS.
+- Stages actually observed PASS so far: checkout/setup, npm 10.9.2, extraction, exact P18.60 closure scope, deterministic `npm ci`, exact Lightweight Charts 5.2.1 dependency, production TypeScript compilation. Production build was in progress at write-back time.
+- Engineering-test claim boundary: no final candidate PASS claimed; downstream build/verifiers/full units/full roadmap/P18->P17/historical closures/artifacts were not yet all complete at this snapshot.
+- New failed-method fingerprint: `ACTIONS_GITHUB_TOKEN_PUSH_EXPECTED_TO_TRIGGER_PUSH_WORKFLOW` — do not repeat this trigger assumption.
+- Unresolved state: canonical #273 must complete all required stages and both artifacts before P18.60 can become GOLDEN/P18 SYSTEM CLOSURE.
+- Next safe action: monitor exact run #273 only; no competing repo mutation while it is running.
+- Planned cadence: **12 minutes**.
