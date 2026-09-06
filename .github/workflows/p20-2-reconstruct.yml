@@ -17,7 +17,7 @@ jobs:
     env:
       BASE_ZIP: KAIROS_P20_1_SAVED_ANALYSIS_CONTRACT_FOUNDATION_CANDIDATE_2026-09-06.zip
       OUT_ZIP: KAIROS_P20_2_SAVED_ANALYSIS_PERSISTENCE_FOUNDATION_CANDIDATE_2026-09-06.zip
-      EXPECTED_PATCH_SHA256: DISCOVER
+      EXPECTED_PATCH_SHA256: 314cbeb085b51bc4ca034a4634e5c4ef770f71e8f073bb2b8040568648ec3964
       EXPECTED_CHANGED: '40'
     steps:
       - uses: actions/checkout@v4
@@ -75,12 +75,8 @@ jobs:
           set -euo pipefail
           test "$(wc -l < /tmp/changed.txt | tr -d ' ')" = "$EXPECTED_CHANGED"
           ACTUAL_PATCH_SHA256="$(sha256sum /tmp/p20_2.patch | awk '{print $1}')"
-          echo "P20_2_DISCOVERED_PATCH_SHA256=$ACTUAL_PATCH_SHA256"
+          echo "P20_2_PATCH_SHA256=$ACTUAL_PATCH_SHA256"
           git diff --cached --check
-          if [ "$EXPECTED_PATCH_SHA256" = "DISCOVER" ]; then
-            echo 'Identity discovery complete; rerun with the discovered hash pinned.'
-            exit 86
-          fi
           test "$ACTUAL_PATCH_SHA256" = "$EXPECTED_PATCH_SHA256"
 
       - name: Verify reconstructed P20.2
