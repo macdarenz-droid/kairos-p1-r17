@@ -26,6 +26,7 @@ Update this file after every canonical PASS that establishes, extends, moves, or
 | Saved Analysis persisted storage / backup / restore | P20.2 | `src/data/database/`, `src/data/repositories/SavedAnalysisRepository.ts`, `src/data/backup/` | Persists and restores the P20.1 logical contract only; no UI/provider/pixels, no duplicated P17/P18/P19 semantics, no speculative secondary indexes/query APIs, and no optional metadata invention |
 | Saved Analysis application save orchestration | P20.3 | `src/application/saved-analysis/saveSavedAnalysis.ts`, `src/application/saved-analysis/index.ts` | Allocates a fresh Saved Analysis id and coordinates exactly one atomic persisted write using P20.1 logical truth and P20.2 persistence; no UI/provider/pixels, no second repository/schema owner, no duplicated P17/P18/P19 semantics, and no speculative load/update/delete/list orchestration |
 | Saved Analysis application load-one orchestration | P20.4 | `src/application/saved-analysis/loadSavedAnalysis.ts`, exported through `src/application/saved-analysis/index.ts` | Reads one persisted Saved Analysis by its stable id through the P20.2 repository boundary; no UI/provider/pixels, no second persistence owner, no list/update/delete orchestration, and no redefinition of P17/P18/P19/P20.1 truth |
+| Saved Analysis system | P20, CLOSED canonically at P20.5 | P20.1 logical contract + P20.2 persistence/backup/restore + P20.3 save + P20.4 load-one | Closure adds no new production runtime owner; no speculative list/update/delete lifecycle, UI/provider/pixel ownership, schema/index widening, or invented metadata |
 
 ## P18 closure boundary
 
@@ -35,7 +36,7 @@ P18.1–P18.59 establish the generic drawing, provider, interaction, selection, 
 
 P19.7 remains the canonical P19 system closure via `Kairos Controlled Roadmap Gate` #280 / run `34021672747`.
 
-## P20 canonical ownership ledger — OPEN through P20.4
+## P20 canonical ownership ledger — CLOSED through P20.5
 
 | Patch | Canonical responsibility | Production owner seam | Boundary |
 |---|---|---|---|
@@ -43,6 +44,7 @@ P19.7 remains the canonical P19 system closure via `Kairos Controlled Roadmap Ga
 | P20.2 | Saved Analysis persistence foundation | DB V4 `savedAnalyses` store; `src/data/repositories/SavedAnalysisRepository.ts`; backup/restore seams | Persists/restores P20.1 truth atomically; no UI/provider/pixels or speculative query metadata |
 | P20.3 | Saved Analysis application-save orchestration | `src/application/saved-analysis/saveSavedAnalysis.ts`, `src/application/saved-analysis/index.ts` | Fresh-id allocation + one atomic repository write only; no inferred read/update/delete/list ownership |
 | P20.4 | Saved Analysis application load-one-by-id orchestration | `src/application/saved-analysis/loadSavedAnalysis.ts`, exported through `src/application/saved-analysis/index.ts` | One stable-id repository read only; no UI/provider/pixels, list/update/delete orchestration, schema/backup/index changes, or invented metadata |
+| P20.5 | Saved Analysis SYSTEM CLOSURE | Verification/docs/package closure only; no new production runtime seam | Proves P20.1–P20.4 collectively complete the source-proven Saved Analysis responsibility; no speculative CRUD/runtime/UI/provider/schema expansion |
 
 ## Canonical P20 evidence
 
@@ -52,13 +54,15 @@ P20.2: `Kairos Controlled Roadmap Gate` #282 / run `34040888312` completed SUCCE
 
 P20.3: `Kairos Controlled Roadmap Gate` #283 / run `34045317884` completed SUCCESS.
 
-P20.4: `Kairos Controlled Roadmap Gate` #284 / run `34051280988`, job `101535244582`, exact head `5fcbafc31c5c91b13e07f1687332d5f2cc29ef61`, completed SUCCESS on 2026-09-07. Every required `verify-current-candidate` stage succeeded: exact controlled P20.3→P20.4 scope, deterministic install, exact Lightweight Charts dependency proof, production TypeScript compilation/build, dedicated P20.4 Saved Analysis application-load verifier/runtime, full unit regression, full controlled-roadmap regression through P20.4, historical closures, and both exact-run artifact uploads.
+P20.4: `Kairos Controlled Roadmap Gate` #284 / run `34051280988`, job `101535244582`, exact head `5fcbafc31c5c91b13e07f1687332d5f2cc29ef61`, completed SUCCESS on 2026-09-07.
 
-Exact P20.4 artifacts:
-- `KAIROS_CURRENT_CANDIDATE` artifact `9994736197`, 1,164,825 bytes, digest `sha256:ec38e3fc20449af2321cb817d7eeffdd1c8cd8955171eabb6ebfff73a49f388a`.
-- `KAIROS_GATE_EVIDENCE` artifact `9994736471`, 1,060 bytes, digest `sha256:731ec4df1da8bdb363281acce90a438abb20b2d90346835e1f41891e2aaabcf9`.
+P20.5: `Kairos Controlled Roadmap Gate` #285 / run `34059034331`, job `101556113020`, exact head `a88b2d480ed0e8ae5cb571ead97a91d36693c4b0`, completed SUCCESS on 2026-09-07. Every required `verify-current-candidate` stage succeeded: exact controlled P20.4→P20.5 four-file closure scope, deterministic install, exact Lightweight Charts dependency proof, production TypeScript compilation/build, dedicated P20.5 Saved Analysis system-closure verifier/runtime, full unit regression, full controlled-roadmap regression through P20.5, historical closures, and both exact-run artifact uploads.
 
-Therefore P20.4 is the canonical GOLDEN. It extends Saved Analysis application orchestration with one load-by-id read seam while preserving P20.1 logical truth, P20.2 persistence ownership, and P20.3 save ownership.
+Exact P20.5 artifacts:
+- `KAIROS_CURRENT_CANDIDATE` artifact `9996997282`, 1,167,501 bytes, digest `sha256:adf73735e84fe2bc79a0651fe14d76f2ee95860c1165f5da67c9337db9bfd6cd`.
+- `KAIROS_GATE_EVIDENCE` artifact `9996997437`, 1,003 bytes, digest `sha256:869936a9c79813fd93e330c2d94bcb18f2ad5c08671bcf84f32e7939c282d8aa`.
+
+Therefore P20.5 is the canonical GOLDEN and P20 Saved Analysis is canonically CLOSED. Closure adds no new production runtime behavior; it proves the P20.1 logical contract, P20.2 persistence/backup/restore, P20.3 save orchestration and P20.4 load-one orchestration as the complete source-proven P20 boundary.
 
 ## Ownership rules that remain invariant
 
@@ -67,10 +71,10 @@ Therefore P20.4 is the canonical GOLDEN. It extends Saved Analysis application o
 - P14 remains journal/trade-visualization truth where assigned.
 - P18 remains generic drawing/provider/interaction machinery.
 - P19 remains Risk/Reward semantic and provider-neutral logical composition truth.
-- P20 owns Saved Analysis persistence/application orchestration only where canonically introduced, while reusing P17/P18/P19 logical truth.
+- P20 owns only the Saved Analysis contract/persistence/application responsibilities canonically introduced through P20.4; P20.5 closes that system without adding a second runtime owner.
 - P2/P3 design tokens remain style-value authority; P19.4 references tokens rather than hard-coding colors.
 - UI/presentation amendments must preserve business/data/navigation truth and use new controlled amendments from latest GOLDEN.
 
 ## Next audit checkpoint
 
-Before any next P20 responsibility, reread the controlling handoff/roadmap, P20.4 GOLDEN, process history, Retry Ledger, and exact current Saved Analysis owners/consumers. Prove exactly one smallest dependency-safe remaining P20 responsibility or prove P20 closure from source evidence. Do not infer P20.5 from numbering, and do not jump to P21 until P20 is source-proven closed. After each future canonical PASS, audit this map again and update only when canonical ownership/boundaries materially change.
+P20 is closed. Before any P21 implementation, reread the controlling handoff/roadmap, P20.5 GOLDEN, process history, Retry Ledger, current navigation/dashboard owners and exact source consumers. Prove exactly one smallest dependency-safe first P21 Home Dashboard / Bubble Map responsibility and its non-scope from source evidence. Do not implement P21 by phase-number momentum alone.
