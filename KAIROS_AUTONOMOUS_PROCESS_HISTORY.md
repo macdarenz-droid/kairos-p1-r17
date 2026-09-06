@@ -75,3 +75,16 @@ Material route change now required: STOP blind PATCH64 corruption repair. R7-R10
 Living-doc status: `docs/KAIROS_ARCHITECTURE_MAP.md` remains authoritative through canonical P20.1 only; no P20.2 helper semantics are represented as canonical architecture.
 
 Unresolved gap / next safe action: use fresh canonical P20.1 artifact/source to trace exact persistence/backup owners and reconstruct the frozen P20.2 delta directly, rather than continuing damaged-base64 recovery. FAST ~3m remains correct; no user action required.
+
+## Process log — 2026-09-06T13:30Z — token W-20260906-P20-2-R6-V15-SELFLOOP-N8Q5
+RULE 0 / liveness: SAME reusable V15 fast worker was rescheduled forward and PEEK-verified before project work. Supervisor remained ACTIVE. Same-token execution lease was already held/unexpired for repository mutation.
+
+Fresh direct-route finding: main had advanced through helper-only direct reconstruction commits `02bfd621c54cd5da2a0cb28530e48bcd15d0743b` and `ff46efaef139221ca9c3c8ae515e45e520bc80b3`. Exact helper run `34035650732`, job `101493109834`, failed before candidate reconstruction with chunk sizes `6000,6001,6000,6000,384`, joined length `24385`, and zero winners when the old compressed-gzip transport SHA was enforced across the exact stream and every one-character deletion. This remained non-canonical.
+
+R11 action/result: changed helper authority from compressed-gzip transport hash to the known uncompressed patch identity. Commit `6841afe69f1b1f71cb84ba1d0df0657329f79f21` (`Repair P20.2 bridge content-hash reconstruction`) kept exact P20.1 base and all downstream checks, but strict-decoded/gzip-decompressed the chunk payload and required patch SHA `960d85f15cfad6ca5c8c6c5495c0d612465ca3e00043276c3dfe51924afcaac6`, size 98903 and 35 diff headers. Exact run `34036153018`, job `101494478974`, failed earlier at `normalized base64 length mismatch: 24385 != 24384`. This proved the direct chunk stream carries one extra base64-alphabet character; whitespace normalization is not the issue.
+
+R12 action/result: materially changed recovery to test deletion of every one of the 24,385 normalized direct-chunk characters, accepting only a candidate that strict base64-decodes, gzip-decompresses, exactly matches the authoritative uncompressed patch SHA/size, starts as git patch text and has exactly 35 diff headers. Commit `64de0255777b4a6bab70ff26ed469396900ef35a` (`Repair P20.2 bridge one-extra-char content recovery`). Exact helper run `34036218596`, job `101494662730`, completed FAILURE with `patch_identity_winners=0`. Therefore the direct chunk representation is not a simple one-extra-character corruption either. No candidate ZIP was produced and no canonical gate was retargeted.
+
+Authority remains unchanged: P20.1 is GOLDEN; P20.2 remains NON-CANONICAL. R11/R12 are helper-only evidence. Living architecture docs remain canonical only through P20.1.
+
+Next safe action: stop assuming a one-character transport corruption. Reinspect how direct chunks were generated from the original locally-proven patch and whether a multi-character chunk-boundary/write corruption occurred; prefer reconstruction from exact canonical P20.1 owners/frozen scope over further blind transport brute force. FAST ~3m remains correct; no user action required.
