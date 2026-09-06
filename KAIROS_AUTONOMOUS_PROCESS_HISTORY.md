@@ -1,110 +1,102 @@
 # Kairos Autonomous Process History
 
 Branch: `kairos-autonomous-state`
-Status: NON-CANONICAL continuity memory only. Controlling handoff + fresh canonical GitHub always override this file. Detailed earlier process history remains available in this branch's git history.
+Status: NON-CANONICAL continuity memory only. Controlling handoff + fresh canonical GitHub always override this file. Detailed earlier process history is preserved in this branch's git history through commit `9f5ec24ea7db6eafb4e2f070e4cbcb1385215254` and its ancestors.
 
 ## MUST-READ / WRITE-BACK CONTRACT
-Before every Kairos decision: automation liveness rule -> handoff/current rules -> roadmap/GOLDEN -> this history -> Retry Ledger -> living repo docs -> fresh main/Actions -> exact canonical artifact/source/log/owner/data-flow evidence. After every meaningful autonomous process, conflict-safely write back before report/lease release.
+Before every Kairos decision: automation liveness rule -> handoff/current rules -> roadmap/GOLDEN -> this history -> Retry Ledger -> living repo docs -> fresh main/Actions -> exact canonical artifact/source/log/owner/data-flow evidence -> current official research when needed. After every meaningful autonomous process, conflict-safely write back before report/lease release.
 
 # CURRENT ACTIVE STATE
 Repository `macdarenz-droid/kairos-p1-r17`; engineering `main`; continuity `kairos-autonomous-state`.
 
-AFK/autonomous mode is owned by enabled recurring `Kairos Relay Supervisor [ACTIVE]` under V16. Scheduled runtime cannot create child automations, so active `Kairos Fast Continuation` reschedules itself about 10 minutes forward; hourly supervisor is dead-man recovery. Execution lease protects repository/docs mutation.
+AFK/autonomous mode is owned by enabled recurring `Kairos Relay Supervisor [ACTIVE]` under V16. Scheduled runtime cannot create child automations, so active `Kairos Fast Continuation` is kept enabled/future-dated about 10 minutes forward; hourly supervisor is dead-man recovery. Execution lease protects repository/docs mutation.
 
 ## Roadmap / GOLDEN
 P18 CLOSED; P19 CLOSED; P20 CLOSED. P21 OPEN through P21.1.
 
-Latest canonical GOLDEN is **P21.1 — Home Dashboard Route Ownership Foundation** via `Kairos Controlled Roadmap Gate` #286 / run `34061840453`, job `101563628073`, exact head `13d55093a569a156f316ccb848e6bd84e4e437ea`, completed SUCCESS on 2026-09-07.
+Latest canonical GOLDEN is **P21.1 — Home Dashboard Route Ownership Foundation** via `Kairos Controlled Roadmap Gate` #286 / run `34061840453`, job `101563628073`, exact head `13d55093a569a156f316ccb848e6bd84e4e437ea`, completed full SUCCESS on 2026-09-07.
 
-Every required canonical stage succeeded: exact P20.5→P21.1 five-file scope, deterministic install, exact Lightweight Charts 5.2.1 dependency proof, production TypeScript compilation/build, dedicated P21.1 Home Dashboard route-ownership verifier/runtime, full unit regression, full controlled-roadmap regression through P21.1, historical closures, and both artifact uploads.
-
-Exact-run canonical artifacts:
+Exact canonical artifacts:
 - `KAIROS_CURRENT_CANDIDATE` id `9997837809`, size 1,169,775 bytes, digest `sha256:801b75beb1ed2bc16d13e2fa74a6905441652cdbc3ff66154abe6612894fdd17`.
 - `KAIROS_GATE_EVIDENCE` id `9997837954`, size 973 bytes, digest `sha256:829a2cf8118b04c59eb8cd3ca82c713f6acb0ad5f7445d622bd0175347524f9b`.
-Both are tied to exact canonical head and unexpired.
 
-## Process log — 2026-09-06T20:55Z — token W16-RECOVERY-20260907T0556-AEST-H9Q4
-RULE 0 was satisfied first by keeping the same V16 `Kairos Fast Continuation` enabled and future-dated about 10 minutes ahead; the permanent hourly supervisor remains ACTIVE. Fresh canonical GitHub then proved gate #285 completed SUCCESS.
+Engineering `main` is the post-PASS living-architecture checkpoint `479759603f72b2aa4e0230e65be287b3635f82cd` (`Record canonical P21.1 Home dashboard route ownership`). No newer canonical gate exists at this checkpoint.
 
-The exact authoritative `verify-current-candidate` job and every required stage were verified, along with both exact-run canonical artifacts above. P20.5 was therefore promoted as GOLDEN and P20 Saved Analysis was closed. No speculative list/update/delete/runtime/UI/provider/schema scope was added.
+## Durable lineage summary
+- P20.5 canonically closed Saved Analysis; no speculative CRUD/runtime/UI/provider/schema expansion was introduced.
+- P21.1 was source-proven as the smallest Home route ownership foundation because the existing `/` index was only a placeholder while P8 already owned shell/navigation truth.
+- P21.1 helper run `34060999304` succeeded non-canonically and produced the exact five-file candidate; canonical gate #286 then fully passed and promoted it.
+- P21.1 owns only semantic Home/dashboard presentation on existing `/`; P8 `AppShell`/navigation, P11 calculations, P12 journal history, P14 trade visualization, P15/P16 market data/provider truth, P20 Saved Analysis, and P40 motion remain separate owners.
+- Prior P21.2 authority searches correctly held implementation because `Bubble Map` semantics were under-specified. M•ARC bubble-map semantics are a different project and are never Kairos authority. `KAIROS_FUTURE_FEATURE_PROPOSALS` remains IDEA/NOT SCOPED/NOT SCHEDULED where applicable.
 
-Mandatory living-doc checkpoint completed on engineering `main` commit `82c74db69a4ab94573021f0eeaf3830fad4c9fe1` (`Record canonical P20 Saved Analysis system closure`). `docs/KAIROS_ARCHITECTURE_MAP.md` now records P20 CLOSED through P20.5, exact gate/artifact evidence, and that closure adds no new production runtime owner.
+## Standing user product authority — P21 Bubble Maps
+`Bubble Map` is TWO separate products and must never collapse into one ambiguous truth model:
 
-## Process log — 2026-09-06T21:09Z — token W16-RECOVERY-20260907T0556-AEST-H9Q4
-Fresh canonical re-proof confirms main remains `82c74db69a4ab94573021f0eeaf3830fad4c9fe1`; latest canonical `Kairos Controlled Roadmap Gate` remains #285/run `34059034331` SUCCESS. Exact-run artifacts were fetched fresh and match recorded IDs/digests. The exact canonical P20.5 candidate was downloaded and inspected rather than inferring P21 from the sparse engineering-main shell.
+A) **LIVE CRYPTO BUBBLE MAP** — live/current crypto market visualization sourced only from authoritative market-data/provider boundaries (P15/P16 and later relevant market integrations), never from journal trades.
 
-P21 source proof:
-- Controlling roadmap places **P21 Home Dashboard/Bubble Map** immediately after P20 and requires smaller dependency-safe patches rather than patch-number activity.
-- P8 routing already owns the real primary `Home` destination at `/`; the exact P20.5 GOLDEN `src/app/routes.tsx` still renders the index route as `<PlaceholderRoute title="Home" />`.
-- Exact P20.5 has no `HomeRoute`, dashboard owner, or bubble-map owner. `AppShell` and `primaryNavigation` already own shell/navigation truth, so P21 must consume that boundary rather than create another navigation owner.
-- Existing indexed/bounded Journal History owners (`TradeRepository.listRecentByUpdatedAt`, `listRecentByStatusAndUpdatedAt`, `listJournalHistory`) already provide authoritative journal-read seams. P21 UI must not bypass them, load-all/filter in React, or become a second calculation/persistence owner.
-- No controlling product source retrieved requires a market-data bubble visualization as the first slice, and future behavioral-visualization proposals are explicitly IDEA/NOT SCOPED. Therefore no bubble metrics/market subscription/behavioral scoring are authorized in the first slice.
+B) **YOUR TRADES BUBBLE MAP** — visualization sourced only from the user's authoritative journal/trade history plus released calculation truth, never presented as a live market feed.
 
-**Source-proven next responsibility: P21.1 Home Dashboard Route Ownership Foundation.** Smallest dependency-safe scope: replace only the Home index placeholder with one dedicated `HomeRoute` presentation owner while preserving P8 route `/`, `AppShell`, navigation semantics, safe-area ownership, theme/design-system boundaries and all existing business/data owners. The route may establish stable semantic dashboard composition/empty-state boundary only; it must not invent metrics or duplicate journal queries/calculations.
+Presentation-only bubble layout machinery may eventually be shared, but business/data ownership must remain separate. No direct IndexedDB from UI and no duplication of P11/P12/P14/P16 truth. Exact bubble-size metric, color semantics, grouping/filtering, universe/time-window, interaction behavior and provider/query contract require independent source proof before implementation.
 
-P21.1 explicit non-scope: no bubble-map algorithm/geometry yet; no live market-data subscription; no new persistence/schema/index; no direct IndexedDB access; no new calculation/P&L/R/FX truth; no Saved Analysis CRUD expansion; no Goals/Discipline/P22 behavior; no global P40 motion polish; no navigation ownership change; no giant dashboard implementation.
+## Standing presentation authority — premium transitions
+The `KairosTransitions_Premium.jsx` concept is an approved future presentation direction. Preserve a clean transition/motion seam around P21 dashboard routes/shells/swipe/navigation. Motion may later use fragment/fold/fall/reassembly, mixed large/small pieces, slower timing, depth/perspective, directionality, swipe feel, particles/easing and reduced-motion refinement. Animation is presentation only and must never own, delay, mask, duplicate or roll back navigation, route truth, provider data, persistence, calculations, chart truth, Saved Analysis truth or dashboard-selection truth.
 
-## Process log — 2026-09-06T21:25Z — token W16-RECOVERY-20260907T0556-AEST-H9Q4
-Fresh Actions re-proof confirmed canonical gate #285 remains the latest canonical run and P20.5 remains GOLDEN. With the execution lease verified for this token, engineering main was advanced only by commit `42f77d85a9cdb4c85e4cc532ee856ee1cbf6828c`, adding the non-canonical workflow `.github/workflows/p21-1-home-route-reconstruct.yml`.
+## Exact current P21 source/data-flow proof
+The canonical P21.1 artifact was downloaded and inspected directly.
 
-The helper reconstructs from exact root `KAIROS_P20_5_SAVED_ANALYSIS_SYSTEM_CLOSURE_CANDIDATE_2026-09-07.zip` and proposes exactly five candidate-file changes: `src/app/HomeRoute.tsx`, `src/app/routes.tsx`, the P21.1 report, a dedicated verifier, and package-script registration. `HomeRoute` establishes only semantic Home/dashboard empty-state presentation on the existing `/` index route. It explicitly forbids direct persistence/query/calculation/provider/navigation ownership, live data, bubble geometry, Saved Analysis CRUD, P22 behavior and P40 motion scope.
+Existing P15/P16 live market boundary is single-instrument:
+- `MarketDataAdapter.subscribe(instrument, handlers)` subscribes one `MarketDataInstrument`.
+- `MarketPriceObservation` carries instrument, price, observedAt and sourceTimestamp.
+- P16 Binance Spot implementation owns public trade-stream endpoint/subscription/reconnect and raw-trade -> provider-neutral price-observation mapping.
+- This existing boundary does **not** expose a market-universe or multi-instrument market-summary contract.
 
-Fresh Actions proves the sole active non-canonical helper is `Kairos P21.1 Home Dashboard Route Ownership Reconstruction Bridge` run `34060999304` on exact head `42f77d85a9cdb4c85e4cc532ee856ee1cbf6828c`, currently QUEUED. No canonical gate was retargeted. While this helper is queued/in progress, monitor only this exact run and create no duplicate helper/candidate/gate.
+Existing Your-Trades read path is already bounded and authoritative:
+- P12 `listJournalHistory(db, options)` uses indexed recent repository queries rather than load-all/filter in React.
+- It returns journal facts together with released P11 calculation metrics and P13 visual-PnL projection.
+- P21 must consume this application seam; Home/Bubble UI must not query IndexedDB directly or recalculate trade truth.
 
-## Process log — 2026-09-06T21:40Z — token W16-RECOVERY-20260907T0556-AEST-H9Q4
-Fresh Actions now proves helper run `34060999304`, job `101561390198`, completed SUCCESS. Every helper stage passed: exact P20.5 reconstruction, P21.1 five-file scope construction, deterministic npm verification, exact Lightweight Charts 5.2.1 proof, dedicated P21.1 verifier, typecheck/build, historical/current verifiers, full unit regression, full `verify:p*` regression, static verification, generated-output cleanup, clean-boundary recheck, ZIP integrity, and package commit.
+## Process log — 2026-09-06T22:50Z — token W16-RECOVERY-20260907T0556-AEST-H9Q4
+RULE 0 was satisfied before project work by keeping the same V16 `Kairos Fast Continuation` enabled and future-dated; permanent hourly `Kairos Relay Supervisor [ACTIVE]` remains enabled. Fresh GitHub proves engineering main is still `479759603f72b2aa4e0230e65be287b3635f82cd`; latest canonical authority remains P21.1 via gate #286/run `34061840453` full SUCCESS, with exact artifacts/digests unchanged. No competing active canonical run was found.
 
-The exact non-canonical root candidate is `KAIROS_P21_1_HOME_DASHBOARD_ROUTE_OWNERSHIP_FOUNDATION_CANDIDATE_2026-09-07.zip`, committed by the helper on engineering `main` as `be33eaef2da79dd65ffe25980e26d64539ddd3b9`, Git blob `bbed43505abbe8bea68bf692379a741d5ff1a4ce`. Commit diff proves only that ZIP was added to engineering main; the candidate's internally verified P20.5→P21.1 delta remains exactly the five source/report/verifier/package files specified above. Helper success is NON-CANONICAL and does not promote P21.1.
+Fresh current official Binance Spot API/stream research materially narrows the Live Crypto dependency:
+- Binance's official Spot API documentation repository is the supported authority for current endpoints/streams.
+- `!ticker@arr` (All Market Tickers) was deprecated on 2025-11-14; official guidance is to use `<symbol>@ticker` or `!miniTicker@arr` instead.
+- Current `!miniTicker@arr` is an all-market mini-ticker stream with 1000 ms updates, but each event contains only symbols whose mini-ticker changed. Therefore a single event is **incremental changed-symbol evidence**, not a complete market snapshot/universe.
+- Mini-ticker facts include event timestamp, symbol, current/close price, open, high, low, base volume and quote volume for the rolling 24-hour window.
+- REST `/api/v3/ticker/24hr` remains a market-data summary route and batch/all-symbol access carries request-weight implications; acquisition/universe policy therefore must be explicit rather than guessed in UI.
 
-Fresh `.github/workflows/kairos-gate.yml` still targets canonical P20.5. Next safe action is one lease-protected gate-only retarget from P20.5 to this exact P21.1 candidate, preserving canonical authority in `verify-current-candidate`; then monitor only the resulting exact canonical run. No P21.2/Bubble Map/transition implementation is authorized while P21.1 is unresolved.
+**Source-proven next controlled responsibility: P21.2 — Live Market Summary Fact Contract Foundation.**
 
-## Process log — 2026-09-06T21:42Z — token W16-RECOVERY-20260907T0556-AEST-H9Q4
-With the execution lease reverified and the helper fully successful, engineering `main` was advanced by exactly one gate-only commit `13d55093a569a156f316ccb848e6bd84e4e437ea` (`Retarget controlled gate to P21.1 Home dashboard route ownership foundation`). The authoritative gate now uses P20.5 as `BASE_ZIP`, the exact P21.1 root candidate as `CANDIDATE_ZIP`, mechanically proves the five-file P20.5→P21.1 scope, keeps Node 22.16.0/npm 10.9.2/Lightweight Charts 5.2.1, runs the dedicated P21.1 verifier plus P8/current/historical ownership checks, full unit regression, every `verify:p*` roadmap verifier, static/historical closures, and uploads `KAIROS_CURRENT_CANDIDATE` plus `KAIROS_GATE_EVIDENCE`.
+This responsibility is deliberately only a provider-neutral raw FACT CONTRACT at the market-data boundary. The smallest defensible per-symbol facts, because they map directly to currently supported Binance mini-ticker semantics without choosing a Bubble visualization metric, are:
+- instrument identity;
+- current/last price;
+- rolling-24h open price;
+- rolling-24h high price;
+- rolling-24h low price;
+- rolling-24h base volume;
+- rolling-24h quote volume;
+- provider source/event timestamp;
+- local observed-at timestamp.
 
-Fresh Actions proves this retarget triggered exact canonical `Kairos Controlled Roadmap Gate` #286 / run `34061840453` on exact head `13d55093a569a156f316ccb848e6bd84e4e437ea`. Exact authoritative job `verify-current-candidate` id `101563628073` is IN_PROGRESS. At last observation checkout had passed and setup-node was in progress; exact-scope/install/dependency/typecheck/build/P21.1 verifier/full unit/full roadmap/historical/artifact stages were pending. This is now the sole active chain. No competing repository/docs/candidate/helper/P21.2/Bubble Map/transition mutation is allowed while #286 is queued/in progress.
+P21.2 explicit non-scope is strict:
+- no Bubble size metric or ranking;
+- no color semantics;
+- no grouping/filtering;
+- no market-universe selection;
+- no UI geometry/layout/interactions;
+- no Home route wiring;
+- no REST polling policy;
+- no WebSocket subscription choice;
+- no multi-symbol state accumulator yet;
+- no complete-snapshot claim from one `!miniTicker@arr` message;
+- no persistence/schema/index changes;
+- no journal reads or Your-Trades semantics;
+- no P11/P12/P14/P16 duplication;
+- no dashboard transition implementation.
 
-## Process log — 2026-09-06T21:55Z — token W16-RECOVERY-20260907T0556-AEST-H9Q4
-Fresh canonical re-proof proves exact `Kairos Controlled Roadmap Gate` #286 / run `34061840453`, authoritative job `verify-current-candidate` `101563628073`, completed full SUCCESS on exact head `13d55093a569a156f316ccb848e6bd84e4e437ea`. Every required stage passed: exact P20.5→P21.1 five-file scope, deterministic install, exact Lightweight Charts 5.2.1 proof, production TypeScript compilation/build, dedicated P21.1 route-ownership verifier/runtime, full unit regression, full controlled-roadmap regression through P21.1, historical closures, and both artifact uploads.
+A later, separately source-proven slice must define acquisition/universe/freshness/error semantics. Because `!miniTicker@arr` is incremental changed-symbol data, any complete live market view will require an explicit provider/service accumulation or initial-snapshot rule; UI inference is forbidden.
 
-Exact canonical artifacts were fetched for this run: `KAIROS_CURRENT_CANDIDATE` `9997837809`, 1,169,775 bytes, digest `sha256:801b75beb1ed2bc16d13e2fa74a6905441652cdbc3ff66154abe6612894fdd17`; `KAIROS_GATE_EVIDENCE` `9997837954`, 973 bytes, digest `sha256:829a2cf8118b04c59eb8cd3ca82c713f6acb0ad5f7445d622bd0175347524f9b`. Both bind to exact head `13d55093a569a156f316ccb848e6bd84e4e437ea`. P21.1 is therefore promoted as the latest canonical GOLDEN. P21 remains OPEN.
-
-Mandatory living-doc checkpoint completed on engineering `main` commit `479759603f72b2aa4e0230e65be287b3635f82cd` (`Record canonical P21.1 Home dashboard route ownership`). `docs/KAIROS_ARCHITECTURE_MAP.md` now records P21.1 as Home Dashboard route presentation/composition ownership on the existing `/` route, preserves P8 `AppShell`/navigation authority, records exact gate/artifact evidence, and explicitly excludes Bubble Map metrics/geometry, live/provider ownership, new persistence/query/calculation ownership, Saved Analysis CRUD, P22 behavior and full transition implementation. The approved premium transition concept remains a later presentation-only seam and may never own or delay authoritative route/navigation/data/persistence/calculation/chart/Saved Analysis/dashboard-selection truth.
-
-Fresh main after that checkpoint is exactly `479759603f72b2aa4e0230e65be287b3635f82cd`. Fresh Actions still shows #286 as the latest canonical `Kairos Controlled Roadmap Gate`; no competing canonical gate was triggered by the docs-only checkpoint.
-
-## Process log — 2026-09-06T21:58Z — token W16-RECOVERY-20260907T0556-AEST-H9Q4
-Post-PASS next-scope audit used the exact downloaded canonical P21.1 artifact rather than engineering-main placeholders. `src/app/HomeRoute.tsx` is intentionally only a semantic Home/Dashboard boundary and states `No dashboard insights are connected yet.`; `src/app/routes.tsx` wires that owner to the existing `/` index route. Search of the exact canonical source confirms no Home-specific dashboard query, Bubble Map owner, metric contract, or provider subscription was introduced by P21.1. Existing bounded journal-read ownership remains in P12 application/repository seams such as `listJournalHistory` and indexed `listRecentByUpdatedAt`/status queries.
-
-Controlling roadmap evidence proves P21 is `Home Dashboard/Bubble Map` and requires smaller dependency-safe patches, but it does not define what a Bubble Map bubble represents, which dataset/metric is authoritative, whether it is journal-derived or market-derived, or which read contract must feed it. A separate `KAIROS_FUTURE_FEATURE_PROPOSALS` document contains behavioral visualization ideas but explicitly labels itself `IDEA / NOT SCOPED / NOT SCHEDULED`; it cannot authorize P21.2 implementation. Therefore **P21.2 remains scope-unproven**. This is an evidence hold, not a technical failure and not a user-only prerequisite. No activity-only candidate is authorized.
-
-## Process log — 2026-09-06T22:10Z — token W16-RECOVERY-20260907T0556-AEST-H9Q4
-RULE 0 remained satisfied by keeping the same V16 `Kairos Fast Continuation` enabled and future-dated; the permanent hourly supervisor remained ACTIVE. Fresh Actions re-proved that exact `Kairos Controlled Roadmap Gate` #286 / run `34061840453` is still the latest canonical run and remains full SUCCESS, so P21.1 is still GOLDEN and no newer canonical authority exists.
-
-The required P21.2 authority search was completed across the controlling saved Kairos handoffs/current user-source history, current process history and Retry Ledger, living architecture-map/code search, fresh Actions, and prior-project context retrieval. The controlling Kairos sources consistently establish only **P21 Home Dashboard/Bubble Map**, visual-first/premium/minimal UX, real route boundaries, dependency-safe subpatching, one-owner truth, and presentation-only motion. They do **not** define what a Kairos Bubble Map bubble represents, an authoritative metric/dataset, journal-vs-market data authority, provider/subscription contract, dashboard query/calculation contract, interaction semantics, or acceptance/completion criteria for the next slice.
-
-Library retrieval also surfaced M•ARC `Muscle Map / Bubble Map` requirements. That evidence belongs to the separate M•ARC workout-tracker repository/project and was explicitly excluded from Kairos authority; it cannot be transplanted into P21. Personal-context retrieval produced no additional Kairos-specific Bubble Map requirement.
-
-Therefore **P21.2 remains source-unproven after the authority search**. This is not a technical failure and no speculative feature work was created. No engineering `main`, candidate, helper, canonical gate, provider, query/calculation, Bubble Map geometry, or transition implementation was mutated. Engineering main therefore remains the P21.1 architecture checkpoint `479759603f72b2aa4e0230e65be287b3635f82cd` and P21 remains OPEN through canonical P21.1.
-
-## Process log — 2026-09-06T22:21Z — token W16-RECOVERY-20260907T0556-AEST-H9Q4
-RULE 0 remained satisfied by future-dating the same V16 `Kairos Fast Continuation` about 10 minutes ahead because scheduled runtime cannot create child automations; the permanent hourly supervisor remains ACTIVE. Fresh GitHub re-proof shows engineering `main` remains exactly `479759603f72b2aa4e0230e65be287b3635f82cd`, and the newest canonical `Kairos Controlled Roadmap Gate` remains #286/run `34061840453` full SUCCESS. P21.1 therefore remains GOLDEN with no newer canonical authority.
-
-A fresh Library authority search was run specifically for a Kairos P21 Bubble Map product/data contract rather than relying on the prior negative result. Controlling Kairos handoffs again prove only the phase title `P21 Home Dashboard/Bubble Map`, visual-first/premium/minimal UX, dependency-safe subpatching, real route boundaries, one-owner truth and presentation-only transition boundaries. No controlling Kairos source defines bubble identity, authoritative metric/dataset, journal-vs-market authority, provider/subscription contract, Home dashboard query/calculation contract, interaction semantics, or acceptance/completion criteria. Search again surfaced the detailed M•ARC Muscle Map specification, but that belongs to the separate workout-tracker project and is NON-AUTHORITY for Kairos. `KAIROS_FUTURE_FEATURE_PROPOSALS` remains explicitly `IDEA / NOT SCOPED / NOT SCHEDULED` and cannot authorize implementation.
-
-Finding is unchanged but freshly re-proven: **P21.2 remains source-unproven**. No engineering-main feature code, candidate, helper, canonical gate, provider, query/calculation, Bubble Map geometry, or transition implementation was created or modified. Next safe action remains evidence-only discovery until a controlling Kairos source supplies exactly one dependency-safe Bubble Map responsibility plus explicit non-scope; do not create activity-only work.
+No P21.2 candidate, helper, gate retarget, provider call, Home wiring or engineering-main mutation was created in this discovery run. Retry Ledger was updated to record this exact source proof.
 
 ## Next safe action
-P21.1 is canonical GOLDEN and P21 is OPEN. Continue evidence-only discovery for a controlling Kairos Bubble Map product/data contract. Implement P21.2 only when a controlling Kairos source proves exactly one dependency-safe responsibility plus explicit non-scope. Do not infer a metric/provider/query/geometry from the phase title, from M•ARC, or from unscheduled proposal material; do not add an activity-only patch.
-
-## Process log — 2026-09-06T22:35Z — token W16-RECOVERY-20260907T0556-AEST-H9Q4
-RULE 0 was satisfied first by keeping the same V16 `Kairos Fast Continuation` enabled and future-dated because scheduled automation runtime prohibits child creation; the permanent hourly `Kairos Relay Supervisor [ACTIVE]` remains the dead-man recovery layer. Fresh GitHub re-proof shows engineering `main` still exactly `479759603f72b2aa4e0230e65be287b3635f82cd` and canonical `Kairos Controlled Roadmap Gate` #286/run `34061840453` remains the latest full SUCCESS, so P21.1 remains GOLDEN.
-
-The user's new P21 product authority resolves the former single-map ambiguity: **Live Crypto Bubble Map** and **Your Trades Bubble Map** are separate products with separate authoritative data flows. Live Crypto must consume live/current market/provider truth only; Your Trades must consume journal/trade history plus released calculation truth only. Shared future bubble-layout code may be presentation-only. Exact bubble size/color/grouping/filter/universe/time-window/interactions remain deliberately unauthorized.
-
-The exact canonical P21.1 artifact `KAIROS_CURRENT_CANDIDATE` id `9997837809` was downloaded and inspected directly. Current P15/P16 market ownership exposes a single-instrument `MarketDataAdapter.subscribe(instrument, handlers)` stream and `MarketPriceObservation` carrying instrument, price, observedAt and sourceTimestamp. P16 canonical history proves Binance Spot public-trade stream/subscription/reconnect and execution-market-reference truth, but there is no market-universe / multi-instrument ticker-summary contract suitable for a live market bubble universe. By contrast, the Your Trades side already has a bounded P12 application seam: `listJournalHistory`, backed by indexed recent repository queries and carrying released P11 calculation metrics/P13 visual-PnL projection. P21 must consume that seam rather than direct IndexedDB or duplicate calculation truth.
-
-Current official Binance market-data documentation was checked to avoid inventing provider capability. Binance Spot exposes market-information/ticker endpoints including exchange information and 24-hour ticker statistics; richer market-summary payloads can provide provider-observed facts such as symbol, last price, price change/percent and volume/turnover. Exact Spot endpoint/stream semantics, bounded-universe behavior, freshness/error semantics and provider mapping still require explicit source-contract work before implementation.
-
-**Source-proven next dependency:** before Live Crypto Bubble Map rendering can be safely implemented, Kairos needs one provider-neutral **Live Market Summary/Snapshot contract** at the market-data boundary. This is an evidence/contract prerequisite only, not authorization for bubble geometry, ranking, universe choice, size metric, color semantics, polling/subscription policy or Home rendering. P21.2 code implementation remains on HOLD until those contract fields/semantics are proven from current official Spot behavior and integrated without duplicating P15/P16 ownership. The existing single-instrument trade-price adapter must not be misused as a market-wide ticker feed. Your Trades visualization semantics remain a separate later contract.
-
-No engineering `main`, candidate, helper or canonical gate was mutated during this discovery. Retry Ledger was updated with this exact source-contract checkpoint. Next safe action is continued evidence-only design of the provider-neutral Live Market Summary contract; only once its exact fields, acquisition boundary, freshness/error behavior and non-scope are proven may a controlled candidate be constructed.
+Re-prove P21.1 GOLDEN, exact canonical source and current official provider semantics. Then, if all validation/type ownership details remain consistent, construct exactly one controlled **P21.2 Live Market Summary Fact Contract Foundation** candidate from canonical P21.1 with the strict non-scope above. Do not implement acquisition/universe policy or either Bubble Map renderer in the same slice. Run focused contract tests/verifier plus full required regression/canonical-gate process before promotion.
