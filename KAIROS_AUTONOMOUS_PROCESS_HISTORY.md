@@ -70,3 +70,15 @@ Worker `W-20260906-P20-FIRST-RESP-V10-3M-X4R8`. Main unchanged. Proved P20 owns 
 
 ## 2026-09-06 — P19.7 canonical PASS verified; P19 closed; architecture map reconciled
 Worker `W-20260906-P19-7-GATE280-MONITOR-V8-H7N4`. Canonical #280 SUCCESS; docs-only checkpoint `5ba293c1365dec99dcdfd8d027eb76a6e5592dd4`; no P20 implementation started.
+
+# CURRENT ACTIVE STATE OVERRIDE — 2026-09-06 P20.1 CANONICAL PASS
+Fresh canonical GitHub overrides the earlier snapshot above. P20.1 Saved Analysis Contract Foundation is now the latest canonical GOLDEN. `Kairos Controlled Roadmap Gate` #281 / run `34025578061`, job `101465826371`, head `f8479efd89c61bac4f09e32c5c7d69280ee02c5c`, COMPLETED/SUCCESS. Every required stage succeeded: exact controlled scope from authoritative P19.7, deterministic install, exact Lightweight Charts dependency proof, production TypeScript compilation, production build, dedicated P20.1 verifier/runtime, full unit regression, full controlled roadmap regression through P20.1, historical closures, candidate upload, and gate-evidence upload.
+
+Exact-run artifacts: `KAIROS_CURRENT_CANDIDATE` `9987048689`, 1,153,597 bytes, digest `sha256:34cdb119bab8177a5168877449490ebb5cef3e45156062049b8a70dfe7b7f44c`; `KAIROS_GATE_EVIDENCE` `9987048971`, 1,184 bytes, digest `sha256:0491d7fbef1dd19768bcbcc5fe69c69f1d106f0ab6635f3b7673580eb9572295`.
+
+Mandatory living-doc checkpoint completed on engineering main in docs-only commit `8118ba39e3c2f1158f78b1308036290685409f6e`, architecture-map blob `b2e4522d706672ba752f6d85ec64fa1d864e9fa4`. The map now records P20.1 ownership as contract/composition only: `src/app/savedAnalysisContract.ts` + `src/app/savedAnalysisIdentity.ts`, reusing P17/P18/P19 logical truth and explicitly excluding DB/schema/migration/repository/backup/UI/provider/pixel ownership.
+
+Next safe action is FAST `~3m` research only: reread the controlling handoff/roadmap, exact P20.1 GOLDEN artifact/source, current DB schema/migration/repository/transaction/full-backup owners, and prove exactly one smallest P20.2 persistence responsibility/non-scope before any implementation. Do not infer P20.2 fields from patch numbering. Current source-backed constraint remains that an isolated Dexie/store edit is unsafe because full backup/restore enumerates every persistent collection coherently.
+
+## 2026-09-06 — P20.1 canonical PASS verified and architecture map reconciled
+Worker `W-20260906-P20-1-GATE281-MONITOR-V10-10M-D4S8`. Main before canonical result `f8479efd89c61bac4f09e32c5c7d69280ee02c5c`; canonical #281 completed SUCCESS at 2026-09-06T09:54:54Z. Verified exact job `101465826371` and all required successful stages, plus exact-run candidate and gate-evidence artifacts above. Promoted P20.1 as latest GOLDEN only after artifact verification. Updated living architecture map in docs-only commit `8118ba39e3c2f1158f78b1308036290685409f6e`. No P20.2 production implementation was started. Planned cadence returns to `3m FAST` for source/owner research.
