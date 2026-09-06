@@ -13,11 +13,12 @@ permissions:
 jobs:
   reconstruct-p20-2:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 45
     env:
       BASE_ZIP: KAIROS_P20_1_SAVED_ANALYSIS_CONTRACT_FOUNDATION_CANDIDATE_2026-09-06.zip
       OUT_ZIP: KAIROS_P20_2_SAVED_ANALYSIS_PERSISTENCE_FOUNDATION_CANDIDATE_2026-09-06.zip
-      PATCH_SHA256: 960d85f15cfad6ca5c8c6c5495c0d612465ca3e00043276c3dfe51924afcaac6
+      EXPECTED_PATCH_SHA256: ff80815703fa53724ed6b8f0864c0aa1138f9439d890f4b58debe444ff8762f1
+      EXPECTED_CHANGED: '39'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -29,59 +30,17 @@ jobs:
           npm install --global npm@10.9.2
           test "$(npm --version)" = "10.9.2"
 
-      - name: Reconstruct exact direct P20.2 delta from canonical P20.1
+      - name: Reconstruct owner-derived P20.2 from canonical P20.1
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf .p20candidate /tmp/p20_2.patch /tmp/p20_2.patch.gz
+          rm -rf .p20candidate /tmp/reconstruct-p20-2.py /tmp/p20_2.patch
           mkdir .p20candidate
-          python3 - <<'PY'
-          from pathlib import Path
-          import base64, gzip, hashlib
-
-          paths = [Path(f'.github/kairos-p20-2-direct/chunk-{i}.txt') for i in range(5)]
-          chunks = [p.read_text() for p in paths]
-          encoded = ''.join(''.join(chunks).split())
-          expected_chars = 24384
-          expected_patch_sha = '960d85f15cfad6ca5c8c6c5495c0d612465ca3e00043276c3dfe51924afcaac6'
-          print('chunk_sizes=' + ','.join(str(len(x)) for x in chunks) + f' normalized={len(encoded)}')
-
-          winners = []
-          def test(candidate, trace):
-              if len(candidate) != expected_chars:
-                  return
-              try:
-                  compressed = base64.b64decode(candidate, validate=True)
-                  patch = gzip.decompress(compressed)
-              except Exception:
-                  return
-              if len(patch) != 98903:
-                  return
-              if hashlib.sha256(patch).hexdigest() != expected_patch_sha:
-                  return
-              if not patch.startswith(b'diff --git ') or patch.count(b'diff --git ') != 35:
-                  return
-              winners.append((trace, compressed, patch))
-
-          test(encoded, 'exact')
-          if len(encoded) == expected_chars + 1:
-              for i in range(len(encoded)):
-                  test(encoded[:i] + encoded[i+1:], f'delete:{i}')
-
-          print(f'patch_identity_winners={len(winners)}')
-          if len(winners) != 1:
-              raise SystemExit(f'direct payload patch identity not uniquely recoverable: winners={len(winners)}')
-          trace, compressed, patch = winners[0]
-          print(f'payload_recovery={trace} compressed_bytes={len(compressed)} compressed_sha256={hashlib.sha256(compressed).hexdigest()} patch_bytes={len(patch)} patch_sha256={hashlib.sha256(patch).hexdigest()}')
-          Path('/tmp/p20_2.patch.gz').write_bytes(compressed)
-          Path('/tmp/p20_2.patch').write_bytes(patch)
-          PY
-          echo "$PATCH_SHA256  /tmp/p20_2.patch" | sha256sum -c -
-          test "$(wc -c < /tmp/p20_2.patch | tr -d ' ')" = "98903"
-
           unzip -q "$BASE_ZIP" -d .p20candidate
           ROOT=.p20candidate/kairos_p76
           test -f "$ROOT/package.json"
+          cat .github/kairos-p20-2-owner-derived/chunk-*.txt > /tmp/reconstruct-p20-2.py
+          test "$(wc -l < /tmp/reconstruct-p20-2.py | tr -d ' ')" = "282"
           (
             cd "$ROOT"
             git init -q
@@ -89,30 +48,56 @@ jobs:
             git config user.email actions@users.noreply.github.com
             git add -A
             git commit -qm baseline
-            git apply --check /tmp/p20_2.patch
-            git apply /tmp/p20_2.patch
-            CHANGED="$(git status --short | wc -l | tr -d ' ')"
-            test "$CHANGED" = "35"
-            git status --short
+            python3 /tmp/reconstruct-p20-2.py
+            git add -A
+            git diff --cached --check
+            git diff --cached --binary > /tmp/p20_2.patch
+            test "$(git diff --cached --name-only | wc -l | tr -d ' ')" = "$EXPECTED_CHANGED"
+            python3 - <<'PY'
+          from pathlib import Path
+          expected = {
+          'KAIROS_P20_2_SAVED_ANALYSIS_PERSISTENCE_FOUNDATION_REPORT_2026-09-06.md','package.json',
+          'scripts/verify-p12-journal-history-status-index-backup-regression-repair.mjs','scripts/verify-p12-journal-history-status-index-verifier-compatibility-repair.mjs','scripts/verify-p12-journal-history-status-index.mjs','scripts/verify-p20-2-saved-analysis-persistence-foundation.mjs','scripts/verify-p5-database-kernel.mjs','scripts/verify-p5-transactions.mjs','scripts/verify-p6-backup-envelope.mjs','scripts/verify-p6-backup-snapshot.mjs','scripts/verify-p6-restore-replacement.mjs','scripts/verify-p9-trade-persistence.mjs',
+          'src/data/backup/backupEnvelope.ts','src/data/backup/backupFormat.ts','src/data/backup/backupSerialization.ts','src/data/backup/backupSnapshot.ts','src/data/backup/backupValidation.ts','src/data/backup/restorePreflight.ts','src/data/backup/restoreReplacement.ts','src/data/backup/restoreVerification.ts','src/data/database/KairosDatabase.ts','src/data/database/index.ts','src/data/database/integrity.ts','src/data/database/migrations.ts','src/data/database/schema.ts','src/data/database/transactions.ts','src/data/repositories/SavedAnalysisRepository.ts','src/data/repositories/index.ts',
+          'tests/backup-envelope.test.ts','tests/backup-snapshot.test.ts','tests/database-kernel.test.ts','tests/database-migrations.test.ts','tests/database-transactions.test.ts','tests/metadata-repository.test.ts','tests/restore-preflight.test.ts','tests/restore-replacement.test.ts','tests/restore-verification.test.ts','tests/saved-analysis-persistence.test.ts','tests/trade-persistence.test.ts'}
+          actual=set(Path('/tmp/changed.txt').read_text().splitlines())
+          if actual != expected:
+              raise SystemExit(f'P20.2 exact scope mismatch missing={sorted(expected-actual)} extra={sorted(actual-expected)}')
+          print(f'P20.2 exact scope verified: {len(actual)} files')
+          PY
           )
+        env:
+          EXPECTED_CHANGED: '39'
 
-      - name: Verify reconstructed P20.2 before packaging
+      - name: Prove reconstructed patch identity and scope
+        working-directory: .p20candidate/kairos_p76
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --cached --name-only | sort > /tmp/changed.txt
+          test "$(wc -l < /tmp/changed.txt | tr -d ' ')" = "$EXPECTED_CHANGED"
+          echo "$EXPECTED_PATCH_SHA256  /tmp/p20_2.patch" | sha256sum -c -
+          git diff --cached --check
+          cp /tmp/changed.txt /tmp/changed-final.txt
+
+      - name: Verify reconstructed P20.2
         working-directory: .p20candidate/kairos_p76
         shell: bash
         run: |
           set -euo pipefail
           npm ci
+          test "$(node --version)" = "v22.16.0"
+          test "$(npm --version)" = "10.9.2"
           test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
-          npm ls lightweight-charts --depth=0
           npm run verify:p20:2-saved-analysis-persistence-foundation
           npm run typecheck
           npm run build
           npm test
           node - <<'NODE'
           const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
-          const p=JSON.parse(readFileSync('package.json')); const s=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:p'));
-          for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:16-chart-engine-system-closure','verify:p18:60-drawing-tools-system-closure','verify:p19:7-risk-reward-tool-system-closure','verify:p20:1-saved-analysis-contract-foundation','verify:p20:2-saved-analysis-persistence-foundation']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
-          for(const x of s){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
+          const p=JSON.parse(readFileSync('package.json')); const scripts=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:p'));
+          for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:16-chart-engine-system-closure','verify:p18:60-drawing-tools-system-closure','verify:p19:7-risk-reward-tool-system-closure','verify:p20:1-saved-analysis-contract-foundation','verify:p20:2-saved-analysis-persistence-foundation']) if(!scripts.includes(required)){console.error('Missing '+required);process.exit(1)}
+          for(const x of scripts){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
           NODE
           npm run verify:static
 
@@ -123,13 +108,12 @@ jobs:
           ROOT=.p20candidate/kairos_p76
           rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite"
           find "$ROOT" -type f \( -name '*.tsbuildinfo' -o -name '*.log' \) -delete
-          test "$(cd "$ROOT" && git status --short | wc -l | tr -d ' ')" = "35"
-          if find "$ROOT" -type d \( -name node_modules -o -name dist -o -name coverage -o -name .vite \) -print -quit | grep -q .; then
+          test "$(cd "$ROOT" && git diff --cached --name-only | wc -l | tr -d ' ')" = "$EXPECTED_CHANGED"
+          rm -rf "$ROOT/.git"
+          if find "$ROOT" -type d \( -name node_modules -o -name dist -o -name coverage -o -name .vite -o -name .git \) -print -quit | grep -q .; then
             echo 'forbidden generated directory remains'
             exit 1
           fi
-          rm -rf "$ROOT/.git"
-          test ! -e "$ROOT/.git"
 
       - name: Package and commit P20.2 candidate
         shell: bash
