@@ -67,29 +67,104 @@ jobs:
               raise SystemExit('PATCH64 payload start newline not found')
           end_match = re.search(r'^\s*PATCH64\s*$', source[start:], re.M)
           raw = source[start:start + end_match.start()] if end_match else source[start:]
-          b64chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-          allowed = set(b64chars)
+
+          alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+          allowed = set(alphabet)
           compact = ''.join(ch for ch in raw if ch in allowed)
           print('PATCH64 recovery boundary=' + ('terminator' if end_match else 'EOF'))
           print(f'PATCH64 raw_chars={len(raw)} compact_chars={len(compact)} compact_modulo={len(compact) % 4}')
 
-          # R8 exhaustively tried restoring one character at every position
-          # evidenced by non-base64 formatting and found zero applyable patches.
-          # The compact stream length is 22,713 (mod 4 = 1); a distinct possible
-          # corruption class is exactly one extra base64 character. Test deletion
-          # of each compact character. Accept only one uniquely proven candidate
-          # that strict-decodes, is UTF-8 git patch text with exactly 31 file
-          # headers, and passes git apply --check against exact P20.1 GOLDEN.
+          # Evidence through R9:
+          # - normalized stream has 22,713 data chars (mod 4 = 1)
+          # - one inserted character at any formatting-evidenced position: 0 winners
+          # - one deleted compact character: 0 structural candidates
+          # The smallest remaining whitespace-replacement class that restores a
+          # multiple-of-four stream is exactly THREE missing base64 characters.
+          # Treat each distinct non-base64 boundary as an optional missing-char
+          # site, and use incremental ASCII decoding to prune impossible branches.
+          boundaries = []
+          segments = []
+          buf = []
+          for ch in raw:
+              if ch in allowed:
+                  buf.append(ch)
+              else:
+                  segments.append(''.join(buf))
+                  buf = []
+                  boundaries.append(repr(ch))
+          segments.append(''.join(buf))
+          # Consecutive formatting chars create empty segments; merge them so one
+          # compact boundary is considered once.
+          merged = []
+          for seg in segments:
+              if not merged:
+                  merged.append(seg)
+              elif seg == '':
+                  continue
+              else:
+                  merged.append(seg)
+          segments = merged
+          print(f'PATCH64 recoverable segment_count={len(segments)}')
+
+          printable = set(range(32, 127)) | {9, 10, 13}
+          expected_prefix = b'diff --git '
+
+          def feed(tail, decoded, chars):
+              tail = tail + chars
+              out = bytearray(decoded)
+              whole = (len(tail) // 4) * 4
+              if whole:
+                  block = tail[:whole]
+                  tail = tail[whole:]
+                  try:
+                      b = base64.b64decode(block, validate=True)
+                  except Exception:
+                      return None
+                  if any(x not in printable for x in b):
+                      return None
+                  out.extend(b)
+                  n = min(len(out), len(expected_prefix))
+                  if out[:n] != expected_prefix[:n]:
+                      return None
+              return tail, bytes(out)
+
+          # state = (insert_count, tail, decoded_bytes, correction_trace)
+          states = [(0, '', b'', ())]
+          for idx, seg in enumerate(segments):
+              advanced = []
+              for count, tail, decoded, trace in states:
+                  r = feed(tail, decoded, seg)
+                  if r is not None:
+                      ntail, ndecoded = r
+                      advanced.append((count, ntail, ndecoded, trace))
+              states = advanced
+              if idx == len(segments) - 1:
+                  break
+
+              branched = list(states)  # formatting-only option
+              for count, tail, decoded, trace in states:
+                  if count >= 3:
+                      continue
+                  for restored in alphabet:
+                      r = feed(tail, decoded, restored)
+                      if r is None:
+                          continue
+                      ntail, ndecoded = r
+                      branched.append((count + 1, ntail, ndecoded, trace + ((idx, restored),)))
+              states = branched
+              print(f'PATCH64 beam boundary={idx} states={len(states)}')
+              if len(states) > 500000:
+                  raise SystemExit(f'PATCH64 constrained beam exceeded safe state cap: {len(states)}')
+
           root = Path('.p20candidate/kairos_p76').resolve()
           try_path = Path('/tmp/p20_2.try.patch')
           winners = []
           structural = 0
-          for pos in range(len(compact)):
-              candidate = compact[:pos] + compact[pos + 1:]
-              padded = candidate + ('=' * ((-len(candidate)) % 4))
+          for count, tail, decoded, trace in states:
+              if count != 3 or tail:
+                  continue
               try:
-                  decoded = base64.b64decode(padded, validate=True)
-                  text = decoded.decode('utf-8')
+                  text = decoded.decode('ascii')
               except Exception:
                   continue
               if not text.startswith('diff --git '):
@@ -106,15 +181,15 @@ jobs:
                   text=True,
               )
               if check.returncode == 0:
-                  winners.append((pos, compact[pos], decoded))
-                  print(f'candidate PASS delete_pos={pos} char={compact[pos]!r} bytes={len(decoded)} sha256={hashlib.sha256(decoded).hexdigest()}')
+                  winners.append((trace, decoded))
+                  print(f'candidate PASS trace={trace!r} bytes={len(decoded)} sha256={hashlib.sha256(decoded).hexdigest()}')
 
-          print(f'PATCH64 deletion attempts={len(compact)} structural_candidates={structural} unique_applyable_candidates={len(winners)}')
+          print(f'PATCH64 three-char structural_candidates={structural} unique_applyable_candidates={len(winners)}')
           if len(winners) != 1:
-              raise SystemExit(f'PATCH64 deletion recovery is not uniquely proven: winners={len(winners)}')
-          pos, removed, decoded = winners[0]
+              raise SystemExit(f'PATCH64 three-character recovery is not uniquely proven: winners={len(winners)}')
+          trace, decoded = winners[0]
           Path('/tmp/p20_2.patch').write_bytes(decoded)
-          print(f'PATCH64 unique deletion pos={pos} removed={removed!r} patch_sha256={hashlib.sha256(decoded).hexdigest()}')
+          print(f'PATCH64 unique three-character trace={trace!r} patch_sha256={hashlib.sha256(decoded).hexdigest()}')
           PY
           test -s /tmp/p20_2.patch
 
@@ -166,7 +241,7 @@ jobs:
           unzip -t "$OUT_ZIP"
           sha256sum "$OUT_ZIP"
           git config user.name 'kairos-autonomous-bridge'
-          git config user.email 'actions@users.noreply.github.com'
+          git config user.email actions@users.noreply.github.com'
           git add "$OUT_ZIP"
           git commit -m 'Build P20.2 Saved Analysis persistence foundation candidate'
           git push
