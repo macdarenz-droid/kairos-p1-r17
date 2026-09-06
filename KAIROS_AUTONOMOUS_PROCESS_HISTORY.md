@@ -74,7 +74,7 @@ Next-slice non-scope: no ratio/R math; no price-order validation/normalization; 
 - helper-definition commit: `6aaab1a6163aad9654edb1d4f3c448ff258132fb`.
 - helper run #1 / `34013210427`, job `101432473749`.
 - latest observed status: **IN_PROGRESS — NON-CANONICAL**.
-- latest observed job checkpoint: setup succeeded; checkout was in progress; reconstruction/verification/package steps pending.
+- latest observed job checkpoint: setup, checkout, setup-node, npm pin, and `Reconstruct P19.3 from canonical P19.2` all succeeded; `Verify reconstructed P19.3 before packaging` is in progress; clean-boundary and package/commit steps remain pending.
 - intended exact P19.2 -> P19.3 candidate delta is six files: P19.3 report; `package.json`; P19.3 verifier; risk-reward barrel; `riskRewardChartSemantics.ts`; focused chart-semantics test.
 - helper is configured to reconstruct from the exact root P19.2 candidate, verify the exact six-file delta, npm 10.9.2 + Node 22.16.0 toolchain, exact Lightweight Charts 5.2.1, P19.3 verifier, focused P19.3/P19.2/P19.1 tests, typecheck/build, P19.2/P19.1/P18.60/P14.9/P11/P1 closures, remove generated output, re-prove scope/hygiene, then package root exactly `kairos_p76/` and commit the candidate ZIP.
 - helper success will remain non-canonical; direct canonical gate retarget/trigger is required after exact candidate proof because Actions `GITHUB_TOKEN` helper pushes do not recursively trigger the controlled push gate.
@@ -156,7 +156,7 @@ Worker `W-20260906-P19-2-PASS275-RECONCILE-V8-H7N2`. Main `52d8f0f41724b5892e431
 - Proven P19.3 owner/API: `src/application/risk-reward/riskRewardChartSemantics.ts` with `projectRiskRewardChartSemantics(analysis)` returning immutable `RiskRewardChartSemantics`: analysis id/side + semantic entry/stop/target price levels + P19.2 risk/reward zones. No actual styling values are owned.
 - Exact intended candidate delta: six files only — P19.3 report, `package.json`, P19.3 verifier, risk-reward barrel, `riskRewardChartSemantics.ts`, focused chart-semantics test.
 - Engineering action: created only `.github/workflows/p19-3-reconstruct.yml` on `main`, commit `6aaab1a6163aad9654edb1d4f3c448ff258132fb`, modeled on the proven deterministic P19.2 reconstruction mechanism and using P19.2 as the exact base.
-- Fresh Actions after the write: `Kairos P19.3 Deterministic Reconstruction Bridge` run #1 / `34013210427`, job `101432473749`, **IN_PROGRESS — NON-CANONICAL**. At latest observation setup had succeeded and checkout was in progress; reconstruction/tests/package were not yet complete, so no candidate PASS is claimed.
+- Fresh Actions after the write: `Kairos P19.3 Deterministic Reconstruction Bridge` run #1 / `34013210427`, job `101432473749`, **IN_PROGRESS — NON-CANONICAL**. Latest checkpoint: setup/checkout/setup-node/npm pin/reconstruction succeeded; pre-package verification is in progress. Clean-boundary/package steps remain pending, so no candidate PASS is claimed.
 - Preserved non-scope: no RR/R math, no price ordering/normalization, no chart time/span/screen geometry, no provider/LWC APIs in production source, no P18 `ChartDrawing` widening, no DOM/UI/editing, no P20 persistence, no P14 mutation, no hard-coded colors, no P11 calculation duplication.
 - Known failed-method fingerprints remain unchanged; no new failure was observed in this process.
 - Unresolved: exact helper result, candidate identity/blob/size/scope/hygiene, and canonical gate retarget/start remain pending.
