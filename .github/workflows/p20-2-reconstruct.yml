@@ -52,16 +52,19 @@ jobs:
           if start < 0:
               raise SystemExit('PATCH64 start marker not found')
           start = text.find('\n', start) + 1
-          end_match = re.search(r'^\s*PATCH64\s*$', text[start:], re.M)
-          if not end_match:
-              raise SystemExit('PATCH64 end marker not found')
+          if start <= 0:
+              raise SystemExit('PATCH64 payload start newline not found')
 
-          raw = text[start:start + end_match.start()]
-          # The original helper payload was embedded in YAML and acquired
-          # formatting contamination. Recover only the base64 alphabet from
-          # the exact bounded heredoc body, discard inherited '=' padding,
-          # then restore canonical terminal padding. Safety is enforced below
-          # by patch signature, git apply --check and exact 31-file scope.
+          # The immutable source commit is malformed: its giant PATCH64 payload
+          # is the final workflow line and has no closing heredoc marker. Prefer
+          # a real terminator if present, otherwise bound recovery to EOF. The
+          # exact source commit is immutable, and safety remains enforced by
+          # patch signature, strict base64 decode, git apply --check and exact
+          # 31-file scope before any candidate can be packaged.
+          end_match = re.search(r'^\s*PATCH64\s*$', text[start:], re.M)
+          raw = text[start:start + end_match.start()] if end_match else text[start:]
+          print('PATCH64 recovery boundary=' + ('terminator' if end_match else 'EOF'))
+
           alphabet = ''.join(re.findall(r'[A-Za-z0-9+/]', raw))
           if not alphabet:
               raise SystemExit('PATCH64 contains no recoverable base64 payload')
