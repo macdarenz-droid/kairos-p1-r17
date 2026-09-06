@@ -44,5 +44,12 @@ P21 source proof:
 
 P21.1 explicit non-scope: no bubble-map algorithm/geometry yet; no live market-data subscription; no new persistence/schema/index; no direct IndexedDB access; no new calculation/P&L/R/FX truth; no Saved Analysis CRUD expansion; no Goals/Discipline/P22 behavior; no global P40 motion polish; no navigation ownership change; no giant dashboard implementation.
 
+## Process log — 2026-09-06T21:25Z — token W16-RECOVERY-20260907T0556-AEST-H9Q4
+Fresh Actions re-proof confirmed canonical gate #285 remains the latest canonical run and P20.5 remains GOLDEN. With the execution lease verified for this token, engineering main was advanced only by commit `42f77d85a9cdb4c85e4cc532ee856ee1cbf6828c`, adding the non-canonical workflow `.github/workflows/p21-1-home-route-reconstruct.yml`.
+
+The helper reconstructs from exact root `KAIROS_P20_5_SAVED_ANALYSIS_SYSTEM_CLOSURE_CANDIDATE_2026-09-07.zip` and proposes exactly five candidate-file changes: `src/app/HomeRoute.tsx`, `src/app/routes.tsx`, the P21.1 report, a dedicated verifier, and package-script registration. `HomeRoute` establishes only semantic Home/dashboard empty-state presentation on the existing `/` index route. It explicitly forbids direct persistence/query/calculation/provider/navigation ownership, live data, bubble geometry, Saved Analysis CRUD, P22 behavior and P40 motion scope.
+
+Fresh Actions proves the sole active non-canonical helper is `Kairos P21.1 Home Dashboard Route Ownership Reconstruction Bridge` run `34060999304` on exact head `42f77d85a9cdb4c85e4cc532ee856ee1cbf6828c`, currently QUEUED. No canonical gate was retargeted. While this helper is queued/in progress, monitor only this exact run and create no duplicate helper/candidate/gate.
+
 ## Next safe action
-Implement exactly one controlled **P21.1 Home Dashboard Route Ownership Foundation** candidate from exact P20.5 GOLDEN. Use the smallest source delta (dedicated Home route + index-route wiring and focused verifier/tests only as required), preserve the existing `/` navigation contract and placeholder removal, prove no new business/data owner, then run deterministic/full current+historical regressions and package/gate canonically. Do not implement bubble-map data/geometry until a later source-proven P21 slice.
+Monitor exact helper run `34060999304`. If SUCCESS, verify every stage, exact five-file P20.5→P21.1 delta, clean package boundary, exact root candidate identity/integrity, then retarget canonical gate once and monitor the resulting exact `verify-current-candidate` chain. If FAIL, fetch the exact failed step/log and make only the smallest evidence-backed repair. Do not broaden into Bubble Map implementation until separately source-proven.
