@@ -12,9 +12,7 @@ handoffs.
 
 ## Maintenance rule (read this before editing)
 
-Update this file **at every phase-closure gate**, not at the end of
-the project. Each update must come from the same evidence discipline
-as everything else in Kairos:
+Update this file **after every canonical PASS that establishes, extends, moves, or clarifies a production responsibility/owner/boundary**, and at every phase closure. A PASS that changes no architecture still requires an audit, but not a meaningless edit. Each update must come from the same evidence discipline as everything else in Kairos:
 
 - Only add a row once a phase has an actual **canonical PASS**.
 - Pull the "owner," "file/module," and "boundary" columns from the
@@ -29,11 +27,9 @@ as everything else in Kairos:
   this file gets corrected — never the other way around.
 
 Audit exception recorded 2026-09-05: the user explicitly required a pre-closure
-P18 ownership verification. The P18 ledger below was therefore rebuilt from the
-canonical P18.41 artifact, retained per-patch reports, verifier-enforced changed
-source boundaries, and production modules after canonical P18.41 PASS #248.
-P18.42 is intentionally not included in this ledger because this audit covers
-P18.1-P18.41 only.
+P18 ownership verification. The P18 ledger below was rebuilt from canonical
+artifacts, retained per-patch reports, verifier-enforced changed source
+boundaries, and production modules. P18.51R3 was added only after its canonical PASS #262; P18.52/P18.53/P18.54/P18.55/P18.56/P18.57/P18.58 were added only after canonical PASSes #263/#264/#265/#266/#267/#268/#269; failed P18.51 runs #259-#261 remain evidence only.
 
 ---
 
@@ -49,11 +45,12 @@ P18.1-P18.41 only.
 | Market data acquisition (provider-neutral) | P15 | *(fill in exact path)* | Never overwrites journal execution truth |
 | Binance Spot live feed (concrete provider) | P16 | *(fill in exact path)* | Provider mapping is not journal execution truth |
 | Chart rendering / presentation | P17 | *(fill in exact path)* | Presentation only — never decides financial truth |
-| Drawing tools through selection coordination | P18 (canonical through P18.41) | `src/features/chart/` modules listed below | No persistence/P20 ownership; no Risk/Reward/P19 semantics; no journal/calculation truth |
+| Drawing tools through complete generic drawing/edit lifecycle system closure | P18 (canonical through P18.60) | `src/features/chart/` modules listed below | No persistence/P20 ownership; no Risk/Reward/P19 semantics; no journal/calculation truth |
+| Risk/Reward semantics + provider-neutral logical chart-object composition | P19 (canonical through P19.6) | `src/application/risk-reward/`, `src/app/riskRewardChartStyleProjection.ts`, `src/app/riskRewardChartPlacementProjection.ts`, `src/app/riskRewardChartObjectProjection.ts` | Owns RR meaning, semantic roles/zones, token-reference projection, logical placement, and logical object composition only; no P18 provider machinery, P11 calculation truth, P14 journal writes, P20 persistence, DOM/UI, or pixel geometry |
 
 ---
 
-## P18 Drawing Tools Ownership Ledger — canonical through P18.41
+## P18 Drawing Tools Ownership Ledger — canonical through P18.60
 
 Each row records one distinct **patch responsibility**. Some later patches extend
 an already-established owner module; those rows are marked as an extension rather
@@ -102,6 +99,24 @@ than a second owner.
 | P18.39 | Provider primitive hit -> current-snapshot drawing-selection evidence | `lightweightChartsV5DrawingSelectionProjection.ts` | Selection evidence projection only; stale/non-drawing evidence fails closed |
 | P18.40 | Raw provider click evidence fan-out | `lightweightChartsV5DrawingClickSubscription.ts`, `lightweightChartsV5DrawingClickBindingComposition.ts` | Extension inside P18.26/P18.27 single-click path; no second subscription owner |
 | P18.41 | Validated selection evidence -> interaction dispatch coordination | `lightweightChartsV5DrawingSelectionInteractionCoordination.ts` | Delegates P18.39 validation and P18.24 dispatch; no subscription/state/mutation owner |
+| P18.42 | Selection coordination inside the existing provider click lifecycle | `lightweightChartsV5TrendLineDraftInteractionComposition.ts` | Extension of P18.30; same P18.26 click subscription and same P18.24 state owner |
+| P18.43 | Authoritative interaction state + current renderer snapshot -> selection presentation evidence | `chartDrawingSelectionPresentationProjection.ts` | Provider-neutral fail-closed projection only; no second interaction/projection/collection owner |
+| P18.44 | Identity-preserving committed drawing replace/remove mutation | `chartDrawingCollection.ts` | Controlled extension of P18.33 sole committed-set owner; no second collection/mutation owner |
+| P18.45 | Authoritative deleting-state -> committed removal + interaction reset coordination | `chartDrawingDeletionCoordination.ts` | Orchestration only; delegates transition/current-state to P18.23/P18.24 and removal to P18.33/P18.44 |
+| P18.46 | Drawing-only presentation refresh on existing active series | `chartDrawingPresentationPort.ts` | Controlled extension of P18.11/P18.20; reuses active series/drawing layer and renews hover snapshot evidence |
+| P18.47 | Committed collection -> drawing-only presentation refresh coordination | `chartDrawingCollectionPresentationCoordination.ts` | Controlled extension of P18.37; delegates P18.36 projection and P18.46 drawing-only refresh without duplicating coordination ownership |
+| P18.48 | Identity-preserving provider-neutral trend-line edit construction | `chartTrendLineEditConstruction.ts` | Pure constructor only; explicit start/end endpoint + replacement anchor -> same drawing ID/kind; no collection mutation or interaction dispatch |
+| P18.49R1 | Authoritative trend-line edit-endpoint interaction semantics + typecheck fixture repair | `chartDrawingInteractionContract.ts`, `chartDrawingInteractionEvent.ts`, `chartDrawingInteractionReducer.ts` | Controlled extension of P18.21/P18.22/P18.23: accepted editing state stores exact drawing ID + P18.48 endpoint; no edit mutation/provider gesture owner; R1 fixes only invalid test fixtures from failed #256 |
+| P18.50 | Authoritative editing-state -> committed identity-preserving trend-line replacement + interaction reset coordination | `chartTrendLineEditCoordination.ts` | Orchestration only; consumes P18.49R1 drawing ID/endpoint authority, delegates construction to P18.48 and replacement to P18.33/P18.44; no provider gesture or presentation owner |
+| P18.51R3 | Successful authoritative trend-line edit -> drawing-only presentation refresh composition | `chartTrendLineEditPresentationCoordination.ts` | Composes P18.50 edit execution with P18.47 refresh; presentation failure never rolls back committed edit truth; R1-R3 repaired test/type evidence only |
+| P18.52 | Authoritative deletion execution -> drawing-only presentation refresh composition | `chartDrawingDeletionPresentationCoordination.ts` | Composes P18.45 with P18.47 only; no deletion initiation, direct mutation/projection, or rollback of committed truth on presentation failure |
+| P18.53 | Authoritative selected drawing -> deletion-intent initiation coordination | `chartDrawingDeletionInitiationCoordination.ts` | Reads exact selected identity from P18.24 state and delegates existing `start-deleting` transition; caller cannot supply drawing ID; no deletion execution/provider/UI owner |
+| P18.54 | Authoritative selected drawing + typed endpoint -> edit-intent initiation coordination | `chartTrendLineEditInitiationCoordination.ts` | Reads exact selected identity from P18.24 state, accepts only P18.48 endpoint evidence, and delegates existing `start-editing` transition; caller cannot supply drawing ID; no endpoint hit-test/execution/provider/UI owner |
+| P18.55 | Projected trend-line endpoint geometry -> typed edit-endpoint hit evidence | `lightweightChartsV5TrendLineHitTest.ts` | Controlled extension of P18.12 geometry owner; derives exact drawing ID + P18.48 `start`/`end` endpoint from P18.5 projected endpoints; no interaction/provider-subscription/edit-execution owner |
+| P18.56 | Typed endpoint-hit drawing identity -> authoritative selected edit-initiation coordination | `chartTrendLineEditEndpointHitCoordination.ts` | Binds P18.55 hit identity to current P18.24 selected identity before delegating only endpoint to P18.54; no direct dispatch/geometry/execution/provider owner |
+| P18.57 | Raw provider click point + current projected endpoint segments -> authoritative edit-initiation coordination | `lightweightChartsV5TrendLineEditEndpointClickCoordination.ts` | Composes existing P18.40 click evidence through P18.55/P18.56 only; no provider subscription, projection, direct dispatch, or edit execution owner |
+| P18.58 | Existing single click lifecycle -> selected endpoint edit-click composition | `lightweightChartsV5TrendLineDraftInteractionComposition.ts` | Optional lifecycle wiring only; delegates same raw P18.40 click to P18.57 before P18.41 selection so pre-click selected identity remains authoritative; no second subscription or edit execution owner |
+| P18.59 | Existing single click lifecycle -> already-authoritative edit execution + drawing-only refresh composition | `lightweightChartsV5TrendLineDraftInteractionComposition.ts` | Optional lifecycle extension only; snapshots pre-click `editing` state so the initiation click cannot self-execute, then delegates a later projected anchor to P18.51R3; P18.26 remains the sole subscription owner and P18.50/P18.51R3 remain mutation/refresh owners |
 
 ### P18 ownership-overlap audit notes
 
@@ -113,8 +128,9 @@ potentially overlapping, but current canonical source preserves one owner:
   truth -> renderer projection owner.
 - **P18.9 / P18.16:** same provider binding module, but separate identity maps:
   provider series vs provider chart.
-- **P18.11 / P18.20:** same presentation module. P18.20 extends P18.11 resource
-  ordering with optional hover attachment; it does not create a second
+- **P18.11 / P18.20 / P18.46:** same presentation module. P18.20 extends P18.11 resource
+  ordering with optional hover attachment; P18.46 extends the same owner with drawing-only
+  refresh on the active series and hover-snapshot renewal. Neither creates a second
   presentation lifecycle or hover lifecycle.
 - **P18.12 / P18.13:** hit-test geometry vs primitive/provider hit-shape binding.
 - **P18.14 / P18.18:** provider hover projection vs provider-neutral hover
@@ -127,16 +143,54 @@ potentially overlapping, but current canonical source preserves one owner:
   replacing or duplicating them.
 - **P18.25 / P18.5:** reverse provider click-coordinate -> domain anchor projection
   is distinct from forward renderer logical coordinate -> provider screen projection.
-- **P18.26 / P18.27 / P18.30 / P18.40 / P18.41:** one click subscription owner
-  (P18.26), one provider binding composition (P18.27), one click-to-draft lifecycle
-  composition (P18.30), one raw-event fan-out amendment (P18.40), and one
-  selection-to-interaction coordinator (P18.41). Current source contains only one
-  actual `subscribeClick`/`unsubscribeClick` implementation.
+- **P18.26 / P18.27 / P18.30 / P18.40 / P18.41 / P18.42:** one click subscription
+  owner (P18.26), one provider binding composition (P18.27), one click-to-draft
+  lifecycle composition (P18.30), one raw-event fan-out amendment (P18.40), one
+  selection-to-interaction coordinator (P18.41), and one composition amendment
+  that wires selection into that same lifecycle (P18.42). Current source contains
+  only one actual `subscribeClick`/`unsubscribeClick` implementation.
 - **P18.29 / P18.32 / P18.35:** all are coordination seams, but at different
   lifecycle boundaries: draft anchor/state, preview commit, and committed
   collection orchestration.
 
-No duplicate authoritative owner was found among P18.1-P18.41 in this audit.
+- **P18.38 / P18.43:** interaction semantics/state remain owned by P18.21-P18.24/P18.38; P18.43 only projects already-authoritative selected/editing/deleting state against the current renderer snapshot for presentation evidence.
+- **P18.33 / P18.44 / P18.45:** P18.44 extends the existing P18.33 committed collection owner with strict identity-preserving replace/remove operations; P18.45 only coordinates an already-authoritative deleting state into that owner and does not create a second committed-set or mutation owner.
+- **P18.37 / P18.47:** same collection-to-presentation coordination module. P18.47 adds the drawing-only refresh route through P18.46 while P18.37 remains the sole committed collection -> presentation coordination owner.
+- **P18.50 / P18.51R3:** P18.50 remains the authoritative edit-execution coordinator; P18.51R3 only composes a successful edit into the existing P18.47 presentation-refresh owner and never becomes a second mutation/projection/presentation owner.
+- **P18.45 / P18.52 / P18.53:** P18.45 remains the authoritative deletion-execution coordinator; P18.52 only composes successful deletion into P18.47 drawing-only refresh; P18.53 only initiates the existing deleting transition from authoritative selected identity and never executes deletion or becomes a second mutation/projection/presentation owner.
+- **P18.48 / P18.49R1 / P18.50 / P18.51R3 / P18.54:** P18.48 owns endpoint vocabulary/construction; P18.49R1 stores accepted endpoint authority; P18.50 executes; P18.51R3 refreshes presentation; P18.54 only initiates editing from selected identity plus typed endpoint evidence and cannot accept caller-supplied drawing identity.
+
+- **P18.54 / P18.55:** P18.54 initiates editing only from authoritative selected identity plus typed endpoint evidence; P18.55 derives that endpoint evidence from existing projected endpoint geometry without dispatching interaction or executing edits.
+- **P18.55 / P18.56:** P18.55 remains endpoint geometry/evidence owner; P18.56 only binds that hit drawing identity to authoritative selected identity before delegating endpoint initiation to P18.54.
+- **P18.57 / P18.58 / P18.42:** P18.57 coordinates one already-observed raw click against current projected endpoint segments; P18.58 wires that coordinator into the existing P18.30/P18.42 single click lifecycle and evaluates edit evidence before P18.41 selection evidence; P18.26 remains the sole actual provider click subscription owner.
+- **P18.50 / P18.51R3 / P18.58 / P18.59:** P18.50 remains authoritative committed edit execution and P18.51R3 remains edit->drawing-only-refresh composition; P18.58 only initiates edit intent from an endpoint click, while P18.59 extends the same single click lifecycle to route a later projected anchor through P18.51R3 only when `editing` was already authoritative before that click.
+
+No duplicate authoritative owner was found among canonical P18.1-P18.60; P18.60 is the explicit Drawing Tools system closure.
+
+---
+
+## P19 Risk/Reward Ownership Ledger — canonical through P19.6
+
+Each row records one canonically passed P19 responsibility. P19 owns Risk/Reward meaning and provider-neutral logical composition; it deliberately consumes existing domain/chart/design-system types without taking their ownership.
+
+| Patch | One distinct responsibility | Production file / owner seam | Boundary / ownership note |
+|---|---|---|---|
+| P19.1 | Provider-neutral Risk/Reward analysis identity, side, and entry/stop/target levels | `src/application/risk-reward/riskRewardAnalysisContract.ts` | Reuses `TradeSide` + `DecimalString`; no ratio/R math, direction/order validation, chart geometry, provider API, UI/editing, persistence, journal writes, or execution-price mutation |
+| P19.2 | Semantic risk/reward price-zone projection | `src/application/risk-reward/riskRewardZoneSemantics.ts` | `risk` = entry→stop and `reward` = entry→target; no ratio math, price ordering/normalization, styling, chart geometry/provider API, P18 widening, persistence, or journal mutation |
+| P19.3 | Immutable RR-specific chart semantic composition | `src/application/risk-reward/riskRewardChartSemantics.ts` | Composes identity/side, semantic entry/stop/target levels, and P19.2 zones; no timestamp/span/screen geometry, provider/LWC API, P18 `ChartDrawing` widening, UI/editing, persistence, or P11 math |
+| P19.4 | Semantic role → existing design-token reference projection at app boundary | `src/app/riskRewardChartStyleProjection.ts` | Maps entry/stop/target/risk/reward to existing P2/P3 semantic token CSS-variable references; does not own token values, business semantics, geometry, provider APIs, CSS/UI, persistence, or calculations |
+| P19.5 | Caller-supplied logical horizontal placement projection | `src/app/riskRewardChartPlacementProjection.ts` | Preserves analysis id + generic `ChartTimestamp` start/end only; `ChartTimestamp` remains generic chart-infrastructure ownership; no order/normalization, price/R math, pixels/provider APIs, P18 widening, UI/editing, or P20 persistence |
+| P19.6 | Provider-neutral logical RR chart-object geometry composition | `src/app/riskRewardChartObjectProjection.ts` | Entry/stop/target become logical horizontal spans; risk/reward become logical rectangles using P19.3 prices/zones + P19.4 token refs + P19.5 logical extent. No provider/LWC API, numeric renderer conversion, pixels, P18 widening, DOM/UI/editing, P20 persistence, P14 mutation, P11 math, normalization/order validation, or hard-coded colors |
+
+### P19 ownership-overlap audit notes
+
+- **P19.1 / P19.2 / P19.3:** analysis truth, zone semantics, and RR chart semantic composition are distinct. P19.3 composes earlier owners rather than replacing them.
+- **P19.3 / P19.4:** semantic roles/prices remain application truth; P19.4 only attaches existing design-token references at the presentation boundary.
+- **P19.5 / P18 chart infrastructure:** P19.5 consumes existing generic `ChartTimestamp`; it does not move timestamp ownership into P19 or widen P18.
+- **P19.3 / P19.4 / P19.5 / P19.6:** P19.6 is not a redundant combined view model. It owns the newly established provider-neutral logical geometry, while semantic, style-reference, and placement owners remain separate and authoritative.
+- **P19 / P11 / P14 / P20:** P11 remains calculation/R-multiple owner, P14 remains journal/execution truth, and P20 remains later Saved Analysis persistence. P19.1-P19.6 do not duplicate those responsibilities.
+
+No duplicate authoritative owner was found among canonical P19.1-P19.6.
 
 ---
 
@@ -165,7 +219,8 @@ No duplicate authoritative owner was found among P18.1-P18.41 in this audit.
 
 ---
 
-*Last evidence audit: 2026-09-05 — P18 ownership ledger verified through
-canonical P18.41 / Kairos Controlled Roadmap Gate #248. Other older phase rows
-that still say `(fill in exact path)` remain intentionally unfilled and must be
-repaired only from their own canonical evidence.*
+*Last evidence audit: 2026-09-06 — P18 ownership ledger verified through canonical P18.60 / Kairos Controlled Roadmap Gate #273, and P19 ownership ledger verified through canonical P19.6 / Kairos Controlled Roadmap Gate #279 (`34018858400`). Other older phase rows that still say `(fill in exact path)` remain intentionally unfilled and must be repaired only from their own canonical evidence.*
+
+## P18 Drawing Tools — system closure (P18.60)
+
+Canonical closure intent: P18 owns generic chart drawing and interaction machinery only: drawing lifecycle, projection/rendering, hover/hit testing, click evidence, selection, editing/deletion interaction infrastructure, and provider plumbing. P18 does not own Risk/Reward business truth, journal execution truth, or persistence semantics reserved for later roadmap phases. P19 may consume the generic P18 drawing machinery while owning Risk/Reward meaning and composition. This closure adds no new runtime/business owner; it closes the verified P18 responsibility set after P18.59.
