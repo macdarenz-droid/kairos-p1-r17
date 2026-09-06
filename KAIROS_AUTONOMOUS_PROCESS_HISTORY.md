@@ -46,6 +46,12 @@ Engineering branch: `main`
 
 Continuity branch: `kairos-autonomous-state`
 
+Autonomous continuity contract: **V8**
+
+Supervisor: `Kairos Supervisor [ACTIVE]`
+
+Worker contract: `KAIROS-FAST-V8-2026-09-06`
+
 Fresh main SHA at this snapshot: `42d8961c861b268cf1b406e96aad9ca40d893102`
 
 Main commit message: `Repair P18.60 candidate by deterministic reconstruction from canonical P18.59`
@@ -92,7 +98,7 @@ Authoritative P18.59 candidate comparison:
 4. Helper repair commit `4fa1d639895d5a275f628d3b112c57cac8db01b5` changed the packaging boundary to remove generated output and re-prove exact delta before packaging.
 5. Helper run #6 (`34007925909`) completed successfully and committed the repaired candidate to `main` at `42d8961c861b268cf1b406e96aad9ca40d893102`.
 6. The repaired P18.60 ZIP is now **1,304,443 bytes**, close to the P18.59 baseline rather than ~48.48 MB. This proves the package-bloat symptom is removed; it does **not** itself constitute canonical PASS.
-7. At the latest fresh Actions query used to initialize this history, helper #6 was the newest workflow run and canonical #272 remained the newest canonical P18.60 run. No newer canonical gate for repaired main `42d8961c...` had been observed yet.
+7. At the latest fresh Actions query used to initialize/update this history, helper #6 was the newest workflow run and canonical #272 remained the newest canonical P18.60 run. No newer canonical gate for repaired main `42d8961c...` had been observed yet.
 
 ## Methods already attempted / do not blindly repeat
 
@@ -149,3 +155,17 @@ Authoritative P18.59 candidate comparison:
 - User identified a cross-worker memory gap: workers can independently rediscover or repeat approaches when prior findings are only in ephemeral automation prompts/chat.
 - Decision: create this must-read process journal on isolated branch `kairos-autonomous-state` rather than `main`, so per-process continuity commits do not pollute the engineering head or intentionally trigger main-scoped Kairos workflows.
 - Required behavior going forward: every fast worker reads this history before action and writes back its process/findings/next-safe-action before reporting and releasing its lease.
+
+## 2026-09-06 — V8 supervisor/worker continuity contract activated
+
+- Process owner: live-chat controlled installation under execution lease `LIVECHAT-HISTORY-V1`.
+- Main SHA before/after this continuity-only process: `42d8961c861b268cf1b406e96aad9ca40d893102` / unchanged.
+- Canonical authority used: P18.59 run #270 / `33988215113` remains latest full PASS; P18.60 run #272 / `33990305062` remains failed evidence.
+- Fresh workflow evidence: helper run #6 / `34007925909` is SUCCESS but NON-CANONICAL; no newer canonical P18.60 run was observed in the latest Actions query.
+- Action: upgraded the hourly supervisor and fast-worker contract to V8 and made this repo history mandatory read-before-action / write-before-report continuity memory.
+- Verification actually observed: supervisor automation update succeeded; V8 contract automation update succeeded; this history file was fetched at blob `aac9db055ed8aa5d114ce0861d6bf8552e177995` before this conflict-safe replacement.
+- Engineering tests: none run by this continuity-policy process; no engineering code/candidate was changed.
+- Finding: richer repo-side history is required in addition to the compact Retry Ledger to prevent repeated discovery/approach loops across stateless one-time workers.
+- Unresolved evidence gap: repaired P18.60 candidate exists on `main`, but a newer canonical gate run for that exact repaired candidate has not yet been observed.
+- Next safe action: inspect the canonical gate trigger/target/scope against repaired main, then perform only the evidence-proven gate action needed to start the exact P18.60 canonical run.
+- Planned cadence: **3 minutes** until the exact canonical gate is confirmed queued/in-progress; then **12 minutes**.
