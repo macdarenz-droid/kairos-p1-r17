@@ -82,7 +82,6 @@ jobs:
           # multiple-of-four stream is exactly THREE missing base64 characters.
           # Treat each distinct non-base64 boundary as an optional missing-char
           # site, and use incremental ASCII decoding to prune impossible branches.
-          boundaries = []
           segments = []
           buf = []
           for ch in raw:
@@ -91,10 +90,7 @@ jobs:
               else:
                   segments.append(''.join(buf))
                   buf = []
-                  boundaries.append(repr(ch))
           segments.append(''.join(buf))
-          # Consecutive formatting chars create empty segments; merge them so one
-          # compact boundary is considered once.
           merged = []
           for seg in segments:
               if not merged:
@@ -128,7 +124,6 @@ jobs:
                       return None
               return tail, bytes(out)
 
-          # state = (insert_count, tail, decoded_bytes, correction_trace)
           states = [(0, '', b'', ())]
           for idx, seg in enumerate(segments):
               advanced = []
@@ -141,7 +136,7 @@ jobs:
               if idx == len(segments) - 1:
                   break
 
-              branched = list(states)  # formatting-only option
+              branched = list(states)
               for count, tail, decoded, trace in states:
                   if count >= 3:
                       continue
@@ -241,7 +236,7 @@ jobs:
           unzip -t "$OUT_ZIP"
           sha256sum "$OUT_ZIP"
           git config user.name 'kairos-autonomous-bridge'
-          git config user.email actions@users.noreply.github.com'
+          git config user.email 'actions@users.noreply.github.com'
           git add "$OUT_ZIP"
           git commit -m 'Build P20.2 Saved Analysis persistence foundation candidate'
           git push
