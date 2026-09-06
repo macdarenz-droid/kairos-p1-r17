@@ -9,82 +9,38 @@ Before every Kairos decision: automation liveness rule -> handoff/current rules 
 # CURRENT ACTIVE STATE
 Repository `macdarenz-droid/kairos-p1-r17`; engineering `main`; continuity `kairos-autonomous-state`.
 
-AFK/autonomous mode is owned by enabled recurring `Kairos Relay Supervisor [ACTIVE]`, contract `KAIROS-AFK-SUPERVISOR-V15-2026-09-06`. Fast progress uses exactly ONE reusable `Kairos Fast Continuation` under `KAIROS-FAST-RELAY-V15-2026-09-06`; RULE 0 self-reschedules this SAME worker before project work. Hourly supervisor revives the same worker if needed.
-
-## Autonomous loop architecture — V15 self-rescheduling worker
-Scheduled automation runtime cannot create child automations. Therefore the earlier V13/V14 child-worker relay is retired. RULE 0 for the fast worker is: before GitHub/handoff/history/lease/analysis/project work, UPDATE/RESCHEDULE THE SAME `Kairos Fast Continuation` into the future, default FAST ~3m, and PEEK-verify enabled + future DTSTART. Exact GATE ~10m is allowed only when exact candidate identity/upload/scope and exact canonical `Kairos Controlled Roadmap Gate` queued/in_progress are both freshly proven. The recurring hourly supervisor is GitHub read-only and revives/reschedules this SAME worker if it stops; it never creates a child worker. Execution lease controls repository mutation only.
+AFK/autonomous mode is owned by enabled recurring `Kairos Relay Supervisor [ACTIVE]`, contract `KAIROS-AFK-SUPERVISOR-V15-2026-09-06`. Fast progress uses exactly ONE reusable `Kairos Fast Continuation` under `KAIROS-FAST-RELAY-V15-2026-09-06`; RULE 0 self-reschedules this SAME worker before project work. Hourly supervisor revives the same worker if needed. Execution lease controls repository mutation only.
 
 ## Roadmap / GOLDEN
 P18 CLOSED; P19 CLOSED; P20 OPEN.
 
-Latest re-proven canonical GOLDEN remains P20.1 Saved Analysis Contract Foundation: canonical `Kairos Controlled Roadmap Gate` #281 / run `34025578061`, job `101465826371`, head `f8479efd89c61bac4f09e32c5c7d69280ee02c5c`, SUCCESS. Fresh re-proof in the current autonomous process confirmed every canonical stage completed SUCCESS, including exact controlled scope, deterministic install, LWC proof, typecheck/build, dedicated P20.1 verifier/runtime, full unit regression, roadmap regression and historical closures. Exact-run `KAIROS_CURRENT_CANDIDATE` artifact `9987048689` and `KAIROS_GATE_EVIDENCE` artifact `9987048971` both remain present/unexpired. P20.2 remains NON-CANONICAL.
+Latest canonical GOLDEN remains P20.1 Saved Analysis Contract Foundation: canonical `Kairos Controlled Roadmap Gate` #281 / run `34025578061`, job `101465826371`, head `f8479efd89c61bac4f09e32c5c7d69280ee02c5c`, SUCCESS. Exact-run `KAIROS_CURRENT_CANDIDATE` artifact `9987048689` and `KAIROS_GATE_EVIDENCE` artifact `9987048971` were previously re-proven present/unexpired. P20.2 remains NON-CANONICAL.
 
 ## P20.2 frozen coherent scope
-`savedAnalyses` stable `&id`; `SavedAnalysisRepository`; DB V4 preserving V1/V2/V3; full-current-store registry; backup V3 preserving/migrating backup V1/V2; Saved Analysis atomic across migrations/snapshot/preflight/replacement/verification/integrity; no UI/provider/pixels/optional metadata/speculative indexes/query APIs.
+`savedAnalyses` stable `&id`; `SavedAnalysisRepository`; DB V4 preserving immutable released V1/V2/V3; explicit full-current-store registry; backup V3 preserving/migrating backup V1/V2; Saved Analysis atomic across migrations/snapshot/preflight/replacement/verification/integrity; historical current-version checks compatibility-aware only; no UI/provider/pixels/optional metadata/speculative indexes/query APIs.
 
-Local evidence retained: exact P20.1 artifact -> deterministic 31-file P20.2 draft; `git apply --check` PASS; dedicated P20.2 static verifier PASS. Identical local `npm ci` route timed out twice and must not be repeated unchanged.
+## Closed damaged-transport routes
+R1-R10 PATCH64 recovery and R11-R12 direct-chunk repair routes are closed unless materially new evidence appears. R7 proved compact source length modulo 4 = 1; R8 found zero applyable one-character insertions at evidenced formatting boundaries; R9B found zero structural/applyable winners across all 22,713 single-character deletions; corrected R10 constrained three-character restoration found zero structural/applyable candidates; R11 still had normalized direct stream length 24,385 vs expected 24,384; R12 exhaustively deleted each of 24,385 direct-stream chars and found `patch_identity_winners=0`. All were helper-only and never canonical P20.2 verdicts.
 
-## Helper failure ledger through R10
-R1 `7a113ee7...` / run `34029696168`: malformed helper YAML with giant heredoc.
-R2 `9bde3116...` / run `34029879370`: base64 recovery invalid.
-R3 `2f3c8383...` / run `34029978752`: moving-HEAD source lookup lost original payload source.
-R4 `19b5057d...` / run `34030021858`: immutable source found, base64 decode still invalid.
-R5 `fa2f5262...` / run `34031682301`: bounded whitespace-only strict decoder failed.
-R6 main `3a090c4cf8144c825cd0402b4b66eb3025542078`, run `34032267640`, job `101483850850`: setup/checkout/Node 22.16.0/npm 10.9.2 all PASS; recovery failed `PATCH64 end marker not found`; downstream skipped.
-R7 main `158b99bb814e59148882647064a20e854c9fd7af`, run `34033350156`, job `101486876614`: EOF boundary was correctly reached, but normalized compact payload had exactly 22,713 base64 data characters, modulo 4 = 1; strict decoder rejected it. This proved whitespace/EOF normalization alone cannot restore the payload.
-R8 main `2bc9b6f7ebdf49980ff1332b500bbc6d19d6c617`, run `34033581982`, job `101487498199`: exhaustively tested 1,152 single-character insertions across 18 positions evidenced by non-base64 formatting. Zero candidates both matched structural patch requirements and passed `git apply --check` against exact P20.1. This disproved the single-missing-character-at-formatting-position hypothesis.
-R9A main `9b4bea048776961463745c1249bd65b8a156e21d`, run `34033745917`, job `101487945438`: deletion strategy did not execute because shallow checkout lost immutable source commit; helper mechanism defect only.
-R9B main `b245dd2c37b9e3649793baa12185f9acfe219507`, run `34033845642`, job `101488215519`: full-history checkout restored source provenance and the one-extra-character deletion strategy actually executed. Exact result: `deletion attempts=22713`, `structural_candidates=0`, `unique_applyable_candidates=0`. This disproved the single-extra-base64-character corruption class.
-R10 corrected main `d3605c4a187bbea5065a9e890309ad16776d158b`, run `34034087712`, job `101488863069`: constrained exactly-three-missing-character recovery at the 18 non-base64 boundaries executed. Beam remained viable through boundary 14 then fell to zero at boundary 15; final `structural_candidates=0`, `unique_applyable_candidates=0`. This disproved that constrained three-missing-character whitespace-boundary class. All R1-R10 results are helper-only and never a canonical P20.2 verdict.
+## Direct canonical-source reconstruction evidence
+Exact canonical P20.1 candidate bytes were recovered from canonical artifact `9987048689` and extracted successfully in a prior autonomous process. Owner/data-flow tracing against that exact source established the P20.2 seam:
+- DB owners: `src/data/database/schema.ts`, `KairosDatabase.ts`, `migrations.ts`, `transactions.ts`, `integrity.ts`, database exports;
+- repository owner: `src/data/repositories/index.ts` plus a new Saved Analysis repository boundary;
+- backup/restore owners: `backupFormat.ts`, `backupEnvelope.ts`, `backupSerialization.ts`, `backupValidation.ts`, `backupSnapshot.ts`, `restorePreflight.ts`, `restoreReplacement.ts`, `restoreVerification.ts`;
+- canonical P20.1 Saved Analysis contract/identity sources remain business-contract owners and must not acquire UI/provider/pixel fields;
+- current transaction/integrity code derives current store authority from `KAIROS_V2_STORES`; P20.2 needs a separate merged current-store registry rather than rewriting released V1/V2/V3 declarations;
+- current DB schema is V3, where V3 is a partial Dexie delta containing only the added `[status+updatedAt]` trades index while V2 owns the existing five stores. Therefore V4 should append only `savedAnalyses: '&id'`, and merged current-store authority should represent V2 stores + V3 trade-index evolution + V4 savedAnalyses;
+- historical verifier families with hard-coded current DB/backup versions were located in P5/P6/P9/P12 and need compatibility adjustments without rewriting historical expectations;
+- database/backup/restore unit suites were located for V4 + backup-V3 regression expansion.
 
-## Earlier process log — 2026-09-06T12:31Z — token W-20260906-P20-2-R6-V15-SELFLOOP-N8Q5
-Main before: `3a090c4cf8144c825cd0402b4b66eb3025542078`.
+## Current material strategy
+Abandon corrupted-base64 recovery. Reconstruct P20.2 deterministically from the exact canonical P20.1 artifact/source and the proven owner map above. First produce a controlled local reconstruction patch from exact owners and frozen scope; statically verify the delta and dedicated P20.2 verifier. Then use one NON-CANONICAL GitHub helper for deterministic `npm ci`, pinned Node 22.16.0/npm 10.9.2/lightweight-charts 5.2.1, typecheck/build/full unit + current/historical verifier regressions, clean package boundary and ZIP integrity. Do not retarget canonical gate until helper SUCCESS proves exact candidate identity/scope/integrity.
 
-Automation finding/action: the scheduled runtime itself prohibits creating child automations, explaining why V14 could not reliably satisfy its child-successor RULE 0. The same `Kairos Fast Continuation` was successfully rescheduled forward with automation UPDATE and verified enabled/future. Contracts were migrated to V15: same-worker self-reschedule at RULE 0; hourly supervisor revives the same worker by update; no child creation.
+## Process log — 2026-09-06T13:45Z — token W-20260906-P20-2-R6-V15-SELFLOOP-N8Q5
+RULE 0 was satisfied first: the SAME V15 fast worker was rescheduled forward and PEEK-verified enabled with future DTSTART before project work. Supervisor remained ACTIVE. Execution lease was acquired for continuity mutation.
 
-Fresh helper diagnosis: R6 completed FAILURE. Exact job logs proved the normalized decoder was not reached because immutable source commit `7a113ee7febb53e1d04a1a6c7182099fcf5f3eb3` has no standalone closing `PATCH64` terminator. The source commit itself shows the giant payload as the final workflow line with no newline/closing heredoc, so terminator-dependent recovery is structurally wrong.
+Controlling handoff was re-read from `00_READ_FIRST_KAIROS_MASTER_SELF_HANDOFF_P18_56_PASS_P18_57_UPLOADED_AFK_RESOURCES_2026-09-06.txt`; it remains the controlling self-handoff and preserves source priority, zero-guessing, roadmap P20 Saved Analysis -> P40 Release Hardening, and AFK enabled-state semantics. Fresh process history and Retry Ledger were read before action.
 
-Action: under execution lease, made a materially different helper-only R7 repair in `.github/workflows/p20-2-reconstruct.yml`: if a real terminator exists use it; otherwise bound the immutable payload from the known start marker to EOF. The downstream safety contract stayed unchanged. Main after: `158b99bb814e59148882647064a20e854c9fd7af`; helper R7 `34033350156` was queued. No canonical retarget.
+This process reconciled the previously pending direct canonical-artifact owner-map evidence into this history file before any engineering mutation. No production source, candidate, helper workflow, or canonical gate was changed by this history reconciliation.
 
-## Process log — 2026-09-06T12:39Z — token W-20260906-P20-2-R6-V15-SELFLOOP-N8Q5
-Main before this process: `158b99bb814e59148882647064a20e854c9fd7af`.
-
-RULE 0 / loop evidence: the SAME reusable V15 fast worker was updated forward and PEEK-verified before project work. Supervisor remained ACTIVE. Repository execution lease was acquired and verified for this token before helper mutations.
-
-Fresh canonical re-proof: P20.1 run `34025578061` / job `101465826371` remains full SUCCESS through every canonical stage. Both exact-run authority artifacts remain present: candidate `9987048689`, gate evidence `9987048971`. Therefore P20.1 remains GOLDEN and every P20.2 helper result remains non-canonical.
-
-R7 diagnosis: run `34033350156` / job `101486876614` completed FAILURE at recovery. Exact output: `PATCH64 recovery boundary=EOF`, `raw_chars=22735`, `normalized_alphabet=22713`, `modulo=1`, followed by strict base64 invalid-length rejection. This materially narrowed corruption: the source payload itself is damaged, not merely missing its terminator or carrying whitespace.
-
-R8 action/result: changed helper-only recovery to test exactly one inserted base64 character at each position evidenced by non-base64 characters, accepting only strict UTF-8 patch text with 31 `diff --git` headers and `git apply --check` PASS against exact P20.1. Main became `2bc9b6f7ebdf49980ff1332b500bbc6d19d6c617`; exact R8 run `34033581982` then completed FAILURE with `candidate insertion points=18`, `restoration attempts=1152`, `unique_applyable_candidates=0`. This is new evidence and rules out that corruption class.
-
-R9 strategy: because compact length 22,713 is modulo 1 and R8 found no single missing character at formatting positions, the next distinct corruption class is one extra base64 character. Updated only `.github/workflows/p20-2-reconstruct.yml` to exhaustively delete each one of 22,713 compact characters, accepting a repair only if it strict-decodes as UTF-8 git patch text, has exactly 31 file headers, and uniquely passes `git apply --check` against exact P20.1. Downstream pinned npm/LWC, dedicated verifier, typecheck/build, P20.1/P19.7/P18.60/P14.9/P11/P1 regressions, vitest, cleanup/package integrity remain unchanged. No production source or canonical gate contract was modified.
-
-R9 initial run `34033745917` did not execute that recovery hypothesis because the workflow's depth-8 checkout could no longer resolve immutable source commit `7a113ee7...`. Exact log proved source-object absence before Python recovery. Smallest evidence-backed helper repair: change only checkout `fetch-depth` from 8 to 0, restoring the immutable source commit without changing candidate scope, recovery algorithm, downstream verification, production source, or canonical gate.
-
-Main after checkout-depth repair: `b245dd2c37b9e3649793baa12185f9acfe219507` (`Repair P20.2 bridge immutable source checkout depth`).
-
-## Process log — 2026-09-06T12:50Z — token W-20260906-P20-2-R6-V15-SELFLOOP-N8Q5
-Fresh R9B evidence: full-fetch helper `34033845642` / job `101488215519` completed FAILURE after executing the intended deletion algorithm. Exact output established zero structural candidates and zero applyable winners across all 22,713 single-character deletions. Therefore that corruption class is closed, not merely blocked by helper transport.
-
-R10 action/result: implemented a materially different constrained three-character restoration search using the 18 non-base64 boundaries, incremental base64 decode, printable-ASCII pruning, exact `diff --git ` prefix, exactly 31 diff headers, and final `git apply --check`. A small package-email shell typo in the first helper commit was immediately corrected before relying on its result; corrected main is `d3605c4a187bbea5065a9e890309ad16776d158b`. Exact corrected helper run `34034087712` / job `101488863069` completed FAILURE in recovery with zero structural/applyable candidates; beam fell to zero at boundary 15. No candidate ZIP was produced and no canonical gate was retargeted.
-
-Saved-artifact recovery check: searched the user's Library for exact P20.2 candidate/patch names, `p20_2.patch`, `SavedAnalysisRepository`, DB V4/backup V3/31-file phrases, and title-only P20.2/Saved Analysis variants. No saved P20.2 draft, patch, or candidate artifact was found; results were handoffs/unrelated files. Therefore the next process must not pretend the lost local draft can be recovered from Library.
-
-Material route change now required: STOP blind PATCH64 corruption repair. R7-R10 have ruled out several small corruption classes without recovering a verifiable patch. The next dependency-safe strategy is deterministic direct reconstruction from the exact canonical P20.1 artifact/source plus the already frozen P20.2 ownership/scope, with source-owner/data-flow tracing before edits and the same dedicated/static/canonical verification standards. Prefer obtaining the exact P20.1 artifact bytes and reconstructing only evidenced owners; no guessed 31-file content and no canonical retarget until a clean candidate is independently proven.
-
-Living-doc status: `docs/KAIROS_ARCHITECTURE_MAP.md` remains authoritative through canonical P20.1 only; no P20.2 helper semantics are represented as canonical architecture.
-
-Unresolved gap / next safe action: use fresh canonical P20.1 artifact/source to trace exact persistence/backup owners and reconstruct the frozen P20.2 delta directly, rather than continuing damaged-base64 recovery. FAST ~3m remains correct; no user action required.
-
-## Process log — 2026-09-06T13:30Z — token W-20260906-P20-2-R6-V15-SELFLOOP-N8Q5
-RULE 0 / liveness: SAME reusable V15 fast worker was rescheduled forward and PEEK-verified before project work. Supervisor remained ACTIVE. Same-token execution lease was already held/unexpired for repository mutation.
-
-Fresh direct-route finding: main had advanced through helper-only direct reconstruction commits `02bfd621c54cd5da2a0cb28530e48bcd15d0743b` and `ff46efaef139221ca9c3c8ae515e45e520bc80b3`. Exact helper run `34035650732`, job `101493109834`, failed before candidate reconstruction with chunk sizes `6000,6001,6000,6000,384`, joined length `24385`, and zero winners when the old compressed-gzip transport SHA was enforced across the exact stream and every one-character deletion. This remained non-canonical.
-
-R11 action/result: changed helper authority from compressed-gzip transport hash to the known uncompressed patch identity. Commit `6841afe69f1b1f71cb84ba1d0df0657329f79f21` (`Repair P20.2 bridge content-hash reconstruction`) kept exact P20.1 base and all downstream checks, but strict-decoded/gzip-decompressed the chunk payload and required patch SHA `960d85f15cfad6ca5c8c6c5495c0d612465ca3e00043276c3dfe51924afcaac6`, size 98903 and 35 diff headers. Exact run `34036153018`, job `101494478974`, failed earlier at `normalized base64 length mismatch: 24385 != 24384`. This proved the direct chunk stream carries one extra base64-alphabet character; whitespace normalization is not the issue.
-
-R12 action/result: materially changed recovery to test deletion of every one of the 24,385 normalized direct-chunk characters, accepting only a candidate that strict base64-decodes, gzip-decompresses, exactly matches the authoritative uncompressed patch SHA/size, starts as git patch text and has exactly 35 diff headers. Commit `64de0255777b4a6bab70ff26ed469396900ef35a` (`Repair P20.2 bridge one-extra-char content recovery`). Exact helper run `34036218596`, job `101494662730`, completed FAILURE with `patch_identity_winners=0`. Therefore the direct chunk representation is not a simple one-extra-character corruption either. No candidate ZIP was produced and no canonical gate was retargeted.
-
-Authority remains unchanged: P20.1 is GOLDEN; P20.2 remains NON-CANONICAL. R11/R12 are helper-only evidence. Living architecture docs remain canonical only through P20.1.
-
-Next safe action: stop assuming a one-character transport corruption. Reinspect how direct chunks were generated from the original locally-proven patch and whether a multi-character chunk-boundary/write corruption occurred; prefer reconstruction from exact canonical P20.1 owners/frozen scope over further blind transport brute force. FAST ~3m remains correct; no user action required.
+Next safe action: fresh-fetch main/Actions/current canonical gate and `docs/KAIROS_ARCHITECTURE_MAP.md`, confirm no active competing helper/gate, then continue deterministic direct P20.2 reconstruction from exact canonical P20.1 owners. FAST ~3m remains correct until exact P20.2 candidate identity/scope and exact canonical gate queued/in_progress are both proven. No user action required.
