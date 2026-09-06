@@ -1,0 +1,211 @@
+name: Kairos P20 Saved Analysis System Closure Reconstruction Bridge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/p20-system-closure-reconstruct.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reconstruct:
+    runs-on: ubuntu-24.04
+    env:
+      BASE_ZIP: KAIROS_P20_4_SAVED_ANALYSIS_APPLICATION_LOAD_ORCHESTRATION_CANDIDATE_2026-09-07.zip
+      OUT_ZIP: KAIROS_P20_5_SAVED_ANALYSIS_SYSTEM_CLOSURE_CANDIDATE_2026-09-07.zip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+
+      - name: Pin npm
+        run: |
+          npm install --global npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+
+      - name: Reconstruct P20 system closure from canonical P20.4
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .p20base .p20candidate
+          mkdir .p20base .p20candidate
+          unzip -q "$BASE_ZIP" -d .p20base
+          cp -a .p20base/. .p20candidate/
+          ROOT=.p20candidate/kairos_p76
+          test -f "$ROOT/package.json"
+          test -f "$ROOT/src/app/savedAnalysisContract.ts"
+          test -f "$ROOT/src/data/repositories/SavedAnalysisRepository.ts"
+          test -f "$ROOT/src/application/saved-analysis/saveSavedAnalysis.ts"
+          test -f "$ROOT/src/application/saved-analysis/loadSavedAnalysis.ts"
+          test -f docs/KAIROS_ARCHITECTURE_MAP.md
+
+          cp docs/KAIROS_ARCHITECTURE_MAP.md "$ROOT/docs/KAIROS_ARCHITECTURE_MAP.md"
+
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('.p20candidate/kairos_p76/docs/KAIROS_ARCHITECTURE_MAP.md')
+          s=p.read_text()
+          s=s.replace('## P20 canonical ownership ledger — OPEN through P20.4','## P20 canonical ownership ledger — SYSTEM CLOSED through P20.5',1)
+          marker='| P20.4 | Saved Analysis application load-one-by-id orchestration | `src/application/saved-analysis/loadSavedAnalysis.ts`, exported through `src/application/saved-analysis/index.ts` | One stable-id repository read only; no UI/provider/pixels, list/update/delete orchestration, schema/backup/index changes, or invented metadata |'
+          if marker not in s:
+              raise SystemExit('expected P20.4 ownership row not found')
+          s=s.replace(marker, marker+'\n| P20.5 | Saved Analysis system closure | verification/docs/package boundary only; no production runtime owner added | Proves P20.1 logical contract + P20.2 persistence/backup/restore + P20.3 save + P20.4 load-one as the complete source-proven P20 boundary; does not invent list/update/delete/UI/provider/pixel ownership |',1)
+          s += '''\n\n---\n\n## P20 Saved Analysis System Closure — P20.5\n\nP20 closes the source-proven Saved Analysis boundary established by P20.1–P20.4. P20.5 adds **no production runtime behavior and no new production owner**.\n\nClosure boundary:\n\n- P20.1 owns the Saved Analysis logical contract and stable identity.\n- P20.2 owns persisted storage plus backup/restore of that logical contract.\n- P20.3 owns application save orchestration: fresh id allocation plus exactly one persisted write.\n- P20.4 owns application load-one-by-stable-id orchestration: exactly one repository read.\n- Raw repository lifecycle primitives such as listAll/delete/replaceAll remain data-layer capabilities unless a later source-proven product requirement assigns application ownership; P20 closure does not invent generic CRUD.\n- P17/P18/P19 retain chart/drawing/Risk-Reward logical truth. P20 composes/persists that truth and does not redefine it.\n- UI/routes/dashboard/provider rendering/pixels remain outside P20 and belong to later roadmap phases.\n\nCanonical phase rule: P20 is closed only after the authoritative `Kairos Controlled Roadmap Gate` passes this exact closure candidate and publishes both canonical artifacts. P21 may not begin before that PASS.\n'''
+          p.write_text(s)
+          PY
+
+          cat > "$ROOT/scripts/verify-p20-5-saved-analysis-system-closure.mjs" <<'JS'
+          import { readFileSync } from 'node:fs';
+
+          const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+          const architecture = readFileSync(new URL('../docs/KAIROS_ARCHITECTURE_MAP.md', import.meta.url), 'utf8');
+          const report = readFileSync(new URL('../KAIROS_P20_5_SAVED_ANALYSIS_SYSTEM_CLOSURE_REPORT_2026-09-07.md', import.meta.url), 'utf8');
+
+          const requiredScripts = [
+            'verify:p20:1-saved-analysis-contract-foundation',
+            'verify:p20:2-saved-analysis-persistence-foundation',
+            'verify:p20:3-saved-analysis-application-save',
+            'verify:p20:4-saved-analysis-application-load',
+          ];
+          for (const name of requiredScripts) {
+            if (typeof pkg.scripts?.[name] !== 'string') throw new Error(`P20 closure missing retained verifier registration: ${name}`);
+          }
+
+          for (const token of [
+            '## P20 canonical ownership ledger — SYSTEM CLOSED through P20.5',
+            'P20.5 | Saved Analysis system closure',
+            'P20.5 adds **no production runtime behavior and no new production owner**',
+            'does not invent generic CRUD',
+            'P21 may not begin before that PASS',
+          ]) {
+            if (!architecture.includes(token)) throw new Error(`P20 closure architecture evidence missing: ${token}`);
+          }
+
+          for (const token of [
+            '# KAIROS P20.5 — Saved Analysis System Closure',
+            'No production runtime source changes',
+            'P20.1 through P20.4',
+            'does not create application list/update/delete orchestration',
+            'P21 remains out of scope until canonical closure PASS',
+          ]) {
+            if (!report.includes(token)) throw new Error(`P20 closure report evidence missing: ${token}`);
+          }
+
+          console.log('P20 Saved Analysis system closure verification passed.');
+          JS
+
+          cat > "$ROOT/KAIROS_P20_5_SAVED_ANALYSIS_SYSTEM_CLOSURE_REPORT_2026-09-07.md" <<'MD'
+          # KAIROS P20.5 — Saved Analysis System Closure
+
+          ## Authority
+          Base: canonical P20.4 Saved Analysis Application Load-One-By-ID Orchestration, `Kairos Controlled Roadmap Gate` #284 / run `34051280988`.
+
+          ## Closure result
+          P20.1 through P20.4 provide the complete source-proven Saved Analysis boundary required before P21: logical contract/identity, persisted storage with backup/restore, application save orchestration, and application load-one-by-id orchestration. P20.5 closes that boundary. No production runtime source changes are introduced by this closure.
+
+          ## Retained ownership
+          P20.1 retains Saved Analysis logical truth and identity. P20.2 retains repository/database and backup/restore truth. P20.3 retains fresh-id plus atomic save orchestration. P20.4 retains load-one-by-id orchestration. P17/P18/P19 retain chart/drawing/Risk-Reward logical truth.
+
+          ## Non-scope
+          This closure does not create application list/update/delete orchestration merely because raw repository primitives exist. It adds no schema/index/backup changes, UI/routes/dashboard, provider/Lightweight Charts behavior, pixel geometry, metadata invention, or duplicated P17/P18/P19 semantics. P21 remains out of scope until canonical closure PASS.
+
+          ## Canonical requirement
+          This closure is authoritative only after the exact candidate receives full PASS from `Kairos Controlled Roadmap Gate` / `verify-current-candidate` and both `KAIROS_CURRENT_CANDIDATE` and `KAIROS_GATE_EVIDENCE` are published for that exact run.
+          MD
+
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const p='.p20candidate/kairos_p76/package.json';
+          const j=JSON.parse(fs.readFileSync(p,'utf8'));
+          j.scripts||={};
+          j.scripts['verify:p20:5-saved-analysis-system-closure']='node scripts/verify-p20-5-saved-analysis-system-closure.mjs';
+          fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');
+          NODE
+
+          python - <<'PY'
+          from pathlib import Path
+          a={str(p.relative_to(Path('.p20base/kairos_p76'))):p.read_bytes() for p in Path('.p20base/kairos_p76').rglob('*') if p.is_file()}
+          b={str(p.relative_to(Path('.p20candidate/kairos_p76'))):p.read_bytes() for p in Path('.p20candidate/kairos_p76').rglob('*') if p.is_file()}
+          changed={p for p in a.keys()|b.keys() if a.get(p)!=b.get(p)}
+          expected={
+            'KAIROS_P20_5_SAVED_ANALYSIS_SYSTEM_CLOSURE_REPORT_2026-09-07.md',
+            'docs/KAIROS_ARCHITECTURE_MAP.md',
+            'package.json',
+            'scripts/verify-p20-5-saved-analysis-system-closure.mjs',
+          }
+          print('\n'.join(sorted(changed)))
+          assert changed==expected,(sorted(changed-expected),sorted(expected-changed))
+          PY
+
+      - name: Verify reconstructed P20 closure before packaging
+        working-directory: .p20candidate/kairos_p76
+        run: |
+          npm ci
+          test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
+          npm run verify:p20:5-saved-analysis-system-closure
+          npm run typecheck
+          npm run build
+          npm run verify:p20:4-saved-analysis-application-load
+          npm run verify:p20:3-saved-analysis-application-save
+          npm run verify:p20:2-saved-analysis-persistence-foundation
+          npm run verify:p20:1-saved-analysis-contract-foundation
+          npm run verify:p19:7-risk-reward-tool-system-closure
+          npm run verify:p18:60-drawing-tools-system-closure
+          npm run verify:p17:16-chart-engine-system-closure
+          npm run verify:p16:18-crypto-live-feed-system-closure
+          npm run verify:p15:14-market-data-adapter-system-closure
+          npm run verify:p14:9-trade-visualizer-system-closure
+          npm run verify:p11:calculation-brain-closure
+          npm run verify:p1
+          npm test
+          node - <<'NODE'
+          const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
+          const p=JSON.parse(readFileSync('package.json')); const s=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:p'));
+          for(const required of ['verify:p20:1-saved-analysis-contract-foundation','verify:p20:2-saved-analysis-persistence-foundation','verify:p20:3-saved-analysis-application-save','verify:p20:4-saved-analysis-application-load','verify:p20:5-saved-analysis-system-closure']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
+          for(const x of s){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
+          NODE
+          npm run verify:static
+
+      - name: Restore clean package boundary after verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=.p20candidate/kairos_p76
+          rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite"
+          find "$ROOT" -type f \( -name '*.tsbuildinfo' -o -name '*.log' \) -delete
+          python - <<'PY'
+          from pathlib import Path
+          a={str(p.relative_to(Path('.p20base/kairos_p76'))):p.read_bytes() for p in Path('.p20base/kairos_p76').rglob('*') if p.is_file()}
+          b={str(p.relative_to(Path('.p20candidate/kairos_p76'))):p.read_bytes() for p in Path('.p20candidate/kairos_p76').rglob('*') if p.is_file()}
+          changed={p for p in a.keys()|b.keys() if a.get(p)!=b.get(p)}
+          expected={
+            'KAIROS_P20_5_SAVED_ANALYSIS_SYSTEM_CLOSURE_REPORT_2026-09-07.md',
+            'docs/KAIROS_ARCHITECTURE_MAP.md',
+            'package.json',
+            'scripts/verify-p20-5-saved-analysis-system-closure.mjs',
+          }
+          assert changed==expected,(sorted(changed-expected),sorted(expected-changed))
+          root=Path('.p20candidate/kairos_p76')
+          forbidden=[]
+          for name in ['node_modules','dist','coverage','.vite']:
+            if any(p.name==name for p in root.rglob('*')): forbidden.append(name)
+          if forbidden: raise SystemExit(f'forbidden generated directories remain: {forbidden}')
+          PY
+
+      - name: Package and commit P20 closure candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f "$OUT_ZIP"
+          (cd .p20candidate && zip -qr "../$OUT_ZIP" kairos_p76)
+          unzip -t "$OUT_ZIP"
+          sha256sum "$OUT_ZIP"
+          git config user.name 'kairos-autonomous-bridge'
+          git config user.email 'actions@users.noreply.github.com'
+          git add "$OUT_ZIP"
+          git commit -m 'Build P20 Saved Analysis system closure candidate'
+          git push
