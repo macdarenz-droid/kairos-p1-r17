@@ -1,0 +1,105 @@
+name: Kairos P20.4 Deterministic Reconstruction Bridge
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/p20-4-reconstruct.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  reconstruct-p20-4:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      BASE_ZIP: KAIROS_P20_3_SAVED_ANALYSIS_APPLICATION_SAVE_ORCHESTRATION_CANDIDATE_2026-09-07.zip
+      OUT_ZIP: KAIROS_P20_4_SAVED_ANALYSIS_APPLICATION_LOAD_ORCHESTRATION_CANDIDATE_2026-09-07.zip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Pin npm
+        run: |
+          npm install -g npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+      - name: Reconstruct exact P20.4 from canonical P20.3
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .p20candidate .p20baseline /tmp/changed.txt
+          mkdir .p20candidate .p20baseline
+          unzip -q "$BASE_ZIP" -d .p20candidate
+          unzip -q "$BASE_ZIP" -d .p20baseline
+          python3 - <<'PY'
+          from pathlib import Path
+          import base64, json
+          root=Path('.p20candidate/kairos_p76')
+          files=json.loads(r'''{"KAIROS_P20_4_SAVED_ANALYSIS_APPLICATION_LOAD_ORCHESTRATION_REPORT_2026-09-07.md":"IyBLQUlST1MgUDIwLjQg4oCUIFNhdmVkIEFuYWx5c2lzIEFwcGxpY2F0aW9uIExvYWQgT3JjaGVzdHJhdGlvbgoKIyMgQXV0aG9yaXR5CkJ1aWx0IG9ubHkgZnJvbSBjYW5vbmljYWwgUDIwLjMgR09MREVOIGFmdGVyIGV4YWN0IGFydGlmYWN0L3NvdXJjZSBpbnNwZWN0aW9uLgoKIyMgU291cmNlLXByb3ZlbiBnYXAKUDIwLjEgb3ducyB0aGUgU2F2ZWQgQW5hbHlzaXMgbG9naWNhbCBjb250cmFjdCBhbmQgc3RhYmxlIGBTYXZlZEFuYWx5c2lzSWRgLiBQMjAuMiBhbHJlYWR5IG93bnMgcmF3IHBlcnNpc3RlbmNlLCBpbmNsdWRpbmcgYFNhdmVkQW5hbHlzaXNSZXBvc2l0b3J5LmdldChpZClgLiBQMjAuMyBvd25zIG9ubHkgc2F2ZSBvcmNoZXN0cmF0aW9uLiBFeGFjdCBjYW5vbmljYWwgc291cmNlIHNlYXJjaCBmb3VuZCBubyBhcHBsaWNhdGlvbi1sYXllciBTYXZlZCBBbmFseXNpcyByZWFkIGNvbnN1bWVyLiBFeGlzdGluZyBLYWlyb3MgYXJjaGl0ZWN0dXJlIGtlZXBzIHBlcnNpc3RlbmNlIGFjY2VzcyBiZWhpbmQgYXBwbGljYXRpb24vcXVlcnkgYm91bmRhcmllcyBpbnN0ZWFkIG9mIG1ha2luZyBVSSBhIHNlY29uZCBwZXJzaXN0ZW5jZSBvd25lci4KCiMjIFJlc3BvbnNpYmlsaXR5ClAyMC40IG93bnMgb25lIGFwcGxpY2F0aW9uIHJlYWQgb3BlcmF0aW9uOiBsb2FkIGV4YWN0bHkgb25lIFNhdmVkIEFuYWx5c2lzIGJ5IGNhbm9uaWNhbCBzdGFibGUgaWQsIHVzaW5nIGBTYXZlZEFuYWx5c2lzUmVwb3NpdG9yeS5nZXRgLiBJdCByZXR1cm5zIGEgZGV0YWNoZWQgbG9naWNhbCByZWNvcmQgb24gc3VjY2VzcywgYW4gZXhwbGljaXQgbm90LWZvdW5kIHJlc3VsdCBmb3IgYW4gYWJzZW50IGlkLCBvciBhbiBleHBsaWNpdCBzdG9yYWdlIGVycm9yIHdoZW4gcGVyc2lzdGVuY2UgYWNjZXNzIGZhaWxzLgoKIyMgTm9uLXNjb3BlCi0gTm8gVUksIHJvdXRlLCBkYXNoYm9hcmQsIHByb3ZpZGVyLCBMaWdodHdlaWdodCBDaGFydHMsIHBpeGVscywgb3IgcHJlc2VudGF0aW9uIHN0YXRlLgotIE5vIGxpc3QvdXBkYXRlL2RlbGV0ZSBvcmNoZXN0cmF0aW9uLgotIE5vIERCL3NjaGVtYS9taWdyYXRpb24vYmFja3VwIGNoYW5nZXMuCi0gTm8gc2Vjb25kYXJ5IGluZGV4ZXMgb3Igc3BlY3VsYXRpdmUgcXVlcnkgQVBJcy4KLSBObyBuZXcgU2F2ZWQgQW5hbHlzaXMgbWV0YWRhdGEsIG5hbWUsIHRpbWVmcmFtZSwgdGltZXN0YW1wcywgb3Igb3duZXJzaGlwIGNoYW5nZXMuCi0gTm8gbXV0YXRpb24gb2YgUDE3L1AxOC9QMTkgdHJ1dGgsIFAyMC4xIGxvZ2ljYWwgdHJ1dGgsIFAyMC4yIHBlcnNpc3RlbmNlIHRydXRoLCBvciBQMjAuMyBzYXZlIHNlbWFudGljcy4KCiMjIFZlcmlmaWNhdGlvbiBpbnRlbnQKRm9jdXNlZCB0ZXN0cyBjb3ZlciBzdWNjZXNzZnVsIHNpbmdsZS1pZCBsb2FkLCBleHBsaWNpdCBub3QtZm91bmQgYmVoYXZpb3IsIGV4cGxpY2l0IHN0b3JhZ2UgZmFpbHVyZSwgYW5kIGRldGFjaGVkIGNhbGxlci1mYWNpbmcgZGF0YS4gRGVkaWNhdGVkIHZlcmlmaWVyIGVuZm9yY2VzIHRoZSBleGFjdCBvd25lci9ib3VuZGFyeSBhbmQgZm9yYmlkcyBicm9hZGVyIENSVUQvVUkgc2NvcGUuCg==","scripts/verify-p20-4-saved-analysis-application-load.mjs":"aW1wb3J0IHsgcmVhZEZpbGVTeW5jIH0gZnJvbSAnbm9kZTpmcyc7Cgpjb25zdCBsb2FkID0gcmVhZEZpbGVTeW5jKG5ldyBVUkwoJy4uL3NyYy9hcHBsaWNhdGlvbi9zYXZlZC1hbmFseXNpcy9sb2FkU2F2ZWRBbmFseXNpcy50cycsIGltcG9ydC5tZXRhLnVybCksICd1dGY4Jyk7CmNvbnN0IGluZGV4ID0gcmVhZEZpbGVTeW5jKG5ldyBVUkwoJy4uL3NyYy9hcHBsaWNhdGlvbi9zYXZlZC1hbmFseXNpcy9pbmRleC50cycsIGltcG9ydC5tZXRhLnVybCksICd1dGY4Jyk7CmNvbnN0IHRlc3QgPSByZWFkRmlsZVN5bmMobmV3IFVSTCgnLi4vdGVzdHMvc2F2ZWQtYW5hbHlzaXMtbG9hZC1xdWVyeS50ZXN0LnRzJywgaW1wb3J0Lm1ldGEudXJsKSwgJ3V0ZjgnKTsKY29uc3QgcmVwb3J0ID0gcmVhZEZpbGVTeW5jKG5ldyBVUkwoJy4uL0tBSVJPU19QMjBfNF9TQVZFRF9BTkFMWVNJU19BUFBMSUNBVElPTl9MT0FEX09SQ0hFU1RSQVRJT05fUkVQT1JUXzIwMjYtMDktMDcubWQnLCBpbXBvcnQubWV0YS51cmwpLCAndXRmOCcpOwoKZm9yIChjb25zdCB0b2tlbiBvZiBbCiAgImltcG9ydCB0eXBlIHsgU2F2ZWRBbmFseXNpcywgU2F2ZWRBbmFseXNpc0lkIH0gZnJvbSAnLi4vLi4vYXBwL3NhdmVkQW5hbHlzaXNDb250cmFjdCciLAogICJpbXBvcnQgeyBjcmVhdGVLYWlyb3NSZXBvc2l0b3JpZXMgfSBmcm9tICcuLi8uLi9kYXRhL3JlcG9zaXRvcmllcyciLAogICdzYXZlZEFuYWx5c2VzLmdldChzYXZlZEFuYWx5c2lzSWQpJywKICAidHlwZTogJ25vdC1mb3VuZCciLAogICJyZWFzb246ICdzYXZlZC1hbmFseXNpcy1ub3QtZm91bmQnIiwKICAidHlwZTogJ3N0b3JhZ2UtZXJyb3InIiwKICAicmVhc29uOiAnc2F2ZWQtYW5hbHlzaXMtbG9hZC1mYWlsZWQnIiwKICAnc2F2ZWRBbmFseXNpczogc3RydWN0dXJlZENsb25lKHJlY29yZCknLApdKSB7CiAgaWYgKCFsb2FkLmluY2x1ZGVzKHRva2VuKSkgdGhyb3cgbmV3IEVycm9yKGBQMjAuNCBsb2FkIG9yY2hlc3RyYXRpb24gZXZpZGVuY2UgbWlzc2luZzogJHt0b2tlbn1gKTsKfQoKZm9yIChjb25zdCBmb3JiaWRkZW4gb2YgWwogICdMaWdodHdlaWdodENoYXJ0cycsCiAgJ2xpc3RBbGwoJywKICAnLmRlbGV0ZSgnLAogICcucHV0KCcsCiAgJ3J1bkthaXJvc0F0b21pY1dyaXRlJywKICAndGltZWZyYW1lJywKICAnY3JlYXRlZEF0JywKICAndXBkYXRlZEF0JywKICAnbmFtZTonLApdKSB7CiAgaWYgKGxvYWQuaW5jbHVkZXMoZm9yYmlkZGVuKSkgdGhyb3cgbmV3IEVycm9yKGBQMjAuNCBsb2FkIG9yY2hlc3RyYXRpb24gY29udGFpbnMgZm9yYmlkZGVuIHNjb3BlOiAke2ZvcmJpZGRlbn1gKTsKfQoKaWYgKCFpbmRleC5pbmNsdWRlcygiZXhwb3J0ICogZnJvbSAnLi9sb2FkU2F2ZWRBbmFseXNpcyciKSkgewogIHRocm93IG5ldyBFcnJvcihnJ1AyMC40IGFwcGxpY2F0aW9uIGV4cG9ydCBldmlkZW5jZSBtaXNzaW5nJyk7Cn0KCmZvciAoY29uc3QgdG9rZW4gb2YgWwogICdQMjAuNCBTYXZlZCBBbmFseXNpcyBhcHBsaWNhdGlvbiBsb2FkIG9yY2hlc3RyYXRpb24nLAogICdjYW5vbmljYWwgc3RhYmxlIGlkJywKICAnc2F2ZWQtYW5hbHlzaXMtbm90LWZvdW5kJywKICAnc2F2ZWQtYW5hbHlzaXMtbG9hZC1mYWlsZWQnLApdKSB7CiAgaWYgKCF0ZXN0LmluY2x1ZGVzKHRva2VuKSkgdGhyb3cgbmV3IEVycm9yKGBQMjAuNCBmb2N1c2VkIHRlc3QgZXZpZGVuY2UgbWlzc2luZzogJHt0b2tlbn1gKTsKfQoKZm9yIChjb25zdCB0b2tlbiBvZiBbCiAgJyMgS0FJUk9TIFAyMC40IOKAlCBTYXZlZCBBbmFseXNpcyBBcHBsaWNhdGlvbiBMb2FkIE9yY2hlc3RyYXRpb24nLAogICdQMjAuMycsCiAgJ1NhdmVkQW5hbHlzaXNSZXBvc2l0b3J5LmdldCcsCiAgJ05vIFVJJywKICAnTm8gbGlzdC91cGRhdGUvZGVsZXRlIG9yY2hlc3RyYXRpb24nLApdKSB7CiAgaWYgKCFyZXBvcnQuaW5jbHVkZXModG9rZW4pKSB0aHJvdyBuZXcgRXJyb3IoYFAyMC40IHJlcG9ydCBldmlkZW5jZSBtaXNzaW5nOiAke3Rva2VufWApOwp9Cgpjb25zb2xlLmxvZygnUDIwLjQgU2F2ZWQgQW5hbHlzaXMgYXBwbGljYXRpb24gbG9hZCBvcmNoZXN0cmF0aW9uIHZlcmlmaWNhdGlvbiBwYXNzZWQuJyk7Cg==","src/application/saved-analysis/index.ts":"ZXhwb3J0ICogZnJvbSAnLi9zYXZlU2F2ZWRBbmFseXNpcyc7CmV4cG9ydCAqIGZyb20gJy4vbG9hZFNhdmVkQW5hbHlzaXMnOwo=","src/application/saved-analysis/loadSavedAnalysis.ts":"aW1wb3J0IHR5cGUgeyBTYXZlZEFuYWx5c2lzLCBTYXZlZEFuYWx5c2lzSWQgfSBmcm9tICcuLi8uLi9hcHAvc2F2ZWRBbmFseXNpc0NvbnRyYWN0JzsKaW1wb3J0IHR5cGUgeyBLYWlyb3NEYXRhYmFzZSB9IGZyb20gJy4uLy4uL2RhdGEvZGF0YWJhc2UvS2Fpcm9zRGF0YWJhc2UnOwppbXBvcnQgeyBjcmVhdGVLYWlyb3NSZXBvc2l0b3JpZXMgfSBmcm9tICcuLi8uLi9kYXRhL3JlcG9zaXRvcmllcyc7CgpleHBvcnQgdHlwZSBMb2FkU2F2ZWRBbmFseXNpc1Jlc3VsdCA9CiAgfCB7CiAgICAgIHJlYWRvbmx5IG9rOiB0cnVlOwogICAgICByZWFkb25seSBzYXZlZEFuYWx5c2lzOiBTYXZlZEFuYWx5c2lzOwogICAgfQogIHwgewogICAgICByZWFkb25seSBvazogZmFsc2U7CiAgICAgIHJlYWRvbmx5IHR5cGU6ICdub3QtZm91bmQnOwogICAgICByZWFkb25seSByZWFzb246ICdzYXZlZC1hbmFseXNpcy1ub3QtZm91bmQnOwogICAgfQogIHwgewogICAgICByZWFkb25seSBvazogZmFsc2U7CiAgICAgIHJlYWRvbmx5IHR5cGU6ICdzdG9yYWdlLWVycm9yJzsKICAgICAgcmVhZG9ubHkgcmVhc29uOiAnc2F2ZWQtYW5hbHlzaXMtbG9hZC1mYWlsZWQnOwogICAgfTsKCi8qKgogKiBQMjAuNCBTYXZlZCBBbmFseXNpcyBhcHBsaWNhdGlvbiBsb2FkIG9yY2hlc3RyYXRpb24uCiAqCiAqIE93bnMgb25seSBhIHNpbmdsZS1yZWNvcmQgcmVhZCBieSB0aGUgY2Fub25pY2FsIFNhdmVkQW5hbHlzaXNJZCBib3VuZGFyeS4KICogTG9naWNhbCBTYXZlZCBBbmFseXNpcyB0cnV0aCByZW1haW5zIFAyMC4xOyByYXcgcGVyc2lzdGVuY2UgcmVtYWlucyBQMjAuMjsKICogc2F2ZSBvcmNoZXN0cmF0aW9uIHJlbWFpbnMgUDIwLjMuCiAqLwpleHBvcnQgYXN5bmMgZnVuY3Rpb24gbG9hZFNhdmVkQW5hbHlzaXMoCiAgZGI6IEthaXJvc0RhdGFiYXNlLAogIHNhdmVkQW5hbHlzaXNJZDogU2F2ZWRBbmFseXNpc0lkLAopOiBQcm9taXNlPExvYWRTYXZlZEFuYWx5c2lzUmVzdWx0PiB7CiAgdHJ5IHsKICAgIGNvbnN0IHJlY29yZCA9IGF3YWl0IGNyZWF0ZUthaXJvc1JlcG9zaXRvcmllcyhkYikuc2F2ZWRBbmFseXNlcy5nZXQoc2F2ZWRBbmFseXNpc0lkKTsKICAgIGlmICghcmVjb3JkKSB7CiAgICAgIHJldHVybiB7CiAgICAgICAgb2s6IGZhbHNlLAogICAgICAgIHR5cGU6ICdub3QtZm91bmQnLAogICAgICAgIHJlYXNvbjogJ3NhdmVkLWFuYWx5c2lzLW5vdC1mb3VuZCcsCiAgICAgIH07CiAgICB9CiAgICByZXR1cm4gewogICAgICBvazogdHJ1ZSwKICAgICAgc2F2ZWRBbmFseXNpczogc3RydWN0dXJlZENsb25lKHJlY29yZCksCiAgICB9OwogIH0gY2F0Y2ggewogICAgcmV0dXJuIHsKICAgICAgb2s6IGZhbHNlLAogICAgICB0eXBlOiAnc3RvcmFnZS1lcnJvcicsCiAgICAgIHJlYXNvbjogJ3NhdmVkLWFuYWx5c2lzLWxvYWQtZmFpbGVkJywKICAgIH07CiAgfQp9Cg==","tests/saved-analysis-load-query.test.ts":"aW1wb3J0ICdmYWtlLWluZGV4ZWRkYi9hdXRvJzsKaW1wb3J0IERleGllIGZyb20gJ2RleGllJzsKaW1wb3J0IHsgYWZ0ZXJFYWNoLCBkZXNjcmliZSwgZXhwZWN0LCBpdCB9IGZyb20gJ3ZpdGVzdCc7CmltcG9ydCB7IGxvYWRTYXZlZEFuYWx5c2lzIH0gZnJvbSAnLi4vc3JjL2FwcGxpY2F0aW9uL3NhdmVkLWFuYWx5c2lzJzsKaW1wb3J0IHsgY3JlYXRlS2Fpcm9zRGF0YWJhc2UsIG9wZW5LYWlyb3NEYXRhYmFzZSB9IGZyb20gJy4uL3NyYy9kYXRhL2RhdGFiYXNlJzsKaW1wb3J0IHsgY3JlYXRlS2Fpcm9zUmVwb3NpdG9yaWVzIH0gZnJvbSAnLi4vc3JjL2RhdGEvcmVwb3NpdG9yaWVzJzsKCmNvbnN0IG5hbWVzOiBzdHJpbmdbXSA9IFtdOwpjb25zdCBkYk5hbWUgPSAobGFiZWw6IHN0cmluZykgPT4gewogIGNvbnN0IG5hbWUgPSBga2Fpcm9zLXAyMC00LSR7bGFiZWx9LSR7Y3J5cHRvLnJhbmRvbVVVSUQoKX1gOwogIG5hbWVzLnB1c2gobmFtZSk7CiAgcmV0dXJuIG5hbWU7Cn07CgphZnRlckVhY2goYXN5bmMgKCkgPT4gewogIGZvciAoY29uc3QgbmFtZSBvZiBuYW1lcy5zcGxpY2UoMCkpIGF3YWl0IERleGllLmRlbGV0ZShuYW1lKTsKfSk7Cgpjb25zdCBzYXZlZCA9IE9iamVjdC5mcmVlemUoewogIGlkOiAnYW5hbHlzaXMtMScsCiAgbWFya2V0OiBPYmplY3QuZnJlZXplKHsgdmVudWU6ICdCSU5BTkNFJywgaW5zdHJ1bWVudDogJ0JUQ1VTRFQnLCBzb3VyY2U6ICdtYXJrZXQtcmVmZXJlbmNlJyBhcyBjb25zdCB9KSwKICBkcmF3aW5nczogT2JqZWN0LmZyZWV6ZShbXSksCiAgcmlza1Jld2FyZHM6IE9iamVjdC5mcmVlemUoW10pLAp9KTsKCmRlc2NyaWJlKCdQMjAuNCBTYXZlZCBBbmFseXNpcyBhcHBsaWNhdGlvbiBsb2FkIG9yY2hlc3RyYXRpb24nLCAoKSA9PiB7CiAgaXQoJ2xvYWRzIG9uZSBTYXZlZCBBbmFseXNpcyBieSBpdHMgY2Fub25pY2FsIHN0YWJsZSBpZCcsIGFzeW5jICgpID0+IHsKICAgIGNvbnN0IGRiID0gY3JlYXRlS2Fpcm9zRGF0YWJhc2UoZGJOYW1lKCdsb2FkJykpOwogICAgYXdhaXQgb3BlbkthaXJvc0RhdGFiYXNlKGRiKTsKICAgIGF3YWl0IGNyZWF0ZUthaXJvc1JlcG9zaXRvcmllcyhkYikuc2F2ZWRBbmFseXNlcy5wdXQoc2F2ZWQpOwoKICAgIGNvbnN0IHJlc3VsdCA9IGF3YWl0IGxvYWRTYXZlZEFuYWx5c2lzKGRiLCBzYXZlZC5pZCk7CgogICAgZXhwZWN0KHJlc3VsdCkudG9FcXVhbCh7IG9rOiB0cnVlLCBzYXZlZEFuYWx5c2lzOiBzYXZlZCB9KTsKICAgIGlmIChyZXN1bHQub2spIGV4cGVjdChyZXN1bHQuc2F2ZWRBbmFseXNpcykubm90LnRvQmUoc2F2ZWQpOwogICAgZGIuY2xvc2UoKTsKICB9KTsKCiAgaXQoJ3JldHVybnMgYW4gZXhwbGljaXQgbm90LWZvdW5kIHJlc3VsdCB3aGVuIHRoZSBpZCBoYXMgbm8gcmVjb3JkJywgYXN5bmMgKCkgPT4gewogICAgY29uc3QgZGIgPSBjcmVhdGVLYWlyb3NEYXRhYmFzZShkYk5hbWUoJ21pc3NpbmcnKSk7CiAgICBhd2FpdCBvcGVuS2Fpcm9zRGF0YWJhc2UoZGIpOwoKICAgIGV4cGVjdChhd2FpdCBsb2FkU2F2ZWRBbmFseXNpcyhkYiwgJ21pc3NpbmctYW5hbHlzaXMnKSkudG9FcXVhbCh7CiAgICAgIG9rOiBmYWxzZSwKICAgICAgdHlwZTogJ25vdC1mb3VuZCcsCiAgICAgIHJlYXNvbjogJ3NhdmVkLWFuYWx5c2lzLW5vdC1mb3VuZCcsCiAgICB9KTsKICAgIGRiLmNsb3NlKCk7CiAgfSk7CgogIGl0KCdyZXR1cm5zIGFuIGV4cGxpY2l0IHN0b3JhZ2UgZXJyb3Igd2hlbiByZXBvc2l0b3J5IGFjY2VzcyBmYWlscycsIGFzeW5jICgpID0+IHsKICAgIGNvbnN0IGRiID0gY3JlYXRlS2Fpcm9zRGF0YWJhc2UoZGJOYW1lKCdmYWlsdXJlJykpOwogICAgYXdhaXQgb3BlbkthaXJvc0RhdGFiYXNlKGRiKTsKICAgIGRiLmNsb3NlKCk7CgogICAgY29uc3QgcmVzdWx0ID0gYXdhaXQgbG9hZFNhdmVkQW5hbHlzaXMoZGIsIHNhdmVkLmlkKTsKICAgIGV4cGVjdChyZXN1bHQpLnRvRXF1YWwoewogICAgICBvazogZmFsc2UsCiAgICAgIHR5cGU6ICdzdG9yYWdlLWVycm9yJywKICAgICAgcmVhc29uOiAnc2F2ZWQtYW5hbHlzaXMtbG9hZC1mYWlsZWQnLAogICAgfSk7CiAgfSk7Cn0pOwo="}''')
+          for rel,data in files.items():
+              p=root/rel; p.parent.mkdir(parents=True,exist_ok=True); p.write_bytes(base64.b64decode(data))
+          p=root/'package.json'; s=p.read_text()
+          old='"verify:p20:3-saved-analysis-application-save": "node scripts/verify-p20-3-saved-analysis-application-save.mjs"'
+          new=old+',\n    "verify:p20:4-saved-analysis-application-load": "node scripts/verify-p20-4-saved-analysis-application-load.mjs"'
+          if old not in s or 'verify:p20:4-saved-analysis-application-load' in s: raise SystemExit('package script anchor mismatch')
+          p.write_text(s.replace(old,new,1))
+          base=Path('.p20baseline/kairos_p76'); cur=root
+          expected={
+            'KAIROS_P20_4_SAVED_ANALYSIS_APPLICATION_LOAD_ORCHESTRATION_REPORT_2026-09-07.md',
+            'package.json',
+            'scripts/verify-p20-4-saved-analysis-application-load.mjs',
+            'src/application/saved-analysis/index.ts',
+            'src/application/saved-analysis/loadSavedAnalysis.ts',
+            'tests/saved-analysis-load-query.test.ts',
+          }
+          actual=set()
+          for q in cur.rglob('*'):
+              if q.is_file():
+                  rel=q.relative_to(cur); b=base/rel
+                  if not b.exists() or q.read_bytes()!=b.read_bytes(): actual.add(str(rel))
+          for b in base.rglob('*'):
+              if b.is_file():
+                  rel=b.relative_to(base)
+                  if not (cur/rel).exists(): actual.add(str(rel))
+          if actual != expected: raise SystemExit(f'scope mismatch missing={sorted(expected-actual)} extra={sorted(actual-expected)}')
+          Path('/tmp/changed.txt').write_text('\n'.join(sorted(actual))+'\n')
+          print('P20.4 exact scope verified:',len(actual))
+          PY
+          test "$(wc -l < /tmp/changed.txt | tr -d ' ')" = "6"
+      - name: Verify reconstructed P20.4
+        working-directory: .p20candidate/kairos_p76
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci
+          test "$(node --version)" = "v22.16.0"
+          test "$(npm --version)" = "10.9.2"
+          test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
+          npm run verify:p20:4-saved-analysis-application-load
+          npm run typecheck
+          npm run build
+          npm test
+          node - <<'NODE'
+          const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
+          const p=JSON.parse(readFileSync('package.json')); const scripts=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:p'));
+          for(const req of ['verify:p20:1-saved-analysis-contract-foundation','verify:p20:2-saved-analysis-persistence-foundation','verify:p20:3-saved-analysis-application-save','verify:p20:4-saved-analysis-application-load']) if(!scripts.includes(req)) process.exit(1);
+          for(const x of scripts){const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
+          NODE
+          npm run verify:static
+      - name: Package and commit P20.4 candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=.p20candidate/kairos_p76
+          rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite"
+          find "$ROOT" -type f \( -name '*.tsbuildinfo' -o -name '*.log' \) -delete
+          rm -f "$OUT_ZIP"
+          (cd .p20candidate && zip -qr "../$OUT_ZIP" kairos_p76)
+          unzip -t "$OUT_ZIP"
+          test "$(unzip -Z1 "$OUT_ZIP" | sed -n '1p' | cut -d/ -f1)" = "kairos_p76"
+          if unzip -Z1 "$OUT_ZIP" | grep -Eq '(^|/)(node_modules|dist|coverage|\.vite|\.git)(/|$)|\.tsbuildinfo$'; then exit 1; fi
+          sha256sum "$OUT_ZIP"
+          git config user.name kairos-autonomous-bridge
+          git config user.email actions@users.noreply.github.com
+          git add "$OUT_ZIP"
+          git commit -m 'Build P20.4 Saved Analysis application load orchestration candidate'
+          git push
