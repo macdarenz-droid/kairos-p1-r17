@@ -24,7 +24,7 @@ Latest re-proven canonical GOLDEN remains P20.1 Saved Analysis Contract Foundati
 
 Local evidence retained: exact P20.1 artifact -> deterministic 31-file P20.2 draft; `git apply --check` PASS; dedicated P20.2 static verifier PASS. Identical local `npm ci` route timed out twice and must not be repeated unchanged.
 
-## Helper failure ledger through R9 initial attempt
+## Helper failure ledger through R10
 R1 `7a113ee7...` / run `34029696168`: malformed helper YAML with giant heredoc.
 R2 `9bde3116...` / run `34029879370`: base64 recovery invalid.
 R3 `2f3c8383...` / run `34029978752`: moving-HEAD source lookup lost original payload source.
@@ -33,7 +33,9 @@ R5 `fa2f5262...` / run `34031682301`: bounded whitespace-only strict decoder fai
 R6 main `3a090c4cf8144c825cd0402b4b66eb3025542078`, run `34032267640`, job `101483850850`: setup/checkout/Node 22.16.0/npm 10.9.2 all PASS; recovery failed `PATCH64 end marker not found`; downstream skipped.
 R7 main `158b99bb814e59148882647064a20e854c9fd7af`, run `34033350156`, job `101486876614`: EOF boundary was correctly reached, but normalized compact payload had exactly 22,713 base64 data characters, modulo 4 = 1; strict decoder rejected it. This proved whitespace/EOF normalization alone cannot restore the payload.
 R8 main `2bc9b6f7ebdf49980ff1332b500bbc6d19d6c617`, run `34033581982`, job `101487498199`: exhaustively tested 1,152 single-character insertions across 18 positions evidenced by non-base64 formatting. Zero candidates both matched structural patch requirements and passed `git apply --check` against exact P20.1. This disproved the single-missing-character-at-formatting-position hypothesis.
-R9 initial main `9b4bea048776961463745c1249bd65b8a156e21d`, run `34033745917`, job `101487945438`: checkout/setup/Node/npm pin reached recovery, but recovery stopped before testing the deletion strategy because shallow `fetch-depth: 8` no longer contained immutable source commit `7a113ee7...`; exact error `fatal: Not a valid object name ...^{commit}`. This is a helper transport/provenance defect, not evidence against the R9 corruption hypothesis and never a P20.2 canonical verdict.
+R9A main `9b4bea048776961463745c1249bd65b8a156e21d`, run `34033745917`, job `101487945438`: deletion strategy did not execute because shallow checkout lost immutable source commit; helper mechanism defect only.
+R9B main `b245dd2c37b9e3649793baa12185f9acfe219507`, run `34033845642`, job `101488215519`: full-history checkout restored source provenance and the one-extra-character deletion strategy actually executed. Exact result: `deletion attempts=22713`, `structural_candidates=0`, `unique_applyable_candidates=0`. This disproved the single-extra-base64-character corruption class.
+R10 corrected main `d3605c4a187bbea5065a9e890309ad16776d158b`, run `34034087712`, job `101488863069`: constrained exactly-three-missing-character recovery at the 18 non-base64 boundaries executed. Beam remained viable through boundary 14 then fell to zero at boundary 15; final `structural_candidates=0`, `unique_applyable_candidates=0`. This disproved that constrained three-missing-character whitespace-boundary class. All R1-R10 results are helper-only and never a canonical P20.2 verdict.
 
 ## Earlier process log — 2026-09-06T12:31Z — token W-20260906-P20-2-R6-V15-SELFLOOP-N8Q5
 Main before: `3a090c4cf8144c825cd0402b4b66eb3025542078`.
@@ -59,8 +61,17 @@ R9 strategy: because compact length 22,713 is modulo 1 and R8 found no single mi
 
 R9 initial run `34033745917` did not execute that recovery hypothesis because the workflow's depth-8 checkout could no longer resolve immutable source commit `7a113ee7...`. Exact log proved source-object absence before Python recovery. Smallest evidence-backed helper repair: change only checkout `fetch-depth` from 8 to 0, restoring the immutable source commit without changing candidate scope, recovery algorithm, downstream verification, production source, or canonical gate.
 
-Main after checkout-depth repair: `b245dd2c37b9e3649793baa12185f9acfe219507` (`Repair P20.2 bridge immutable source checkout depth`). Fresh exact helper run `34033845642` is IN_PROGRESS on that exact head; latest observed step was checkout. This remains R9 strategy execution, NON-CANONICAL.
+Main after checkout-depth repair: `b245dd2c37b9e3649793baa12185f9acfe219507` (`Repair P20.2 bridge immutable source checkout depth`).
+
+## Process log — 2026-09-06T12:50Z — token W-20260906-P20-2-R6-V15-SELFLOOP-N8Q5
+Fresh R9B evidence: full-fetch helper `34033845642` / job `101488215519` completed FAILURE after executing the intended deletion algorithm. Exact output established zero structural candidates and zero applyable winners across all 22,713 single-character deletions. Therefore that corruption class is closed, not merely blocked by helper transport.
+
+R10 action/result: implemented a materially different constrained three-character restoration search using the 18 non-base64 boundaries, incremental base64 decode, printable-ASCII pruning, exact `diff --git ` prefix, exactly 31 diff headers, and final `git apply --check`. A small package-email shell typo in the first helper commit was immediately corrected before relying on its result; corrected main is `d3605c4a187bbea5065a9e890309ad16776d158b`. Exact corrected helper run `34034087712` / job `101488863069` completed FAILURE in recovery with zero structural/applyable candidates; beam fell to zero at boundary 15. No candidate ZIP was produced and no canonical gate was retargeted.
+
+Saved-artifact recovery check: searched the user's Library for exact P20.2 candidate/patch names, `p20_2.patch`, `SavedAnalysisRepository`, DB V4/backup V3/31-file phrases, and title-only P20.2/Saved Analysis variants. No saved P20.2 draft, patch, or candidate artifact was found; results were handoffs/unrelated files. Therefore the next process must not pretend the lost local draft can be recovered from Library.
+
+Material route change now required: STOP blind PATCH64 corruption repair. R7-R10 have ruled out several small corruption classes without recovering a verifiable patch. The next dependency-safe strategy is deterministic direct reconstruction from the exact canonical P20.1 artifact/source plus the already frozen P20.2 ownership/scope, with source-owner/data-flow tracing before edits and the same dedicated/static/canonical verification standards. Prefer obtaining the exact P20.1 artifact bytes and reconstructing only evidenced owners; no guessed 31-file content and no canonical retarget until a clean candidate is independently proven.
 
 Living-doc status: `docs/KAIROS_ARCHITECTURE_MAP.md` remains authoritative through canonical P20.1 only; no P20.2 helper semantics are represented as canonical architecture.
 
-Unresolved gap / next safe action: monitor exact helper `34033845642`. If SUCCESS, verify every helper stage plus exact root candidate identity/scope/package integrity before the smallest P20.1->P20.2 canonical gate retarget. If FAIL, inspect exact logs; distinguish failure of the one-extra-character hypothesis from another helper mechanism defect and materially change strategy only when evidence supports it. FAST ~3m remains correct because only helper/repair work exists. No user action required.
+Unresolved gap / next safe action: use fresh canonical P20.1 artifact/source to trace exact persistence/backup owners and reconstruct the frozen P20.2 delta directly, rather than continuing damaged-base64 recovery. FAST ~3m remains correct; no user action required.
