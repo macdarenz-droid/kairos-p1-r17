@@ -20,35 +20,58 @@ Mandatory living-doc checkpoint is current at engineering main `8118ba39e3c2f115
 P18 remains generic drawing/provider/interaction machinery and logical drawing coordinates use `ChartTimestamp` + `DecimalString`, never persistent pixels. P19 remains Risk/Reward semantics/style/logical placement/provider-neutral logical-object composition. P20 owns persistence/restore only; it must reuse P17/P18/P19 logical truth rather than redefine drawing mechanics, RR semantics, calculation truth, journal truth, provider output, or pixel geometry.
 
 ## P20.1 canonical logical payload
-P20.1 canonically composes a dedicated SavedAnalysis identity with existing `ChartMarketReference`, readonly existing `ChartDrawing` snapshots, and readonly Risk/Reward entries composed from existing `RiskRewardAnalysis` plus existing logical `RiskRewardChartTimeExtent`. No timeframe, name, tradeId, createdAt/updatedAt, pixels, provider state, derived style/object output, database indexes, or relation metadata are authorized by P20.1.
+Direct inspection of exact canonical candidate artifact `9987048689` proves:
+- `SavedAnalysisId = string` with sole allocator `crypto.randomUUID()` in `src/app/savedAnalysisIdentity.ts`.
+- `SavedAnalysis { id, market: ChartMarketReference, drawings: readonly ChartDrawing[], riskRewards: readonly SavedRiskRewardAnalysis[] }`.
+- `SavedRiskRewardAnalysis { analysis: RiskRewardAnalysis, extent: RiskRewardChartTimeExtent }`.
+No timeframe, name, tradeId, createdAt/updatedAt, pixels, provider state, derived style/object output, database indexes, or relation metadata are authorized by P20.1.
 
-## P20 storage architecture evidence
-Fresh main source re-proves the current persistence architecture:
-- `src/data/database/schema.ts` declares current DB schema V2 and V2 store registry centrally.
-- `src/data/database/migrations.ts` requires contiguous append-only migrations whose final version equals the schema owner.
+## P20 storage architecture evidence — corrected from exact GOLDEN artifact
+IMPORTANT: exact P20.1 GOLDEN source supersedes stale sparse-main continuity. Current database schema is **V3**, not V2.
+- `src/data/database/schema.ts` declares `KAIROS_DB_SCHEMA_VERSION = 3`, immutable V1 metadata schema, full released V2 trade-store schema, and V3 trade compound-index delta.
+- `src/data/database/migrations.ts` registers contiguous append-only V1/V2/V3 and requires the registry to end at the current schema version.
 - `src/data/database/KairosDatabase.ts` declares every typed Dexie table explicitly.
-- `src/data/database/transactions.ts` derives valid atomic-write store names from the current store registry and rejects undeclared stores.
-- `src/data/repositories/TradeRepositories.ts` shows persistence records are stored directly behind explicit repositories, with indexes added only where a source-backed query exists.
-- Full backup V2 explicitly enumerates every persistent collection in `backupFormat.ts`, `backupEnvelope.ts`, `backupSnapshot.ts`, and `restoreReplacement.ts`; restore replaces all stores atomically and integrity-checks afterward.
+- `src/data/database/transactions.ts` currently validates atomic-write store names against the released full V2 store registry because V3 added only an index and no store.
+- `src/data/database/integrity.ts` likewise uses the full V2 store set because V3 did not change store membership.
+- `src/data/repositories/TradeRepositories.ts` and repository registry prove explicit repository ownership and stable `id` primary keys; secondary indexes exist only for source-backed queries.
+- Full backup remains format V2 and explicitly permits DB schema versions `2 | 3`, because V3 changed indexes only and did not change payload shape.
+- `backupFormat.ts`, `backupEnvelope.ts`, `backupSerialization.ts`, `backupValidation.ts`, `backupSnapshot.ts`, `restorePreflight.ts`, `restoreReplacement.ts`, and `restoreVerification.ts` explicitly enumerate every backed-up collection and restore/re-query it atomically.
 
-Therefore an isolated Dexie/table edit, migration-only edit, repository-only edit, or backup-later edit is unsafe: it can create a persisted collection that atomic writes or full backup/restore do not completely own.
+Therefore an isolated Dexie/table edit, migration-only edit, repository-only edit, or backup-later edit remains unsafe.
 
-## P20.2 responsibility now proven
-The smallest dependency-safe P20.2 responsibility is a COHERENT SAVED-ANALYSIS PERSISTENCE FOUNDATION, not an isolated sub-edit. The P20.2 ownership boundary must introduce Saved Analysis persistence across the existing coupled storage seams as one controlled responsibility: schema/store-version ownership, migration registration, typed database table, explicit repository/atomic-write participation, and complete full-backup/snapshot/restore participation. This is one persistence-foundation responsibility because those seams jointly define whether a collection is actually durable and recoverable in Kairos.
+## P20.2 responsibility and exact constraints now proven
+The smallest dependency-safe P20.2 responsibility remains one coherent Saved Analysis persistence foundation spanning the coupled durability seams.
 
-P20.2 non-scope remains strict: no UI, no provider/pixel state, no new analysis semantics, no duplicate P18/P19 truth, no invented timeframe/name/trade/timestamp metadata, and no speculative secondary indexes/query APIs. Existing repository precedent justifies primary stable-ID persistence; secondary indexes require an actual source-backed query and are not authorized yet.
+Fresh exact-source consequences:
+1. Adding a persistent Saved Analysis collection cannot rewrite released V1/V2/V3; contiguous migration rules require a new schema version after V3, so the next migration version is V4.
+2. P20.1 gives a stable `id`; no Saved Analysis secondary query exists, so only a stable-id primary-key storage contract is justified. Do not add speculative market/time/name indexes.
+3. A new store changes actual store membership, so transactions/integrity can no longer keep using only the old full V2 store-set owner; P20.2 must establish the current full store set consistently.
+4. A new persistent collection changes full-backup payload/count shape. Existing backup V2 cannot remain the current complete format without omitting Saved Analysis. Existing V1->V2 migration precedent proves a payload-shape change must advance the current backup format and migrate older supported backups forward.
+5. Restore preflight, replacement, verification and integrity must include Saved Analysis. A backup/restore path that omits it is not a complete P20 persistence foundation.
+6. Historical P5/P6/P9/P12 tests/verifiers contain hard-coded assertions that the *current* DB schema is V3 and current backup format is V2. A P20.2 candidate that legitimately advances those versions is already known to require narrow compatibility maintenance: preserve released V1/V2/V3 and backup V1/V2 history assertions, while replacing obsolete “current must still equal 3/2” assumptions with assertions for the newly canonical current version. Never weaken historical ownership or regression coverage.
 
-Concrete store spelling, exact schema version constant update, exact SavedAnalysis record import direction/encoding, and verifier scope must still be read directly from the exact P20.1 GOLDEN artifact before mutation because engineering main is sparse and does not expose `src/app/savedAnalysisContract.ts`. Do not guess those implementation details from this responsibility proof.
+P20.2 non-scope remains strict: no UI, no provider/pixel state, no new analysis semantics, no duplicate P18/P19 truth, no invented timeframe/name/trade/timestamp metadata, and no speculative secondary indexes/query APIs.
+
+## Remaining evidence gap before P20.2 production build
+Direct artifact access succeeded; no inspection helper is needed. Still prove from naming/test/verifier conventions before mutation:
+- exact store/table/repository spelling (for example, convention suggests plural lower-camel from aggregate type, but `savedAnalyses` is not yet promoted as truth until the convention pass is complete),
+- exact new current-store registry shape used by transactions/integrity,
+- exact backup-V3 compatibility type/migration/validation naming and older-format migration path,
+- exact historical test/verifier files that need compatibility-only edits,
+- exact dedicated P20.2 verifier/report/package registration and controlled candidate file list.
 
 ## Anti-loop
-Never package generated output. Helper PASS is non-canonical. Sparse main != canonical artifact. Do not duplicate P18/P19 owners. Do not jump directly to Dexie. Do not add storage without backup/restore coherence. Do not invent optional metadata or secondary indexes. Persist source truth, not derived provider/style/object output.
+Never package generated output. Helper PASS is non-canonical. Sparse main != canonical artifact. Exact canonical candidate source overrides stale continuity. Do not duplicate P18/P19 owners. Do not jump directly to Dexie. Do not add storage without backup/restore coherence. Do not invent optional metadata or secondary indexes. Persist source truth, not derived provider/style/object output.
 
 ## Next safe action
-FAST `~3m`: inspect the exact canonical P20.1 candidate source for `src/app/savedAnalysisContract.ts` / `src/app/savedAnalysisIdentity.ts` and re-open current database/backup owners to prove the exact P20.2 record import direction, store spelling, minimal primary-key schema, version/migration boundary, and complete file scope. If main cannot expose the canonical P20.1 source directly, use one temporary NON-CANONICAL inspection helper against the exact P20.1 root candidate; capture evidence, remove helper, then construct the smallest coherent P20.2 candidate. Remain FAST `~3m` until exact candidate identity/scope and exact canonical gate queued/in_progress are both proven; only then use GATE `~10m`.
+FAST `~3m`: perform one exact convention/compatibility pass over the canonical P20.1 candidate: repository/table naming, full current-store ownership, backup-version migration/validation contracts, and hard-coded P5/P6/P9/P12 verifier/test expectations. Freeze the exact P20.2 controlled file scope only after that pass. Then construct the smallest coherent P20.2 candidate from P20.1 GOLDEN. Remain FAST `~3m` until exact candidate identity/scope and exact canonical gate queued/in_progress are both proven; only then use GATE `~10m`.
 
 # LATEST PROCESS LOG
+## 2026-09-06 — Exact P20.1 GOLDEN storage source inspected; stale V2 assumption corrected
+Worker `W-20260906-P20-2-EXACT-STORAGE-SCOPE-V10-3M-H7Q4`. Fresh main remained `8118ba39e3c2f1158f78b1308036290685409f6e`; canonical #281 remained latest GOLDEN and no newer canonical/helper work was active. Downloaded exact canonical `KAIROS_CURRENT_CANDIDATE` artifact `9987048689` and inspected nested P20.1 source directly, so no temporary helper was required. Corrected prior continuity: current DB schema is V3, with released V2 stores plus a V3 trade index-only migration; backup format is V2 supporting DB schema 2|3. Proved P20.2 must advance to a new contiguous DB migration if it adds a store, must expand current store ownership for transactions/integrity, and must advance full-backup payload compatibility because Saved Analysis changes backup shape. Also identified hard-coded historical P5/P6/P9/P12 current-version checks that will need compatibility-only maintenance when P20.2 advances schema/backup versions. No engineering-main mutation performed. Retry Ledger updated. Planned cadence `3m FAST` for final naming/compatibility scope proof.
+
 ## 2026-09-06 — P20.2 persistence responsibility proven from coupled storage owners
-Worker `W-20260906-P20-2-RESPONSIBILITY-RESEARCH-V10-3M-R6F3`. Fresh engineering main `8118ba39e3c2f1158f78b1308036290685409f6e`; P20.1 remains canonical GOLDEN. Re-read controlling handoff, current process history, architecture map, and fresh storage source. Re-proved V2 schema/store registry, append-only migration rule, explicit Dexie table ownership, schema-derived atomic transaction store validation, direct explicit repository ownership, full-backup payload/count enumeration, atomic snapshot, and atomic replace+integrity verification. Conclusion: no isolated migration/store/repository/backup sub-slice is dependency-safe. The smallest next P20 responsibility is one coherent Saved Analysis persistence foundation spanning those coupled seams, while exact implementation spelling remains intentionally unguessed until exact P20.1 GOLDEN source is inspected. No engineering-main mutation performed. Planned cadence `3m FAST`.
+Worker `W-20260906-P20-2-RESPONSIBILITY-RESEARCH-V10-3M-R6F3`. Fresh engineering main `8118ba39e3c2f1158f78b1308036290685409f6e`; P20.1 remains canonical GOLDEN. Re-read controlling handoff, current process history, architecture map, and fresh storage source. Earlier sparse-main evidence described the store registry as V2; exact P20.1 artifact inspection in the next process corrected current schema authority to V3. Conclusion retained: no isolated migration/store/repository/backup sub-slice is dependency-safe. No engineering-main mutation performed. Planned cadence `3m FAST`.
 
 ## 2026-09-06 — P20.1 canonical PASS verified and architecture map reconciled
 Worker `W-20260906-P20-1-GATE281-MONITOR-V10-10M-D4S8`. Main before canonical result `f8479efd89c61bac4f09e32c5c7d69280ee02c5c`; canonical #281 completed SUCCESS at 2026-09-06T09:54:54Z. Verified exact job `101465826371` and all required successful stages, plus exact-run candidate and gate-evidence artifacts above. Promoted P20.1 as latest GOLDEN only after artifact verification. Updated living architecture map in docs-only commit `8118ba39e3c2f1158f78b1308036290685409f6e`. No P20.2 production implementation was started. Planned cadence returns to `3m FAST` for source/owner research.
@@ -69,7 +92,7 @@ Worker `W-20260906-P20-PAYLOAD-SCOPE-V10-3M-J4T9`. Proved readonly P18 ChartDraw
 Worker `W-20260906-P20-ANALYSIS-SCOPE-V10-3M-M5K8`. Proved ChartMarketReference venue/instrument only; no timeframe owner.
 
 ## 2026-09-06 — P20 persistence architecture proven; isolated store edit rejected
-Worker `W-20260906-P20-STORAGE-CONTRACT-V10-3M-Q7N2`. Proved V2 schema/migration/repository/transaction/full-backup architecture and contract-first precedent.
+Worker `W-20260906-P20-STORAGE-CONTRACT-V10-3M-Q7N2`. Earlier evidence proved the coupled migration/repository/transaction/full-backup architecture; exact P20.1 artifact inspection later corrected the current DB schema from V2 to V3.
 
 ## 2026-09-06 — P20 Saved Analysis ownership boundary source-proven
 Worker `W-20260906-P20-FIRST-RESP-V10-3M-X4R8`. Proved P20 owns persistence/restore of logical P18/P19 analysis state; exact schema intentionally unguessed.
