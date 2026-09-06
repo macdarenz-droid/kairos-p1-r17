@@ -42,7 +42,7 @@ P14 owns truthful trade visualization facts and journal/execution truth. P18 own
 Canonical P19.1 established the provider-neutral RR semantic contract at `src/application/risk-reward/riskRewardAnalysisContract.ts`, reusing existing `TradeSide` and `DecimalString`. It intentionally did not own direction/order validation, RR ratio math, chart-time/span geometry, P18 adapter/composition, provider/render/UI, editing lifecycle, persistence/P20, journal/P14 writes, or P11 calculation truth.
 
 ## Next safe action
-Do **not** advance by patch number alone. Re-read controlling handoff, this history, Retry Ledger, exact P19.1 canonical artifact/source, and fresh GitHub. Trace the remaining P19 product responsibility from actual source/data flow: P19 must eventually provide a real RR analysis component and chart visualization with reward/target zone and risk/stop zone while preserving P14 execution truth, consuming P18 generic machinery, P11 calculations, and P2/P3 semantic styling. Determine exactly ONE smallest dependency-safe next P19 owner/contract slice from source evidence. No broad UI, persistence/P20, journal writes, P11 duplication, or P18 ownership rewrite. Cadence: ~3 minutes during transition/research/pre-gate; ~12 only after exact next candidate is uploaded and its canonical gate is queued/in-progress.
+Exact canonical-artifact source trace now selects **one smallest dependency-safe next P19 slice: provider-neutral Risk/Reward zone-semantics projection** inside the existing `src/application/risk-reward/` owner. It should project a P19.1 analysis into exactly two immutable semantic price zones: risk = entry↔stop and reward = entry↔target, with P19-owned risk/reward role semantics only. It must not calculate RR ratios, normalize/validate price ordering, add chart timestamps/span geometry, import provider APIs, widen P18 `ChartDrawing`, mutate P14 journal/execution truth, add P20 persistence, or hard-code visual colors. P2/P3 already own `trade.riskZone` / `trade.rewardZone` styling tokens; a later presentation adapter may consume them. Before mutation, re-prove exact application-layer test/barrel/verifier/gate conventions and choose exact filenames/scope from current GOLDEN. Cadence: ~3 minutes during build/research/pre-gate; ~12 only after exact next candidate is uploaded and its canonical gate is queued/in-progress.
 
 ## Methods already attempted / do not blindly repeat
 - Never package generated `node_modules`, `dist`, caches, coverage, logs, or build residue.
@@ -51,6 +51,7 @@ Do **not** advance by patch number alone. Re-read controlling handoff, this hist
 - Do not reopen P18 after closure without a controlled amendment.
 - Do not jump to broad RR UI, P20 persistence, P11 calculation changes, P14 journal truth changes, or P18 `ChartDrawing` semantic expansion.
 - Do not treat sparse root-source visibility as equivalent to exact canonical artifact source.
+- Transient repository-resolution/container failures are evidence-access failures, not project state and not HOLD_USER.
 
 ---
 
@@ -92,3 +93,14 @@ Worker `W-20260906-P19-1-HELPER1-MONITOR-V8-J4T9`. Helper #1 / `34010522280`, jo
 - Unresolved: exact next P19 slice is not established by roadmap numbering alone.
 - Next safe action: source/artifact/data-flow ownership trace from P19.1 GOLDEN to select exactly one smallest next P19 contract/composition slice; do not guess broad UI or persistence.
 - Planned cadence: **3 minutes** transition/research/pre-gate.
+
+## 2026-09-06 — P19 post-P19.1 transient recovery and exact canonical source trace
+- Worker token: `W-20260906-P19-NEXT-TRACE-V8-M8R5`.
+- Fresh repository identity re-proved: `macdarenz-droid/kairos-p1-r17`.
+- Fresh canonical authority re-proved: P19.1 gate #274 / `34010682979`, head `367a0f7071b60232590687c9899ca46ff5926bd4`, COMPLETED/SUCCESS; artifact `9982448416` matched expected digest/size.
+- Earlier GitHub 404/container failures were transient evidence-access failures only; no engineering mutation was made from them.
+- Exact canonical candidate artifact was successfully downloaded and inspected. It contains P19.1 `riskRewardAnalysisContract.ts`; P14 `tradeVisualizerFacts.ts` / display model; P11 risk and R-multiple calculators; P18 trend-line-only `ChartDrawing` / drawing-layer lifecycle; and P2/P3 semantic tokens including `trade.riskZone` and `trade.rewardZone`.
+- Finding: P19.1 already owns entry/stop/target semantics, P11 owns math, P18 is intentionally generic/trend-line-only, and P2/P3 already own styling roles. Therefore the smallest next P19 dependency is a provider-neutral semantic zone projection, not provider drawing integration, broad UI, persistence, or calculation work.
+- Selected next slice: project one P19 analysis into two immutable price-bound semantic zones (`risk`: entry↔stop, `reward`: entry↔target), leaving ordering validation, ratio math, chart-time/span geometry, styling values, provider rendering, P18 drawing expansion, editing, persistence, and journal writes out of scope.
+- Main SHA before/after: `367a0f7071b60232590687c9899ca46ff5926bd4` / unchanged.
+- Planned cadence: **3 minutes** for exact convention verification/build/pre-gate; switch to **12 minutes** only after exact candidate upload + canonical gate queued/in-progress.
