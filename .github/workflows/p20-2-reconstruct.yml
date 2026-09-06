@@ -34,17 +34,42 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf .p20candidate /tmp/p20_2.patch /tmp/p20_2.patch.gz /tmp/p20_2.patch.gz.b64
+          rm -rf .p20candidate /tmp/p20_2.patch /tmp/p20_2.patch.gz
           mkdir .p20candidate
-          cat \
-            .github/kairos-p20-2-direct/chunk-0.txt \
-            .github/kairos-p20-2-direct/chunk-1.txt \
-            .github/kairos-p20-2-direct/chunk-2.txt \
-            .github/kairos-p20-2-direct/chunk-3.txt \
-            .github/kairos-p20-2-direct/chunk-4.txt \
-            > /tmp/p20_2.patch.gz.b64
-          test "$(wc -c < /tmp/p20_2.patch.gz.b64 | tr -d ' ')" = "24384"
-          base64 -d /tmp/p20_2.patch.gz.b64 > /tmp/p20_2.patch.gz
+          python3 - <<'PY'
+          from pathlib import Path
+          import base64, hashlib
+
+          paths = [Path(f'.github/kairos-p20-2-direct/chunk-{i}.txt') for i in range(5)]
+          chunks = [p.read_text() for p in paths]
+          joined = ''.join(chunks)
+          expected_chars = 24384
+          expected_sha = '8adeb8b9a3a988280675cfa1df3c241de945097f66deb40af90c087868da8c05'
+          print('chunk_sizes=' + ','.join(str(len(x)) for x in chunks) + f' joined={len(joined)}')
+
+          candidates = []
+          def test(encoded, trace):
+              if len(encoded) != expected_chars:
+                  return
+              try:
+                  decoded = base64.b64decode(encoded, validate=True)
+              except Exception:
+                  return
+              if hashlib.sha256(decoded).hexdigest() == expected_sha:
+                  candidates.append((trace, decoded))
+
+          test(joined, 'exact')
+          if len(joined) == expected_chars + 1:
+              for i in range(len(joined)):
+                  test(joined[:i] + joined[i+1:], f'delete:{i}')
+
+          print(f'payload_sha_winners={len(candidates)}')
+          if len(candidates) != 1:
+              raise SystemExit(f'compressed payload integrity not uniquely recoverable: winners={len(candidates)}')
+          trace, decoded = candidates[0]
+          Path('/tmp/p20_2.patch.gz').write_bytes(decoded)
+          print(f'payload_recovery={trace} gz_bytes={len(decoded)} sha256={hashlib.sha256(decoded).hexdigest()}')
+          PY
           echo "$PATCH_GZ_SHA256  /tmp/p20_2.patch.gz" | sha256sum -c -
           gunzip -c /tmp/p20_2.patch.gz > /tmp/p20_2.patch
           echo "$PATCH_SHA256  /tmp/p20_2.patch" | sha256sum -c -
