@@ -34,7 +34,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf .p20candidate /tmp/reconstruct-p20-2.py /tmp/p20_2.patch
+          rm -rf .p20candidate /tmp/reconstruct-p20-2.py /tmp/p20_2.patch /tmp/changed.txt
           mkdir .p20candidate
           unzip -q "$BASE_ZIP" -d .p20candidate
           ROOT=.p20candidate/kairos_p76
@@ -52,7 +52,8 @@ jobs:
             git add -A
             git diff --cached --check
             git diff --cached --binary > /tmp/p20_2.patch
-            test "$(git diff --cached --name-only | wc -l | tr -d ' ')" = "$EXPECTED_CHANGED"
+            git diff --cached --name-only | sort > /tmp/changed.txt
+            test "$(wc -l < /tmp/changed.txt | tr -d ' ')" = "$EXPECTED_CHANGED"
             python3 - <<'PY'
           from pathlib import Path
           expected = {
@@ -66,19 +67,15 @@ jobs:
           print(f'P20.2 exact scope verified: {len(actual)} files')
           PY
           )
-        env:
-          EXPECTED_CHANGED: '39'
 
       - name: Prove reconstructed patch identity and scope
         working-directory: .p20candidate/kairos_p76
         shell: bash
         run: |
           set -euo pipefail
-          git diff --cached --name-only | sort > /tmp/changed.txt
           test "$(wc -l < /tmp/changed.txt | tr -d ' ')" = "$EXPECTED_CHANGED"
           echo "$EXPECTED_PATCH_SHA256  /tmp/p20_2.patch" | sha256sum -c -
           git diff --cached --check
-          cp /tmp/changed.txt /tmp/changed-final.txt
 
       - name: Verify reconstructed P20.2
         working-directory: .p20candidate/kairos_p76
