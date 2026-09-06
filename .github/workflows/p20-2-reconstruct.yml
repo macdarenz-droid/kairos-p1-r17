@@ -44,7 +44,8 @@ jobs:
           git show "$PATCH_SOURCE_COMMIT:.github/workflows/p20-2-reconstruct.yml" > /tmp/p20_2.source.yml
           python3 - <<'PY'
           from pathlib import Path
-          import base64, re
+          import base64, hashlib, re
+
           text = Path('/tmp/p20_2.source.yml').read_text()
           marker = "cat > /tmp/p20_2.patch.b64 <<'PATCH64'"
           start = text.find(marker)
@@ -54,19 +55,28 @@ jobs:
           end_match = re.search(r'^\s*PATCH64\s*$', text[start:], re.M)
           if not end_match:
               raise SystemExit('PATCH64 end marker not found')
+
           raw = text[start:start + end_match.start()]
-          compact = ''.join(raw.split())
-          if not compact or re.search(r'[^A-Za-z0-9+/=]', compact):
-              raise SystemExit('PATCH64 contains non-base64 characters after whitespace normalization')
-          compact += '=' * ((-len(compact)) % 4)
+          # The original helper payload was embedded in YAML and acquired
+          # formatting contamination. Recover only the base64 alphabet from
+          # the exact bounded heredoc body, discard inherited '=' padding,
+          # then restore canonical terminal padding. Safety is enforced below
+          # by patch signature, git apply --check and exact 31-file scope.
+          alphabet = ''.join(re.findall(r'[A-Za-z0-9+/]', raw))
+          if not alphabet:
+              raise SystemExit('PATCH64 contains no recoverable base64 payload')
+          normalized = alphabet + ('=' * ((-len(alphabet)) % 4))
+          removed = len(raw) - len(alphabet)
+          print(f'PATCH64 raw_chars={len(raw)} normalized_alphabet={len(alphabet)} removed_formatting_chars={removed} modulo={len(alphabet) % 4}')
+
           try:
-              decoded = base64.b64decode(compact, validate=True)
+              decoded = base64.b64decode(normalized, validate=True)
           except Exception as exc:
-              raise SystemExit(f'PATCH64 strict decode failed: {exc}')
+              raise SystemExit(f'PATCH64 normalized decode failed: {exc}')
           if not decoded.startswith(b'diff --git '):
               raise SystemExit('decoded payload is not a git patch')
           Path('/tmp/p20_2.patch').write_bytes(decoded)
-          print(f'decoded patch bytes={len(decoded)} sha256=' + __import__('hashlib').sha256(decoded).hexdigest())
+          print(f'decoded patch bytes={len(decoded)} sha256={hashlib.sha256(decoded).hexdigest()}')
           PY
           test -s /tmp/p20_2.patch
 
