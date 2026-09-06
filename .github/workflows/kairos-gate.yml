@@ -1,11 +1,11 @@
-# KAIROS P20.4 GATE — AUTHORITATIVE BASE P20.3 — CANDIDATE P20.4
+# KAIROS P20.5 GATE — AUTHORITATIVE BASE P20.4 — CANDIDATE P20.5 SYSTEM CLOSURE
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P20_4_SAVED_ANALYSIS_APPLICATION_LOAD_ORCHESTRATION_CANDIDATE_2026-09-07.zip'
+      - 'KAIROS_P20_5_SAVED_ANALYSIS_SYSTEM_CLOSURE_CANDIDATE_2026-09-07.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P20_3_SAVED_ANALYSIS_APPLICATION_SAVE_ORCHESTRATION_CANDIDATE_2026-09-07.zip
-  CANDIDATE_ZIP: KAIROS_P20_4_SAVED_ANALYSIS_APPLICATION_LOAD_ORCHESTRATION_CANDIDATE_2026-09-07.zip
+  BASE_ZIP: KAIROS_P20_4_SAVED_ANALYSIS_APPLICATION_LOAD_ORCHESTRATION_CANDIDATE_2026-09-07.zip
+  CANDIDATE_ZIP: KAIROS_P20_5_SAVED_ANALYSIS_SYSTEM_CLOSURE_CANDIDATE_2026-09-07.zip
 
 jobs:
   verify-current-candidate:
@@ -35,7 +35,7 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm exact controlled P20.4 scope from authoritative P20.3
+      - name: Confirm exact controlled P20.5 closure scope from authoritative P20.4
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -47,15 +47,13 @@ jobs:
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           print('\n'.join(sorted(changed)))
           expected={
-            'KAIROS_P20_4_SAVED_ANALYSIS_APPLICATION_LOAD_ORCHESTRATION_REPORT_2026-09-07.md',
+            'KAIROS_P20_5_SAVED_ANALYSIS_SYSTEM_CLOSURE_REPORT_2026-09-07.md',
+            'docs/KAIROS_ARCHITECTURE_MAP.md',
             'package.json',
-            'scripts/verify-p20-4-saved-analysis-application-load.mjs',
-            'src/application/saved-analysis/index.ts',
-            'src/application/saved-analysis/loadSavedAnalysis.ts',
-            'tests/saved-analysis-load-query.test.ts',
+            'scripts/verify-p20-5-saved-analysis-system-closure.mjs',
           }
           if changed != expected:
-            print('P20.4 exact scope mismatch',file=sys.stderr)
+            print('P20.5 exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             sys.exit(1)
@@ -74,9 +72,10 @@ jobs:
       - name: Production build
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
-      - name: Dedicated P20.4 Saved Analysis application load verifier/runtime
+      - name: Dedicated P20.5 Saved Analysis system closure verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p20:5-saved-analysis-system-closure
           npm run verify:p20:4-saved-analysis-application-load
           npm run verify:p20:3-saved-analysis-application-save
           npm run verify:p20:2-saved-analysis-persistence-foundation
@@ -91,18 +90,19 @@ jobs:
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression through P20.4
+      - name: Full controlled roadmap regression through P20.5
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
           const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
           const p=JSON.parse(readFileSync('package.json')); const s=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:p'));
-          for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:16-chart-engine-system-closure','verify:p18:60-drawing-tools-system-closure','verify:p19:7-risk-reward-tool-system-closure','verify:p20:1-saved-analysis-contract-foundation','verify:p20:2-saved-analysis-persistence-foundation','verify:p20:3-saved-analysis-application-save','verify:p20:4-saved-analysis-application-load']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
+          for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:16-chart-engine-system-closure','verify:p18:60-drawing-tools-system-closure','verify:p19:7-risk-reward-tool-system-closure','verify:p20:1-saved-analysis-contract-foundation','verify:p20:2-saved-analysis-persistence-foundation','verify:p20:3-saved-analysis-application-save','verify:p20:4-saved-analysis-application-load','verify:p20:5-saved-analysis-system-closure']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
           for(const x of s){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
           NODE
       - name: Historical closures
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p20:5-saved-analysis-system-closure
           npm run verify:p20:4-saved-analysis-application-load
           npm run verify:p20:3-saved-analysis-application-save
           npm run verify:p20:2-saved-analysis-persistence-foundation
@@ -131,5 +131,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P20_4_SAVED_ANALYSIS_APPLICATION_LOAD_ORCHESTRATION_REPORT_2026-09-07.md
+          path: .gate-candidate/kairos_p76/KAIROS_P20_5_SAVED_ANALYSIS_SYSTEM_CLOSURE_REPORT_2026-09-07.md
           if-no-files-found: error
