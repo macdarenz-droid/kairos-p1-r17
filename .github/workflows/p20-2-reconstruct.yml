@@ -17,7 +17,6 @@ jobs:
     env:
       BASE_ZIP: KAIROS_P20_1_SAVED_ANALYSIS_CONTRACT_FOUNDATION_CANDIDATE_2026-09-06.zip
       OUT_ZIP: KAIROS_P20_2_SAVED_ANALYSIS_PERSISTENCE_FOUNDATION_CANDIDATE_2026-09-06.zip
-      PATCH_GZ_SHA256: 8adeb8b9a3a988280675cfa1df3c241de945097f66deb40af90c087868da8c05
       PATCH_SHA256: 960d85f15cfad6ca5c8c6c5495c0d612465ca3e00043276c3dfe51924afcaac6
     steps:
       - uses: actions/checkout@v4
@@ -38,40 +37,38 @@ jobs:
           mkdir .p20candidate
           python3 - <<'PY'
           from pathlib import Path
-          import base64, hashlib
+          import base64, gzip, hashlib
 
           paths = [Path(f'.github/kairos-p20-2-direct/chunk-{i}.txt') for i in range(5)]
           chunks = [p.read_text() for p in paths]
           joined = ''.join(chunks)
+          encoded = ''.join(joined.split())
           expected_chars = 24384
-          expected_sha = '8adeb8b9a3a988280675cfa1df3c241de945097f66deb40af90c087868da8c05'
-          print('chunk_sizes=' + ','.join(str(len(x)) for x in chunks) + f' joined={len(joined)}')
-
-          candidates = []
-          def test(encoded, trace):
-              if len(encoded) != expected_chars:
-                  return
-              try:
-                  decoded = base64.b64decode(encoded, validate=True)
-              except Exception:
-                  return
-              if hashlib.sha256(decoded).hexdigest() == expected_sha:
-                  candidates.append((trace, decoded))
-
-          test(joined, 'exact')
-          if len(joined) == expected_chars + 1:
-              for i in range(len(joined)):
-                  test(joined[:i] + joined[i+1:], f'delete:{i}')
-
-          print(f'payload_sha_winners={len(candidates)}')
-          if len(candidates) != 1:
-              raise SystemExit(f'compressed payload integrity not uniquely recoverable: winners={len(candidates)}')
-          trace, decoded = candidates[0]
-          Path('/tmp/p20_2.patch.gz').write_bytes(decoded)
-          print(f'payload_recovery={trace} gz_bytes={len(decoded)} sha256={hashlib.sha256(decoded).hexdigest()}')
+          expected_patch_sha = '960d85f15cfad6ca5c8c6c5495c0d612465ca3e00043276c3dfe51924afcaac6'
+          print('chunk_sizes=' + ','.join(str(len(x)) for x in chunks) + f' joined={len(joined)} normalized={len(encoded)}')
+          if len(encoded) != expected_chars:
+              raise SystemExit(f'normalized base64 length mismatch: {len(encoded)} != {expected_chars}')
+          try:
+              compressed = base64.b64decode(encoded, validate=True)
+          except Exception as exc:
+              raise SystemExit(f'strict base64 decode failed: {exc}')
+          try:
+              patch = gzip.decompress(compressed)
+          except Exception as exc:
+              raise SystemExit(f'gzip decode failed: {exc}')
+          patch_sha = hashlib.sha256(patch).hexdigest()
+          print(f'compressed_bytes={len(compressed)} compressed_sha256={hashlib.sha256(compressed).hexdigest()} patch_bytes={len(patch)} patch_sha256={patch_sha}')
+          if patch_sha != expected_patch_sha:
+              raise SystemExit('decoded patch SHA-256 mismatch')
+          if len(patch) != 98903:
+              raise SystemExit(f'decoded patch size mismatch: {len(patch)}')
+          if not patch.startswith(b'diff --git '):
+              raise SystemExit('decoded bytes are not a git patch')
+          if patch.count(b'diff --git ') != 35:
+              raise SystemExit(f'unexpected diff header count: {patch.count(b"diff --git ")}')
+          Path('/tmp/p20_2.patch.gz').write_bytes(compressed)
+          Path('/tmp/p20_2.patch').write_bytes(patch)
           PY
-          echo "$PATCH_GZ_SHA256  /tmp/p20_2.patch.gz" | sha256sum -c -
-          gunzip -c /tmp/p20_2.patch.gz > /tmp/p20_2.patch
           echo "$PATCH_SHA256  /tmp/p20_2.patch" | sha256sum -c -
           test "$(wc -c < /tmp/p20_2.patch | tr -d ' ')" = "98903"
 
