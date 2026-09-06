@@ -1,0 +1,47 @@
+const saved = defineSavedAnalysis({
+  id: 'saved-analysis-p20-2',
+  market: { venue: 'BINANCE', instrument: 'BTCUSDT', source: 'market-reference' },
+  drawings: [],
+  riskRewards: [],
+});
+
+describe('P20.2 Saved Analysis persistence foundation', () => {
+  it('persists Saved Analysis through its repository with clone-safe reads', async () => {
+    const db = createKairosDatabase(dbName('repo'));
+    await openKairosDatabase(db);
+    const repo = createKairosRepositories(db).savedAnalyses;
+    await repo.put(saved);
+    const loaded = await repo.get(saved.id);
+    expect(loaded).toEqual(saved);
+    expect(loaded).not.toBe(saved);
+    await expect(assertKairosDatabaseIntegrity(db)).resolves.toMatchObject({ ok: true, schemaVersion: 4, savedAnalysisRecordCount: 1 });
+    db.close();
+  });
+
+  it('round-trips Saved Analysis through current backup V3', () => {
+    const envelope = createKairosBackupEnvelope({ metadata: [], savedAnalyses: [saved] });
+    const parsed = parseKairosBackup(serializeKairosBackup(envelope));
+    expect(parsed).toMatchObject({ formatVersion: 3, databaseSchemaVersion: 4, recordCounts: { savedAnalyses: 1, total: 1 } });
+    expect(parsed.payload.savedAnalyses).toEqual([saved]);
+  });
+
+  it('replaces Saved Analysis atomically from a prepared restore', async () => {
+    const db = createKairosDatabase(dbName('restore'));
+    await openKairosDatabase(db);
+    const current = defineSavedAnalysis({ ...saved, id: 'current-analysis' });
+    await createKairosRepositories(db).savedAnalyses.put(current);
+    const incoming: SavedAnalysis = defineSavedAnalysis({ ...saved, id: 'incoming-analysis' });
+    const prepared = await prepareKairosRestore(db, serializeKairosBackup(createKairosBackupEnvelope({ metadata: [], savedAnalyses: [incoming] })));
+    const result = await replaceKairosDatabaseFromPreparedRestore(db, prepared);
+    expect(result.restoredSavedAnalysisRecords).toBe(1);
+    expect(await db.savedAnalyses.toArray()).toEqual([incoming]);
+    db.close();
+  });
+});
+""")
+
+# Final compatibility corrections discovered by the broad static sweep.
+p=root/'scripts/verify-p5-transactions.mjs'; s=p.read_text().replace('Object.hasOwn(KAIROS_V2_STORES','Object.hasOwn(KAIROS_CURRENT_STORES'); p.write_text(s)
+p=root/'scripts/verify-p6-backup-envelope.mjs'; s=p.read_text(); s=s.replace('Current full backup format must advance to V2 with trade persistence','Current full backup format must be V3 with Saved Analysis persistence'); s=s.replace("serialization.includes('migrateLegacyBackupToCurrent')","serialization.includes('migrateToCurrent')"); s=s.replace('Legacy V1 backup migration owner missing','Historical backup migration owner missing'); p.write_text(s)
+p=root/'scripts/verify-p6-restore-replacement.mjs'; s=p.read_text(); s=s.replace("const meta=fs.readFileSync('src/data/repositories/MetadataRepository.ts','utf8');", "const meta=fs.readFileSync('src/data/repositories/MetadataRepository.ts','utf8');const saved=fs.readFileSync('src/data/repositories/SavedAnalysisRepository.ts','utf8');"); s=s.replace("if(!meta.includes('async replaceAll(')||((repos.match(/async replaceAll\\(/g)||[]).length<5))", "if(!meta.includes('async replaceAll(')||!saved.includes('async replaceAll(')||((repos.match(/async replaceAll\\(/g)||[]).length<4))"); p.write_text(s)
+p=root/'scripts/verify-p12-journal-history-status-index.mjs'; s=p.read_text().replace("schema.includes('KAIROS_DB_SCHEMA_VERSION = 3') && schema.includes(\"'&id,status,symbol,updatedAt,[status+updatedAt]'\")", "schema.includes('KAIROS_DB_SCHEMA_VERSION = 4') && schema.includes('KAIROS_V3_STORES') && schema.includes(\"'&id,status,symbol,updatedAt,[status+updatedAt]'\")"); p.write_text(s)
