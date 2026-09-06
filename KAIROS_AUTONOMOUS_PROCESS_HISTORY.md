@@ -19,12 +19,12 @@ Engineering branch: `main`
 Continuity branch: `kairos-autonomous-state`
 Supervisor: `Kairos Supervisor [ACTIVE]`
 Worker contract: `KAIROS-FAST-V8-2026-09-06`
-Fresh main SHA: `c7aa8c63cd8acbe8eb33f67a6eda045628e151ef`
-Main message: `Add deterministic P19.1 Risk Reward semantic contract reconstruction bridge`
+Fresh main SHA: `367a0f7071b60232590687c9899ca46ff5926bd4`
+Main message: `Retarget canonical gate to P19.1 Risk Reward semantic contract`
 
 Roadmap: **P18 Drawing Tools is CLOSED by explicit canonical system-closure PASS. P19 Risk/Reward is ACTIVE.**
 
-Latest full canonical PASS / GOLDEN:
+Latest full canonical PASS / GOLDEN remains until P19.1 finishes:
 - P18.60 — Drawing Tools System Closure
 - workflow `Kairos Controlled Roadmap Gate`
 - path `.github/workflows/kairos-gate.yml`
@@ -36,13 +36,18 @@ Latest full canonical PASS / GOLDEN:
 - canonical candidate artifact `9981944232`, 1,129,842 bytes, `sha256:f6338506ec8b8e75965be0af00b3305289d0ffb53d24c4ba22eadbb5ccb94d87`
 - gate evidence artifact `9981944404`, 898 bytes, `sha256:feac7c1350cdbdfb26bcf9b327ab2bc43940643ada1848acddbf24ecaf62fd9a`
 
-Current noncanonical mechanism:
-- `Kairos P19.1 Deterministic Reconstruction Bridge`
-- workflow `.github/workflows/p19-1-reconstruct.yml`
-- helper-definition commit `c7aa8c63cd8acbe8eb33f67a6eda045628e151ef`
-- helper run #1 / `34010522280`
-- status at last observation: **IN_PROGRESS / NON-CANONICAL**
-- while this helper is active, do not launch a competing reconstruction.
+Current canonical candidate chain:
+- P19.1 candidate: `KAIROS_P19_1_RISK_REWARD_ANALYSIS_CONTRACT_FOUNDATION_CANDIDATE_2026-09-06.zip`
+- candidate commit: `f7cabe864f7a7ee53a43e4955e66403c3799d509`
+- candidate blob: `527b2cf88140b74aea5973fd15cb5a2b67d9fdac`
+- candidate size: 1,308,022 bytes
+- helper run #1 / `34010522280`: COMPLETED / SUCCESS, **NON-CANONICAL**
+- helper job `reconstruct` / `101425424002`: all observed steps succeeded, including reconstruction, pre-package verification, clean-boundary restore, and candidate package/commit.
+- canonical gate retarget commit: `367a0f7071b60232590687c9899ca46ff5926bd4`
+- canonical `Kairos Controlled Roadmap Gate` run #274 / `34010682979`
+- canonical head: `367a0f7071b60232590687c9899ca46ff5926bd4`
+- status at last observation: **IN_PROGRESS**
+- while #274 is queued/in-progress, monitor only; no competing repository engineering mutation.
 
 ## Ownership boundary
 
@@ -118,15 +123,22 @@ Worker `W-20260906-P18-60-GATE273-V8-T4Q6`. Canonical #273 / `34008964239`, job 
 Worker `W-20260906-P19-TRACE-V8-N7C3`. No engineering mutation. First slice selected as P19.1 provider-neutral RR semantic contract.
 
 ## 2026-09-06 — P19.1 canonical-artifact convention reconciliation
-Worker `W-20260906-P19-1-CONVENTIONS-V8-K2M8`. Main before/after evidence stage `3a67408...` / unchanged. Exact canonical artifact `9981944232` proved the real `src/application` architecture and corrected the sparse-main false negative. Exact seven-file P19.1 scope established. No build/test claim at this evidence stage.
+Worker `W-20260906-P19-1-CONVENTIONS-V8-K2M8`. Exact canonical artifact `9981944232` proved the real `src/application` architecture and corrected the sparse-main false negative. Exact seven-file P19.1 scope established.
 
 ## 2026-09-06 — P19.1 deterministic reconstruction helper launched
-- Worker token: `W-20260906-P19-1-CONVENTIONS-V8-K2M8`.
-- Main before helper write: `3a67408a9347f8d578eeab051c70dbca4395f58c`.
-- Main after helper definition: `c7aa8c63cd8acbe8eb33f67a6eda045628e151ef`.
-- Engineering action: created `.github/workflows/p19-1-reconstruct.yml` only; canonical gate file and P18.60 candidate were not modified.
-- Helper #1 / `34010522280` confirmed **IN_PROGRESS**. This is NON-CANONICAL mechanism state.
-- Helper method: reconstruct exact P19.1 seven-file delta from canonical P18.60 ZIP, deterministic npm install, exact LWC proof, focused verifier/test, typecheck/build, selected P18.60/P14.9/P11/P1 closures, remove generated outputs, re-prove exact scope/hygiene, package root `kairos_p76/`, commit candidate ZIP.
-- Verification actually observed this process: helper workflow creation, fresh main commit, and helper run start only. No helper PASS or candidate ZIP is claimed yet.
-- Next safe action: monitor exact helper #1 only. On PASS, verify exact candidate root identity/scope then retarget canonical gate P18.60 -> P19.1 via direct gate-file update. On FAIL, inspect exact failed step/log and repair helper only.
-- Planned cadence: **3 minutes** while helper/pre-gate work remains.
+Worker `W-20260906-P19-1-CONVENTIONS-V8-K2M8`. Main moved `3a67408...` -> `c7aa8c63...` by adding `.github/workflows/p19-1-reconstruct.yml`. Helper #1 / `34010522280` started NON-CANONICALLY.
+
+## 2026-09-06 — P19.1 helper PASS, candidate identity verified, canonical #274 started
+- Worker token: `W-20260906-P19-1-HELPER1-MONITOR-V8-J4T9`.
+- Main before process: `f7cabe864f7a7ee53a43e4955e66403c3799d509` after helper candidate commit.
+- Helper #1 / `34010522280`, job `101425424002`: **COMPLETED / SUCCESS / NON-CANONICAL**.
+- Observed successful helper steps: setup, checkout, Node setup, npm pin, reconstruct P19.1, verify before packaging, restore clean package boundary, package and commit candidate.
+- Candidate exact root identity: `KAIROS_P19_1_RISK_REWARD_ANALYSIS_CONTRACT_FOUNDATION_CANDIDATE_2026-09-06.zip`; blob `527b2cf88140b74aea5973fd15cb5a2b67d9fdac`; size 1,308,022 bytes.
+- Candidate commit `f7cabe864f7a7ee53a43e4955e66403c3799d509` added exactly the candidate ZIP at repository root; helper result is not canonical authority.
+- Gate action: updated only `.github/workflows/kairos-gate.yml` to authoritative base P18.60 -> candidate P19.1, exact seven-file scope, P19.1 dedicated verifier, full units/roadmap/P18-P17/historical regressions, and P19.1 gate-evidence upload. No gate checks were weakened.
+- Main after gate retarget: `367a0f7071b60232590687c9899ca46ff5926bd4`.
+- Exact canonical `Kairos Controlled Roadmap Gate` #274 / `34010682979` confirmed **IN_PROGRESS** on head `367a0f7071b60232590687c9899ca46ff5926bd4`.
+- P18.60 #273 remains GOLDEN until #274 fully succeeds and both canonical artifacts are verified.
+- Unresolved: #274 downstream result/artifacts not yet known.
+- Next safe action: monitor #274 only; no competing repository mutation. On PASS verify all required stages and both artifacts before promoting P19.1. On FAIL fetch exact failed step/log and classify candidate-vs-gate defect.
+- Planned cadence: **12 minutes** while exact canonical #274 is queued/in-progress.
