@@ -17,11 +17,10 @@ jobs:
     env:
       BASE_ZIP: KAIROS_P20_1_SAVED_ANALYSIS_CONTRACT_FOUNDATION_CANDIDATE_2026-09-06.zip
       OUT_ZIP: KAIROS_P20_2_SAVED_ANALYSIS_PERSISTENCE_FOUNDATION_CANDIDATE_2026-09-06.zip
-      PATCH_SOURCE_COMMIT: 7a113ee7febb53e1d04a1a6c7182099fcf5f3eb3
+      PATCH_GZ_SHA256: 8adeb8b9a3a988280675cfa1df3c241de945097f66deb40af90c087868da8c05
+      PATCH_SHA256: 960d85f15cfad6ca5c8c6c5495c0d612465ca3e00043276c3dfe51924afcaac6
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22.16.0'
@@ -31,15 +30,27 @@ jobs:
           npm install --global npm@10.9.2
           test "$(npm --version)" = "10.9.2"
 
-      - name: Recover and apply exact P20.2 patch
+      - name: Reconstruct exact direct P20.2 delta from canonical P20.1
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf .p20base .p20candidate /tmp/p20_2.patch /tmp/p20_2.source.yml /tmp/p20_2.try.patch
-          mkdir .p20base .p20candidate
-          unzip -q "$BASE_ZIP" -d .p20base
-          cp -a .p20base/. .p20candidate/
+          rm -rf .p20candidate /tmp/p20_2.patch /tmp/p20_2.patch.gz /tmp/p20_2.patch.gz.b64
+          mkdir .p20candidate
+          cat \
+            .github/kairos-p20-2-direct/chunk-0.txt \
+            .github/kairos-p20-2-direct/chunk-1.txt \
+            .github/kairos-p20-2-direct/chunk-2.txt \
+            .github/kairos-p20-2-direct/chunk-3.txt \
+            .github/kairos-p20-2-direct/chunk-4.txt \
+            > /tmp/p20_2.patch.gz.b64
+          test "$(wc -c < /tmp/p20_2.patch.gz.b64 | tr -d ' ')" = "24384"
+          base64 -d /tmp/p20_2.patch.gz.b64 > /tmp/p20_2.patch.gz
+          echo "$PATCH_GZ_SHA256  /tmp/p20_2.patch.gz" | sha256sum -c -
+          gunzip -c /tmp/p20_2.patch.gz > /tmp/p20_2.patch
+          echo "$PATCH_SHA256  /tmp/p20_2.patch" | sha256sum -c -
+          test "$(wc -c < /tmp/p20_2.patch | tr -d ' ')" = "98903"
 
+          unzip -q "$BASE_ZIP" -d .p20candidate
           ROOT=.p20candidate/kairos_p76
           test -f "$ROOT/package.json"
           (
@@ -49,170 +60,32 @@ jobs:
             git config user.email actions@users.noreply.github.com
             git add -A
             git commit -qm baseline
-          )
-
-          git cat-file -e "$PATCH_SOURCE_COMMIT^{commit}"
-          git show "$PATCH_SOURCE_COMMIT:.github/workflows/p20-2-reconstruct.yml" > /tmp/p20_2.source.yml
-          python3 - <<'PY'
-          from pathlib import Path
-          import base64, hashlib, re, subprocess
-
-          source = Path('/tmp/p20_2.source.yml').read_text()
-          marker = "cat > /tmp/p20_2.patch.b64 <<'PATCH64'"
-          start = source.find(marker)
-          if start < 0:
-              raise SystemExit('PATCH64 start marker not found')
-          start = source.find('\n', start) + 1
-          if start <= 0:
-              raise SystemExit('PATCH64 payload start newline not found')
-          end_match = re.search(r'^\s*PATCH64\s*$', source[start:], re.M)
-          raw = source[start:start + end_match.start()] if end_match else source[start:]
-
-          alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-          allowed = set(alphabet)
-          compact = ''.join(ch for ch in raw if ch in allowed)
-          print('PATCH64 recovery boundary=' + ('terminator' if end_match else 'EOF'))
-          print(f'PATCH64 raw_chars={len(raw)} compact_chars={len(compact)} compact_modulo={len(compact) % 4}')
-
-          # Evidence through R9:
-          # - normalized stream has 22,713 data chars (mod 4 = 1)
-          # - one inserted character at any formatting-evidenced position: 0 winners
-          # - one deleted compact character: 0 structural candidates
-          # The smallest remaining whitespace-replacement class that restores a
-          # multiple-of-four stream is exactly THREE missing base64 characters.
-          # Treat each distinct non-base64 boundary as an optional missing-char
-          # site, and use incremental ASCII decoding to prune impossible branches.
-          segments = []
-          buf = []
-          for ch in raw:
-              if ch in allowed:
-                  buf.append(ch)
-              else:
-                  segments.append(''.join(buf))
-                  buf = []
-          segments.append(''.join(buf))
-          merged = []
-          for seg in segments:
-              if not merged:
-                  merged.append(seg)
-              elif seg == '':
-                  continue
-              else:
-                  merged.append(seg)
-          segments = merged
-          print(f'PATCH64 recoverable segment_count={len(segments)}')
-
-          printable = set(range(32, 127)) | {9, 10, 13}
-          expected_prefix = b'diff --git '
-
-          def feed(tail, decoded, chars):
-              tail = tail + chars
-              out = bytearray(decoded)
-              whole = (len(tail) // 4) * 4
-              if whole:
-                  block = tail[:whole]
-                  tail = tail[whole:]
-                  try:
-                      b = base64.b64decode(block, validate=True)
-                  except Exception:
-                      return None
-                  if any(x not in printable for x in b):
-                      return None
-                  out.extend(b)
-                  n = min(len(out), len(expected_prefix))
-                  if out[:n] != expected_prefix[:n]:
-                      return None
-              return tail, bytes(out)
-
-          states = [(0, '', b'', ())]
-          for idx, seg in enumerate(segments):
-              advanced = []
-              for count, tail, decoded, trace in states:
-                  r = feed(tail, decoded, seg)
-                  if r is not None:
-                      ntail, ndecoded = r
-                      advanced.append((count, ntail, ndecoded, trace))
-              states = advanced
-              if idx == len(segments) - 1:
-                  break
-
-              branched = list(states)
-              for count, tail, decoded, trace in states:
-                  if count >= 3:
-                      continue
-                  for restored in alphabet:
-                      r = feed(tail, decoded, restored)
-                      if r is None:
-                          continue
-                      ntail, ndecoded = r
-                      branched.append((count + 1, ntail, ndecoded, trace + ((idx, restored),)))
-              states = branched
-              print(f'PATCH64 beam boundary={idx} states={len(states)}')
-              if len(states) > 500000:
-                  raise SystemExit(f'PATCH64 constrained beam exceeded safe state cap: {len(states)}')
-
-          root = Path('.p20candidate/kairos_p76').resolve()
-          try_path = Path('/tmp/p20_2.try.patch')
-          winners = []
-          structural = 0
-          for count, tail, decoded, trace in states:
-              if count != 3 or tail:
-                  continue
-              try:
-                  text = decoded.decode('ascii')
-              except Exception:
-                  continue
-              if not text.startswith('diff --git '):
-                  continue
-              if text.count('diff --git ') != 31:
-                  continue
-              structural += 1
-              try_path.write_bytes(decoded)
-              check = subprocess.run(
-                  ['git', 'apply', '--check', str(try_path)],
-                  cwd=root,
-                  stdout=subprocess.PIPE,
-                  stderr=subprocess.PIPE,
-                  text=True,
-              )
-              if check.returncode == 0:
-                  winners.append((trace, decoded))
-                  print(f'candidate PASS trace={trace!r} bytes={len(decoded)} sha256={hashlib.sha256(decoded).hexdigest()}')
-
-          print(f'PATCH64 three-char structural_candidates={structural} unique_applyable_candidates={len(winners)}')
-          if len(winners) != 1:
-              raise SystemExit(f'PATCH64 three-character recovery is not uniquely proven: winners={len(winners)}')
-          trace, decoded = winners[0]
-          Path('/tmp/p20_2.patch').write_bytes(decoded)
-          print(f'PATCH64 unique three-character trace={trace!r} patch_sha256={hashlib.sha256(decoded).hexdigest()}')
-          PY
-          test -s /tmp/p20_2.patch
-
-          (
-            cd "$ROOT"
             git apply --check /tmp/p20_2.patch
             git apply /tmp/p20_2.patch
             CHANGED="$(git status --short | wc -l | tr -d ' ')"
-            test "$CHANGED" = "31"
+            test "$CHANGED" = "35"
             git status --short
           )
 
       - name: Verify reconstructed P20.2 before packaging
         working-directory: .p20candidate/kairos_p76
+        shell: bash
         run: |
           set -euo pipefail
           npm ci
           test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
+          npm ls lightweight-charts --depth=0
           npm run verify:p20:2-saved-analysis-persistence-foundation
           npm run typecheck
           npm run build
-          npm run verify:p20:1-saved-analysis-contract-foundation
-          npm run verify:p19:7-risk-reward-tool-system-closure
-          npm run verify:p18:60-drawing-tools-system-closure
-          npm run verify:p14:9-trade-visualizer-system-closure
-          npm run verify:p11:calculation-brain-closure
-          npm run verify:p1
-          npx vitest run
+          npm test
+          node - <<'NODE'
+          const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
+          const p=JSON.parse(readFileSync('package.json')); const s=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:p'));
+          for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:16-chart-engine-system-closure','verify:p18:60-drawing-tools-system-closure','verify:p19:7-risk-reward-tool-system-closure','verify:p20:1-saved-analysis-contract-foundation','verify:p20:2-saved-analysis-persistence-foundation']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
+          for(const x of s){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
+          NODE
+          npm run verify:static
 
       - name: Restore clean package boundary
         shell: bash
@@ -221,11 +94,13 @@ jobs:
           ROOT=.p20candidate/kairos_p76
           rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite"
           find "$ROOT" -type f \( -name '*.tsbuildinfo' -o -name '*.log' \) -delete
-          test "$(cd "$ROOT" && git status --short | wc -l | tr -d ' ')" = "31"
+          test "$(cd "$ROOT" && git status --short | wc -l | tr -d ' ')" = "35"
           if find "$ROOT" -type d \( -name node_modules -o -name dist -o -name coverage -o -name .vite \) -print -quit | grep -q .; then
             echo 'forbidden generated directory remains'
             exit 1
           fi
+          rm -rf "$ROOT/.git"
+          test ! -e "$ROOT/.git"
 
       - name: Package and commit P20.2 candidate
         shell: bash
@@ -235,6 +110,11 @@ jobs:
           (cd .p20candidate && zip -qr "../$OUT_ZIP" kairos_p76)
           unzip -t "$OUT_ZIP"
           sha256sum "$OUT_ZIP"
+          test "$(unzip -Z1 "$OUT_ZIP" | sed -n '1p' | cut -d/ -f1)" = "kairos_p76"
+          if unzip -Z1 "$OUT_ZIP" | grep -Eq '(^|/)(node_modules|dist|coverage|\.vite|\.git)(/|$)|\.tsbuildinfo$'; then
+            echo 'forbidden package residue detected'
+            exit 1
+          fi
           git config user.name 'kairos-autonomous-bridge'
           git config user.email 'actions@users.noreply.github.com'
           git add "$OUT_ZIP"
