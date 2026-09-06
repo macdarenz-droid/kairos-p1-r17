@@ -1,0 +1,362 @@
+name: Kairos P19.6 Deterministic Reconstruction Bridge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/p19-6-reconstruct.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reconstruct:
+    runs-on: ubuntu-24.04
+    env:
+      BASE_ZIP: KAIROS_P19_5_RISK_REWARD_CHART_LOGICAL_PLACEMENT_PROJECTION_CANDIDATE_2026-09-06.zip
+      OUT_ZIP: KAIROS_P19_6_RISK_REWARD_CHART_LOGICAL_OBJECT_PROJECTION_CANDIDATE_2026-09-06.zip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+
+      - name: Pin npm
+        run: |
+          npm install --global npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+
+      - name: Reconstruct P19.6 from canonical P19.5
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .p19base .p19candidate
+          mkdir .p19base .p19candidate
+          unzip -q "$BASE_ZIP" -d .p19base
+          cp -a .p19base/. .p19candidate/
+          ROOT=.p19candidate/kairos_p76
+          test -f "$ROOT/package.json"
+          test -f "$ROOT/src/application/risk-reward/riskRewardChartSemantics.ts"
+          test -f "$ROOT/src/app/riskRewardChartStyleProjection.ts"
+          test -f "$ROOT/src/app/riskRewardChartPlacementProjection.ts"
+          test -f "$ROOT/src/features/chart/chartRenderContract.ts"
+          test ! -f "$ROOT/src/app/index.ts"
+
+          cat > "$ROOT/src/app/riskRewardChartObjectProjection.ts" <<'TS'
+          import type { DecimalString, TradeSide } from '../domain/trades';
+          import type { RiskRewardChartSemantics } from '../application/risk-reward';
+          import type { ChartTimestamp } from '../features/chart';
+          import type { RiskRewardChartPlacementProjection } from './riskRewardChartPlacementProjection';
+          import type { RiskRewardChartStyleProjection } from './riskRewardChartStyleProjection';
+
+          export interface RiskRewardChartLogicalLevelSpan<
+            Role extends 'entry' | 'stop' | 'target',
+          > {
+            readonly role: Role;
+            readonly token: string;
+            readonly start: ChartTimestamp;
+            readonly end: ChartTimestamp;
+            readonly price: DecimalString;
+          }
+
+          export interface RiskRewardChartLogicalZone<Role extends 'risk' | 'reward'> {
+            readonly role: Role;
+            readonly token: string;
+            readonly start: ChartTimestamp;
+            readonly end: ChartTimestamp;
+            readonly from: DecimalString;
+            readonly to: DecimalString;
+          }
+
+          export interface RiskRewardChartObjectProjection {
+            readonly id: RiskRewardChartSemantics['id'];
+            readonly side: TradeSide;
+            readonly levels: {
+              readonly entry: RiskRewardChartLogicalLevelSpan<'entry'>;
+              readonly stop: RiskRewardChartLogicalLevelSpan<'stop'>;
+              readonly target: RiskRewardChartLogicalLevelSpan<'target'>;
+            };
+            readonly zones: {
+              readonly risk: RiskRewardChartLogicalZone<'risk'>;
+              readonly reward: RiskRewardChartLogicalZone<'reward'>;
+            };
+          }
+
+          export function projectRiskRewardChartObject(
+            semantics: RiskRewardChartSemantics,
+            style: RiskRewardChartStyleProjection,
+            placement: RiskRewardChartPlacementProjection,
+          ): RiskRewardChartObjectProjection {
+            return {
+              id: semantics.id,
+              side: semantics.side,
+              levels: {
+                entry: {
+                  role: style.entry.role,
+                  token: style.entry.token,
+                  start: placement.start,
+                  end: placement.end,
+                  price: semantics.levels.entry.price,
+                },
+                stop: {
+                  role: style.stop.role,
+                  token: style.stop.token,
+                  start: placement.start,
+                  end: placement.end,
+                  price: semantics.levels.stop.price,
+                },
+                target: {
+                  role: style.target.role,
+                  token: style.target.token,
+                  start: placement.start,
+                  end: placement.end,
+                  price: semantics.levels.target.price,
+                },
+              },
+              zones: {
+                risk: {
+                  role: style.risk.role,
+                  token: style.risk.token,
+                  start: placement.start,
+                  end: placement.end,
+                  from: semantics.zones.risk.from,
+                  to: semantics.zones.risk.to,
+                },
+                reward: {
+                  role: style.reward.role,
+                  token: style.reward.token,
+                  start: placement.start,
+                  end: placement.end,
+                  from: semantics.zones.reward.from,
+                  to: semantics.zones.reward.to,
+                },
+              },
+            };
+          }
+          TS
+
+          cat > "$ROOT/tests/risk-reward-chart-object-projection.test.ts" <<'TS'
+          import { describe, expect, it } from 'vitest';
+          import type { RiskRewardChartSemantics } from '../src/application/risk-reward';
+          import { projectRiskRewardChartObject } from '../src/app/riskRewardChartObjectProjection';
+          import type { RiskRewardChartPlacementProjection } from '../src/app/riskRewardChartPlacementProjection';
+          import type { RiskRewardChartStyleProjection } from '../src/app/riskRewardChartStyleProjection';
+          import { parsePositiveDecimalString } from '../src/domain/trades';
+
+          function decimal(value: string) {
+            const parsed = parsePositiveDecimalString(value);
+            if (!parsed.ok) throw new Error(`invalid test decimal: ${value}`);
+            return parsed.value;
+          }
+
+          const semantics: RiskRewardChartSemantics = {
+            id: 'risk-reward-object-projection',
+            side: 'long',
+            levels: {
+              entry: { role: 'entry', price: decimal('100') },
+              stop: { role: 'stop', price: decimal('90') },
+              target: { role: 'target', price: decimal('120') },
+            },
+            zones: {
+              risk: { role: 'risk', from: decimal('100'), to: decimal('90') },
+              reward: { role: 'reward', from: decimal('100'), to: decimal('120') },
+            },
+          };
+
+          const style: RiskRewardChartStyleProjection = {
+            entry: { role: 'entry', token: 'var(--trade-entry)' },
+            stop: { role: 'stop', token: 'var(--trade-stop)' },
+            target: { role: 'target', token: 'var(--trade-target)' },
+            risk: { role: 'risk', token: 'var(--trade-risk-zone)' },
+            reward: { role: 'reward', token: 'var(--trade-reward-zone)' },
+          };
+
+          const placement: RiskRewardChartPlacementProjection = {
+            id: semantics.id,
+            start: '2026-09-06T10:00:00Z',
+            end: '2026-09-06T11:00:00Z',
+          };
+
+          describe('P19.6 Risk/Reward provider-neutral logical chart-object projection', () => {
+            it('composes level spans from authoritative semantic prices, style roles/tokens, and logical placement', () => {
+              expect(projectRiskRewardChartObject(semantics, style, placement)).toMatchObject({
+                id: semantics.id,
+                side: 'long',
+                levels: {
+                  entry: { role: 'entry', token: style.entry.token, start: placement.start, end: placement.end, price: semantics.levels.entry.price },
+                  stop: { role: 'stop', token: style.stop.token, start: placement.start, end: placement.end, price: semantics.levels.stop.price },
+                  target: { role: 'target', token: style.target.token, start: placement.start, end: placement.end, price: semantics.levels.target.price },
+                },
+              });
+            });
+
+            it('composes risk/reward logical rectangles without recomputing or normalizing semantic zone bounds', () => {
+              expect(projectRiskRewardChartObject(semantics, style, placement).zones).toEqual({
+                risk: {
+                  role: 'risk', token: style.risk.token, start: placement.start, end: placement.end,
+                  from: semantics.zones.risk.from, to: semantics.zones.risk.to,
+                },
+                reward: {
+                  role: 'reward', token: style.reward.token, start: placement.start, end: placement.end,
+                  from: semantics.zones.reward.from, to: semantics.zones.reward.to,
+                },
+              });
+            });
+          });
+          TS
+
+          cat > "$ROOT/scripts/verify-p19-6-risk-reward-chart-logical-object-projection.mjs" <<'JS'
+          import { readFileSync } from 'node:fs';
+
+          const source = readFileSync(new URL('../src/app/riskRewardChartObjectProjection.ts', import.meta.url), 'utf8');
+          const test = readFileSync(new URL('../tests/risk-reward-chart-object-projection.test.ts', import.meta.url), 'utf8');
+
+          for (const token of [
+            "import type { DecimalString, TradeSide } from '../domain/trades'",
+            "import type { RiskRewardChartSemantics } from '../application/risk-reward'",
+            "import type { ChartTimestamp } from '../features/chart'",
+            "import type { RiskRewardChartPlacementProjection } from './riskRewardChartPlacementProjection'",
+            "import type { RiskRewardChartStyleProjection } from './riskRewardChartStyleProjection'",
+            'export interface RiskRewardChartLogicalLevelSpan',
+            "Role extends 'entry' | 'stop' | 'target'",
+            "export interface RiskRewardChartLogicalZone<Role extends 'risk' | 'reward'>",
+            'export interface RiskRewardChartObjectProjection',
+            'export function projectRiskRewardChartObject',
+            'side: semantics.side',
+            'role: style.entry.role',
+            'token: style.entry.token',
+            'start: placement.start',
+            'end: placement.end',
+            'price: semantics.levels.entry.price',
+            'from: semantics.zones.risk.from',
+            'to: semantics.zones.reward.to',
+          ]) {
+            if (!source.includes(token)) throw new Error(`P19.6 logical object projection missing: ${token}`);
+          }
+
+          for (const forbidden of [
+            'lightweight-charts', 'ChartDrawing', 'IndexedDB', 'Dexie', 'localStorage',
+            'fetch(', 'WebSocket', 'calculateTradeMetrics', 'calculateRisk', 'calculateRMultiple',
+            'Math.min', 'Math.max', 'new Date(', 'Date.parse', '.sort(', 'localeCompare(',
+            'parseInt(', 'parseFloat(', 'Number(', 'document.', 'window.', '.applyOptions(',
+            'addSeries(', 'createChart(', 'setData(', 'update(', 'priceToCoordinate(',
+          ]) {
+            if (source.includes(forbidden)) throw new Error(`P19.6 logical object projection owns forbidden concern: ${forbidden}`);
+          }
+          if (/(#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\()/.test(source)) {
+            throw new Error('P19.6 logical object projection hard-codes a visual color value');
+          }
+
+          for (const token of [
+            'composes level spans from authoritative semantic prices, style roles/tokens, and logical placement',
+            'composes risk/reward logical rectangles without recomputing or normalizing semantic zone bounds',
+            'from: semantics.zones.risk.from',
+            'to: semantics.zones.reward.to',
+          ]) {
+            if (!test.includes(token)) throw new Error(`P19.6 focused test missing: ${token}`);
+          }
+
+          console.log('P19.6 Risk/Reward logical chart-object projection verification passed.');
+          JS
+
+          cat > "$ROOT/KAIROS_P19_6_RISK_REWARD_CHART_LOGICAL_OBJECT_PROJECTION_REPORT_2026-09-06.md" <<'MD'
+          # KAIROS P19.6 — Risk/Reward Chart Logical Object Projection
+
+          ## Authority
+          Base: canonical P19.5 Risk/Reward Chart Logical Placement Projection, `Kairos Controlled Roadmap Gate` run #278 / `34016854057`.
+
+          ## Scope
+          Adds one P19-owned app-boundary provider-neutral logical chart-object projection. Entry/stop/target become horizontal logical spans using canonical P19 semantic prices, P19.4 semantic style references, and P19.5 logical start/end. Risk/reward become logical rectangles using the same logical extent and canonical semantic zone bounds.
+
+          ## Ownership
+          P19 owns Risk/Reward meaning and logical composition. P18 remains generic chart drawing/provider infrastructure. P11 retains calculation ownership, P14 retains journal/execution truth, P20 retains later Saved Analysis persistence, and P2/P3 retain semantic token values.
+
+          ## Non-scope
+          No provider/Lightweight Charts production APIs, renderer-number conversion, pixels/screen geometry, P18 contract widening, DOM/UI/CSS, interaction/editing, P20 persistence, P14 mutation, P11 math duplication, timestamp/price normalization or order validation, hard-coded colors, or duplicate semantic/style/placement ownership.
+          MD
+
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const p='.p19candidate/kairos_p76/package.json';
+          const j=JSON.parse(fs.readFileSync(p,'utf8'));
+          j.scripts||={};
+          j.scripts['verify:p19:6-risk-reward-chart-logical-object-projection']='node scripts/verify-p19-6-risk-reward-chart-logical-object-projection.mjs';
+          fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');
+          NODE
+
+          python - <<'PY'
+          from pathlib import Path
+          a={str(p.relative_to(Path('.p19base/kairos_p76'))):p.read_bytes() for p in Path('.p19base/kairos_p76').rglob('*') if p.is_file()}
+          b={str(p.relative_to(Path('.p19candidate/kairos_p76'))):p.read_bytes() for p in Path('.p19candidate/kairos_p76').rglob('*') if p.is_file()}
+          changed={p for p in a.keys()|b.keys() if a.get(p)!=b.get(p)}
+          expected={
+            'KAIROS_P19_6_RISK_REWARD_CHART_LOGICAL_OBJECT_PROJECTION_REPORT_2026-09-06.md',
+            'package.json',
+            'scripts/verify-p19-6-risk-reward-chart-logical-object-projection.mjs',
+            'src/app/riskRewardChartObjectProjection.ts',
+            'tests/risk-reward-chart-object-projection.test.ts',
+          }
+          print('\n'.join(sorted(changed)))
+          assert changed==expected,(sorted(changed-expected),sorted(expected-changed))
+          PY
+
+      - name: Verify reconstructed P19.6 before packaging
+        working-directory: .p19candidate/kairos_p76
+        run: |
+          npm ci
+          test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
+          npm run verify:p19:6-risk-reward-chart-logical-object-projection
+          npx vitest run tests/risk-reward-chart-object-projection.test.ts tests/risk-reward-chart-placement-projection.test.ts tests/risk-reward-chart-style-projection.test.ts tests/risk-reward-chart-semantics.test.ts tests/risk-reward-zone-semantics.test.ts tests/risk-reward-analysis-contract.test.ts
+          npm run typecheck
+          npm run build
+          npm run verify:p19:5-risk-reward-chart-logical-placement-projection
+          npm run verify:p19:4-risk-reward-chart-semantic-style-projection
+          npm run verify:p19:3-risk-reward-chart-composition-semantic-contract
+          npm run verify:p19:2-risk-reward-zone-semantics-projection
+          npm run verify:p19:1-risk-reward-analysis-contract-foundation
+          npm run verify:p18:60-drawing-tools-system-closure
+          npm run verify:p14:9-trade-visualizer-system-closure
+          npm run verify:p11:calculation-brain-closure
+          npm run verify:p1
+
+      - name: Restore clean package boundary after verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=.p19candidate/kairos_p76
+          rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite"
+          find "$ROOT" -type f \( -name '*.tsbuildinfo' -o -name '*.log' \) -delete
+          python - <<'PY'
+          from pathlib import Path
+          a={str(p.relative_to(Path('.p19base/kairos_p76'))):p.read_bytes() for p in Path('.p19base/kairos_p76').rglob('*') if p.is_file()}
+          b={str(p.relative_to(Path('.p19candidate/kairos_p76'))):p.read_bytes() for p in Path('.p19candidate/kairos_p76').rglob('*') if p.is_file()}
+          changed={p for p in a.keys()|b.keys() if a.get(p)!=b.get(p)}
+          expected={
+            'KAIROS_P19_6_RISK_REWARD_CHART_LOGICAL_OBJECT_PROJECTION_REPORT_2026-09-06.md',
+            'package.json',
+            'scripts/verify-p19-6-risk-reward-chart-logical-object-projection.mjs',
+            'src/app/riskRewardChartObjectProjection.ts',
+            'tests/risk-reward-chart-object-projection.test.ts',
+          }
+          assert changed==expected,(sorted(changed-expected),sorted(expected-changed))
+          root=Path('.p19candidate/kairos_p76')
+          forbidden=[]
+          for name in ['node_modules','dist','coverage','.vite']:
+            if any(p.name==name for p in root.rglob('*')): forbidden.append(name)
+          if forbidden: raise SystemExit(f'forbidden generated directories remain: {forbidden}')
+          PY
+
+      - name: Package and commit P19.6 candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f "$OUT_ZIP"
+          (cd .p19candidate && zip -qr "../$OUT_ZIP" kairos_p76)
+          unzip -t "$OUT_ZIP"
+          sha256sum "$OUT_ZIP"
+          git config user.name 'kairos-autonomous-bridge'
+          git config user.email 'actions@users.noreply.github.com'
+          git add "$OUT_ZIP"
+          git commit -m 'Build P19.6 Risk Reward chart logical object projection candidate'
+          git push
