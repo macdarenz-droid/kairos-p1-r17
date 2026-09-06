@@ -12,15 +12,15 @@ Repository `macdarenz-droid/kairos-p1-r17`; engineering `main`; continuity `kair
 AFK/autonomous mode is owned by enabled recurring `Kairos Relay Supervisor [ACTIVE]` under V16. Scheduled runtime cannot create child automations, so active `Kairos Fast Continuation` reschedules itself about 10 minutes forward; hourly supervisor is dead-man recovery. Execution lease protects repository/docs mutation.
 
 ## Roadmap / GOLDEN
-P18 CLOSED; P19 CLOSED; P20 CLOSED.
+P18 CLOSED; P19 CLOSED; P20 CLOSED. P21 OPEN through P21.1.
 
-Latest canonical GOLDEN is **P20.5 — Saved Analysis SYSTEM CLOSURE** via `Kairos Controlled Roadmap Gate` #285 / run `34059034331`, job `101556113020`, exact head `a88b2d480ed0e8ae5cb571ead97a91d36693c4b0`, completed SUCCESS on 2026-09-07.
+Latest canonical GOLDEN is **P21.1 — Home Dashboard Route Ownership Foundation** via `Kairos Controlled Roadmap Gate` #286 / run `34061840453`, job `101563628073`, exact head `13d55093a569a156f316ccb848e6bd84e4e437ea`, completed SUCCESS on 2026-09-07.
 
-Every required canonical stage succeeded: exact P20.4→P20.5 four-file closure scope, deterministic install, exact Lightweight Charts 5.2.1 dependency proof, production TypeScript compilation/build, dedicated P20.5 closure verifier/runtime, full unit regression, full controlled-roadmap regression through P20.5, historical closures, and both artifact uploads.
+Every required canonical stage succeeded: exact P20.5→P21.1 five-file scope, deterministic install, exact Lightweight Charts 5.2.1 dependency proof, production TypeScript compilation/build, dedicated P21.1 Home Dashboard route-ownership verifier/runtime, full unit regression, full controlled-roadmap regression through P21.1, historical closures, and both artifact uploads.
 
 Exact-run canonical artifacts:
-- `KAIROS_CURRENT_CANDIDATE` id `9996997282`, size 1,167,501 bytes, digest `sha256:adf73735e84fe2bc79a0651fe14d76f2ee95860c1165f5da67c9337db9bfd6cd`.
-- `KAIROS_GATE_EVIDENCE` id `9996997437`, size 1,003 bytes, digest `sha256:869936a9c79813fd93e330c2d94bcb18f2ad5c08671bcf84f32e7939c282d8aa`.
+- `KAIROS_CURRENT_CANDIDATE` id `9997837809`, size 1,169,775 bytes, digest `sha256:801b75beb1ed2bc16d13e2fa74a6905441652cdbc3ff66154abe6612894fdd17`.
+- `KAIROS_GATE_EVIDENCE` id `9997837954`, size 973 bytes, digest `sha256:829a2cf8118b04c59eb8cd3ca82c713f6acb0ad5f7445d622bd0175347524f9b`.
 Both are tied to exact canonical head and unexpired.
 
 ## Process log — 2026-09-06T20:55Z — token W16-RECOVERY-20260907T0556-AEST-H9Q4
@@ -63,5 +63,14 @@ With the execution lease reverified and the helper fully successful, engineering
 
 Fresh Actions proves this retarget triggered exact canonical `Kairos Controlled Roadmap Gate` #286 / run `34061840453` on exact head `13d55093a569a156f316ccb848e6bd84e4e437ea`. Exact authoritative job `verify-current-candidate` id `101563628073` is IN_PROGRESS. At last observation checkout had passed and setup-node was in progress; exact-scope/install/dependency/typecheck/build/P21.1 verifier/full unit/full roadmap/historical/artifact stages were pending. This is now the sole active chain. No competing repository/docs/candidate/helper/P21.2/Bubble Map/transition mutation is allowed while #286 is queued/in progress.
 
+## Process log — 2026-09-06T21:55Z — token W16-RECOVERY-20260907T0556-AEST-H9Q4
+Fresh canonical re-proof proves exact `Kairos Controlled Roadmap Gate` #286 / run `34061840453`, authoritative job `verify-current-candidate` `101563628073`, completed full SUCCESS on exact head `13d55093a569a156f316ccb848e6bd84e4e437ea`. Every required stage passed: exact P20.5→P21.1 five-file scope, deterministic install, exact Lightweight Charts 5.2.1 proof, production TypeScript compilation/build, dedicated P21.1 route-ownership verifier/runtime, full unit regression, full controlled-roadmap regression through P21.1, historical closures, and both artifact uploads.
+
+Exact canonical artifacts were fetched for this run: `KAIROS_CURRENT_CANDIDATE` `9997837809`, 1,169,775 bytes, digest `sha256:801b75beb1ed2bc16d13e2fa74a6905441652cdbc3ff66154abe6612894fdd17`; `KAIROS_GATE_EVIDENCE` `9997837954`, 973 bytes, digest `sha256:829a2cf8118b04c59eb8cd3ca82c713f6acb0ad5f7445d622bd0175347524f9b`. Both bind to exact head `13d55093a569a156f316ccb848e6bd84e4e437ea`. P21.1 is therefore promoted as the latest canonical GOLDEN. P21 remains OPEN.
+
+Mandatory living-doc checkpoint completed on engineering `main` commit `479759603f72b2aa4e0230e65be287b3635f82cd` (`Record canonical P21.1 Home dashboard route ownership`). `docs/KAIROS_ARCHITECTURE_MAP.md` now records P21.1 as Home Dashboard route presentation/composition ownership on the existing `/` route, preserves P8 `AppShell`/navigation authority, records exact gate/artifact evidence, and explicitly excludes Bubble Map metrics/geometry, live/provider ownership, new persistence/query/calculation ownership, Saved Analysis CRUD, P22 behavior and full transition implementation. The approved premium transition concept remains a later presentation-only seam and may never own or delay authoritative route/navigation/data/persistence/calculation/chart/Saved Analysis/dashboard-selection truth.
+
+Fresh main after that checkpoint is exactly `479759603f72b2aa4e0230e65be287b3635f82cd`. Fresh Actions still shows #286 as the latest canonical `Kairos Controlled Roadmap Gate`; no competing canonical gate was triggered by the docs-only checkpoint.
+
 ## Next safe action
-Monitor exact canonical gate #286 / run `34061840453`, job `101563628073`. If SUCCESS, verify every required stage and both exact-run canonical artifacts before promoting P21.1, then perform the mandatory living architecture-map/process-history checkpoint and source-prove exactly one next P21 responsibility. If FAIL, fetch the exact failed step/log and classify candidate-vs-gate from evidence; P20.5 remains GOLDEN. Do not broaden P21 scope while P21.1 is unresolved.
+P21.1 is canonical GOLDEN and P21 is OPEN. Before any P21.2 implementation, re-read controlling roadmap and exact P21.1 canonical artifact/source, inspect current Home/dashboard/navigation owners plus existing journal/provider consumers, and prove exactly one smallest dependency-safe next P21 Home Dashboard / Bubble Map responsibility and explicit non-scope. Do not infer Bubble Map metrics, market subscription, dashboard query/calculation ownership, or transition implementation from the phase name. No P21.2 code/candidate/gate mutation until that source proof is complete.
