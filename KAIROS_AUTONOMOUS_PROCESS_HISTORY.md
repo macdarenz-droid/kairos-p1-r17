@@ -56,148 +56,179 @@ Fresh main SHA at this snapshot: `3a67408a9347f8d578eeab051c70dbca4395f58c`
 
 Main commit message: `Retrigger canonical P18.60 gate for repaired candidate`
 
-Current roadmap phase: **P18 — Drawing Tools**
+Roadmap state: **P18 Drawing Tools CLOSED by explicit canonical system-closure PASS; P19 Risk/Reward is NEXT and may now be traced/scoped.**
 
-Current active candidate: **P18.60 — Drawing Tools System Closure**
-
-Latest full canonical PASS / GOLDEN known at this snapshot:
-- P18.59
-- canonical workflow: `Kairos Controlled Roadmap Gate`
-- run #270
-- run ID `33988215113`
-- conclusion: **SUCCESS**
-
-Latest completed canonical P18.60 result:
-- run #272
-- run ID `33990305062`
-- conclusion: **FAILURE**
-- failure occurred at exact controlled P18.60 scope before install/build/test stages.
-
-Current canonical P18.60 run:
+Latest full canonical PASS / GOLDEN:
+- candidate: **P18.60 — Drawing Tools System Closure**
+- workflow: `Kairos Controlled Roadmap Gate`
+- path: `.github/workflows/kairos-gate.yml`
+- job: `verify-current-candidate`
 - run #273
 - run ID `34008964239`
 - job ID `101421261744`
-- workflow: `Kairos Controlled Roadmap Gate`
-- job: `verify-current-candidate`
-- head SHA: `3a67408a9347f8d578eeab051c70dbca4395f58c`
-- status at latest observation: **IN PROGRESS**
-- passed stages observed so far: setup/checkout, Node setup, npm 10.9.2 verification, base/candidate extraction, exact P18.60 controlled scope, deterministic `npm ci`, exact Lightweight Charts 5.2.1 dependency proof, production TypeScript compilation.
-- production build was in progress at the latest observation.
-- no canonical PASS is claimed until every required stage and both required artifacts are verified.
-
-Latest P18.60 helper/reconstruction result:
-- workflow: `Kairos P18.60 Deterministic Reconstruction Bridge`
-- run #6
-- run ID `34007925909`
-- head SHA `4fa1d639895d5a275f628d3b112c57cac8db01b5`
+- head SHA `3a67408a9347f8d578eeab051c70dbca4395f58c`
+- status: **COMPLETED**
 - conclusion: **SUCCESS**
-- classification: **NON-CANONICAL helper success only**
 
-Current repaired P18.60 candidate at `main`:
-- file: `KAIROS_P18_60_DRAWING_TOOLS_SYSTEM_CLOSURE_CANDIDATE_2026-09-06.zip`
-- Git blob: `753bac26fce84c25a40a89a1469072bc17a26ab2`
-- size: **1,304,443 bytes**
+Canonical #273 required stages actually observed SUCCESS:
+- setup / checkout / Node setup;
+- npm 10.9.2 verification;
+- authoritative base + candidate extraction;
+- exact controlled P18.60 closure scope from authoritative P18.59;
+- deterministic `npm ci`;
+- exact Lightweight Charts 5.2.1 dependency proof;
+- production TypeScript compilation;
+- production build;
+- dedicated P18.60 Drawing Tools system-closure verifier/runtime;
+- full unit regression;
+- full controlled roadmap regression through P18.60;
+- P18.60 through P17 chart regressions;
+- historical closures;
+- candidate upload;
+- gate-evidence upload;
+- job completion.
 
-Authoritative P18.59 candidate comparison:
-- Git blob: `dd5f5f909213955e667a54be0aa07bbde9cd2aec`
-- size: **1,254,155 bytes**
+Canonical artifacts for exact run #273:
+- `KAIROS_CURRENT_CANDIDATE`
+  - artifact ID `9981944232`
+  - size `1,129,842` bytes
+  - digest `sha256:f6338506ec8b8e75965be0af00b3305289d0ffb53d24c4ba22eadbb5ccb94d87`
+  - head SHA `3a67408a9347f8d578eeab051c70dbca4395f58c`
+- `KAIROS_GATE_EVIDENCE`
+  - artifact ID `9981944404`
+  - size `898` bytes
+  - digest `sha256:feac7c1350cdbdfb26bcf9b327ab2bc43940643ada1848acddbf24ecaf62fd9a`
+  - head SHA `3a67408a9347f8d578eeab051c70dbca4395f58c`
+
+Previous authoritative base now superseded by P18.60 PASS:
+- P18.59 canonical run #270 / `33988215113` — SUCCESS.
+
+Prior failed P18.60 evidence retained for repair lineage:
+- run #272 / `33990305062` — FAILURE at exact controlled P18.60 scope before install/build/tests.
+
+Latest P18.60 helper/reconstruction lineage:
+- workflow: `Kairos P18.60 Deterministic Reconstruction Bridge`
+- helper run #6 / `34007925909` — SUCCESS, **NON-CANONICAL**
+- helper repair commit `4fa1d639895d5a275f628d3b112c57cac8db01b5`
+- repaired candidate main commit `42d8961c861b268cf1b406e96aad9ca40d893102`
+- candidate file `KAIROS_P18_60_DRAWING_TOOLS_SYSTEM_CLOSURE_CANDIDATE_2026-09-06.zip`
+- Git blob `753bac26fce84c25a40a89a1469072bc17a26ab2`
+- size `1,304,443` bytes.
+
+## P18 closure / P19 boundary now proven
+
+Fresh P18.60 closure source states:
+- P18 owns generic chart drawing and interaction machinery: drawing lifecycle, projection/rendering, hover/hit testing, click evidence, selection, editing/deletion interaction infrastructure, and provider plumbing.
+- P18 does **not** own Risk/Reward business truth, journal execution truth, or later persistence semantics.
+- P19 may consume P18 generic drawing machinery while owning Risk/Reward meaning and composition.
+
+Controlling handoff requires explicit P18 SYSTEM CLOSURE canonical PASS before P19. That condition is now satisfied by canonical #273.
+
+P19 ownership constraints carried forward:
+- P19 owns actual Risk/Reward object/semantics and its composition.
+- Reward/target zone is conceptually separate from risk/stop zone.
+- P19 must stay separate from historical execution markers and must never rewrite journal/execution truth when RR is moved/resized/deleted.
+- P18 generic drawing owners remain generic; do not migrate RR business truth backward into P18.
+- P14 execution/trade visualizer truth remains authoritative for logged/planned trade facts.
+- persistence remains outside this first P19 transition unless fresh roadmap/source explicitly establishes otherwise.
+
+Architecture-map finding:
+- `docs/KAIROS_ARCHITECTURE_MAP.md` says it must be updated at every phase-closure gate from actual canonical evidence.
+- Its current P18 ledger is still explicitly audited only through P18.41, so it is stale relative to the now-canonical P18.60 closure.
+- The map is descriptive, not authority. Fresh source/canonical evidence must drive any closure reconciliation.
 
 ## Proven findings
 
 1. A prior P18.60 reconstruction produced a candidate around **48.48 MB**, compared with P18.59 around **1.254 MB**.
-2. Canonical run #272 extracted the candidate but failed the exact controlled P18.60 scope check before deterministic install/build/tests. Therefore that failure was not evidence of an npm/build defect.
-3. Source inspection traced the oversized package to reconstruction packaging: generated install/build output was left in the candidate tree before ZIP packaging.
-4. Helper repair commit `4fa1d639895d5a275f628d3b112c57cac8db01b5` changed the packaging boundary to remove generated output and re-prove exact delta before packaging.
-5. Helper run #6 (`34007925909`) completed successfully and committed the repaired candidate to `main` at `42d8961c861b268cf1b406e96aad9ca40d893102`.
-6. The repaired P18.60 ZIP is now **1,304,443 bytes**, close to the P18.59 baseline rather than ~48.48 MB. This proves the package-bloat symptom is removed; it does **not** itself constitute canonical PASS.
-7. The reconstructed candidate commit did not start the push-triggered canonical gate because `.github/workflows/p18-60-reconstruct.yml` commits/pushes using the default Actions checkout token (`GITHUB_TOKEN`). GitHub's official `GITHUB_TOKEN` documentation states that events caused by the repository `GITHUB_TOKEN` do not create another workflow run, except `workflow_dispatch` and `repository_dispatch`. Official reference: `https://docs.github.com/en/actions/security-for-github-actions/security-guides/automatic-token-authentication#using-the-github_token-in-a-workflow`.
-8. The canonical gate was already correctly targeted to P18.59 -> P18.60 and included both the candidate ZIP and gate file in its `push.paths`; therefore no semantic retarget was needed.
-9. A comment-only gate retrigger commit `3a67408a9347f8d578eeab051c70dbca4395f58c` successfully started canonical run #273 (`34008964239`).
-10. Run #273 has already passed the exact P18.60 scope check and deterministic install that the previous failed candidate did not survive, providing fresh evidence that the clean reconstruction addressed the prior packaging/scope failure. Final authority still depends on full canonical completion.
+2. Canonical run #272 failed the exact controlled P18.60 scope check before deterministic install/build/tests; it was not evidence of an npm/build defect.
+3. Source inspection traced the oversized package to reconstruction packaging: generated install/build output remained in the candidate tree before ZIP packaging.
+4. Helper repair commit `4fa1d639895d5a275f628d3b112c57cac8db01b5` cleaned generated output and re-proved exact delta at the packaging boundary.
+5. Helper run #6 completed successfully and committed repaired P18.60 at `42d8961c861b268cf1b406e96aad9ca40d893102`; helper success remained non-canonical.
+6. The repaired ZIP size `1,304,443` bytes removed the ~48.48 MB bloat symptom.
+7. The repaired helper commit did not start the push-triggered canonical gate because the helper used default Actions `GITHUB_TOKEN`; events caused by that token do not create another workflow run except explicit dispatch cases.
+8. The canonical gate was already correctly targeted P18.59 -> P18.60; no semantic retarget was needed.
+9. Comment-only gate retrigger commit `3a67408a9347f8d578eeab051c70dbca4395f58c` started canonical run #273 without weakening candidate semantics or gate checks.
+10. Canonical run #273 completed SUCCESS across every required stage and produced both required artifacts. **P18.60 is now GOLDEN and explicit P18 SYSTEM CLOSURE.**
+11. P19 Risk/Reward is now permitted by the roadmap, but no P19 implementation scope should be guessed. The first P19 slice must come from fresh source/owner/data-flow tracing.
 
 ## Methods already attempted / do not blindly repeat
 
-- Do not repeat the old deterministic reconstruction that packages generated `node_modules`, `dist`, caches, or other build output.
-- Do not classify P18.60 as an npm/build defect from #272; those downstream stages were not reached.
-- Do not treat helper #6 green status as canonical candidate PASS.
-- Do not rebuild or rerun the old helper simply because there is no newer canonical run.
-- Do not rely on a helper workflow's ordinary `GITHUB_TOKEN` push to start another push-triggered workflow; GitHub intentionally suppresses that workflow recursion. Explicit dispatch or an independently-authenticated/user-originated gate-only retrigger is required when appropriate.
-- P18.60 remains non-authoritative until run #273 (or a later exact canonical run) fully passes every required stage and artifacts.
+- Do not repeat reconstruction that packages generated `node_modules`, `dist`, caches, or other build output.
+- Do not classify #272 as an npm/build defect; those stages were not reached.
+- Do not treat helper green status as canonical candidate PASS.
+- Do not rebuild/rerun the old helper simply because a canonical run is absent.
+- Do not rely on ordinary Actions `GITHUB_TOKEN` pushes to recursively start a push-triggered canonical workflow.
+- Do not re-open P18 feature work after explicit P18.60 closure unless a new controlled amendment is evidence-required.
+- Do not jump straight into broad P19 RR UI, persistence, or journal/calculation changes. Trace ownership first and take one dependency-safe slice.
 
 ## Next safe action
 
-1. Monitor exact canonical run #273 / `34008964239`; perform **no competing repository engineering mutation** while it is queued/in-progress.
-2. Verify every required stage plus both `KAIROS_CURRENT_CANDIDATE` and `KAIROS_GATE_EVIDENCE` before promotion.
-3. If #273 FAILS, fetch exact failing step/log and classify candidate-vs-gate defect from evidence before repair.
-4. If #273 PASSES, promote P18.60 as GOLDEN and explicit P18 SYSTEM CLOSURE only after full stage/artifact verification; only then may roadmap/source tracing move to P19.
-5. Planned cadence: **12 minutes** while exact canonical run #273 is queued/in-progress.
+1. Re-prove fresh main and canonical #273 as latest full PASS/GOLDEN.
+2. Re-read controlling handoff P14/P18/P19 boundaries and P18.60 closure source.
+3. Reconcile the stale P18 architecture-map closure from actual P18.42-P18.60 evidence if the source is sufficient; do not invent missing rows/owners.
+4. Trace current source/data flow needed by P19 Risk/Reward and determine exactly **one first dependency-safe P19 owner/contract slice**.
+5. Keep P19 business truth separate from P18 generic machinery, P14 execution truth, P11 calculations, and later persistence ownership.
+6. Planned cadence: **3 minutes** during P19 transition research / architecture reconciliation / pre-gate work. Switch to **12 minutes only after an exact P19 candidate is verified uploaded and its exact canonical gate is queued/in-progress.**
 
 ---
 
 # PROCESS LOG
 
 ## 2026-09-06 — P18.60 canonical exact-scope failure established
-
-- Canonical run: #272 / `33990305062`
-- Result: FAIL
-- Observed boundary: exact controlled P18.60 closure-scope verification failed after extraction; downstream install/build/runtime/regression stages were not reached.
-- Consequence: P18.59 remained GOLDEN. Candidate defect vs gate defect required evidence rather than guessing.
+- Canonical run #272 / `33990305062`: FAIL.
+- Exact controlled P18.60 closure-scope verification failed after extraction; downstream install/build/runtime/regression stages were not reached.
+- P18.59 remained GOLDEN; defect classification required evidence.
 
 ## 2026-09-06 — Repeated reconstruction path rejected
-
-- Retry evidence showed the deterministic P18.60 scope-reconstruction approach had failed twice without canonical progress.
-- Anti-loop decision: do not repeat the identical method without materially new evidence.
-- New evidence: P18.60 ZIP was around 48.48 MB while P18.59 was around 1.254 MB.
-- Strategy change: investigate packaging/member contamination rather than keep rebuilding blindly.
+- Same deterministic P18.60 scope-reconstruction approach had failed twice without canonical progress.
+- New evidence: P18.60 ZIP ~48.48 MB versus P18.59 ~1.254 MB.
+- Strategy changed to packaging/member-contamination investigation instead of another blind rebuild.
 
 ## 2026-09-06 — Packaging root cause found and helper repaired
-
-- Root cause traced to generated install/build output remaining in the reconstruction tree before ZIP packaging.
-- Repair commit: `4fa1d639895d5a275f628d3b112c57cac8db01b5`
-- Change: clean generated output before packaging and assert exact delta again at the packaging boundary.
+- Generated install/build output remained in reconstruction tree before packaging.
+- Repair commit `4fa1d639895d5a275f628d3b112c57cac8db01b5` cleaned generated output and reasserted exact delta at packaging boundary.
 - Helper run #6 / `34007925909`: SUCCESS, non-canonical.
 
 ## 2026-09-06 — Clean P18.60 candidate reconstructed
-
-- New main SHA: `42d8961c861b268cf1b406e96aad9ca40d893102`
-- Candidate blob: `753bac26fce84c25a40a89a1469072bc17a26ab2`
-- Candidate size: 1,304,443 bytes.
-- P18.59 comparison size: 1,254,155 bytes.
-- Finding: prior package bloat is removed.
-- Remaining authority state: P18.59 canonical #270 remains GOLDEN; no newer canonical P18.60 PASS yet.
+- Main SHA became `42d8961c861b268cf1b406e96aad9ca40d893102`.
+- Candidate blob `753bac26fce84c25a40a89a1469072bc17a26ab2`, size `1,304,443` bytes.
+- Prior package bloat removed; P18.59 still remained authority until canonical gate.
 
 ## 2026-09-06 — Autonomous continuity-history system installed
-
-- User identified a cross-worker memory gap: workers can independently rediscover or repeat approaches when prior findings are only in ephemeral automation prompts/chat.
-- Decision: create this must-read process journal on isolated branch `kairos-autonomous-state` rather than `main`, so per-process continuity commits do not pollute the engineering head or intentionally trigger main-scoped Kairos workflows.
-- Required behavior going forward: every fast worker reads this history before action and writes back its process/findings/next-safe-action before reporting and releasing its lease.
+- User identified cross-worker memory loss/repeated-approach risk.
+- This journal was placed on isolated branch `kairos-autonomous-state` so continuity commits do not pollute engineering `main` or intentionally trigger its workflows.
+- All V8 workers/supervisor must read it before action and workers must write back after every process before report/lease release.
 
 ## 2026-09-06 — V8 supervisor/worker continuity contract activated
-
-- Process owner: live-chat controlled installation under execution lease `LIVECHAT-HISTORY-V1`.
-- Main SHA before/after this continuity-only process: `42d8961c861b268cf1b406e96aad9ca40d893102` / unchanged.
-- Canonical authority used: P18.59 run #270 / `33988215113` remains latest full PASS; P18.60 run #272 / `33990305062` remains failed evidence.
-- Fresh workflow evidence: helper run #6 / `34007925909` is SUCCESS but NON-CANONICAL; no newer canonical P18.60 run was observed in the latest Actions query.
-- Action: upgraded the hourly supervisor and fast-worker contract to V8 and made this repo history mandatory read-before-action / write-before-report continuity memory.
-- Verification actually observed: supervisor automation update succeeded; V8 contract automation update succeeded.
-- Engineering tests: none run by this continuity-policy process; no engineering code/candidate was changed.
-- Finding: richer repo-side history is required in addition to the compact Retry Ledger to prevent repeated discovery/approach loops across stateless one-time workers.
-- Next safe action: inspect the canonical gate trigger/target/scope against repaired main, then perform only the evidence-proven gate action needed to start the exact P18.60 canonical run.
-- Planned cadence: **3 minutes** until exact canonical gate queued/in-progress; then **12 minutes**.
+- Main remained `42d8961c861b268cf1b406e96aad9ca40d893102` during continuity-policy work.
+- P18.59 #270 remained canonical authority; #272 remained failed evidence; helper #6 remained non-canonical.
+- V8 made repo history mandatory continuity memory in addition to Retry Ledger.
+- Next action became exact gate-trigger investigation.
 
 ## 2026-09-06 — GITHUB_TOKEN recursion suppression diagnosed; canonical P18.60 run #273 started
+- Worker token `W-20260906-AFK-V8-S9K4`.
+- Main before: `42d8961c861b268cf1b406e96aad9ca40d893102`.
+- Main after gate-only retrigger: `3a67408a9347f8d578eeab051c70dbca4395f58c`.
+- Gate was already targeted P18.59 -> P18.60.
+- Reconstruction helper used default `GITHUB_TOKEN`; recursion suppression explained absence of a push-triggered canonical run.
+- Smallest action: non-semantic comment-only gate retrigger, no candidate/gate-contract weakening.
+- Canonical #273 / `34008964239`, job `101421261744`, started.
+- New failed-method fingerprint: `ACTIONS_GITHUB_TOKEN_PUSH_EXPECTED_TO_TRIGGER_PUSH_WORKFLOW`.
+- Cadence switched to 12 minutes for exact gate monitoring.
 
-- Worker token: `W-20260906-AFK-V8-S9K4`.
-- Main SHA before process: `42d8961c861b268cf1b406e96aad9ca40d893102`.
-- Main SHA after gate-only retrigger: `3a67408a9347f8d578eeab051c70dbca4395f58c`.
-- Canonical/GOLDEN evidence: P18.59 run #270 / `33988215113` remains latest full canonical PASS; P18.60 run #272 / `33990305062` is failed evidence only.
-- Investigation: inspected current canonical gate and reconstruction workflow. The gate already targeted P18.59 -> P18.60 correctly. Reconstruction workflow used Actions checkout/default `GITHUB_TOKEN` to commit/push repaired candidate.
-- Official behavior confirmed: GitHub suppresses new workflow runs from events caused by a repository `GITHUB_TOKEN` (except `workflow_dispatch` / `repository_dispatch`), explaining why repaired commit `42d8961c...` did not start the push-triggered canonical gate.
-- Smallest safe action: changed only the non-semantic explanatory comment in `.github/workflows/kairos-gate.yml` and committed `Retrigger canonical P18.60 gate for repaired candidate`. No candidate semantics or gate checks were weakened.
-- Verification observed: canonical `Kairos Controlled Roadmap Gate` run #273 / `34008964239`, job `verify-current-candidate` / `101421261744`, started on head `3a67408a...` and is IN PROGRESS.
-- Stages actually observed PASS so far: checkout/setup, npm 10.9.2, extraction, exact P18.60 closure scope, deterministic `npm ci`, exact Lightweight Charts 5.2.1 dependency, production TypeScript compilation. Production build was in progress at write-back time.
-- Engineering-test claim boundary: no final candidate PASS claimed; downstream build/verifiers/full units/full roadmap/P18->P17/historical closures/artifacts were not yet all complete at this snapshot.
-- New failed-method fingerprint: `ACTIONS_GITHUB_TOKEN_PUSH_EXPECTED_TO_TRIGGER_PUSH_WORKFLOW` — do not repeat this trigger assumption.
-- Unresolved state: canonical #273 must complete all required stages and both artifacts before P18.60 can become GOLDEN/P18 SYSTEM CLOSURE.
-- Next safe action: monitor exact run #273 only; no competing repo mutation while it is running.
-- Planned cadence: **12 minutes**.
+## 2026-09-06 — P18.60 canonical PASS / explicit P18 SYSTEM CLOSURE verified
+- Worker token: `W-20260906-P18-60-GATE273-V8-T4Q6`.
+- Main SHA before/after this monitoring process: `3a67408a9347f8d578eeab051c70dbca4395f58c` / unchanged.
+- Exact canonical authority: `Kairos Controlled Roadmap Gate` run #273 / `34008964239`, job `verify-current-candidate` / `101421261744`.
+- Result: **COMPLETED / SUCCESS**.
+- Verification actually observed: every required stage succeeded, including exact P18.60 scope, deterministic install, exact LWC dependency, TypeScript, production build, dedicated P18.60 closure runtime/verifier, full units, full controlled roadmap through P18.60, P18.60->P17 chart regressions, historical closures, and both artifact-upload steps.
+- Required artifacts verified for the exact run/head:
+  - `KAIROS_CURRENT_CANDIDATE` ID `9981944232`, `1,129,842` bytes, digest `sha256:f6338506ec8b8e75965be0af00b3305289d0ffb53d24c4ba22eadbb5ccb94d87`.
+  - `KAIROS_GATE_EVIDENCE` ID `9981944404`, `898` bytes, digest `sha256:feac7c1350cdbdfb26bcf9b327ab2bc43940643ada1848acddbf24ecaf62fd9a`.
+- Promotion: **P18.60 is now the latest canonical GOLDEN and explicit P18 Drawing Tools SYSTEM CLOSURE.** P18.59 is superseded as current authority but retained as historical base evidence.
+- Source/roadmap transition proof: P18.60 closure explicitly states P18 owns generic drawing/interaction machinery and P19 may consume it while owning Risk/Reward meaning/composition; controlling handoff requires exactly this P18 system closure before P19.
+- New finding: `docs/KAIROS_ARCHITECTURE_MAP.md` is descriptive and currently stale through P18.41; its own maintenance rule requires phase-closure update from actual canonical evidence.
+- Engineering mutation in this process: none on `main`; only this continuity-history write on `kairos-autonomous-state`.
+- Unresolved next work: evidence-based P18 closure-map reconciliation and first P19 Risk/Reward owner/contract slice trace. No P19 candidate is claimed yet.
+- Next safe action: move to P19 transition research/pre-gate mode and determine exactly one dependency-safe first slice from fresh source.
+- Planned cadence: **3 minutes**.
