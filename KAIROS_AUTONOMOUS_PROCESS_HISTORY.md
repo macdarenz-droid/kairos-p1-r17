@@ -5,140 +5,90 @@ Branch: `kairos-autonomous-state`
 Status: **NON-CANONICAL continuity memory only.** This file never overrides the controlling handoff, fresh canonical GitHub/GOLDEN, exact source/log evidence, or the canonical gate.
 
 ## MUST-READ / WRITE-BACK CONTRACT
-
 Before every Kairos autonomous decision: controlling handoff + explicit user rules -> roadmap/GOLDEN -> this history -> Retry Ledger -> fresh `main` + Actions -> exact canonical artifact/source/log/owner/data-flow evidence -> official research only where source is insufficient -> smallest evidence-backed action.
 
-After every meaningful autonomous process, update this file before any user-visible report and before lease release. Refresh CURRENT ACTIVE STATE and append a PROCESS LOG entry with worker token, main SHA before/after, canonical evidence, exact action, checks actually observed, findings/failed methods, unresolved gaps, next safe action, and planned 3/12-minute cadence. Refetch the latest blob before writing and merge rather than overwrite unseen entries.
+After every meaningful autonomous process, update this file before any user-visible report and before lease release. Refetch latest blob before writing; preserve newer entries. Record worker token, main SHA before/after, canonical evidence, exact action, checks actually observed, findings/failed methods, unresolved gaps, next safe action, and planned cadence.
 
 ---
 
 # CURRENT ACTIVE STATE
-
 Repository: `macdarenz-droid/kairos-p1-r17`
 Engineering branch: `main`
 Continuity branch: `kairos-autonomous-state`
 Supervisor: `Kairos Supervisor [ACTIVE]`
 Worker contract: `KAIROS-FAST-V8-2026-09-06`
-Fresh main SHA: `367a0f7071b60232590687c9899ca46ff5926bd4`
-Main message: `Retarget canonical gate to P19.1 Risk Reward semantic contract`
+Fresh engineering head observed for canonical P19.1: `367a0f7071b60232590687c9899ca46ff5926bd4`
 
-Roadmap: **P18 Drawing Tools is CLOSED by explicit canonical system-closure PASS. P19 Risk/Reward is ACTIVE.**
+Roadmap: **P18 Drawing Tools CLOSED. P19 Risk/Reward ACTIVE.**
 
-Latest full canonical PASS / GOLDEN remains until P19.1 finishes:
-- P18.60 — Drawing Tools System Closure
-- workflow `Kairos Controlled Roadmap Gate`
-- path `.github/workflows/kairos-gate.yml`
-- job `verify-current-candidate`
-- run #273 / `34008964239`
-- job `101421261744`
-- canonical head `3a67408a9347f8d578eeab051c70dbca4395f58c`
-- COMPLETED / SUCCESS
-- canonical candidate artifact `9981944232`, 1,129,842 bytes, `sha256:f6338506ec8b8e75965be0af00b3305289d0ffb53d24c4ba22eadbb5ccb94d87`
-- gate evidence artifact `9981944404`, 898 bytes, `sha256:feac7c1350cdbdfb26bcf9b327ab2bc43940643ada1848acddbf24ecaf62fd9a`
-
-Current canonical candidate chain:
-- P19.1 candidate: `KAIROS_P19_1_RISK_REWARD_ANALYSIS_CONTRACT_FOUNDATION_CANDIDATE_2026-09-06.zip`
-- candidate commit: `f7cabe864f7a7ee53a43e4955e66403c3799d509`
-- candidate blob: `527b2cf88140b74aea5973fd15cb5a2b67d9fdac`
-- candidate size: 1,308,022 bytes
-- helper run #1 / `34010522280`: COMPLETED / SUCCESS, **NON-CANONICAL**
-- helper job `reconstruct` / `101425424002`: all observed steps succeeded, including reconstruction, pre-package verification, clean-boundary restore, and candidate package/commit.
-- canonical gate retarget commit: `367a0f7071b60232590687c9899ca46ff5926bd4`
-- canonical `Kairos Controlled Roadmap Gate` run #274 / `34010682979`
-- canonical head: `367a0f7071b60232590687c9899ca46ff5926bd4`
-- status at last observation: **IN_PROGRESS**
-- while #274 is queued/in-progress, monitor only; no competing repository engineering mutation.
+## Latest full canonical PASS / GOLDEN
+P19.1 — Risk/Reward Analysis Semantic Contract Foundation.
+- workflow: `Kairos Controlled Roadmap Gate`
+- path: `.github/workflows/kairos-gate.yml`
+- job: `verify-current-candidate`
+- run #274 / `34010682979`
+- job `101425842320`
+- canonical head `367a0f7071b60232590687c9899ca46ff5926bd4`
+- result: **COMPLETED / SUCCESS**
+- every observed required stage succeeded: exact P19.1 scope from P18.60; deterministic install; exact Lightweight Charts dependency; TypeScript; production build; dedicated P19.1 verifier/runtime; full units; full controlled roadmap through P19.1; P18-through-P17 chart regressions; historical closures; candidate upload; gate-evidence upload.
+- `KAIROS_CURRENT_CANDIDATE`: artifact `9982448416`, 1,132,469 bytes, `sha256:b4391b47cf5b80545b0435a50bf92bd62b5b716321fd78d2759e69ec63a4c4bb`.
+- `KAIROS_GATE_EVIDENCE`: artifact `9982448567`, 863 bytes, `sha256:ce6bb43d5a0128636fde2ae4aa9d775fa581b7c6e70683615f9c7305d74a5016`.
+- P18.60 #273 is historical prior GOLDEN only.
 
 ## Ownership boundary
+P14 owns truthful trade visualization facts and journal/execution truth. P18 owns generic drawing/interaction/provider machinery. P19 owns the actual Risk/Reward analysis object/semantics and RR-specific chart composition. P11 owns calculation/R-multiple truth. P20 owns later saved-analysis persistence. Moving/resizing/deleting a later RR object must never rewrite historical execution/journal truth.
 
-P14 owns truthful trade visualization facts and journal/execution truth. P18 owns generic drawing/interaction/provider machinery. P19 owns the actual Risk/Reward analysis object/semantics and RR-specific chart composition. P11 remains calculation/R-multiple owner. P20 remains later saved-analysis persistence owner. Moving/resizing/deleting a later RR object must never rewrite historical execution/journal truth.
+## P19.1 established scope
+Canonical P19.1 established the provider-neutral RR semantic contract at `src/application/risk-reward/riskRewardAnalysisContract.ts`, reusing existing `TradeSide` and `DecimalString`. It intentionally did not own direction/order validation, RR ratio math, chart-time/span geometry, P18 adapter/composition, provider/render/UI, editing lifecycle, persistence/P20, journal/P14 writes, or P11 calculation truth.
 
-## P18 phase-closure architecture-map reconciliation
-
-`docs/KAIROS_ARCHITECTURE_MAP.md` is descriptive and must be updated from canonical evidence. Evidence supports P18.42-P18.60 closure ownership without inventing owners: P18.42 single-click selection composition; P18.43 selection presentation projection; P18.44 collection mutation; P18.45 deletion execution; P18.46 drawing-only refresh; P18.47 collection/presentation refresh coordination; P18.48 pure edit construction; P18.49R1 edit endpoint interaction semantics; P18.50 edit execution; P18.51R3 edit/presentation refresh; P18.52 deletion/presentation refresh; P18.53 deletion initiation; P18.54 edit initiation; P18.55 endpoint hit-test geometry; P18.56 endpoint-hit selection coordination; P18.57 endpoint click coordination; P18.58 one-click endpoint-edit wiring; P18.59 edit execution in same lifecycle with pre-click editing-state snapshot; P18.60 explicit system closure with no new runtime/business owner.
-
-The P19.1 candidate carries only evidence-proven closure wording corrections plus its controlled P19.1 row.
-
-## P19.1 canonical-artifact conventions
-
-Critical correction: sparse root-source visibility on `main` is not the complete canonical application source. The exact P18.60 canonical artifact `9981944232` contains `src/application/{journal,market-reference,trade-visualizer,trades,visual-pnl}`. Therefore `src/application/risk-reward/` is architecture-consistent in the actual GOLDEN candidate.
-
-Exact canonical precedents inspected:
-- `src/application/trade-visualizer/tradeVisualizerFacts.ts` reuses domain `DecimalString` and trade types without calculation ownership.
-- `src/application/trade-visualizer/index.ts` is a simple export barrel.
-- `tests/trade-visualizer-facts.test.ts` uses Vitest and domain parsers/typed fixtures.
-- `src/features/chart/chartDrawingContract.ts` remains trend-line-only; P19 must not widen P18.
-- `tests/chart-drawing-contract.test.ts` shows a first-slice identity-contract test.
-- `scripts/verify-p18-1-chart-drawing-contract-foundation.mjs` shows required/forbidden static verifier + barrel proof.
-- package scripts use `verify:p<phase>:<slice>-<slug>`.
-
-**P19.1 exact candidate intent:** provider-neutral Risk/Reward analysis semantic contract foundation at `src/application/risk-reward/riskRewardAnalysisContract.ts`, using existing `TradeSide` and `DecimalString` only.
-
-Exact seven-file candidate delta from canonical P18.60:
-- `KAIROS_P19_1_RISK_REWARD_ANALYSIS_CONTRACT_FOUNDATION_REPORT_2026-09-06.md`
-- `docs/KAIROS_ARCHITECTURE_MAP.md`
-- `package.json`
-- `scripts/verify-p19-1-risk-reward-analysis-contract-foundation.mjs`
-- `src/application/risk-reward/index.ts`
-- `src/application/risk-reward/riskRewardAnalysisContract.ts`
-- `tests/risk-reward-analysis-contract.test.ts`
-
-P19.1 non-scope: direction/order validation, RR ratio math, chart-time/span geometry, P18 adapter/composition, provider/render/UI, editing lifecycle, persistence/P20, journal/P14 writes, P11 calculation truth.
+## Next safe action
+Do **not** advance by patch number alone. Re-read controlling handoff, this history, Retry Ledger, exact P19.1 canonical artifact/source, and fresh GitHub. Trace the remaining P19 product responsibility from actual source/data flow: P19 must eventually provide a real RR analysis component and chart visualization with reward/target zone and risk/stop zone while preserving P14 execution truth, consuming P18 generic machinery, P11 calculations, and P2/P3 semantic styling. Determine exactly ONE smallest dependency-safe next P19 owner/contract slice from source evidence. No broad UI, persistence/P20, journal writes, P11 duplication, or P18 ownership rewrite. Cadence: ~3 minutes during transition/research/pre-gate; ~12 only after exact next candidate is uploaded and its canonical gate is queued/in-progress.
 
 ## Methods already attempted / do not blindly repeat
-
 - Never package generated `node_modules`, `dist`, caches, coverage, logs, or build residue.
 - Helper green != canonical PASS.
-- Do not rely on ordinary Actions `GITHUB_TOKEN` pushes to recursively trigger a push workflow; after helper candidate proof use a direct canonical gate-file update.
+- Do not rely on Actions `GITHUB_TOKEN` pushes to recursively trigger a push workflow; after helper candidate proof use an evidence-backed direct canonical gate trigger/update.
 - Do not reopen P18 after closure without a controlled amendment.
 - Do not jump to broad RR UI, P20 persistence, P11 calculation changes, P14 journal truth changes, or P18 `ChartDrawing` semantic expansion.
-- Do not treat sparse root-source visibility as equivalent to the exact canonical artifact source.
+- Do not treat sparse root-source visibility as equivalent to exact canonical artifact source.
 
 ---
 
 # PROCESS LOG
 
-## 2026-09-06 — P18.60 canonical exact-scope failure established
-#272 / `33990305062` failed exact scope before downstream install/build/tests. P18.59 remained GOLDEN.
+## 2026-09-06 — P18.60 exact-scope failure / repeated reconstruction rejected
+Canonical #272 failed exact scope. Two repeated reconstruction attempts produced no canonical progress; ~48.48 MB candidate vs ~1.254 MB prior GOLDEN redirected strategy to package contamination.
 
-## 2026-09-06 — repeated reconstruction rejected
-Two reconstruction attempts lacked canonical progress; oversized ~48.48 MB P18.60 vs ~1.254 MB P18.59 changed strategy to packaging contamination investigation.
+## 2026-09-06 — packaging root cause found / clean P18.60 reconstructed
+Generated install/build output remained before packaging. Helper repair `4fa1d639895d5a275f628d3b112c57cac8db01b5`; helper #6 / `34007925909` SUCCESS NON-CANONICAL. Clean P18.60 candidate blob `753bac26fce84c25a40a89a1469072bc17a26ab2`, 1,304,443 bytes.
 
-## 2026-09-06 — packaging root cause found / helper repaired
-Generated install/build output remained before packaging. Repair `4fa1d639895d5a275f628d3b112c57cac8db01b5`; helper #6 / `34007925909` SUCCESS NON-CANONICAL.
+## 2026-09-06 — autonomous continuity history + V8 installed
+User identified cross-worker repeated-method risk. This repo history became mandatory read/write continuity memory; supervisor/lease/retry model retained canonical separation.
 
-## 2026-09-06 — clean P18.60 reconstructed
-Main `42d8961c861b268cf1b406e96aad9ca40d893102`; candidate blob `753bac26fce84c25a40a89a1469072bc17a26ab2`, 1,304,443 bytes. P18.59 remained authority until canonical gate.
-
-## 2026-09-06 — autonomous continuity history + V8 continuity contract installed
-User identified cross-worker repeated-method risk. Repo history became mandatory read/write continuity memory; supervisor/lease/retry model retained canonical separation.
-
-## 2026-09-06 — GITHUB_TOKEN recursion suppression diagnosed; #273 started
-Worker `W-20260906-AFK-V8-S9K4`. Gate-only retrigger `3a67408...` started #273 because helper GITHUB_TOKEN pushes do not recursively fire the push gate.
+## 2026-09-06 — GITHUB_TOKEN recursion suppression diagnosed
+Worker `W-20260906-AFK-V8-S9K4`. Helper token push did not recursively fire canonical push gate; evidence-backed gate-only retrigger started #273.
 
 ## 2026-09-06 — P18.60 canonical PASS / explicit system closure
-Worker `W-20260906-P18-60-GATE273-V8-T4Q6`. Canonical #273 / `34008964239`, job `101421261744`: COMPLETED/SUCCESS. P18.60 promoted latest GOLDEN / explicit P18 system closure.
+Worker `W-20260906-P18-60-GATE273-V8-T4Q6`. Canonical #273 / `34008964239`, job `101421261744`: SUCCESS. P18.60 promoted GOLDEN and explicit P18 system closure.
 
-## 2026-09-06 — P19 transition ownership trace completed
-Worker `W-20260906-P19-TRACE-V8-N7C3`. No engineering mutation. First slice selected as P19.1 provider-neutral RR semantic contract.
+## 2026-09-06 — P19 transition ownership trace
+Worker `W-20260906-P19-TRACE-V8-N7C3`. No engineering mutation. First slice selected as provider-neutral RR semantic contract.
 
 ## 2026-09-06 — P19.1 canonical-artifact convention reconciliation
-Worker `W-20260906-P19-1-CONVENTIONS-V8-K2M8`. Exact canonical artifact `9981944232` proved the real `src/application` architecture and corrected the sparse-main false negative. Exact seven-file P19.1 scope established.
+Worker `W-20260906-P19-1-CONVENTIONS-V8-K2M8`. Exact P18.60 canonical artifact proved real `src/application` architecture; sparse-main false negative corrected. Exact seven-file P19.1 scope established.
 
-## 2026-09-06 — P19.1 deterministic reconstruction helper launched
-Worker `W-20260906-P19-1-CONVENTIONS-V8-K2M8`. Main moved `3a67408...` -> `c7aa8c63...` by adding `.github/workflows/p19-1-reconstruct.yml`. Helper #1 / `34010522280` started NON-CANONICALLY.
+## 2026-09-06 — P19.1 helper and canonical gate
+Worker `W-20260906-P19-1-HELPER1-MONITOR-V8-J4T9`. Helper #1 / `34010522280`, job `101425424002`: SUCCESS NON-CANONICAL. Candidate `KAIROS_P19_1_RISK_REWARD_ANALYSIS_CONTRACT_FOUNDATION_CANDIDATE_2026-09-06.zip`, blob `527b2cf88140b74aea5973fd15cb5a2b67d9fdac`, 1,308,022 bytes. Gate retarget head `367a0f7071b60232590687c9899ca46ff5926bd4`; canonical #274 started.
 
-## 2026-09-06 — P19.1 helper PASS, candidate identity verified, canonical #274 started
-- Worker token: `W-20260906-P19-1-HELPER1-MONITOR-V8-J4T9`.
-- Main before process: `f7cabe864f7a7ee53a43e4955e66403c3799d509` after helper candidate commit.
-- Helper #1 / `34010522280`, job `101425424002`: **COMPLETED / SUCCESS / NON-CANONICAL**.
-- Observed successful helper steps: setup, checkout, Node setup, npm pin, reconstruct P19.1, verify before packaging, restore clean package boundary, package and commit candidate.
-- Candidate exact root identity: `KAIROS_P19_1_RISK_REWARD_ANALYSIS_CONTRACT_FOUNDATION_CANDIDATE_2026-09-06.zip`; blob `527b2cf88140b74aea5973fd15cb5a2b67d9fdac`; size 1,308,022 bytes.
-- Candidate commit `f7cabe864f7a7ee53a43e4955e66403c3799d509` added exactly the candidate ZIP at repository root; helper result is not canonical authority.
-- Gate action: updated only `.github/workflows/kairos-gate.yml` to authoritative base P18.60 -> candidate P19.1, exact seven-file scope, P19.1 dedicated verifier, full units/roadmap/P18-P17/historical regressions, and P19.1 gate-evidence upload. No gate checks were weakened.
-- Main after gate retarget: `367a0f7071b60232590687c9899ca46ff5926bd4`.
-- Exact canonical `Kairos Controlled Roadmap Gate` #274 / `34010682979` confirmed **IN_PROGRESS** on head `367a0f7071b60232590687c9899ca46ff5926bd4`.
-- P18.60 #273 remains GOLDEN until #274 fully succeeds and both canonical artifacts are verified.
-- Unresolved: #274 downstream result/artifacts not yet known.
-- Next safe action: monitor #274 only; no competing repository mutation. On PASS verify all required stages and both artifacts before promoting P19.1. On FAIL fetch exact failed step/log and classify candidate-vs-gate defect.
-- Planned cadence: **12 minutes** while exact canonical #274 is queued/in-progress.
+## 2026-09-06 — P19.1 canonical PASS / promotion
+- Worker token: `W-20260906-P19-1-GATE274-MONITOR-V8-Q7L3`.
+- Main/canonical head observed: `367a0f7071b60232590687c9899ca46ff5926bd4`.
+- Canonical `Kairos Controlled Roadmap Gate` #274 / `34010682979`, job `101425842320`: **COMPLETED / SUCCESS**.
+- Verified successful stages: exact controlled P19.1 scope from P18.60; deterministic install; exact LWC dependency; TypeScript; production build; dedicated P19.1 RR semantic contract verifier/runtime; full unit regression; full controlled roadmap through P19.1; P18-through-P17 chart regressions; historical closures; candidate upload; gate evidence upload.
+- Verified exact-run artifacts: `KAIROS_CURRENT_CANDIDATE` artifact `9982448416`, 1,132,469 bytes, digest `sha256:b4391b47cf5b80545b0435a50bf92bd62b5b716321fd78d2759e69ec63a4c4bb`; `KAIROS_GATE_EVIDENCE` artifact `9982448567`, 863 bytes, digest `sha256:ce6bb43d5a0128636fde2ae4aa9d775fa581b7c6e70683615f9c7305d74a5016`.
+- Promotion: P19.1 is now latest canonical GOLDEN. P18.60 becomes historical prior GOLDEN.
+- No competing engineering mutation performed during gate monitoring.
+- Handoff product boundary rechecked: P19 owns real RR analysis + RR-specific green reward/target and red risk/stop composition; P18 machinery, P14 execution truth, P11 calculations, P2/P3 styling, P20 persistence remain separate owners.
+- Unresolved: exact next P19 slice is not established by roadmap numbering alone.
+- Next safe action: source/artifact/data-flow ownership trace from P19.1 GOLDEN to select exactly one smallest next P19 contract/composition slice; do not guess broad UI or persistence.
+- Planned cadence: **3 minutes** transition/research/pre-gate.
