@@ -1,11 +1,11 @@
-# KAIROS P20.2 GATE — AUTHORITATIVE BASE P20.1 — CANDIDATE P20.2
+# KAIROS P20.3 GATE — AUTHORITATIVE BASE P20.2 — CANDIDATE P20.3
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P20_2_SAVED_ANALYSIS_PERSISTENCE_FOUNDATION_CANDIDATE_2026-09-06.zip'
+      - 'KAIROS_P20_3_SAVED_ANALYSIS_APPLICATION_SAVE_ORCHESTRATION_CANDIDATE_2026-09-07.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P20_1_SAVED_ANALYSIS_CONTRACT_FOUNDATION_CANDIDATE_2026-09-06.zip
-  CANDIDATE_ZIP: KAIROS_P20_2_SAVED_ANALYSIS_PERSISTENCE_FOUNDATION_CANDIDATE_2026-09-06.zip
+  BASE_ZIP: KAIROS_P20_2_SAVED_ANALYSIS_PERSISTENCE_FOUNDATION_CANDIDATE_2026-09-06.zip
+  CANDIDATE_ZIP: KAIROS_P20_3_SAVED_ANALYSIS_APPLICATION_SAVE_ORCHESTRATION_CANDIDATE_2026-09-07.zip
 
 jobs:
   verify-current-candidate:
@@ -35,7 +35,7 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm exact controlled P20.2 scope from authoritative P20.1
+      - name: Confirm exact controlled P20.3 scope from authoritative P20.2
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -47,12 +47,18 @@ jobs:
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           print('\n'.join(sorted(changed)))
           expected={
-          'KAIROS_P20_2_SAVED_ANALYSIS_PERSISTENCE_FOUNDATION_REPORT_2026-09-06.md','package.json',
-          'scripts/verify-p12-journal-history-status-index-backup-regression-repair.mjs','scripts/verify-p12-journal-history-status-index-verifier-compatibility-repair.mjs','scripts/verify-p12-journal-history-status-index.mjs','scripts/verify-p20-2-saved-analysis-persistence-foundation.mjs','scripts/verify-p5-database-kernel.mjs','scripts/verify-p5-transactions.mjs','scripts/verify-p6-backup-envelope.mjs','scripts/verify-p6-backup-snapshot.mjs','scripts/verify-p6-restore-replacement.mjs','scripts/verify-p9-trade-persistence.mjs',
-          'src/data/backup/backupEnvelope.ts','src/data/backup/backupFormat.ts','src/data/backup/backupSerialization.ts','src/data/backup/backupSnapshot.ts','src/data/backup/backupValidation.ts','src/data/backup/restorePreflight.ts','src/data/backup/restoreReplacement.ts','src/data/backup/restoreVerification.ts','src/data/database/KairosDatabase.ts','src/data/database/index.ts','src/data/database/integrity.ts','src/data/database/migrations.ts','src/data/database/schema.ts','src/data/database/transactions.ts','src/data/repositories/SavedAnalysisRepository.ts','src/data/repositories/index.ts',
-          'tests/activation-persistence.test.ts','tests/backup-envelope.test.ts','tests/backup-snapshot.test.ts','tests/database-kernel.test.ts','tests/database-migrations.test.ts','tests/database-transactions.test.ts','tests/metadata-repository.test.ts','tests/restore-preflight.test.ts','tests/restore-replacement.test.ts','tests/restore-verification.test.ts','tests/saved-analysis-persistence.test.ts','tests/trade-persistence.test.ts'}
+            'KAIROS_P20_3_SAVED_ANALYSIS_APPLICATION_SAVE_ORCHESTRATION_REPORT_2026-09-07.md',
+            'package.json',
+            'scripts/verify-p20-3-saved-analysis-application-save.mjs',
+            'src/application/saved-analysis/index.ts',
+            'src/application/saved-analysis/saveSavedAnalysis.ts',
+            'tests/saved-analysis-save-command.test.ts',
+          }
           if changed != expected:
-            print('P20.2 exact scope mismatch',file=sys.stderr); print('Unexpected:',sorted(changed-expected),file=sys.stderr); print('Missing:',sorted(expected-changed),file=sys.stderr); sys.exit(1)
+            print('P20.3 exact scope mismatch',file=sys.stderr)
+            print('Unexpected:',sorted(changed-expected),file=sys.stderr)
+            print('Missing:',sorted(expected-changed),file=sys.stderr)
+            sys.exit(1)
           PY
       - name: Install candidate deterministically
         working-directory: .gate-candidate/kairos_p76
@@ -68,9 +74,10 @@ jobs:
       - name: Production build
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
-      - name: Dedicated P20.2 Saved Analysis persistence foundation verifier/runtime
+      - name: Dedicated P20.3 Saved Analysis application save verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p20:3-saved-analysis-application-save
           npm run verify:p20:2-saved-analysis-persistence-foundation
           npm run verify:p20:1-saved-analysis-contract-foundation
           npm run verify:p19:7-risk-reward-tool-system-closure
@@ -83,18 +90,19 @@ jobs:
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression through P20.2
+      - name: Full controlled roadmap regression through P20.3
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
           const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
           const p=JSON.parse(readFileSync('package.json')); const s=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:p'));
-          for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:16-chart-engine-system-closure','verify:p18:60-drawing-tools-system-closure','verify:p19:7-risk-reward-tool-system-closure','verify:p20:1-saved-analysis-contract-foundation','verify:p20:2-saved-analysis-persistence-foundation']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
+          for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:16-chart-engine-system-closure','verify:p18:60-drawing-tools-system-closure','verify:p19:7-risk-reward-tool-system-closure','verify:p20:1-saved-analysis-contract-foundation','verify:p20:2-saved-analysis-persistence-foundation','verify:p20:3-saved-analysis-application-save']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
           for(const x of s){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
           NODE
       - name: Historical closures
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p20:3-saved-analysis-application-save
           npm run verify:p20:2-saved-analysis-persistence-foundation
           npm run verify:p20:1-saved-analysis-contract-foundation
           npm run verify:p19:7-risk-reward-tool-system-closure
@@ -121,5 +129,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P20_2_SAVED_ANALYSIS_PERSISTENCE_FOUNDATION_REPORT_2026-09-06.md
+          path: .gate-candidate/kairos_p76/KAIROS_P20_3_SAVED_ANALYSIS_APPLICATION_SAVE_ORCHESTRATION_REPORT_2026-09-07.md
           if-no-files-found: error
