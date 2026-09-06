@@ -51,11 +51,14 @@ P19.2 exact candidate provenance:
 - root blob `83be1437c73318289b2c53d01a773e25f735c81c`, size 1,311,200 bytes.
 - exact P19.1 -> P19.2 candidate delta: P19.2 report; `package.json`; P19.2 verifier; risk-reward barrel; `riskRewardZoneSemantics.ts`; focused test.
 
-## P19.2 non-scope retained after PASS
-No ratio/R math; no price-order/direction validation or normalization; no chart-time/span geometry; no provider/render/UI API; no P18 `ChartDrawing` widening; no editing lifecycle; no P20 persistence; no P14 journal/execution mutation; no hard-coded colors.
+## Exactly one next P19 slice selected from canonical source evidence
+**Provider-neutral Risk/Reward chart-composition semantic contract** inside existing `src/application/risk-reward/` ownership.
 
-## Next safe action
-P19.2 is canonically promoted. Reread controlling handoff/roadmap and inspect the exact P19.2 canonical artifact/source plus current P14/P18/P11/P2/P3 seams to determine exactly ONE smallest dependency-safe remaining P19 Risk/Reward owner/contract/composition slice. Do not advance by patch number alone or jump into broad UI/persistence. Cadence returns to **~3 minutes** for source/ownership research and pre-gate work; use **~12 minutes** only after an exact new candidate is verified uploaded and its exact canonical gate is queued/in-progress.
+Evidence: P19.1 owns the RR analysis id/side/entry/stop/target; P19.2 owns immutable risk/reward price-zone semantics; P18's `ChartDrawing` remains deliberately trend-line-only generic infrastructure; P17/P18 renderer/presentation ports own provider lifecycle and must not be widened just to carry P19 meaning; P2/P3 already own `trade.entry`, `trade.stop`, `trade.target`, `trade.riskZone`, and `trade.rewardZone` styling roles; P14 remains historical/planned journal visualization truth and is not the RR tool owner.
+
+The next slice should compose one P19 analysis into one immutable provider-neutral RR chart semantic model containing its three price levels (entry/stop/target) and its two P19.2 semantic zones (risk/reward), preserving analysis identity/side. It may expose only semantic level/zone roles needed by later styling/provider adapters; it must not own actual CSS/color values.
+
+Next-slice non-scope: no ratio/R math; no price-order validation/normalization; no chart timestamp/span/rectangle screen geometry; no provider/Lightweight Charts APIs; no P18 `ChartDrawing` mutation/widening; no DOM/UI/tool controls; no edit/drag/delete lifecycle; no P20 persistence; no P14 journal writes/execution mutation; no hard-coded colors; no P11 calculation duplication.
 
 ## Methods already attempted / do not blindly repeat
 - Never package generated `node_modules`, `dist`, caches, coverage, logs, or build residue.
@@ -65,6 +68,9 @@ P19.2 is canonically promoted. Reread controlling handoff/roadmap and inspect th
 - Do not jump to broad RR UI, P20 persistence, P11 calculation changes, P14 journal truth changes, or P18 `ChartDrawing` semantic expansion.
 - Do not treat sparse root-source visibility as equivalent to exact canonical artifact source.
 - Transient repository-resolution/container failures are evidence-access failures, not project state and not HOLD_USER.
+
+## Next safe action
+Re-prove P19.2 #275/GOLDEN, inspect exact application-layer naming/test/verifier conventions, and build only the provider-neutral RR chart-composition semantic contract plus minimal focused barrel/test/verifier/report/package-script changes from P19.2 GOLDEN. Use deterministic reconstruction/package hygiene. Cadence is **~3 minutes** until an exact candidate is verified uploaded and its exact canonical gate queued/in-progress; then **~12 minutes**.
 
 ---
 
@@ -101,42 +107,24 @@ Worker `W-20260906-P19-1-GATE274-MONITOR-V8-Q7L3`. Canonical #274 / `34010682979
 Worker `W-20260906-P19-NEXT-TRACE-V8-M8R5`. Repo identity and P19.1 authority re-proved after transient connector/container errors. Exact canonical artifact inspected. P19.1 analysis owner, P11 math owner, P18 generic trend-line drawing owner, P14 journal facts owner, and P2/P3 styling roles confirmed. Selected smallest next slice: immutable provider-neutral risk/reward semantic price zones. Main unchanged at `367a0f7071b60232590687c9899ca46ff5926bd4`.
 
 ## 2026-09-06 — P19.2 exact convention proof and deterministic helper start
-- Worker token: `W-20260906-P19-ZONE-BUILD-V8-C5N7`.
-- Main SHA before process: `367a0f7071b60232590687c9899ca46ff5926bd4`.
-- Fresh canonical authority re-proved: P19.1 canonical #274 / `34010682979` COMPLETED/SUCCESS; exact canonical artifact `9982448416` inspected.
-- Controlling handoff rechecked: P19 owns actual RR semantics/composition, P18 stays generic drawing machinery, P14 journal/execution truth stays separate, P2/P3 styling remains separate.
-- Exact project conventions re-proved from the canonical artifact and P19.1 reconstruction: source under `src/application/risk-reward/`, shared barrel in `index.ts`, focused tests under project-level `tests/`, static verifier under `scripts/`, package script in `package.json`, report at package root, deterministic reconstruction from latest GOLDEN, exact changed-file assertion, regression verification, cleanup before ZIP packaging.
-- Engineering action: created `.github/workflows/p19-2-reconstruct.yml` on `main` at commit `8d23010a9ec1e747cdc67670a18582c98192818e`.
-- This helper defines the exact six-file P19.2 zone-semantics candidate and all non-scope checks; it reconstructs from canonical P19.1, not sparse `main` source.
-- Fresh Actions after write: helper `Kairos P19.2 Deterministic Reconstruction Bridge` run #1 / `34011936851`, job `101429164800`, **IN_PROGRESS**. Reconstruction step succeeded; verification step is currently in progress. No competing canonical P19.2 run exists yet and no competing helper was launched.
-- Main SHA after engineering write: `8d23010a9ec1e747cdc67670a18582c98192818e` at observed helper head; helper may later push the packaged candidate and advance main.
-- Actual checks observed in this process: P19.1 canonical run freshness; exact canonical artifact source; exact P19.1 barrel/test/verifier/package conventions; helper workflow trigger; helper setup/npm/reconstruction successful; helper verification currently running. No unobserved test result is claimed.
-- Unresolved: helper verification/cleanup/package result; exact P19.2 candidate identity; canonical gate retarget/start.
-- Next safe action: monitor helper #1 only. On success verify candidate identity/scope, then direct-retarget canonical gate P19.1 -> P19.2; on failure inspect exact helper log and make smallest helper-only repair.
-- Planned cadence: **3 minutes** until exact canonical P19.2 gate is confirmed queued/in-progress; then **12 minutes**.
+Worker `W-20260906-P19-ZONE-BUILD-V8-C5N7`. Main advanced from `367a0f7071b60232590687c9899ca46ff5926bd4` to helper-definition commit `8d23010a9ec1e747cdc67670a18582c98192818e`. Helper `Kairos P19.2 Deterministic Reconstruction Bridge` #1 / `34011936851`, job `101429164800`, started from exact canonical P19.1 and used the proven six-file scope. Planned cadence 3 minutes pre-gate.
 
 ## 2026-09-06 — P19.2 helper PASS / exact candidate proof / canonical #275 started
-- Worker token: `W-20260906-P19-2-HELPER1-MONITOR-V8-R6K2`.
-- Main SHA before gate retarget: helper-produced P19.2 candidate was present on fresh `main`; exact root candidate blob `83be1437c73318289b2c53d01a773e25f735c81c`, size 1,311,200 bytes.
-- Canonical authority before mutation remained P19.1 #274 / `34010682979` COMPLETED/SUCCESS.
-- Helper #1 / `34011936851`, job `101429164800`: **COMPLETED/SUCCESS NON-CANONICAL**. Every helper step succeeded, including reconstruction from exact P19.1, pre-package verification, generated-output cleanup/clean-boundary restoration, and package/commit.
-- Candidate scope re-proved from helper contract as exactly six files: P19.2 report, package.json, P19.2 verifier, risk-reward barrel, `riskRewardZoneSemantics.ts`, focused test. No broader P18/P14/P11/P20/UI ownership was added.
-- Engineering action with verified V8 lease: retargeted only `.github/workflows/kairos-gate.yml` from P19.1 to P19.2. New gate commit/head `52d8f0f41724b5892e4312cbf44cfd9db018ebce`; gate preserves deterministic install, exact LWC 5.2.1, typecheck/build, focused P19.2/P19.1 verification, full units, full roadmap through P19.2, P18/P17 regressions, historical closures, and both canonical artifact uploads.
-- Fresh check-run evidence proved exact canonical `Kairos Controlled Roadmap Gate` run #275 / `34012163133`, job `101429745964`, head `52d8f0f41724b5892e4312cbf44cfd9db018ebce`, **IN_PROGRESS**.
-- Actual canonical checks observed succeeded so far: setup/checkout/setup-node; npm 10.9.2; base/candidate extraction; exact six-file P19.2 scope from authoritative P19.1; deterministic npm install; exact Lightweight Charts 5.2.1; TypeScript; production build. Dedicated P19.2 verifier/runtime was in progress at latest observation; later regressions/artifact uploads were pending.
-- Separate Cloudflare Pages check on the gate-only commit failed, but it is not the canonical Kairos authority and does not classify the P19.2 candidate; no action was taken against candidate semantics from that non-canonical check.
-- Main SHA after action: `52d8f0f41724b5892e4312cbf44cfd9db018ebce`.
-- Unresolved: completion of canonical #275 and exact-run canonical artifacts.
-- Next safe action: monitor canonical #275 only, with no competing engineering mutation. Promote only after every stage and both artifacts pass exact-run verification; on canonical FAIL fetch exact logs and classify from evidence.
-- Planned cadence: **12 minutes** while #275 remains queued/in-progress.
+Worker `W-20260906-P19-2-HELPER1-MONITOR-V8-R6K2`. Helper #1 / `34011936851` completed SUCCESS NON-CANONICAL. Exact root candidate blob `83be1437c73318289b2c53d01a773e25f735c81c`, 1,311,200 bytes. Gate-only retarget advanced main to `52d8f0f41724b5892e4312cbf44cfd9db018ebce` and started canonical #275 / `34012163133`, job `101429745964`.
 
 ## 2026-09-06 — P19.2 canonical PASS reconciliation / GOLDEN promotion
+Worker `W-20260906-P19-2-PASS275-RECONCILE-V8-H7N2`. Main `52d8f0f41724b5892e4312cbf44cfd9db018ebce` unchanged. Canonical #275 / `34012163133`, job `101429745964`: COMPLETED/SUCCESS with every required stage successful. Exact artifacts `KAIROS_CURRENT_CANDIDATE` `9982893423` (1,135,068 bytes; `sha256:27d5ec99cfddebd8a0032b96bfc1009891b1a4ce279ee8bdb8216b9c7b98d815`) and `KAIROS_GATE_EVIDENCE` `9982893566` (702 bytes; `sha256:0668d8113e9ff356a83d68d782c9be81602f425045ab4078a508893d8c6615cc`) verified. Stale IN_PROGRESS history corrected before further engineering mutation. P19.2 promoted latest GOLDEN.
+
+## 2026-09-06 — post-P19.2 canonical source/owner trace / next slice selected
 - Worker token: `W-20260906-P19-2-PASS275-RECONCILE-V8-H7N2`.
-- Main SHA before/after this reconciliation process: `52d8f0f41724b5892e4312cbf44cfd9db018ebce` / unchanged; no `main` engineering mutation was performed.
-- Fresh canonical evidence re-proved: `Kairos Controlled Roadmap Gate` #275 / `34012163133`, job `101429745964`, head `52d8f0f41724b5892e4312cbf44cfd9db018ebce`: **COMPLETED / SUCCESS**.
-- Every required job stage was freshly observed `completed/success`, including exact P19.2 six-file scope from P19.1, deterministic install, exact Lightweight Charts 5.2.1, TypeScript, production build, dedicated P19.2 verifier/runtime, full units, controlled roadmap regression through P19.2, P18/P17 regressions, historical closures, candidate upload and gate-evidence upload.
-- Exact-run artifacts freshly verified: `KAIROS_CURRENT_CANDIDATE` id `9982893423`, 1,135,068 bytes, `sha256:27d5ec99cfddebd8a0032b96bfc1009891b1a4ce279ee8bdb8216b9c7b98d815`; `KAIROS_GATE_EVIDENCE` id `9982893566`, 702 bytes, `sha256:0668d8113e9ff356a83d68d782c9be81602f425045ab4078a508893d8c6615cc`.
-- History staleness was corrected before any further engineering mutation, as required by the V8 continuity contract. P19.2 is now promoted as latest canonical GOLDEN; P19.1 becomes historical prior GOLDEN.
-- Unresolved roadmap work remains inside P19 Risk/Reward. Exact next slice has not yet been selected; it must be proven from the controlling handoff/roadmap and exact canonical P19.2 source/ownership seams.
-- Next safe action: inspect exact canonical P19.2 artifact/source and remaining P19 ownership/data flow, then select exactly one smallest dependency-safe next slice without broad UI/persistence/P18/P14/P11 ownership widening.
-- Planned cadence: **3 minutes** during this research/pre-gate state; switch to **12 minutes** only once an exact new candidate is verified uploaded and its exact canonical gate is queued/in-progress.
+- Main SHA before/after source-trace process: `52d8f0f41724b5892e4312cbf44cfd9db018ebce` / unchanged; no `main` engineering mutation.
+- Exact canonical P19.2 artifact `9982893423` was downloaded and inspected.
+- P19.1 source confirmed `RiskRewardAnalysis` owns id/side and entry/stop/target DecimalString levels; P19.2 source confirmed `projectRiskRewardZoneSemantics` owns only immutable `risk` entry↔stop and `reward` entry↔target semantic zones.
+- P18 `chartDrawingContract.ts` remains trend-line-only; `chartDrawingPresentationPort.ts` and renderer infrastructure own generic chart/provider lifecycle but explicitly no P19 meaning. No evidence justified reopening/widening P18.
+- P2/P3 `semantic.ts` already owns theme roles for entry/stop/target/riskZone/rewardZone; P19 must not hard-code visual colors.
+- P14 trade-visualizer display model remains journal/planned/executed visualization truth and is not the RR-tool composition owner. P11 remains calculation truth.
+- Exactly one smallest dependency-safe next P19 slice selected: **provider-neutral Risk/Reward chart-composition semantic contract**, composing the existing P19.1 level semantics plus P19.2 zones into one immutable RR-specific chart semantic model while leaving time geometry, provider rendering, editing, persistence, journal truth, calculations and actual styling values out of scope.
+- Actual checks observed: exact canonical source files above; no build/test was run because this process was ownership/source tracing only.
+- Unresolved: exact file name/API shape, focused verifier/test scope and deterministic reconstruction helper/gate delta must be re-proved from current project conventions before mutation.
+- Next safe action: verify those exact conventions and build only this composition-contract slice from P19.2 GOLDEN.
+- Planned cadence: **3 minutes** pre-gate; **12 minutes** only after exact new candidate upload + canonical gate queued/in-progress.
