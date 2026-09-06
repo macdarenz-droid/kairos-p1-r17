@@ -28,6 +28,7 @@ Update this file after every canonical PASS that establishes, extends, moves, or
 | Saved Analysis application load-one orchestration | P20.4 | `src/application/saved-analysis/loadSavedAnalysis.ts`, exported through `src/application/saved-analysis/index.ts` | Reads one persisted Saved Analysis by its stable id through the P20.2 repository boundary; no UI/provider/pixels, no second persistence owner, no list/update/delete orchestration, and no redefinition of P17/P18/P19/P20.1 truth |
 | Saved Analysis system | P20, CLOSED canonically at P20.5 | P20.1 logical contract + P20.2 persistence/backup/restore + P20.3 save + P20.4 load-one | Closure adds no new production runtime owner; no speculative list/update/delete lifecycle, UI/provider/pixel ownership, schema/index widening, or invented metadata |
 | Home Dashboard route presentation ownership | P21.1 | `src/app/HomeRoute.tsx`, wired by `src/app/routes.tsx` at existing `/` index route | Presentation/semantic dashboard boundary only; does not own navigation truth, provider/live market data, persistence/query/calculation truth, Bubble Map geometry/algorithms, Saved Analysis CRUD, P22 behavior, or P40/global transition motion |
+| Live market summary provider-neutral fact contract | P21.2 | `src/services/market-data/marketDataTypes.ts`, `src/services/market-data/liveMarketSummaryFactSemantics.ts`, exported through `src/services/market-data/index.ts` | Owns only validated raw per-instrument market-summary fact shape/semantics; no transport/acquisition choice, market-universe selection, accumulation/snapshot/freshness policy, Bubble rendering/metric/color/ranking/grouping/filter/interactions, Home wiring, persistence, journal/calculation truth, Your-Trades semantics, or transition motion |
 
 ## P18 closure boundary
 
@@ -65,11 +66,12 @@ Exact P20.5 artifacts:
 
 Therefore P20.5 closed P20 Saved Analysis canonically.
 
-## P21 canonical ownership ledger — OPEN through P21.1
+## P21 canonical ownership ledger — OPEN through P21.2
 
 | Patch | Canonical responsibility | Production owner seam | Boundary |
 |---|---|---|---|
 | P21.1 | Home Dashboard Route Ownership Foundation | `src/app/HomeRoute.tsx`, `src/app/routes.tsx` index wiring | Dedicated Home presentation owner on existing `/`; preserves P8 `AppShell`/navigation/safe-area/theme truth and all existing business/data owners; no Bubble Map metrics/geometry, provider/live-data subscription, new persistence/query/calculation owner, Saved Analysis CRUD, P22 behavior, or full transition implementation |
+| P21.2 | Live Market Summary Fact Contract Foundation | `src/services/market-data/marketDataTypes.ts`, `src/services/market-data/liveMarketSummaryFactSemantics.ts`, `src/services/market-data/index.ts` | Provider-neutral validated raw facts only: instrument identity, last/current price, rolling-24h open/high/low, rolling-24h base/quote volume, provider/source timestamp and local observed-at timestamp; no transport/acquisition choice, universe, aggregation/snapshot/freshness/error policy, Bubble visualization semantics or geometry, Home wiring, persistence, journal/calculation truth, Your-Trades semantics, or transitions |
 
 ## Canonical P21 evidence
 
@@ -79,21 +81,31 @@ Exact P21.1 artifacts:
 - `KAIROS_CURRENT_CANDIDATE` artifact `9997837809`, 1,169,775 bytes, digest `sha256:801b75beb1ed2bc16d13e2fa74a6905441652cdbc3ff66154abe6612894fdd17`.
 - `KAIROS_GATE_EVIDENCE` artifact `9997837954`, 973 bytes, digest `sha256:829a2cf8118b04c59eb8cd3ca82c713f6acb0ad5f7445d622bd0175347524f9b`.
 
-Therefore P21.1 is the canonical GOLDEN. P21 remains OPEN; later P21 responsibilities must be independently source-proven before implementation.
+P21.2: `Kairos Controlled Roadmap Gate` #287 / run `34066483131`, job `101576023230`, exact head `13a7ac6de0b3753c39a7da006eef995fec94ce42`, completed SUCCESS on 2026-09-07. Every required `verify-current-candidate` stage succeeded: exact controlled P21.1→P21.2 seven-file scope, deterministic install, exact Lightweight Charts 5.2.1 proof, production TypeScript compilation/build, dedicated P21.2 Live Market Summary fact-contract verifier/runtime, full unit regression, full controlled-roadmap regression through P21.2, historical closures, and both exact-run artifact uploads.
+
+Exact P21.2 artifacts:
+- `KAIROS_CURRENT_CANDIDATE` artifact `9999220162`, 1,173,555 bytes, digest `sha256:6354e9a0b1f93c78d98af17c47119ff8f4c5ab0a2b430466f3b45ffde27366ab`.
+- `KAIROS_GATE_EVIDENCE` artifact `9999220414`, 1,235 bytes, digest `sha256:789b08f9ebf86111505585d752ae2bd849b93199795862cf26c98c051bb719b7`.
+
+Therefore P21.2 is the canonical GOLDEN. P21 remains OPEN; later P21 responsibilities must be independently source-proven before implementation.
 
 ## Ownership rules that remain invariant
 
 - One owner per responsibility; later patches extend or compose existing owners rather than silently duplicating them.
 - P11 remains calculation truth.
+- P12 remains bounded journal-history/listing truth; Home/Bubble UI must not bypass it with direct IndexedDB reads.
 - P14 remains journal/trade-visualization truth where assigned.
+- P15 remains market acquisition truth and P16 remains Binance Spot provider mapping truth; P21.2 does not silently absorb transport/provider ownership.
 - P18 remains generic drawing/provider/interaction machinery.
 - P19 remains Risk/Reward semantic and provider-neutral logical composition truth.
 - P20 remains the closed Saved Analysis system; no generic CRUD expansion is inferred from P21 work.
 - P21.1 owns only Home route presentation/composition semantics on the existing `/` route; P8 `AppShell`/navigation remains authoritative.
+- P21.2 owns only the provider-neutral Live Market Summary raw-fact contract/validation seam; it does not establish a complete market-universe view, acquisition method, accumulator, freshness policy, Bubble metric, or UI ownership.
+- The Live Crypto Bubble Map and Your Trades Bubble Map remain distinct products with distinct authoritative upstream data flows. Shared future bubble-layout code, if introduced, must remain presentation-only.
 - The approved premium dashboard-transition direction remains presentation-only and must be layered through a clean motion seam later; animation must never own or delay route/navigation/data/persistence/calculation/chart/Saved Analysis/dashboard-selection truth.
 - P2/P3 design tokens remain style-value authority; P19.4 references tokens rather than hard-coding colors.
 - UI/presentation amendments must preserve business/data/navigation truth and use new controlled amendments from latest GOLDEN.
 
 ## Next audit checkpoint
 
-P21 is open through canonical P21.1. Before any P21.2 implementation, reread the controlling handoff/roadmap, exact P21.1 GOLDEN, process history, Retry Ledger, current Home/dashboard/navigation owners and exact journal/provider consumers. Prove exactly one smallest dependency-safe next P21 Home Dashboard / Bubble Map responsibility and explicit non-scope from source evidence. Do not infer Bubble Map metrics, provider subscription, dashboard queries, or transition implementation from phase naming alone.
+P21 is open through canonical P21.2. Before any later P21 implementation, reread the controlling handoff/current user rules, exact P21.2 GOLDEN, process history, Retry Ledger, current P15/P16 market owners, P12 journal-history seam, Home/dashboard consumers and current official provider behavior. Prove exactly one smallest dependency-safe next responsibility and explicit non-scope. In particular, do not infer Live Crypto market-universe/acquisition/accumulation/freshness semantics, Bubble size/color/ranking/grouping/filter/interactions, Your-Trades visualization semantics, or transition implementation from the existence of the P21.2 fact contract.
