@@ -20,7 +20,7 @@ Exact canonical artifacts:
 - `KAIROS_CURRENT_CANDIDATE` id `9997837809`, size 1,169,775 bytes, digest `sha256:801b75beb1ed2bc16d13e2fa74a6905441652cdbc3ff66154abe6612894fdd17`.
 - `KAIROS_GATE_EVIDENCE` id `9997837954`, size 973 bytes, digest `sha256:829a2cf8118b04c59eb8cd3ca82c713f6acb0ad5f7445d622bd0175347524f9b`.
 
-Engineering `main` was the post-PASS living-architecture checkpoint `479759603f72b2aa4e0230e65be287b3635f82cd` before the P21.2 non-canonical helper-definition commit. No newer canonical gate exists at this checkpoint.
+Engineering `main` was the post-PASS living-architecture checkpoint `479759603f72b2aa4e0230e65be287b3635f82cd` before the P21.2 helper/candidate/gate commits. P21.2 is not canonical unless gate #287 fully passes.
 
 ## Durable lineage summary
 - P20.5 canonically closed Saved Analysis; no speculative CRUD/runtime/UI/provider/schema expansion was introduced.
@@ -109,5 +109,14 @@ The contract remains raw-fact-only: instrument, last/open/high/low prices, base/
 
 Fresh exact helper run `34065848136`, job `101574333836`, head `030390598dd2ee15bed64ba04e96ebbd5a884015` is the sole active chain. Setup, checkout, setup-node, npm pin and exact P21.2 reconstruction passed. `Verify reconstructed P21.2 before packaging` was IN_PROGRESS at write-back; clean-boundary restoration and package commit were pending. Per one-active-chain rule, no canonical retarget or competing P21 work was started.
 
+## Process log — 2026-09-06T23:18Z — token W16-RECOVERY-20260907T0556-AEST-H9Q4
+RULE 0 was re-verified before project work; the same V16 continuation is enabled and future-dated, and hourly `Kairos Relay Supervisor [ACTIVE]` remains enabled. The execution lease was acquired and verified before repository mutation.
+
+Fresh GitHub proved helper run `34065848136`, job `101574333836`, completed full SUCCESS. Every helper stage passed, including exact P21.1 reconstruction, seven-file scope proof, deterministic install, exact Lightweight Charts 5.2.1, dedicated P21.2 verifier, typecheck/build, full unit regression, full `verify:p*` regression, static verification, clean package restoration, ZIP integrity and package commit. Exact root candidate `KAIROS_P21_2_LIVE_MARKET_SUMMARY_FACT_CONTRACT_FOUNDATION_CANDIDATE_2026-09-07.zip` is on main commit `481184d635b12964aa311c7a96e116659b92f231`, blob `3696751a2c6c02ac01bcbbd2cc29ad19279f3612`.
+
+The existing canonical gate was still P21.1, so the only engineering mutation after fresh lease/main/Actions proof was an exact gate retarget. Engineering-main commit `13a7ac6de0b3753c39a7da006eef995fec94ce42` retargeted `.github/workflows/kairos-gate.yml` from canonical P21.1 to exact P21.2, with authoritative base P21.1, exact seven-file expected delta, dedicated P21.2 verifier, full unit/current/historical regressions, and exact P21.2 candidate/evidence artifact paths.
+
+Fresh Actions proves canonical `Kairos Controlled Roadmap Gate` #287 / run `34066483131`, exact head `13a7ac6de0b3753c39a7da006eef995fec94ce42`, is IN_PROGRESS. This is now the sole active chain. P21.1 remains GOLDEN until #287 fully succeeds and its exact `verify-current-candidate` job/stages plus `KAIROS_CURRENT_CANDIDATE` and `KAIROS_GATE_EVIDENCE` artifacts are verified. No P21.3, Bubble renderer, market-universe/acquisition policy, Your-Trades semantics, or transition implementation may proceed while #287 is queued/in-progress.
+
 ## Next safe action
-MONITOR ONLY helper run `34065848136` while queued/in-progress. If it fully succeeds, verify every helper stage, exact seven-file candidate delta, clean `kairos_p76/` package, ZIP/blob/size/integrity and resulting main commit. Helper PASS remains non-canonical. Only then, after fresh lease/main/Actions proof, retarget the canonical gate exactly once for P21.2. If helper fails, fetch the exact failed step/log and make only the smallest evidence-backed repair from P21.1 GOLDEN; P21.1 remains authority.
+MONITOR ONLY exact canonical gate #287 / run `34066483131` while queued/in-progress. If SUCCESS, verify every required stage and exact-run canonical artifacts before promoting P21.2, then perform the mandatory living architecture-map/process-history checkpoint and source-proof exactly one next P21 dependency. If FAIL, fetch exact failed step/log and classify candidate-vs-gate from evidence; P21.1 remains GOLDEN.
