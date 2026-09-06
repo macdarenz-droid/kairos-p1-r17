@@ -40,7 +40,7 @@ jobs:
           cp -a .p20base/. .p20candidate/
 
           git show HEAD^:.github/workflows/p20-2-reconstruct.yml \
-            | awk "/<<'PATCH64'/{flag=1;next} /^PATCH64$/{flag=0} flag" \
+            | awk "/<<'PATCH64'/{flag=1;next} /^[[:space:]]*PATCH64[[:space:]]*$/{flag=0} flag" \
             | tr -d '[:space:]' > /tmp/p20_2.patch.b64
           test -s /tmp/p20_2.patch.b64
           base64 -d /tmp/p20_2.patch.b64 > /tmp/p20_2.patch
