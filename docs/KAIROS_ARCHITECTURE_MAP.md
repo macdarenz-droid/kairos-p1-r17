@@ -22,7 +22,8 @@ Update this file after every canonical PASS that establishes, extends, moves, or
 | Chart rendering / presentation | P17 | canonical P17 seams | Presentation only; never decides financial truth |
 | Drawing tools / generic drawing-edit lifecycle | P18, CLOSED canonically at P18.60 | `src/features/chart/` and canonical P18 application/provider seams | No persistence/P20 ownership; no Risk/Reward/P19 meaning; no journal/calculation truth |
 | Risk/Reward semantics + provider-neutral chart composition | P19, CLOSED canonically at P19.7 | `src/application/risk-reward/`, `src/app/riskRewardChartStyleProjection.ts`, `src/app/riskRewardChartPlacementProjection.ts`, `src/app/riskRewardChartObjectProjection.ts` | Owns RR meaning, semantic levels/zones, style-token references, logical placement/object composition only; no P18 provider machinery, P11 calculation truth, P14 journal writes, P20 persistence, DOM/UI, pixel geometry, normalization/order validation, or hard-coded colors |
-| Saved Analysis logical persistence contract | P20.1 | `src/app/savedAnalysisContract.ts`, `src/app/savedAnalysisIdentity.ts` | Composes existing P17/P18/P19 logical truth only; no DB/schema/migration/repository/backup implementation yet, no UI, no provider state, no pixels, no duplicated RR/drawing semantics, no invented timeframe/metadata |
+| Saved Analysis logical persistence contract | P20.1 | `src/app/savedAnalysisContract.ts`, `src/app/savedAnalysisIdentity.ts` | Composes existing P17/P18/P19 logical truth only; no DB/schema/migration/repository/backup implementation, no UI, no provider state, no pixels, no duplicated RR/drawing semantics, no invented timeframe/metadata |
+| Saved Analysis persisted storage / backup / restore | P20.2 | `src/data/database/`, `src/data/repositories/SavedAnalysisRepository.ts`, `src/data/backup/` | Persists and restores the P20.1 logical contract only; no UI/provider/pixels, no duplicated P17/P18/P19 semantics, no speculative secondary indexes/query APIs, and no optional metadata invention |
 
 ## P18 closure boundary
 
@@ -50,11 +51,12 @@ Exact-run artifacts:
 
 Therefore P19.7 is the canonical P19 system closure.
 
-## P20 canonical ownership ledger — OPEN through P20.1
+## P20 canonical ownership ledger — OPEN through P20.2
 
 | Patch | Canonical responsibility | Production owner seam | Boundary |
 |---|---|---|---|
 | P20.1 | Saved Analysis contract foundation and dedicated SavedAnalysis identity | `src/app/savedAnalysisContract.ts`, `src/app/savedAnalysisIdentity.ts` | Composes existing provider-neutral market reference, readonly existing P18 drawing snapshots, and P19 RR semantic truth + logical time extent. No persistence backend yet; no schema/migration/repository/backup/UI/provider/pixel ownership; no invented timeframe/name/trade/timestamp/index metadata |
+| P20.2 | Saved Analysis persistence foundation | DB V4 `savedAnalyses` store in `src/data/database/`; `src/data/repositories/SavedAnalysisRepository.ts`; merged current-store transaction/integrity authority; backup V3 + restore seams in `src/data/backup/` | Preserves immutable released DB V1/V2/V3 and backup V1/V2 compatibility; persists/restores P20.1 truth atomically; no UI/provider/pixels, no optional metadata, no speculative secondary indexes/query APIs, and no redefinition of P17/P18/P19/P20.1 truth |
 
 ## Canonical P20.1 evidence
 
@@ -64,7 +66,17 @@ Exact-run artifacts:
 - `KAIROS_CURRENT_CANDIDATE` artifact `9987048689`, 1,153,597 bytes, digest `sha256:34cdb119bab8177a5168877449490ebb5cef3e45156062049b8a70dfe7b7f44c`.
 - `KAIROS_GATE_EVIDENCE` artifact `9987048971`, 1,184 bytes, digest `sha256:0491d7fbef1dd19768bcbcc5fe69c69f1d106f0ab6635f3b7673580eb9572295`.
 
-Therefore P20.1 is now the canonical GOLDEN. Its ownership is contract/composition only; it does not yet authorize or imply a P20 database/store/schema implementation.
+P20.1 established the logical Saved Analysis contract/composition boundary only.
+
+## Canonical P20.2 evidence
+
+`Kairos Controlled Roadmap Gate` #282 / run `34040888312`, head `e65c3f4bfc92ead11001c9212f3650470f07596b`, completed SUCCESS on 2026-09-06. Every `verify-current-candidate` stage succeeded: exact controlled 40-file P20.2 scope from authoritative P20.1, deterministic install, exact Lightweight Charts 5.2.1 dependency proof, production TypeScript/build, dedicated P20.2 Saved Analysis persistence verifier/runtime, full unit regression, full controlled roadmap regression through P20.2, historical closures, static verification, and both exact-run artifact uploads.
+
+Exact-run artifacts:
+- `KAIROS_CURRENT_CANDIDATE` artifact `9991723054`, 1,157,688 bytes, digest `sha256:4491b4bac4279a75c8cf16cffba8beb2ab9923d38c26021117486c4a2155c911`.
+- `KAIROS_GATE_EVIDENCE` artifact `9991723338`, 677 bytes, digest `sha256:32a31776f3d9388119cfc66329e25565320e20c5b080f397382460c9b4c6b2a5`.
+
+Therefore P20.2 is now the canonical GOLDEN. It canonically establishes the Saved Analysis persistence/storage/backup/restore foundation while preserving the P20.1 logical contract and prior DB/backup compatibility boundaries.
 
 ## Ownership rules that remain invariant
 
@@ -79,4 +91,4 @@ Therefore P20.1 is now the canonical GOLDEN. Its ownership is contract/compositi
 
 ## Next audit checkpoint
 
-Before P20.2, reread the controlling handoff/roadmap, P20.1 GOLDEN, this map, process history, Retry Ledger, and exact database/repository/backup ownership. Prove the smallest next persistence responsibility and non-scope before implementation. After each future canonical PASS, audit this map again and update only when canonical ownership/boundaries materially change.
+Before the next P20 responsibility, reread the controlling handoff/roadmap, P20.2 GOLDEN, this map, process history, Retry Ledger, and exact current Saved Analysis owners/consumers. Prove exactly one smallest dependency-safe next P20 responsibility and explicit non-scope from source evidence before implementation. Do not infer a P20.3 responsibility from numbering, and do not jump to P21 until P20 is source-proven closed. After each future canonical PASS, audit this map again and update only when canonical ownership/boundaries materially change.
