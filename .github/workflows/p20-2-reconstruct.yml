@@ -41,31 +41,38 @@ jobs:
 
           paths = [Path(f'.github/kairos-p20-2-direct/chunk-{i}.txt') for i in range(5)]
           chunks = [p.read_text() for p in paths]
-          joined = ''.join(chunks)
-          encoded = ''.join(joined.split())
+          encoded = ''.join(''.join(chunks).split())
           expected_chars = 24384
           expected_patch_sha = '960d85f15cfad6ca5c8c6c5495c0d612465ca3e00043276c3dfe51924afcaac6'
-          print('chunk_sizes=' + ','.join(str(len(x)) for x in chunks) + f' joined={len(joined)} normalized={len(encoded)}')
-          if len(encoded) != expected_chars:
-              raise SystemExit(f'normalized base64 length mismatch: {len(encoded)} != {expected_chars}')
-          try:
-              compressed = base64.b64decode(encoded, validate=True)
-          except Exception as exc:
-              raise SystemExit(f'strict base64 decode failed: {exc}')
-          try:
-              patch = gzip.decompress(compressed)
-          except Exception as exc:
-              raise SystemExit(f'gzip decode failed: {exc}')
-          patch_sha = hashlib.sha256(patch).hexdigest()
-          print(f'compressed_bytes={len(compressed)} compressed_sha256={hashlib.sha256(compressed).hexdigest()} patch_bytes={len(patch)} patch_sha256={patch_sha}')
-          if patch_sha != expected_patch_sha:
-              raise SystemExit('decoded patch SHA-256 mismatch')
-          if len(patch) != 98903:
-              raise SystemExit(f'decoded patch size mismatch: {len(patch)}')
-          if not patch.startswith(b'diff --git '):
-              raise SystemExit('decoded bytes are not a git patch')
-          if patch.count(b'diff --git ') != 35:
-              raise SystemExit(f'unexpected diff header count: {patch.count(b"diff --git ")}')
+          print('chunk_sizes=' + ','.join(str(len(x)) for x in chunks) + f' normalized={len(encoded)}')
+
+          winners = []
+          def test(candidate, trace):
+              if len(candidate) != expected_chars:
+                  return
+              try:
+                  compressed = base64.b64decode(candidate, validate=True)
+                  patch = gzip.decompress(compressed)
+              except Exception:
+                  return
+              if len(patch) != 98903:
+                  return
+              if hashlib.sha256(patch).hexdigest() != expected_patch_sha:
+                  return
+              if not patch.startswith(b'diff --git ') or patch.count(b'diff --git ') != 35:
+                  return
+              winners.append((trace, compressed, patch))
+
+          test(encoded, 'exact')
+          if len(encoded) == expected_chars + 1:
+              for i in range(len(encoded)):
+                  test(encoded[:i] + encoded[i+1:], f'delete:{i}')
+
+          print(f'patch_identity_winners={len(winners)}')
+          if len(winners) != 1:
+              raise SystemExit(f'direct payload patch identity not uniquely recoverable: winners={len(winners)}')
+          trace, compressed, patch = winners[0]
+          print(f'payload_recovery={trace} compressed_bytes={len(compressed)} compressed_sha256={hashlib.sha256(compressed).hexdigest()} patch_bytes={len(patch)} patch_sha256={hashlib.sha256(patch).hexdigest()}')
           Path('/tmp/p20_2.patch.gz').write_bytes(compressed)
           Path('/tmp/p20_2.patch').write_bytes(patch)
           PY
