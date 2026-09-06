@@ -1,0 +1,47 @@
+s=s.replace("preflight.includes('envelope.databaseSchemaVersion !== 2 && envelope.databaseSchemaVersion !== 3')", "preflight.includes('envelope.databaseSchemaVersion !== 4')")
+s=s.replace("'restore preflight must preserve schema-v2 backup compatibility'", "'restore preflight must accept migrated current schema-v4 restore model'")
+s=s.replace("tests.includes('databaseSchemaVersion:3')", "tests.includes('databaseSchemaVersion:3') || tests.includes('databaseSchemaVersion: 3')")
+s=s.replace("kernel.includes(\"schemaVersion: 3\")", "kernel.includes(\"schemaVersion: 3\")")
+w('scripts/verify-p12-journal-history-status-index-backup-regression-repair.mjs',s)
+# P12 verifier compat
+s=r('scripts/verify-p12-journal-history-status-index-verifier-compatibility-repair.mjs')
+s=s.replace("schema.includes('KAIROS_DB_SCHEMA_VERSION = 3 as const')", "schema.includes('KAIROS_DB_SCHEMA_VERSION = 4 as const') && schema.includes('KAIROS_V3_STORES')")
+s=s.replace("'current schema must be v3'", "'current schema must be v4 while V3 remains preserved'")
+s=s.replace("'current V3 compound index must remain present'", "'released V3 compound index must remain present'")
+s=s.replace("p5.includes('Current V3 status+updatedAt index is missing.')", "p5.includes('Released V3 status+updatedAt index is missing.')")
+s=s.replace("'P5 verifier must validate current V3 while preserving historical schema checks'", "'P5 verifier must validate released V3 while allowing current V4'")
+s=s.replace("p9.includes('Current schema must be v3 after the P12 index-only migration')", "p9.includes('Current schema must be v4 while preserving the P12 V3 index migration')")
+s=s.replace("'P9 verifier must allow current V3'", "'P9 verifier must allow current V4 while preserving V3'")
+s=s.replace("p9.includes('V3 must append to immutable V1/V2 history')", "p9.includes('V4 must append to immutable V1/V2/V3 history')")
+s=s.replace("'P9 verifier must require append-only migration history'", "'P9 verifier must require append-only V1/V2/V3/V4 history'")
+s=s.replace("migrations.includes('KAIROS_V3_MIGRATION')", "migrations.includes('KAIROS_V3_MIGRATION') && migrations.includes('KAIROS_V4_MIGRATION')")
+s=s.replace("'V1/V2/V3 migrations must all be registered'", "'V1/V2/V3/V4 migrations must all be registered'")
+w('scripts/verify-p12-journal-history-status-index-verifier-compatibility-repair.mjs',s)
+# tests migrate expected current versions minimally
+for p in ['tests/database-migrations.test.ts','tests/database-transactions.test.ts']:
+ s=r(p).replace('toBe(3)','toBe(4)').replace("schemaVersion: 3","schemaVersion: 4")
+ if p.endswith('database-migrations.test.ts'):
+  s=s.replace("KAIROS_V3_STORES,", "KAIROS_V3_STORES,\n  KAIROS_V4_STORES,")
+  s=s.replace("toHaveLength(3)","toHaveLength(4)")
+  s=s.replace("expect(KAIROS_DATABASE_MIGRATIONS[2]).toEqual({ version: 3, stores: KAIROS_V3_STORES });", "expect(KAIROS_DATABASE_MIGRATIONS[2]).toEqual({ version: 3, stores: KAIROS_V3_STORES });\n    expect(KAIROS_DATABASE_MIGRATIONS[3]).toEqual({ version: 4, stores: KAIROS_V4_STORES });")
+  s=s.replace("['metadata', 'trades', 'tradePlans', 'tradeExecutions', 'tradeFees']", "['metadata', 'trades', 'tradePlans', 'tradeExecutions', 'tradeFees', 'savedAnalyses']")
+ w(p,s)
+
+
+from pathlib import Path
+root=Path.cwd()
+
+def rep(rel,a,b):
+ p=root/rel; s=p.read_text();
+ if a not in s: print('MISS',rel,a[:80]); return
+ p.write_text(s.replace(a,b))
+
+# Current DB-version/table expectations only; keep historical v1/v2/v3 fixtures intact.
+rep('tests/database-kernel.test.ts', "it('declares current schema v3 with immutable v1 metadata history'", "it('declares current schema v4 with immutable v1 metadata history'")
+rep('tests/database-kernel.test.ts', 'expect(KAIROS_DB_SCHEMA_VERSION).toBe(3);', 'expect(KAIROS_DB_SCHEMA_VERSION).toBe(4);')
+rep('tests/database-kernel.test.ts', "expect(status).toEqual({ state: 'ready', schemaVersion: 3 });", "expect(status).toEqual({ state: 'ready', schemaVersion: 4 });")
+rep('tests/database-kernel.test.ts', "['metadata', 'tradeExecutions', 'tradeFees', 'tradePlans', 'trades'].sort()", "['metadata', 'savedAnalyses', 'tradeExecutions', 'tradeFees', 'tradePlans', 'trades'].sort()")
+rep('tests/metadata-repository.test.ts', 'expect(db.verno).toBe(3);', 'expect(db.verno).toBe(4);')
+rep('tests/metadata-repository.test.ts', "['metadata', 'tradeExecutions', 'tradeFees', 'tradePlans', 'trades'].sort()", "['metadata', 'savedAnalyses', 'tradeExecutions', 'tradeFees', 'tradePlans', 'trades'].sort()")
+rep('tests/database-transactions.test.ts', "['metadata', 'tradeExecutions', 'tradeFees', 'tradePlans', 'trades'].sort()", "['metadata', 'savedAnalyses', 'tradeExecutions', 'tradeFees', 'tradePlans', 'trades'].sort()")
+rep('tests/trade-persistence.test.ts', 'expect(db.verno).toBe(3);', 'expect(db.verno).toBe(4);')
