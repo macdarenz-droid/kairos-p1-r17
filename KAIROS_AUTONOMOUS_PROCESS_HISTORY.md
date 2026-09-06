@@ -14,7 +14,7 @@ AFK/autonomous mode is owned by enabled recurring `Kairos Relay Supervisor [ACTI
 ## Roadmap / GOLDEN
 P18 CLOSED; P19 CLOSED; P20 OPEN.
 
-Latest canonical GOLDEN remains P20.1 Saved Analysis Contract Foundation: canonical `Kairos Controlled Roadmap Gate` #281 / run `34025578061`, job `101465826371`, head `f8479efd89c61bac4f09e32c5c7d69280ee02c5c`, SUCCESS. Exact-run `KAIROS_CURRENT_CANDIDATE` artifact `9987048689` and `KAIROS_GATE_EVIDENCE` artifact `9987048971` were previously re-proven present/unexpired. P20.2 remains NON-CANONICAL.
+Latest canonical GOLDEN remains P20.1 Saved Analysis Contract Foundation: canonical `Kairos Controlled Roadmap Gate` #281 / run `34025578061`, job `101465826371`, head `f8479efd89c61bac4f09e32c5c7d69280ee02c5c`, SUCCESS. Exact-run `KAIROS_CURRENT_CANDIDATE` artifact `9987048689` and `KAIROS_GATE_EVIDENCE` artifact `9987048971` were re-proven present/unexpired. P20.2 remains NON-CANONICAL.
 
 ## P20.2 frozen coherent scope
 `savedAnalyses` stable `&id`; `SavedAnalysisRepository`; DB V4 preserving immutable released V1/V2/V3; explicit full-current-store registry; backup V3 preserving/migrating backup V1/V2; Saved Analysis atomic across migrations/snapshot/preflight/replacement/verification/integrity; historical current-version checks compatibility-aware only; no UI/provider/pixels/optional metadata/speculative indexes/query APIs.
@@ -23,7 +23,7 @@ Latest canonical GOLDEN remains P20.1 Saved Analysis Contract Foundation: canoni
 R1-R10 PATCH64 recovery and R11-R12 direct-chunk repair routes are closed unless materially new evidence appears. R7 proved compact source length modulo 4 = 1; R8 found zero applyable one-character insertions at evidenced formatting boundaries; R9B found zero structural/applyable winners across all 22,713 single-character deletions; corrected R10 constrained three-character restoration found zero structural/applyable candidates; R11 still had normalized direct stream length 24,385 vs expected 24,384; R12 exhaustively deleted each of 24,385 direct-stream chars and found `patch_identity_winners=0`. All were helper-only and never canonical P20.2 verdicts.
 
 ## Direct canonical-source reconstruction evidence
-Exact canonical P20.1 candidate bytes were recovered from canonical artifact `9987048689` and extracted successfully in a prior autonomous process. Owner/data-flow tracing against that exact source established the P20.2 seam:
+Exact canonical P20.1 candidate bytes were recovered from canonical artifact `9987048689` and extracted successfully. Owner/data-flow tracing against that exact source established the P20.2 seam:
 - DB owners: `src/data/database/schema.ts`, `KairosDatabase.ts`, `migrations.ts`, `transactions.ts`, `integrity.ts`, database exports;
 - repository owner: `src/data/repositories/index.ts` plus a new Saved Analysis repository boundary;
 - backup/restore owners: `backupFormat.ts`, `backupEnvelope.ts`, `backupSerialization.ts`, `backupValidation.ts`, `backupSnapshot.ts`, `restorePreflight.ts`, `restoreReplacement.ts`, `restoreVerification.ts`;
@@ -34,13 +34,24 @@ Exact canonical P20.1 candidate bytes were recovered from canonical artifact `99
 - database/backup/restore unit suites were located for V4 + backup-V3 regression expansion.
 
 ## Current material strategy
-Abandon corrupted-base64 recovery. Reconstruct P20.2 deterministically from the exact canonical P20.1 artifact/source and the proven owner map above. First produce a controlled local reconstruction patch from exact owners and frozen scope; statically verify the delta and dedicated P20.2 verifier. Then use one NON-CANONICAL GitHub helper for deterministic `npm ci`, pinned Node 22.16.0/npm 10.9.2/lightweight-charts 5.2.1, typecheck/build/full unit + current/historical verifier regressions, clean package boundary and ZIP integrity. Do not retarget canonical gate until helper SUCCESS proves exact candidate identity/scope/integrity.
+Abandon corrupted-base64 recovery. Reconstruct P20.2 deterministically from exact canonical P20.1 owners/frozen scope, then use one NON-CANONICAL GitHub helper for deterministic `npm ci`, pinned Node 22.16.0/npm 10.9.2/lightweight-charts 5.2.1, typecheck/build/full unit + current/historical verifier regressions, clean package boundary and ZIP integrity. Do not retarget canonical gate until helper SUCCESS proves exact candidate identity/scope/integrity.
 
 ## Process log — 2026-09-06T13:45Z — token W-20260906-P20-2-R6-V15-SELFLOOP-N8Q5
 RULE 0 was satisfied first: the SAME V15 fast worker was rescheduled forward and PEEK-verified enabled with future DTSTART before project work. Supervisor remained ACTIVE. Execution lease was acquired for continuity mutation.
 
 Controlling handoff was re-read from `00_READ_FIRST_KAIROS_MASTER_SELF_HANDOFF_P18_56_PASS_P18_57_UPLOADED_AFK_RESOURCES_2026-09-06.txt`; it remains the controlling self-handoff and preserves source priority, zero-guessing, roadmap P20 Saved Analysis -> P40 Release Hardening, and AFK enabled-state semantics. Fresh process history and Retry Ledger were read before action.
 
-This process reconciled the previously pending direct canonical-artifact owner-map evidence into this history file before any engineering mutation. No production source, candidate, helper workflow, or canonical gate was changed by this history reconciliation.
+This process reconciled the previously pending direct canonical-artifact owner-map evidence into this history file before engineering mutation. No production source, candidate, helper workflow, or canonical gate was changed by that reconciliation.
 
-Next safe action: fresh-fetch main/Actions/current canonical gate and `docs/KAIROS_ARCHITECTURE_MAP.md`, confirm no active competing helper/gate, then continue deterministic direct P20.2 reconstruction from exact canonical P20.1 owners. FAST ~3m remains correct until exact P20.2 candidate identity/scope and exact canonical gate queued/in_progress are both proven. No user action required.
+## Process log — 2026-09-06T13:56Z — token W-20260906-P20-2-R6-V15-SELFLOOP-N8Q5
+Fresh authority/state: main remains `64de0255777b4a6bab70ff26ed469396900ef35a`; latest P20.2 helper R12 run `34036218596` is completed FAILURE; no P20.2 canonical gate is active. Canonical P20.1 gate #281 / run `34025578061` remains SUCCESS. `docs/KAIROS_ARCHITECTURE_MAP.md` remains accurate through canonical P20.1 only and intentionally contains no P20.2 helper semantics.
+
+Exact canonical artifact `9987048689` was downloaded again and extracted to a pristine P20.1 source tree. From that source, a new owner-derived deterministic P20.2 reconstruction was built within the frozen scope. It is a NEW reconstruction, not a claim to reproduce the lost/corrupted earlier patch byte-for-byte.
+
+Reconstruction evidence: 32 changed files; patch SHA-256 `1268a9dd2b49f2f98df716a5649e2792763fb0fd130556adf4227f972b4aa246`; `git diff --check` PASS; `git apply --check` PASS against a fresh pristine P20.1 baseline. Static compatibility/dedicated checks all PASS: P5 database kernel, P5 transactions, P6 backup envelope, P9 trade persistence, both affected P12 status-index/history compatibility verifiers, and dedicated `verify:p20:2-saved-analysis-persistence-foundation`.
+
+The unchanged local `npm ci` route timed out again at container transport level. This is now at least the third failure of the same local install method; DO NOT repeat local `npm ci` unchanged. Full dependency install/typecheck/build/vitest/all-verifier runtime remains UNPROVEN for this reconstruction.
+
+No P20.2 candidate ZIP was packaged/uploaded, no production source on main was changed, and the canonical gate was not retargeted. P20.1 remains GOLDEN; P20.2 remains NON-CANONICAL.
+
+Next safe action: replace the stale corrupted-chunk helper mechanism with ONE non-canonical GitHub-native helper that deterministically reconstructs this source-derived P20.2 delta via a text/source-controlled route, then runs deterministic npm install, pinned toolchain/LWC proof, typecheck/build, full unit/current/historical verifiers, clean package boundary, ZIP integrity and candidate identity. Helper PASS remains non-canonical; only after exact candidate proof may the canonical gate be retargeted. FAST ~3m remains correct; no user action required.
