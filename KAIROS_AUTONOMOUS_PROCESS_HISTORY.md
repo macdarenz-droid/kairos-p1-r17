@@ -4,41 +4,45 @@ Branch: `kairos-autonomous-state`
 Status: NON-CANONICAL continuity memory only. Controlling handoff + fresh canonical GitHub always override this file. Detailed earlier process history remains available in this branch's git history.
 
 ## MUST-READ / WRITE-BACK CONTRACT
-Before every Kairos decision: handoff/current rules -> roadmap/GOLDEN -> this history -> Retry Ledger -> living repo docs -> fresh main/Actions -> exact canonical artifact/source/log/owner/data-flow evidence. After every meaningful autonomous process, conflict-safely write back before report/lease release.
+Before every Kairos decision: automation liveness rule -> handoff/current rules -> roadmap/GOLDEN -> this history -> Retry Ledger -> living repo docs -> fresh main/Actions -> exact canonical artifact/source/log/owner/data-flow evidence. After every meaningful autonomous process, conflict-safely write back before report/lease release.
 
 # CURRENT ACTIVE STATE
 Repository `macdarenz-droid/kairos-p1-r17`; engineering `main`; continuity `kairos-autonomous-state`.
 
-AFK/autonomous mode is owned by the enabled recurring `Kairos Relay Supervisor [ACTIVE]`, contract `KAIROS-AFK-SUPERVISOR-V13-2026-09-06`. Fast progress uses disposable V13 one-time relay workers under `KAIROS-FAST-RELAY-V13-2026-09-06`; the hourly supervisor is the dead-man recovery layer. This supersedes the temporary V12 hourly-only architecture note below in git history.
+AFK/autonomous mode is owned by enabled recurring `Kairos Relay Supervisor [ACTIVE]`, contract `KAIROS-AFK-SUPERVISOR-V15-2026-09-06`. Fast progress now uses exactly ONE reusable `Kairos Fast Continuation` under `KAIROS-FAST-RELAY-V15-2026-09-06`.
 
-## Autonomous loop architecture — V13 hybrid relay
-Fast worker pattern: brand-new one-shot fast worker -> arm a different future fast worker near start -> perform exact evidence-backed process. FAST cadence ~3m for research/repair/helper/docs/pre-gate states; GATE cadence ~10m only after exact candidate identity/upload/scope and exact canonical gate queued/in_progress are both proven. The recurring hourly supervisor never writes GitHub and checks/restarts a missing relay each hour. Helpers remain NON-CANONICAL; only `Kairos Controlled Roadmap Gate` / `.github/workflows/kairos-gate.yml` / `verify-current-candidate` may promote authority.
+## Autonomous loop architecture — V15 self-rescheduling worker
+Scheduled automation runtime cannot create child automations. Therefore the earlier V13/V14 child-worker relay is retired. RULE 0 for the fast worker is now: before GitHub/handoff/history/lease/analysis/project work, UPDATE/RESCHEDULE THE SAME `Kairos Fast Continuation` into the future, default FAST ~3m, and PEEK-verify enabled + future DTSTART. Exact GATE ~10m is allowed only when exact candidate identity/upload/scope and exact canonical `Kairos Controlled Roadmap Gate` queued/in_progress are both freshly proven. The recurring hourly supervisor is GitHub read-only and revives/reschedules this SAME worker if it stops; it never creates a child worker. Execution lease controls repository mutation only.
 
 ## Roadmap / GOLDEN
 P18 CLOSED; P19 CLOSED; P20 OPEN.
 
-Latest re-proven canonical GOLDEN: P20.1 Saved Analysis Contract Foundation, canonical `Kairos Controlled Roadmap Gate` #281 / run `34025578061`, job `101465826371`, head `f8479efd89c61bac4f09e32c5c7d69280ee02c5c`, SUCCESS. Exact-run `KAIROS_CURRENT_CANDIDATE` artifact `9987048689`, digest `sha256:34cdb119bab8177a5168877449490ebb5cef3e45156062049b8a70dfe7b7f44c`; `KAIROS_GATE_EVIDENCE` artifact `9987048971`, digest `sha256:0491d7fbef1dd19768bcbcc5fe69c69f1d106f0ab6635f3b7673580eb9572295`.
+Latest re-proven canonical GOLDEN remains P20.1 Saved Analysis Contract Foundation: canonical `Kairos Controlled Roadmap Gate` #281 / run `34025578061`, job `101465826371`, head `f8479efd89c61bac4f09e32c5c7d69280ee02c5c`, SUCCESS. Exact-run candidate artifact `9987048689`; gate-evidence artifact `9987048971`. P20.2 remains NON-CANONICAL.
 
-## P20.2 current non-canonical state
-P20.2 Saved Analysis Persistence Foundation remains NON-CANONICAL. Frozen coherent scope remains: `savedAnalyses` stable `&id`; `SavedAnalysisRepository`; DB V4 preserving V1/V2/V3; full-current-store registry; backup V3 preserving/migrating backup V1/V2; Saved Analysis included atomically in migrations/snapshot/preflight/replacement/verification/integrity; no UI/provider/pixels/optional metadata/speculative indexes/query APIs.
+## P20.2 frozen coherent scope
+`savedAnalyses` stable `&id`; `SavedAnalysisRepository`; DB V4 preserving V1/V2/V3; full-current-store registry; backup V3 preserving/migrating backup V1/V2; Saved Analysis atomic across migrations/snapshot/preflight/replacement/verification/integrity; no UI/provider/pixels/optional metadata/speculative indexes/query APIs.
 
-Local construction evidence remains: deterministic draft from exact P20.1 artifact; mechanical delta 31 files; `git apply --check` passed; dedicated P20.2 static verifier passed. Two identical local `npm ci` attempts timed out, so do not repeat that method without new evidence.
+Local evidence retained: exact P20.1 artifact -> deterministic 31-file P20.2 draft; `git apply --check` PASS; dedicated P20.2 static verifier PASS. Identical local `npm ci` route timed out twice and must not be repeated unchanged.
 
-Helper R4 run `34030021858`, job `101477719156`, head `19b5057dc96a08419d9ba58de6032413dc80742c`, completed FAILURE only at patch recovery; checkout/setup-node/npm 10.9.2 passed. Helper R5 run `34031682301`, job `101482239453`, head `fa2f5262bc7105b72eb7889ab2e8bb35773d1777`, also completed FAILURE only at `Recover and apply exact P20.2 patch`; setup/checkout/setup-node/npm pin all passed, downstream verification/package skipped. This remains helper mechanism evidence only, not a P20.2 canonical verdict.
+## Helper failure ledger through R6
+R1 `7a113ee7...` / run `34029696168`: malformed helper YAML with giant heredoc.
+R2 `9bde3116...` / run `34029879370`: base64 recovery invalid.
+R3 `2f3c8383...` / run `34029978752`: moving-HEAD source lookup lost original payload source.
+R4 `19b5057d...` / run `34030021858`: immutable source found, base64 decode still invalid.
+R5 `fa2f5262...` / run `34031682301`: bounded whitespace-only strict decoder failed.
+R6 main `3a090c4cf8144c825cd0402b4b66eb3025542078`, run `34032267640`, job `101483850850`: setup/checkout/Node 22.16.0/npm 10.9.2 all PASS; exact failure remained `Recover and apply exact P20.2 patch`, with log `PATCH64 end marker not found`; downstream verifier/package skipped. This is helper-only failure, never a P20.2 canonical verdict.
 
-## Process log — 2026-09-06T12:09Z — token W-20260906-P20-2-V13-RELAY-START-Q7M4
-Main before: `fa2f5262bc7105b72eb7889ab2e8bb35773d1777`.
+## Process log — 2026-09-06T12:31Z — token W-20260906-P20-2-R6-V15-SELFLOOP-N8Q5
+Main before: `3a090c4cf8144c825cd0402b4b66eb3025542078`.
 
-Fresh evidence: exact R5 helper `34031682301` was completed FAILURE at recovery step only. Current source still extracted the immutable `PATCH64` heredoc from commit `7a113ee7febb53e1d04a1a6c7182099fcf5f3eb3`, normalized whitespace, then used strict base64 validation. Inspection of the immutable payload showed formatting contamination inside the encoded body, so the same strict-whitespace-only method was not repeated.
+Automation finding/action: the scheduled runtime itself prohibits creating child automations, explaining why V14 could not reliably satisfy its child-successor RULE 0. The same `Kairos Fast Continuation` was successfully rescheduled forward with automation UPDATE and verified enabled/future. Contracts were migrated to V15: same-worker self-reschedule at RULE 0; hourly supervisor revives the same worker by update; no child creation.
 
-Action: under the V13 execution lease, materially changed helper recovery in `.github/workflows/p20-2-reconstruct.yml`. R6 now takes only `[A-Za-z0-9+/]` characters from the exact bounded immutable heredoc body, discards inherited formatting/padding, restores canonical terminal padding, performs strict decode, requires decoded bytes to begin `diff --git`, then retains `git apply --check`, exact 31-file scope, pinned Node 22.16.0/npm 10.9.2/lightweight-charts 5.2.1, dedicated P20.2 verifier, typecheck/build/current+historical regressions, clean package boundary, ZIP integrity and candidate commit. This is a helper-only repair; no production/canonical gate scope was changed.
+Fresh helper diagnosis: R6 completed FAILURE. Exact job logs proved the normalized decoder was not reached because immutable source commit `7a113ee7febb53e1d04a1a6c7182099fcf5f3eb3` has no standalone closing `PATCH64` terminator. The source commit itself shows the giant payload as the final workflow line with no newline/closing heredoc, so terminator-dependent recovery is structurally wrong.
 
-Main after: `3a090c4cf8144c825cd0402b4b66eb3025542078` (`Repair P20.2 bridge payload normalization`). Fresh Actions proved exact helper R6 `Kairos P20.2 Deterministic Reconstruction Bridge` run `34032267640` started for that exact head and is currently IN_PROGRESS. No canonical retarget was performed. P20.1 remains GOLDEN.
+Action: under execution lease, made a materially different helper-only R7 repair in `.github/workflows/p20-2-reconstruct.yml`: if a real terminator exists use it; otherwise bound the immutable payload from the known start marker to EOF. The downstream safety contract is unchanged: recover only base64 alphabet, restore padding, strict decode, require `diff --git` signature, `git apply --check`, exact 31-file scope, pinned toolchain, dedicated verifier, typecheck/build/regressions, clean package boundary and ZIP integrity. No production source or canonical gate scope was changed.
 
-Living-doc status: `docs/KAIROS_ARCHITECTURE_MAP.md` remains current through canonical P20.1; no P20.2 helper-only behavior is documented as established architecture.
+Main after: `158b99bb814e59148882647064a20e854c9fd7af` (`Repair P20.2 bridge EOF payload recovery`). Fresh Actions proved exact helper R7 run `34033350156` queued on that exact head. It remains NON-CANONICAL. No P20.2 canonical retarget was performed.
 
-Failed-method fingerprints retained: identical local npm-ci route x2; invalid YAML giant heredoc R1; unchanged encoded extraction/base64 recovery R2/R4; moving-HEAD source lookup R3; bounded whitespace-only strict decoder R5. R6 is materially different via bounded base64-alphabet recovery plus downstream patch/signature/scope verification.
+Living-doc status: `docs/KAIROS_ARCHITECTURE_MAP.md` remains authoritative through canonical P20.1 only; no P20.2 helper semantics are documented as canonical architecture.
 
-Unresolved gap / next safe action: inspect exact helper R6 run `34032267640`. If helper succeeds, verify every helper stage plus exact P20.2 root candidate identity/scope/package integrity before the smallest canonical gate retarget. If helper fails, inspect exact failed step/log/evidence and materially change strategy again; never infer P20.2 canonical status from helper color.
-
-Waiting on: GitHub helper R6. No user action required.
+Unresolved gap / next safe action: monitor exact helper R7 `34033350156`. If SUCCESS, verify all helper stages plus exact root candidate identity/scope/package integrity before smallest P20.1->P20.2 canonical gate retarget. If FAIL, fetch exact failed step/log and materially change strategy again. FAST ~3m remains correct while helper/repair work exists. No user action required.
