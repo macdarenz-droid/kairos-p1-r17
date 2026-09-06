@@ -50,7 +50,7 @@ Worker `W-20260906-P19-6-HELPER1-MONITOR-V8-B7Q5`. Main before `8574f604809b4818
 Worker `W-20260906-P19-6-LOGICAL-OBJECT-BUILD-V8-R4T8`. Main before `7254955e9fe3ba76bfec46b0c17ad01d5dd2eecb`; main after `8574f604809b48189a7da474b8c6dc0f17a0caa7`. Freshly downloaded exact canonical P19.5 artifact `9984277086`, re-proved P19.6 source/API boundary, and added only `.github/workflows/p19-6-reconstruct.yml`; exact NON-CANONICAL helper run `34018498252` started.
 
 ## 2026-09-06 — P19 logical chart-object final API/source-convention proof
-Worker `W-20260906-P19-LOGICAL-OBJECT-API-PROOF-V8-H7N3`. Main before/after `7254955e823693b342282b0191bd53a1629d66d`; no engineering mutation. Fresh #278 and exact artifacts were re-proved; exact canonical source locked `src/app/riskRewardChartObjectProjection.ts` and provider-neutral logical geometry API.
+Worker `W-20260906-P19-LOGICAL-OBJECT-API-PROOF-V8-H7N3`. Main before/after `7254955e9fe3ba76bfec46b0c17ad01d5dd2eecb`; no engineering mutation. Fresh #278 and exact artifacts were re-proved; exact canonical source locked `src/app/riskRewardChartObjectProjection.ts` and provider-neutral logical geometry API.
 
 ## 2026-09-06 — Post-P19.5 remaining-responsibility convention/source proof
 Worker `W-20260906-P19-POST5-CONVENTIONS-V8-J2P6`. Main before/after `7254955e9fe3ba76bfec46b0c17ad01d5dd2eecb`; no engineering mutation. Proved missing provider-neutral logical RR chart-object composition and rejected redundant combined-view-model work.
