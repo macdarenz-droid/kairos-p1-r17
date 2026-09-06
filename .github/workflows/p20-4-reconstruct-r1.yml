@@ -1,0 +1,116 @@
+name: Kairos P20.4 Deterministic Reconstruction Bridge R1
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/p20-4-reconstruct-r1.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  reconstruct-p20-4-r1:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      BASE_ZIP: KAIROS_P20_3_SAVED_ANALYSIS_APPLICATION_SAVE_ORCHESTRATION_CANDIDATE_2026-09-07.zip
+      OUT_ZIP: KAIROS_P20_4_SAVED_ANALYSIS_APPLICATION_LOAD_ORCHESTRATION_CANDIDATE_2026-09-07.zip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Pin npm
+        run: |
+          npm install -g npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+      - name: Reconstruct exact P20.4 from canonical P20.3
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .p20candidate .p20baseline /tmp/changed.txt
+          mkdir .p20candidate .p20baseline
+          unzip -q "$BASE_ZIP" -d .p20candidate
+          unzip -q "$BASE_ZIP" -d .p20baseline
+          python3 - <<'PY'
+          from pathlib import Path
+          import ast, base64
+          source=Path('.github/workflows/p20-4-reconstruct.yml').read_text()
+          marker="files=json.loads(r'''"
+          if marker not in source: raise SystemExit('embedded P20.4 payload marker missing')
+          raw=source.split(marker,1)[1].split("''')",1)[0]
+          import json
+          files=json.loads(raw)
+          root=Path('.p20candidate/kairos_p76')
+          for rel,data in files.items():
+              p=root/rel; p.parent.mkdir(parents=True,exist_ok=True); p.write_bytes(base64.b64decode(data))
+          verifier=root/'scripts/verify-p20-4-saved-analysis-application-load.mjs'
+          s=verifier.read_text()
+          bad="throw new Error(g'P20.4 application export evidence missing');"
+          good="throw new Error('P20.4 application export evidence missing');"
+          if bad not in s: raise SystemExit('expected verifier syntax defect anchor missing')
+          verifier.write_text(s.replace(bad,good,1))
+          p=root/'package.json'; s=p.read_text()
+          old='"verify:p20:3-saved-analysis-application-save": "node scripts/verify-p20-3-saved-analysis-application-save.mjs"'
+          new=old+',\n    "verify:p20:4-saved-analysis-application-load": "node scripts/verify-p20-4-saved-analysis-application-load.mjs"'
+          if old not in s or 'verify:p20:4-saved-analysis-application-load' in s: raise SystemExit('package script anchor mismatch')
+          p.write_text(s.replace(old,new,1))
+          base=Path('.p20baseline/kairos_p76'); cur=root
+          expected={
+            'KAIROS_P20_4_SAVED_ANALYSIS_APPLICATION_LOAD_ORCHESTRATION_REPORT_2026-09-07.md',
+            'package.json',
+            'scripts/verify-p20-4-saved-analysis-application-load.mjs',
+            'src/application/saved-analysis/index.ts',
+            'src/application/saved-analysis/loadSavedAnalysis.ts',
+            'tests/saved-analysis-load-query.test.ts',
+          }
+          actual=set()
+          for q in cur.rglob('*'):
+              if q.is_file():
+                  rel=q.relative_to(cur); b=base/rel
+                  if not b.exists() or q.read_bytes()!=b.read_bytes(): actual.add(str(rel))
+          for b in base.rglob('*'):
+              if b.is_file():
+                  rel=b.relative_to(base)
+                  if not (cur/rel).exists(): actual.add(str(rel))
+          if actual != expected: raise SystemExit(f'scope mismatch missing={sorted(expected-actual)} extra={sorted(actual-expected)}')
+          Path('/tmp/changed.txt').write_text('\n'.join(sorted(actual))+'\n')
+          print('P20.4 exact scope verified:',len(actual))
+          PY
+          test "$(wc -l < /tmp/changed.txt | tr -d ' ')" = "6"
+      - name: Verify reconstructed P20.4
+        working-directory: .p20candidate/kairos_p76
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci
+          test "$(node --version)" = "v22.16.0"
+          test "$(npm --version)" = "10.9.2"
+          test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
+          npm run verify:p20:4-saved-analysis-application-load
+          npm run typecheck
+          npm run build
+          npm test
+          node - <<'NODE'
+          const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
+          const p=JSON.parse(readFileSync('package.json')); const scripts=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:p'));
+          for(const req of ['verify:p20:1-saved-analysis-contract-foundation','verify:p20:2-saved-analysis-persistence-foundation','verify:p20:3-saved-analysis-application-save','verify:p20:4-saved-analysis-application-load']) if(!scripts.includes(req)) process.exit(1);
+          for(const x of scripts){const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
+          NODE
+          npm run verify:static
+      - name: Package and commit P20.4 candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=.p20candidate/kairos_p76
+          rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite"
+          find "$ROOT" -type f \( -name '*.tsbuildinfo' -o -name '*.log' \) -delete
+          rm -f "$OUT_ZIP"
+          (cd .p20candidate && zip -qr "../$OUT_ZIP" kairos_p76)
+          unzip -t "$OUT_ZIP"
+          test "$(unzip -Z1 "$OUT_ZIP" | sed -n '1p' | cut -d/ -f1)" = "kairos_p76"
+          if unzip -Z1 "$OUT_ZIP" | grep -Eq '(^|/)(node_modules|dist|coverage|\.vite|\.git)(/|$)|\.tsbuildinfo$'; then exit 1; fi
+          sha256sum "$OUT_ZIP"
+          git config user.name kairos-autonomous-bridge
+          git config user.email actions@users.noreply.github.com
+          git add "$OUT_ZIP"
+          git commit -m 'Build P20.4 Saved Analysis application load orchestration candidate'
+          git push
