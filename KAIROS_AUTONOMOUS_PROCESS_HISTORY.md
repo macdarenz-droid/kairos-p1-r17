@@ -20,7 +20,7 @@ Exact canonical artifacts:
 - `KAIROS_CURRENT_CANDIDATE` id `9997837809`, size 1,169,775 bytes, digest `sha256:801b75beb1ed2bc16d13e2fa74a6905441652cdbc3ff66154abe6612894fdd17`.
 - `KAIROS_GATE_EVIDENCE` id `9997837954`, size 973 bytes, digest `sha256:829a2cf8118b04c59eb8cd3ca82c713f6acb0ad5f7445d622bd0175347524f9b`.
 
-Engineering `main` is the post-PASS living-architecture checkpoint `479759603f72b2aa4e0230e65be287b3635f82cd` (`Record canonical P21.1 Home dashboard route ownership`). No newer canonical gate exists at this checkpoint.
+Engineering `main` was the post-PASS living-architecture checkpoint `479759603f72b2aa4e0230e65be287b3635f82cd` before the P21.2 non-canonical helper-definition commit. No newer canonical gate exists at this checkpoint.
 
 ## Durable lineage summary
 - P20.5 canonically closed Saved Analysis; no speculative CRUD/runtime/UI/provider/schema expansion was introduced.
@@ -98,5 +98,16 @@ A later, separately source-proven slice must define acquisition/universe/freshne
 
 No P21.2 candidate, helper, gate retarget, provider call, Home wiring or engineering-main mutation was created in this discovery run. Retry Ledger was updated to record this exact source proof.
 
+## Process log — 2026-09-06T23:06Z — token W16-RECOVERY-20260907T0556-AEST-H9Q4
+RULE 0 was re-verified first: the same V16 `Kairos Fast Continuation` is enabled and future-dated, and the permanent hourly `Kairos Relay Supervisor [ACTIVE]` remains enabled. The execution lease was acquired under this exact token before engineering/continuity mutation.
+
+Fresh authority was re-proven before implementation: `main` was `479759603f72b2aa4e0230e65be287b3635f82cd`; latest canonical workflow remained `Kairos Controlled Roadmap Gate` #286 / run `34061840453` full SUCCESS; canonical P21.1 artifact `9997837809` remained exact; the root P21.1 candidate was proven present as blob `bbed43505abbe8bea68bf692379a741d5ff1a4ce`, size 1,352,502 bytes. Current official Binance documentation was rechecked and still confirms market-summary endpoints with multi-symbol request-weight considerations; no acquisition or Bubble semantics were inferred from those facts.
+
+One smallest controlled implementation chain was started: engineering-main commit `030390598dd2ee15bed64ba04e96ebbd5a884015` adds only the NON-CANONICAL workflow `.github/workflows/p21-2-live-market-summary-fact-contract-reconstruct.yml`. That helper reconstructs exact P21.1 and constrains P21.1→P21.2 candidate scope to exactly seven files: `marketDataTypes.ts` contract extension; new `liveMarketSummaryFactSemantics.ts`; market-data index export; focused Vitest contract test; dedicated P21.2 verifier; P21.2 report; package verifier registration.
+
+The contract remains raw-fact-only: instrument, last/open/high/low prices, base/quote 24h volumes, source timestamp and observed-at timestamp. It intentionally does not add provider acquisition, REST/WebSocket choice, universe, accumulation/snapshot/freshness policy, Home wiring, Bubble renderer/metric/colors/grouping/filtering/interactions, persistence/calculation/journal semantics, Your-Trades semantics, or transition implementation.
+
+Fresh exact helper run `34065848136`, job `101574333836`, head `030390598dd2ee15bed64ba04e96ebbd5a884015` is the sole active chain. Setup, checkout, setup-node, npm pin and exact P21.2 reconstruction passed. `Verify reconstructed P21.2 before packaging` was IN_PROGRESS at write-back; clean-boundary restoration and package commit were pending. Per one-active-chain rule, no canonical retarget or competing P21 work was started.
+
 ## Next safe action
-Re-prove P21.1 GOLDEN, exact canonical source and current official provider semantics. Then, if all validation/type ownership details remain consistent, construct exactly one controlled **P21.2 Live Market Summary Fact Contract Foundation** candidate from canonical P21.1 with the strict non-scope above. Do not implement acquisition/universe policy or either Bubble Map renderer in the same slice. Run focused contract tests/verifier plus full required regression/canonical-gate process before promotion.
+MONITOR ONLY helper run `34065848136` while queued/in-progress. If it fully succeeds, verify every helper stage, exact seven-file candidate delta, clean `kairos_p76/` package, ZIP/blob/size/integrity and resulting main commit. Helper PASS remains non-canonical. Only then, after fresh lease/main/Actions proof, retarget the canonical gate exactly once for P21.2. If helper fails, fetch the exact failed step/log and make only the smallest evidence-backed repair from P21.1 GOLDEN; P21.1 remains authority.
