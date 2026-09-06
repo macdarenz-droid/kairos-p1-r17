@@ -17,10 +17,11 @@ jobs:
     env:
       BASE_ZIP: KAIROS_P20_1_SAVED_ANALYSIS_CONTRACT_FOUNDATION_CANDIDATE_2026-09-06.zip
       OUT_ZIP: KAIROS_P20_2_SAVED_ANALYSIS_PERSISTENCE_FOUNDATION_CANDIDATE_2026-09-06.zip
+      PATCH_SOURCE_COMMIT: 7a113ee7febb53e1d04a1a6c7182099fcf5f3eb3
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 4
       - uses: actions/setup-node@v4
         with:
           node-version: '22.16.0'
@@ -39,7 +40,8 @@ jobs:
           unzip -q "$BASE_ZIP" -d .p20base
           cp -a .p20base/. .p20candidate/
 
-          git show HEAD^:.github/workflows/p20-2-reconstruct.yml \
+          git cat-file -e "$PATCH_SOURCE_COMMIT^{commit}"
+          git show "$PATCH_SOURCE_COMMIT:.github/workflows/p20-2-reconstruct.yml" \
             | awk "/<<'PATCH64'/{flag=1;next} /^[[:space:]]*PATCH64[[:space:]]*$/{flag=0} flag" \
             | tr -d '[:space:]' > /tmp/p20_2.patch.b64
           test -s /tmp/p20_2.patch.b64
