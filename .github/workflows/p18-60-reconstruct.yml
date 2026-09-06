@@ -51,6 +51,27 @@ jobs:
           npm run verify:p18:58-lightweight-charts-v5-trend-line-edit-endpoint-click-lifecycle-composition
           npm run verify:p17:16-chart-engine-system-closure
           npm run verify:p1
+      - name: Restore clean package boundary after verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=.p18candidate/kairos_p76
+          rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite"
+          find "$ROOT" -type f \( -name '*.tsbuildinfo' -o -name '*.log' \) -delete
+          python - <<'PY'
+          from pathlib import Path
+          a={str(p.relative_to(Path('.p18base/kairos_p76'))):p.read_bytes() for p in Path('.p18base/kairos_p76').rglob('*') if p.is_file()}
+          b={str(p.relative_to(Path('.p18candidate/kairos_p76'))):p.read_bytes() for p in Path('.p18candidate/kairos_p76').rglob('*') if p.is_file()}
+          changed={p for p in a.keys()|b.keys() if a.get(p)!=b.get(p)}
+          expected={
+            'KAIROS_P18_60_DRAWING_TOOLS_SYSTEM_CLOSURE_REPORT_2026-09-06.md',
+            'docs/KAIROS_ARCHITECTURE_MAP.md',
+            'package.json',
+            'scripts/verify-p18-60-drawing-tools-system-closure.mjs',
+          }
+          print('\n'.join(sorted(changed)))
+          assert changed==expected,(sorted(changed-expected),sorted(expected-changed))
+          PY
       - name: Package integrity check and replace corrupt candidate
         shell: bash
         run: |
