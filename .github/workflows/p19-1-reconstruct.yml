@@ -1,0 +1,257 @@
+name: Kairos P19.1 Deterministic Reconstruction Bridge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/p19-1-reconstruct.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reconstruct:
+    runs-on: ubuntu-24.04
+    env:
+      BASE_ZIP: KAIROS_P18_60_DRAWING_TOOLS_SYSTEM_CLOSURE_CANDIDATE_2026-09-06.zip
+      OUT_ZIP: KAIROS_P19_1_RISK_REWARD_ANALYSIS_CONTRACT_FOUNDATION_CANDIDATE_2026-09-06.zip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+
+      - name: Pin npm
+        run: |
+          npm install --global npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+
+      - name: Reconstruct P19.1 from canonical P18.60
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .p19base .p19candidate
+          mkdir .p19base .p19candidate
+          unzip -q "$BASE_ZIP" -d .p19base
+          cp -a .p19base/. .p19candidate/
+          ROOT=.p19candidate/kairos_p76
+          test -f "$ROOT/package.json"
+          mkdir -p "$ROOT/src/application/risk-reward"
+
+          cat > "$ROOT/src/application/risk-reward/riskRewardAnalysisContract.ts" <<'TS'
+          import type { DecimalString, TradeSide } from '../../domain/trades';
+
+          export type RiskRewardAnalysisId = string;
+
+          export interface RiskRewardAnalysisLevels {
+            readonly entry: DecimalString;
+            readonly stop: DecimalString;
+            readonly target: DecimalString;
+          }
+
+          export interface RiskRewardAnalysis {
+            readonly id: RiskRewardAnalysisId;
+            readonly side: TradeSide;
+            readonly levels: RiskRewardAnalysisLevels;
+          }
+
+          export function defineRiskRewardAnalysis(
+            analysis: RiskRewardAnalysis,
+          ): RiskRewardAnalysis {
+            return analysis;
+          }
+          TS
+
+          cat > "$ROOT/src/application/risk-reward/index.ts" <<'TS'
+          export * from './riskRewardAnalysisContract';
+          TS
+
+          cat > "$ROOT/tests/risk-reward-analysis-contract.test.ts" <<'TS'
+          import { describe, expect, it } from 'vitest';
+          import {
+            defineRiskRewardAnalysis,
+            type RiskRewardAnalysis,
+          } from '../src/application/risk-reward';
+          import { parsePositiveDecimalString } from '../src/domain/trades';
+
+          function decimal(value: string) {
+            const parsed = parsePositiveDecimalString(value);
+            if (!parsed.ok) throw new Error(`invalid test decimal: ${value}`);
+            return parsed.value;
+          }
+
+          describe('P19.1 Risk/Reward analysis semantic contract', () => {
+            it('preserves provider-neutral analysis identity, side, and semantic levels', () => {
+              const analysis: RiskRewardAnalysis = {
+                id: 'risk-reward-1',
+                side: 'long',
+                levels: {
+                  entry: decimal('100'),
+                  stop: decimal('90'),
+                  target: decimal('120'),
+                },
+              };
+
+              expect(defineRiskRewardAnalysis(analysis)).toEqual(analysis);
+            });
+          });
+          TS
+
+          cat > "$ROOT/scripts/verify-p19-1-risk-reward-analysis-contract-foundation.mjs" <<'JS'
+          import { readFileSync } from 'node:fs';
+
+          const contract = readFileSync(new URL('../src/application/risk-reward/riskRewardAnalysisContract.ts', import.meta.url), 'utf8');
+          const index = readFileSync(new URL('../src/application/risk-reward/index.ts', import.meta.url), 'utf8');
+          const test = readFileSync(new URL('../tests/risk-reward-analysis-contract.test.ts', import.meta.url), 'utf8');
+
+          const required = [
+            "import type { DecimalString, TradeSide } from '../../domain/trades'",
+            'export type RiskRewardAnalysisId = string',
+            'export interface RiskRewardAnalysisLevels',
+            'readonly entry: DecimalString',
+            'readonly stop: DecimalString',
+            'readonly target: DecimalString',
+            'export interface RiskRewardAnalysis',
+            'readonly side: TradeSide',
+            'readonly levels: RiskRewardAnalysisLevels',
+            'export function defineRiskRewardAnalysis',
+          ];
+          for (const token of required) {
+            if (!contract.includes(token)) throw new Error(`P19.1 RR contract missing: ${token}`);
+          }
+          for (const forbidden of [
+            'lightweight-charts', 'ChartDrawing', 'IndexedDB', 'Dexie', 'fetch(', 'WebSocket',
+            'calculateTradeMetrics', 'calculateRisk', 'calculateRMultiple', 'journalExecutions',
+            'TradeExecutionRecord', 'TradePlanRecord', 'TradeRecord',
+          ]) {
+            if (contract.includes(forbidden)) throw new Error(`P19.1 RR contract owns forbidden concern: ${forbidden}`);
+          }
+          if (!index.includes("from './riskRewardAnalysisContract'")) throw new Error('P19.1 risk-reward index does not export semantic contract');
+          for (const token of ["side: 'long'", "entry: decimal('100')", "stop: decimal('90')", "target: decimal('120')"]) {
+            if (!test.includes(token)) throw new Error(`P19.1 focused test missing: ${token}`);
+          }
+          console.log('P19.1 Risk/Reward analysis semantic contract foundation verification passed.');
+          JS
+
+          cat > "$ROOT/KAIROS_P19_1_RISK_REWARD_ANALYSIS_CONTRACT_FOUNDATION_REPORT_2026-09-06.md" <<'MD'
+          # KAIROS P19.1 — Risk/Reward Analysis Semantic Contract Foundation
+
+          ## Authority
+          Base: canonical P18.60 Drawing Tools System Closure, `Kairos Controlled Roadmap Gate` run #273 / `34008964239`.
+
+          ## Scope
+          Introduces the first P19-owned, provider-neutral Risk/Reward analysis semantic contract only.
+
+          - P19 owns analysis identity and semantic entry/stop/target levels.
+          - Existing `TradeSide` and financial `DecimalString` truth are reused from the trade domain.
+          - The contract is deliberately independent of chart/provider implementation.
+          - P14 journal/visualizer facts remain read-only upstream truth and are not mutated here.
+          - P11 remains calculation/R-multiple owner.
+          - P18 remains generic drawing/interaction/provider machinery owner.
+          - P20 remains later saved-analysis persistence owner.
+
+          ## Non-scope
+          No risk/reward ratio calculation, direction/order validation, chart-time/span geometry, P18 adapter/composition, rendering/provider API, UI, editing/resizing/deletion lifecycle, persistence/restore, journal writes, or execution-price mutation.
+          MD
+
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const p='.p19candidate/kairos_p76/package.json';
+          const j=JSON.parse(fs.readFileSync(p,'utf8'));
+          j.scripts||={};
+          j.scripts['verify:p19:1-risk-reward-analysis-contract-foundation']='node scripts/verify-p19-1-risk-reward-analysis-contract-foundation.mjs';
+          fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');
+          NODE
+
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('.p19candidate/kairos_p76/docs/KAIROS_ARCHITECTURE_MAP.md')
+          s=p.read_text()
+          s=s.replace('Drawing tools through trend-line edit endpoint-click lifecycle composition | P18 (canonical through P18.58)', 'Drawing tools through complete generic drawing/edit lifecycle system closure | P18 (canonical through P18.60)')
+          s=s.replace('## P18 Drawing Tools Ownership Ledger — canonical through P18.58', '## P18 Drawing Tools Ownership Ledger — canonical through P18.60')
+          s=s.replace('No duplicate authoritative owner was found among canonical P18.1-P18.58; P18.59 is the current controlled candidate.', 'No duplicate authoritative owner was found among canonical P18.1-P18.60; P18.60 is the explicit Drawing Tools system closure.')
+          s=s.replace('canonical P18.58 / Kairos Controlled Roadmap Gate #269.', 'canonical P18.60 / Kairos Controlled Roadmap Gate #273.')
+          if 'Risk/Reward analysis semantics | P19' not in s:
+              marker='| Drawing tools through complete generic drawing/edit lifecycle system closure | P18 (canonical through P18.60) | `src/features/chart/` modules listed below | No persistence/P20 ownership; no Risk/Reward/P19 semantics; no journal/calculation truth |'
+              rr='| Risk/Reward analysis semantics | P19 (P19.1 foundation) | `src/application/risk-reward/` | Semantic analysis identity/levels only at P19.1; no P18 machinery ownership, P11 calculation truth, P14 journal writes, or P20 persistence |'
+              if marker not in s: raise SystemExit('P18 core ownership row marker missing')
+              s=s.replace(marker, marker+'\n'+rr)
+          p.write_text(s)
+          PY
+
+          python - <<'PY'
+          from pathlib import Path
+          a={str(p.relative_to(Path('.p19base/kairos_p76'))):p.read_bytes() for p in Path('.p19base/kairos_p76').rglob('*') if p.is_file()}
+          b={str(p.relative_to(Path('.p19candidate/kairos_p76'))):p.read_bytes() for p in Path('.p19candidate/kairos_p76').rglob('*') if p.is_file()}
+          changed={p for p in a.keys()|b.keys() if a.get(p)!=b.get(p)}
+          expected={
+            'KAIROS_P19_1_RISK_REWARD_ANALYSIS_CONTRACT_FOUNDATION_REPORT_2026-09-06.md',
+            'docs/KAIROS_ARCHITECTURE_MAP.md',
+            'package.json',
+            'scripts/verify-p19-1-risk-reward-analysis-contract-foundation.mjs',
+            'src/application/risk-reward/index.ts',
+            'src/application/risk-reward/riskRewardAnalysisContract.ts',
+            'tests/risk-reward-analysis-contract.test.ts',
+          }
+          print('\n'.join(sorted(changed)))
+          assert changed==expected,(sorted(changed-expected),sorted(expected-changed))
+          PY
+
+      - name: Verify reconstructed P19.1 before packaging
+        working-directory: .p19candidate/kairos_p76
+        run: |
+          npm ci
+          test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
+          npm run verify:p19:1-risk-reward-analysis-contract-foundation
+          npx vitest run tests/risk-reward-analysis-contract.test.ts
+          npm run typecheck
+          npm run build
+          npm run verify:p18:60-drawing-tools-system-closure
+          npm run verify:p14:9-trade-visualizer-system-closure
+          npm run verify:p11:calculation-brain-closure
+          npm run verify:p1
+
+      - name: Restore clean package boundary after verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=.p19candidate/kairos_p76
+          rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite"
+          find "$ROOT" -type f \( -name '*.tsbuildinfo' -o -name '*.log' \) -delete
+          python - <<'PY'
+          from pathlib import Path
+          a={str(p.relative_to(Path('.p19base/kairos_p76'))):p.read_bytes() for p in Path('.p19base/kairos_p76').rglob('*') if p.is_file()}
+          b={str(p.relative_to(Path('.p19candidate/kairos_p76'))):p.read_bytes() for p in Path('.p19candidate/kairos_p76').rglob('*') if p.is_file()}
+          changed={p for p in a.keys()|b.keys() if a.get(p)!=b.get(p)}
+          expected={
+            'KAIROS_P19_1_RISK_REWARD_ANALYSIS_CONTRACT_FOUNDATION_REPORT_2026-09-06.md',
+            'docs/KAIROS_ARCHITECTURE_MAP.md',
+            'package.json',
+            'scripts/verify-p19-1-risk-reward-analysis-contract-foundation.mjs',
+            'src/application/risk-reward/index.ts',
+            'src/application/risk-reward/riskRewardAnalysisContract.ts',
+            'tests/risk-reward-analysis-contract.test.ts',
+          }
+          print('\n'.join(sorted(changed)))
+          assert changed==expected,(sorted(changed-expected),sorted(expected-changed))
+          forbidden=[]
+          root=Path('.p19candidate/kairos_p76')
+          for name in ['node_modules','dist','coverage','.vite']:
+              if any(p.name==name for p in root.rglob('*')): forbidden.append(name)
+          if forbidden: raise SystemExit(f'forbidden generated directories remain: {forbidden}')
+          PY
+
+      - name: Package and commit P19.1 candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f "$OUT_ZIP"
+          (cd .p19candidate && zip -qr "../$OUT_ZIP" kairos_p76)
+          unzip -t "$OUT_ZIP"
+          sha256sum "$OUT_ZIP"
+          git config user.name 'kairos-autonomous-bridge'
+          git config user.email 'actions@users.noreply.github.com'
+          git add "$OUT_ZIP"
+          git commit -m 'Build P19.1 Risk Reward analysis semantic contract candidate'
+          git push
