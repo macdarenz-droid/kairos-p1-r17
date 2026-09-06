@@ -1,11 +1,11 @@
-# KAIROS P19.7 GATE — AUTHORITATIVE BASE P19.6 — CANDIDATE P19.7
+# KAIROS P20.1 GATE — AUTHORITATIVE BASE P19.7 — CANDIDATE P20.1
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P19_7_RISK_REWARD_TOOL_SYSTEM_CLOSURE_CANDIDATE_2026-09-06.zip'
+      - 'KAIROS_P20_1_SAVED_ANALYSIS_CONTRACT_FOUNDATION_CANDIDATE_2026-09-06.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P19_6_RISK_REWARD_CHART_LOGICAL_OBJECT_PROJECTION_CANDIDATE_2026-09-06.zip
-  CANDIDATE_ZIP: KAIROS_P19_7_RISK_REWARD_TOOL_SYSTEM_CLOSURE_CANDIDATE_2026-09-06.zip
+  BASE_ZIP: KAIROS_P19_7_RISK_REWARD_TOOL_SYSTEM_CLOSURE_CANDIDATE_2026-09-06.zip
+  CANDIDATE_ZIP: KAIROS_P20_1_SAVED_ANALYSIS_CONTRACT_FOUNDATION_CANDIDATE_2026-09-06.zip
 
 jobs:
   verify-current-candidate:
@@ -24,12 +24,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22.16.0
-
       - name: Verify npm version
         run: |
           npm install --global npm@10.9.2
           test "$(npm --version)" = "10.9.2"
-
       - name: Extract authoritative base and candidate
         run: |
           rm -rf .gate-base .gate-candidate && mkdir .gate-base .gate-candidate
@@ -37,8 +35,7 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-
-      - name: Confirm exact controlled P19.7 scope from authoritative P19.6
+      - name: Confirm exact controlled P20.1 scope from authoritative P19.7
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -49,90 +46,55 @@ jobs:
           y={str(p.relative_to(c)):h(p) for p in c.rglob('*') if p.is_file()}
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           print('\n'.join(sorted(changed)))
-          expected={
-            'KAIROS_P19_7_RISK_REWARD_TOOL_SYSTEM_CLOSURE_REPORT_2026-09-06.md',
-            'docs/KAIROS_ARCHITECTURE_MAP.md',
-            'package.json',
-            'scripts/verify-p19-7-risk-reward-tool-system-closure.mjs',
-          }
+          expected={'KAIROS_P20_1_SAVED_ANALYSIS_CONTRACT_FOUNDATION_REPORT_2026-09-06.md','package.json','scripts/verify-p20-1-saved-analysis-contract-foundation.mjs','src/app/savedAnalysisContract.ts','src/app/savedAnalysisIdentity.ts'}
           if changed != expected:
-            print('P19.7 exact scope mismatch',file=sys.stderr)
-            print('Unexpected:',sorted(changed-expected),file=sys.stderr)
-            print('Missing:',sorted(expected-changed),file=sys.stderr)
-            sys.exit(1)
+            print('P20.1 exact scope mismatch',file=sys.stderr); print('Unexpected:',sorted(changed-expected),file=sys.stderr); print('Missing:',sorted(expected-changed),file=sys.stderr); sys.exit(1)
           PY
-
       - name: Install candidate deterministically
         working-directory: .gate-candidate/kairos_p76
         run: npm ci
-
       - name: Prove real Lightweight Charts dependency remains exact
         working-directory: .gate-candidate/kairos_p76
         run: |
           test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
           npm ls lightweight-charts --depth=0
-
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
         run: npm run typecheck
-
       - name: Production build
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
-
-      - name: Dedicated P19.7 Risk Reward Tool system closure verifier/runtime
+      - name: Dedicated P20.1 Saved Analysis contract foundation verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p20:1-saved-analysis-contract-foundation
           npm run verify:p19:7-risk-reward-tool-system-closure
-          npm run verify:p19:6-risk-reward-chart-logical-object-projection
-          npm run verify:p19:5-risk-reward-chart-logical-placement-projection
-          npm run verify:p19:4-risk-reward-chart-semantic-style-projection
-          npm run verify:p19:3-risk-reward-chart-composition-semantic-contract
-          npm run verify:p19:2-risk-reward-zone-semantics-projection
-          npm run verify:p19:1-risk-reward-analysis-contract-foundation
           npm run verify:p18:60-drawing-tools-system-closure
+          npm run verify:p17:16-chart-engine-system-closure
+          npm run verify:p16:18-crypto-live-feed-system-closure
           npm run verify:p14:9-trade-visualizer-system-closure
           npm run verify:p11:calculation-brain-closure
           npm run verify:p1
-
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-
-      - name: Full controlled roadmap regression through P19.7
+      - name: Full controlled roadmap regression through P20.1
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
           const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
           const p=JSON.parse(readFileSync('package.json')); const s=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:p'));
-          for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:16-chart-engine-system-closure','verify:p18:60-drawing-tools-system-closure','verify:p19:1-risk-reward-analysis-contract-foundation','verify:p19:2-risk-reward-zone-semantics-projection','verify:p19:3-risk-reward-chart-composition-semantic-contract','verify:p19:4-risk-reward-chart-semantic-style-projection','verify:p19:5-risk-reward-chart-logical-placement-projection','verify:p19:6-risk-reward-chart-logical-object-projection','verify:p19:7-risk-reward-tool-system-closure']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
+          for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:16-chart-engine-system-closure','verify:p18:60-drawing-tools-system-closure','verify:p19:7-risk-reward-tool-system-closure','verify:p20:1-saved-analysis-contract-foundation']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
           for(const x of s){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
           NODE
-
-      - name: P18 through P17 chart regressions
-        working-directory: .gate-candidate/kairos_p76
-        run: |
-          node - <<'NODE'
-          const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
-          const p=JSON.parse(readFileSync('package.json')); const scripts=Object.keys(p.scripts||{});
-          const p18=scripts.filter(x=>/^verify:p18:\d+/.test(x)).sort((a,b)=>Number((b.match(/^verify:p18:(\d+)/)||[])[1])-Number((a.match(/^verify:p18:(\d+)/)||[])[1]));
-          for(const x of p18){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
-          for(const x of ['verify:p17:16-chart-engine-system-closure','verify:p17:15-chart-viewport-history-demand']){const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
-          NODE
-
       - name: Historical closures
         working-directory: .gate-candidate/kairos_p76
         run: |
-          npm run verify:p19:6-risk-reward-chart-logical-object-projection
-          npm run verify:p19:5-risk-reward-chart-logical-placement-projection
-          npm run verify:p19:4-risk-reward-chart-semantic-style-projection
-          npm run verify:p19:3-risk-reward-chart-composition-semantic-contract
-          npm run verify:p19:2-risk-reward-zone-semantics-projection
-          npm run verify:p19:1-risk-reward-analysis-contract-foundation
+          npm run verify:p20:1-saved-analysis-contract-foundation
+          npm run verify:p19:7-risk-reward-tool-system-closure
           npm run verify:p18:60-drawing-tools-system-closure
           npm run verify:p17:16-chart-engine-system-closure
           npm run verify:p16:18-crypto-live-feed-system-closure
-          npm run verify:p16:10-execution-market-reference-truth
           npm run verify:p15:14-market-data-adapter-system-closure
           npm run verify:p14:9-trade-visualizer-system-closure
           npm run verify:p13:20-visual-pnl-system-closure
@@ -142,18 +104,16 @@ jobs:
           npm run verify:p9:trade-persistence
           npm run verify:p1
           npm run verify:static
-
       - name: Upload candidate
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_CURRENT_CANDIDATE
           path: ${{ env.CANDIDATE_ZIP }}
           if-no-files-found: error
-
       - name: Upload gate evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P19_7_RISK_REWARD_TOOL_SYSTEM_CLOSURE_REPORT_2026-09-06.md
+          path: .gate-candidate/kairos_p76/KAIROS_P20_1_SAVED_ANALYSIS_CONTRACT_FOUNDATION_REPORT_2026-09-06.md
           if-no-files-found: error
