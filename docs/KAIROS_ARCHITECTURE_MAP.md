@@ -24,6 +24,7 @@ Update this file after every canonical PASS that establishes, extends, moves, or
 | Risk/Reward semantics + provider-neutral chart composition | P19, CLOSED canonically at P19.7 | `src/application/risk-reward/`, `src/app/riskRewardChartStyleProjection.ts`, `src/app/riskRewardChartPlacementProjection.ts`, `src/app/riskRewardChartObjectProjection.ts` | Owns RR meaning, semantic levels/zones, style-token references, logical placement/object composition only; no P18 provider machinery, P11 calculation truth, P14 journal writes, P20 persistence, DOM/UI, pixel geometry, normalization/order validation, or hard-coded colors |
 | Saved Analysis logical persistence contract | P20.1 | `src/app/savedAnalysisContract.ts`, `src/app/savedAnalysisIdentity.ts` | Composes existing P17/P18/P19 logical truth only; no DB/schema/migration/repository/backup implementation, no UI, no provider state, no pixels, no duplicated RR/drawing semantics, no invented timeframe/metadata |
 | Saved Analysis persisted storage / backup / restore | P20.2 | `src/data/database/`, `src/data/repositories/SavedAnalysisRepository.ts`, `src/data/backup/` | Persists and restores the P20.1 logical contract only; no UI/provider/pixels, no duplicated P17/P18/P19 semantics, no speculative secondary indexes/query APIs, and no optional metadata invention |
+| Saved Analysis application save orchestration | P20.3 | `src/application/saved-analysis/saveSavedAnalysis.ts`, `src/application/saved-analysis/index.ts` | Allocates a fresh Saved Analysis id and coordinates exactly one atomic persisted write using P20.1 logical truth and P20.2 persistence; no UI/provider/pixels, no second repository/schema owner, no duplicated P17/P18/P19 semantics, and no speculative load/update/delete/list orchestration |
 
 ## P18 closure boundary
 
@@ -51,12 +52,13 @@ Exact-run artifacts:
 
 Therefore P19.7 is the canonical P19 system closure.
 
-## P20 canonical ownership ledger — OPEN through P20.2
+## P20 canonical ownership ledger — OPEN through P20.3
 
 | Patch | Canonical responsibility | Production owner seam | Boundary |
 |---|---|---|---|
 | P20.1 | Saved Analysis contract foundation and dedicated SavedAnalysis identity | `src/app/savedAnalysisContract.ts`, `src/app/savedAnalysisIdentity.ts` | Composes existing provider-neutral market reference, readonly existing P18 drawing snapshots, and P19 RR semantic truth + logical time extent. No persistence backend yet; no schema/migration/repository/backup/UI/provider/pixel ownership; no invented timeframe/name/trade/timestamp/index metadata |
 | P20.2 | Saved Analysis persistence foundation | DB V4 `savedAnalyses` store in `src/data/database/`; `src/data/repositories/SavedAnalysisRepository.ts`; merged current-store transaction/integrity authority; backup V3 + restore seams in `src/data/backup/` | Preserves immutable released DB V1/V2/V3 and backup V1/V2 compatibility; persists/restores P20.1 truth atomically; no UI/provider/pixels, no optional metadata, no speculative secondary indexes/query APIs, and no redefinition of P17/P18/P19/P20.1 truth |
+| P20.3 | Saved Analysis application-save orchestration | `src/application/saved-analysis/saveSavedAnalysis.ts`, exported through `src/application/saved-analysis/index.ts` | Fresh-id allocation + one atomic repository write only; preserves caller-owned logical input and returns explicit storage failure without partial record. No UI/provider/pixels, no second persistence owner, and no inferred load/update/delete/list responsibility |
 
 ## Canonical P20.1 evidence
 
@@ -76,7 +78,17 @@ Exact-run artifacts:
 - `KAIROS_CURRENT_CANDIDATE` artifact `9991723054`, 1,157,688 bytes, digest `sha256:4491b4bac4279a75c8cf16cffba8beb2ab9923d38c26021117486c4a2155c911`.
 - `KAIROS_GATE_EVIDENCE` artifact `9991723338`, 677 bytes, digest `sha256:32a31776f3d9388119cfc66329e25565320e20c5b080f397382460c9b4c6b2a5`.
 
-Therefore P20.2 is now the canonical GOLDEN. It canonically establishes the Saved Analysis persistence/storage/backup/restore foundation while preserving the P20.1 logical contract and prior DB/backup compatibility boundaries.
+P20.2 established the Saved Analysis persistence/storage/backup/restore foundation while preserving the P20.1 logical contract and prior DB/backup compatibility boundaries.
+
+## Canonical P20.3 evidence
+
+`Kairos Controlled Roadmap Gate` #283 / run `34045317884`, job `101519231493`, head `d0f0e6a426b1b270645ce3038f3ddf93d7d7573e`, completed SUCCESS on 2026-09-07. Every required `verify-current-candidate` stage succeeded: exact controlled P20.2→P20.3 scope, deterministic install, exact Lightweight Charts 5.2.1 dependency proof, production TypeScript/build, dedicated P20.3 Saved Analysis application-save runtime/verifier, full unit regression, full controlled-roadmap regression through P20.3, historical closures, and both exact-run artifact uploads.
+
+Exact-run artifacts:
+- `KAIROS_CURRENT_CANDIDATE` artifact `9993020397`, 1,161,350 bytes, digest `sha256:3796a891cee4e2e94e0f5d2e7e92dcc12c326fac98bd1ac0e47dcc1c5c104a05`.
+- `KAIROS_GATE_EVIDENCE` artifact `9993020648`, 1,099 bytes, digest `sha256:ec0dbba878dcc2bf1102bbc27b69edfddbb1af53f6859c36ac65aa5f9f13a6a8`.
+
+Therefore P20.3 is the canonical GOLDEN. It adds only application-save orchestration above the P20.1 logical contract and P20.2 persistence owner.
 
 ## Ownership rules that remain invariant
 
@@ -85,10 +97,10 @@ Therefore P20.2 is now the canonical GOLDEN. It canonically establishes the Save
 - P14 remains journal/trade-visualization truth where assigned.
 - P18 remains generic drawing/provider/interaction machinery.
 - P19 remains Risk/Reward semantic and provider-neutral logical composition truth.
-- P20 owns Saved Analysis persistence/restore only where canonically introduced, while reusing P17/P18/P19 logical truth.
+- P20 owns Saved Analysis persistence/application orchestration only where canonically introduced, while reusing P17/P18/P19 logical truth.
 - P2/P3 design tokens remain style-value authority; P19.4 references tokens rather than hard-coding colors.
 - UI/presentation amendments must preserve business/data/navigation truth and use new controlled amendments from latest GOLDEN.
 
 ## Next audit checkpoint
 
-Before the next P20 responsibility, reread the controlling handoff/roadmap, P20.2 GOLDEN, this map, process history, Retry Ledger, and exact current Saved Analysis owners/consumers. Prove exactly one smallest dependency-safe next P20 responsibility and explicit non-scope from source evidence before implementation. Do not infer a P20.3 responsibility from numbering, and do not jump to P21 until P20 is source-proven closed. After each future canonical PASS, audit this map again and update only when canonical ownership/boundaries materially change.
+Before the next P20 responsibility, reread the controlling handoff/roadmap, P20.3 GOLDEN, this map, process history, Retry Ledger, and exact current Saved Analysis owners/consumers. Prove exactly one smallest dependency-safe next P20 responsibility and explicit non-scope from source evidence before implementation. Do not infer a P20.4 responsibility from numbering, and do not jump to P21 until P20 is source-proven closed. After each future canonical PASS, audit this map again and update only when canonical ownership/boundaries materially change.
