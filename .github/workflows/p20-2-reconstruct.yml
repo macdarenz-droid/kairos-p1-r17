@@ -67,68 +67,54 @@ jobs:
               raise SystemExit('PATCH64 payload start newline not found')
           end_match = re.search(r'^\s*PATCH64\s*$', source[start:], re.M)
           raw = source[start:start + end_match.start()] if end_match else source[start:]
-          print('PATCH64 recovery boundary=' + ('terminator' if end_match else 'EOF'))
-
           b64chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
           allowed = set(b64chars)
           compact = ''.join(ch for ch in raw if ch in allowed)
+          print('PATCH64 recovery boundary=' + ('terminator' if end_match else 'EOF'))
           print(f'PATCH64 raw_chars={len(raw)} compact_chars={len(compact)} compact_modulo={len(compact) % 4}')
 
-          # The immutable malformed workflow lost formatting integrity. R7 proved
-          # that whitespace-only normalization leaves 22,713 data chars (mod 4 = 1),
-          # which cannot be valid base64. Search only the positions evidenced by
-          # non-base64 characters in the immutable raw payload, restoring exactly
-          # one possible base64 character. Accept a repair only when it uniquely
-          # decodes to UTF-8 git patch text, contains exactly 31 file headers, and
-          # passes git apply --check against the exact P20.1 GOLDEN baseline.
-          insertion_points = []
-          seen = set()
-          compact_pos = 0
-          for ch in raw:
-              if ch in allowed:
-                  compact_pos += 1
-              else:
-                  if compact_pos not in seen:
-                      seen.add(compact_pos)
-                      insertion_points.append(compact_pos)
-          print(f'PATCH64 candidate insertion points={len(insertion_points)}')
-
+          # R8 exhaustively tried restoring one character at every position
+          # evidenced by non-base64 formatting and found zero applyable patches.
+          # The compact stream length is 22,713 (mod 4 = 1); a distinct possible
+          # corruption class is exactly one extra base64 character. Test deletion
+          # of each compact character. Accept only one uniquely proven candidate
+          # that strict-decodes, is UTF-8 git patch text with exactly 31 file
+          # headers, and passes git apply --check against exact P20.1 GOLDEN.
           root = Path('.p20candidate/kairos_p76').resolve()
           try_path = Path('/tmp/p20_2.try.patch')
           winners = []
-          attempts = 0
-          for pos in insertion_points:
-              for restored in b64chars:
-                  attempts += 1
-                  candidate = compact[:pos] + restored + compact[pos:]
-                  padded = candidate + ('=' * ((-len(candidate)) % 4))
-                  try:
-                      decoded = base64.b64decode(padded, validate=True)
-                      text = decoded.decode('utf-8')
-                  except Exception:
-                      continue
-                  if not text.startswith('diff --git '):
-                      continue
-                  if text.count('diff --git ') != 31:
-                      continue
-                  try_path.write_bytes(decoded)
-                  check = subprocess.run(
-                      ['git', 'apply', '--check', str(try_path)],
-                      cwd=root,
-                      stdout=subprocess.PIPE,
-                      stderr=subprocess.PIPE,
-                      text=True,
-                  )
-                  if check.returncode == 0:
-                      winners.append((pos, restored, decoded))
-                      print(f'candidate PASS pos={pos} char={restored!r} bytes={len(decoded)} sha256={hashlib.sha256(decoded).hexdigest()}')
+          structural = 0
+          for pos in range(len(compact)):
+              candidate = compact[:pos] + compact[pos + 1:]
+              padded = candidate + ('=' * ((-len(candidate)) % 4))
+              try:
+                  decoded = base64.b64decode(padded, validate=True)
+                  text = decoded.decode('utf-8')
+              except Exception:
+                  continue
+              if not text.startswith('diff --git '):
+                  continue
+              if text.count('diff --git ') != 31:
+                  continue
+              structural += 1
+              try_path.write_bytes(decoded)
+              check = subprocess.run(
+                  ['git', 'apply', '--check', str(try_path)],
+                  cwd=root,
+                  stdout=subprocess.PIPE,
+                  stderr=subprocess.PIPE,
+                  text=True,
+              )
+              if check.returncode == 0:
+                  winners.append((pos, compact[pos], decoded))
+                  print(f'candidate PASS delete_pos={pos} char={compact[pos]!r} bytes={len(decoded)} sha256={hashlib.sha256(decoded).hexdigest()}')
 
-          print(f'PATCH64 restoration attempts={attempts} unique_applyable_candidates={len(winners)}')
+          print(f'PATCH64 deletion attempts={len(compact)} structural_candidates={structural} unique_applyable_candidates={len(winners)}')
           if len(winners) != 1:
-              raise SystemExit(f'PATCH64 recovery is not uniquely proven: winners={len(winners)}')
-          pos, restored, decoded = winners[0]
+              raise SystemExit(f'PATCH64 deletion recovery is not uniquely proven: winners={len(winners)}')
+          pos, removed, decoded = winners[0]
           Path('/tmp/p20_2.patch').write_bytes(decoded)
-          print(f'PATCH64 unique restoration pos={pos} char={restored!r} patch_sha256={hashlib.sha256(decoded).hexdigest()}')
+          print(f'PATCH64 unique deletion pos={pos} removed={removed!r} patch_sha256={hashlib.sha256(decoded).hexdigest()}')
           PY
           test -s /tmp/p20_2.patch
 
