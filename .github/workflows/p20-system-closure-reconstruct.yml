@@ -43,15 +43,14 @@ jobs:
           test -f "$ROOT/src/application/saved-analysis/loadSavedAnalysis.ts"
           test -f "$ROOT/docs/KAIROS_ARCHITECTURE_MAP.md"
 
-          # IMPORTANT: mutate the canonical P20.4 candidate's embedded architecture map in place.
-          # Do not copy the newer living main document into the package: historical closure verifiers
-          # intentionally validate exact compatibility tokens embedded in the canonical candidate chain.
+          # IMPORTANT: mutate the exact canonical P20.4 candidate's embedded architecture map in place.
+          # The canonical P20.4 artifact predates the living P20 ledger, so preserve historical closure
+          # evidence and append the complete P20 closure ledger instead of assuming an earlier P20 heading.
           python - <<'PY'
           from pathlib import Path
           p=Path('.p20candidate/kairos_p76/docs/KAIROS_ARCHITECTURE_MAP.md')
           s=p.read_text()
 
-          # Preserve historical P19 closure evidence required by its canonical verifier.
           for token in [
               'P19 (SYSTEM CLOSED through P19.7)',
               '## P19 Risk/Reward Tool System Closure — canonical P19.7',
@@ -60,20 +59,10 @@ jobs:
               if token not in s:
                   raise SystemExit(f'canonical P20.4 embedded architecture missing historical closure token: {token}')
 
-          # P20.4 did not itself mutate docs, so its canonical package inherits the P20.3 ledger.
-          old_heading='## P20 canonical ownership ledger — OPEN through P20.3'
-          if old_heading not in s:
-              raise SystemExit('expected canonical P20.3 architecture ledger heading not found in P20.4 base')
-          s=s.replace(old_heading,'## P20 canonical ownership ledger — SYSTEM CLOSED through P20.5',1)
+          if '## P20 canonical ownership ledger' in s:
+              raise SystemExit('unexpected pre-existing P20 ownership ledger in exact canonical P20.4 artifact')
 
-          p203='| P20.3 | Saved Analysis application-save orchestration | `src/application/saved-analysis/saveSavedAnalysis.ts`, `src/application/saved-analysis/index.ts` | Fresh-id allocation + one atomic repository write only; no inferred read/update/delete/list ownership |'
-          if p203 not in s:
-              raise SystemExit('expected P20.3 ownership row not found in canonical P20.4 base')
-          p204='| P20.4 | Saved Analysis application load-one-by-id orchestration | `src/application/saved-analysis/loadSavedAnalysis.ts`, exported through `src/application/saved-analysis/index.ts` | One stable-id repository read only; no UI/provider/pixels, list/update/delete orchestration, schema/backup/index changes, or invented metadata |'
-          p205='| P20.5 | Saved Analysis system closure | verification/docs/package boundary only; no production runtime owner added | Proves P20.1 logical contract + P20.2 persistence/backup/restore + P20.3 save + P20.4 load-one as the complete source-proven P20 boundary; does not invent list/update/delete/UI/provider/pixel ownership |'
-          s=s.replace(p203,p203+'\n'+p204+'\n'+p205,1)
-
-          s += '''\n\n---\n\n## P20 Saved Analysis System Closure — P20.5\n\nP20 closes the source-proven Saved Analysis boundary established by P20.1–P20.4. P20.5 adds **no production runtime behavior and no new production owner**.\n\nClosure boundary:\n\n- P20.1 owns the Saved Analysis logical contract and stable identity.\n- P20.2 owns persisted storage plus backup/restore of that logical contract.\n- P20.3 owns application save orchestration: fresh id allocation plus exactly one persisted write.\n- P20.4 owns application load-one-by-stable-id orchestration: exactly one repository read.\n- Raw repository lifecycle primitives such as listAll/delete/replaceAll remain data-layer capabilities unless a later source-proven product requirement assigns application ownership; P20 closure does not invent generic CRUD.\n- P17/P18/P19 retain chart/drawing/Risk-Reward logical truth. P20 composes/persists that truth and does not redefine it.\n- UI/routes/dashboard/provider rendering/pixels remain outside P20 and belong to later roadmap phases.\n\nCanonical phase rule: P20 is closed only after the authoritative `Kairos Controlled Roadmap Gate` passes this exact closure candidate and publishes both canonical artifacts. P21 may not begin before that PASS.\n'''
+          s += '''\n\n---\n\n## P20 canonical ownership ledger — SYSTEM CLOSED through P20.5\n\n| Patch | Canonical responsibility | Production owner seam | Boundary |\n|---|---|---|---|\n| P20.1 | Saved Analysis logical contract foundation | `src/app/savedAnalysisContract.ts` | Owns Saved Analysis logical shape and stable identity only; no persistence/UI/provider ownership |\n| P20.2 | Saved Analysis persistence foundation | `src/data/repositories/SavedAnalysisRepository.ts` plus existing database/backup/restore seams | Owns raw persisted storage and backup/restore of the logical contract; no application orchestration/UI/provider ownership |\n| P20.3 | Saved Analysis application-save orchestration | `src/application/saved-analysis/saveSavedAnalysis.ts`, `src/application/saved-analysis/index.ts` | Fresh-id allocation + one atomic repository write only; no inferred read/update/delete/list ownership |\n| P20.4 | Saved Analysis application load-one-by-id orchestration | `src/application/saved-analysis/loadSavedAnalysis.ts`, exported through `src/application/saved-analysis/index.ts` | One stable-id repository read only; no UI/provider/pixels, list/update/delete orchestration, schema/backup/index changes, or invented metadata |\n| P20.5 | Saved Analysis system closure | verification/docs/package boundary only; no production runtime owner added | Proves P20.1 logical contract + P20.2 persistence/backup/restore + P20.3 save + P20.4 load-one as the complete source-proven P20 boundary; does not invent list/update/delete/UI/provider/pixel ownership |\n\n## P20 Saved Analysis System Closure — P20.5\n\nP20 closes the source-proven Saved Analysis boundary established by P20.1–P20.4. P20.5 adds **no production runtime behavior and no new production owner**.\n\nClosure boundary:\n\n- P20.1 owns the Saved Analysis logical contract and stable identity.\n- P20.2 owns persisted storage plus backup/restore of that logical contract.\n- P20.3 owns application save orchestration: fresh id allocation plus exactly one persisted write.\n- P20.4 owns application load-one-by-stable-id orchestration: exactly one repository read.\n- Raw repository lifecycle primitives such as listAll/delete/replaceAll remain data-layer capabilities unless a later source-proven product requirement assigns application ownership; P20 closure does not invent generic CRUD.\n- P17/P18/P19 retain chart/drawing/Risk-Reward logical truth. P20 composes/persists that truth and does not redefine it.\n- UI/routes/dashboard/provider rendering/pixels remain outside P20 and belong to later roadmap phases.\n\nCanonical phase rule: P20 is closed only after the authoritative `Kairos Controlled Roadmap Gate` passes this exact closure candidate and publishes both canonical artifacts. P21 may not begin before that PASS.\n'''
           p.write_text(s)
           PY
 
