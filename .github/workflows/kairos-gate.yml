@@ -1,11 +1,11 @@
-# KAIROS P21.7 GATE — AUTHORITATIVE BASE P21.6 — CANDIDATE P21.7 BINANCE SPOT 24H PUBLIC REST BASELINE REQUEST DESCRIPTOR FOUNDATION
+# KAIROS P21.8 GATE — AUTHORITATIVE BASE P21.7 — CANDIDATE P21.8 BINANCE SPOT 24H PUBLIC REST BASELINE REQUEST EXECUTION BOUNDARY FOUNDATION
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P21_7_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_REQUEST_DESCRIPTOR_FOUNDATION_CANDIDATE_2026-09-07.zip'
+      - 'KAIROS_P21_8_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_REQUEST_EXECUTION_BOUNDARY_FOUNDATION_CANDIDATE_2026-09-07.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P21_6_BINANCE_SPOT_24H_BASELINE_DELIVERY_MAPPING_FOUNDATION_CANDIDATE_2026-09-07.zip
-  CANDIDATE_ZIP: KAIROS_P21_7_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_REQUEST_DESCRIPTOR_FOUNDATION_CANDIDATE_2026-09-07.zip
+  BASE_ZIP: KAIROS_P21_7_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_REQUEST_DESCRIPTOR_FOUNDATION_CANDIDATE_2026-09-07.zip
+  CANDIDATE_ZIP: KAIROS_P21_8_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_REQUEST_EXECUTION_BOUNDARY_FOUNDATION_CANDIDATE_2026-09-07.zip
 
 jobs:
   verify-current-candidate:
@@ -35,7 +35,7 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm exact controlled P21.7 scope from authoritative P21.6
+      - name: Confirm exact controlled P21.8 scope from authoritative P21.7
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -47,15 +47,15 @@ jobs:
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           print('\n'.join(sorted(changed)))
           expected={
-            'KAIROS_P21_7_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_REQUEST_DESCRIPTOR_FOUNDATION_REPORT_2026-09-07.md',
+            'KAIROS_P21_8_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_REQUEST_EXECUTION_BOUNDARY_FOUNDATION_REPORT_2026-09-07.md',
             'package.json',
-            'scripts/verify-p21-7-binance-spot-24h-public-rest-baseline-request-descriptor-foundation.mjs',
+            'scripts/verify-p21-8-binance-spot-24h-public-rest-baseline-request-execution-boundary-foundation.mjs',
             'src/services/market-data/index.ts',
-            'src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineRequest.ts',
-            'tests/binance-spot-24h-public-rest-baseline-request.test.ts',
+            'src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineRequestExecution.ts',
+            'tests/binance-spot-24h-public-rest-baseline-request-execution.test.ts',
           }
           if changed != expected:
-            print('P21.7 exact scope mismatch',file=sys.stderr)
+            print('P21.8 exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             sys.exit(1)
@@ -74,9 +74,10 @@ jobs:
       - name: Production build
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
-      - name: Dedicated P21.7 Binance Spot 24h public REST baseline request descriptor verifier/runtime
+      - name: Dedicated P21.8 Binance Spot 24h public REST baseline request execution boundary verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p21:8-binance-spot-24h-public-rest-baseline-request-execution-boundary-foundation
           npm run verify:p21:7-binance-spot-24h-public-rest-baseline-request-descriptor-foundation
           npm run verify:p21:6-binance-spot-24h-baseline-delivery-mapping-foundation
           npm run verify:p21:5-binance-spot-24h-summary-fact-mapping-foundation
@@ -101,18 +102,19 @@ jobs:
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression through P21.7
+      - name: Full controlled roadmap regression through P21.8
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
           const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
           const p=JSON.parse(readFileSync('package.json')); const s=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:p'));
-          for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:16-chart-engine-system-closure','verify:p18:60-drawing-tools-system-closure','verify:p19:7-risk-reward-tool-system-closure','verify:p20:1-saved-analysis-contract-foundation','verify:p20:2-saved-analysis-persistence-foundation','verify:p20:3-saved-analysis-application-save','verify:p20:4-saved-analysis-application-load','verify:p20:5-saved-analysis-system-closure','verify:p21:1-home-dashboard-route-ownership-foundation','verify:p21:2-live-market-summary-fact-contract-foundation','verify:p21:3-live-market-summary-delivery-completeness-contract-foundation','verify:p21:4-live-market-summary-baseline-acquisition-port-foundation','verify:p21:5-binance-spot-24h-summary-fact-mapping-foundation','verify:p21:6-binance-spot-24h-baseline-delivery-mapping-foundation','verify:p21:7-binance-spot-24h-public-rest-baseline-request-descriptor-foundation']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
+          for(const required of ['verify:p1','verify:p15:14-market-data-adapter-system-closure','verify:p16:18-crypto-live-feed-system-closure','verify:p17:16-chart-engine-system-closure','verify:p18:60-drawing-tools-system-closure','verify:p19:7-risk-reward-tool-system-closure','verify:p20:1-saved-analysis-contract-foundation','verify:p20:2-saved-analysis-persistence-foundation','verify:p20:3-saved-analysis-application-save','verify:p20:4-saved-analysis-application-load','verify:p20:5-saved-analysis-system-closure','verify:p21:1-home-dashboard-route-ownership-foundation','verify:p21:2-live-market-summary-fact-contract-foundation','verify:p21:3-live-market-summary-delivery-completeness-contract-foundation','verify:p21:4-live-market-summary-baseline-acquisition-port-foundation','verify:p21:5-binance-spot-24h-summary-fact-mapping-foundation','verify:p21:6-binance-spot-24h-baseline-delivery-mapping-foundation','verify:p21:7-binance-spot-24h-public-rest-baseline-request-descriptor-foundation','verify:p21:8-binance-spot-24h-public-rest-baseline-request-execution-boundary-foundation']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
           for(const x of s){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
           NODE
       - name: Historical closures
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p21:8-binance-spot-24h-public-rest-baseline-request-execution-boundary-foundation
           npm run verify:p21:7-binance-spot-24h-public-rest-baseline-request-descriptor-foundation
           npm run verify:p21:6-binance-spot-24h-baseline-delivery-mapping-foundation
           npm run verify:p21:5-binance-spot-24h-summary-fact-mapping-foundation
@@ -150,5 +152,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P21_7_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_REQUEST_DESCRIPTOR_FOUNDATION_REPORT_2026-09-07.md
+          path: .gate-candidate/kairos_p76/KAIROS_P21_8_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_REQUEST_EXECUTION_BOUNDARY_FOUNDATION_REPORT_2026-09-07.md
           if-no-files-found: error
