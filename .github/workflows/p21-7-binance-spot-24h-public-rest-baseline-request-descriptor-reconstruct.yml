@@ -1,0 +1,284 @@
+name: Kairos P21.7 Binance Spot 24h Public REST Baseline Request Descriptor Reconstruction Bridge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/p21-7-binance-spot-24h-public-rest-baseline-request-descriptor-reconstruct.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reconstruct:
+    runs-on: ubuntu-24.04
+    env:
+      BASE_ZIP: KAIROS_P21_6_BINANCE_SPOT_24H_BASELINE_DELIVERY_MAPPING_FOUNDATION_CANDIDATE_2026-09-07.zip
+      OUT_ZIP: KAIROS_P21_7_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_REQUEST_DESCRIPTOR_FOUNDATION_CANDIDATE_2026-09-07.zip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - name: Pin npm
+        run: |
+          npm install --global npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+      - name: Reconstruct P21.7 from canonical P21.6
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .p21base .p21candidate
+          mkdir .p21base .p21candidate
+          unzip -q "$BASE_ZIP" -d .p21base
+          cp -a .p21base/. .p21candidate/
+          ROOT=.p21candidate/kairos_p76
+          test -f "$ROOT/src/services/market-data/providers/binance/binanceSpotTradeStream.ts"
+          test -f "$ROOT/src/services/market-data/providers/binance/binanceSpot24hBaselineDelivery.ts"
+          test -f "$ROOT/src/services/market-data/index.ts"
+
+          cat > "$ROOT/src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineRequest.ts" <<'TS'
+          import type { MarketDataInstrument } from '../../marketDataTypes';
+          import { BINANCE_SPOT_VENUE } from './binanceSpotTradeStream';
+
+          export const BINANCE_SPOT_PUBLIC_REST_MARKET_DATA_BASE_URL = 'https://data-api.binance.vision' as const;
+          export const BINANCE_SPOT_24H_TICKER_PATH = '/api/v3/ticker/24hr' as const;
+          export const BINANCE_SPOT_24H_TICKER_RESPONSE_TYPE = 'FULL' as const;
+
+          export interface BinanceSpot24hPublicRestBaselineRequestDescriptor {
+            readonly venue: typeof BINANCE_SPOT_VENUE;
+            readonly method: 'GET';
+            readonly baseUrl: typeof BINANCE_SPOT_PUBLIC_REST_MARKET_DATA_BASE_URL;
+            readonly path: typeof BINANCE_SPOT_24H_TICKER_PATH;
+            readonly responseType: typeof BINANCE_SPOT_24H_TICKER_RESPONSE_TYPE;
+            readonly symbols: readonly string[];
+            readonly query: string;
+            readonly url: string;
+          }
+
+          export type BinanceSpot24hPublicRestBaselineRequestResult =
+            | { readonly ok: true; readonly request: BinanceSpot24hPublicRestBaselineRequestDescriptor }
+            | {
+                readonly ok: false;
+                readonly reason: 'scope-required' | 'venue-mismatch' | 'symbol-required' | 'duplicate-symbol';
+              };
+
+          /**
+           * Describes only the public Binance Spot REST request for an explicit caller scope.
+           * Execution, decoding, batching, request-weight policy and acquisition orchestration stay outside this owner.
+           */
+          export function describeBinanceSpot24hPublicRestBaselineRequest(
+            scope: readonly MarketDataInstrument[],
+          ): BinanceSpot24hPublicRestBaselineRequestResult {
+            if (scope.length === 0) return { ok: false, reason: 'scope-required' };
+
+            const symbols: string[] = [];
+            const seen = new Set<string>();
+            for (const instrument of scope) {
+              if (instrument.venue !== BINANCE_SPOT_VENUE) return { ok: false, reason: 'venue-mismatch' };
+              const symbol = instrument.symbol.trim();
+              if (!symbol) return { ok: false, reason: 'symbol-required' };
+              if (seen.has(symbol)) return { ok: false, reason: 'duplicate-symbol' };
+              seen.add(symbol);
+              symbols.push(symbol);
+            }
+
+            const scopeQuery = symbols.length === 1
+              ? `symbol=${encodeURIComponent(symbols[0])}`
+              : `symbols=${encodeURIComponent(JSON.stringify(symbols))}`;
+            const query = `${scopeQuery}&type=${BINANCE_SPOT_24H_TICKER_RESPONSE_TYPE}`;
+            return {
+              ok: true,
+              request: {
+                venue: BINANCE_SPOT_VENUE,
+                method: 'GET',
+                baseUrl: BINANCE_SPOT_PUBLIC_REST_MARKET_DATA_BASE_URL,
+                path: BINANCE_SPOT_24H_TICKER_PATH,
+                responseType: BINANCE_SPOT_24H_TICKER_RESPONSE_TYPE,
+                symbols,
+                query,
+                url: `${BINANCE_SPOT_PUBLIC_REST_MARKET_DATA_BASE_URL}${BINANCE_SPOT_24H_TICKER_PATH}?${query}`,
+              },
+            };
+          }
+          TS
+
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('.p21candidate/kairos_p76/src/services/market-data/index.ts')
+          s=p.read_text()
+          anchor="export * from './providers/binance/binanceSpot24hBaselineDelivery';\n"
+          addition="export * from './providers/binance/binanceSpot24hPublicRestBaselineRequest';\n"
+          if anchor not in s: raise SystemExit('P21.6 baseline delivery export anchor not found')
+          p.write_text(s.replace(anchor, anchor+addition, 1))
+          PY
+
+          cat > "$ROOT/tests/binance-spot-24h-public-rest-baseline-request.test.ts" <<'TS'
+          import { describe, expect, it } from 'vitest';
+          import {
+            BINANCE_SPOT_24H_TICKER_PATH,
+            BINANCE_SPOT_24H_TICKER_RESPONSE_TYPE,
+            BINANCE_SPOT_PUBLIC_REST_MARKET_DATA_BASE_URL,
+            describeBinanceSpot24hPublicRestBaselineRequest,
+          } from '../src/services/market-data';
+
+          describe('P21.7 Binance Spot 24h public REST baseline request descriptor foundation', () => {
+            it('describes one explicit Binance Spot instrument with symbol and FULL response type', () => {
+              const result = describeBinanceSpot24hPublicRestBaselineRequest([
+                { venue: 'binance-spot', symbol: ' BTCUSDT ' },
+              ]);
+              expect(result.ok).toBe(true);
+              if (!result.ok) return;
+              expect(result.request).toEqual({
+                venue: 'binance-spot',
+                method: 'GET',
+                baseUrl: 'https://data-api.binance.vision',
+                path: '/api/v3/ticker/24hr',
+                responseType: 'FULL',
+                symbols: ['BTCUSDT'],
+                query: 'symbol=BTCUSDT&type=FULL',
+                url: 'https://data-api.binance.vision/api/v3/ticker/24hr?symbol=BTCUSDT&type=FULL',
+              });
+            });
+
+            it('describes multiple explicit symbols with encoded symbols JSON while preserving caller sequence only for construction', () => {
+              const result = describeBinanceSpot24hPublicRestBaselineRequest([
+                { venue: 'binance-spot', symbol: 'ETHUSDT' },
+                { venue: 'binance-spot', symbol: 'BTCUSDT' },
+              ]);
+              expect(result.ok).toBe(true);
+              if (!result.ok) return;
+              expect(result.request.symbols).toEqual(['ETHUSDT', 'BTCUSDT']);
+              expect(result.request.query).toBe(`symbols=${encodeURIComponent('["ETHUSDT","BTCUSDT"]')}&type=FULL`);
+            });
+
+            it('rejects empty scope, foreign venues, empty symbols and duplicates rather than broadening request scope', () => {
+              expect(describeBinanceSpot24hPublicRestBaselineRequest([])).toEqual({ ok: false, reason: 'scope-required' });
+              expect(describeBinanceSpot24hPublicRestBaselineRequest([{ venue: 'other', symbol: 'BTCUSDT' }]))
+                .toEqual({ ok: false, reason: 'venue-mismatch' });
+              expect(describeBinanceSpot24hPublicRestBaselineRequest([{ venue: 'binance-spot', symbol: ' ' }]))
+                .toEqual({ ok: false, reason: 'symbol-required' });
+              expect(describeBinanceSpot24hPublicRestBaselineRequest([
+                { venue: 'binance-spot', symbol: 'BTCUSDT' },
+                { venue: 'binance-spot', symbol: 'BTCUSDT' },
+              ])).toEqual({ ok: false, reason: 'duplicate-symbol' });
+            });
+
+            it('pins only the documented public market-data base, 24h ticker path and FULL shape', () => {
+              expect(BINANCE_SPOT_PUBLIC_REST_MARKET_DATA_BASE_URL).toBe('https://data-api.binance.vision');
+              expect(BINANCE_SPOT_24H_TICKER_PATH).toBe('/api/v3/ticker/24hr');
+              expect(BINANCE_SPOT_24H_TICKER_RESPONSE_TYPE).toBe('FULL');
+            });
+          });
+          TS
+
+          cat > "$ROOT/KAIROS_P21_7_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_REQUEST_DESCRIPTOR_FOUNDATION_REPORT_2026-09-07.md" <<'MD'
+          # KAIROS P21.7 — Binance Spot 24h Public REST Baseline Request Descriptor Foundation
+
+          ## Authority
+          Base: canonical P21.6 Binance Spot 24h Baseline Delivery Mapping Foundation, `Kairos Controlled Roadmap Gate` #291 / run `34078317199`.
+
+          ## Responsibility
+          P21.4 owns the provider-neutral baseline acquisition port, P21.5 maps one decoded Binance Spot 24h ticker entry, and P21.6 maps a decoded one-or-many ticker payload into validated complete-for-scope delivery. P21.7 adds only the missing pure provider request-description seam for an explicit caller-provided Binance Spot scope.
+
+          The descriptor validates non-empty unique Binance Spot instruments, describes public `GET /api/v3/ticker/24hr` against `https://data-api.binance.vision`, uses `symbol` for one requested instrument or `symbols` for multiple requested instruments, and fixes `type=FULL` because the released P21.5 mapper consumes FULL 24h ticker fields. Caller sequence is preserved only for deterministic request construction, never as ranking or universe truth.
+
+          ## Explicit non-scope
+          - No fetch/XHR/WebSocket/browser transport, request execution, or JSON decoding.
+          - No multi-request batching/chunking or request-weight/rate-limit/backoff/retry policy.
+          - No credentials, AbortSignal, or concrete P21.4 acquisition-port orchestration.
+          - No market-universe selection/ranking or accumulator/state/order/freshness/reset/reconnect ownership.
+          - No Bubble Map sizing/color/grouping/filtering/geometry/interactions or Home wiring.
+          - No persistence, journal/Your-Trades semantics, direct IndexedDB UI access, or dashboard transitions.
+          MD
+
+          cat > "$ROOT/scripts/verify-p21-7-binance-spot-24h-public-rest-baseline-request-descriptor-foundation.mjs" <<'JS'
+          import { readFileSync } from 'node:fs';
+          const source = readFileSync(new URL('../src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineRequest.ts', import.meta.url), 'utf8');
+          const index = readFileSync(new URL('../src/services/market-data/index.ts', import.meta.url), 'utf8');
+          const report = readFileSync(new URL('../KAIROS_P21_7_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_REQUEST_DESCRIPTOR_FOUNDATION_REPORT_2026-09-07.md', import.meta.url), 'utf8');
+          for (const token of [
+            "'https://data-api.binance.vision'",
+            "'/api/v3/ticker/24hr'",
+            "'FULL'",
+            'describeBinanceSpot24hPublicRestBaselineRequest(',
+            "symbols=${encodeURIComponent(JSON.stringify(symbols))}",
+            'BINANCE_SPOT_VENUE',
+          ]) if (!source.includes(token)) throw new Error(`P21.7 descriptor evidence missing: ${token}`);
+          if (!index.includes("export * from './providers/binance/binanceSpot24hPublicRestBaselineRequest';")) throw new Error('P21.7 barrel export missing');
+          for (const forbidden of ['fetch(', 'XMLHttpRequest', 'WebSocket(', 'indexedDB', 'acquireBaseline(', 'setTimeout(', 'retry', 'backoff', 'requestWeight']) {
+            if (source.includes(forbidden)) throw new Error(`P21.7 broadened into forbidden scope: ${forbidden}`);
+          }
+          for (const token of ['No fetch/XHR/WebSocket/browser transport', 'No multi-request batching/chunking', 'No credentials', 'No market-universe selection/ranking', 'No Bubble Map sizing', 'No persistence']) {
+            if (!report.includes(token)) throw new Error(`P21.7 report evidence missing: ${token}`);
+          }
+          console.log('P21.7 Binance Spot 24h public REST baseline request descriptor verification passed.');
+          JS
+
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const p='.p21candidate/kairos_p76/package.json';
+          const j=JSON.parse(fs.readFileSync(p,'utf8'));
+          j.scripts||={};
+          j.scripts['verify:p21:7-binance-spot-24h-public-rest-baseline-request-descriptor-foundation']='node scripts/verify-p21-7-binance-spot-24h-public-rest-baseline-request-descriptor-foundation.mjs';
+          fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');
+          NODE
+
+          python - <<'PY'
+          from pathlib import Path
+          a={str(p.relative_to(Path('.p21base/kairos_p76'))):p.read_bytes() for p in Path('.p21base/kairos_p76').rglob('*') if p.is_file()}
+          b={str(p.relative_to(Path('.p21candidate/kairos_p76'))):p.read_bytes() for p in Path('.p21candidate/kairos_p76').rglob('*') if p.is_file()}
+          changed={p for p in a.keys()|b.keys() if a.get(p)!=b.get(p)}
+          expected={
+            'KAIROS_P21_7_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_REQUEST_DESCRIPTOR_FOUNDATION_REPORT_2026-09-07.md',
+            'package.json',
+            'scripts/verify-p21-7-binance-spot-24h-public-rest-baseline-request-descriptor-foundation.mjs',
+            'src/services/market-data/index.ts',
+            'src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineRequest.ts',
+            'tests/binance-spot-24h-public-rest-baseline-request.test.ts',
+          }
+          print('\n'.join(sorted(changed)))
+          assert changed==expected,(sorted(changed-expected),sorted(expected-changed))
+          PY
+
+      - name: Verify reconstructed P21.7 before packaging
+        working-directory: .p21candidate/kairos_p76
+        run: |
+          set -euo pipefail
+          npm ci
+          test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
+          npm run verify:p21:7-binance-spot-24h-public-rest-baseline-request-descriptor-foundation
+          npm run typecheck
+          npm run build
+          npm test
+          node - <<'NODE'
+          const { spawnSync } = require('node:child_process');
+          const pkg = require('./package.json');
+          const scripts = Object.keys(pkg.scripts || {}).filter((name) => /^verify:p\d/.test(name));
+          for (const name of scripts) {
+            const r = spawnSync('npm', ['run', name], { stdio: 'inherit' });
+            if (r.status !== 0) process.exit(r.status || 1);
+          }
+          NODE
+
+      - name: Restore clean package boundary and commit candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=.p21candidate/kairos_p76
+          rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite"
+          find "$ROOT" -type f \( -name '*.tsbuildinfo' -o -name '*.log' \) -delete
+          rm -rf .p21package
+          mkdir .p21package
+          cp -a "$ROOT" .p21package/kairos_p76
+          rm -f "$OUT_ZIP"
+          (cd .p21package && zip -qr "../$OUT_ZIP" kairos_p76)
+          unzip -t "$OUT_ZIP"
+          test "$(unzip -Z1 "$OUT_ZIP" | head -n1 | cut -d/ -f1)" = "kairos_p76"
+          git config user.name 'kairos-p21-7-helper'
+          git config user.email 'actions@users.noreply.github.com'
+          git add "$OUT_ZIP"
+          git diff --cached --quiet && exit 1
+          git commit -m 'Build P21.7 REST baseline request descriptor candidate'
+          git push
