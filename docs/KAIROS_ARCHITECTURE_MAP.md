@@ -30,6 +30,7 @@ Update this file after every canonical PASS that establishes, extends, moves, or
 | Home Dashboard route presentation ownership | P21.1 | `src/app/HomeRoute.tsx`, wired by `src/app/routes.tsx` at existing `/` index route | Presentation/semantic dashboard boundary only; does not own navigation truth, provider/live market data, persistence/query/calculation truth, Bubble Map geometry/algorithms, Saved Analysis CRUD, P22 behavior, or P40/global transition motion |
 | Live market summary provider-neutral fact contract | P21.2 | `src/services/market-data/marketDataTypes.ts`, `src/services/market-data/liveMarketSummaryFactSemantics.ts`, exported through `src/services/market-data/index.ts` | Owns only validated raw per-instrument market-summary fact shape/semantics; no transport/acquisition choice, market-universe selection, accumulation/snapshot/freshness policy, Bubble rendering/metric/color/ranking/grouping/filter/interactions, Home wiring, persistence, journal/calculation truth, Your-Trades semantics, or transition motion |
 | Live market summary delivery completeness contract | P21.3 | `src/services/market-data/marketDataTypes.ts`, `src/services/market-data/liveMarketSummaryDeliverySemantics.ts`, exported through `src/services/market-data/index.ts` | Owns only provider-neutral delivery completeness semantics over validated P21.2 facts: `incremental` is partial/changed-symbol evidence; `complete-for-scope` is complete only for an explicit caller-declared scope. It does not select the scope/universe and owns no provider transport/acquisition, accumulator/state/freshness/reset/error policy, Bubble visualization semantics, Home wiring, persistence, journal/Your-Trades truth, or transition motion |
+| Live market summary baseline acquisition port contract | P21.4 | `src/services/market-data/LiveMarketSummaryBaselineAcquisitionPort.ts`, `src/services/market-data/liveMarketSummaryBaselineAcquisitionSemantics.ts`, exported through `src/services/market-data/index.ts` | Owns only the provider-neutral port/result/validation seam for acquiring a P21.3 `complete-for-scope` baseline for an explicit caller-provided scope. It does not choose/rank the universe, implement Binance/transport/endpoints, alter P15 single-instrument subscription ownership, accumulate market state, define freshness/reset/reconnect policy, render Bubble UI, wire Home, persist data, own journal/Your-Trades truth, or own transitions |
 
 ## P18 closure boundary
 
@@ -67,13 +68,14 @@ Exact P20.5 artifacts:
 
 Therefore P20.5 closed P20 Saved Analysis canonically.
 
-## P21 canonical ownership ledger — OPEN through P21.3
+## P21 canonical ownership ledger — OPEN through P21.4
 
 | Patch | Canonical responsibility | Production owner seam | Boundary |
 |---|---|---|---|
 | P21.1 | Home Dashboard Route Ownership Foundation | `src/app/HomeRoute.tsx`, `src/app/routes.tsx` index wiring | Dedicated Home presentation owner on existing `/`; preserves P8 `AppShell`/navigation/safe-area/theme truth and all existing business/data owners; no Bubble Map metrics/geometry, provider/live-data subscription, new persistence/query/calculation owner, Saved Analysis CRUD, P22 behavior, or full transition implementation |
 | P21.2 | Live Market Summary Fact Contract Foundation | `src/services/market-data/marketDataTypes.ts`, `src/services/market-data/liveMarketSummaryFactSemantics.ts`, `src/services/market-data/index.ts` | Provider-neutral validated raw facts only: instrument identity, last/current price, rolling-24h open/high/low, rolling-24h base/quote volume, provider/source timestamp and local observed-at timestamp; no transport/acquisition choice, universe, aggregation/snapshot/freshness/error policy, Bubble visualization semantics or geometry, Home wiring, persistence, journal/calculation truth, Your-Trades semantics, or transitions |
 | P21.3 | Live Market Summary Delivery Completeness Contract Foundation | `src/services/market-data/marketDataTypes.ts`, `src/services/market-data/liveMarketSummaryDeliverySemantics.ts`, `src/services/market-data/index.ts` | Provider-neutral delivery semantics only: `incremental` facts make no completeness claim; `complete-for-scope` requires an explicit non-empty unique scope and exactly one validated P21.2 fact per declared instrument, with no out-of-scope or duplicate fact instruments. No scope/universe selection, transport/acquisition, accumulator/state/freshness/reset/error policy, Bubble UI semantics, Home wiring, persistence, Your-Trades, or transitions |
+| P21.4 | Live Market Summary Baseline Acquisition Port Foundation | `src/services/market-data/LiveMarketSummaryBaselineAcquisitionPort.ts`, `src/services/market-data/liveMarketSummaryBaselineAcquisitionSemantics.ts`, exported through `src/services/market-data/index.ts` | Provider-neutral baseline acquisition port contract only: explicit caller-provided scope in; validated P21.3 `complete-for-scope` delivery or explicit `acquisition-failed` result out. Scope membership on success must exactly match the caller request. No universe selection/ranking, Binance/provider endpoint implementation, REST-vs-WebSocket choice, polling/subscription/reconnect, accumulator/state/freshness/reset policy, Bubble UI semantics, Home wiring, persistence, Your-Trades, or transitions |
 
 ## Canonical P21 evidence
 
@@ -95,7 +97,13 @@ Exact P21.3 artifacts:
 - `KAIROS_CURRENT_CANDIDATE` artifact `10000015892`, 1,177,045 bytes, digest `sha256:a2eb23c6c4c6f5c20f1cf17fa4ed7ede7f31fbfbaf19a06a7b82ed065caab243`.
 - `KAIROS_GATE_EVIDENCE` artifact `10000016067`, 1,242 bytes, digest `sha256:a8b6d5f814eda67bccbdf00b6ed719408201db34a896d3b656d3f534c518f42b`.
 
-Therefore P21.3 is the canonical GOLDEN. P21 remains OPEN; later P21 responsibilities must be independently source-proven before implementation.
+P21.4: `Kairos Controlled Roadmap Gate` #289 / run `34072260372`, job `101591633032`, exact head `67440a867790f45326bcc55b631b2367f2f3593f`, completed SUCCESS on 2026-09-07. Every required `verify-current-candidate` stage succeeded: exact controlled P21.3→P21.4 seven-file scope, deterministic install, exact Lightweight Charts 5.2.1 proof, production TypeScript compilation/build, dedicated P21.4 Live Market Summary baseline-acquisition-port verifier/runtime, full unit regression, full controlled-roadmap regression through P21.4, historical closures, and both exact-run artifact uploads.
+
+Exact P21.4 artifacts:
+- `KAIROS_CURRENT_CANDIDATE` artifact `10000988354`, 1,181,925 bytes, digest `sha256:d3816b8fb632631604c7cce8a0cf9bff9383ee72773c59d9efee56fde9cd5387`.
+- `KAIROS_GATE_EVIDENCE` artifact `10000988591`, 1,260 bytes, digest `sha256:3f98c38fc4bc1ca79dc89733375a8827879ba2ebaa345b9af6b0951ded51bd80`.
+
+Therefore P21.4 is the canonical GOLDEN. P21 remains OPEN; later P21 responsibilities must be independently source-proven before implementation.
 
 ## Ownership rules that remain invariant
 
@@ -103,13 +111,14 @@ Therefore P21.3 is the canonical GOLDEN. P21 remains OPEN; later P21 responsibil
 - P11 remains calculation truth.
 - P12 remains bounded journal-history/listing truth; Home/Bubble UI must not bypass it with direct IndexedDB reads.
 - P14 remains journal/trade-visualization truth where assigned.
-- P15 remains market acquisition truth and P16 remains Binance Spot provider mapping truth; P21.2/P21.3 do not silently absorb transport/provider ownership.
+- P15 remains market acquisition truth and P16 remains Binance Spot provider mapping truth; P21.2/P21.3/P21.4 do not silently absorb concrete provider/transport ownership.
 - P18 remains generic drawing/provider/interaction machinery.
 - P19 remains Risk/Reward semantic and provider-neutral logical composition truth.
 - P20 remains the closed Saved Analysis system; no generic CRUD expansion is inferred from P21 work.
 - P21.1 owns only Home route presentation/composition semantics on the existing `/` route; P8 `AppShell`/navigation remains authoritative.
 - P21.2 owns only the provider-neutral Live Market Summary raw-fact contract/validation seam; it does not establish a complete market-universe view, acquisition method, accumulator, freshness policy, Bubble metric, or UI ownership.
 - P21.3 owns only explicit delivery-completeness semantics over P21.2 facts. `incremental` must never be treated as a complete market view; `complete-for-scope` is complete only for its declared scope, and P21.3 does not choose that scope.
+- P21.4 owns only the provider-neutral baseline acquisition port/result/validation contract. The caller provides the scope; P21.4 neither selects the universe nor implements Binance/transport/state/UI behavior, and P15's existing single-instrument subscription seam remains unchanged.
 - The Live Crypto Bubble Map and Your Trades Bubble Map remain distinct products with distinct authoritative upstream data flows. Shared future bubble-layout code, if introduced, must remain presentation-only.
 - The approved premium dashboard-transition direction remains presentation-only and must be layered through a clean motion seam later; animation must never own or delay route/navigation/data/persistence/calculation/chart/Saved Analysis/dashboard-selection truth.
 - P2/P3 design tokens remain style-value authority; P19.4 references tokens rather than hard-coding colors.
@@ -117,4 +126,4 @@ Therefore P21.3 is the canonical GOLDEN. P21 remains OPEN; later P21 responsibil
 
 ## Next audit checkpoint
 
-P21 is open through canonical P21.3. Before any later P21 implementation, reread the controlling handoff/current user rules, exact P21.3 GOLDEN, process history, Retry Ledger, current P15/P16 market owners, P12 journal-history seam, Home/dashboard consumers and current official provider behavior. Prove exactly one smallest dependency-safe next responsibility and explicit non-scope. In particular, do not infer Live Crypto baseline acquisition/transport, market-universe selection, accumulation/state/freshness/reset behavior, Bubble size/color/ranking/grouping/filter/interactions, Your-Trades visualization semantics, or transition implementation from the existence of the P21.2 fact contract or P21.3 delivery-completeness contract.
+P21 is open through canonical P21.4. Before any later P21 implementation, reread the controlling handoff/current user rules, exact P21.4 GOLDEN, process history, Retry Ledger, current P15/P16 market owners, P12 journal-history seam, Home/dashboard consumers and current official provider behavior. Prove exactly one smallest dependency-safe next responsibility and explicit non-scope. In particular, do not infer a concrete Binance baseline implementation, REST-vs-WebSocket choice, market-universe selection, accumulation/state/order/freshness/reset behavior, Bubble size/color/ranking/grouping/filter/interactions, Your-Trades visualization semantics, or transition implementation merely from the existence of the P21.2 fact contract, P21.3 delivery-completeness contract, or P21.4 provider-neutral acquisition port.
