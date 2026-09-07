@@ -184,7 +184,10 @@ jobs:
                 scope,
                 facts: [fact(btc, '64000')],
               };
-              const acquireBaseline = vi.fn(async () => ({ ok: true as const, delivery }));
+              const acquireBaseline = vi.fn(async (
+                _scope: readonly MarketDataInstrument[],
+                _options?: { readonly signal?: AbortSignal },
+              ) => ({ ok: true as const, delivery }));
               const port: LiveMarketSummaryBaselineAcquisitionPort = { acquireBaseline };
 
               await acquireLiveMarketSummaryBaselineIntoState(prior, port, scope, options);
