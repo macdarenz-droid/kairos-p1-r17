@@ -49,10 +49,9 @@ jobs:
           }
 
           /**
-           * Injected execution seam only. The concrete network mechanism and response
-           * representation remain owned by the caller-supplied connector.
-           * Optional caller cancellation is forwarded unchanged; this owner does not
-           * create, combine, time out, or interpret cancellation.
+           * Injected execution seam only. Concrete network and response representation
+           * remain owned by the caller-supplied connector. Optional caller cancellation
+           * is forwarded unchanged; this owner does not create or interpret it.
            */
           export type BinanceSpot24hPublicRestBaselineRequestConnector<TResult> = (
             request: BinanceSpot24hPublicRestBaselineRequestDescriptor,
@@ -60,30 +59,69 @@ jobs:
           ) => Promise<TResult>;
 
           /**
-           * Executes exactly one already-described request through an injected connector
-           * and returns that connector's result unchanged. Optional execution options are
-           * forwarded unchanged so a later concrete connector can honor caller cancellation.
+           * Executes exactly one already-described request. Existing no-options callers
+           * retain the exact one-argument connector call; supplied options are forwarded
+           * unchanged so a later concrete connector can honor caller cancellation.
            */
           export function executeBinanceSpot24hPublicRestBaselineRequest<TResult>(
             request: BinanceSpot24hPublicRestBaselineRequestDescriptor,
             connect: BinanceSpot24hPublicRestBaselineRequestConnector<TResult>,
             options?: BinanceSpot24hPublicRestBaselineExecutionOptions,
           ): Promise<TResult> {
+            if (options === undefined) return connect(request);
             return connect(request, options);
           }
           TS
 
-          python - <<'PY'
-          from pathlib import Path
-          p=Path('.p21candidate/kairos_p76/src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineRoundTrip.ts')
-          s=p.read_text()
-          s=s.replace("type BinanceSpot24hPublicRestBaselineRequestConnector,\n          } from './binanceSpot24hPublicRestBaselineRequestExecution';", "type BinanceSpot24hPublicRestBaselineRequestConnector,\n            type BinanceSpot24hPublicRestBaselineExecutionOptions,\n          } from './binanceSpot24hPublicRestBaselineRequestExecution';")
-          s=s.replace("connect: BinanceSpot24hPublicRestBaselineRequestConnector<unknown>,\n          ): Promise", "connect: BinanceSpot24hPublicRestBaselineRequestConnector<unknown>,\n            options?: BinanceSpot24hPublicRestBaselineExecutionOptions,\n          ): Promise")
-          s=s.replace("executeBinanceSpot24hPublicRestBaselineRequest(described.request, connect);", "executeBinanceSpot24hPublicRestBaselineRequest(described.request, connect, options);")
-          if "BinanceSpot24hPublicRestBaselineExecutionOptions" not in s or "connect, options" not in s:
-              raise SystemExit('P21.12 round-trip propagation patch failed')
-          p.write_text(s)
-          PY
+          # Deterministically rewrite the whole canonical P21.11 round-trip owner rather
+          # than relying on indentation-sensitive string substitution.
+          cat > "$ROUND" <<'TS'
+          import type { MarketDataInstrument } from '../../marketDataTypes';
+          import {
+            describeBinanceSpot24hPublicRestBaselineRequest,
+            type BinanceSpot24hPublicRestBaselineRequestResult,
+          } from './binanceSpot24hPublicRestBaselineRequest';
+          import {
+            executeBinanceSpot24hPublicRestBaselineRequest,
+            type BinanceSpot24hPublicRestBaselineExecutionOptions,
+            type BinanceSpot24hPublicRestBaselineRequestConnector,
+          } from './binanceSpot24hPublicRestBaselineRequestExecution';
+          import {
+            mapBinanceSpot24hPublicRestBaselineResponseDelivery,
+            type BinanceSpot24hPublicRestBaselineResponseDeliveryResult,
+          } from './binanceSpot24hPublicRestBaselineResponseDelivery';
+
+          type RequestFailureReason = Extract<
+            BinanceSpot24hPublicRestBaselineRequestResult,
+            { readonly ok: false }
+          >['reason'];
+
+          type ResponseFailureReason = Extract<
+            BinanceSpot24hPublicRestBaselineResponseDeliveryResult,
+            { readonly ok: false }
+          >['reason'];
+
+          export type BinanceSpot24hPublicRestBaselineRoundTripResult =
+            | Extract<BinanceSpot24hPublicRestBaselineResponseDeliveryResult, { readonly ok: true }>
+            | { readonly ok: false; readonly reason: RequestFailureReason | ResponseFailureReason };
+
+          /**
+           * Composes the canonical REST baseline seams for one round trip. Optional
+           * caller-owned execution options are propagated only; connector rejection,
+           * cancellation policy, concrete transport and P21.4 orchestration remain outside.
+           */
+          export async function composeBinanceSpot24hPublicRestBaselineRoundTrip(
+            scope: readonly MarketDataInstrument[],
+            observedAt: string,
+            connect: BinanceSpot24hPublicRestBaselineRequestConnector<unknown>,
+            options?: BinanceSpot24hPublicRestBaselineExecutionOptions,
+          ): Promise<BinanceSpot24hPublicRestBaselineRoundTripResult> {
+            const described = describeBinanceSpot24hPublicRestBaselineRequest(scope);
+            if (!described.ok) return described;
+            const data = await executeBinanceSpot24hPublicRestBaselineRequest(described.request, connect, options);
+            return mapBinanceSpot24hPublicRestBaselineResponseDelivery(scope, data, observedAt);
+          }
+          TS
 
           cat > "$ROOT/tests/binance-spot-24h-public-rest-baseline-caller-cancellation-propagation.test.ts" <<'TS'
           import { describe, expect, it, vi } from 'vitest';
@@ -126,10 +164,17 @@ jobs:
               expect(connect).toHaveBeenCalledTimes(1);
             });
 
-            it('preserves existing no-options callers and connector rejection behavior', async () => {
+            it('preserves exact one-argument connector invocation for existing no-options callers', async () => {
+              const described = describeBinanceSpot24hPublicRestBaselineRequest(scope);
+              expect(described.ok).toBe(true);
+              if (!described.ok) return;
               const connect = vi.fn(async () => payload);
-              await expect(composeBinanceSpot24hPublicRestBaselineRoundTrip(scope, observedAt, connect)).resolves.toMatchObject({ ok: true });
-              expect(connect).toHaveBeenCalledWith(expect.any(Object), undefined);
+              await executeBinanceSpot24hPublicRestBaselineRequest(described.request, connect);
+              expect(connect).toHaveBeenCalledWith(described.request);
+              expect(connect.mock.calls[0]).toHaveLength(1);
+            });
+
+            it('preserves connector rejection behavior', async () => {
               const failure = new Error('connector-owned-failure');
               await expect(composeBinanceSpot24hPublicRestBaselineRoundTrip(scope, observedAt, async () => { throw failure; }))
                 .rejects.toBe(failure);
@@ -144,13 +189,13 @@ jobs:
           Base: canonical P21.11 round-trip composition, canonical gate #296 / run `34100573164`.
 
           ## Source-proven responsibility
-          P21.4 already exposes optional caller cancellation through `AbortSignal`, but canonical P21.8/P21.11 cannot carry that signal to an injected connector. The smallest dependency-safe prerequisite before a concrete P21.4 adapter is therefore propagation only: accept optional caller-owned execution options and forward the exact signal unchanged across P21.8 and P21.11.
+          P21.4 already exposes optional caller cancellation through `AbortSignal`, but canonical P21.8/P21.11 cannot carry that signal to an injected connector. The smallest dependency-safe prerequisite before a concrete P21.4 adapter is propagation only: accept optional caller-owned execution options and forward the exact signal unchanged across P21.8 and P21.11.
 
-          Current Fetch API behavior supports request cancellation by passing an `AbortSignal` as the request `signal`; the concrete fetch connector remains outside this slice.
+          Current Fetch API behavior supports request cancellation by passing an `AbortSignal` as the request `signal`; concrete fetch remains outside this slice.
 
           ## Contract
-          - Existing calls without options remain valid.
-          - P21.8 forwards the exact options object to the injected connector exactly once.
+          - Existing calls without options preserve their exact one-argument connector invocation.
+          - Supplied P21.8 execution options are forwarded unchanged to the injected connector exactly once.
           - P21.11 forwards the same options into P21.8.
           - Connector result/rejection behavior remains unchanged.
 
@@ -167,18 +212,27 @@ jobs:
           const exec = readFileSync(new URL('../src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineRequestExecution.ts', import.meta.url), 'utf8');
           const round = readFileSync(new URL('../src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineRoundTrip.ts', import.meta.url), 'utf8');
           const report = readFileSync(new URL('../KAIROS_P21_12_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_CALLER_CANCELLATION_PROPAGATION_FOUNDATION_REPORT_2026-09-07.md', import.meta.url), 'utf8');
-          for (const token of ['BinanceSpot24hPublicRestBaselineExecutionOptions', 'readonly signal?: AbortSignal', 'return connect(request, options);']) {
-            if (!exec.includes(token)) throw new Error(`P21.12 execution propagation evidence missing: ${token}`);
-          }
-          for (const token of ['options?: BinanceSpot24hPublicRestBaselineExecutionOptions', 'executeBinanceSpot24hPublicRestBaselineRequest(described.request, connect, options)']) {
-            if (!round.includes(token)) throw new Error(`P21.12 round-trip propagation evidence missing: ${token}`);
-          }
-          for (const source of [exec, round]) for (const forbidden of ['fetch(', 'XMLHttpRequest', 'WebSocket(', 'new Response(', 'new AbortController(', 'AbortSignal.any(', 'AbortSignal.timeout(', 'setTimeout(', 'acquireBaseline(', 'indexedDB']) {
-            if (source.includes(forbidden)) throw new Error(`P21.12 broadened into forbidden scope: ${forbidden}`);
-          }
-          for (const token of ['No concrete fetch/XHR/WebSocket/browser transport', 'No `AbortController` creation', 'No concrete P21.4 acquisition-port implementation yet', 'No retry/backoff/throttle/rate-limit', 'No new request/decode/ticker/completeness algorithm']) {
-            if (!report.includes(token)) throw new Error(`P21.12 report evidence missing: ${token}`);
-          }
+          for (const token of [
+            'BinanceSpot24hPublicRestBaselineExecutionOptions',
+            'readonly signal?: AbortSignal',
+            'if (options === undefined) return connect(request);',
+            'return connect(request, options);',
+          ]) if (!exec.includes(token)) throw new Error(`P21.12 execution propagation evidence missing: ${token}`);
+          for (const token of [
+            'options?: BinanceSpot24hPublicRestBaselineExecutionOptions',
+            'executeBinanceSpot24hPublicRestBaselineRequest(described.request, connect, options)',
+          ]) if (!round.includes(token)) throw new Error(`P21.12 round-trip propagation evidence missing: ${token}`);
+          for (const source of [exec, round]) for (const forbidden of [
+            'fetch(', 'XMLHttpRequest', 'WebSocket(', 'new Response(', 'new AbortController(',
+            'AbortSignal.any(', 'AbortSignal.timeout(', 'setTimeout(', 'acquireBaseline(', 'indexedDB',
+          ]) if (source.includes(forbidden)) throw new Error(`P21.12 broadened into forbidden scope: ${forbidden}`);
+          for (const token of [
+            'No concrete fetch/XHR/WebSocket/browser transport',
+            'No `AbortController` creation',
+            'No concrete P21.4 acquisition-port implementation yet',
+            'No retry/backoff/throttle/rate-limit',
+            'No new request/decode/ticker/completeness algorithm',
+          ]) if (!report.includes(token)) throw new Error(`P21.12 report evidence missing: ${token}`);
           console.log('P21.12 caller cancellation propagation verification passed.');
           JS
 
