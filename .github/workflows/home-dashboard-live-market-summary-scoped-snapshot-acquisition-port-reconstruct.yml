@@ -1,0 +1,221 @@
+name: Kairos Home Dashboard Live Market Summary Scoped Snapshot Acquisition Port Reconstruction Bridge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-reconstruct.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reconstruct:
+    runs-on: ubuntu-24.04
+    env:
+      BASE_ZIP: KAIROS_P21_23_LIVE_MARKET_SUMMARY_BROWSER_STATE_SESSION_SCOPED_SNAPSHOT_ACQUISITION_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-08.zip
+      OUT_ZIP: KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_SCOPED_SNAPSHOT_ACQUISITION_PORT_CONTRACT_FOUNDATION_CANDIDATE_2026-09-08.zip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - name: Pin npm
+        run: |
+          npm install --global npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+
+      - name: Reconstruct provider-neutral Home live-market port from canonical P21.23
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .portbase .portcandidate
+          mkdir .portbase .portcandidate
+          unzip -q "$BASE_ZIP" -d .portbase
+          cp -a .portbase/. .portcandidate/
+          ROOT=.portcandidate/kairos_p76
+          PORT="$ROOT/src/application/dashboard/homeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPort.ts"
+          REPORT="$ROOT/KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_SCOPED_SNAPSHOT_ACQUISITION_PORT_CONTRACT_FOUNDATION_REPORT_2026-09-08.md"
+          TEST="$ROOT/tests/home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation.test.ts"
+          VERIFY="$ROOT/scripts/verify-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation.mjs"
+          mkdir -p "$(dirname "$PORT")"
+
+          test -f "$ROOT/src/services/market-data/marketDataTypes.ts"
+          test -f "$ROOT/src/services/market-data/liveMarketSummaryBaselineStateOrchestration.ts"
+          test -f "$ROOT/src/services/market-data/liveMarketSummaryScopedStateSnapshot.ts"
+          test -f "$ROOT/src/services/market-data/providers/binance/binanceSpot24hBrowserPublicRestBaselineStateSessionScopedSnapshotAcquisitionComposition.ts"
+
+          cat > "$PORT" <<'TS'
+          import type { LiveMarketSummaryBaselineStateOrchestrationResult } from '../../services/market-data/liveMarketSummaryBaselineStateOrchestration';
+          import type { LiveMarketSummaryScopedStateSnapshotEntry } from '../../services/market-data/liveMarketSummaryScopedStateSnapshot';
+          import type { MarketDataInstrument } from '../../services/market-data/marketDataTypes';
+
+          export interface HomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionResult {
+            readonly orchestrationResult: LiveMarketSummaryBaselineStateOrchestrationResult;
+            readonly scopedSnapshot: readonly LiveMarketSummaryScopedStateSnapshotEntry[];
+          }
+
+          export interface HomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionOptions {
+            readonly signal?: AbortSignal;
+          }
+
+          /**
+           * Provider-neutral application-facing port only.
+           * The caller owns scope and cancellation. A later adapter may bind this port
+           * to an already-released provider capability without moving provider choice
+           * or live-market semantics into Home presentation.
+           */
+          export interface HomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPort {
+            acquire(
+              scope: readonly MarketDataInstrument[],
+              options?: HomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionOptions,
+            ): Promise<HomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionResult>;
+          }
+          TS
+
+          cat > "$TEST" <<'TS'
+          import { describe, expectTypeOf, it } from 'vitest';
+          import type {
+            HomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionOptions,
+            HomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPort,
+            HomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionResult,
+          } from '../src/application/dashboard/homeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPort';
+          import type { LiveMarketSummaryBaselineStateOrchestrationResult } from '../src/services/market-data/liveMarketSummaryBaselineStateOrchestration';
+          import type { LiveMarketSummaryScopedStateSnapshotEntry } from '../src/services/market-data/liveMarketSummaryScopedStateSnapshot';
+          import type { MarketDataInstrument } from '../src/services/market-data/marketDataTypes';
+
+          describe('Home Dashboard Live Market Summary Scoped Snapshot Acquisition Port Contract Foundation', () => {
+            it('accepts only caller-owned scope plus released cancellation semantics', () => {
+              expectTypeOf<HomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPort['acquire']>().parameters.toEqualTypeOf<[
+                readonly MarketDataInstrument[],
+                HomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionOptions?,
+              ]>();
+            });
+
+            it('returns only released provider-neutral orchestration and scoped snapshot truth', () => {
+              expectTypeOf<HomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionResult>().toEqualTypeOf<{
+                readonly orchestrationResult: LiveMarketSummaryBaselineStateOrchestrationResult;
+                readonly scopedSnapshot: readonly LiveMarketSummaryScopedStateSnapshotEntry[];
+              }>();
+            });
+
+            it('keeps cancellation compatible with the released optional AbortSignal boundary', () => {
+              expectTypeOf<HomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionOptions>().toEqualTypeOf<{
+                readonly signal?: AbortSignal;
+              }>();
+            });
+          });
+          TS
+
+          cat > "$REPORT" <<'MD'
+          # Home Dashboard Live Market Summary Scoped Snapshot Acquisition Port Contract Foundation
+
+          ## Authority
+          Base: exact canonical P21.23 candidate promoted by `Kairos Controlled Roadmap Gate` #308 / run `34166273061`.
+
+          ## Source-proven responsibility
+          Released P21.23 is provider-specific under the Binance market-data owner. Released Home remains presentation-only and has no dashboard insights connected. No application-facing Home/dashboard market-data acquisition seam exists. The smallest dependency-safe next responsibility is therefore a provider-neutral port contract outside React presentation.
+
+          ## Contract
+          - Accept explicit caller-owned `readonly MarketDataInstrument[]` scope.
+          - Accept optional caller-owned cancellation compatible with released `signal?: AbortSignal` semantics.
+          - Return a Promise of only released provider-neutral `LiveMarketSummaryBaselineStateOrchestrationResult` plus released `readonly LiveMarketSummaryScopedStateSnapshotEntry[]` truth.
+          - Choose no provider, session, transport, universe, default scope, clock, ranking, freshness, retry, persistence, subscription, Bubble presentation, UI state, or transition behavior.
+
+          ## Explicit non-scope
+          No Binance/provider adapter; no Home React wiring/hooks/effects/UI state; no default universe/scope; no ranking/filtering/grouping/sorting/top-N/popularity/market-cap; no Bubble sizing/color/geometry/interactions/animation; no Your Trades/journal ownership; no caller clock/readObservedAt construction; no freshness/TTL/polling/reconnect/scheduling/background work; no provider transport/error/retry/rate-limit/timeout policy; no new cancellation/concurrency/coalescing/subscription framework; no persistence/IndexedDB/Saved Analysis/chart/navigation/transition ownership; no reinterpretation of released P21 semantics.
+          MD
+
+          cat > "$VERIFY" <<'JS'
+          import { readFileSync } from 'node:fs';
+          const source = readFileSync(new URL('../src/application/dashboard/homeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPort.ts', import.meta.url), 'utf8');
+          const report = readFileSync(new URL('../KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_SCOPED_SNAPSHOT_ACQUISITION_PORT_CONTRACT_FOUNDATION_REPORT_2026-09-08.md', import.meta.url), 'utf8');
+          for (const token of [
+            'readonly MarketDataInstrument[]',
+            'readonly signal?: AbortSignal',
+            'LiveMarketSummaryBaselineStateOrchestrationResult',
+            'readonly LiveMarketSummaryScopedStateSnapshotEntry[]',
+            'interface HomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPort',
+            'Promise<HomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionResult>',
+          ]) if (!source.includes(token)) throw new Error(`port contract evidence missing: ${token}`);
+          for (const forbidden of [
+            'binance', 'fetch(', 'Date.now(', 'new Date(', 'setTimeout(', 'setInterval(',
+            'WebSocket(', 'indexedDB', 'new AbortController(', '.sort(', '.filter(', '.reduce(',
+            'React', 'useEffect', 'useState', 'createChart(',
+          ]) if (source.includes(forbidden)) throw new Error(`port broadened into forbidden scope: ${forbidden}`);
+          if (/\b(class|function|const)\s+HomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPort\b/.test(source)) throw new Error('port contract must not implement an adapter');
+          for (const token of [
+            'provider-neutral port contract outside React presentation',
+            'Choose no provider, session, transport, universe, default scope, clock, ranking, freshness, retry, persistence, subscription, Bubble presentation, UI state, or transition behavior',
+            'No Binance/provider adapter',
+            'no Your Trades/journal ownership',
+          ]) if (!report.includes(token)) throw new Error(`report evidence missing: ${token}`);
+          console.log('Home Dashboard Live Market Summary Scoped Snapshot Acquisition Port Contract verification passed.');
+          JS
+
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const p='.portcandidate/kairos_p76/package.json';
+          const j=JSON.parse(fs.readFileSync(p,'utf8'));
+          j.scripts||={};
+          j.scripts['verify:home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation']='node scripts/verify-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation.mjs';
+          fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');
+          NODE
+
+          python - <<'PY'
+          from pathlib import Path
+          a={str(p.relative_to(Path('.portbase/kairos_p76'))):p.read_bytes() for p in Path('.portbase/kairos_p76').rglob('*') if p.is_file()}
+          b={str(p.relative_to(Path('.portcandidate/kairos_p76'))):p.read_bytes() for p in Path('.portcandidate/kairos_p76').rglob('*') if p.is_file()}
+          changed={p for p in a.keys()|b.keys() if a.get(p)!=b.get(p)}
+          expected={
+            'KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_SCOPED_SNAPSHOT_ACQUISITION_PORT_CONTRACT_FOUNDATION_REPORT_2026-09-08.md',
+            'package.json',
+            'scripts/verify-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation.mjs',
+            'src/application/dashboard/homeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPort.ts',
+            'tests/home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation.test.ts',
+          }
+          print('P21.23 -> Home dashboard live-market port changed files:', *sorted(changed), sep='\n- ')
+          if changed != expected: raise SystemExit(f'exact port scope mismatch: {sorted(changed ^ expected)}')
+          PY
+
+      - name: Verify reconstructed port before packaging
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd .portcandidate/kairos_p76
+          test "$(node --version)" = "v22.16.0"
+          test "$(npm --version)" = "10.9.2"
+          npm ci
+          node -e "const p=require('./node_modules/lightweight-charts/package.json'); if(p.version!=='5.2.1') throw new Error(p.version)"
+          npm run verify:home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation
+          npx tsc --noEmit
+          npm run build
+          npx vitest run tests/home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation.test.ts
+          npx vitest run
+
+      - name: Restore clean package boundary and package candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=.portcandidate/kairos_p76
+          rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite"
+          find "$ROOT" -type f \( -name '*.tsbuildinfo' -o -name '*.log' \) -delete
+          (cd .portcandidate && zip -qr "../$OUT_ZIP" kairos_p76)
+          unzip -t "$OUT_ZIP"
+          rm -rf .portverify && mkdir .portverify
+          unzip -q "$OUT_ZIP" -d .portverify
+          test -f .portverify/kairos_p76/src/application/dashboard/homeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPort.ts
+          node .portverify/kairos_p76/scripts/verify-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation.mjs
+          sha256sum "$OUT_ZIP"
+
+      - name: Commit verified non-canonical candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "$OUT_ZIP"
+          git diff --cached --quiet && exit 0
+          git commit -m 'Add verified Home live-market snapshot acquisition port candidate'
+          git push
