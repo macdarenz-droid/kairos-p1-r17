@@ -1,0 +1,284 @@
+name: Kairos P21.13 Binance Spot 24h Public REST Baseline Acquisition Adapter Reconstruction Bridge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/p21-13-binance-spot-24h-public-rest-baseline-acquisition-adapter-reconstruct.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reconstruct:
+    runs-on: ubuntu-24.04
+    env:
+      BASE_ZIP: KAIROS_P21_12_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_CALLER_CANCELLATION_PROPAGATION_FOUNDATION_CANDIDATE_2026-09-07.zip
+      OUT_ZIP: KAIROS_P21_13_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_ACQUISITION_ADAPTER_FOUNDATION_CANDIDATE_2026-09-07.zip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - name: Pin npm
+        run: |
+          npm install --global npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+
+      - name: Reconstruct P21.13 from canonical P21.12
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .p21base .p21candidate
+          mkdir .p21base .p21candidate
+          unzip -q "$BASE_ZIP" -d .p21base
+          cp -a .p21base/. .p21candidate/
+          ROOT=.p21candidate/kairos_p76
+          ADAPTER="$ROOT/src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineAcquisitionAdapter.ts"
+          INDEX="$ROOT/src/services/market-data/index.ts"
+          test -f "$ROOT/src/services/market-data/LiveMarketSummaryBaselineAcquisitionPort.ts"
+          test -f "$ROOT/src/services/market-data/liveMarketSummaryBaselineAcquisitionSemantics.ts"
+          test -f "$ROOT/src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineRoundTrip.ts"
+          test -f "$ROOT/src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineRequestExecution.ts"
+          test -f "$INDEX"
+
+          cat > "$ADAPTER" <<'TS'
+          import type { LiveMarketSummaryBaselineAcquisitionPort } from '../../LiveMarketSummaryBaselineAcquisitionPort';
+          import { validateLiveMarketSummaryBaselineSuccess } from '../../liveMarketSummaryBaselineAcquisitionSemantics';
+          import {
+            composeBinanceSpot24hPublicRestBaselineRoundTrip,
+          } from './binanceSpot24hPublicRestBaselineRoundTrip';
+          import type {
+            BinanceSpot24hPublicRestBaselineRequestConnector,
+          } from './binanceSpot24hPublicRestBaselineRequestExecution';
+
+          /**
+           * Caller-owned observation-time dependency. The adapter reads it once per
+           * baseline acquisition and does not own clock, freshness, or timestamp policy.
+           */
+          export type BinanceSpot24hPublicRestBaselineObservedAtSource = () => string;
+
+          /**
+           * Concrete Binance composition for the provider-neutral P21.4 baseline port.
+           * Network transport remains injected. P21.12 caller cancellation is forwarded
+           * unchanged through the existing round-trip seam.
+           */
+          export function createBinanceSpot24hPublicRestBaselineAcquisitionPort(
+            connect: BinanceSpot24hPublicRestBaselineRequestConnector<unknown>,
+            readObservedAt: BinanceSpot24hPublicRestBaselineObservedAtSource,
+          ): LiveMarketSummaryBaselineAcquisitionPort {
+            return {
+              async acquireBaseline(scope, options) {
+                try {
+                  const result = await composeBinanceSpot24hPublicRestBaselineRoundTrip(
+                    scope,
+                    readObservedAt(),
+                    connect,
+                    options,
+                  );
+                  if (!result.ok) return { ok: false, reason: 'acquisition-failed' };
+                  const validated = validateLiveMarketSummaryBaselineSuccess(scope, result.delivery);
+                  if (!validated.ok) return { ok: false, reason: 'acquisition-failed' };
+                  return { ok: true, delivery: validated.delivery };
+                } catch {
+                  return { ok: false, reason: 'acquisition-failed' };
+                }
+              },
+            };
+          }
+          TS
+
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('.p21candidate/kairos_p76/src/services/market-data/index.ts')
+          s=p.read_text()
+          line="export * from './providers/binance/binanceSpot24hPublicRestBaselineAcquisitionAdapter';\n"
+          if line not in s:
+              anchor="export * from './providers/binance/binanceSpot24hPublicRestBaselineRoundTrip';\n"
+              if anchor not in s: raise SystemExit('P21.11 round-trip export boundary not found')
+              s=s.replace(anchor, anchor+line, 1)
+          p.write_text(s)
+          PY
+
+          cat > "$ROOT/tests/binance-spot-24h-public-rest-baseline-acquisition-adapter.test.ts" <<'TS'
+          import { describe, expect, it, vi } from 'vitest';
+          import {
+            createBinanceSpot24hPublicRestBaselineAcquisitionPort,
+          } from '../src/services/market-data';
+
+          const scope = [{ venue: 'binance-spot', symbol: 'BTCUSDT' }] as const;
+          const observedAt = '2026-09-07T10:40:00.000Z';
+          const payload = JSON.stringify({
+            symbol: 'BTCUSDT', openPrice: '62000', highPrice: '65000', lowPrice: '61000',
+            lastPrice: '64000', volume: '1234', quoteVolume: '78000000', closeTime: 1770000000000,
+          });
+
+          describe('P21.13 Binance Spot baseline acquisition adapter foundation', () => {
+            it('implements the P21.4 port by composing the released P21.11/P21.12 round trip', async () => {
+              const connect = vi.fn(async () => payload);
+              const readObservedAt = vi.fn(() => observedAt);
+              const port = createBinanceSpot24hPublicRestBaselineAcquisitionPort(connect, readObservedAt);
+              const result = await port.acquireBaseline(scope);
+              expect(result.ok).toBe(true);
+              expect(connect).toHaveBeenCalledTimes(1);
+              expect(readObservedAt).toHaveBeenCalledTimes(1);
+              if (result.ok) {
+                expect(result.delivery.completeness).toBe('complete-for-scope');
+                expect(result.delivery.scope).toEqual(scope);
+                expect(result.delivery.facts[0]?.observedAt).toBe(observedAt);
+              }
+            });
+
+            it('forwards the exact caller-owned AbortSignal from the P21.4 port into P21.12', async () => {
+              const controller = new AbortController();
+              const options = { signal: controller.signal } as const;
+              const connect = vi.fn(async (_request: unknown, received?: { readonly signal?: AbortSignal }) => {
+                expect(received).toBe(options);
+                expect(received?.signal).toBe(controller.signal);
+                return payload;
+              });
+              const port = createBinanceSpot24hPublicRestBaselineAcquisitionPort(connect, () => observedAt);
+              await expect(port.acquireBaseline(scope, options)).resolves.toMatchObject({ ok: true });
+              expect(connect).toHaveBeenCalledTimes(1);
+            });
+
+            it('maps released request/response composition failure to the P21.4 acquisition-failed result', async () => {
+              const port = createBinanceSpot24hPublicRestBaselineAcquisitionPort(async () => '{bad-json', () => observedAt);
+              await expect(port.acquireBaseline(scope)).resolves.toEqual({ ok: false, reason: 'acquisition-failed' });
+            });
+
+            it('maps connector rejection to acquisition-failed without inventing abort/error interpretation', async () => {
+              const failure = new Error('connector-owned-failure');
+              const port = createBinanceSpot24hPublicRestBaselineAcquisitionPort(async () => { throw failure; }, () => observedAt);
+              await expect(port.acquireBaseline(scope)).resolves.toEqual({ ok: false, reason: 'acquisition-failed' });
+            });
+          });
+          TS
+
+          cat > "$ROOT/KAIROS_P21_13_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_ACQUISITION_ADAPTER_FOUNDATION_REPORT_2026-09-07.md" <<'MD'
+          # KAIROS P21.13 — Binance Spot 24h Public REST Baseline Acquisition Adapter Foundation
+
+          ## Authority
+          Base: canonical P21.12 caller cancellation propagation, canonical gate #297 / run `34110678855`.
+
+          ## Source-proven responsibility
+          Canonical P21.4 defines `LiveMarketSummaryBaselineAcquisitionPort.acquireBaseline(scope, options)` with explicit `acquisition-failed`, but owns no Binance implementation. Canonical P21.11 composes request description, one injected connector execution and response delivery. Canonical P21.12 explicitly records cancellation propagation as the smallest prerequisite before a concrete P21.4 adapter. Therefore this slice owns only the missing Binance composition adapter from P21.4 to the already-released P21.11/P21.12 seams.
+
+          ## Contract
+          - Factory receives the existing injected P21.8 connector; no network implementation is created here.
+          - Factory receives a caller-owned observation-time source and reads it once per acquisition; no clock/freshness policy is introduced.
+          - `acquireBaseline(scope, options)` forwards P21.4 caller cancellation unchanged through P21.12.
+          - Successful P21.11 delivery is revalidated through the existing P21.4 success validator before returning the P21.4 success result.
+          - Existing request/response composition failures and connector rejection map to the P21.4 `acquisition-failed` result; no transport-specific error taxonomy is invented.
+
+          ## Explicit non-scope
+          - No concrete `fetch`/XHR/WebSocket/browser transport and no `Response`/HTTP status/header/body acquisition.
+          - No `AbortController` creation, signal combination, timeout, abort-cause interpretation or error translation.
+          - No retry/backoff/throttle/rate-limit/request-weight/credentials/polling/reconnect.
+          - No market-universe selection/ranking, batching/chunking, or new request/decode/ticker/completeness semantics.
+          - No market state accumulator, freshness TTL, reset/reconnect state machine or persistence.
+          - No Live Crypto Bubble Map sizing/color/grouping/filtering/geometry/Home wiring.
+          - No Your Trades Bubble Map, journal reads, Saved Analysis, direct IndexedDB UI access or dashboard transitions.
+          MD
+
+          cat > "$ROOT/scripts/verify-p21-13-binance-spot-24h-public-rest-baseline-acquisition-adapter-foundation.mjs" <<'JS'
+          import { readFileSync } from 'node:fs';
+          const adapter = readFileSync(new URL('../src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineAcquisitionAdapter.ts', import.meta.url), 'utf8');
+          const index = readFileSync(new URL('../src/services/market-data/index.ts', import.meta.url), 'utf8');
+          const report = readFileSync(new URL('../KAIROS_P21_13_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_ACQUISITION_ADAPTER_FOUNDATION_REPORT_2026-09-07.md', import.meta.url), 'utf8');
+          for (const token of [
+            'createBinanceSpot24hPublicRestBaselineAcquisitionPort(',
+            'LiveMarketSummaryBaselineAcquisitionPort',
+            'composeBinanceSpot24hPublicRestBaselineRoundTrip(',
+            'validateLiveMarketSummaryBaselineSuccess(scope, result.delivery)',
+            "return { ok: false, reason: 'acquisition-failed' }",
+            'readObservedAt()',
+            'options,',
+          ]) if (!adapter.includes(token)) throw new Error(`P21.13 adapter evidence missing: ${token}`);
+          if (!index.includes("export * from './providers/binance/binanceSpot24hPublicRestBaselineAcquisitionAdapter';")) throw new Error('P21.13 adapter export missing');
+          for (const forbidden of [
+            'fetch(', 'XMLHttpRequest', 'WebSocket(', 'new Response(', 'new AbortController(',
+            'AbortSignal.any(', 'AbortSignal.timeout(', 'setTimeout(', 'setInterval(', 'indexedDB',
+          ]) if (adapter.includes(forbidden)) throw new Error(`P21.13 broadened into forbidden scope: ${forbidden}`);
+          for (const token of [
+            'Canonical P21.4 defines `LiveMarketSummaryBaselineAcquisitionPort.acquireBaseline(scope, options)`',
+            'Canonical P21.12 explicitly records cancellation propagation as the smallest prerequisite before a concrete P21.4 adapter.',
+            'No concrete `fetch`/XHR/WebSocket/browser transport',
+            'No `AbortController` creation',
+            'No retry/backoff/throttle/rate-limit',
+            'No market-universe selection/ranking',
+            'No market state accumulator',
+            'No Live Crypto Bubble Map sizing',
+            'No Your Trades Bubble Map',
+          ]) if (!report.includes(token)) throw new Error(`P21.13 report evidence missing: ${token}`);
+          console.log('P21.13 Binance Spot baseline acquisition adapter verification passed.');
+          JS
+
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const p='.p21candidate/kairos_p76/package.json';
+          const j=JSON.parse(fs.readFileSync(p,'utf8'));
+          j.scripts||={};
+          j.scripts['verify:p21:13-binance-spot-24h-public-rest-baseline-acquisition-adapter-foundation']='node scripts/verify-p21-13-binance-spot-24h-public-rest-baseline-acquisition-adapter-foundation.mjs';
+          fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');
+          NODE
+
+          python - <<'PY'
+          from pathlib import Path
+          a={str(p.relative_to(Path('.p21base/kairos_p76'))):p.read_bytes() for p in Path('.p21base/kairos_p76').rglob('*') if p.is_file()}
+          b={str(p.relative_to(Path('.p21candidate/kairos_p76'))):p.read_bytes() for p in Path('.p21candidate/kairos_p76').rglob('*') if p.is_file()}
+          changed={p for p in a.keys()|b.keys() if a.get(p)!=b.get(p)}
+          expected={
+            'KAIROS_P21_13_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_ACQUISITION_ADAPTER_FOUNDATION_REPORT_2026-09-07.md',
+            'package.json',
+            'scripts/verify-p21-13-binance-spot-24h-public-rest-baseline-acquisition-adapter-foundation.mjs',
+            'src/services/market-data/index.ts',
+            'src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineAcquisitionAdapter.ts',
+            'tests/binance-spot-24h-public-rest-baseline-acquisition-adapter.test.ts',
+          }
+          print('\n'.join(sorted(changed)))
+          assert changed==expected,(sorted(changed-expected),sorted(expected-changed))
+          PY
+
+      - name: Verify reconstructed P21.13 before packaging
+        working-directory: .p21candidate/kairos_p76
+        run: |
+          set -euo pipefail
+          npm ci
+          test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
+          npm run verify:p21:13-binance-spot-24h-public-rest-baseline-acquisition-adapter-foundation
+          npm run typecheck
+          npm run build
+          npm test
+          node - <<'NODE'
+          const { spawnSync } = require('node:child_process');
+          const pkg = require('./package.json');
+          const scripts = Object.keys(pkg.scripts || {}).filter((name) => /^verify:p\d/.test(name));
+          for (const name of scripts) {
+            const r = spawnSync('npm', ['run', name], { stdio: 'inherit' });
+            if (r.status !== 0) process.exit(r.status || 1);
+          }
+          NODE
+
+      - name: Restore clean package boundary and commit candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=.p21candidate/kairos_p76
+          rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite"
+          find "$ROOT" -type f \( -name '*.tsbuildinfo' -o -name '*.log' \) -delete
+          rm -rf .packagecheck
+          mkdir .packagecheck
+          (cd .p21candidate && zip -qr "../$OUT_ZIP" kairos_p76)
+          unzip -q "$OUT_ZIP" -d .packagecheck
+          test -d .packagecheck/kairos_p76
+          test ! -e .packagecheck/kairos_p76/node_modules
+          test ! -e .packagecheck/kairos_p76/dist
+          unzip -t "$OUT_ZIP"
+          sha256sum "$OUT_ZIP"
+          git add "$OUT_ZIP"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Add P21.13 Binance Spot baseline acquisition adapter candidate'
+          git push
