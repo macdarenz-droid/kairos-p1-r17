@@ -1,0 +1,277 @@
+name: Kairos P21.14 Binance Spot 24h Browser Public REST Baseline Connector Reconstruction Bridge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/p21-14-binance-spot-24h-browser-public-rest-baseline-connector-reconstruct.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reconstruct:
+    runs-on: ubuntu-24.04
+    env:
+      BASE_ZIP: KAIROS_P21_13_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_ACQUISITION_ADAPTER_FOUNDATION_CANDIDATE_2026-09-07.zip
+      OUT_ZIP: KAIROS_P21_14_BINANCE_SPOT_24H_BROWSER_PUBLIC_REST_BASELINE_CONNECTOR_FOUNDATION_CANDIDATE_2026-09-07.zip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - name: Pin npm
+        run: |
+          npm install --global npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+
+      - name: Reconstruct P21.14 from canonical P21.13
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .p21base .p21candidate
+          mkdir .p21base .p21candidate
+          unzip -q "$BASE_ZIP" -d .p21base
+          cp -a .p21base/. .p21candidate/
+          ROOT=.p21candidate/kairos_p76
+          CONNECTOR="$ROOT/src/services/market-data/providers/binance/binanceSpot24hBrowserPublicRestBaselineConnector.ts"
+          INDEX="$ROOT/src/services/market-data/index.ts"
+          test -f "$ROOT/src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineRequest.ts"
+          test -f "$ROOT/src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineRequestExecution.ts"
+          test -f "$ROOT/src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineAcquisitionAdapter.ts"
+          test -f "$ROOT/src/services/market-data/providers/binance/binanceSpotBrowserStreamConnector.ts"
+          test -f "$INDEX"
+
+          cat > "$CONNECTOR" <<'TS'
+          import type {
+            BinanceSpot24hPublicRestBaselineRequestConnector,
+          } from './binanceSpot24hPublicRestBaselineRequestExecution';
+
+          /**
+           * Concrete browser transport for one already-described Binance Spot public
+           * 24h REST baseline request. P21.7 still owns URL/method/query semantics;
+           * P21.12 still owns caller cancellation propagation. This connector only
+           * performs one native fetch and returns the response body as text for the
+           * released P21.9 decode seam.
+           */
+          export const connectBinanceSpot24hBrowserPublicRestBaselineRequest:
+            BinanceSpot24hPublicRestBaselineRequestConnector<string> = async (
+              request,
+              options,
+            ) => {
+              const response = await globalThis.fetch(request.url, {
+                method: request.method,
+                signal: options?.signal,
+              });
+              return response.text();
+            };
+          TS
+
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('.p21candidate/kairos_p76/src/services/market-data/index.ts')
+          s=p.read_text()
+          line="export * from './providers/binance/binanceSpot24hBrowserPublicRestBaselineConnector';\n"
+          if line not in s:
+              anchor="export * from './providers/binance/binanceSpot24hPublicRestBaselineAcquisitionAdapter';\n"
+              if anchor not in s: raise SystemExit('P21.13 acquisition adapter export boundary not found')
+              s=s.replace(anchor, anchor+line, 1)
+          p.write_text(s)
+          PY
+
+          cat > "$ROOT/tests/binance-spot-24h-browser-public-rest-baseline-connector.test.ts" <<'TS'
+          import { afterEach, describe, expect, it, vi } from 'vitest';
+          import {
+            connectBinanceSpot24hBrowserPublicRestBaselineRequest,
+            describeBinanceSpot24hPublicRestBaselineRequest,
+          } from '../src/services/market-data';
+
+          const originalFetch = globalThis.fetch;
+          const scope = [{ venue: 'binance-spot', symbol: 'BTCUSDT' }] as const;
+
+          afterEach(() => {
+            globalThis.fetch = originalFetch;
+            vi.restoreAllMocks();
+          });
+
+          describe('P21.14 Binance Spot browser public REST baseline connector foundation', () => {
+            it('performs exactly one native browser fetch for the released P21.7 descriptor and returns response text', async () => {
+              const described = describeBinanceSpot24hPublicRestBaselineRequest(scope);
+              if (!described.ok) throw new Error('expected valid P21.7 request descriptor');
+              const text = vi.fn(async () => '{"symbol":"BTCUSDT"}');
+              const fetchMock = vi.fn(async () => ({ text })) as unknown as typeof fetch;
+              globalThis.fetch = fetchMock;
+
+              await expect(connectBinanceSpot24hBrowserPublicRestBaselineRequest(described.request)).resolves.toBe('{"symbol":"BTCUSDT"}');
+              expect(fetchMock).toHaveBeenCalledTimes(1);
+              expect(fetchMock).toHaveBeenCalledWith(described.request.url, {
+                method: described.request.method,
+                signal: undefined,
+              });
+              expect(text).toHaveBeenCalledTimes(1);
+            });
+
+            it('forwards the exact caller-owned AbortSignal without creating or interpreting cancellation', async () => {
+              const described = describeBinanceSpot24hPublicRestBaselineRequest(scope);
+              if (!described.ok) throw new Error('expected valid P21.7 request descriptor');
+              const controller = new AbortController();
+              const fetchMock = vi.fn(async () => ({ text: async () => '{}' })) as unknown as typeof fetch;
+              globalThis.fetch = fetchMock;
+
+              await connectBinanceSpot24hBrowserPublicRestBaselineRequest(described.request, { signal: controller.signal });
+              expect(fetchMock).toHaveBeenCalledWith(described.request.url, {
+                method: described.request.method,
+                signal: controller.signal,
+              });
+            });
+
+            it('propagates native fetch rejection unchanged for the existing P21.13 acquisition-failed mapping seam', async () => {
+              const described = describeBinanceSpot24hPublicRestBaselineRequest(scope);
+              if (!described.ok) throw new Error('expected valid P21.7 request descriptor');
+              const failure = new Error('native-fetch-failure');
+              globalThis.fetch = vi.fn(async () => { throw failure; }) as unknown as typeof fetch;
+              await expect(connectBinanceSpot24hBrowserPublicRestBaselineRequest(described.request)).rejects.toBe(failure);
+            });
+
+            it('does not inspect status, headers, retry, credentials, or provider payload semantics', async () => {
+              const described = describeBinanceSpot24hPublicRestBaselineRequest(scope);
+              if (!described.ok) throw new Error('expected valid P21.7 request descriptor');
+              const response = {
+                ok: false,
+                status: 429,
+                headers: new Headers({ 'retry-after': '1' }),
+                text: vi.fn(async () => '{"code":-1003,"msg":"rate limit"}'),
+              };
+              globalThis.fetch = vi.fn(async () => response as unknown as Response) as unknown as typeof fetch;
+              await expect(connectBinanceSpot24hBrowserPublicRestBaselineRequest(described.request)).resolves.toContain('rate limit');
+              expect(response.text).toHaveBeenCalledTimes(1);
+            });
+          });
+          TS
+
+          cat > "$ROOT/KAIROS_P21_14_BINANCE_SPOT_24H_BROWSER_PUBLIC_REST_BASELINE_CONNECTOR_FOUNDATION_REPORT_2026-09-07.md" <<'MD'
+          # KAIROS P21.14 — Binance Spot 24h Browser Public REST Baseline Connector Foundation
+
+          ## Authority
+          Base: canonical P21.13 acquisition adapter, canonical gate #298 / run `34114301112`.
+
+          ## Source-proven responsibility
+          Canonical P21.8 deliberately leaves network execution behind an injected connector. Canonical P21.13 now composes the P21.4 acquisition port onto the released Binance round-trip but still requires that connector from its caller. Existing P16.12 establishes the project pattern that concrete browser transport is a narrow provider adapter separate from provider semantics and lifecycle policy. Official Binance Spot REST documentation states that public market-data APIs may use `https://data-api.binance.vision`, while released P21.7 already owns the exact public GET URL/query descriptor. Therefore the smallest missing runtime seam is one concrete browser connector that executes exactly one already-described P21.7 request and returns response body text to the released P21.9 decoder.
+
+          ## Contract
+          - Accept the released P21.7 request descriptor through the existing P21.8 connector type.
+          - Perform exactly one `globalThis.fetch(request.url, { method: request.method, signal: options?.signal })` call.
+          - Forward the exact caller-owned P21.12 `AbortSignal` without creating, combining, timing, or interpreting cancellation.
+          - Read `Response.text()` exactly once and return that string unchanged for released P21.9 JSON-text decoding.
+          - Native fetch/text rejection propagates unchanged so released P21.13 alone maps connector rejection to existing P21.4 `acquisition-failed`.
+          - Do not inspect HTTP status/headers or create response/error taxonomy in this slice.
+
+          ## Explicit non-scope
+          - No endpoint/path/query/symbol-selection policy beyond the released P21.7 descriptor.
+          - No HTTP status/header interpretation, retry-after handling, response error taxonomy, credentials, authentication, custom headers, cache policy, redirect policy, timeout, AbortController, signal combination, retry/backoff/throttle/rate-limit/request-weight/polling/reconnect.
+          - No JSON/provider payload decode, ticker validation, completeness, acquisition validation, observation-time, clock/freshness, universe/ranking/batching/state/persistence.
+          - No Live Crypto Bubble Map sizing/color/grouping/filtering/geometry/Home wiring.
+          - No Your Trades Bubble Map, journal reads, Saved Analysis, direct IndexedDB UI access or dashboard transitions.
+          MD
+
+          cat > "$ROOT/scripts/verify-p21-14-binance-spot-24h-browser-public-rest-baseline-connector-foundation.mjs" <<'JS'
+          import { readFileSync } from 'node:fs';
+          const connector = readFileSync(new URL('../src/services/market-data/providers/binance/binanceSpot24hBrowserPublicRestBaselineConnector.ts', import.meta.url), 'utf8');
+          const index = readFileSync(new URL('../src/services/market-data/index.ts', import.meta.url), 'utf8');
+          const report = readFileSync(new URL('../KAIROS_P21_14_BINANCE_SPOT_24H_BROWSER_PUBLIC_REST_BASELINE_CONNECTOR_FOUNDATION_REPORT_2026-09-07.md', import.meta.url), 'utf8');
+          for (const token of [
+            'connectBinanceSpot24hBrowserPublicRestBaselineRequest',
+            'BinanceSpot24hPublicRestBaselineRequestConnector<string>',
+            'globalThis.fetch(request.url,',
+            'method: request.method',
+            'signal: options?.signal',
+            'return response.text()',
+          ]) if (!connector.includes(token)) throw new Error(`P21.14 connector evidence missing: ${token}`);
+          if (!index.includes("export * from './providers/binance/binanceSpot24hBrowserPublicRestBaselineConnector';")) throw new Error('P21.14 connector export missing');
+          for (const forbidden of [
+            'response.ok', 'response.status', 'response.headers', 'new AbortController(', 'AbortSignal.any(', 'AbortSignal.timeout(',
+            'setTimeout(', 'setInterval(', 'JSON.parse(', 'indexedDB', 'createChart(', 'WebSocket(', 'XMLHttpRequest',
+            'credentials:', 'headers:', 'cache:', 'redirect:',
+          ]) if (connector.includes(forbidden)) throw new Error(`P21.14 broadened into forbidden scope: ${forbidden}`);
+          for (const token of [
+            'Canonical P21.8 deliberately leaves network execution behind an injected connector.',
+            'Existing P16.12 establishes the project pattern that concrete browser transport is a narrow provider adapter',
+            'public market-data APIs may use `https://data-api.binance.vision`',
+            'Read `Response.text()` exactly once',
+            'Do not inspect HTTP status/headers',
+            'No HTTP status/header interpretation',
+            'No JSON/provider payload decode',
+            'No Live Crypto Bubble Map sizing',
+            'No Your Trades Bubble Map',
+          ]) if (!report.includes(token)) throw new Error(`P21.14 report evidence missing: ${token}`);
+          console.log('P21.14 Binance Spot browser public REST baseline connector verification passed.');
+          JS
+
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const p='.p21candidate/kairos_p76/package.json';
+          const j=JSON.parse(fs.readFileSync(p,'utf8'));
+          j.scripts||={};
+          j.scripts['verify:p21:14-binance-spot-24h-browser-public-rest-baseline-connector-foundation']='node scripts/verify-p21-14-binance-spot-24h-browser-public-rest-baseline-connector-foundation.mjs';
+          fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');
+          NODE
+
+          python - <<'PY'
+          from pathlib import Path
+          a={str(p.relative_to(Path('.p21base/kairos_p76'))):p.read_bytes() for p in Path('.p21base/kairos_p76').rglob('*') if p.is_file()}
+          b={str(p.relative_to(Path('.p21candidate/kairos_p76'))):p.read_bytes() for p in Path('.p21candidate/kairos_p76').rglob('*') if p.is_file()}
+          changed={p for p in a.keys()|b.keys() if a.get(p)!=b.get(p)}
+          expected={
+            'KAIROS_P21_14_BINANCE_SPOT_24H_BROWSER_PUBLIC_REST_BASELINE_CONNECTOR_FOUNDATION_REPORT_2026-09-07.md',
+            'package.json',
+            'scripts/verify-p21-14-binance-spot-24h-browser-public-rest-baseline-connector-foundation.mjs',
+            'src/services/market-data/index.ts',
+            'src/services/market-data/providers/binance/binanceSpot24hBrowserPublicRestBaselineConnector.ts',
+            'tests/binance-spot-24h-browser-public-rest-baseline-connector.test.ts',
+          }
+          print('\n'.join(sorted(changed)))
+          assert changed==expected,(sorted(changed-expected),sorted(expected-changed))
+          PY
+
+      - name: Verify reconstructed P21.14 before packaging
+        working-directory: .p21candidate/kairos_p76
+        run: |
+          set -euo pipefail
+          npm ci
+          test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
+          npm run verify:p21:14-binance-spot-24h-browser-public-rest-baseline-connector-foundation
+          npm run typecheck
+          npm run build
+          npm test
+          node - <<'NODE'
+          const { spawnSync } = require('node:child_process');
+          const pkg = require('./package.json');
+          const scripts = Object.keys(pkg.scripts || {}).filter((name) => /^verify:p\d/.test(name));
+          for (const name of scripts) {
+            const r = spawnSync('npm', ['run', name], { stdio: 'inherit' });
+            if (r.status !== 0) process.exit(r.status || 1);
+          }
+          NODE
+
+      - name: Restore clean package boundary and commit candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=.p21candidate/kairos_p76
+          rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite"
+          find "$ROOT" -type f \( -name '*.tsbuildinfo' -o -name '*.log' \) -delete
+          rm -rf .packagecheck
+          mkdir .packagecheck
+          (cd .p21candidate && zip -qr "../$OUT_ZIP" kairos_p76)
+          unzip -q "$OUT_ZIP" -d .packagecheck
+          test -d .packagecheck/kairos_p76
+          test ! -e .packagecheck/kairos_p76/node_modules
+          test ! -e .packagecheck/kairos_p76/dist
+          unzip -t "$OUT_ZIP"
+          sha256sum "$OUT_ZIP"
+          git add "$OUT_ZIP"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Add P21.14 Binance Spot browser public REST baseline connector candidate'
+          git push
