@@ -1,0 +1,357 @@
+name: Kairos P21.4 Live Market Summary Baseline Acquisition Port Reconstruction Bridge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/p21-4-live-market-summary-baseline-acquisition-port-reconstruct.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reconstruct:
+    runs-on: ubuntu-24.04
+    env:
+      BASE_ZIP: KAIROS_P21_3_LIVE_MARKET_SUMMARY_DELIVERY_COMPLETENESS_CONTRACT_FOUNDATION_CANDIDATE_2026-09-07.zip
+      OUT_ZIP: KAIROS_P21_4_LIVE_MARKET_SUMMARY_BASELINE_ACQUISITION_PORT_FOUNDATION_CANDIDATE_2026-09-07.zip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+
+      - name: Pin npm
+        run: |
+          npm install --global npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+
+      - name: Reconstruct P21.4 from canonical P21.3
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .p21base .p21candidate
+          mkdir .p21base .p21candidate
+          unzip -q "$BASE_ZIP" -d .p21base
+          cp -a .p21base/. .p21candidate/
+          ROOT=.p21candidate/kairos_p76
+          test -f "$ROOT/src/services/market-data/MarketDataAdapter.ts"
+          test -f "$ROOT/src/services/market-data/liveMarketSummaryDeliverySemantics.ts"
+          test -f "$ROOT/src/services/market-data/marketDataTypes.ts"
+          test -f "$ROOT/src/services/market-data/index.ts"
+          test -f "$ROOT/package.json"
+
+          cat > "$ROOT/src/services/market-data/LiveMarketSummaryBaselineAcquisitionPort.ts" <<'TS'
+          import type {
+            LiveMarketSummaryCompleteForScopeDelivery,
+            MarketDataInstrument,
+          } from './marketDataTypes';
+
+          /**
+           * Provider-neutral baseline acquisition result.
+           * A success is complete only for the explicit caller-provided scope.
+           */
+          export type LiveMarketSummaryBaselineAcquisitionResult =
+            | {
+                readonly ok: true;
+                readonly delivery: LiveMarketSummaryCompleteForScopeDelivery;
+              }
+            | {
+                readonly ok: false;
+                readonly reason: 'acquisition-failed';
+              };
+
+          /**
+           * Provider-neutral port for obtaining a complete baseline for an explicit scope.
+           * The caller owns scope selection; providers/transport remain downstream implementation details.
+           */
+          export interface LiveMarketSummaryBaselineAcquisitionPort {
+            acquireBaseline(
+              scope: readonly MarketDataInstrument[],
+              options?: { readonly signal?: AbortSignal },
+            ): Promise<LiveMarketSummaryBaselineAcquisitionResult>;
+          }
+          TS
+
+          cat > "$ROOT/src/services/market-data/liveMarketSummaryBaselineAcquisitionSemantics.ts" <<'TS'
+          import type { LiveMarketSummaryCompleteForScopeDelivery, MarketDataInstrument } from './marketDataTypes';
+          import { validateLiveMarketSummaryDelivery } from './liveMarketSummaryDeliverySemantics';
+
+          export type LiveMarketSummaryBaselineSuccessValidationResult =
+            | { readonly ok: true; readonly delivery: LiveMarketSummaryCompleteForScopeDelivery }
+            | { readonly ok: false; readonly reason: 'delivery-invalid' | 'requested-scope-mismatch' };
+
+          function instrumentKey(instrument: MarketDataInstrument): string {
+            return `${instrument.venue.trim()}::${instrument.symbol.trim()}`;
+          }
+
+          function hasSameScope(
+            requestedScope: readonly MarketDataInstrument[],
+            deliveredScope: readonly MarketDataInstrument[],
+          ): boolean {
+            if (requestedScope.length !== deliveredScope.length) return false;
+            const requested = new Set(requestedScope.map(instrumentKey));
+            const delivered = new Set(deliveredScope.map(instrumentKey));
+            if (requested.size !== requestedScope.length || delivered.size !== deliveredScope.length) return false;
+            return [...requested].every((key) => delivered.has(key));
+          }
+
+          /**
+           * Validates a successful baseline against canonical P21.3 delivery semantics
+           * and against the exact scope requested by the caller.
+           */
+          export function validateLiveMarketSummaryBaselineSuccess(
+            requestedScope: readonly MarketDataInstrument[],
+            delivery: LiveMarketSummaryCompleteForScopeDelivery,
+          ): LiveMarketSummaryBaselineSuccessValidationResult {
+            const deliveryValidation = validateLiveMarketSummaryDelivery(delivery);
+            if (!deliveryValidation.ok) return { ok: false, reason: 'delivery-invalid' };
+            if (!hasSameScope(requestedScope, delivery.scope)) {
+              return { ok: false, reason: 'requested-scope-mismatch' };
+            }
+            return { ok: true, delivery };
+          }
+          TS
+
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('.p21candidate/kairos_p76/src/services/market-data/index.ts')
+          s=p.read_text()
+          anchor="export * from './liveMarketSummaryDeliverySemantics';\n"
+          addition="export * from './LiveMarketSummaryBaselineAcquisitionPort';\nexport * from './liveMarketSummaryBaselineAcquisitionSemantics';\n"
+          if anchor not in s: raise SystemExit('P21.3 market-data export boundary not found')
+          p.write_text(s.replace(anchor, anchor+addition, 1))
+          PY
+
+          cat > "$ROOT/tests/live-market-summary-baseline-acquisition-port-foundation.test.ts" <<'TS'
+          import { describe, expect, it } from 'vitest';
+          import { parsePositiveDecimalString } from '../src/domain/trades';
+          import type { DecimalString } from '../src/domain/trades';
+          import {
+            validateLiveMarketSummaryBaselineSuccess,
+            type LiveMarketSummaryBaselineAcquisitionPort,
+            type LiveMarketSummaryCompleteForScopeDelivery,
+            type LiveMarketSummaryFact,
+            type MarketDataInstrument,
+          } from '../src/services/market-data';
+
+          function positive(value: string): DecimalString {
+            const parsed = parsePositiveDecimalString(value);
+            if (!parsed.ok) throw new Error(`Invalid positive DecimalString fixture: ${value}`);
+            return parsed.value;
+          }
+
+          const btc: MarketDataInstrument = { venue: 'binance-spot', symbol: 'BTCUSDT' };
+          const eth: MarketDataInstrument = { venue: 'binance-spot', symbol: 'ETHUSDT' };
+
+          function fact(instrument: MarketDataInstrument, lastPrice: string): LiveMarketSummaryFact {
+            return {
+              instrument,
+              lastPrice: positive(lastPrice),
+              open24h: positive('1'),
+              high24h: positive('2'),
+              low24h: positive('0.5'),
+              baseVolume24h: '10' as DecimalString,
+              quoteVolume24h: '20' as DecimalString,
+              observedAt: '2026-09-07T00:00:00.000Z',
+              sourceTimestamp: '2026-09-06T23:59:59.900Z',
+            };
+          }
+
+          function complete(scope: readonly MarketDataInstrument[]): LiveMarketSummaryCompleteForScopeDelivery {
+            return {
+              completeness: 'complete-for-scope',
+              scope,
+              facts: scope.map((instrument) => fact(instrument, instrument.symbol === 'BTCUSDT' ? '64000' : '3200')),
+            };
+          }
+
+          describe('P21.4 live market summary baseline acquisition port foundation', () => {
+            it('defines an async provider-neutral port with explicit acquisition failure', async () => {
+              const port: LiveMarketSummaryBaselineAcquisitionPort = {
+                async acquireBaseline() {
+                  return { ok: false, reason: 'acquisition-failed' };
+                },
+              };
+              await expect(port.acquireBaseline([btc])).resolves.toEqual({ ok: false, reason: 'acquisition-failed' });
+            });
+
+            it('accepts a P21.3 complete-for-scope delivery for the exact caller-requested scope', () => {
+              const delivery = complete([btc, eth]);
+              expect(validateLiveMarketSummaryBaselineSuccess([eth, btc], delivery)).toEqual({ ok: true, delivery });
+            });
+
+            it('rejects a success delivery whose declared scope differs from the caller request', () => {
+              const delivery = complete([btc]);
+              expect(validateLiveMarketSummaryBaselineSuccess([btc, eth], delivery)).toEqual({
+                ok: false,
+                reason: 'requested-scope-mismatch',
+              });
+            });
+
+            it('rejects success delivery that violates canonical P21.3 completeness semantics', () => {
+              const delivery: LiveMarketSummaryCompleteForScopeDelivery = {
+                completeness: 'complete-for-scope',
+                scope: [btc, eth],
+                facts: [fact(btc, '64000')],
+              };
+              expect(validateLiveMarketSummaryBaselineSuccess([btc, eth], delivery)).toEqual({
+                ok: false,
+                reason: 'delivery-invalid',
+              });
+            });
+          });
+          TS
+
+          cat > "$ROOT/KAIROS_P21_4_LIVE_MARKET_SUMMARY_BASELINE_ACQUISITION_PORT_FOUNDATION_REPORT_2026-09-07.md" <<'MD'
+          # KAIROS P21.4 — Live Market Summary Baseline Acquisition Port Foundation
+
+          ## Authority
+          Base: canonical P21.3 Live Market Summary Delivery Completeness Contract Foundation, `Kairos Controlled Roadmap Gate` #288 / run `34069156361`.
+
+          ## Source-backed responsibility
+          P21.3 can state that a delivery is `complete-for-scope`, but canonical source has no provider-neutral producer for that baseline. Current all-market mini-ticker delivery is incremental changed-symbol evidence, so downstream state must not infer initialization from one incremental event. P21.4 introduces only the missing acquisition port.
+
+          ## Contract
+          - The caller supplies the explicit instrument scope.
+          - `LiveMarketSummaryBaselineAcquisitionPort.acquireBaseline(scope, options)` returns an async result.
+          - Failure is explicit as `acquisition-failed`.
+          - A success carries only a P21.3 `complete-for-scope` delivery.
+          - `validateLiveMarketSummaryBaselineSuccess` reuses P21.3 delivery validation and rejects a delivery whose declared scope does not exactly match the caller request.
+          - Scope order is not authoritative; scope membership is.
+
+          ## Ownership
+          The port stays in the existing market-data acquisition/service boundary. It does not alter the existing P15 single-instrument subscription contract, choose a product universe, or move acquisition into Home/Bubble UI.
+
+          ## Explicit non-scope
+          - No Binance implementation, endpoint mapping, REST-vs-WebSocket decision, polling, subscription, or reconnect behavior.
+          - No market-universe selection/ranking policy.
+          - No accumulator/state store, event ordering, freshness TTL, reset/reconnect state machine, or persistence.
+          - No Bubble Map sizing, color, grouping, filtering, geometry, interaction, or Home wiring.
+          - No journal reads, Your Trades Bubble Map semantics, P11/P12/P14/P16 duplication, or direct IndexedDB UI access.
+          - No dashboard transition/motion implementation.
+          MD
+
+          cat > "$ROOT/scripts/verify-p21-4-live-market-summary-baseline-acquisition-port-foundation.mjs" <<'JS'
+          import { readFileSync } from 'node:fs';
+
+          const port = readFileSync(new URL('../src/services/market-data/LiveMarketSummaryBaselineAcquisitionPort.ts', import.meta.url), 'utf8');
+          const semantics = readFileSync(new URL('../src/services/market-data/liveMarketSummaryBaselineAcquisitionSemantics.ts', import.meta.url), 'utf8');
+          const adapter = readFileSync(new URL('../src/services/market-data/MarketDataAdapter.ts', import.meta.url), 'utf8');
+          const index = readFileSync(new URL('../src/services/market-data/index.ts', import.meta.url), 'utf8');
+          const report = readFileSync(new URL('../KAIROS_P21_4_LIVE_MARKET_SUMMARY_BASELINE_ACQUISITION_PORT_FOUNDATION_REPORT_2026-09-07.md', import.meta.url), 'utf8');
+
+          for (const token of [
+            'export type LiveMarketSummaryBaselineAcquisitionResult =',
+            "readonly reason: 'acquisition-failed';",
+            'export interface LiveMarketSummaryBaselineAcquisitionPort',
+            'acquireBaseline(',
+            'scope: readonly MarketDataInstrument[]',
+            'Promise<LiveMarketSummaryBaselineAcquisitionResult>',
+          ]) if (!port.includes(token)) throw new Error(`P21.4 port evidence missing: ${token}`);
+
+          for (const token of [
+            'export function validateLiveMarketSummaryBaselineSuccess(',
+            'validateLiveMarketSummaryDelivery(delivery)',
+            "'delivery-invalid'",
+            "'requested-scope-mismatch'",
+          ]) if (!semantics.includes(token)) throw new Error(`P21.4 semantics evidence missing: ${token}`);
+
+          if (!index.includes("export * from './LiveMarketSummaryBaselineAcquisitionPort';")) throw new Error('P21.4 port export missing');
+          if (!index.includes("export * from './liveMarketSummaryBaselineAcquisitionSemantics';")) throw new Error('P21.4 semantics export missing');
+
+          for (const token of ['subscribe(', 'instrument: MarketDataInstrument', 'MarketDataSubscription']) {
+            if (!adapter.includes(token)) throw new Error(`P15 single-instrument adapter boundary changed/missing: ${token}`);
+          }
+
+          for (const source of [port, semantics]) for (const forbidden of [
+            'fetch(', 'WebSocket', 'EventSource', 'indexedDB', 'createChart(', 'bubbleSize', 'marketCap', 'setInterval(', 'setTimeout(',
+          ]) if (source.includes(forbidden)) throw new Error(`P21.4 broadened into forbidden implementation scope: ${forbidden}`);
+
+          for (const token of [
+            '# KAIROS P21.4 — Live Market Summary Baseline Acquisition Port Foundation',
+            'The caller supplies the explicit instrument scope.',
+            'No Binance implementation',
+            'No market-universe selection/ranking policy',
+            'No accumulator/state store',
+            'No Bubble Map sizing',
+            'No journal reads',
+            'No dashboard transition/motion implementation',
+          ]) if (!report.includes(token)) throw new Error(`P21.4 report evidence missing: ${token}`);
+
+          console.log('P21.4 Live Market Summary baseline acquisition port verification passed.');
+          JS
+
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const p='.p21candidate/kairos_p76/package.json';
+          const j=JSON.parse(fs.readFileSync(p,'utf8'));
+          j.scripts||={};
+          j.scripts['verify:p21:4-live-market-summary-baseline-acquisition-port-foundation']='node scripts/verify-p21-4-live-market-summary-baseline-acquisition-port-foundation.mjs';
+          fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');
+          NODE
+
+          python - <<'PY'
+          from pathlib import Path
+          a={str(p.relative_to(Path('.p21base/kairos_p76'))):p.read_bytes() for p in Path('.p21base/kairos_p76').rglob('*') if p.is_file()}
+          b={str(p.relative_to(Path('.p21candidate/kairos_p76'))):p.read_bytes() for p in Path('.p21candidate/kairos_p76').rglob('*') if p.is_file()}
+          changed={p for p in a.keys()|b.keys() if a.get(p)!=b.get(p)}
+          expected={
+            'KAIROS_P21_4_LIVE_MARKET_SUMMARY_BASELINE_ACQUISITION_PORT_FOUNDATION_REPORT_2026-09-07.md',
+            'package.json',
+            'scripts/verify-p21-4-live-market-summary-baseline-acquisition-port-foundation.mjs',
+            'src/services/market-data/LiveMarketSummaryBaselineAcquisitionPort.ts',
+            'src/services/market-data/index.ts',
+            'src/services/market-data/liveMarketSummaryBaselineAcquisitionSemantics.ts',
+            'tests/live-market-summary-baseline-acquisition-port-foundation.test.ts',
+          }
+          print('\n'.join(sorted(changed)))
+          assert changed==expected,(sorted(changed-expected),sorted(expected-changed))
+          PY
+
+      - name: Verify reconstructed P21.4 before packaging
+        working-directory: .p21candidate/kairos_p76
+        run: |
+          npm ci
+          test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
+          npm run verify:p21:4-live-market-summary-baseline-acquisition-port-foundation
+          npm run typecheck
+          npm run build
+          npm test
+          node - <<'NODE'
+          const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
+          const p=JSON.parse(readFileSync('package.json')); const s=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:p'));
+          for(const required of ['verify:p21:1-home-dashboard-route-ownership-foundation','verify:p21:2-live-market-summary-fact-contract-foundation','verify:p21:3-live-market-summary-delivery-completeness-contract-foundation','verify:p21:4-live-market-summary-baseline-acquisition-port-foundation']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
+          for(const x of s){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
+          NODE
+          npm run verify:static
+
+      - name: Restore clean package boundary after verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=.p21candidate/kairos_p76
+          rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite"
+          find "$ROOT" -type f \( -name '*.tsbuildinfo' -o -name '*.log' \) -delete
+          find "$ROOT" -type d \( -name '.cache' -o -name 'cache' -o -name 'tmp' -o -name 'temp' \) -prune -exec rm -rf {} + || true
+          test ! -e "$ROOT/node_modules"
+          test ! -e "$ROOT/dist"
+          test ! -e "$ROOT/coverage"
+
+      - name: Package exact P21.4 candidate and commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f "$OUT_ZIP"
+          (cd .p21candidate && zip -qr "../$OUT_ZIP" kairos_p76)
+          unzip -t "$OUT_ZIP"
+          test "$(unzip -Z1 "$OUT_ZIP" | head -n1 | cut -d/ -f1)" = "kairos_p76"
+          test "$(unzip -Z1 "$OUT_ZIP" | awk -F/ 'NF>1{print $1}' | sort -u | wc -l)" -eq 1
+          sha256sum "$OUT_ZIP"
+          git config user.name 'kairos-reconstruction-bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add "$OUT_ZIP"
+          git diff --cached --quiet && exit 0
+          git commit -m 'Package P21.4 live market summary baseline acquisition port candidate'
+          git push
