@@ -1,0 +1,243 @@
+name: Kairos P21.9 Binance Spot 24h Public REST Baseline Response Decode Reconstruction Bridge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/p21-9-binance-spot-24h-public-rest-baseline-response-decode-reconstruct.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reconstruct:
+    runs-on: ubuntu-24.04
+    env:
+      BASE_ZIP: KAIROS_P21_8_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_REQUEST_EXECUTION_BOUNDARY_FOUNDATION_CANDIDATE_2026-09-07.zip
+      OUT_ZIP: KAIROS_P21_9_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_RESPONSE_DECODE_FOUNDATION_CANDIDATE_2026-09-07.zip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - name: Pin npm
+        run: |
+          npm install --global npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+
+      - name: Reconstruct P21.9 from canonical P21.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .p21base .p21candidate
+          mkdir .p21base .p21candidate
+          unzip -q "$BASE_ZIP" -d .p21base
+          cp -a .p21base/. .p21candidate/
+          ROOT=.p21candidate/kairos_p76
+          test -f "$ROOT/src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineRequestExecution.ts"
+          test -f "$ROOT/src/services/market-data/providers/binance/binanceSpot24hBaselineDelivery.ts"
+          test -f "$ROOT/src/services/market-data/providers/binance/binanceSpotPublicStreamMessageDecode.ts"
+          test -f "$ROOT/src/services/market-data/index.ts"
+
+          cat > "$ROOT/src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineResponseDecode.ts" <<'TS'
+          export type BinanceSpot24hPublicRestBaselineResponseDecodeResult =
+            | { readonly ok: true; readonly payload: unknown }
+            | {
+                readonly ok: false;
+                readonly reason: 'unsupported-response-data' | 'invalid-json';
+              };
+
+          /**
+           * P21.9 owns JSON-text response decoding only.
+           *
+           * Concrete network transport/status/body acquisition, provider semantic
+           * mapping, scope ownership, retry policy, persistence and UI stay outside
+           * this owner.
+           */
+          export function decodeBinanceSpot24hPublicRestBaselineResponse(
+            data: unknown,
+          ): BinanceSpot24hPublicRestBaselineResponseDecodeResult {
+            if (typeof data !== 'string') {
+              return { ok: false, reason: 'unsupported-response-data' };
+            }
+
+            try {
+              return { ok: true, payload: JSON.parse(data) as unknown };
+            } catch {
+              return { ok: false, reason: 'invalid-json' };
+            }
+          }
+          TS
+
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('.p21candidate/kairos_p76/src/services/market-data/index.ts')
+          s=p.read_text()
+          anchor="export * from './providers/binance/binanceSpot24hPublicRestBaselineRequestExecution';\n"
+          addition="export * from './providers/binance/binanceSpot24hPublicRestBaselineResponseDecode';\n"
+          if anchor not in s: raise SystemExit('P21.8 execution export anchor not found')
+          p.write_text(s.replace(anchor, anchor+addition, 1))
+          PY
+
+          cat > "$ROOT/tests/binance-spot-24h-public-rest-baseline-response-decode.test.ts" <<'TS'
+          import { describe, expect, it } from 'vitest';
+          import { decodeBinanceSpot24hPublicRestBaselineResponse } from '../src/services/market-data';
+
+          describe('P21.9 Binance Spot 24h public REST baseline response decode foundation', () => {
+            it('decodes a single FULL 24h ticker JSON object without changing lexical decimal strings', () => {
+              const result = decodeBinanceSpot24hPublicRestBaselineResponse(
+                '{"symbol":"BTCUSDT","lastPrice":"42123.45000000","openPrice":"41000.00000000","highPrice":"43000.00000000","lowPrice":"40500.00000000","volume":"123.45000000","quoteVolume":"5200000.12345678","closeTime":1770000000000}',
+              );
+              expect(result).toEqual({
+                ok: true,
+                payload: {
+                  symbol: 'BTCUSDT',
+                  lastPrice: '42123.45000000',
+                  openPrice: '41000.00000000',
+                  highPrice: '43000.00000000',
+                  lowPrice: '40500.00000000',
+                  volume: '123.45000000',
+                  quoteVolume: '5200000.12345678',
+                  closeTime: 1770000000000,
+                },
+              });
+            });
+
+            it('decodes a multiple-symbol FULL 24h ticker JSON array without inferring ordering semantics', () => {
+              const result = decodeBinanceSpot24hPublicRestBaselineResponse(
+                '[{"symbol":"ETHUSDT","lastPrice":"2500.00000000"},{"symbol":"BTCUSDT","lastPrice":"42123.45000000"}]',
+              );
+              expect(result).toEqual({
+                ok: true,
+                payload: [
+                  { symbol: 'ETHUSDT', lastPrice: '2500.00000000' },
+                  { symbol: 'BTCUSDT', lastPrice: '42123.45000000' },
+                ],
+              });
+            });
+
+            it('rejects malformed JSON text deterministically', () => {
+              expect(decodeBinanceSpot24hPublicRestBaselineResponse('{"symbol":"BTCUSDT"'))
+                .toEqual({ ok: false, reason: 'invalid-json' });
+            });
+
+            it('rejects non-text response data instead of inventing concrete Response/body/binary semantics', () => {
+              expect(decodeBinanceSpot24hPublicRestBaselineResponse({ json: true }))
+                .toEqual({ ok: false, reason: 'unsupported-response-data' });
+              expect(decodeBinanceSpot24hPublicRestBaselineResponse(new Uint8Array([1, 2, 3])))
+                .toEqual({ ok: false, reason: 'unsupported-response-data' });
+            });
+          });
+          TS
+
+          cat > "$ROOT/KAIROS_P21_9_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_RESPONSE_DECODE_FOUNDATION_REPORT_2026-09-07.md" <<'MD'
+          # KAIROS P21.9 — Binance Spot 24h Public REST Baseline Response Decode Foundation
+
+          ## Authority
+          Base: canonical P21.8 Binance Spot 24h Public REST Baseline Request Execution Boundary Foundation, `Kairos Controlled Roadmap Gate` #293 / run `34087112414`.
+
+          ## Source-proven responsibility
+          P21.8 owns only an injected generic execution seam and deliberately leaves response representation outside its ownership. P21.6 already owns semantic composition from an already-decoded one-or-many Binance Spot 24h ticker payload. Released P16.4→P16.5 architecture establishes the corresponding smallest framing seam between an injected provider execution boundary and later provider semantic mapping: JSON text decoding only.
+
+          Current official Binance Spot REST documentation identifies the `/api/v3/ticker/24hr` response examples as JSON / `application/json`. P21.9 therefore owns only deterministic JSON-text decoding into `unknown`; it does not validate ticker semantics or decide single-vs-multiple scope completeness.
+
+          ## Explicit non-scope
+          - No fetch/XHR/WebSocket/browser transport and no concrete `Response`/HTTP status/body acquisition semantics.
+          - No provider ticker-field validation, P21.5 fact mapping, or P21.6 complete-for-scope delivery composition.
+          - No scope/universe selection, descriptor construction/mutation, batching/chunking, request-weight accounting, throttling, rate-limit/backoff/retry, credentials, polling or reconnect policy.
+          - No concrete P21.4 acquisition-port adapter orchestration.
+          - No accumulator/state/order/freshness/reset ownership; decoded array order is not ranking/universe truth.
+          - No Bubble Map sizing/color/grouping/filtering/geometry/interactions or Home wiring.
+          - No persistence, journal/Your-Trades semantics, direct IndexedDB UI access, or dashboard transitions.
+          MD
+
+          cat > "$ROOT/scripts/verify-p21-9-binance-spot-24h-public-rest-baseline-response-decode-foundation.mjs" <<'JS'
+          import { readFileSync } from 'node:fs';
+          const source = readFileSync(new URL('../src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineResponseDecode.ts', import.meta.url), 'utf8');
+          const index = readFileSync(new URL('../src/services/market-data/index.ts', import.meta.url), 'utf8');
+          const report = readFileSync(new URL('../KAIROS_P21_9_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_RESPONSE_DECODE_FOUNDATION_REPORT_2026-09-07.md', import.meta.url), 'utf8');
+          for (const token of [
+            'BinanceSpot24hPublicRestBaselineResponseDecodeResult',
+            'decodeBinanceSpot24hPublicRestBaselineResponse',
+            "typeof data !== 'string'",
+            'JSON.parse(data)',
+            "'unsupported-response-data'",
+            "'invalid-json'",
+          ]) if (!source.includes(token)) throw new Error(`P21.9 response-decode evidence missing: ${token}`);
+          if (!index.includes("export * from './providers/binance/binanceSpot24hPublicRestBaselineResponseDecode';")) throw new Error('P21.9 barrel export missing');
+          for (const forbidden of ['fetch(', 'XMLHttpRequest', 'WebSocket(', 'Response(', '.json(', 'acquireBaseline(', 'mapBinanceSpot24hBaselineDelivery(', 'indexedDB', 'setTimeout(', 'requestWeight']) {
+            if (source.includes(forbidden)) throw new Error(`P21.9 broadened into forbidden scope: ${forbidden}`);
+          }
+          for (const token of ['No fetch/XHR/WebSocket/browser transport', 'No provider ticker-field validation', 'No scope/universe selection', 'No concrete P21.4 acquisition-port adapter orchestration', 'decoded array order is not ranking/universe truth', 'No persistence']) {
+            if (!report.includes(token)) throw new Error(`P21.9 report evidence missing: ${token}`);
+          }
+          console.log('P21.9 Binance Spot 24h public REST baseline response decode verification passed.');
+          JS
+
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const p='.p21candidate/kairos_p76/package.json';
+          const j=JSON.parse(fs.readFileSync(p,'utf8'));
+          j.scripts||={};
+          j.scripts['verify:p21:9-binance-spot-24h-public-rest-baseline-response-decode-foundation']='node scripts/verify-p21-9-binance-spot-24h-public-rest-baseline-response-decode-foundation.mjs';
+          fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');
+          NODE
+
+          python - <<'PY'
+          from pathlib import Path
+          a={str(p.relative_to(Path('.p21base/kairos_p76'))):p.read_bytes() for p in Path('.p21base/kairos_p76').rglob('*') if p.is_file()}
+          b={str(p.relative_to(Path('.p21candidate/kairos_p76'))):p.read_bytes() for p in Path('.p21candidate/kairos_p76').rglob('*') if p.is_file()}
+          changed={p for p in a.keys()|b.keys() if a.get(p)!=b.get(p)}
+          expected={
+            'KAIROS_P21_9_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_RESPONSE_DECODE_FOUNDATION_REPORT_2026-09-07.md',
+            'package.json',
+            'scripts/verify-p21-9-binance-spot-24h-public-rest-baseline-response-decode-foundation.mjs',
+            'src/services/market-data/index.ts',
+            'src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineResponseDecode.ts',
+            'tests/binance-spot-24h-public-rest-baseline-response-decode.test.ts',
+          }
+          print('\n'.join(sorted(changed)))
+          assert changed==expected,(sorted(changed-expected),sorted(expected-changed))
+          PY
+
+      - name: Verify reconstructed P21.9 before packaging
+        working-directory: .p21candidate/kairos_p76
+        run: |
+          set -euo pipefail
+          npm ci
+          test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
+          npm run verify:p21:9-binance-spot-24h-public-rest-baseline-response-decode-foundation
+          npm run typecheck
+          npm run build
+          npm test
+          node - <<'NODE'
+          const { spawnSync } = require('node:child_process');
+          const pkg = require('./package.json');
+          const scripts = Object.keys(pkg.scripts || {}).filter((name) => /^verify:p\d/.test(name));
+          for (const name of scripts) {
+            const r = spawnSync('npm', ['run', name], { stdio: 'inherit' });
+            if (r.status !== 0) process.exit(r.status || 1);
+          }
+          NODE
+
+      - name: Restore clean package boundary and commit candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=.p21candidate/kairos_p76
+          rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite"
+          find "$ROOT" -type f \( -name '*.tsbuildinfo' -o -name '*.log' \) -delete
+          rm -rf .p21package
+          mkdir .p21package
+          cp -a "$ROOT" .p21package/kairos_p76
+          rm -f "$OUT_ZIP"
+          (cd .p21package && zip -qr "../$OUT_ZIP" kairos_p76)
+          unzip -t "$OUT_ZIP"
+          test "$(unzip -Z1 "$OUT_ZIP" | head -n1 | cut -d/ -f1)" = "kairos_p76"
+          test -f "$OUT_ZIP"
+          git add "$OUT_ZIP"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Package P21.9 REST baseline response decode candidate"
+          git push
