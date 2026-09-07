@@ -22,7 +22,7 @@ Exact P21.5 canonical artifacts:
 - `KAIROS_CURRENT_CANDIDATE` id `10001755514`, size `1,185,815`, digest `sha256:ffc9fb98e79ceb7a683b5769f58348d635f4a76cb4cf2cf01b9371b646fd102b`.
 - `KAIROS_GATE_EVIDENCE` id `10001755878`, size `1,067`, digest `sha256:fda1dcb0366cf9b62152a3997cf5ced766d7f5268662276aefdb4e4caf8d7055`.
 
-Mandatory post-PASS living architecture checkpoint for P21.5 is **PENDING** and must be completed on engineering `main` before any P21.6 implementation or other next feature slice. The prior P21.4 architecture checkpoint remains `1488acf85a90fd6be053fefa7a116715be71534b`.
+Mandatory post-PASS living architecture checkpoint for P21.5 is **COMPLETE** on engineering `main` at `1888516001b5dd89a95ccf024658f1532f2afd19`. The map now records P21.5 only as pure Binance Spot 24h ticker-entry -> canonical P21.2 fact mapping under the existing P16 provider boundary and keeps networking/query/batching/P21.4 adapter/state/Bubble/Home/Your-Trades/persistence/transitions separate.
 
 ## Standing P21 product authority
 `Bubble Map` is TWO distinct products:
@@ -66,14 +66,29 @@ Fresh main/Actions proof showed no competing canonical chain. With the execution
 
 Fresh authoritative `Kairos Controlled Roadmap Gate` #290 / run `34074736949`, exact head `cb34148873183fa058fea6bdf39b51e4ee8bd132`, was **QUEUED**. P21.4 remained canonical GOLDEN unless and until exact gate #290 completed full SUCCESS and both exact-run artifacts were verified.
 
-## Latest process checkpoint — 2026-09-07T02:11Z — token W16-RECOVERY-20260907T0556-AEST-H9Q4
+## Process checkpoint — 2026-09-07T02:11Z — token W16-RECOVERY-20260907T0556-AEST-H9Q4
 RULE 0 was satisfied first by future-dating the same V16 continuation and verifying the permanent hourly supervisor remained ACTIVE. Fresh canonical GitHub then proved exact `Kairos Controlled Roadmap Gate` #290 / run `34074736949`, job `101598528300`, exact head `cb34148873183fa058fea6bdf39b51e4ee8bd132` completed full **SUCCESS**.
 
 Every required canonical job step passed: setup/checkout/setup-node/npm version; authoritative base/candidate extraction; exact controlled P21.4→P21.5 six-file scope; deterministic install; exact Lightweight Charts 5.2.1; production TypeScript compilation/build; dedicated P21.5 Binance Spot 24h summary fact mapping verifier/runtime; full unit regression; full controlled-roadmap regression through P21.5; historical closures; `KAIROS_CURRENT_CANDIDATE` upload; and `KAIROS_GATE_EVIDENCE` upload.
 
 Exact-run artifacts were verified: `KAIROS_CURRENT_CANDIDATE` id `10001755514`, size `1,185,815`, digest `sha256:ffc9fb98e79ceb7a683b5769f58348d635f4a76cb4cf2cf01b9371b646fd102b`; `KAIROS_GATE_EVIDENCE` id `10001755878`, size `1,067`, digest `sha256:fda1dcb0366cf9b62152a3997cf5ced766d7f5268662276aefdb4e4caf8d7055`.
 
-Therefore P21.5 is now the latest canonical GOLDEN. No newer canonical Action was present at the time of promotion. The execution lease was acquired only after the canonical run had completed, solely for the mandatory post-PASS continuity/docs checkpoint. No P21.6 implementation, provider networking, P21.4 adapter implementation, state, Bubble, Your-Trades, Home wiring, persistence or transition mutation was started.
+Therefore P21.5 became the latest canonical GOLDEN. No newer canonical Action was present at the time of promotion. The execution lease was acquired only after the canonical run had completed, solely for the mandatory post-PASS continuity/docs checkpoint. No P21.6 implementation, provider networking, P21.4 adapter implementation, state, Bubble, Your-Trades, Home wiring, persistence or transition mutation was started.
+
+## Latest process checkpoint — 2026-09-07T02:30Z — token W16-RECOVERY-20260907T0556-AEST-H9Q4
+RULE 0 was preserved using the scheduled-runtime-safe same-worker future date; the permanent hourly supervisor remained ACTIVE. Exact canonical gate #290 and both exact-run artifacts were re-proven before docs mutation. The execution lease was acquired and verified.
+
+The mandatory P21.5 living architecture checkpoint was committed on engineering `main` at `1888516001b5dd89a95ccf024658f1532f2afd19`, parent `cb34148873183fa058fea6bdf39b51e4ee8bd132`. `docs/KAIROS_ARCHITECTURE_MAP.md` now records P21 as OPEN through P21.5, adds the P21.5 provider-mapping owner under the existing P16 Binance Spot boundary, records exact gate #290/artifacts, and explicitly preserves networking/query/batching/P21.4 adapter/state/Bubble/Home/Your-Trades/persistence/transition non-ownership. Fresh commit checks showed only Cloudflare Pages in progress; that deployment check is NON-CANONICAL and did not trigger or replace the controlled gate.
+
+The exact canonical P21.5 artifact was then downloaded and inspected. Source proof shows P21.4 requires a caller-provided explicit scope and a validated P21.3 `complete-for-scope` delivery, while P21.5 maps exactly one decoded Binance Spot 24h ticker entry into one canonical P21.2 fact. There is still no provider-specific pure owner that maps a decoded one-or-many Binance 24h ticker response for an explicit caller scope into a complete-for-scope delivery. Existing P16 architecture consistently separates provider payload mapping/composition from endpoint and browser transport.
+
+Current official Binance Spot documentation confirms the 24hr ticker API supports single and multiple symbol requests, with request weight changing by requested symbol count; the WebSocket API documentation likewise exposes `ticker.24hr` for one or multiple symbols and explicitly advises stream variants for continuous monitoring. These transport/query/batching choices therefore carry policy and should not be smuggled into the next pure mapping slice.
+
+**SOURCE-PROVEN NEXT RESPONSIBILITY: P21.6 Binance Spot 24h Baseline Delivery Mapping Foundation.** The smallest dependency-safe next seam is provider-specific and pure: accept an explicit caller-provided scope, one decoded Binance Spot 24h ticker response payload (single entry or entry array as applicable), and caller-owned `observedAt`; reuse P21.5 per-entry mapping; compose a P21.3 `complete-for-scope` delivery; and validate exact scope completeness/membership through existing P21.3/P21.4 semantics. It must reject invalid payload shape, invalid mapped entries, duplicate/out-of-scope facts, or missing requested-scope facts rather than infer completeness.
+
+P21.6 explicit non-scope: no HTTP/fetch/browser transport; no REST host/path/query builder; no decision between `symbol` and `symbols`; no symbol batching/request-weight/rate-limit/retry policy; no credentials; no concrete P21.4 acquisition-port adapter orchestration; no market-universe selection/ranking; no accumulator/state/order/freshness/reset/reconnect; no Bubble sizing/color/grouping/filter/geometry/interactions; no Home wiring; no persistence; no journal/Your-Trades semantics; no transitions. Exact function/file/error names remain to be mechanically aligned with current P16/P21 patterns before any candidate mutation.
+
+No P21.6 candidate/helper/gate or production source mutation was created in this checkpoint.
 
 ## Next safe action
-Complete the mandatory living `docs/KAIROS_ARCHITECTURE_MAP.md` P21.5 ownership checkpoint on engineering `main` before any next feature slice. Then reread controlling handoff/current user rules, exact P21.5 GOLDEN, this history, Retry Ledger, P15/P16/P21 market ownership and current official provider behavior; source-prove exactly one smallest dependency-safe next P21 responsibility and explicit non-scope. Do not infer P21.6 by patch-number momentum and do not widen into Bubble metrics/geometry/interactions, Your-Trades semantics, market-universe policy, state, provider networking, or transitions without evidence.
+Re-prove P21.5 GOLDEN, architecture checkpoint `1888516001b5dd89a95ccf024658f1532f2afd19`, this process history, Retry Ledger, fresh main/Actions, and exact P21.5 canonical source. Inspect current P16/P21 mapper/export/test naming patterns and construct only the smallest controlled P21.6 pure baseline-delivery mapping candidate if exact invariants are mechanically supportable. Do not widen into HTTP/query/batching, a concrete acquisition-port adapter, state, Bubble/Your-Trades UI, or transitions.
