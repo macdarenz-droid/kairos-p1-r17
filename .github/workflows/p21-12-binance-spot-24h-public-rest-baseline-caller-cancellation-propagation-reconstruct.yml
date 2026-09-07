@@ -73,8 +73,6 @@ jobs:
           }
           TS
 
-          # Deterministically rewrite the whole canonical P21.11 round-trip owner rather
-          # than relying on indentation-sensitive string substitution.
           cat > "$ROUND" <<'TS'
           import type { MarketDataInstrument } from '../../marketDataTypes';
           import {
@@ -118,7 +116,9 @@ jobs:
           ): Promise<BinanceSpot24hPublicRestBaselineRoundTripResult> {
             const described = describeBinanceSpot24hPublicRestBaselineRequest(scope);
             if (!described.ok) return described;
-            const data = await executeBinanceSpot24hPublicRestBaselineRequest(described.request, connect, options);
+            const data = options === undefined
+              ? await executeBinanceSpot24hPublicRestBaselineRequest(described.request, connect)
+              : await executeBinanceSpot24hPublicRestBaselineRequest(described.request, connect, options);
             return mapBinanceSpot24hPublicRestBaselineResponseDelivery(scope, data, observedAt);
           }
           TS
@@ -172,6 +172,8 @@ jobs:
               await executeBinanceSpot24hPublicRestBaselineRequest(described.request, connect);
               expect(connect).toHaveBeenCalledWith(described.request);
               expect(connect.mock.calls[0]).toHaveLength(1);
+              await composeBinanceSpot24hPublicRestBaselineRoundTrip(scope, observedAt, connect);
+              expect(connect.mock.calls[1]).toHaveLength(1);
             });
 
             it('preserves connector rejection behavior', async () => {
@@ -194,9 +196,9 @@ jobs:
           Current Fetch API behavior supports request cancellation by passing an `AbortSignal` as the request `signal`; concrete fetch remains outside this slice.
 
           ## Contract
-          - Existing calls without options preserve their exact one-argument connector invocation.
+          - Existing calls without options preserve their exact one-argument connector invocation, including the P21.11-to-P21.8 delegation path.
           - Supplied P21.8 execution options are forwarded unchanged to the injected connector exactly once.
-          - P21.11 forwards the same options into P21.8.
+          - P21.11 forwards the same options into P21.8 only when options are supplied.
           - Connector result/rejection behavior remains unchanged.
 
           ## Explicit non-scope
@@ -220,6 +222,7 @@ jobs:
           ]) if (!exec.includes(token)) throw new Error(`P21.12 execution propagation evidence missing: ${token}`);
           for (const token of [
             'options?: BinanceSpot24hPublicRestBaselineExecutionOptions',
+            'executeBinanceSpot24hPublicRestBaselineRequest(described.request, connect)',
             'executeBinanceSpot24hPublicRestBaselineRequest(described.request, connect, options)',
           ]) if (!round.includes(token)) throw new Error(`P21.12 round-trip propagation evidence missing: ${token}`);
           for (const source of [exec, round]) for (const forbidden of [
