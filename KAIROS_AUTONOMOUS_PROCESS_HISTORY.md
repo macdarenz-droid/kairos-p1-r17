@@ -12,17 +12,17 @@ Repository `macdarenz-droid/kairos-p1-r17`; engineering `main`; continuity `kair
 AFK/autonomous mode remains owned by enabled recurring `Kairos Relay Supervisor [ACTIVE]` under V16. Scheduled runtime cannot create child automations, so the same `Kairos Fast Continuation` is kept enabled/future-dated about 10 minutes forward as the runtime-safe fallback. Execution lease protects repository/docs mutation.
 
 ## Roadmap / GOLDEN
-P18 CLOSED; P19 CLOSED; P20 CLOSED. P21 is OPEN through **canonical P21.3**.
+P18 CLOSED; P19 CLOSED; P20 CLOSED. P21 is OPEN through **canonical P21.4**.
 
-Latest canonical GOLDEN is **P21.3 — Live Market Summary Delivery Completeness Contract Foundation** via exact `Kairos Controlled Roadmap Gate` #288 / run `34069156361`, job `101583192503` `verify-current-candidate`, exact head `b8e6742e707d3c8eaf75c1b555e7d382663e579b`, full SUCCESS.
+Latest canonical GOLDEN is **P21.4 — Live Market Summary Baseline Acquisition Port Foundation** via exact `Kairos Controlled Roadmap Gate` #289 / run `34072260372`, job `101591633032` `verify-current-candidate`, exact head `67440a867790f45326bcc55b631b2367f2f3593f`, full SUCCESS.
 
-Every required canonical stage succeeded: exact P21.2→P21.3 seven-file scope; deterministic install; exact Lightweight Charts 5.2.1; production TypeScript compilation/build; dedicated P21.3 delivery-completeness verifier/runtime; full unit regression; full controlled-roadmap regression through P21.3; historical closures; and both exact-run artifact uploads.
+Every required canonical stage succeeded: exact P21.3→P21.4 seven-file scope; deterministic install; exact Lightweight Charts 5.2.1; production TypeScript compilation/build; dedicated P21.4 baseline-acquisition-port verifier/runtime; full unit regression; full controlled-roadmap regression through P21.4; historical closures; and both exact-run artifact uploads.
 
-Exact P21.3 canonical artifacts:
-- `KAIROS_CURRENT_CANDIDATE` id `10000015892`, size `1,177,045`, digest `sha256:a2eb23c6c4c6f5c20f1cf17fa4ed7ede7f31fbfbaf19a06a7b82ed065caab243`.
-- `KAIROS_GATE_EVIDENCE` id `10000016067`, size `1,242`, digest `sha256:a8b6d5f814eda67bccbdf00b6ed719408201db34a896d3b656d3f534c518f42b`.
+Exact P21.4 canonical artifacts:
+- `KAIROS_CURRENT_CANDIDATE` id `10000988354`, size `1,181,925`, digest `sha256:d3816b8fb632631604c7cce8a0cf9bff9383ee72773c59d9efee56fde9cd5387`.
+- `KAIROS_GATE_EVIDENCE` id `10000988591`, size `1,260`, digest `sha256:3f98c38fc4bc1ca79dc89733375a8827879ba2ebaa345b9af6b0951ded51bd80`.
 
-Mandatory post-PASS living architecture checkpoint is engineering-main commit `82aaa4e87b68ad3ef3a46a310e0e3b0d55da1ef1` (`Checkpoint P21.3 canonical delivery completeness ownership`).
+Mandatory post-PASS living architecture checkpoint is engineering-main commit `1488acf85a90fd6be053fefa7a116715be71534b` (`Checkpoint P21.4 canonical baseline acquisition port ownership`).
 
 ## Standing P21 product authority
 `Bubble Map` is TWO distinct products:
@@ -32,13 +32,14 @@ They may share presentation-only bubble-layout machinery later, but never busine
 
 Premium dashboard transitions remain presentation-only. Motion must never own, delay, mask, duplicate or roll back navigation, route truth, provider data, persistence, calculations, chart truth, Saved Analysis truth or dashboard-selection truth.
 
-## P21.3 canonical responsibility
-P21.3 owns provider-neutral delivery completeness semantics over already-validated P21.2 `LiveMarketSummaryFact` values only:
-- `incremental`: non-empty valid unique-instrument facts; changed/partial evidence; no completeness claim.
-- `complete-for-scope`: non-empty valid unique explicit caller-declared scope; non-empty valid unique-instrument facts; no fact outside scope; exactly one fact for every declared scope instrument.
-- P21.3 does not choose the scope/universe.
+## P21.4 canonical responsibility
+P21.4 owns only the provider-neutral Live Market Summary baseline acquisition port/result/validation seam:
+- caller supplies an explicit instrument scope;
+- port asynchronously returns either a validated P21.3 `complete-for-scope` delivery or explicit `acquisition-failed`;
+- success scope membership must exactly match the caller request;
+- P21.4 does not choose/order/rank the scope or product universe and does not alter P15's existing single-instrument `MarketDataAdapter.subscribe(instrument, handlers)` ownership.
 
-Explicit non-scope remains: no Binance REST-vs-WebSocket choice; no polling/subscription/provider mapping/baseline acquisition; no market-universe policy; no accumulator/state store; no freshness TTL/error/reset/reconnect; no Bubble metric/color/ranking/grouping/filter/geometry/interactions; no Home wiring; no persistence; no journal/Your-Trades semantics; no transitions.
+Explicit non-scope remains: no Binance implementation/endpoint mapping; no REST-vs-WebSocket decision; no polling/subscription/reconnect; no universe policy; no accumulator/state store; no ordering/freshness/reset semantics; no Bubble metric/color/ranking/grouping/filter/geometry/interactions; no Home wiring; no persistence; no journal/Your-Trades semantics; no transitions.
 
 ## Process log — 2026-09-07T00:27Z — token W16-RECOVERY-20260907T0556-AEST-H9Q4
 RULE 0 was satisfied first with the scheduled-runtime-safe V16 fallback: the same fast continuation was verified enabled/future-dated and the hourly supervisor remained ACTIVE.
@@ -78,5 +79,14 @@ The execution lease was acquired and re-verified for this worker before mutation
 
 Fresh Actions proves the exact canonical `Kairos Controlled Roadmap Gate` #289 / run `34072260372`, job `101591633032` `verify-current-candidate`, head `67440a867790f45326bcc55b631b2367f2f3593f`, is IN_PROGRESS. Setup/checkout/setup-node are SUCCESS and npm version verification is in progress at this checkpoint; all later gate stages remain pending. This is now the sole active canonical chain. P21.3 remains GOLDEN until #289 receives full canonical SUCCESS and both exact-run artifacts are verified. While #289 is queued/in-progress, monitor only this exact run; no P21.5, provider implementation, accumulator/state, Bubble UI, Your-Trades visualization or transition mutation is authorized.
 
+## Process log — 2026-09-07T01:25Z — token W16-RECOVERY-20260907T0556-AEST-H9Q4
+RULE 0 was satisfied first by keeping the scheduled-runtime-safe V16 continuation enabled and future-dating it about ten minutes; the permanent hourly supervisor was freshly verified ACTIVE. Fresh canonical GitHub then proved `Kairos Controlled Roadmap Gate` #289 / run `34072260372`, exact job `101591633032` `verify-current-candidate`, exact head `67440a867790f45326bcc55b631b2367f2f3593f`, completed full SUCCESS. Every required stage passed: exact controlled P21.3→P21.4 seven-file scope, deterministic install, exact Lightweight Charts 5.2.1 proof, production TypeScript compilation/build, dedicated P21.4 baseline-acquisition-port verifier/runtime, full unit regression, full controlled-roadmap regression through P21.4, historical closures, and both artifact uploads.
+
+Exact canonical artifacts were freshly fetched from this exact run: `KAIROS_CURRENT_CANDIDATE` id `10000988354`, size `1,181,925`, digest `sha256:d3816b8fb632631604c7cce8a0cf9bff9383ee72773c59d9efee56fde9cd5387`; `KAIROS_GATE_EVIDENCE` id `10000988591`, size `1,260`, digest `sha256:3f98c38fc4bc1ca79dc89733375a8827879ba2ebaa345b9af6b0951ded51bd80`. This promotes P21.4 as the latest canonical GOLDEN; P21 remains OPEN.
+
+Before the mandatory living-doc mutation the execution lease was acquired and re-verified for this exact token. Engineering main before the post-PASS checkpoint was `67440a867790f45326bcc55b631b2367f2f3593f`. `docs/KAIROS_ARCHITECTURE_MAP.md` was reconciled and committed as `1488acf85a90fd6be053fefa7a116715be71534b` (`Checkpoint P21.4 canonical baseline acquisition port ownership`), recording P21.4's provider-neutral acquisition-port ownership, exact canonical evidence, preserved P15/P16/P12/Home/Bubble/transition boundaries, and the next audit boundary. Fresh main was re-read after the write and exactly matched `1488acf85a90fd6be053fefa7a116715be71534b`. Fresh Actions still showed #289 as the latest canonical gate and SUCCESS; no newer canonical chain was created by the docs-only checkpoint.
+
+No P21.5 candidate/helper/gate, concrete Binance baseline implementation, market accumulator/state, Bubble UI, Your-Trades visualization, or transition implementation was created in this process. The next safe action is evidence-only: reread exact P21.4 GOLDEN source plus P15/P16 provider owners and current official provider contracts, then source-prove exactly one smallest dependency-safe next P21 responsibility. Concrete provider implementation, scope/universe ownership, accumulation/state/order/freshness/reset, Your-Trades view-model semantics, Bubble metrics/geometry/interactions, and transitions remain research questions rather than implementation authority until individually proven.
+
 ## Next safe action
-Monitor exact canonical gate #289/run `34072260372` only. If SUCCESS, verify every required stage and exact-run `KAIROS_CURRENT_CANDIDATE` plus `KAIROS_GATE_EVIDENCE` before promoting P21.4, then perform the mandatory living architecture-map checkpoint and source-prove exactly one smallest next P21 responsibility. If FAIL, fetch the exact failed step/log and classify candidate-versus-gate from evidence; P21.3 remains GOLDEN. Do not weaken scope or gate.
+From exact P21.4 GOLDEN and the post-PASS architecture checkpoint, source-prove exactly one smallest next P21 responsibility before any implementation. Do not advance by patch-number momentum and do not infer provider/query, market-universe, state, Bubble, Your-Trades or transition semantics from P21.4 alone.
