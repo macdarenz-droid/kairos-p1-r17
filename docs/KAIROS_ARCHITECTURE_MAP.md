@@ -39,6 +39,7 @@ Update this file after every canonical PASS that establishes, extends, moves, or
 | Binance Spot 24h public REST baseline response delivery composition | P21.10 under P16 | `src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineResponseDelivery.ts`, exported through `src/services/market-data/index.ts` | Explicit caller scope + one already-received response data value + caller-owned `observedAt` -> reuse P21.9 decode -> reuse P21.6 mapping -> existing delivery/failure. No request description/execution, concrete transport/Response/status/header/body acquisition, new ticker validation/completeness algorithm, scope/universe/ranking, batching/rate-limit/retry, concrete P21.4 adapter, state/freshness/reconnect, Bubble/Your-Trades/Home/persistence/transitions |
 | Binance Spot 24h public REST baseline round-trip composition | P21.11 under P16 | `src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineRoundTrip.ts`, exported through `src/services/market-data/index.ts` | Explicit caller scope + caller-owned `observedAt` + externally supplied P21.8 connector -> P21.7 request description -> exactly one P21.8 execution -> P21.10 response delivery; connector rejection propagates unchanged. No P21.4/`AbortSignal` ownership, concrete transport/Response/status/header/body acquisition, retry/rate-limit/polling, new request/decode/ticker/completeness algorithm, state/freshness/reconnect, Bubble/Your-Trades/Home/persistence/transitions |
 | Binance Spot 24h public REST baseline caller cancellation propagation | P21.12 under P16 | `src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineRequestExecution.ts`, `src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineRoundTrip.ts`, exported through `src/services/market-data/index.ts` | Optional caller-owned execution options carrying `signal?: AbortSignal` are forwarded unchanged through P21.8 and P21.11; no-options callers retain exact one-argument connector invocation and connector result/rejection semantics remain unchanged. No concrete transport/Response/status/body acquisition, AbortController creation/signal combination/timeout/abort interpretation/error translation, concrete P21.4 adapter, retry/rate-limit/polling, new semantic algorithm, state, or UI ownership |
+| Binance Spot 24h public REST baseline acquisition adapter | P21.13 under P15/P16 | `src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineAcquisitionAdapter.ts`, exported through `src/services/market-data/index.ts` | Implements the P21.4 acquisition composition using released P21.11/P21.12 seams: injected transport, one caller-owned observation-time read per acquisition, unchanged caller options propagation, P21.4 success validation, and existing `acquisition-failed` mapping only. No concrete transport/HTTP response acquisition, clock/freshness policy, abort taxonomy, retry/rate-limit/polling, universe/ranking/batching, new provider semantics, state/persistence, Bubble/Home/Your-Trades/Saved-Analysis/transitions |
 
 ## P18 closure boundary
 
@@ -68,7 +69,7 @@ P20.5: gate #285 / run `34059034331`, job `101556113020`, head `a88b2d480ed0e8ae
 
 Therefore P20.5 closed P20 canonically.
 
-## P21 canonical ownership ledger — OPEN through P21.12
+## P21 canonical ownership ledger — OPEN through P21.13
 
 | Patch | Canonical responsibility | Production owner seam | Boundary |
 |---|---|---|---|
@@ -84,6 +85,7 @@ Therefore P20.5 closed P20 canonically.
 | P21.10 | Binance Spot 24h Public REST Baseline Response Delivery Composition Foundation | `providers/binance/binanceSpot24hPublicRestBaselineResponseDelivery.ts` | Compose P21.9 decode + P21.6 delivery mapping for one already-received response data value; no transport/status/body/acquisition/state/UI ownership |
 | P21.11 | Binance Spot 24h Public REST Baseline Round Trip Composition Foundation | `providers/binance/binanceSpot24hPublicRestBaselineRoundTrip.ts` | Compose P21.7 request description + exactly one P21.8 connector execution + P21.10 response delivery; no P21.4 cancellation ownership, concrete transport/status/body, retry/rate-limit/polling, state, or UI ownership |
 | P21.12 | Binance Spot 24h Public REST Baseline Caller Cancellation Propagation Foundation | `providers/binance/binanceSpot24hPublicRestBaselineRequestExecution.ts`, `providers/binance/binanceSpot24hPublicRestBaselineRoundTrip.ts` | Forward optional caller-owned `signal?: AbortSignal` unchanged through existing P21.8/P21.11 seams while preserving exact no-options invocation and rejection/result behavior; no concrete transport, cancellation policy, concrete P21.4 adapter, state, or UI ownership |
+| P21.13 | Binance Spot 24h Public REST Baseline Acquisition Adapter Foundation | `providers/binance/binanceSpot24hPublicRestBaselineAcquisitionAdapter.ts` | Compose the P21.4 port onto P21.11/P21.12 with injected transport, one observation-time read, unchanged caller options, P21.4 validation, and existing `acquisition-failed`; no concrete transport/HTTP response acquisition, clock/freshness policy, abort taxonomy, retry/rate-limit/polling, universe/ranking/state/UI ownership |
 
 ## Canonical P21 evidence
 
@@ -115,7 +117,13 @@ Exact P21.12 artifacts:
 - `KAIROS_CURRENT_CANDIDATE` artifact `10013962614`, 1,210,677 bytes, digest `sha256:47c20bd9b7dddee283c6b7fad8cd9b5069865830736eb5c1f1a91574ee74bc24`.
 - `KAIROS_GATE_EVIDENCE` artifact `10013962954`, 1,255 bytes, digest `sha256:b80cfd8c7ab7b1f55b8e784037c17690f38187eb9df34852057231da24360844`.
 
-Therefore P21.12 is the canonical GOLDEN. P21 remains OPEN; later P21 responsibilities must be independently source-proven before implementation.
+P21.13: `Kairos Controlled Roadmap Gate` #298 / run `34114301112`, job `101717432752`, exact head `2cd8025bd01ca4ea3b3eeff3e4d4f5ac20b077dd`, completed full SUCCESS on 2026-09-07. Every required canonical stage succeeded: authoritative P21.12 base/candidate extraction, exact controlled P21.12→P21.13 six-file scope, deterministic install, exact Lightweight Charts 5.2.1 proof, production TypeScript compilation/build, dedicated P21.13 Binance Spot 24h public REST baseline acquisition-adapter verifier/runtime, full unit regression, full controlled-roadmap regression through P21.13, historical closures, and both exact-run artifact uploads.
+
+Exact P21.13 artifacts:
+- `KAIROS_CURRENT_CANDIDATE` artifact `10015885398`, 1,213,929 bytes, digest `sha256:488840e5cbf0d4d0416fb15f6254e62838ceacb7f5446820b309ba7158a0b0d5`.
+- `KAIROS_GATE_EVIDENCE` artifact `10015886009`, 1,379 bytes, digest `sha256:9b08b224c0b3f62c26be1d2f289ad302bedda89723c78225202ed90c65096271`.
+
+Therefore P21.13 is the canonical GOLDEN. P21 remains OPEN; later P21 responsibilities must be independently source-proven before implementation.
 
 ## Ownership rules that remain invariant
 
@@ -124,7 +132,7 @@ Therefore P21.12 is the canonical GOLDEN. P21 remains OPEN; later P21 responsibi
 - P12 remains bounded journal-history/listing truth; Home/Bubble UI must not bypass it with direct IndexedDB reads.
 - P14 remains journal/trade-visualization truth where assigned.
 - P15 remains market acquisition truth and P16 remains Binance Spot provider ownership.
-- P21.5 owns provider fact mapping; P21.6 decoded-payload delivery composition; P21.7 request description; P21.8 generic execution boundary; P21.9 deterministic JSON-text response decoding; P21.10 response-delivery composition; P21.11 composes P21.7 -> P21.8 -> P21.10 for one explicit-scope round trip with an externally supplied connector; P21.12 adds caller-owned cancellation propagation only across P21.8/P21.11. None of these infer concrete browser transport, HTTP status/header/body acquisition, cancellation policy, concrete P21.4 adapter ownership, universe/ranking, state, or UI behavior.
+- P21.5 owns provider fact mapping; P21.6 decoded-payload delivery composition; P21.7 request description; P21.8 generic execution boundary; P21.9 deterministic JSON-text response decoding; P21.10 response-delivery composition; P21.11 composes P21.7 -> P21.8 -> P21.10 for one explicit-scope round trip with an externally supplied connector; P21.12 adds caller-owned cancellation propagation only across P21.8/P21.11; P21.13 composes the provider-neutral P21.4 acquisition port onto those released Binance seams while keeping transport and clock/freshness policy externally owned. None of these infer concrete browser transport, HTTP status/header/body acquisition, cancellation policy, universe/ranking, state, or UI behavior.
 - P18 remains generic drawing/provider/interaction machinery.
 - P19 remains Risk/Reward semantic and provider-neutral logical composition truth.
 - P20 remains closed Saved Analysis truth; no generic CRUD expansion is inferred from P21 work.
@@ -139,7 +147,8 @@ Therefore P21.12 is the canonical GOLDEN. P21 remains OPEN; later P21 responsibi
 - P21.9 owns only JSON-text decoding to `unknown`.
 - P21.10 owns only response-delivery composition over existing P21.9/P21.6 owners for already-received response data; it does not execute a request or define HTTP response acquisition semantics.
 - P21.11 owns only the explicit-scope round-trip composition over existing P21.7/P21.8/P21.10 owners.
-- P21.12 owns only propagation of optional caller-owned execution options carrying `signal?: AbortSignal` through existing P21.8/P21.11 seams; it creates no controller, combines no signals, defines no timeout/abort error semantics, and does not yet implement the concrete P21.4 acquisition port.
+- P21.12 owns only propagation of optional caller-owned execution options carrying `signal?: AbortSignal` through existing P21.8/P21.11 seams; it creates no controller, combines no signals, and defines no timeout/abort error semantics.
+- P21.13 owns only the concrete Binance composition adapter for the existing P21.4 port. It keeps the generic connector injected, reads the caller-owned observation-time source once, forwards P21.4 caller options unchanged, reuses P21.4 success validation, and maps released composition failure or connector rejection only to existing `acquisition-failed`. It does not own fetch/XHR/WebSocket, Response/status/header/body acquisition, clock/freshness policy, cancellation cause taxonomy, retry/rate-limit/polling, universe/ranking, state/persistence, or UI semantics.
 - Live Crypto Bubble Map and Your Trades Bubble Map remain distinct products with distinct authoritative upstream data flows. Shared future bubble-layout code must remain presentation-only.
 - Approved dashboard transitions remain presentation-only and may never own or delay route/navigation/data/persistence/calculation/chart/Saved-Analysis/dashboard-selection truth.
 - P2/P3 design tokens remain style-value authority.
@@ -147,4 +156,4 @@ Therefore P21.12 is the canonical GOLDEN. P21 remains OPEN; later P21 responsibi
 
 ## Next audit checkpoint
 
-P21 is open through canonical P21.12. Before any later P21 implementation, reread controlling handoff/current user rules, exact P21.12 GOLDEN, continuity/process history, Retry Ledger, current P15/P16/P21 market owners, P12 journal-history seam, Home/dashboard consumers, and current official provider behavior as needed. Prove exactly one smallest dependency-safe next responsibility and explicit non-scope. Do not infer a next patch by numbering. In particular, do not infer concrete fetch/XHR/WebSocket transport, concrete Response/HTTP status/header/body acquisition, request retry/rate-limit/polling policy, credentials, AbortController creation/signal combination/timeout/abort interpretation/error translation, a concrete P21.4 acquisition-port adapter, market-universe selection/ranking, accumulation/state/order/freshness/reset/reconnect behavior, Bubble size/color/ranking/grouping/filter/interactions, Your-Trades visualization semantics, or transition implementation merely from P21.12's caller-cancellation-propagation seam.
+P21 is open through canonical P21.13. Before any later P21 implementation, reread controlling handoff/current user rules, exact P21.13 GOLDEN, continuity/process history, Retry Ledger, current P15/P16/P21 market owners, P12 journal-history seam, Home/dashboard consumers, and current official provider behavior as needed. Prove exactly one smallest dependency-safe next responsibility and explicit non-scope. Do not infer a next patch by numbering. In particular, do not infer concrete fetch/XHR/WebSocket transport, concrete Response/HTTP status/header/body acquisition, request retry/rate-limit/polling policy, credentials, AbortController creation/signal combination/timeout/abort interpretation/error translation, market-universe selection/ranking, accumulation/state/order/freshness/reset/reconnect behavior, Bubble size/color/ranking/grouping/filter/interactions, Your-Trades visualization semantics, or transition implementation merely from P21.13's acquisition-adapter seam.
