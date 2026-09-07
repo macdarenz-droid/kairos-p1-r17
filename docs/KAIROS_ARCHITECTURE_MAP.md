@@ -37,6 +37,7 @@ Update this file after every canonical PASS that establishes, extends, moves, or
 | Binance Spot 24h public REST baseline request execution boundary | P21.8 under P16 | `src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineRequestExecution.ts`, exported through `src/services/market-data/index.ts` | Invoke one externally supplied generic connector exactly once for one P21.7 request and return its result unchanged; no concrete transport/response/decode/state/UI ownership |
 | Binance Spot 24h public REST baseline response decode | P21.9 under P16 | `src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineResponseDecode.ts`, exported through `src/services/market-data/index.ts` | Deterministic JSON-text decode only: string -> `JSON.parse` -> `unknown`; malformed -> `invalid-json`; non-text -> `unsupported-response-data`; no Response/status/body/ticker semantics/P21.6/state/UI ownership |
 | Binance Spot 24h public REST baseline response delivery composition | P21.10 under P16 | `src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineResponseDelivery.ts`, exported through `src/services/market-data/index.ts` | Explicit caller scope + one already-received response data value + caller-owned `observedAt` -> reuse P21.9 decode -> reuse P21.6 mapping -> existing delivery/failure. No request description/execution, concrete transport/Response/status/header/body acquisition, new ticker validation/completeness algorithm, scope/universe/ranking, batching/rate-limit/retry, concrete P21.4 adapter, state/freshness/reconnect, Bubble/Your-Trades/Home/persistence/transitions |
+| Binance Spot 24h public REST baseline round-trip composition | P21.11 under P16 | `src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineRoundTrip.ts`, exported through `src/services/market-data/index.ts` | Explicit caller scope + caller-owned `observedAt` + externally supplied P21.8 connector -> P21.7 request description -> exactly one P21.8 execution -> P21.10 response delivery; connector rejection propagates unchanged. No P21.4/`AbortSignal` ownership, concrete transport/Response/status/header/body acquisition, retry/rate-limit/polling, new request/decode/ticker/completeness algorithm, state/freshness/reconnect, Bubble/Your-Trades/Home/persistence/transitions |
 
 ## P18 closure boundary
 
@@ -66,7 +67,7 @@ P20.5: gate #285 / run `34059034331`, job `101556113020`, head `a88b2d480ed0e8ae
 
 Therefore P20.5 closed P20 canonically.
 
-## P21 canonical ownership ledger — OPEN through P21.10
+## P21 canonical ownership ledger — OPEN through P21.11
 
 | Patch | Canonical responsibility | Production owner seam | Boundary |
 |---|---|---|---|
@@ -80,6 +81,7 @@ Therefore P20.5 closed P20 canonically.
 | P21.8 | Binance Spot 24h Public REST Baseline Request Execution Boundary Foundation | `providers/binance/binanceSpot24hPublicRestBaselineRequestExecution.ts` | One supplied generic connector call only |
 | P21.9 | Binance Spot 24h Public REST Baseline Response Decode Foundation | `providers/binance/binanceSpot24hPublicRestBaselineResponseDecode.ts` | JSON-text decode to `unknown` only |
 | P21.10 | Binance Spot 24h Public REST Baseline Response Delivery Composition Foundation | `providers/binance/binanceSpot24hPublicRestBaselineResponseDelivery.ts` | Compose P21.9 decode + P21.6 delivery mapping for one already-received response data value; no transport/status/body/acquisition/state/UI ownership |
+| P21.11 | Binance Spot 24h Public REST Baseline Round Trip Composition Foundation | `providers/binance/binanceSpot24hPublicRestBaselineRoundTrip.ts` | Compose P21.7 request description + exactly one P21.8 connector execution + P21.10 response delivery; no P21.4 cancellation ownership, concrete transport/status/body, retry/rate-limit/polling, state, or UI ownership |
 
 ## Canonical P21 evidence
 
@@ -99,7 +101,13 @@ Exact P21.10 artifacts:
 - `KAIROS_CURRENT_CANDIDATE` artifact `10008642188`, 1,203,658 bytes, digest `sha256:f1cde60eb75f1aec12cc194d83f0ae6a2208c6b71d97e50db65eef03466fc6e7`.
 - `KAIROS_GATE_EVIDENCE` artifact `10008642596`, 1,405 bytes, digest `sha256:31a60cddc58405cad782a09418dbf092694266a976dce7dc60af5c7b937b35a0`.
 
-Therefore P21.10 is the canonical GOLDEN. P21 remains OPEN; later P21 responsibilities must be independently source-proven before implementation.
+P21.11: `Kairos Controlled Roadmap Gate` #296 / run `34100573164`, job `101673831809`, exact head `dc9809c9596c204aa1ef79726d82ee5951a9afd6`, completed full SUCCESS on 2026-09-07. Every required canonical stage succeeded: authoritative P21.10 base/candidate extraction, exact controlled P21.10→P21.11 six-file scope, deterministic install, exact Lightweight Charts 5.2.1 proof, production TypeScript compilation/build, dedicated P21.11 Binance Spot 24h public REST baseline round-trip-composition verifier/runtime, full unit regression, full controlled-roadmap regression through P21.11, historical closures, and both exact-run artifact uploads.
+
+Exact P21.11 artifacts:
+- `KAIROS_CURRENT_CANDIDATE` artifact `10010555876`, 1,207,322 bytes, digest `sha256:06c89d2d7f9671744aed5af7a3b3600d8d78bcdf2aa72a96ef7c6c9ecb5ada2c`.
+- `KAIROS_GATE_EVIDENCE` artifact `10010556483`, 1,138 bytes, digest `sha256:ea67c8609ec24cc060590f9444d565e7650a7bad81cde177283ae1cfb97183d8`.
+
+Therefore P21.11 is the canonical GOLDEN. P21 remains OPEN; later P21 responsibilities must be independently source-proven before implementation.
 
 ## Ownership rules that remain invariant
 
@@ -108,7 +116,7 @@ Therefore P21.10 is the canonical GOLDEN. P21 remains OPEN; later P21 responsibi
 - P12 remains bounded journal-history/listing truth; Home/Bubble UI must not bypass it with direct IndexedDB reads.
 - P14 remains journal/trade-visualization truth where assigned.
 - P15 remains market acquisition truth and P16 remains Binance Spot provider ownership.
-- P21.5 owns provider fact mapping; P21.6 decoded-payload delivery composition; P21.7 request description; P21.8 generic execution boundary; P21.9 deterministic JSON-text response decoding; P21.10 composes P21.9 + P21.6 for one already-received response data value. None of these infer concrete browser transport, HTTP status/header/body acquisition, concrete P21.4 orchestration, universe/ranking, state, or UI behavior.
+- P21.5 owns provider fact mapping; P21.6 decoded-payload delivery composition; P21.7 request description; P21.8 generic execution boundary; P21.9 deterministic JSON-text response decoding; P21.10 response-delivery composition; P21.11 composes P21.7 -> P21.8 -> P21.10 for one explicit-scope round trip with an externally supplied connector. None of these infer concrete browser transport, HTTP status/header/body acquisition, concrete P21.4/`AbortSignal` orchestration, universe/ranking, state, or UI behavior.
 - P18 remains generic drawing/provider/interaction machinery.
 - P19 remains Risk/Reward semantic and provider-neutral logical composition truth.
 - P20 remains closed Saved Analysis truth; no generic CRUD expansion is inferred from P21 work.
@@ -122,6 +130,7 @@ Therefore P21.10 is the canonical GOLDEN. P21 remains OPEN; later P21 responsibi
 - P21.8 owns only one injected generic execution call and unchanged connector result.
 - P21.9 owns only JSON-text decoding to `unknown`.
 - P21.10 owns only response-delivery composition over existing P21.9/P21.6 owners for already-received response data; it does not execute a request or define HTTP response acquisition semantics.
+- P21.11 owns only the explicit-scope round-trip composition over existing P21.7/P21.8/P21.10 owners; it deliberately does not implement the P21.4 acquisition port because P21.4 exposes optional cancellation while the P21.8 connector contract does not.
 - Live Crypto Bubble Map and Your Trades Bubble Map remain distinct products with distinct authoritative upstream data flows. Shared future bubble-layout code must remain presentation-only.
 - Approved dashboard transitions remain presentation-only and may never own or delay route/navigation/data/persistence/calculation/chart/Saved-Analysis/dashboard-selection truth.
 - P2/P3 design tokens remain style-value authority.
@@ -129,4 +138,4 @@ Therefore P21.10 is the canonical GOLDEN. P21 remains OPEN; later P21 responsibi
 
 ## Next audit checkpoint
 
-P21 is open through canonical P21.10. Before any later P21 implementation, reread controlling handoff/current user rules, exact P21.10 GOLDEN, continuity/process history, Retry Ledger, current P15/P16/P21 market owners, P12 journal-history seam, Home/dashboard consumers, and current official provider behavior as needed. Prove exactly one smallest dependency-safe next responsibility and explicit non-scope. Do not infer a next patch by numbering. In particular, do not infer concrete fetch/XHR/WebSocket transport, concrete Response/HTTP status/header/body acquisition, request execution orchestration, batching/chunking, request-weight/rate-limit/retry policy, credentials, a concrete P21.4 acquisition-port adapter, market-universe selection/ranking, accumulation/state/order/freshness/reset/reconnect behavior, Bubble size/color/ranking/grouping/filter/interactions, Your-Trades visualization semantics, or transition implementation merely from P21.10's response-delivery composition seam.
+P21 is open through canonical P21.11. Before any later P21 implementation, reread controlling handoff/current user rules, exact P21.11 GOLDEN, continuity/process history, Retry Ledger, current P15/P16/P21 market owners, P12 journal-history seam, Home/dashboard consumers, and current official provider behavior as needed. Prove exactly one smallest dependency-safe next responsibility and explicit non-scope. Do not infer a next patch by numbering. In particular, do not infer concrete fetch/XHR/WebSocket transport, concrete Response/HTTP status/header/body acquisition, request retry/rate-limit/polling policy, credentials, P21.4 cancellation handling, a concrete P21.4 acquisition-port adapter, market-universe selection/ranking, accumulation/state/order/freshness/reset/reconnect behavior, Bubble size/color/ranking/grouping/filter/interactions, Your-Trades visualization semantics, or transition implementation merely from P21.11's round-trip composition seam.
