@@ -76,7 +76,7 @@ jobs:
            *
            * The connector remains externally supplied. Connector rejection is deliberately
            * allowed to propagate unchanged: retry/error translation, concrete transport and
-           * P21.4 AbortSignal acquisition-port orchestration remain outside this owner.
+           * P21.4 cancellation-aware acquisition-port orchestration remains outside this owner.
            */
           export async function composeBinanceSpot24hPublicRestBaselineRoundTrip(
             scope: readonly MarketDataInstrument[],
