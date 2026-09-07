@@ -1,0 +1,354 @@
+name: Kairos P21.3 Live Market Summary Delivery Completeness Reconstruction Bridge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/p21-3-live-market-summary-delivery-completeness-reconstruct.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reconstruct:
+    runs-on: ubuntu-24.04
+    env:
+      BASE_ZIP: KAIROS_P21_2_LIVE_MARKET_SUMMARY_FACT_CONTRACT_FOUNDATION_CANDIDATE_2026-09-07.zip
+      OUT_ZIP: KAIROS_P21_3_LIVE_MARKET_SUMMARY_DELIVERY_COMPLETENESS_CONTRACT_FOUNDATION_CANDIDATE_2026-09-07.zip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+
+      - name: Pin npm
+        run: |
+          npm install --global npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+
+      - name: Reconstruct P21.3 from canonical P21.2
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .p21base .p21candidate
+          mkdir .p21base .p21candidate
+          unzip -q "$BASE_ZIP" -d .p21base
+          cp -a .p21base/. .p21candidate/
+          ROOT=.p21candidate/kairos_p76
+          test -f "$ROOT/src/services/market-data/marketDataTypes.ts"
+          test -f "$ROOT/src/services/market-data/liveMarketSummaryFactSemantics.ts"
+          test -f "$ROOT/src/services/market-data/index.ts"
+          test -f "$ROOT/package.json"
+
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('.p21candidate/kairos_p76/src/services/market-data/marketDataTypes.ts')
+          s=p.read_text()
+          anchor='''export interface LiveMarketSummaryFact {\n  readonly instrument: MarketDataInstrument;\n  readonly lastPrice: DecimalString;\n  readonly open24h: DecimalString;\n  readonly high24h: DecimalString;\n  readonly low24h: DecimalString;\n  readonly baseVolume24h: DecimalString;\n  readonly quoteVolume24h: DecimalString;\n  readonly observedAt: string;\n  readonly sourceTimestamp: string | null;\n}\n'''
+          addition='''\n/**\n * Provider-neutral delivery semantics for validated live-market summary facts.\n * Completeness is explicit and scoped; acquisition, universe selection, and accumulation stay outside this contract.\n */\nexport interface LiveMarketSummaryIncrementalDelivery {\n  readonly completeness: 'incremental';\n  readonly facts: readonly LiveMarketSummaryFact[];\n}\n\nexport interface LiveMarketSummaryCompleteForScopeDelivery {\n  readonly completeness: 'complete-for-scope';\n  readonly scope: readonly MarketDataInstrument[];\n  readonly facts: readonly LiveMarketSummaryFact[];\n}\n\nexport type LiveMarketSummaryDelivery =\n  | LiveMarketSummaryIncrementalDelivery\n  | LiveMarketSummaryCompleteForScopeDelivery;\n'''
+          if anchor not in s: raise SystemExit('expected P21.2 LiveMarketSummaryFact boundary not found')
+          p.write_text(s.replace(anchor, anchor+addition, 1))
+          PY
+
+          cat > "$ROOT/src/services/market-data/liveMarketSummaryDeliverySemantics.ts" <<'TS'
+          import type {
+            LiveMarketSummaryDelivery,
+            LiveMarketSummaryFact,
+            MarketDataInstrument,
+          } from './marketDataTypes';
+          import { validateLiveMarketSummaryFact } from './liveMarketSummaryFactSemantics';
+
+          export type LiveMarketSummaryDeliveryValidationResult =
+            | { readonly ok: true; readonly delivery: LiveMarketSummaryDelivery }
+            | { readonly ok: false; readonly reason:
+                | 'facts-required'
+                | 'fact-invalid'
+                | 'scope-required'
+                | 'scope-instrument-invalid'
+                | 'scope-instrument-duplicate'
+                | 'fact-instrument-duplicate'
+                | 'fact-outside-scope'
+                | 'scope-fact-missing' };
+
+          function instrumentKey(instrument: MarketDataInstrument): string {
+            return `${instrument.venue.trim()}::${instrument.symbol.trim()}`;
+          }
+
+          function isInstrumentValid(instrument: MarketDataInstrument): boolean {
+            return instrument.venue.trim().length > 0 && instrument.symbol.trim().length > 0;
+          }
+
+          function hasDuplicateInstruments(instruments: readonly MarketDataInstrument[]): boolean {
+            const keys = instruments.map(instrumentKey);
+            return new Set(keys).size !== keys.length;
+          }
+
+          function hasDuplicateFactInstruments(facts: readonly LiveMarketSummaryFact[]): boolean {
+            const keys = facts.map((fact) => instrumentKey(fact.instrument));
+            return new Set(keys).size !== keys.length;
+          }
+
+          export function validateLiveMarketSummaryDelivery(
+            delivery: LiveMarketSummaryDelivery,
+          ): LiveMarketSummaryDeliveryValidationResult {
+            if (delivery.facts.length === 0) return { ok: false, reason: 'facts-required' };
+            if (delivery.facts.some((fact) => !validateLiveMarketSummaryFact(fact).ok)) {
+              return { ok: false, reason: 'fact-invalid' };
+            }
+            if (hasDuplicateFactInstruments(delivery.facts)) {
+              return { ok: false, reason: 'fact-instrument-duplicate' };
+            }
+
+            if (delivery.completeness === 'incremental') {
+              return { ok: true, delivery };
+            }
+
+            if (delivery.scope.length === 0) return { ok: false, reason: 'scope-required' };
+            if (delivery.scope.some((instrument) => !isInstrumentValid(instrument))) {
+              return { ok: false, reason: 'scope-instrument-invalid' };
+            }
+            if (hasDuplicateInstruments(delivery.scope)) {
+              return { ok: false, reason: 'scope-instrument-duplicate' };
+            }
+
+            const scopeKeys = new Set(delivery.scope.map(instrumentKey));
+            const factKeys = new Set(delivery.facts.map((fact) => instrumentKey(fact.instrument)));
+            if ([...factKeys].some((key) => !scopeKeys.has(key))) {
+              return { ok: false, reason: 'fact-outside-scope' };
+            }
+            if ([...scopeKeys].some((key) => !factKeys.has(key))) {
+              return { ok: false, reason: 'scope-fact-missing' };
+            }
+
+            return { ok: true, delivery };
+          }
+          TS
+
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('.p21candidate/kairos_p76/src/services/market-data/index.ts')
+          s=p.read_text()
+          anchor="export * from './liveMarketSummaryFactSemantics';\n"
+          if anchor not in s: raise SystemExit('P21.2 market-data export boundary not found')
+          p.write_text(s.replace(anchor, anchor+"export * from './liveMarketSummaryDeliverySemantics';\n", 1))
+          PY
+
+          cat > "$ROOT/tests/live-market-summary-delivery-completeness-contract.test.ts" <<'TS'
+          import { describe, expect, it } from 'vitest';
+          import { parsePositiveDecimalString } from '../src/domain/trades';
+          import type { DecimalString } from '../src/domain/trades';
+          import {
+            validateLiveMarketSummaryDelivery,
+            type LiveMarketSummaryDelivery,
+            type LiveMarketSummaryFact,
+            type MarketDataInstrument,
+          } from '../src/services/market-data';
+
+          function positive(value: string): DecimalString {
+            const parsed = parsePositiveDecimalString(value);
+            if (!parsed.ok) throw new Error(`Invalid positive DecimalString fixture: ${value}`);
+            return parsed.value;
+          }
+
+          const btc: MarketDataInstrument = { venue: 'binance-spot', symbol: 'BTCUSDT' };
+          const eth: MarketDataInstrument = { venue: 'binance-spot', symbol: 'ETHUSDT' };
+
+          function fact(instrument: MarketDataInstrument, lastPrice: string): LiveMarketSummaryFact {
+            return {
+              instrument,
+              lastPrice: positive(lastPrice),
+              open24h: positive('1'),
+              high24h: positive('2'),
+              low24h: positive('0.5'),
+              baseVolume24h: '10' as DecimalString,
+              quoteVolume24h: '20' as DecimalString,
+              observedAt: '2026-09-07T00:00:00.000Z',
+              sourceTimestamp: '2026-09-06T23:59:59.900Z',
+            };
+          }
+
+          describe('P21.3 live market summary delivery completeness contract', () => {
+            it('accepts incremental changed-symbol facts without implying a complete market scope', () => {
+              const delivery: LiveMarketSummaryDelivery = {
+                completeness: 'incremental',
+                facts: [fact(btc, '64000')],
+              };
+              expect(validateLiveMarketSummaryDelivery(delivery)).toEqual({ ok: true, delivery });
+            });
+
+            it('accepts complete-for-scope only when every declared scope instrument is represented exactly once', () => {
+              const delivery: LiveMarketSummaryDelivery = {
+                completeness: 'complete-for-scope',
+                scope: [btc, eth],
+                facts: [fact(btc, '64000'), fact(eth, '3200')],
+              };
+              expect(validateLiveMarketSummaryDelivery(delivery)).toEqual({ ok: true, delivery });
+            });
+
+            it('rejects false completeness when a declared scope instrument is missing', () => {
+              const delivery: LiveMarketSummaryDelivery = {
+                completeness: 'complete-for-scope',
+                scope: [btc, eth],
+                facts: [fact(btc, '64000')],
+              };
+              expect(validateLiveMarketSummaryDelivery(delivery)).toEqual({ ok: false, reason: 'scope-fact-missing' });
+            });
+
+            it('rejects duplicate facts and facts outside a declared complete scope', () => {
+              expect(validateLiveMarketSummaryDelivery({
+                completeness: 'incremental',
+                facts: [fact(btc, '64000'), fact(btc, '64001')],
+              })).toEqual({ ok: false, reason: 'fact-instrument-duplicate' });
+
+              expect(validateLiveMarketSummaryDelivery({
+                completeness: 'complete-for-scope',
+                scope: [btc],
+                facts: [fact(eth, '3200')],
+              })).toEqual({ ok: false, reason: 'fact-outside-scope' });
+            });
+          });
+          TS
+
+          cat > "$ROOT/KAIROS_P21_3_LIVE_MARKET_SUMMARY_DELIVERY_COMPLETENESS_CONTRACT_FOUNDATION_REPORT_2026-09-07.md" <<'MD'
+          # KAIROS P21.3 — Live Market Summary Delivery Completeness Contract Foundation
+
+          ## Authority
+          Base: canonical P21.2 Live Market Summary Fact Contract Foundation, `Kairos Controlled Roadmap Gate` #287 / run `34066483131`.
+
+          ## Source-backed responsibility
+          Official Binance Spot all-market mini-ticker delivery is incremental: each event contains only symbols whose mini-ticker changed. One changed-symbol event must therefore never be treated as a complete market view. P21.3 adds only provider-neutral delivery completeness semantics around already-validated P21.2 facts.
+
+          ## Contract
+          - `incremental` means the delivery contains changed/partial facts and makes no claim of complete market scope.
+          - `complete-for-scope` requires an explicit caller-declared instrument scope and exactly one valid fact for every instrument in that scope, with no facts outside it.
+          - Completeness is always qualified by a declared scope; the contract does not define how that scope is chosen.
+
+          ## Ownership
+          This contract remains in the existing market-data service boundary. It does not move acquisition/provider/state ownership into Home or Bubble presentation.
+
+          ## Explicit non-scope
+          - No Binance REST-vs-WebSocket choice, polling, subscription, reconnect, provider mapping, or baseline acquisition implementation.
+          - No market-universe selection policy, accumulator/state store, freshness TTL, error/reset policy, or persistence.
+          - No Bubble Map size metric, color semantics, ranking, grouping, filtering, geometry, interactions, or Home wiring.
+          - No journal/trade-history reads, P11/P12/P14 duplication, or Your Trades Bubble Map semantics.
+          - No navigation, premium transition/motion, chart, Saved Analysis, goals, or discipline ownership.
+
+          Later slices must separately source-contract acquisition/universe/state/freshness and visualization semantics.
+          MD
+
+          cat > "$ROOT/scripts/verify-p21-3-live-market-summary-delivery-completeness-contract-foundation.mjs" <<'JS'
+          import { readFileSync } from 'node:fs';
+
+          const types = readFileSync(new URL('../src/services/market-data/marketDataTypes.ts', import.meta.url), 'utf8');
+          const semantics = readFileSync(new URL('../src/services/market-data/liveMarketSummaryDeliverySemantics.ts', import.meta.url), 'utf8');
+          const index = readFileSync(new URL('../src/services/market-data/index.ts', import.meta.url), 'utf8');
+          const report = readFileSync(new URL('../KAIROS_P21_3_LIVE_MARKET_SUMMARY_DELIVERY_COMPLETENESS_CONTRACT_FOUNDATION_REPORT_2026-09-07.md', import.meta.url), 'utf8');
+
+          for (const token of [
+            'export interface LiveMarketSummaryIncrementalDelivery',
+            "readonly completeness: 'incremental';",
+            'export interface LiveMarketSummaryCompleteForScopeDelivery',
+            "readonly completeness: 'complete-for-scope';",
+            'readonly scope: readonly MarketDataInstrument[];',
+            'export type LiveMarketSummaryDelivery =',
+          ]) if (!types.includes(token)) throw new Error(`P21.3 delivery contract evidence missing: ${token}`);
+
+          for (const token of [
+            'export function validateLiveMarketSummaryDelivery(',
+            "'scope-fact-missing'",
+            "'fact-outside-scope'",
+            "'fact-instrument-duplicate'",
+          ]) if (!semantics.includes(token)) throw new Error(`P21.3 validation evidence missing: ${token}`);
+
+          if (!index.includes("export * from './liveMarketSummaryDeliverySemantics';")) throw new Error('P21.3 market-data export missing');
+
+          for (const forbidden of [
+            'fetch(', 'WebSocket', 'EventSource', 'indexedDB', 'createChart(', 'bubbleSize', 'marketCap', 'setInterval(', 'setTimeout(',
+          ]) if (semantics.includes(forbidden)) throw new Error(`P21.3 delivery semantics broadened into forbidden scope: ${forbidden}`);
+
+          for (const token of [
+            '# KAIROS P21.3 — Live Market Summary Delivery Completeness Contract Foundation',
+            'incremental',
+            'complete-for-scope',
+            'No Binance REST-vs-WebSocket choice',
+            'No market-universe selection policy',
+            'No Bubble Map size metric',
+            'No journal/trade-history reads',
+          ]) if (!report.includes(token)) throw new Error(`P21.3 report evidence missing: ${token}`);
+
+          console.log('P21.3 Live Market Summary delivery completeness contract verification passed.');
+          JS
+
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const p='.p21candidate/kairos_p76/package.json';
+          const j=JSON.parse(fs.readFileSync(p,'utf8'));
+          j.scripts||={};
+          j.scripts['verify:p21:3-live-market-summary-delivery-completeness-contract-foundation']='node scripts/verify-p21-3-live-market-summary-delivery-completeness-contract-foundation.mjs';
+          fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');
+          NODE
+
+          python - <<'PY'
+          from pathlib import Path
+          a={str(p.relative_to(Path('.p21base/kairos_p76'))):p.read_bytes() for p in Path('.p21base/kairos_p76').rglob('*') if p.is_file()}
+          b={str(p.relative_to(Path('.p21candidate/kairos_p76'))):p.read_bytes() for p in Path('.p21candidate/kairos_p76').rglob('*') if p.is_file()}
+          changed={p for p in a.keys()|b.keys() if a.get(p)!=b.get(p)}
+          expected={
+            'KAIROS_P21_3_LIVE_MARKET_SUMMARY_DELIVERY_COMPLETENESS_CONTRACT_FOUNDATION_REPORT_2026-09-07.md',
+            'package.json',
+            'scripts/verify-p21-3-live-market-summary-delivery-completeness-contract-foundation.mjs',
+            'src/services/market-data/index.ts',
+            'src/services/market-data/liveMarketSummaryDeliverySemantics.ts',
+            'src/services/market-data/marketDataTypes.ts',
+            'tests/live-market-summary-delivery-completeness-contract.test.ts',
+          }
+          print('\n'.join(sorted(changed)))
+          assert changed==expected,(sorted(changed-expected),sorted(expected-changed))
+          PY
+
+      - name: Verify reconstructed P21.3 before packaging
+        working-directory: .p21candidate/kairos_p76
+        run: |
+          npm ci
+          test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
+          npm run verify:p21:3-live-market-summary-delivery-completeness-contract-foundation
+          npm run typecheck
+          npm run build
+          npm test
+          node - <<'NODE'
+          const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
+          const p=JSON.parse(readFileSync('package.json')); const s=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:p'));
+          for(const required of ['verify:p21:1-home-dashboard-route-ownership-foundation','verify:p21:2-live-market-summary-fact-contract-foundation','verify:p21:3-live-market-summary-delivery-completeness-contract-foundation']) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
+          for(const x of s){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
+          NODE
+          npm run verify:static
+
+      - name: Restore clean package boundary after verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=.p21candidate/kairos_p76
+          rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite"
+          find "$ROOT" -type f \( -name '*.tsbuildinfo' -o -name '*.log' \) -delete
+          find "$ROOT" -type d \( -name '.cache' -o -name 'cache' -o -name 'tmp' -o -name 'temp' \) -prune -exec rm -rf {} + || true
+          test ! -e "$ROOT/node_modules"
+          test ! -e "$ROOT/dist"
+          test ! -e "$ROOT/coverage"
+
+      - name: Package exact P21.3 candidate and commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f "$OUT_ZIP"
+          (cd .p21candidate && zip -qr "../$OUT_ZIP" kairos_p76)
+          unzip -t "$OUT_ZIP"
+          test "$(unzip -Z1 "$OUT_ZIP" | head -n1 | cut -d/ -f1)" = "kairos_p76"
+          test "$(unzip -Z1 "$OUT_ZIP" | awk -F/ 'NF>1{print $1}' | sort -u | wc -l)" -eq 1
+          sha256sum "$OUT_ZIP"
+          git config user.name 'kairos-reconstruction-bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add "$OUT_ZIP"
+          git diff --cached --quiet && exit 0
+          git commit -m 'Package P21.3 live market summary delivery completeness candidate'
+          git push
