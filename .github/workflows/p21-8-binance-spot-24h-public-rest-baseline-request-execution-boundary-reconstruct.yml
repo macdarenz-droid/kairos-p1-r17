@@ -1,0 +1,220 @@
+name: Kairos P21.8 Binance Spot 24h Public REST Baseline Request Execution Boundary Reconstruction Bridge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/p21-8-binance-spot-24h-public-rest-baseline-request-execution-boundary-reconstruct.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reconstruct:
+    runs-on: ubuntu-24.04
+    env:
+      BASE_ZIP: KAIROS_P21_7_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_REQUEST_DESCRIPTOR_FOUNDATION_CANDIDATE_2026-09-07.zip
+      OUT_ZIP: KAIROS_P21_8_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_REQUEST_EXECUTION_BOUNDARY_FOUNDATION_CANDIDATE_2026-09-07.zip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - name: Pin npm
+        run: |
+          npm install --global npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+
+      - name: Reconstruct P21.8 from canonical P21.7
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .p21base .p21candidate
+          mkdir .p21base .p21candidate
+          unzip -q "$BASE_ZIP" -d .p21base
+          cp -a .p21base/. .p21candidate/
+          ROOT=.p21candidate/kairos_p76
+          test -f "$ROOT/src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineRequest.ts"
+          test -f "$ROOT/src/services/market-data/providers/binance/binanceSpotPublicStreamConnection.ts"
+          test -f "$ROOT/src/services/market-data/index.ts"
+
+          cat > "$ROOT/src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineRequestExecution.ts" <<'TS'
+          import type { BinanceSpot24hPublicRestBaselineRequestDescriptor } from './binanceSpot24hPublicRestBaselineRequest';
+
+          /**
+           * Injected execution seam only. The concrete network mechanism and response
+           * representation remain owned by the caller-supplied connector.
+           */
+          export type BinanceSpot24hPublicRestBaselineRequestConnector<TResult> = (
+            request: BinanceSpot24hPublicRestBaselineRequestDescriptor,
+          ) => Promise<TResult>;
+
+          /**
+           * Executes exactly one already-described P21.7 request through an injected
+           * connector and returns that connector's result unchanged.
+           *
+           * This owner does not fetch, decode JSON, choose scope, batch, retry,
+           * interpret status codes, or implement the P21.4 acquisition port.
+           */
+          export function executeBinanceSpot24hPublicRestBaselineRequest<TResult>(
+            request: BinanceSpot24hPublicRestBaselineRequestDescriptor,
+            connect: BinanceSpot24hPublicRestBaselineRequestConnector<TResult>,
+          ): Promise<TResult> {
+            return connect(request);
+          }
+          TS
+
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('.p21candidate/kairos_p76/src/services/market-data/index.ts')
+          s=p.read_text()
+          anchor="export * from './providers/binance/binanceSpot24hPublicRestBaselineRequest';\n"
+          addition="export * from './providers/binance/binanceSpot24hPublicRestBaselineRequestExecution';\n"
+          if anchor not in s: raise SystemExit('P21.7 request descriptor export anchor not found')
+          p.write_text(s.replace(anchor, anchor+addition, 1))
+          PY
+
+          cat > "$ROOT/tests/binance-spot-24h-public-rest-baseline-request-execution.test.ts" <<'TS'
+          import { describe, expect, it, vi } from 'vitest';
+          import {
+            describeBinanceSpot24hPublicRestBaselineRequest,
+            executeBinanceSpot24hPublicRestBaselineRequest,
+          } from '../src/services/market-data';
+
+          describe('P21.8 Binance Spot 24h public REST baseline request execution boundary foundation', () => {
+            it('forwards the exact P21.7 descriptor once to an injected connector and returns its result unchanged', async () => {
+              const described = describeBinanceSpot24hPublicRestBaselineRequest([
+                { venue: 'binance-spot', symbol: 'BTCUSDT' },
+              ]);
+              expect(described.ok).toBe(true);
+              if (!described.ok) return;
+              const response = { transportOwned: true } as const;
+              const connect = vi.fn(async () => response);
+              await expect(executeBinanceSpot24hPublicRestBaselineRequest(described.request, connect)).resolves.toBe(response);
+              expect(connect).toHaveBeenCalledTimes(1);
+              expect(connect).toHaveBeenCalledWith(described.request);
+            });
+
+            it('does not impose a response representation on the injected connector', async () => {
+              const described = describeBinanceSpot24hPublicRestBaselineRequest([
+                { venue: 'binance-spot', symbol: 'ETHUSDT' },
+              ]);
+              expect(described.ok).toBe(true);
+              if (!described.ok) return;
+              await expect(executeBinanceSpot24hPublicRestBaselineRequest(described.request, async () => 'raw-text'))
+                .resolves.toBe('raw-text');
+              await expect(executeBinanceSpot24hPublicRestBaselineRequest(described.request, async () => new Uint8Array([1, 2])))
+                .resolves.toEqual(new Uint8Array([1, 2]));
+            });
+          });
+          TS
+
+          cat > "$ROOT/KAIROS_P21_8_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_REQUEST_EXECUTION_BOUNDARY_FOUNDATION_REPORT_2026-09-07.md" <<'MD'
+          # KAIROS P21.8 — Binance Spot 24h Public REST Baseline Request Execution Boundary Foundation
+
+          ## Authority
+          Base: canonical P21.7 Binance Spot 24h Public REST Baseline Request Descriptor Foundation, `Kairos Controlled Roadmap Gate` #292 / run `34083915392`.
+
+          ## Source-proven responsibility
+          P21.7 owns only a pure request descriptor. Existing P16 architecture separates provider endpoint description from an injected connection boundary and only later introduces concrete browser transport and decode owners. P21.8 follows that released pattern with the smallest REST-equivalent seam: execute one already-described P21.7 request through an externally supplied connector and return the connector result unchanged.
+
+          The generic connector result deliberately leaves raw response representation outside this owner so this slice does not invent status/body/JSON semantics or concrete fetch behavior.
+
+          ## Explicit non-scope
+          - No fetch/XHR/WebSocket/browser transport implementation or global network API use.
+          - No JSON/text/binary response decoding, status interpretation, schema mapping, or P21.6 delivery composition.
+          - No scope selection, request-description mutation, multi-request batching/chunking, request-weight accounting, throttling, rate-limit/backoff/retry, credentials, polling or reconnect policy.
+          - No concrete P21.4 acquisition-port adapter orchestration and no market-universe selection/ranking.
+          - No accumulator/state/order/freshness/reset ownership.
+          - No Bubble Map sizing/color/grouping/filtering/geometry/interactions or Home wiring.
+          - No persistence, journal/Your-Trades semantics, direct IndexedDB UI access, or dashboard transitions.
+          MD
+
+          cat > "$ROOT/scripts/verify-p21-8-binance-spot-24h-public-rest-baseline-request-execution-boundary-foundation.mjs" <<'JS'
+          import { readFileSync } from 'node:fs';
+          const source = readFileSync(new URL('../src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineRequestExecution.ts', import.meta.url), 'utf8');
+          const index = readFileSync(new URL('../src/services/market-data/index.ts', import.meta.url), 'utf8');
+          const report = readFileSync(new URL('../KAIROS_P21_8_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_REQUEST_EXECUTION_BOUNDARY_FOUNDATION_REPORT_2026-09-07.md', import.meta.url), 'utf8');
+          for (const token of [
+            'BinanceSpot24hPublicRestBaselineRequestConnector<TResult>',
+            'executeBinanceSpot24hPublicRestBaselineRequest<TResult>',
+            'return connect(request);',
+            'BinanceSpot24hPublicRestBaselineRequestDescriptor',
+          ]) if (!source.includes(token)) throw new Error(`P21.8 execution-boundary evidence missing: ${token}`);
+          if (!index.includes("export * from './providers/binance/binanceSpot24hPublicRestBaselineRequestExecution';")) throw new Error('P21.8 barrel export missing');
+          for (const forbidden of ['fetch(', 'XMLHttpRequest', 'WebSocket(', 'JSON.parse(', 'indexedDB', 'acquireBaseline(', 'setTimeout(', 'requestWeight']) {
+            if (source.includes(forbidden)) throw new Error(`P21.8 broadened into forbidden scope: ${forbidden}`);
+          }
+          for (const token of ['No fetch/XHR/WebSocket/browser transport', 'No JSON/text/binary response decoding', 'No scope selection', 'No concrete P21.4 acquisition-port adapter orchestration', 'No Bubble Map sizing', 'No persistence']) {
+            if (!report.includes(token)) throw new Error(`P21.8 report evidence missing: ${token}`);
+          }
+          console.log('P21.8 Binance Spot 24h public REST baseline request execution boundary verification passed.');
+          JS
+
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const p='.p21candidate/kairos_p76/package.json';
+          const j=JSON.parse(fs.readFileSync(p,'utf8'));
+          j.scripts||={};
+          j.scripts['verify:p21:8-binance-spot-24h-public-rest-baseline-request-execution-boundary-foundation']='node scripts/verify-p21-8-binance-spot-24h-public-rest-baseline-request-execution-boundary-foundation.mjs';
+          fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');
+          NODE
+
+          python - <<'PY'
+          from pathlib import Path
+          a={str(p.relative_to(Path('.p21base/kairos_p76'))):p.read_bytes() for p in Path('.p21base/kairos_p76').rglob('*') if p.is_file()}
+          b={str(p.relative_to(Path('.p21candidate/kairos_p76'))):p.read_bytes() for p in Path('.p21candidate/kairos_p76').rglob('*') if p.is_file()}
+          changed={p for p in a.keys()|b.keys() if a.get(p)!=b.get(p)}
+          expected={
+            'KAIROS_P21_8_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_REQUEST_EXECUTION_BOUNDARY_FOUNDATION_REPORT_2026-09-07.md',
+            'package.json',
+            'scripts/verify-p21-8-binance-spot-24h-public-rest-baseline-request-execution-boundary-foundation.mjs',
+            'src/services/market-data/index.ts',
+            'src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineRequestExecution.ts',
+            'tests/binance-spot-24h-public-rest-baseline-request-execution.test.ts',
+          }
+          print('\n'.join(sorted(changed)))
+          assert changed==expected,(sorted(changed-expected),sorted(expected-changed))
+          PY
+
+      - name: Verify reconstructed P21.8 before packaging
+        working-directory: .p21candidate/kairos_p76
+        run: |
+          set -euo pipefail
+          npm ci
+          test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
+          npm run verify:p21:8-binance-spot-24h-public-rest-baseline-request-execution-boundary-foundation
+          npm run typecheck
+          npm run build
+          npm test
+          node - <<'NODE'
+          const { spawnSync } = require('node:child_process');
+          const pkg = require('./package.json');
+          const scripts = Object.keys(pkg.scripts || {}).filter((name) => /^verify:p\d/.test(name));
+          for (const name of scripts) {
+            const r = spawnSync('npm', ['run', name], { stdio: 'inherit' });
+            if (r.status !== 0) process.exit(r.status || 1);
+          }
+          NODE
+
+      - name: Restore clean package boundary and commit candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=.p21candidate/kairos_p76
+          rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite"
+          find "$ROOT" -type f \( -name '*.tsbuildinfo' -o -name '*.log' \) -delete
+          rm -rf .p21package
+          mkdir .p21package
+          cp -a "$ROOT" .p21package/kairos_p76
+          rm -f "$OUT_ZIP"
+          (cd .p21package && zip -qr "../$OUT_ZIP" kairos_p76)
+          unzip -t "$OUT_ZIP"
+          test "$(unzip -Z1 "$OUT_ZIP" | head -n1 | cut -d/ -f1)" = "kairos_p76"
+          test -f "$OUT_ZIP"
+          git add "$OUT_ZIP"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Package P21.8 REST request execution boundary candidate"
+          git push
