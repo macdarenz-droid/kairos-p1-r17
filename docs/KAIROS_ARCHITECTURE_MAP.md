@@ -58,6 +58,7 @@ P18.1–P18.59 establish the generic drawing/provider/interaction/selection/dele
 ## P19 canonical ownership ledger — CLOSED through P19.7
 
 P19.7 remains the canonical P19 system closure via `Kairos Controlled Roadmap Gate` #280 / run `34021672747`.
+
 ## P20 canonical ownership ledger — CLOSED through P20.5
 
 | Patch | Canonical responsibility | Production owner seam | Boundary |
