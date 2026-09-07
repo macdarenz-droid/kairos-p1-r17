@@ -1,0 +1,316 @@
+name: Kairos P21.10 Binance Spot 24h Public REST Baseline Response Delivery Composition Reconstruction Bridge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/p21-10-binance-spot-24h-public-rest-baseline-response-delivery-composition-reconstruct.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reconstruct:
+    runs-on: ubuntu-24.04
+    env:
+      BASE_ZIP: KAIROS_P21_9_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_RESPONSE_DECODE_FOUNDATION_CANDIDATE_2026-09-07.zip
+      OUT_ZIP: KAIROS_P21_10_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_RESPONSE_DELIVERY_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-07.zip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - name: Pin npm
+        run: |
+          npm install --global npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+
+      - name: Reconstruct P21.10 from canonical P21.9
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .p21base .p21candidate
+          mkdir .p21base .p21candidate
+          unzip -q "$BASE_ZIP" -d .p21base
+          cp -a .p21base/. .p21candidate/
+          ROOT=.p21candidate/kairos_p76
+          test -f "$ROOT/src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineResponseDecode.ts"
+          test -f "$ROOT/src/services/market-data/providers/binance/binanceSpot24hBaselineDelivery.ts"
+          test -f "$ROOT/src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineRequestExecution.ts"
+          test -f "$ROOT/src/services/market-data/index.ts"
+
+          cat > "$ROOT/src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineResponseDelivery.ts" <<'TS'
+          import type {
+            LiveMarketSummaryCompleteForScopeDelivery,
+            MarketDataInstrument,
+          } from '../../marketDataTypes';
+          import {
+            mapBinanceSpot24hBaselineDelivery,
+            type BinanceSpot24hBaselineDeliveryResult,
+          } from './binanceSpot24hBaselineDelivery';
+          import {
+            decodeBinanceSpot24hPublicRestBaselineResponse,
+            type BinanceSpot24hPublicRestBaselineResponseDecodeResult,
+          } from './binanceSpot24hPublicRestBaselineResponseDecode';
+
+          type DecodeFailureReason = Extract<
+            BinanceSpot24hPublicRestBaselineResponseDecodeResult,
+            { readonly ok: false }
+          >['reason'];
+
+          type DeliveryFailureReason = Extract<
+            BinanceSpot24hBaselineDeliveryResult,
+            { readonly ok: false }
+          >['reason'];
+
+          export type BinanceSpot24hPublicRestBaselineResponseDeliveryResult =
+            | {
+                readonly ok: true;
+                readonly delivery: LiveMarketSummaryCompleteForScopeDelivery;
+              }
+            | {
+                readonly ok: false;
+                readonly reason: DecodeFailureReason | DeliveryFailureReason;
+              };
+
+          /**
+           * P21.10 composes only one already-received REST response data value
+           * through P21.9 JSON-text decoding and the existing P21.6 decoded
+           * payload-to-delivery mapper.
+           *
+           * Scope and observedAt remain caller-owned. Request description,
+           * execution, concrete transport/status/body acquisition, P21.4 port
+           * orchestration, retry/state policy, persistence and UI stay outside.
+           */
+          export function mapBinanceSpot24hPublicRestBaselineResponseDelivery(
+            scope: readonly MarketDataInstrument[],
+            data: unknown,
+            observedAt: string,
+          ): BinanceSpot24hPublicRestBaselineResponseDeliveryResult {
+            const decoded = decodeBinanceSpot24hPublicRestBaselineResponse(data);
+            if (!decoded.ok) return decoded;
+            return mapBinanceSpot24hBaselineDelivery(scope, decoded.payload, observedAt);
+          }
+          TS
+
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('.p21candidate/kairos_p76/src/services/market-data/index.ts')
+          s=p.read_text()
+          anchor="export * from './providers/binance/binanceSpot24hPublicRestBaselineResponseDecode';\n"
+          addition="export * from './providers/binance/binanceSpot24hPublicRestBaselineResponseDelivery';\n"
+          if anchor not in s: raise SystemExit('P21.9 response-decode export anchor not found')
+          p.write_text(s.replace(anchor, anchor+addition, 1))
+          PY
+
+          cat > "$ROOT/tests/binance-spot-24h-public-rest-baseline-response-delivery.test.ts" <<'TS'
+          import { describe, expect, it } from 'vitest';
+          import { mapBinanceSpot24hPublicRestBaselineResponseDelivery } from '../src/services/market-data';
+
+          const observedAt = '2026-09-07T06:55:00.000Z';
+          const btc = {
+            symbol: 'BTCUSDT',
+            openPrice: '62000.00000000',
+            highPrice: '65000.00000000',
+            lowPrice: '61000.00000000',
+            lastPrice: '64000.50000000',
+            volume: '1234.50000000',
+            quoteVolume: '78000000.25000000',
+            closeTime: 1770000000000,
+          };
+          const eth = {
+            symbol: 'ETHUSDT',
+            openPrice: '2400.00000000',
+            highPrice: '2600.00000000',
+            lowPrice: '2300.00000000',
+            lastPrice: '2500.10000000',
+            volume: '5000.00000000',
+            quoteVolume: '12500000.00000000',
+            closeTime: 1770000000000,
+          };
+
+          describe('P21.10 Binance Spot 24h public REST baseline response delivery composition foundation', () => {
+            it('composes one received JSON-text response into the existing complete-for-scope delivery owner', () => {
+              const scope = [{ venue: 'binance-spot', symbol: 'BTCUSDT' }] as const;
+              const result = mapBinanceSpot24hPublicRestBaselineResponseDelivery(
+                scope,
+                JSON.stringify(btc),
+                observedAt,
+              );
+              expect(result.ok).toBe(true);
+              if (result.ok) {
+                expect(result.delivery.completeness).toBe('complete-for-scope');
+                expect(result.delivery.scope).toEqual(scope);
+                expect(result.delivery.facts).toHaveLength(1);
+                expect(result.delivery.facts[0]?.instrument.symbol).toBe('BTCUSDT');
+                expect(result.delivery.facts[0]?.observedAt).toBe(observedAt);
+              }
+            });
+
+            it('preserves P21.6 scope completeness without treating response array order as ranking truth', () => {
+              const scope = [
+                { venue: 'binance-spot', symbol: 'BTCUSDT' },
+                { venue: 'binance-spot', symbol: 'ETHUSDT' },
+              ] as const;
+              const result = mapBinanceSpot24hPublicRestBaselineResponseDelivery(
+                scope,
+                JSON.stringify([eth, btc]),
+                observedAt,
+              );
+              expect(result.ok).toBe(true);
+              if (result.ok) {
+                expect(new Set(result.delivery.facts.map((fact) => fact.instrument.symbol)))
+                  .toEqual(new Set(['BTCUSDT', 'ETHUSDT']));
+              }
+            });
+
+            it('passes through P21.9 decode failures without inventing transport or status semantics', () => {
+              const scope = [{ venue: 'binance-spot', symbol: 'BTCUSDT' }] as const;
+              expect(mapBinanceSpot24hPublicRestBaselineResponseDelivery(scope, '{"symbol":', observedAt))
+                .toEqual({ ok: false, reason: 'invalid-json' });
+              expect(mapBinanceSpot24hPublicRestBaselineResponseDelivery(scope, { body: 'x' }, observedAt))
+                .toEqual({ ok: false, reason: 'unsupported-response-data' });
+            });
+
+            it('passes through existing P21.6 provider/delivery validation failures', () => {
+              const scope = [{ venue: 'binance-spot', symbol: 'BTCUSDT' }] as const;
+              expect(mapBinanceSpot24hPublicRestBaselineResponseDelivery(
+                scope,
+                JSON.stringify({ ...btc, lastPrice: '0' }),
+                observedAt,
+              )).toEqual({ ok: false, reason: 'fact-mapping-failed' });
+
+              const two = [
+                { venue: 'binance-spot', symbol: 'BTCUSDT' },
+                { venue: 'binance-spot', symbol: 'ETHUSDT' },
+              ] as const;
+              expect(mapBinanceSpot24hPublicRestBaselineResponseDelivery(
+                two,
+                JSON.stringify([btc]),
+                observedAt,
+              )).toEqual({ ok: false, reason: 'delivery-invalid' });
+            });
+          });
+          TS
+
+          cat > "$ROOT/KAIROS_P21_10_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_RESPONSE_DELIVERY_COMPOSITION_FOUNDATION_REPORT_2026-09-07.md" <<'MD'
+          # KAIROS P21.10 — Binance Spot 24h Public REST Baseline Response Delivery Composition Foundation
+
+          ## Authority
+          Base: canonical P21.9 Binance Spot 24h Public REST Baseline Response Decode Foundation, `Kairos Controlled Roadmap Gate` #294 / run `34090844909`.
+
+          ## Source-proven responsibility
+          P21.9 owns deterministic JSON-text decoding only. P21.6 already owns semantic composition from one decoded Binance Spot 24h ticker object or array plus explicit caller scope and caller-owned `observedAt` into a validated P21.3 `complete-for-scope` delivery. There is therefore no dependency-safe need for a new REST event classifier between P21.9 and P21.6: unlike the multi-event WebSocket stream path, the dedicated `/api/v3/ticker/24hr` response is already validated by the P21.6 decoded-payload owner.
+
+          Released P16.7 provides the closest composition precedent: after framing decode and provider semantic owners exist separately, the next smallest seam composes those existing owners for one already-received message without taking transport/lifecycle ownership. P21.10 applies that same separation to one already-received REST response data value: P21.9 decode -> P21.6 delivery mapping.
+
+          ## Explicit non-scope
+          - No request description or request execution; P21.7 and P21.8 remain unchanged owners.
+          - No concrete fetch/XHR/WebSocket/browser transport, `Response`, HTTP status, header or body acquisition semantics.
+          - No new ticker-field validation or complete-for-scope algorithm; P21.5/P21.6 are reused unchanged.
+          - No scope/universe selection or ranking; caller scope remains explicit and response order is not ranking truth.
+          - No batching/chunking, request-weight accounting, throttling, rate-limit/backoff/retry, credentials, polling or reconnect policy.
+          - No concrete P21.4 acquisition-port adapter orchestration and no AbortSignal ownership.
+          - No accumulator/state/order/freshness/reset ownership.
+          - No Bubble Map sizing/color/grouping/filtering/geometry/interactions or Home wiring.
+          - No persistence, journal/Your-Trades semantics, direct IndexedDB UI access, or dashboard transitions.
+          MD
+
+          cat > "$ROOT/scripts/verify-p21-10-binance-spot-24h-public-rest-baseline-response-delivery-composition-foundation.mjs" <<'JS'
+          import { readFileSync } from 'node:fs';
+          const source = readFileSync(new URL('../src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineResponseDelivery.ts', import.meta.url), 'utf8');
+          const index = readFileSync(new URL('../src/services/market-data/index.ts', import.meta.url), 'utf8');
+          const report = readFileSync(new URL('../KAIROS_P21_10_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_RESPONSE_DELIVERY_COMPOSITION_FOUNDATION_REPORT_2026-09-07.md', import.meta.url), 'utf8');
+          for (const token of [
+            'BinanceSpot24hPublicRestBaselineResponseDeliveryResult',
+            'mapBinanceSpot24hPublicRestBaselineResponseDelivery',
+            'decodeBinanceSpot24hPublicRestBaselineResponse(data)',
+            'mapBinanceSpot24hBaselineDelivery(scope, decoded.payload, observedAt)',
+            'MarketDataInstrument',
+            'LiveMarketSummaryCompleteForScopeDelivery',
+          ]) if (!source.includes(token)) throw new Error(`P21.10 response-delivery evidence missing: ${token}`);
+          if (!index.includes("export * from './providers/binance/binanceSpot24hPublicRestBaselineResponseDelivery';")) throw new Error('P21.10 barrel export missing');
+          for (const forbidden of [
+            'fetch(', 'XMLHttpRequest', 'WebSocket(', 'new Response(',
+            'executeBinanceSpot24hPublicRestBaselineRequest(',
+            'describeBinanceSpot24hPublicRestBaselineRequest(',
+            'acquireBaseline(', 'AbortSignal', 'indexedDB', 'setTimeout(', 'requestWeight',
+          ]) if (source.includes(forbidden)) throw new Error(`P21.10 broadened into forbidden scope: ${forbidden}`);
+          for (const token of [
+            'No request description or request execution',
+            'No concrete fetch/XHR/WebSocket/browser transport',
+            'No new ticker-field validation',
+            'No scope/universe selection or ranking',
+            'No concrete P21.4 acquisition-port adapter orchestration',
+            'No persistence',
+          ]) if (!report.includes(token)) throw new Error(`P21.10 report evidence missing: ${token}`);
+          console.log('P21.10 Binance Spot 24h public REST baseline response delivery composition verification passed.');
+          JS
+
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const p='.p21candidate/kairos_p76/package.json';
+          const j=JSON.parse(fs.readFileSync(p,'utf8'));
+          j.scripts||={};
+          j.scripts['verify:p21:10-binance-spot-24h-public-rest-baseline-response-delivery-composition-foundation']='node scripts/verify-p21-10-binance-spot-24h-public-rest-baseline-response-delivery-composition-foundation.mjs';
+          fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');
+          NODE
+
+          python - <<'PY'
+          from pathlib import Path
+          a={str(p.relative_to(Path('.p21base/kairos_p76'))):p.read_bytes() for p in Path('.p21base/kairos_p76').rglob('*') if p.is_file()}
+          b={str(p.relative_to(Path('.p21candidate/kairos_p76'))):p.read_bytes() for p in Path('.p21candidate/kairos_p76').rglob('*') if p.is_file()}
+          changed={p for p in a.keys()|b.keys() if a.get(p)!=b.get(p)}
+          expected={
+            'KAIROS_P21_10_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_RESPONSE_DELIVERY_COMPOSITION_FOUNDATION_REPORT_2026-09-07.md',
+            'package.json',
+            'scripts/verify-p21-10-binance-spot-24h-public-rest-baseline-response-delivery-composition-foundation.mjs',
+            'src/services/market-data/index.ts',
+            'src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineResponseDelivery.ts',
+            'tests/binance-spot-24h-public-rest-baseline-response-delivery.test.ts',
+          }
+          print('\n'.join(sorted(changed)))
+          assert changed==expected,(sorted(changed-expected),sorted(expected-changed))
+          PY
+
+      - name: Verify reconstructed P21.10 before packaging
+        working-directory: .p21candidate/kairos_p76
+        run: |
+          set -euo pipefail
+          npm ci
+          test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
+          npm run verify:p21:10-binance-spot-24h-public-rest-baseline-response-delivery-composition-foundation
+          npm run typecheck
+          npm run build
+          npm test
+          node - <<'NODE'
+          const { spawnSync } = require('node:child_process');
+          const pkg = require('./package.json');
+          const scripts = Object.keys(pkg.scripts || {}).filter((name) => /^verify:p\d/.test(name));
+          for (const name of scripts) {
+            const r = spawnSync('npm', ['run', name], { stdio: 'inherit' });
+            if (r.status !== 0) process.exit(r.status || 1);
+          }
+          NODE
+
+      - name: Restore clean package boundary and commit candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=.p21candidate/kairos_p76
+          rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite"
+          find "$ROOT" -type f \( -name '*.tsbuildinfo' -o -name '*.log' \) -delete
+          rm -rf .p21package
+          mkdir .p21package
+          cp -a "$ROOT" .p21package/kairos_p76
+          rm -f "$OUT_ZIP"
+          (cd .p21package && zip -qr "../$OUT_ZIP" kairos_p76)
+          unzip -t "$OUT_ZIP"
+          test "$(unzip -Z1 "$OUT_ZIP" | head -n1 | cut -d/ -f1)" = "kairos_p76"
+          test -f "$OUT_ZIP"
+          git add "$OUT_ZIP"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Package P21.10 REST baseline response delivery composition candidate"
+          git push
