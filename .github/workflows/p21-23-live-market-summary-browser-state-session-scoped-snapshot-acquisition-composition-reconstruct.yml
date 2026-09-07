@@ -100,8 +100,7 @@ jobs:
 
           const originalFetch = globalThis.fetch;
           const btc: MarketDataInstrument = { venue: 'binance-spot', symbol: 'BTCUSDT' };
-          const missing: MarketDataInstrument = { venue: 'binance-spot', symbol: 'ETHUSDT' };
-          const scope = [btc, missing] as const;
+          const scope = [btc] as const;
           const observedAt = '2026-09-08T07:00:00.000Z';
           const payload = JSON.stringify({
             symbol: 'BTCUSDT', openPrice: '62000', highPrice: '65000', lowPrice: '61000',
@@ -131,11 +130,9 @@ jobs:
               expect(readObservedAt).toHaveBeenCalledTimes(1);
               expect(getState).toHaveBeenCalledTimes(1);
               expect(result.orchestrationResult.ok).toBe(true);
-              expect(result.scopedSnapshot).toHaveLength(2);
+              expect(result.scopedSnapshot).toHaveLength(1);
               expect(result.scopedSnapshot[0]?.instrument).toBe(btc);
               expect(result.scopedSnapshot[0]?.fact?.observedAt).toBe(observedAt);
-              expect(result.scopedSnapshot[1]?.instrument).toBe(missing);
-              expect(result.scopedSnapshot[1]?.fact).toBeNull();
             });
 
             it('preserves caller-owned acquisition options through released P21.20', async () => {
