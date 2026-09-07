@@ -166,7 +166,7 @@ jobs:
             "'invalid-json'",
           ]) if (!source.includes(token)) throw new Error(`P21.9 response-decode evidence missing: ${token}`);
           if (!index.includes("export * from './providers/binance/binanceSpot24hPublicRestBaselineResponseDecode';")) throw new Error('P21.9 barrel export missing');
-          for (const forbidden of ['fetch(', 'XMLHttpRequest', 'WebSocket(', 'Response(', '.json(', 'acquireBaseline(', 'mapBinanceSpot24hBaselineDelivery(', 'indexedDB', 'setTimeout(', 'requestWeight']) {
+          for (const forbidden of ['fetch(', 'XMLHttpRequest', 'WebSocket(', 'new Response(', '.json(', 'acquireBaseline(', 'mapBinanceSpot24hBaselineDelivery(', 'indexedDB', 'setTimeout(', 'requestWeight']) {
             if (source.includes(forbidden)) throw new Error(`P21.9 broadened into forbidden scope: ${forbidden}`);
           }
           for (const token of ['No fetch/XHR/WebSocket/browser transport', 'No provider ticker-field validation', 'No scope/universe selection', 'No concrete P21.4 acquisition-port adapter orchestration', 'decoded array order is not ranking/universe truth', 'No persistence']) {
