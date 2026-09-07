@@ -1,0 +1,269 @@
+name: Kairos P21.11 Binance Spot 24h Public REST Baseline Round Trip Composition Reconstruction Bridge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/p21-11-binance-spot-24h-public-rest-baseline-round-trip-composition-reconstruct.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reconstruct:
+    runs-on: ubuntu-24.04
+    env:
+      BASE_ZIP: KAIROS_P21_10_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_RESPONSE_DELIVERY_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-07.zip
+      OUT_ZIP: KAIROS_P21_11_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_ROUND_TRIP_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-07.zip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - name: Pin npm
+        run: |
+          npm install --global npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+
+      - name: Reconstruct P21.11 from canonical P21.10
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .p21base .p21candidate
+          mkdir .p21base .p21candidate
+          unzip -q "$BASE_ZIP" -d .p21base
+          cp -a .p21base/. .p21candidate/
+          ROOT=.p21candidate/kairos_p76
+          test -f "$ROOT/src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineRequest.ts"
+          test -f "$ROOT/src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineRequestExecution.ts"
+          test -f "$ROOT/src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineResponseDelivery.ts"
+          test -f "$ROOT/src/services/market-data/LiveMarketSummaryBaselineAcquisitionPort.ts"
+          test -f "$ROOT/src/services/market-data/index.ts"
+
+          cat > "$ROOT/src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineRoundTrip.ts" <<'TS'
+          import type { MarketDataInstrument } from '../../marketDataTypes';
+          import {
+            describeBinanceSpot24hPublicRestBaselineRequest,
+            type BinanceSpot24hPublicRestBaselineRequestResult,
+          } from './binanceSpot24hPublicRestBaselineRequest';
+          import {
+            executeBinanceSpot24hPublicRestBaselineRequest,
+            type BinanceSpot24hPublicRestBaselineRequestConnector,
+          } from './binanceSpot24hPublicRestBaselineRequestExecution';
+          import {
+            mapBinanceSpot24hPublicRestBaselineResponseDelivery,
+            type BinanceSpot24hPublicRestBaselineResponseDeliveryResult,
+          } from './binanceSpot24hPublicRestBaselineResponseDelivery';
+
+          type RequestFailureReason = Extract<
+            BinanceSpot24hPublicRestBaselineRequestResult,
+            { readonly ok: false }
+          >['reason'];
+
+          type ResponseFailureReason = Extract<
+            BinanceSpot24hPublicRestBaselineResponseDeliveryResult,
+            { readonly ok: false }
+          >['reason'];
+
+          export type BinanceSpot24hPublicRestBaselineRoundTripResult =
+            | Extract<BinanceSpot24hPublicRestBaselineResponseDeliveryResult, { readonly ok: true }>
+            | { readonly ok: false; readonly reason: RequestFailureReason | ResponseFailureReason };
+
+          /**
+           * P21.11 composes the already-canonical REST baseline seams for one round trip:
+           * P21.7 request description -> P21.8 injected execution -> P21.10 response delivery.
+           *
+           * The connector remains externally supplied. Connector rejection is deliberately
+           * allowed to propagate unchanged: retry/error translation, concrete transport and
+           * P21.4 AbortSignal acquisition-port orchestration remain outside this owner.
+           */
+          export async function composeBinanceSpot24hPublicRestBaselineRoundTrip(
+            scope: readonly MarketDataInstrument[],
+            observedAt: string,
+            connect: BinanceSpot24hPublicRestBaselineRequestConnector<unknown>,
+          ): Promise<BinanceSpot24hPublicRestBaselineRoundTripResult> {
+            const described = describeBinanceSpot24hPublicRestBaselineRequest(scope);
+            if (!described.ok) return described;
+            const data = await executeBinanceSpot24hPublicRestBaselineRequest(described.request, connect);
+            return mapBinanceSpot24hPublicRestBaselineResponseDelivery(scope, data, observedAt);
+          }
+          TS
+
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('.p21candidate/kairos_p76/src/services/market-data/index.ts')
+          s=p.read_text()
+          anchor="export * from './providers/binance/binanceSpot24hPublicRestBaselineResponseDelivery';\n"
+          addition="export * from './providers/binance/binanceSpot24hPublicRestBaselineRoundTrip';\n"
+          if anchor not in s: raise SystemExit('P21.10 response-delivery export anchor not found')
+          p.write_text(s.replace(anchor, anchor+addition, 1))
+          PY
+
+          cat > "$ROOT/tests/binance-spot-24h-public-rest-baseline-round-trip.test.ts" <<'TS'
+          import { describe, expect, it, vi } from 'vitest';
+          import { composeBinanceSpot24hPublicRestBaselineRoundTrip } from '../src/services/market-data';
+
+          const observedAt = '2026-09-07T07:50:00.000Z';
+          const btc = {
+            symbol: 'BTCUSDT',
+            openPrice: '62000.00000000',
+            highPrice: '65000.00000000',
+            lowPrice: '61000.00000000',
+            lastPrice: '64000.50000000',
+            volume: '1234.50000000',
+            quoteVolume: '78000000.25000000',
+            closeTime: 1770000000000,
+          };
+
+          describe('P21.11 Binance Spot 24h public REST baseline round-trip composition foundation', () => {
+            it('composes descriptor, one injected execution and existing response delivery for explicit caller scope', async () => {
+              const scope = [{ venue: 'binance-spot', symbol: 'BTCUSDT' }] as const;
+              const connect = vi.fn(async (request: { readonly url: string }) => {
+                expect(request.url).toBe('https://data-api.binance.vision/api/v3/ticker/24hr?symbol=BTCUSDT&type=FULL');
+                return JSON.stringify(btc);
+              });
+              const result = await composeBinanceSpot24hPublicRestBaselineRoundTrip(scope, observedAt, connect);
+              expect(connect).toHaveBeenCalledTimes(1);
+              expect(result.ok).toBe(true);
+              if (result.ok) {
+                expect(result.delivery.completeness).toBe('complete-for-scope');
+                expect(result.delivery.scope).toEqual(scope);
+                expect(result.delivery.facts[0]?.instrument.symbol).toBe('BTCUSDT');
+                expect(result.delivery.facts[0]?.observedAt).toBe(observedAt);
+              }
+            });
+
+            it('returns request-description failure before invoking the connector', async () => {
+              const connect = vi.fn(async () => JSON.stringify(btc));
+              await expect(composeBinanceSpot24hPublicRestBaselineRoundTrip([], observedAt, connect))
+                .resolves.toEqual({ ok: false, reason: 'scope-required' });
+              expect(connect).not.toHaveBeenCalled();
+            });
+
+            it('passes through existing response decode/delivery failures', async () => {
+              const scope = [{ venue: 'binance-spot', symbol: 'BTCUSDT' }] as const;
+              await expect(composeBinanceSpot24hPublicRestBaselineRoundTrip(scope, observedAt, async () => '{"symbol":'))
+                .resolves.toEqual({ ok: false, reason: 'invalid-json' });
+              await expect(composeBinanceSpot24hPublicRestBaselineRoundTrip(scope, observedAt, async () => JSON.stringify({ ...btc, lastPrice: '0' })))
+                .resolves.toEqual({ ok: false, reason: 'fact-mapping-failed' });
+            });
+
+            it('does not invent retry or transport-error policy when the supplied connector rejects', async () => {
+              const scope = [{ venue: 'binance-spot', symbol: 'BTCUSDT' }] as const;
+              const failure = new Error('connector-owned-failure');
+              const connect = vi.fn(async () => { throw failure; });
+              await expect(composeBinanceSpot24hPublicRestBaselineRoundTrip(scope, observedAt, connect)).rejects.toBe(failure);
+              expect(connect).toHaveBeenCalledTimes(1);
+            });
+          });
+          TS
+
+          cat > "$ROOT/KAIROS_P21_11_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_ROUND_TRIP_COMPOSITION_FOUNDATION_REPORT_2026-09-07.md" <<'MD'
+          # KAIROS P21.11 — Binance Spot 24h Public REST Baseline Round Trip Composition Foundation
+
+          ## Authority
+          Base: canonical P21.10 Response Delivery Composition Foundation, canonical gate #295 / run `34095614597`.
+
+          ## Source-proven responsibility
+          P21.7 owns explicit-scope request description, P21.8 owns exactly one injected generic execution, and P21.10 owns already-received response-data delivery composition. The smallest remaining dependency-safe seam before a concrete P21.4 acquisition-port adapter is to compose those released owners for one round trip without inventing browser transport or cancellation semantics.
+
+          P21.4 already exposes optional caller `AbortSignal`; P21.8's canonical connector deliberately accepts only the request descriptor. P21.11 therefore must NOT pretend to implement P21.4 or silently ignore/own cancellation. It stops one layer below that port and leaves signal-aware adapter/transport ownership for a later independently proven slice.
+
+          ## Explicit non-scope
+          - No concrete fetch/XHR/WebSocket/browser transport, Response/status/header/body acquisition.
+          - No retry/backoff/throttle/rate-limit/request-weight/credentials/polling/reconnect policy.
+          - No P21.4 acquisition-port implementation and no AbortSignal handling.
+          - No new request, decode, ticker mapping or completeness algorithms; P21.7/P21.8/P21.10 are reused.
+          - No scope/universe selection/ranking; caller scope remains explicit.
+          - No accumulator/state/freshness/reset ownership.
+          - No Bubble/Your-Trades/Home/persistence/transitions.
+          MD
+
+          cat > "$ROOT/scripts/verify-p21-11-binance-spot-24h-public-rest-baseline-round-trip-composition-foundation.mjs" <<'JS'
+          import { readFileSync } from 'node:fs';
+          const source = readFileSync(new URL('../src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineRoundTrip.ts', import.meta.url), 'utf8');
+          const index = readFileSync(new URL('../src/services/market-data/index.ts', import.meta.url), 'utf8');
+          const report = readFileSync(new URL('../KAIROS_P21_11_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_ROUND_TRIP_COMPOSITION_FOUNDATION_REPORT_2026-09-07.md', import.meta.url), 'utf8');
+          for (const token of [
+            'composeBinanceSpot24hPublicRestBaselineRoundTrip',
+            'describeBinanceSpot24hPublicRestBaselineRequest(scope)',
+            'executeBinanceSpot24hPublicRestBaselineRequest(described.request, connect)',
+            'mapBinanceSpot24hPublicRestBaselineResponseDelivery(scope, data, observedAt)',
+            'BinanceSpot24hPublicRestBaselineRequestConnector<unknown>',
+          ]) if (!source.includes(token)) throw new Error(`P21.11 round-trip evidence missing: ${token}`);
+          if (!index.includes("export * from './providers/binance/binanceSpot24hPublicRestBaselineRoundTrip';")) throw new Error('P21.11 barrel export missing');
+          for (const forbidden of ['fetch(', 'XMLHttpRequest', 'WebSocket(', 'new Response(', 'AbortSignal', 'acquireBaseline(', 'setTimeout(', 'requestWeight', 'indexedDB']) {
+            if (source.includes(forbidden)) throw new Error(`P21.11 broadened into forbidden scope: ${forbidden}`);
+          }
+          for (const token of ['No concrete fetch/XHR/WebSocket/browser transport', 'No P21.4 acquisition-port implementation', 'no AbortSignal handling', 'No new request, decode, ticker mapping or completeness algorithms', 'No scope/universe selection/ranking', 'No Bubble/Your-Trades/Home/persistence/transitions']) {
+            if (!report.includes(token)) throw new Error(`P21.11 report evidence missing: ${token}`);
+          }
+          console.log('P21.11 Binance Spot 24h public REST baseline round-trip composition verification passed.');
+          JS
+
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const p='.p21candidate/kairos_p76/package.json';
+          const j=JSON.parse(fs.readFileSync(p,'utf8'));
+          j.scripts||={};
+          j.scripts['verify:p21:11-binance-spot-24h-public-rest-baseline-round-trip-composition-foundation']='node scripts/verify-p21-11-binance-spot-24h-public-rest-baseline-round-trip-composition-foundation.mjs';
+          fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');
+          NODE
+
+          python - <<'PY'
+          from pathlib import Path
+          a={str(p.relative_to(Path('.p21base/kairos_p76'))):p.read_bytes() for p in Path('.p21base/kairos_p76').rglob('*') if p.is_file()}
+          b={str(p.relative_to(Path('.p21candidate/kairos_p76'))):p.read_bytes() for p in Path('.p21candidate/kairos_p76').rglob('*') if p.is_file()}
+          changed={p for p in a.keys()|b.keys() if a.get(p)!=b.get(p)}
+          expected={
+            'KAIROS_P21_11_BINANCE_SPOT_24H_PUBLIC_REST_BASELINE_ROUND_TRIP_COMPOSITION_FOUNDATION_REPORT_2026-09-07.md',
+            'package.json',
+            'scripts/verify-p21-11-binance-spot-24h-public-rest-baseline-round-trip-composition-foundation.mjs',
+            'src/services/market-data/index.ts',
+            'src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineRoundTrip.ts',
+            'tests/binance-spot-24h-public-rest-baseline-round-trip.test.ts',
+          }
+          print('\n'.join(sorted(changed)))
+          assert changed==expected,(sorted(changed-expected),sorted(expected-changed))
+          PY
+
+      - name: Verify reconstructed P21.11 before packaging
+        working-directory: .p21candidate/kairos_p76
+        run: |
+          set -euo pipefail
+          npm ci
+          test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
+          npm run verify:p21:11-binance-spot-24h-public-rest-baseline-round-trip-composition-foundation
+          npm run typecheck
+          npm run build
+          npm test
+          node - <<'NODE'
+          const { spawnSync } = require('node:child_process');
+          const pkg = require('./package.json');
+          const scripts = Object.keys(pkg.scripts || {}).filter((name) => /^verify:p\d/.test(name));
+          for (const name of scripts) {
+            const r = spawnSync('npm', ['run', name], { stdio: 'inherit' });
+            if (r.status !== 0) process.exit(r.status || 1);
+          }
+          NODE
+
+      - name: Restore clean package boundary and commit candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=.p21candidate/kairos_p76
+          rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite"
+          find "$ROOT" -type f \( -name '*.tsbuildinfo' -o -name '*.log' \) -delete
+          rm -rf .p21package
+          mkdir .p21package
+          cp -a "$ROOT" .p21package/kairos_p76
+          rm -f "$OUT_ZIP"
+          (cd .p21package && zip -qr "../$OUT_ZIP" kairos_p76)
+          unzip -t "$OUT_ZIP"
+          test "$(unzip -Z1 "$OUT_ZIP" | head -n1 | cut -d/ -f1)" = "kairos_p76"
+          git add "$OUT_ZIP"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Package P21.11 REST baseline round-trip composition candidate"
+          git push
