@@ -1,0 +1,265 @@
+name: Kairos P21.19 Live Market Summary State Session Reconstruction Bridge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/p21-19-live-market-summary-state-session-reconstruct.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reconstruct:
+    runs-on: ubuntu-24.04
+    env:
+      BASE_ZIP: KAIROS_P21_18_BINANCE_SPOT_24H_BROWSER_PUBLIC_REST_BASELINE_STATE_BINDING_FOUNDATION_CANDIDATE_2026-09-08.zip
+      OUT_ZIP: KAIROS_P21_19_LIVE_MARKET_SUMMARY_STATE_SESSION_FOUNDATION_CANDIDATE_2026-09-08.zip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - name: Pin npm
+        run: |
+          npm install --global npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+
+      - name: Reconstruct P21.19 from canonical P21.18
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .p21base .p21candidate
+          mkdir .p21base .p21candidate
+          unzip -q "$BASE_ZIP" -d .p21base
+          cp -a .p21base/. .p21candidate/
+          ROOT=.p21candidate/kairos_p76
+          SESSION="$ROOT/src/services/market-data/liveMarketSummaryStateSession.ts"
+          INDEX="$ROOT/src/services/market-data/index.ts"
+          test -f "$ROOT/src/services/market-data/liveMarketSummaryDeliveryState.ts"
+          test -f "$INDEX"
+
+          cat > "$SESSION" <<'TS'
+          import {
+            createLiveMarketSummaryDeliveryState,
+            type LiveMarketSummaryDeliveryState,
+          } from './liveMarketSummaryDeliveryState';
+
+          export type LiveMarketSummaryStateTransition = (
+            state: LiveMarketSummaryDeliveryState,
+          ) => Promise<LiveMarketSummaryDeliveryState>;
+
+          export interface LiveMarketSummaryStateSession {
+            getState(): LiveMarketSummaryDeliveryState;
+            transition(
+              transitionState: LiveMarketSummaryStateTransition,
+            ): Promise<LiveMarketSummaryDeliveryState>;
+          }
+
+          /**
+           * Provider-neutral in-memory owner for exactly one current released
+           * LiveMarketSummaryDeliveryState. All transitions are explicit and
+           * caller-driven. This owner adds no acquisition, freshness, polling,
+           * persistence, scheduling, ranking, UI-reactivity, or provider policy.
+           */
+          export function createLiveMarketSummaryStateSession(
+            initialState: LiveMarketSummaryDeliveryState = createLiveMarketSummaryDeliveryState(),
+          ): LiveMarketSummaryStateSession {
+            let currentState = initialState;
+
+            return {
+              getState(): LiveMarketSummaryDeliveryState {
+                return currentState;
+              },
+              async transition(
+                transitionState: LiveMarketSummaryStateTransition,
+              ): Promise<LiveMarketSummaryDeliveryState> {
+                const nextState = await transitionState(currentState);
+                currentState = nextState;
+                return currentState;
+              },
+            };
+          }
+          TS
+
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('.p21candidate/kairos_p76/src/services/market-data/index.ts')
+          s=p.read_text()
+          line="export * from './liveMarketSummaryStateSession';\n"
+          if line not in s:
+              anchor="export * from './liveMarketSummaryDeliveryState';\n"
+              if anchor not in s: raise SystemExit('P21.16 delivery-state export boundary not found')
+              s=s.replace(anchor, anchor+line, 1)
+          p.write_text(s)
+          PY
+
+          cat > "$ROOT/tests/live-market-summary-state-session-foundation.test.ts" <<'TS'
+          import { describe, expect, it, vi } from 'vitest';
+          import {
+            createLiveMarketSummaryDeliveryState,
+            createLiveMarketSummaryStateSession,
+          } from '../src/services/market-data';
+
+          describe('P21.19 Live Market Summary State Session Foundation', () => {
+            it('owns the exact caller-supplied initial state without cloning or reinterpretation', () => {
+              const initial = createLiveMarketSummaryDeliveryState();
+              const session = createLiveMarketSummaryStateSession(initial);
+              expect(session.getState()).toBe(initial);
+            });
+
+            it('uses the released empty state when no initial state is supplied', () => {
+              const session = createLiveMarketSummaryStateSession();
+              expect(session.getState()).toEqual(createLiveMarketSummaryDeliveryState());
+            });
+
+            it('passes the exact current state to an explicit caller transition and commits only its returned state', async () => {
+              const initial = createLiveMarketSummaryDeliveryState();
+              const next = createLiveMarketSummaryDeliveryState();
+              const transition = vi.fn(async (state: typeof initial) => {
+                expect(state).toBe(initial);
+                return next;
+              });
+              const session = createLiveMarketSummaryStateSession(initial);
+
+              await expect(session.transition(transition)).resolves.toBe(next);
+              expect(transition).toHaveBeenCalledTimes(1);
+              expect(session.getState()).toBe(next);
+            });
+
+            it('preserves exact prior-state identity and content when an explicit transition fails', async () => {
+              const initial = createLiveMarketSummaryDeliveryState();
+              const session = createLiveMarketSummaryStateSession(initial);
+              const failure = new Error('caller-transition-failure');
+
+              await expect(session.transition(async () => { throw failure; })).rejects.toBe(failure);
+              expect(session.getState()).toBe(initial);
+            });
+          });
+          TS
+
+          cat > "$ROOT/KAIROS_P21_19_LIVE_MARKET_SUMMARY_STATE_SESSION_FOUNDATION_REPORT_2026-09-08.md" <<'MD'
+          # KAIROS P21.19 — Live Market Summary State Session Foundation
+
+          ## Authority
+          Base: canonical P21.18 Binance Spot 24h Browser Public REST Baseline State Binding Foundation, canonical gate #303 / run `34146322758`.
+
+          ## Source-proven responsibility
+          P21.16 owns the provider-neutral `LiveMarketSummaryDeliveryState`, released empty-state creation, and delivery application, but no long-lived current-state owner. P21.17 and P21.18 are one-shot operations that accept caller-owned existing state and return resulting state, and both explicitly exclude state-store/lifecycle ownership. Exact current source search found no separate production owner retaining current live-market-summary state across explicit calls. The smallest dependency-safe next responsibility is therefore a provider-neutral in-memory state-session owner only.
+
+          ## Contract
+          - Initialize from caller-supplied released P21.16 state or the released P21.16 empty state.
+          - Expose the exact current state snapshot without cloning, normalization, or reinterpretation.
+          - Accept only an explicit caller-driven asynchronous transition over the exact current state.
+          - Commit only the state returned by that transition and return that exact state.
+          - If the caller transition rejects, preserve exact prior-state identity/content unchanged.
+          - Import no Binance/provider-specific module and duplicate no P21.16 validation/application semantics.
+
+          ## Explicit non-scope
+          - No universe/default symbols/scope selection, ranking, filtering, grouping, sorting, Bubble metrics/colors/geometry/interactions, or Home wiring.
+          - No provider/transport/fetch/Response/endpoint/query/status/header/error/retry/rate-limit/credentials/timeout ownership.
+          - No Date/clock/observation-time acquisition, timestamp arbitration, freshness TTL, stale eviction, reset, polling, reconnect, scheduling, timers, randomness, or background work.
+          - No AbortController/signal-combination/concurrency/coalescing policy beyond explicit caller invocation.
+          - No persistence/IndexedDB/repository/schema/backup/journal/Your Trades/Saved Analysis/chart/transitions.
+          - No new P21.2/P21.3/P21.16 validation/completeness/identity/delivery semantics and no UI reactivity/subscription framework choice.
+          MD
+
+          cat > "$ROOT/scripts/verify-p21-19-live-market-summary-state-session-foundation.mjs" <<'JS'
+          import { readFileSync } from 'node:fs';
+          const source = readFileSync(new URL('../src/services/market-data/liveMarketSummaryStateSession.ts', import.meta.url), 'utf8');
+          const index = readFileSync(new URL('../src/services/market-data/index.ts', import.meta.url), 'utf8');
+          const report = readFileSync(new URL('../KAIROS_P21_19_LIVE_MARKET_SUMMARY_STATE_SESSION_FOUNDATION_REPORT_2026-09-08.md', import.meta.url), 'utf8');
+          for (const token of [
+            'createLiveMarketSummaryDeliveryState',
+            'LiveMarketSummaryDeliveryState',
+            'LiveMarketSummaryStateTransition',
+            'createLiveMarketSummaryStateSession(',
+            'getState(): LiveMarketSummaryDeliveryState',
+            'const nextState = await transitionState(currentState)',
+            'currentState = nextState',
+          ]) if (!source.includes(token)) throw new Error(`P21.19 state-session evidence missing: ${token}`);
+          if (!index.includes("export * from './liveMarketSummaryStateSession';")) throw new Error('P21.19 state-session export missing');
+          for (const forbidden of [
+            'binance', 'globalThis.fetch(', 'fetch(', 'Response(', 'XMLHttpRequest', 'WebSocket(',
+            'Date.now(', 'new Date(', 'setTimeout(', 'setInterval(', 'AbortController', 'indexedDB',
+            '.sort(', 'createChart(', 'applyLiveMarketSummaryDeliveryState(',
+          ]) if (source.toLowerCase().includes(forbidden.toLowerCase())) throw new Error(`P21.19 broadened into forbidden scope: ${forbidden}`);
+          for (const token of [
+            'no long-lived current-state owner',
+            'provider-neutral in-memory state-session owner only',
+            'Commit only the state returned by that transition',
+            'preserve exact prior-state identity/content unchanged',
+            'No universe/default symbols/scope selection',
+            'No persistence/IndexedDB/repository/schema/backup',
+            'no UI reactivity/subscription framework choice',
+          ]) if (!report.includes(token)) throw new Error(`P21.19 report evidence missing: ${token}`);
+          console.log('P21.19 Live Market Summary State Session verification passed.');
+          JS
+
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const p='.p21candidate/kairos_p76/package.json';
+          const j=JSON.parse(fs.readFileSync(p,'utf8'));
+          j.scripts||={};
+          j.scripts['verify:p21:19-live-market-summary-state-session-foundation']='node scripts/verify-p21-19-live-market-summary-state-session-foundation.mjs';
+          fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');
+          NODE
+
+          python - <<'PY'
+          from pathlib import Path
+          a={str(p.relative_to(Path('.p21base/kairos_p76'))):p.read_bytes() for p in Path('.p21base/kairos_p76').rglob('*') if p.is_file()}
+          b={str(p.relative_to(Path('.p21candidate/kairos_p76'))):p.read_bytes() for p in Path('.p21candidate/kairos_p76').rglob('*') if p.is_file()}
+          changed={p for p in a.keys()|b.keys() if a.get(p)!=b.get(p)}
+          expected={
+            'KAIROS_P21_19_LIVE_MARKET_SUMMARY_STATE_SESSION_FOUNDATION_REPORT_2026-09-08.md',
+            'package.json',
+            'scripts/verify-p21-19-live-market-summary-state-session-foundation.mjs',
+            'src/services/market-data/index.ts',
+            'src/services/market-data/liveMarketSummaryStateSession.ts',
+            'tests/live-market-summary-state-session-foundation.test.ts',
+          }
+          print('P21.18 -> P21.19 changed files:', *sorted(changed), sep='\n- ')
+          if changed != expected:
+              raise SystemExit(f'exact P21.19 scope mismatch: {sorted(changed ^ expected)}')
+          PY
+
+      - name: Verify reconstructed P21.19 before packaging
+        working-directory: .p21candidate/kairos_p76
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci
+          test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
+          npm run verify:p21:19-live-market-summary-state-session-foundation
+          npm run typecheck
+          npm run build
+          npm test
+          node - <<'NODE'
+          const { spawnSync } = require('node:child_process');
+          const pkg = require('./package.json');
+          const scripts = Object.keys(pkg.scripts || {}).filter((name) => name.startsWith('verify:')).sort();
+          for (const name of scripts) {
+            console.log(`\n=== ${name} ===`);
+            const r = spawnSync('npm', ['run', name], { stdio: 'inherit' });
+            if (r.status !== 0) process.exit(r.status || 1);
+          }
+          NODE
+
+      - name: Restore clean package boundary and commit candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=.p21candidate/kairos_p76
+          rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite" "$ROOT/.cache" "$ROOT/.turbo"
+          find "$ROOT" -type f \( -name '*.tsbuildinfo' -o -name '*.log' \) -delete
+          rm -f "$OUT_ZIP"
+          (cd .p21candidate && zip -qr "../$OUT_ZIP" kairos_p76)
+          unzip -t "$OUT_ZIP" >/dev/null
+          test "$(zipinfo -1 "$OUT_ZIP" | head -n1)" = 'kairos_p76/'
+          test "$(zipinfo -1 "$OUT_ZIP" | grep -Ev '^kairos_p76/' | wc -l)" -eq 0
+          git add -f "$OUT_ZIP"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Add P21.19 live market summary state session candidate'
+          git push
