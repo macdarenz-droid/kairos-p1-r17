@@ -1,0 +1,328 @@
+name: Kairos P21.16 Live Market Summary Delivery State Reconstruction Bridge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/p21-16-live-market-summary-delivery-state-reconstruct.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reconstruct:
+    runs-on: ubuntu-24.04
+    env:
+      BASE_ZIP: KAIROS_P21_15_BINANCE_SPOT_24H_BROWSER_PUBLIC_REST_BASELINE_ACQUISITION_BINDING_FOUNDATION_CANDIDATE_2026-09-07.zip
+      OUT_ZIP: KAIROS_P21_16_LIVE_MARKET_SUMMARY_DELIVERY_STATE_FOUNDATION_CANDIDATE_2026-09-07.zip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - name: Pin npm
+        run: |
+          npm install --global npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+
+      - name: Reconstruct P21.16 from canonical P21.15
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .p21base .p21candidate
+          mkdir .p21base .p21candidate
+          unzip -q "$BASE_ZIP" -d .p21base
+          cp -a .p21base/. .p21candidate/
+          ROOT=.p21candidate/kairos_p76
+          STATE="$ROOT/src/services/market-data/liveMarketSummaryDeliveryState.ts"
+          INDEX="$ROOT/src/services/market-data/index.ts"
+          test -f "$ROOT/src/services/market-data/marketDataTypes.ts"
+          test -f "$ROOT/src/services/market-data/liveMarketSummaryDeliverySemantics.ts"
+          test -f "$ROOT/src/services/market-data/providers/binance/binanceSpot24hBrowserPublicRestBaselineAcquisitionBinding.ts"
+          test -f "$INDEX"
+
+          cat > "$STATE" <<'TS'
+          import type {
+            LiveMarketSummaryDelivery,
+            LiveMarketSummaryFact,
+            MarketDataInstrument,
+          } from './marketDataTypes';
+          import { validateLiveMarketSummaryDelivery } from './liveMarketSummaryDeliverySemantics';
+
+          /**
+           * Provider-neutral current summary facts keyed only by instrument identity.
+           * Map iteration order is storage detail, never ranking or presentation truth.
+           */
+          export interface LiveMarketSummaryDeliveryState {
+            readonly factsByInstrument: ReadonlyMap<string, LiveMarketSummaryFact>;
+          }
+
+          export type LiveMarketSummaryDeliveryStateApplyResult =
+            | { readonly ok: true; readonly state: LiveMarketSummaryDeliveryState }
+            | { readonly ok: false; readonly reason: 'delivery-invalid'; readonly state: LiveMarketSummaryDeliveryState };
+
+          function instrumentKey(instrument: MarketDataInstrument): string {
+            return `${instrument.venue.trim()}::${instrument.symbol.trim()}`;
+          }
+
+          export function createLiveMarketSummaryDeliveryState(): LiveMarketSummaryDeliveryState {
+            return { factsByInstrument: new Map<string, LiveMarketSummaryFact>() };
+          }
+
+          export function getLiveMarketSummaryDeliveryStateFact(
+            state: LiveMarketSummaryDeliveryState,
+            instrument: MarketDataInstrument,
+          ): LiveMarketSummaryFact | null {
+            return state.factsByInstrument.get(instrumentKey(instrument)) ?? null;
+          }
+
+          /**
+           * Apply one already-validated delivery contract without acquiring data,
+           * selecting a universe, comparing timestamps, or introducing freshness/ranking policy.
+           * Incremental deliveries upsert only delivered instruments. Complete-for-scope
+           * deliveries replace only their explicit scope and preserve all out-of-scope facts.
+           */
+          export function applyLiveMarketSummaryDeliveryState(
+            state: LiveMarketSummaryDeliveryState,
+            delivery: LiveMarketSummaryDelivery,
+          ): LiveMarketSummaryDeliveryStateApplyResult {
+            if (!validateLiveMarketSummaryDelivery(delivery).ok) {
+              return { ok: false, reason: 'delivery-invalid', state };
+            }
+
+            const next = new Map(state.factsByInstrument);
+            if (delivery.completeness === 'complete-for-scope') {
+              for (const instrument of delivery.scope) next.delete(instrumentKey(instrument));
+            }
+            for (const fact of delivery.facts) next.set(instrumentKey(fact.instrument), fact);
+
+            return { ok: true, state: { factsByInstrument: next } };
+          }
+          TS
+
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('.p21candidate/kairos_p76/src/services/market-data/index.ts')
+          s=p.read_text()
+          line="export * from './liveMarketSummaryDeliveryState';\n"
+          if line not in s:
+              anchor="export * from './liveMarketSummaryDeliverySemantics';\n"
+              if anchor not in s: raise SystemExit('P21.3 delivery export boundary not found')
+              s=s.replace(anchor, anchor+line, 1)
+          p.write_text(s)
+          PY
+
+          cat > "$ROOT/tests/live-market-summary-delivery-state-foundation.test.ts" <<'TS'
+          import { describe, expect, it } from 'vitest';
+          import { parsePositiveDecimalString } from '../src/domain/trades';
+          import type { DecimalString } from '../src/domain/trades';
+          import {
+            applyLiveMarketSummaryDeliveryState,
+            createLiveMarketSummaryDeliveryState,
+            getLiveMarketSummaryDeliveryStateFact,
+            type LiveMarketSummaryDelivery,
+            type LiveMarketSummaryFact,
+            type MarketDataInstrument,
+          } from '../src/services/market-data';
+
+          function positive(value: string): DecimalString {
+            const parsed = parsePositiveDecimalString(value);
+            if (!parsed.ok) throw new Error(`Invalid positive DecimalString fixture: ${value}`);
+            return parsed.value;
+          }
+
+          const btc: MarketDataInstrument = { venue: 'binance-spot', symbol: 'BTCUSDT' };
+          const eth: MarketDataInstrument = { venue: 'binance-spot', symbol: 'ETHUSDT' };
+          const sol: MarketDataInstrument = { venue: 'binance-spot', symbol: 'SOLUSDT' };
+
+          function fact(instrument: MarketDataInstrument, lastPrice: string, observedAt = '2026-09-07T00:00:00.000Z'): LiveMarketSummaryFact {
+            return {
+              instrument,
+              lastPrice: positive(lastPrice),
+              open24h: positive('1'),
+              high24h: positive('2'),
+              low24h: positive('0.5'),
+              baseVolume24h: '10' as DecimalString,
+              quoteVolume24h: '20' as DecimalString,
+              observedAt,
+              sourceTimestamp: '2026-09-06T23:59:59.900Z',
+            };
+          }
+
+          function apply(state: ReturnType<typeof createLiveMarketSummaryDeliveryState>, delivery: LiveMarketSummaryDelivery) {
+            const result = applyLiveMarketSummaryDeliveryState(state, delivery);
+            if (!result.ok) throw new Error(`Expected delivery state apply success: ${result.reason}`);
+            return result.state;
+          }
+
+          describe('P21.16 live market summary delivery state foundation', () => {
+            it('applies incremental facts as instrument upserts while preserving unrelated state', () => {
+              let state = createLiveMarketSummaryDeliveryState();
+              state = apply(state, { completeness: 'incremental', facts: [fact(btc, '64000'), fact(sol, '140')] });
+              state = apply(state, { completeness: 'incremental', facts: [fact(btc, '64100')] });
+
+              expect(getLiveMarketSummaryDeliveryStateFact(state, btc)?.lastPrice).toBe(positive('64100'));
+              expect(getLiveMarketSummaryDeliveryStateFact(state, sol)?.lastPrice).toBe(positive('140'));
+              expect(getLiveMarketSummaryDeliveryStateFact(state, eth)).toBeNull();
+            });
+
+            it('replaces only an explicit complete scope and preserves facts outside that scope', () => {
+              let state = createLiveMarketSummaryDeliveryState();
+              state = apply(state, { completeness: 'incremental', facts: [fact(btc, '63000'), fact(eth, '3100'), fact(sol, '140')] });
+              state = apply(state, {
+                completeness: 'complete-for-scope',
+                scope: [btc, eth],
+                facts: [fact(btc, '64000'), fact(eth, '3200')],
+              });
+
+              expect(getLiveMarketSummaryDeliveryStateFact(state, btc)?.lastPrice).toBe(positive('64000'));
+              expect(getLiveMarketSummaryDeliveryStateFact(state, eth)?.lastPrice).toBe(positive('3200'));
+              expect(getLiveMarketSummaryDeliveryStateFact(state, sol)?.lastPrice).toBe(positive('140'));
+            });
+
+            it('rejects an invalid delivery atomically and returns the exact prior state unchanged', () => {
+              const state = apply(createLiveMarketSummaryDeliveryState(), {
+                completeness: 'incremental',
+                facts: [fact(btc, '64000')],
+              });
+              const invalid: LiveMarketSummaryDelivery = { completeness: 'incremental', facts: [] };
+              const result = applyLiveMarketSummaryDeliveryState(state, invalid);
+
+              expect(result).toEqual({ ok: false, reason: 'delivery-invalid', state });
+              expect(result.state).toBe(state);
+              expect(getLiveMarketSummaryDeliveryStateFact(state, btc)?.lastPrice).toBe(positive('64000'));
+            });
+
+            it('does not compare timestamps or infer freshness when applying a later-delivered fact', () => {
+              let state = createLiveMarketSummaryDeliveryState();
+              state = apply(state, { completeness: 'incremental', facts: [fact(btc, '64000', '2026-09-07T00:10:00.000Z')] });
+              state = apply(state, { completeness: 'incremental', facts: [fact(btc, '63000', '2026-09-07T00:00:00.000Z')] });
+              expect(getLiveMarketSummaryDeliveryStateFact(state, btc)?.lastPrice).toBe(positive('63000'));
+            });
+          });
+          TS
+
+          cat > "$ROOT/KAIROS_P21_16_LIVE_MARKET_SUMMARY_DELIVERY_STATE_FOUNDATION_REPORT_2026-09-07.md" <<'MD'
+          # KAIROS P21.16 — Live Market Summary Delivery State Foundation
+
+          ## Authority
+          Base: canonical P21.15 browser public REST baseline acquisition binding, canonical gate #300 / run `34123121667`.
+
+          ## Source-proven responsibility
+          Canonical P21.3 defines explicit provider-neutral live-market summary delivery completeness (`incremental` versus `complete-for-scope`) but explicitly owns no accumulator/state store. Canonical P21.4-P21.15 progressively establish baseline acquisition and the browser-ready Binance binding while repeatedly preserving state, freshness, universe, ranking, and UI as non-scope. Exact canonical P21.15 package inspection shows no production `LiveMarketSummary` state/accumulator owner or consumer. The smallest dependency-safe next responsibility is therefore one provider-neutral state reducer for already-received P21.3 deliveries, without selecting scope or acquiring data.
+
+          ## Contract
+          - Define one provider-neutral current-summary state keyed solely by normalized instrument identity.
+          - Validate every incoming delivery through released `validateLiveMarketSummaryDelivery` before state mutation.
+          - `incremental` delivery: upsert only delivered instrument facts; preserve all unrelated state.
+          - `complete-for-scope` delivery: replace only facts for that delivery's explicit scope; preserve all facts outside that scope.
+          - Invalid delivery: return explicit `delivery-invalid` and the exact prior state unchanged.
+          - Apply deliveries synchronously in caller delivery order. Do not compare timestamps or infer freshness.
+          - Map iteration/insertion order is storage detail only and is never ranking, grouping, or presentation truth.
+
+          ## Explicit non-scope
+          - No market-universe/scope selection, ranking, filtering, grouping, sorting, bubble metric, color, geometry, interaction, or Home wiring.
+          - No baseline acquisition call, Binance/provider mapping, fetch/XHR/WebSocket/Response ownership, endpoint/query/status/header/error/retry/rate-limit/credentials/timeout policy.
+          - No clock/`Date`, timestamp arbitration, freshness TTL, stale eviction, polling, reconnect, scheduling, or event-order policy beyond applying the delivery the caller supplies now.
+          - No persistence, schema, repository, backup, direct IndexedDB, journal, Your Trades Bubble Map, Saved Analysis, chart, or transition ownership.
+          MD
+
+          cat > "$ROOT/scripts/verify-p21-16-live-market-summary-delivery-state-foundation.mjs" <<'JS'
+          import { readFileSync } from 'node:fs';
+          const state = readFileSync(new URL('../src/services/market-data/liveMarketSummaryDeliveryState.ts', import.meta.url), 'utf8');
+          const index = readFileSync(new URL('../src/services/market-data/index.ts', import.meta.url), 'utf8');
+          const report = readFileSync(new URL('../KAIROS_P21_16_LIVE_MARKET_SUMMARY_DELIVERY_STATE_FOUNDATION_REPORT_2026-09-07.md', import.meta.url), 'utf8');
+          for (const token of [
+            'LiveMarketSummaryDeliveryState',
+            'validateLiveMarketSummaryDelivery(delivery)',
+            "delivery.completeness === 'complete-for-scope'",
+            'next.delete(instrumentKey(instrument))',
+            'next.set(instrumentKey(fact.instrument), fact)',
+            "reason: 'delivery-invalid'",
+          ]) if (!state.includes(token)) throw new Error(`P21.16 state evidence missing: ${token}`);
+          if (!index.includes("export * from './liveMarketSummaryDeliveryState';")) throw new Error('P21.16 state export missing');
+          for (const forbidden of [
+            'globalThis.fetch(', 'fetch(', 'XMLHttpRequest', 'WebSocket(', 'Response(', 'JSON.parse(',
+            'Date.now(', 'new Date(', 'setTimeout(', 'setInterval(', 'indexedDB', '.sort(', 'createChart(',
+            'createBinanceSpot24hBrowserPublicRestBaselineAcquisitionPort(',
+          ]) if (state.includes(forbidden)) throw new Error(`P21.16 broadened into forbidden scope: ${forbidden}`);
+          for (const token of [
+            'Canonical P21.3 defines explicit provider-neutral live-market summary delivery completeness',
+            'no production `LiveMarketSummary` state/accumulator owner or consumer',
+            '`incremental` delivery: upsert only delivered instrument facts',
+            '`complete-for-scope` delivery: replace only facts for that delivery\'s explicit scope',
+            'Do not compare timestamps or infer freshness',
+            'No market-universe/scope selection, ranking, filtering, grouping, sorting',
+            'No persistence, schema, repository, backup, direct IndexedDB',
+          ]) if (!report.includes(token)) throw new Error(`P21.16 report evidence missing: ${token}`);
+          console.log('P21.16 live market summary delivery state verification passed.');
+          JS
+
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const p='.p21candidate/kairos_p76/package.json';
+          const j=JSON.parse(fs.readFileSync(p,'utf8'));
+          j.scripts||={};
+          j.scripts['verify:p21:16-live-market-summary-delivery-state-foundation']='node scripts/verify-p21-16-live-market-summary-delivery-state-foundation.mjs';
+          fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');
+          NODE
+
+          python - <<'PY'
+          from pathlib import Path
+          a={str(p.relative_to(Path('.p21base/kairos_p76'))):p.read_bytes() for p in Path('.p21base/kairos_p76').rglob('*') if p.is_file()}
+          b={str(p.relative_to(Path('.p21candidate/kairos_p76'))):p.read_bytes() for p in Path('.p21candidate/kairos_p76').rglob('*') if p.is_file()}
+          changed={p for p in a.keys()|b.keys() if a.get(p)!=b.get(p)}
+          expected={
+            'KAIROS_P21_16_LIVE_MARKET_SUMMARY_DELIVERY_STATE_FOUNDATION_REPORT_2026-09-07.md',
+            'package.json',
+            'scripts/verify-p21-16-live-market-summary-delivery-state-foundation.mjs',
+            'src/services/market-data/index.ts',
+            'src/services/market-data/liveMarketSummaryDeliveryState.ts',
+            'tests/live-market-summary-delivery-state-foundation.test.ts',
+          }
+          print('\n'.join(sorted(changed)))
+          assert changed==expected,(sorted(changed-expected),sorted(expected-changed))
+          PY
+
+      - name: Verify reconstructed P21.16 before packaging
+        working-directory: .p21candidate/kairos_p76
+        run: |
+          set -euo pipefail
+          npm ci
+          test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
+          npm run verify:p21:16-live-market-summary-delivery-state-foundation
+          npm run typecheck
+          npm run build
+          npm test
+          node - <<'NODE'
+          const { spawnSync } = require('node:child_process');
+          const pkg = require('./package.json');
+          const scripts = Object.keys(pkg.scripts || {}).filter((name) => /^verify:p\d/.test(name));
+          for (const name of scripts) {
+            const r = spawnSync('npm', ['run', name], { stdio: 'inherit' });
+            if (r.status !== 0) process.exit(r.status || 1);
+          }
+          NODE
+
+      - name: Restore clean package boundary and commit candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=.p21candidate/kairos_p76
+          rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite"
+          find "$ROOT" -type f \( -name '*.tsbuildinfo' -o -name '*.log' \) -delete
+          rm -rf .packagecheck
+          mkdir .packagecheck
+          (cd .p21candidate && zip -qr "../$OUT_ZIP" kairos_p76)
+          unzip -q "$OUT_ZIP" -d .packagecheck
+          test -d .packagecheck/kairos_p76
+          test ! -e .packagecheck/kairos_p76/node_modules
+          test ! -e .packagecheck/kairos_p76/dist
+          unzip -t "$OUT_ZIP"
+          sha256sum "$OUT_ZIP"
+          git add "$OUT_ZIP"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Add P21.16 live market summary delivery state candidate'
+          git push
