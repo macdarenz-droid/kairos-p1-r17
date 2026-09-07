@@ -1,11 +1,11 @@
-# KAIROS P21.19 GATE — AUTHORITATIVE BASE P21.18 — CANDIDATE P21.19 LIVE MARKET SUMMARY STATE SESSION FOUNDATION
+# KAIROS P21.20 GATE — AUTHORITATIVE BASE P21.19 — CANDIDATE P21.20 LIVE MARKET SUMMARY BROWSER STATE SESSION BINDING FOUNDATION
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P21_19_LIVE_MARKET_SUMMARY_STATE_SESSION_FOUNDATION_CANDIDATE_2026-09-08.zip'
+      - 'KAIROS_P21_20_LIVE_MARKET_SUMMARY_BROWSER_STATE_SESSION_BINDING_FOUNDATION_CANDIDATE_2026-09-08.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P21_18_BINANCE_SPOT_24H_BROWSER_PUBLIC_REST_BASELINE_STATE_BINDING_FOUNDATION_CANDIDATE_2026-09-08.zip
-  CANDIDATE_ZIP: KAIROS_P21_19_LIVE_MARKET_SUMMARY_STATE_SESSION_FOUNDATION_CANDIDATE_2026-09-08.zip
+  BASE_ZIP: KAIROS_P21_19_LIVE_MARKET_SUMMARY_STATE_SESSION_FOUNDATION_CANDIDATE_2026-09-08.zip
+  CANDIDATE_ZIP: KAIROS_P21_20_LIVE_MARKET_SUMMARY_BROWSER_STATE_SESSION_BINDING_FOUNDATION_CANDIDATE_2026-09-08.zip
 
 jobs:
   verify-current-candidate:
@@ -35,7 +35,7 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm exact controlled P21.19 scope from authoritative P21.18
+      - name: Confirm exact controlled P21.20 scope from authoritative P21.19
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -47,15 +47,15 @@ jobs:
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           print('\n'.join(sorted(changed)))
           expected={
-            'KAIROS_P21_19_LIVE_MARKET_SUMMARY_STATE_SESSION_FOUNDATION_REPORT_2026-09-08.md',
+            'KAIROS_P21_20_LIVE_MARKET_SUMMARY_BROWSER_STATE_SESSION_BINDING_FOUNDATION_REPORT_2026-09-08.md',
             'package.json',
-            'scripts/verify-p21-19-live-market-summary-state-session-foundation.mjs',
+            'scripts/verify-p21-20-live-market-summary-browser-state-session-binding-foundation.mjs',
             'src/services/market-data/index.ts',
-            'src/services/market-data/liveMarketSummaryStateSession.ts',
-            'tests/live-market-summary-state-session-foundation.test.ts',
+            'src/services/market-data/providers/binance/binanceSpot24hBrowserPublicRestBaselineStateSessionBinding.ts',
+            'tests/live-market-summary-browser-state-session-binding-foundation.test.ts',
           }
           if changed != expected:
-            print('P21.19 exact scope mismatch',file=sys.stderr)
+            print('P21.20 exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             sys.exit(1)
@@ -74,9 +74,10 @@ jobs:
       - name: Production build
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
-      - name: Dedicated P21.19 live market summary state session verifier/runtime
+      - name: Dedicated P21.20 live market summary browser state session binding verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p21:20-live-market-summary-browser-state-session-binding-foundation
           npm run verify:p21:19-live-market-summary-state-session-foundation
           npm run verify:p21:18-binance-spot-24h-browser-public-rest-baseline-state-binding-foundation
           npm run verify:p21:17-live-market-summary-baseline-state-orchestration-foundation
@@ -109,7 +110,7 @@ jobs:
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression through P21.19
+      - name: Full controlled roadmap regression through P21.20
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
@@ -146,12 +147,14 @@ jobs:
             'verify:p21:17-live-market-summary-baseline-state-orchestration-foundation',
             'verify:p21:18-binance-spot-24h-browser-public-rest-baseline-state-binding-foundation',
             'verify:p21:19-live-market-summary-state-session-foundation',
+            'verify:p21:20-live-market-summary-browser-state-session-binding-foundation',
           ]) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
           for(const x of s){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
           NODE
       - name: Historical closures
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p21:20-live-market-summary-browser-state-session-binding-foundation
           npm run verify:p21:19-live-market-summary-state-session-foundation
           npm run verify:p21:18-binance-spot-24h-browser-public-rest-baseline-state-binding-foundation
           npm run verify:p21:17-live-market-summary-baseline-state-orchestration-foundation
@@ -201,5 +204,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P21_19_LIVE_MARKET_SUMMARY_STATE_SESSION_FOUNDATION_REPORT_2026-09-08.md
+          path: .gate-candidate/kairos_p76/KAIROS_P21_20_LIVE_MARKET_SUMMARY_BROWSER_STATE_SESSION_BINDING_FOUNDATION_REPORT_2026-09-08.md
           if-no-files-found: error
