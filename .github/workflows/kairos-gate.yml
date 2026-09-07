@@ -1,11 +1,11 @@
-# KAIROS P21.22 GATE — AUTHORITATIVE BASE P21.21 — CANDIDATE P21.22 LIVE MARKET SUMMARY STATE SESSION SCOPED SNAPSHOT BINDING FOUNDATION
+# KAIROS P21.23 GATE — AUTHORITATIVE BASE P21.22 — CANDIDATE P21.23 LIVE MARKET SUMMARY BROWSER STATE SESSION SCOPED SNAPSHOT ACQUISITION COMPOSITION FOUNDATION
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P21_22_LIVE_MARKET_SUMMARY_STATE_SESSION_SCOPED_SNAPSHOT_BINDING_FOUNDATION_CANDIDATE_2026-09-08.zip'
+      - 'KAIROS_P21_23_LIVE_MARKET_SUMMARY_BROWSER_STATE_SESSION_SCOPED_SNAPSHOT_ACQUISITION_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-08.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P21_21_LIVE_MARKET_SUMMARY_SCOPED_STATE_SNAPSHOT_FOUNDATION_CANDIDATE_2026-09-08.zip
-  CANDIDATE_ZIP: KAIROS_P21_22_LIVE_MARKET_SUMMARY_STATE_SESSION_SCOPED_SNAPSHOT_BINDING_FOUNDATION_CANDIDATE_2026-09-08.zip
+  BASE_ZIP: KAIROS_P21_22_LIVE_MARKET_SUMMARY_STATE_SESSION_SCOPED_SNAPSHOT_BINDING_FOUNDATION_CANDIDATE_2026-09-08.zip
+  CANDIDATE_ZIP: KAIROS_P21_23_LIVE_MARKET_SUMMARY_BROWSER_STATE_SESSION_SCOPED_SNAPSHOT_ACQUISITION_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-08.zip
 
 jobs:
   verify-current-candidate:
@@ -35,7 +35,7 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm exact controlled P21.22 scope from authoritative P21.21
+      - name: Confirm exact controlled P21.23 scope from authoritative P21.22
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -47,15 +47,15 @@ jobs:
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           print('\n'.join(sorted(changed)))
           expected={
-            'KAIROS_P21_22_LIVE_MARKET_SUMMARY_STATE_SESSION_SCOPED_SNAPSHOT_BINDING_FOUNDATION_REPORT_2026-09-08.md',
+            'KAIROS_P21_23_LIVE_MARKET_SUMMARY_BROWSER_STATE_SESSION_SCOPED_SNAPSHOT_ACQUISITION_COMPOSITION_FOUNDATION_REPORT_2026-09-08.md',
             'package.json',
-            'scripts/verify-p21-22-live-market-summary-state-session-scoped-snapshot-binding-foundation.mjs',
+            'scripts/verify-p21-23-live-market-summary-browser-state-session-scoped-snapshot-acquisition-composition-foundation.mjs',
             'src/services/market-data/index.ts',
-            'src/services/market-data/liveMarketSummaryStateSessionScopedSnapshotBinding.ts',
-            'tests/live-market-summary-state-session-scoped-snapshot-binding-foundation.test.ts',
+            'src/services/market-data/providers/binance/binanceSpot24hBrowserPublicRestBaselineStateSessionScopedSnapshotAcquisitionComposition.ts',
+            'tests/live-market-summary-browser-state-session-scoped-snapshot-acquisition-composition-foundation.test.ts',
           }
           if changed != expected:
-            print('P21.22 exact scope mismatch',file=sys.stderr)
+            print('P21.23 exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             sys.exit(1)
@@ -74,9 +74,10 @@ jobs:
       - name: Production build
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
-      - name: Dedicated P21.22 live market summary state session scoped snapshot binding verifier/runtime
+      - name: Dedicated P21.23 live market summary browser state session scoped snapshot acquisition composition verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p21:23-live-market-summary-browser-state-session-scoped-snapshot-acquisition-composition-foundation
           npm run verify:p21:22-live-market-summary-state-session-scoped-snapshot-binding-foundation
           npm run verify:p21:21-live-market-summary-scoped-state-snapshot-foundation
           npm run verify:p21:20-live-market-summary-browser-state-session-binding-foundation
@@ -112,7 +113,7 @@ jobs:
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression through P21.22
+      - name: Full controlled roadmap regression through P21.23
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
@@ -152,12 +153,14 @@ jobs:
             'verify:p21:20-live-market-summary-browser-state-session-binding-foundation',
             'verify:p21:21-live-market-summary-scoped-state-snapshot-foundation',
             'verify:p21:22-live-market-summary-state-session-scoped-snapshot-binding-foundation',
+            'verify:p21:23-live-market-summary-browser-state-session-scoped-snapshot-acquisition-composition-foundation',
           ]) if(!s.includes(required)){console.error('Missing '+required);process.exit(1)}
           for(const x of s){console.log('\n=== '+x+' ===');const r=spawnSync('npm',['run',x],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
           NODE
       - name: Historical closures
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p21:23-live-market-summary-browser-state-session-scoped-snapshot-acquisition-composition-foundation
           npm run verify:p21:22-live-market-summary-state-session-scoped-snapshot-binding-foundation
           npm run verify:p21:21-live-market-summary-scoped-state-snapshot-foundation
           npm run verify:p21:20-live-market-summary-browser-state-session-binding-foundation
@@ -210,5 +213,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_P21_22_LIVE_MARKET_SUMMARY_STATE_SESSION_SCOPED_SNAPSHOT_BINDING_FOUNDATION_REPORT_2026-09-08.md
+          path: .gate-candidate/kairos_p76/KAIROS_P21_23_LIVE_MARKET_SUMMARY_BROWSER_STATE_SESSION_SCOPED_SNAPSHOT_ACQUISITION_COMPOSITION_FOUNDATION_REPORT_2026-09-08.md
           if-no-files-found: error
