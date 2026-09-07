@@ -1,0 +1,307 @@
+name: Kairos P21.23 Live Market Summary Browser State Session Scoped Snapshot Acquisition Composition Reconstruction Bridge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/p21-23-live-market-summary-browser-state-session-scoped-snapshot-acquisition-composition-reconstruct.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reconstruct:
+    runs-on: ubuntu-24.04
+    env:
+      BASE_ZIP: KAIROS_P21_22_LIVE_MARKET_SUMMARY_STATE_SESSION_SCOPED_SNAPSHOT_BINDING_FOUNDATION_CANDIDATE_2026-09-08.zip
+      OUT_ZIP: KAIROS_P21_23_LIVE_MARKET_SUMMARY_BROWSER_STATE_SESSION_SCOPED_SNAPSHOT_ACQUISITION_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-08.zip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - name: Pin npm
+        run: |
+          npm install --global npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+
+      - name: Reconstruct P21.23 from canonical P21.22
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .p21base .p21candidate
+          mkdir .p21base .p21candidate
+          unzip -q "$BASE_ZIP" -d .p21base
+          cp -a .p21base/. .p21candidate/
+          ROOT=.p21candidate/kairos_p76
+          COMPOSITION="$ROOT/src/services/market-data/providers/binance/binanceSpot24hBrowserPublicRestBaselineStateSessionScopedSnapshotAcquisitionComposition.ts"
+          INDEX="$ROOT/src/services/market-data/index.ts"
+          test -f "$ROOT/src/services/market-data/providers/binance/binanceSpot24hBrowserPublicRestBaselineStateSessionBinding.ts"
+          test -f "$ROOT/src/services/market-data/liveMarketSummaryStateSessionScopedSnapshotBinding.ts"
+          test -f "$INDEX"
+
+          cat > "$COMPOSITION" <<'TS'
+          import type { LiveMarketSummaryBaselineStateOrchestrationResult } from '../../liveMarketSummaryBaselineStateOrchestration';
+          import type { LiveMarketSummaryScopedStateSnapshotEntry } from '../../liveMarketSummaryScopedStateSnapshot';
+          import type { LiveMarketSummaryStateSession } from '../../liveMarketSummaryStateSession';
+          import type { MarketDataInstrument } from '../../marketDataTypes';
+          import { readLiveMarketSummaryStateSessionScopedSnapshot } from '../../liveMarketSummaryStateSessionScopedSnapshotBinding';
+          import type { BinanceSpot24hPublicRestBaselineObservedAtSource } from './binanceSpot24hPublicRestBaselineAcquisitionAdapter';
+          import { acquireBinanceSpot24hBrowserPublicRestBaselineIntoSession } from './binanceSpot24hBrowserPublicRestBaselineStateSessionBinding';
+
+          export interface BinanceSpot24hBrowserPublicRestBaselineStateSessionScopedSnapshotAcquisitionCompositionResult {
+            readonly orchestrationResult: LiveMarketSummaryBaselineStateOrchestrationResult;
+            readonly scopedSnapshot: readonly LiveMarketSummaryScopedStateSnapshotEntry[];
+          }
+
+          /**
+           * Composition only: perform exactly one released P21.20 browser acquisition
+           * into the supplied released session, then read exactly one released P21.22
+           * scoped snapshot from that same session and exact caller-owned scope.
+           */
+          export async function acquireBinanceSpot24hBrowserPublicRestBaselineIntoSessionAndReadScopedSnapshot(
+            session: LiveMarketSummaryStateSession,
+            readObservedAt: BinanceSpot24hPublicRestBaselineObservedAtSource,
+            scope: readonly MarketDataInstrument[],
+            options?: { readonly signal?: AbortSignal },
+          ): Promise<BinanceSpot24hBrowserPublicRestBaselineStateSessionScopedSnapshotAcquisitionCompositionResult> {
+            const orchestrationResult = await acquireBinanceSpot24hBrowserPublicRestBaselineIntoSession(
+              session,
+              readObservedAt,
+              scope,
+              options,
+            );
+            const scopedSnapshot = readLiveMarketSummaryStateSessionScopedSnapshot(session, scope);
+            return { orchestrationResult, scopedSnapshot };
+          }
+          TS
+
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('.p21candidate/kairos_p76/src/services/market-data/index.ts')
+          s=p.read_text()
+          line="export * from './providers/binance/binanceSpot24hBrowserPublicRestBaselineStateSessionScopedSnapshotAcquisitionComposition';\n"
+          if line not in s:
+              anchor="export * from './providers/binance/binanceSpot24hBrowserPublicRestBaselineStateSessionBinding';\n"
+              if anchor not in s: raise SystemExit('P21.20 state-session binding export boundary not found')
+              s=s.replace(anchor, anchor+line, 1)
+          p.write_text(s)
+          PY
+
+          cat > "$ROOT/tests/live-market-summary-browser-state-session-scoped-snapshot-acquisition-composition-foundation.test.ts" <<'TS'
+          import { afterEach, describe, expect, it, vi } from 'vitest';
+          import {
+            acquireBinanceSpot24hBrowserPublicRestBaselineIntoSessionAndReadScopedSnapshot,
+            createLiveMarketSummaryStateSession,
+            type LiveMarketSummaryStateSession,
+            type MarketDataInstrument,
+          } from '../src/services/market-data';
+
+          const originalFetch = globalThis.fetch;
+          const btc: MarketDataInstrument = { venue: 'binance-spot', symbol: 'BTCUSDT' };
+          const missing: MarketDataInstrument = { venue: 'binance-spot', symbol: 'ETHUSDT' };
+          const scope = [btc, missing] as const;
+          const observedAt = '2026-09-08T07:00:00.000Z';
+          const payload = JSON.stringify({
+            symbol: 'BTCUSDT', openPrice: '62000', highPrice: '65000', lowPrice: '61000',
+            lastPrice: '64000', volume: '1234', quoteVolume: '78000000', closeTime: 1770000000000,
+          });
+
+          afterEach(() => {
+            globalThis.fetch = originalFetch;
+            vi.restoreAllMocks();
+          });
+
+          describe('P21.23 Live Market Summary Browser State Session Scoped Snapshot Acquisition Composition Foundation', () => {
+            it('performs one released acquisition before one scoped read from the same session and scope', async () => {
+              const session = createLiveMarketSummaryStateSession();
+              const transition = vi.spyOn(session, 'transition');
+              const getState = vi.spyOn(session, 'getState');
+              globalThis.fetch = vi.fn(async () => ({ text: async () => payload })) as unknown as typeof fetch;
+              const readObservedAt = vi.fn(() => observedAt);
+
+              const result = await acquireBinanceSpot24hBrowserPublicRestBaselineIntoSessionAndReadScopedSnapshot(
+                session,
+                readObservedAt,
+                scope,
+              );
+
+              expect(transition).toHaveBeenCalledTimes(1);
+              expect(readObservedAt).toHaveBeenCalledTimes(1);
+              expect(getState).toHaveBeenCalledTimes(1);
+              expect(result.orchestrationResult.ok).toBe(true);
+              expect(result.scopedSnapshot).toHaveLength(2);
+              expect(result.scopedSnapshot[0]?.instrument).toBe(btc);
+              expect(result.scopedSnapshot[0]?.fact?.observedAt).toBe(observedAt);
+              expect(result.scopedSnapshot[1]?.instrument).toBe(missing);
+              expect(result.scopedSnapshot[1]?.fact).toBeNull();
+            });
+
+            it('preserves caller-owned acquisition options through released P21.20', async () => {
+              const session = createLiveMarketSummaryStateSession();
+              const controller = new AbortController();
+              const fetchMock = vi.fn(async (_input: URL | RequestInfo, init?: RequestInit) => ({ text: async () => payload, init }));
+              globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+              await expect(acquireBinanceSpot24hBrowserPublicRestBaselineIntoSessionAndReadScopedSnapshot(
+                session,
+                () => observedAt,
+                [btc],
+                { signal: controller.signal },
+              )).resolves.toMatchObject({ orchestrationResult: { ok: true } });
+
+              expect(fetchMock).toHaveBeenCalledTimes(1);
+              expect(fetchMock.mock.calls[0]?.[1]?.signal).toBe(controller.signal);
+            });
+
+            it('propagates a released P21.20 rejection unchanged and performs no scoped read', async () => {
+              const failure = new Error('session-transition-rejection');
+              const getState = vi.fn();
+              const session = {
+                transition: vi.fn(async () => { throw failure; }),
+                getState,
+              } as unknown as LiveMarketSummaryStateSession;
+
+              await expect(acquireBinanceSpot24hBrowserPublicRestBaselineIntoSessionAndReadScopedSnapshot(
+                session,
+                () => observedAt,
+                [btc],
+              )).rejects.toBe(failure);
+
+              expect(session.transition).toHaveBeenCalledTimes(1);
+              expect(getState).not.toHaveBeenCalled();
+            });
+          });
+          TS
+
+          cat > "$ROOT/KAIROS_P21_23_LIVE_MARKET_SUMMARY_BROWSER_STATE_SESSION_SCOPED_SNAPSHOT_ACQUISITION_COMPOSITION_FOUNDATION_REPORT_2026-09-08.md" <<'MD'
+          # KAIROS P21.23 — Live Market Summary Browser State Session Scoped Snapshot Acquisition Composition Foundation
+
+          ## Authority
+          Base: canonical P21.22 Live Market Summary State Session Scoped Snapshot Binding Foundation, canonical gate #307 / run `34161793405`.
+
+          ## Source-proven responsibility
+          Released P21.20 owns exactly one browser acquisition into an existing released state session. Released P21.22 owns exactly one pure caller-scoped snapshot read from an existing released state session. Exact canonical P21.22 artifact audit found no production owner composing those seams. Home remains presentation-only with dashboard insights unconnected. The smallest dependency-safe next responsibility is composition of those two released seams only.
+
+          ## Contract
+          - Accept an existing released `LiveMarketSummaryStateSession`.
+          - Accept caller-owned `readObservedAt`, one explicit caller-owned instrument scope, and optional caller-owned released acquisition options.
+          - Invoke released P21.20 exactly once using that same session, `readObservedAt`, scope, and options.
+          - Only after P21.20 fulfills, invoke released P21.22 exactly once using the same session and exact same scope.
+          - Surface the exact released P21.20 orchestration result unchanged together with the exact released P21.22 scoped snapshot unchanged.
+          - If released P21.20 rejects, propagate that rejection unchanged and perform no scoped read.
+
+          ## Explicit non-scope
+          - No universe/default symbols/default scope/scope discovery and no ranking/filtering/grouping/sorting/top-N/popularity/market-cap policy.
+          - No Live Crypto Bubble Map sizing/color/geometry/interactions/animation or Home wiring; no Your Trades/journal ownership.
+          - No new provider/transport/fetch/Response/endpoint/query/status/header/error/retry/rate-limit/credentials/timeout policy.
+          - No clock acquisition beyond caller-owned released `readObservedAt`; no timestamp arbitration/freshness TTL/stale eviction/polling/reconnect/scheduling/timers/randomness/background work.
+          - No new AbortController/signal-combination/cancellation taxonomy/concurrency/coalescing/subscription framework.
+          - No persistence/IndexedDB/repository/schema/backup/journal/Saved Analysis/chart ownership, no UI-reactivity choice, and no transition ownership.
+          - No duplication/reinterpretation of released P21.2/P21.3/P21.16/P21.18/P21.19/P21.20/P21.21/P21.22 semantics.
+          MD
+
+          cat > "$ROOT/scripts/verify-p21-23-live-market-summary-browser-state-session-scoped-snapshot-acquisition-composition-foundation.mjs" <<'JS'
+          import { readFileSync } from 'node:fs';
+          const source = readFileSync(new URL('../src/services/market-data/providers/binance/binanceSpot24hBrowserPublicRestBaselineStateSessionScopedSnapshotAcquisitionComposition.ts', import.meta.url), 'utf8');
+          const index = readFileSync(new URL('../src/services/market-data/index.ts', import.meta.url), 'utf8');
+          const report = readFileSync(new URL('../KAIROS_P21_23_LIVE_MARKET_SUMMARY_BROWSER_STATE_SESSION_SCOPED_SNAPSHOT_ACQUISITION_COMPOSITION_FOUNDATION_REPORT_2026-09-08.md', import.meta.url), 'utf8');
+          for (const token of [
+            'acquireBinanceSpot24hBrowserPublicRestBaselineIntoSession(',
+            'readLiveMarketSummaryStateSessionScopedSnapshot(session, scope)',
+            'const orchestrationResult = await acquireBinanceSpot24hBrowserPublicRestBaselineIntoSession',
+            'const scopedSnapshot = readLiveMarketSummaryStateSessionScopedSnapshot(session, scope)',
+            'return { orchestrationResult, scopedSnapshot }',
+          ]) if (!source.includes(token)) throw new Error(`P21.23 composition evidence missing: ${token}`);
+          if (!index.includes("export * from './providers/binance/binanceSpot24hBrowserPublicRestBaselineStateSessionScopedSnapshotAcquisitionComposition';")) throw new Error('P21.23 composition export missing');
+          const acquireCalls = (source.match(/acquireBinanceSpot24hBrowserPublicRestBaselineIntoSession\(/g) || []).length;
+          const readCalls = (source.match(/readLiveMarketSummaryStateSessionScopedSnapshot\(session, scope\)/g) || []).length;
+          if (acquireCalls !== 1) throw new Error(`P21.23 must invoke released P21.20 exactly once, found ${acquireCalls}`);
+          if (readCalls !== 1) throw new Error(`P21.23 must invoke released P21.22 exactly once, found ${readCalls}`);
+          const acquireAt = source.indexOf('const orchestrationResult = await acquireBinanceSpot24hBrowserPublicRestBaselineIntoSession');
+          const readAt = source.indexOf('const scopedSnapshot = readLiveMarketSummaryStateSessionScopedSnapshot(session, scope)');
+          if (acquireAt < 0 || readAt <= acquireAt) throw new Error('P21.23 scoped read must occur only after released P21.20 fulfillment');
+          for (const forbidden of [
+            '.sort(', '.filter(', '.reduce(', 'new Map(', 'new Set(',
+            'Date.now(', 'new Date(', 'setTimeout(', 'setInterval(', 'XMLHttpRequest',
+            'WebSocket(', 'indexedDB', 'new AbortController(', 'createChart(',
+          ]) if (source.includes(forbidden)) throw new Error(`P21.23 broadened into forbidden scope: ${forbidden}`);
+          for (const token of [
+            'no production owner composing those seams',
+            'Invoke released P21.20 exactly once',
+            'Only after P21.20 fulfills, invoke released P21.22 exactly once',
+            'perform no scoped read',
+            'No universe/default symbols/default scope/scope discovery',
+            'No Live Crypto Bubble Map sizing/color/geometry/interactions/animation or Home wiring',
+            'No persistence/IndexedDB/repository/schema/backup/journal/Saved Analysis/chart ownership',
+          ]) if (!report.includes(token)) throw new Error(`P21.23 report evidence missing: ${token}`);
+          console.log('P21.23 Live Market Summary Browser State Session Scoped Snapshot Acquisition Composition verification passed.');
+          JS
+
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const p='.p21candidate/kairos_p76/package.json';
+          const j=JSON.parse(fs.readFileSync(p,'utf8'));
+          j.scripts||={};
+          j.scripts['verify:p21:23-live-market-summary-browser-state-session-scoped-snapshot-acquisition-composition-foundation']='node scripts/verify-p21-23-live-market-summary-browser-state-session-scoped-snapshot-acquisition-composition-foundation.mjs';
+          fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');
+          NODE
+
+          python - <<'PY'
+          from pathlib import Path
+          a={str(p.relative_to(Path('.p21base/kairos_p76'))):p.read_bytes() for p in Path('.p21base/kairos_p76').rglob('*') if p.is_file()}
+          b={str(p.relative_to(Path('.p21candidate/kairos_p76'))):p.read_bytes() for p in Path('.p21candidate/kairos_p76').rglob('*') if p.is_file()}
+          changed={p for p in a.keys()|b.keys() if a.get(p)!=b.get(p)}
+          expected={
+            'KAIROS_P21_23_LIVE_MARKET_SUMMARY_BROWSER_STATE_SESSION_SCOPED_SNAPSHOT_ACQUISITION_COMPOSITION_FOUNDATION_REPORT_2026-09-08.md',
+            'package.json',
+            'scripts/verify-p21-23-live-market-summary-browser-state-session-scoped-snapshot-acquisition-composition-foundation.mjs',
+            'src/services/market-data/index.ts',
+            'src/services/market-data/providers/binance/binanceSpot24hBrowserPublicRestBaselineStateSessionScopedSnapshotAcquisitionComposition.ts',
+            'tests/live-market-summary-browser-state-session-scoped-snapshot-acquisition-composition-foundation.test.ts',
+          }
+          print('P21.22 -> P21.23 changed files:', *sorted(changed), sep='\n- ')
+          if changed != expected:
+              raise SystemExit(f'exact P21.23 scope mismatch: {sorted(changed ^ expected)}')
+          PY
+
+      - name: Verify reconstructed P21.23 before packaging
+        working-directory: .p21candidate/kairos_p76
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci
+          test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
+          npm run verify:p21:23-live-market-summary-browser-state-session-scoped-snapshot-acquisition-composition-foundation
+          npm run typecheck
+          npm run build
+          npm test
+          node - <<'NODE'
+          const { spawnSync } = require('node:child_process');
+          const pkg = require('./package.json');
+          const scripts = Object.keys(pkg.scripts || {}).filter((name) => name.startsWith('verify:')).sort();
+          for (const name of scripts) {
+            console.log(`\n=== ${name} ===`);
+            const r = spawnSync('npm', ['run', name], { stdio: 'inherit' });
+            if (r.status !== 0) process.exit(r.status || 1);
+          }
+          NODE
+
+      - name: Restore clean package boundary and commit candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=.p21candidate/kairos_p76
+          rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite" "$ROOT/.cache" "$ROOT/.turbo"
+          find "$ROOT" -type f \( -name '*.tsbuildinfo' -o -name '*.log' \) -delete
+          rm -f "$OUT_ZIP"
+          (cd .p21candidate && zip -qr "../$OUT_ZIP" kairos_p76)
+          unzip -t "$OUT_ZIP" >/dev/null
+          test "$(zipinfo -1 "$OUT_ZIP" | head -n1)" = 'kairos_p76/'
+          test "$(zipinfo -1 "$OUT_ZIP" | grep -Ev '^kairos_p76/' | wc -l)" -eq 0
+          git add -f "$OUT_ZIP"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Add P21.23 live market summary browser state session scoped snapshot acquisition composition candidate'
+          git push
