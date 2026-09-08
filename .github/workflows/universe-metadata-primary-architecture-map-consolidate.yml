@@ -1,0 +1,69 @@
+name: Kairos Universe Metadata Primary Architecture Map Consolidation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/universe-metadata-primary-architecture-map-consolidate.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  consolidate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Append canonical universe metadata checkpoint with byte-preservation proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          MAP='docs/KAIROS_ARCHITECTURE_MAP.md'
+          test -f "$MAP"
+          grep -Fq 'Canonical Live Market Summary freshness classification policy checkpoint — gate #312' "$MAP"
+          if grep -Fq 'Canonical Live Market Universe instrument metadata fact checkpoint — gate #313' "$MAP"; then
+            echo 'Universe metadata checkpoint already present; nothing to do.'
+            exit 0
+          fi
+          cp "$MAP" /tmp/kairos-architecture-map.before
+
+          cat >> "$MAP" <<'MD'
+
+          ## Canonical Live Market Universe instrument metadata fact checkpoint — gate #313
+
+          The latest canonical GOLDEN after the Live Market Summary freshness-classification policy is the **Live Market Universe Instrument Metadata Fact Contract Foundation**. Its patch number is intentionally not inferred.
+
+          - Canonical gate: `Kairos Controlled Roadmap Gate` #313 / run `34192273207`, job `101952590811`, exact head `7597411be395b869ce787833c431979bf07bcebe`, full SUCCESS on 2026-09-08.
+          - Production owner seam: `src/services/market-data/liveMarketUniverseInstrumentMetadataFact.ts`, exported through `src/services/market-data/index.ts`.
+          - Responsibility: provider-neutral validated instrument metadata fact carrying released instrument identity plus authoritative `baseAsset`, `quoteAsset`, and current `tradingEnabled` truth for later caller-owned universe policy.
+          - Exact canonical artifacts: `KAIROS_CURRENT_CANDIDATE` id `10042806980`, size `1,267,754`, digest `sha256:6a35692206b8f36d2717d6d3d4b2974d20776343ea511816dc58c2a8ba6a3109`; `KAIROS_GATE_EVIDENCE` id `10042807299`, size `1,409`, digest `sha256:b0fb1b72da0cba50fb884dfc44be955488e7ffc6e2b43d5865d868477f15be4d`.
+          - Downloaded integrity: candidate wrapper contains exactly `KAIROS_LIVE_MARKET_UNIVERSE_INSTRUMENT_METADATA_FACT_CONTRACT_FOUNDATION_CANDIDATE_2026-09-08.zip`, inner size `1,474,122`, SHA-256 `dc5ddd3d9dac6057636dcc8535b402896372026e2328e62d8488017ac4ee9186`, outer and inner ZIP integrity PASS; gate-evidence wrapper contains exactly `KAIROS_LIVE_MARKET_UNIVERSE_INSTRUMENT_METADATA_FACT_CONTRACT_FOUNDATION_REPORT_2026-09-08.md`, inner size `2,304`, SHA-256 `13caca969c0914e4851dd4e35f404ded2b91ca3c4e39fad7b5a6f57a9a60b07e`, wrapper ZIP integrity PASS.
+          - Data-flow boundary: this fact contract provides metadata truth only. A later separate deterministic universe-policy owner may combine this metadata with released 24h summary facts such as `quoteVolume24h`; provider adapters do not own the Live Crypto universe product policy.
+          - Explicit non-scope: no Binance HTTP / `/api/v3/exchangeInfo` request, decode, mapping or transport; no metadata cache/polling/refresh; no USDT eligibility filtering; no stablecoin exclusion; no quote-volume ranking/sort/tie-break/Top-N; no freshness-age/classification changes; no Home React wiring; no stale/expired presentation; no Bubble geometry/size/color/interactions; no Your Trades/journal ownership; no persistence/IndexedDB/Saved Analysis/chart/navigation/transition ownership.
+
+          This checkpoint extends the primary architecture map without changing any earlier ownership entry. Universe selection/ranking remains a separate deterministic policy responsibility. Freshness policy remains separately owned. Live Crypto Bubble Map remains authoritative market/provider truth only; Your Trades Bubble Map remains journal/trade history plus released calculation truth only; UI must not read IndexedDB directly; dashboard transitions remain presentation-only.
+          MD
+
+          python - <<'PY'
+          from pathlib import Path
+          before = Path('/tmp/kairos-architecture-map.before').read_bytes()
+          after = Path('docs/KAIROS_ARCHITECTURE_MAP.md').read_bytes()
+          if not after.startswith(before):
+              raise SystemExit('historical architecture-map bytes changed before appended checkpoint')
+          if len(after) <= len(before):
+              raise SystemExit('checkpoint append did not add bytes')
+          PY
+
+          read adds dels path < <(git diff --numstat -- "$MAP")
+          test "$path" = "$MAP"
+          test "$dels" = '0'
+          test "$adds" -gt 0
+          test "$(git diff --name-only | wc -l | tr -d ' ')" = '1'
+          test "$(git diff --name-only)" = "$MAP"
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "$MAP"
+          git commit -m 'Consolidate canonical universe instrument metadata into architecture map'
+          git push
