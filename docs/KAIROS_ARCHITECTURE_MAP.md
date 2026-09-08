@@ -307,3 +307,29 @@ The latest fully verified canonical GOLDEN is **Binance Spot Exchange Informatio
 - Boundary: one symbol object only. No collection/whole-response extraction, networking, JSON parsing, filtering/ranking/Top-N/stablecoin policy, caching/polling/freshness changes, Home/Bubble UI, journal/persistence/Saved Analysis/chart/navigation/transition ownership.
 
 P21 remains open. Collection mapping remains a candidate until its own full canonical gate passes. Manual candidate upload mode remains active; workers and supervisor are disabled by the user's instruction. Live Crypto and Your Trades retain separate truth owners; animation remains presentation-only.
+
+
+## Canonical Binance Spot exchangeInfo instrument metadata fact collection mapping checkpoint — gate #318
+
+The canonical GOLDEN after the one-symbol exchangeInfo metadata-fact mapper is the **Binance Spot Exchange Information Instrument Metadata Fact Collection Mapping Foundation**. Its patch number is intentionally not inferred.
+
+- Canonical gate: `Kairos Controlled Roadmap Gate` #318 / run `34230096640`, job `102073764678`, exact head `32dcac28bff156eb92b62328eccb5d8421ab1c7d`, full SUCCESS on 2026-09-08.
+- Production owner seam: `src/services/market-data/providers/binance/binanceSpotExchangeInfoInstrumentMetadataFactCollection.ts`, exported through `src/services/market-data/index.ts`.
+- Responsibility: accept one explicit already-decoded collection value, require an array, preserve caller/provider sequence, delegate each entry unchanged to the released one-symbol mapper, accept an explicit empty array, and fail on the first invalid entry with its exact index and released mapper reason.
+- Exact canonical artifacts: `KAIROS_CURRENT_CANDIDATE` id `10057756180`, wrapper size `1,284,298`, digest `sha256:11ca0ba565fe69cf0460098a8083202d3ff7da9a07e6ecb48c6b8ab2d60a416e`; `KAIROS_GATE_EVIDENCE` id `10057756872`, wrapper size `1,745`, digest `sha256:b0c26eb1274a7c86639662d09250e8ecde030b5e1a850dfae3d643a53abaf39c`.
+- Downloaded integrity: candidate wrapper contains exactly `KAIROS_BINANCE_SPOT_EXCHANGE_INFO_INSTRUMENT_METADATA_FACT_COLLECTION_MAPPING_FOUNDATION_CANDIDATE_2026-09-08.zip`, inner size `1,496,451`, SHA-256 `352fe93a5c255f906e86d6d6f8aae29e6da8d0af1c112f7c70325258920079d0`, integrity PASS; gate-evidence wrapper contains exactly `KAIROS_BINANCE_SPOT_EXCHANGE_INFO_INSTRUMENT_METADATA_FACT_COLLECTION_MAPPING_FOUNDATION_REPORT_2026-09-08.md`, inner size `3,185`, SHA-256 `43d5559edd718a8bc04857184d67b396c3d59d9140db9f3ec16c9ec24e9285f2`, integrity PASS.
+- Boundary: collection mapping only. No whole-response `.symbols` extraction; no request execution, transport or JSON decoding; no filtering/deduplication; no USDT/stablecoin/universe policy; no quote-volume ranking/sort/tie-break/Top-N; no freshness/cadence; no Home/Bubble/Your-Trades/persistence/chart/navigation/transition ownership.
+
+## Canonical Binance Spot exchangeInfo instrument metadata fact response mapping checkpoint — gate #319
+
+The latest canonical GOLDEN is the **Binance Spot Exchange Information Instrument Metadata Fact Response Mapping Foundation**. Its patch number is intentionally not inferred.
+
+- Canonical gate: `Kairos Controlled Roadmap Gate` #319 / run `34234539616`, job `102088750010`, exact head `fde4243efc2a00cac82c300e1a9311259cb8927a`, full SUCCESS on 2026-09-08.
+- Production owner seam: `src/services/market-data/providers/binance/binanceSpotExchangeInfoInstrumentMetadataFactResponse.ts`, exported through `src/services/market-data/index.ts`.
+- Responsibility: accept one whole already-decoded Binance Spot `exchangeInfo` response value, require a non-null non-array object, extract only its exact `.symbols` value, and delegate that value unchanged to the released #318 collection mapper.
+- Exact canonical artifacts: `KAIROS_CURRENT_CANDIDATE` id `10059654951`, wrapper size `1,288,755`, digest `sha256:886fe2194dd48c6d4151711409cdf3e2bee37d7831a37ac4c642219f54ffa99a`; `KAIROS_GATE_EVIDENCE` id `10059655733`, wrapper size `1,831`, digest `sha256:e5d6e8a849ae736ecaf36ec9df6dc593a3cc4837897bfb395206722d1b26c776`.
+- Downloaded integrity: candidate wrapper contains exactly `KAIROS_BINANCE_SPOT_EXCHANGE_INFO_INSTRUMENT_METADATA_FACT_RESPONSE_MAPPING_FOUNDATION_CANDIDATE_2026-09-08.zip`, inner size `1,501,745`, SHA-256 `81a49eefd9b941e9127f890ea326bd1f4e23f323de11a3fab85d1271bfcbbea7`, integrity PASS; gate-evidence wrapper contains exactly `KAIROS_BINANCE_SPOT_EXCHANGE_INFO_INSTRUMENT_METADATA_FACT_RESPONSE_MAPPING_FOUNDATION_REPORT_2026-09-08.md`, inner size `3,488`, SHA-256 `ecad5f47e788e0205f16019eb959456e3d3f5efefa94062436a563f6b4907f8c`, integrity PASS.
+- Data-flow boundary: this seam owns only whole decoded-response shape validation plus `.symbols` extraction and delegation. It does not execute or describe requests, decode JSON, create provider transport, cache metadata, or choose product universe/ranking/freshness/presentation policy.
+- Explicit non-scope: no request execution/transport/JSON decode; no USDT eligibility/stablecoin exclusion; no 24h quote-volume ranking/sort/tie-break/Top-N; no freshness/cadence; no Home/Bubble presentation; no Your Trades/journal; no persistence/IndexedDB/Saved Analysis/chart/navigation/transition ownership.
+
+P21 remains open. The next provider composition must be proven separately from current source ownership; a later separate deterministic universe-policy owner may combine authoritative metadata facts with released 24h summary facts only after the upstream exchangeInfo acquisition/composition path is canonically complete. Live Crypto Bubble Map remains market/provider truth only; Your Trades Bubble Map remains journal/trade plus released calculation truth only; transitions remain presentation-only.
