@@ -1,0 +1,606 @@
+KAIROS FAST WORKER MASTER — READ THIS ONE FILE FIRST
+Version: KAIROS-FAST-WORKER-MASTER-V1-2026-09-09
+Purpose: compressed runtime handoff for Kairos fast workers.
+Goal: reduce time spent searching old handoffs/sandbox records WITHOUT weakening evidence, GOLDEN, gate, QA, ownership, or NO-GUESS rules.
+
+IMPORTANT:
+- This file is CONTINUITY + OPERATING RULES, not canonical project authority.
+- Fresh GitHub canonical truth always overrides stale checkpoint details in this file.
+- Do NOT scan old sandbox/handoff files by default.
+- Read this file completely, then go straight to fresh GitHub + exact relevant source/logs.
+- Open older handoffs/history only when this file explicitly cannot resolve a contradiction, historical closure, or ownership question.
+
+===============================================================================
+1) ABSOLUTE PRIMARY RULE
+===============================================================================
+
+NO GUESS EVER.
+
+Before any implementation, repair, promotion, cleanup, architecture conclusion, or next-slice decision:
+
+1. Read this file completely.
+2. Fresh-check automation/lease state when running as a worker.
+3. Fresh-check GitHub main + Actions + exact canonical gate/job.
+4. Identify latest FULL canonical PASS = GOLDEN.
+5. Identify the exact ONE active chain.
+6. Inspect the exact relevant source owner/data flow/log/artifact.
+7. Research current official sources only when project authority/source evidence is still insufficient.
+8. Perform only the smallest safe dependency-backed action.
+9. Test honestly.
+10. Update process continuity.
+11. Preserve loop liveness and release lease correctly.
+
+Never choose:
+- GOLDEN
+- current gate status
+- pass/fail
+- candidate base
+- next patch/slice
+- source owner
+- API behavior
+- product meaning
+- test result
+from memory, patch numbering, stale worker prompts, screenshots, helper status, or assumption.
+
+===============================================================================
+2) AUTHORITY ORDER
+===============================================================================
+
+Use this order:
+
+A. Current explicit user instruction.
+B. This master worker file.
+C. Fresh canonical GitHub truth.
+D. Latest FULL canonical PASS/GOLDEN.
+E. Exact current source/data-flow ownership.
+F. Current process history / Retry Ledger / architecture map only when needed.
+G. Official/current external research when unresolved.
+
+CANONICAL PROMOTION AUTHORITY ONLY:
+- Workflow: Kairos Controlled Roadmap Gate
+- Path: .github/workflows/kairos-gate.yml
+- Job: verify-current-candidate
+
+NOT canonical:
+- helper/bridge/reconstruction workflow
+- local test
+- preview/deployment/Cloudflare result
+- artifact existence alone
+- process history
+- Retry Ledger
+- architecture docs
+- worker prompt
+- sandbox file
+
+Latest FULL canonical PASS only = GOLDEN.
+Failed candidate = evidence only.
+Never build the next candidate from a failed candidate.
+
+===============================================================================
+3) CURRENT PROJECT PHASE
+===============================================================================
+
+Roadmap state:
+- P17 Chart Engine — CLOSED
+- P18 Drawing Tools — CLOSED
+- P19 Risk/Reward Tool — CLOSED
+- P20 Saved Analysis — CLOSED
+- P21 Home Dashboard / Bubble Map — ACTIVE
+- P22–P40 remain later roadmap phases.
+
+Do not advance by patch number momentum.
+After every canonical PASS, prove the next responsibility from actual source ownership and dependency order.
+
+===============================================================================
+4) CURRENT FRESH CONTINUITY POINTER
+===============================================================================
+
+At the latest activation check before this file was created:
+
+main:
+fde4243efc2a00cac82c300e1a9311259cb8927a
+
+Exact canonical gate:
+Kairos Controlled Roadmap Gate #319
+run: 34234539616
+display: gate: verify exchangeInfo metadata fact response mapping
+state at that check: IN_PROGRESS
+
+Latest recorded canonical GOLDEN before #319 resolves:
+Gate #318 / run 34230096640
+Binance Spot Exchange Information Instrument Metadata Fact Collection Mapping Foundation
+
+Current #319 candidate continuity identity:
+KAIROS_BINANCE_SPOT_EXCHANGE_INFO_INSTRUMENT_METADATA_FACT_RESPONSE_MAPPING_FOUNDATION_CANDIDATE_2026-09-08.zip
+
+IMPORTANT:
+This checkpoint is only a starting pointer.
+EVERY worker must fresh-check GitHub before acting.
+
+If #319 or a newer exact canonical gate is still queued/in_progress:
+MONITOR THAT EXACT GATE ONLY.
+Do not start a competing repair/helper/candidate/gate/next slice.
+
+===============================================================================
+5) CURRENT RESPONSE-MAPPING RESPONSIBILITY
+===============================================================================
+
+Current intended responsibility around Gate #319:
+
+Accept one whole already-decoded Binance Spot exchangeInfo response object,
+validate that it is a non-null non-array object,
+extract only `.symbols`,
+and delegate that exact value unchanged to the already-released collection mapper.
+
+NON-SCOPE:
+- no request execution
+- no JSON decode
+- no USDT filtering
+- no stablecoin exclusion
+- no 24h quote-volume ranking
+- no tie-break / Top 30
+- no freshness/cadence
+- no Home/Bubble UI
+- no Your Trades logic
+- no journal/persistence/chart/navigation/transition ownership
+
+Do not widen this boundary.
+
+===============================================================================
+6) ONE ACTIVE CHAIN
+===============================================================================
+
+There must be exactly ONE engineering chain.
+
+If canonical gate queued/in_progress:
+- monitor exact run only
+- no competing repo/docs/helper/candidate/gate mutation
+
+If helper/bridge/upload workflow queued/in_progress:
+- monitor exact mechanism only
+- do not launch duplicate helper
+
+If candidate/repair unresolved:
+- continue that exact candidate/repair only
+
+After any repository write:
+- refresh main
+- refresh Actions
+- verify no canonical gate/helper changed state
+before any second write.
+
+Never parallelize multiple next slices.
+
+===============================================================================
+7) PASS / FAIL / RUNNING RULES
+===============================================================================
+
+RUNNING / QUEUED:
+- monitor only
+- preserve exact run identity
+- do not create competing work
+
+PASS:
+1. Verify every required canonical stage succeeded.
+2. Verify exact-run KAIROS_CURRENT_CANDIDATE exists.
+3. Verify exact-run KAIROS_GATE_EVIDENCE exists.
+4. Only then promote candidate as GOLDEN.
+5. Reconcile process history and architecture map when ownership/boundaries changed.
+6. Re-read current source and prove ONE smallest next dependency-safe responsibility.
+7. Continue only that responsibility.
+
+FAIL:
+1. Fetch exact failed step/log.
+2. Latest prior FULL canonical PASS remains GOLDEN.
+3. Prove candidate-vs-GOLDEN delta.
+4. Prove gate expected scope.
+5. Classify:
+   - candidate defect -> repair from latest GOLDEN + intended delta
+   - gate defect -> gate-only repair
+   - ambiguous -> investigate/research; no speculative mutation
+6. Never weaken gate/verifier just to pass.
+7. Never use failed candidate as base.
+
+===============================================================================
+8) EXECUTION LEASE / CONCURRENCY
+===============================================================================
+
+Fast worker must use the durable execution lease before:
+- source mutation
+- docs mutation
+- gate/workflow mutation
+- release/config mutation
+- authoritative project-state mutation
+
+Lease record:
+Kairos Execution Lease [FREE]
+or
+Kairos Execution Lease [HELD:<run-token>:<expiry>]
+
+Rules:
+- unique run token per invocation
+- acquire before mutation
+- immediately verify exact token + unexpired expiry
+- recheck before every later mutation
+- heartbeat if near expiry
+- another valid owner -> no competing mutation
+- supervisor never acquires lease
+- live chat should not compete while worker holds valid lease unless user explicitly takes over
+
+Release only after:
+- meaningful process-history write-back
+- same fast worker future run verified
+- supervisor still active
+
+===============================================================================
+9) V16 FAST WORKER LOOP — CURRENT ACTIVE MODEL
+===============================================================================
+
+Current active runtime model:
+KAIROS-FAST-RELAY-V16-2026-09-08-16M
+
+ONE SAME WORKER.
+NO child/new/successor worker creation.
+
+At START of every invocation, BEFORE project work:
+1. PEEK automation state.
+2. Verify `Kairos Relay Supervisor [ACTIVE]`.
+3. Reschedule THIS SAME `Kairos Fast Continuation` about +16 minutes.
+4. Keep it enabled.
+5. PEEK again.
+6. Verify SAME automation id, enabled=true, future DTSTART.
+7. Only then proceed to GitHub/project work.
+
+If same-worker +16 reschedule cannot be verified:
+- NO GitHub/docs/project mutation
+- preserve checkpoint
+- let hourly supervisor recover this same worker
+
+At END:
+1. update meaningful process history
+2. PEEK
+3. verify same worker remains enabled + future-dated
+4. if needed, reschedule same worker +16
+5. release owned lease to FREE
+6. PEEK final:
+   - same worker future-dated
+   - supervisor active
+   - lease FREE
+
+Never create a replacement worker.
+
+===============================================================================
+10) HOURLY SUPERVISOR
+===============================================================================
+
+Supervisor:
+Kairos Relay Supervisor [ACTIVE]
+
+Role:
+- automation liveness/dead-man recovery
+- independent quality/plan audit
+- GitHub/repo READ-ONLY
+
+It must:
+- verify designated V16 same worker is enabled + future-dated
+- if dead/elapsed, UPDATE that SAME worker to +16
+- never create a new worker
+- keep obsolete V17/V18/older runners disabled
+- check lease for stale/abnormal state
+- audit one-chain, GOLDEN, ownership, gate authority, retry behavior, roadmap alignment
+
+It must NEVER:
+- mutate project code
+- promote candidates
+- acquire lease
+- invent a new engineering slice
+
+===============================================================================
+11) PROCESS HISTORY / RETRY LEDGER
+===============================================================================
+
+Use process history for continuity, not authority.
+
+After meaningful work record:
+- run token/time
+- before-state
+- GOLDEN
+- active candidate/gate/helper
+- action taken
+- scope/files/components
+- tests actually run
+- exact failures/evidence
+- after-state
+- next safe action
+- unresolved questions
+- docs/architecture update status
+- lease release
+- next V16 run verified
+
+Retry rule:
+If essentially the same technical method fails TWICE without materially new evidence:
+- do not repeat blindly
+- inspect exact logs/source/state
+- research official docs when useful
+- materially change strategy
+- preserve failure evidence
+
+Technical difficulty alone is NOT a user blocker.
+
+===============================================================================
+12) RESEARCH-THEN-DECIDE / USER APPROVAL
+===============================================================================
+
+First exhaust:
+- this master file
+- fresh GitHub
+- GOLDEN
+- exact source/data flow
+- logs/artifacts
+- current docs/history if needed
+
+Then research current primary/official sources when external knowledge can resolve ambiguity.
+
+Continue autonomously WITHOUT user approval when:
+- one clearly safe
+- reversible
+- dependency-compatible
+- in-scope
+technical choice exists and it does not materially change approved product meaning,
+provider/cost/privacy/security/design/business semantics.
+
+Ask user only when the unresolved choice materially changes:
+- user-facing product behavior/meaning
+- market/business semantics
+- design identity
+- privacy/security
+- external provider/paid service
+- data collection/sharing
+- irreversible/migration-heavy architecture
+- meaningful cost/risk
+- or multiple reasonable product options remain
+
+Research BEFORE asking.
+Give concise options/tradeoffs + one recommendation.
+
+Never use “approval needed” to hide an ordinary technical failure.
+
+===============================================================================
+13) P21 LIVE CRYPTO BUBBLE MAP — USER-APPROVED PRODUCT CONTRACT
+===============================================================================
+
+Live Crypto Bubble Map V1:
+
+- source truth = current authoritative market/provider truth only
+- provider V1 = existing Binance Spot boundary only
+- eligible default universe = actively tradable Binance Spot instruments quoted in USDT
+- default ranking = descending 24h quote volume
+- default count = Top 30
+- Top 30 is config/policy-owned, never hardcoded in UI
+- stablecoins excluded by explicit configurable exclusion set
+- equal-volume tie-break = symbol ordering
+- default timeframe = 24h
+- bubble size truth = 24h quote volume
+- presentation may nonlinearly scale radius, but metric truth remains quote volume
+- bubble color = 24h percentage movement
+- positive gain / negative loss / near-zero neutral
+- exact palette = design-system truth
+- freshness authority = caller-owned observedAt
+- provider event/source timestamp is NOT freshness authority
+- acquire immediately on entry/resume
+- acquire every 5 seconds while visible
+- suspend periodic acquisition while hidden
+- FRESH <=15s
+- STALE >15s and <=60s
+- EXPIRED/UNAVAILABLE >60s
+- stale keeps last authoritative facts visible but explicitly stale/dimmed
+- expired must not masquerade as current
+- failed acquisition does not erase last authoritative snapshot
+- feed/session freshness and per-fact freshness are separate
+- future WebSocket omission from changed-ticker array alone does not prove symbol stale
+- universe policy and freshness policy are separate deterministic owners
+- Binance/provider adapter must NOT own those product policies
+- future market-cap mode may use a separate future provider contract; not V1
+
+These Top 30 / 5s / 15s / 60s / stablecoin-exclusion / volume choices are Kairos product decisions, not “Binance rules.”
+
+===============================================================================
+14) TWO BUBBLE MAPS — NEVER MIX DATA OWNERS
+===============================================================================
+
+A. Live Crypto Bubble Map
+- provider market truth only
+- never infer current market from journal trades
+
+B. Your Trades Bubble Map
+- user journal/trade history + released calculation truth
+- never pretend to be live market data
+
+They may share presentation-only generic bubble layout/rendering machinery.
+They must NEVER share authoritative business/data ownership.
+
+UI never direct IndexedDB.
+Do not duplicate P11/P12/P14/P16 truth.
+
+===============================================================================
+15) DASHBOARD MOTION / TRANSITIONS
+===============================================================================
+
+Premium transition direction is approved presentation intent only.
+
+May include:
+- slower premium switching
+- irregular large/small tiles
+- depth/perspective
+- falling-cube/matrix-fold ideas
+- swipe directionality
+- reduced-motion support
+
+Animation must NEVER own, delay, mask, duplicate, rewrite, or roll back:
+- navigation
+- dashboard-selection truth
+- market/provider data
+- persistence
+- calculations
+- chart truth
+- Saved Analysis
+- route truth
+
+P40 = final global polish.
+Visual amendments may happen earlier only through controlled amendment from latest GOLDEN.
+
+===============================================================================
+16) CORE ARCHITECTURE INVARIANTS
+===============================================================================
+
+- one truth, one owner
+- UI never direct IndexedDB
+- money uses Decimal
+- missing != zero
+- visual coordinates = logical time + Decimal price
+- provider pixels = presentation only
+- presentation failure cannot roll back committed truth
+- motion = presentation only
+- P14 owns truthful execution visualization
+- P18 owns generic drawing machinery
+- P19 owns Risk/Reward business semantics + real chart reward/risk zones
+- Risk/Reward edits must not rewrite execution truth
+- preserve current owner boundaries in every P21 slice
+
+===============================================================================
+17) PACKAGING / QA
+===============================================================================
+
+Before candidate promotion/hand-off:
+
+Clean package:
+- no node_modules
+- no dist
+- no coverage
+- no .vite
+- no caches
+- no tsbuildinfo
+- no logs/temp/helper residue
+- ZIP root exactly `kairos_p76/`
+
+Preserve unless fresh authority changes:
+- Node 22.16.0
+- npm 10.9.2
+- lightweight-charts 5.2.1
+
+Prove:
+- exact intended delta
+- ZIP integrity
+- fresh extract
+- dedicated verifier
+- exact affected regression
+- required full/current/historical regression as applicable
+- SHA-256 / Git blob when useful
+
+Never claim tests passed unless actually proven.
+Never weaken verifier/gate to obtain PASS.
+
+===============================================================================
+18) CLEAN / ROOT HYGIENE
+===============================================================================
+
+Only clean when evidence says safe.
+
+Preserve:
+- source/config/workflows/docs
+- current GOLDEN
+- active candidate
+- immediate rollback evidence
+- phase/system closures
+- resource registry
+- unresolved gate/repair evidence
+
+Remove only proven superseded/temporary/helper/build/cache/output clutter no longer needed.
+
+Never clean by guess.
+Never clean away evidence from an unresolved chain.
+
+===============================================================================
+19) STATUS REPORTING
+===============================================================================
+
+When user asks worker/project status, report from FRESH evidence:
+
+- fast worker enabled/disabled
+- last run
+- next scheduled run
+- supervisor enabled + last/next cycle
+- lease FREE/HELD + owner
+- latest canonical GOLDEN
+- exact active gate/candidate/helper
+- current engineering checkpoint
+- abnormalities:
+  overdue worker
+  dead relay
+  duplicate worker
+  stale lease
+  CAUTION/OFF_PLAN
+  canonical failure
+
+Do not infer health from enabled=true alone.
+
+===============================================================================
+20) WHAT THE FAST WORKER SHOULD DO NEXT
+===============================================================================
+
+Default runtime sequence:
+
+1. Read THIS ONE FILE.
+2. PEEK automation state.
+3. Reschedule SAME V16 worker +16 and verify.
+4. Fresh GitHub main + exact canonical gate/job.
+5. If gate running -> MONITOR ONLY.
+6. If gate PASS -> verify all stages/artifacts -> promote -> reconcile docs/history -> prove one smallest next source-owned responsibility.
+7. If gate FAIL -> exact logs -> keep prior GOLDEN -> smallest evidence-backed repair.
+8. If no active gate -> inspect exact source owner/data flow -> prove one next responsibility.
+9. Acquire lease before mutation.
+10. Make smallest controlled change.
+11. Run required verification/regressions honestly.
+12. Update process history.
+13. Verify same worker future-dated.
+14. Release lease.
+15. End.
+
+===============================================================================
+21) WHEN TO OPEN OLDER HANDOFFS / SANDBOX FILES
+===============================================================================
+
+DO NOT search old handoffs/sandbox by default.
+
+Open older handoff/history only when:
+- this file conflicts with fresh GitHub
+- exact historical closure evidence is needed
+- Retry Ledger references a prior failed method whose details matter
+- current source ownership is ambiguous and architecture history is necessary
+- a user explicitly asks for historical reconstruction
+
+Otherwise:
+THIS FILE -> FRESH GITHUB -> EXACT CURRENT SOURCE -> ACT.
+
+===============================================================================
+22) FINAL OPERATING PRINCIPLE
+===============================================================================
+
+READ ONE MASTER FILE
+-> VERIFY SAME V16 LOOP
+-> FRESH CANONICAL GITHUB
+-> PROVE GOLDEN
+-> TRACE EXACT OWNER / DATA FLOW
+-> RESEARCH ONLY WHEN NEEDED
+-> ONE SMALLEST CONTROLLED ACTION
+-> TEST / REGRESS
+-> CANONICAL GATE
+-> PROCESS HISTORY
+-> VERIFY LOOP
+-> RELEASE LEASE
+-> CONTINUE
+
+NO GUESS EVER.
+CONTINUOUS DOES NOT MEAN UNCONTROLLED.
+QUALITY BEFORE SPEED.
+SHORTER RUNTIME MUST COME FROM LESS FILE-ARCHAEOLOGY, NOT FROM WEAKER VERIFICATION.
