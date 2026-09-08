@@ -50,8 +50,8 @@ jobs:
             'KAIROS_BINANCE_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_SCOPED_SNAPSHOT_ACQUISITION_PORT_ADAPTER_FOUNDATION_REPORT_2026-09-08.md',
             'package.json',
             'scripts/verify-binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation.mjs',
-            'src/application/dashboard/binanceHomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPortAdapter.ts',
-            'src/application/dashboard/index.ts',
+            'src/services/market-data/index.ts',
+            'src/services/market-data/providers/binance/binanceHomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPortAdapter.ts',
             'tests/binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation.test.ts',
           }
           if changed != expected:
