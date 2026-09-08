@@ -1,0 +1,37 @@
+name: Kairos Gate320 Architecture Reconciliation V2
+
+on:
+  push:
+    paths:
+      - '.github/workflows/gate320-architecture-reconcile-v2.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Reconcile exact Gate320 architecture checkpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor b895ebf3a2b1ba8ab3c78d835863b8cc9dbf0767 HEAD
+          test "$(git rev-parse HEAD:docs/KAIROS_ARCHITECTURE_MAP.md)" = "14ccc80df01a97e05a43962e4c4a6c6faaacc4e7"
+          test "$(git rev-parse HEAD:.kairos-temp/gate320-architecture-append.md)" = "1298e2a815acdec0446223733b948246b8e5f301"
+          test ! -e src/services/market-data/providers/binance/binanceSpotExchangeInfoPublicRestRoundTrip.ts
+          test "$(git diff --name-only b895ebf3a2b1ba8ab3c78d835863b8cc9dbf0767 HEAD | sort)" = "$(printf '%s\n' '.github/workflows/gate320-architecture-reconcile-v2.yml' '.kairos-temp/gate320-architecture-append.md' | sort)"
+          ! grep -Fq '## Canonical Binance Spot exchangeInfo public REST response delivery composition checkpoint — gate #320' docs/KAIROS_ARCHITECTURE_MAP.md
+          cat .kairos-temp/gate320-architecture-append.md >> docs/KAIROS_ARCHITECTURE_MAP.md
+          git rm .kairos-temp/gate320-architecture-append.md
+          git rm .github/workflows/gate320-architecture-reconcile-v2.yml
+          git add -A
+          git diff --cached --check
+          test "$(git diff --cached --name-only | sort)" = "$(printf '%s\n' '.github/workflows/gate320-architecture-reconcile-v2.yml' '.kairos-temp/gate320-architecture-append.md' 'docs/KAIROS_ARCHITECTURE_MAP.md' | sort)"
+          git config user.name "kairos-autonomous"
+          git config user.email "kairos-autonomous@users.noreply.github.com"
+          git commit -m "docs: reconcile canonical exchangeInfo response delivery"
+          git push origin HEAD:main
