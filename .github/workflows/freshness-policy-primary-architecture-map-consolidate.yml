@@ -1,0 +1,70 @@
+name: Kairos Freshness Policy Primary Architecture Map Consolidation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/freshness-policy-primary-architecture-map-consolidate.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  consolidate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Append canonical freshness policy checkpoint with byte-preservation proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          MAP='docs/KAIROS_ARCHITECTURE_MAP.md'
+          test -f "$MAP"
+          grep -Fq 'Canonical Binance Home Dashboard acquisition-port adapter checkpoint — gate #311' "$MAP"
+          if grep -Fq 'Canonical Live Market Summary freshness classification policy checkpoint — gate #312' "$MAP"; then
+            echo 'Freshness policy checkpoint already present; nothing to do.'
+            exit 0
+          fi
+          cp "$MAP" /tmp/kairos-architecture-map.before
+
+          cat >> "$MAP" <<'MD'
+
+          ## Canonical Live Market Summary freshness classification policy checkpoint — gate #312
+
+          The latest canonical GOLDEN after the Binance Home Dashboard acquisition-port adapter is the **Live Market Summary Freshness Classification Policy Foundation**. Its patch number is intentionally not inferred.
+
+          - Canonical gate: `Kairos Controlled Roadmap Gate` #312 / run `34188023039`, job `101940182795`, exact head `ef0e9ff05802ee1a4d84b04ab4815ecaf010154c`, full SUCCESS on 2026-09-08.
+          - Production owner seam: `src/services/market-data/liveMarketSummaryFreshnessClassificationPolicy.ts`, exported through `src/services/market-data/index.ts`.
+          - Responsibility: provider-neutral deterministic classification of an already-computed caller-owned observation age in milliseconds to `fresh | stale | expired`.
+          - V1 defaults: `freshMaxAgeMs = 15_000`, `staleMaxAgeMs = 60_000`; `fresh` for age <=15,000ms, `stale` for age >15,000ms and <=60,000ms, and `expired` for age >60,000ms.
+          - Exact canonical artifacts: `KAIROS_CURRENT_CANDIDATE` id `10041358029`, size `1,264,322`, digest `sha256:0de5538c535efa534c5a5520dd97022c5994cede8e0e4625d6e60c17f53b22e5`; `KAIROS_GATE_EVIDENCE` id `10041358329`, size `1,245`, digest `sha256:b7844cae36314ca01d308eca40425b97dc8ec7e3e15cac06e345d077e871131d`.
+          - Downloaded integrity: candidate wrapper contains exactly `KAIROS_LIVE_MARKET_SUMMARY_FRESHNESS_CLASSIFICATION_POLICY_FOUNDATION_CANDIDATE_2026-09-08.zip`, inner size `1,469,920`, SHA-256 `64435ec7d4af49a27b7c09cb12241a9ec8639d55962a4b71dbb200aa90f5bdca`, outer and inner ZIP integrity PASS; gate-evidence wrapper contains exactly `KAIROS_LIVE_MARKET_SUMMARY_FRESHNESS_CLASSIFICATION_POLICY_FOUNDATION_REPORT_2026-09-08.md`, inner size `1,880`, SHA-256 `7fc7bfd58bb143d52ba65f70d7d37a296534bfc96739bb7e1b4028e21317a58b`, wrapper ZIP integrity PASS.
+          - Boundary: classification policy only; the caller computes observation age from canonical caller-owned `observedAt` plus caller-owned deterministic evaluation time.
+          - Explicit non-scope: no `Date.now()` / `new Date()` / internal wall clock; no `observedAt` parsing or evaluation-time ownership; no acquisition/polling/scheduling/visibility/resume/retry/cancellation; no Binance/provider transport; no universe/default-scope/ranking/filter/top-N/stablecoin policy; no Home React wiring; no stale/expired presentation; no Bubble geometry/size/color/interactions; no Your Trades/journal ownership; no persistence/IndexedDB/Saved Analysis/chart/navigation/transition ownership.
+
+          This checkpoint extends the primary architecture map without changing any earlier ownership entry. Universe policy, visible-dashboard cadence, deterministic age computation/evaluation-time ownership, and stale/expired presentation remain separate responsibilities. Live Crypto Bubble Map remains market/provider truth only; Your Trades Bubble Map remains journal/trade history plus released calculation truth only; UI must not read IndexedDB directly; dashboard transitions remain presentation-only.
+          MD
+
+          python - <<'PY'
+          from pathlib import Path
+          before = Path('/tmp/kairos-architecture-map.before').read_bytes()
+          after = Path('docs/KAIROS_ARCHITECTURE_MAP.md').read_bytes()
+          if not after.startswith(before):
+              raise SystemExit('historical architecture-map bytes changed before appended checkpoint')
+          if len(after) <= len(before):
+              raise SystemExit('checkpoint append did not add bytes')
+          PY
+
+          read adds dels path < <(git diff --numstat -- "$MAP")
+          test "$path" = "$MAP"
+          test "$dels" = '0'
+          test "$adds" -gt 0
+          test "$(git diff --name-only | wc -l | tr -d ' ')" = '1'
+          test "$(git diff --name-only)" = "$MAP"
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "$MAP"
+          git commit -m 'Consolidate canonical freshness classification policy into architecture map'
+          git push
