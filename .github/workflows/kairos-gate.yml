@@ -1,11 +1,11 @@
-# KAIROS BINANCE SPOT EXCHANGE INFO PUBLIC REST ROUND TRIP COMPOSITION GATE — AUTHORITATIVE BASE GATE 320
+# KAIROS LIVE MARKET UNIVERSE INSTRUMENT METADATA ACQUISITION PORT CONTRACT GATE — AUTHORITATIVE BASE GATE 321
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_BINANCE_SPOT_EXCHANGE_INFO_PUBLIC_REST_ROUND_TRIP_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-09.zip'
+      - 'KAIROS_LIVE_MARKET_UNIVERSE_INSTRUMENT_METADATA_ACQUISITION_PORT_CONTRACT_FOUNDATION_CANDIDATE_2026-09-09.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_BINANCE_SPOT_EXCHANGE_INFO_PUBLIC_REST_RESPONSE_DELIVERY_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-09.zip
-  CANDIDATE_ZIP: KAIROS_BINANCE_SPOT_EXCHANGE_INFO_PUBLIC_REST_ROUND_TRIP_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-09.zip
+  BASE_ZIP: KAIROS_BINANCE_SPOT_EXCHANGE_INFO_PUBLIC_REST_ROUND_TRIP_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-09.zip
+  CANDIDATE_ZIP: KAIROS_LIVE_MARKET_UNIVERSE_INSTRUMENT_METADATA_ACQUISITION_PORT_CONTRACT_FOUNDATION_CANDIDATE_2026-09-09.zip
 
 jobs:
   verify-current-candidate:
@@ -35,8 +35,8 @@ jobs:
           from pathlib import Path, PurePosixPath
           import hashlib, os, zipfile
           for key, size, digest in [
-            ('BASE_ZIP', 1505480, 'adb7aa2d78693a088d0904acd8b87d9f9c32e0ab901c2d89ea053324f5816414'),
-            ('CANDIDATE_ZIP', 1508727, '704925a6235a061561eacef5dda832fa9919001b2153af45a6e72e14d3b6b307'),
+            ('BASE_ZIP', 1508727, '704925a6235a061561eacef5dda832fa9919001b2153af45a6e72e14d3b6b307'),
+            ('CANDIDATE_ZIP', 1512294, '4d5b70cb255ae987990702b703db49aa8d2f19cad5e0dfb74abfeec63bb12a36'),
           ]:
             p=Path(os.environ[key]); data=p.read_bytes()
             assert len(data)==size, f'{key}: byte size mismatch'
@@ -61,7 +61,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact controlled Binance Spot exchangeInfo public REST round trip composition scope from Gate 320
+      - name: Confirm exact controlled live market universe instrument metadata acquisition port scope from Gate 321
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -73,15 +73,15 @@ jobs:
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           print('\n'.join(sorted(changed)))
           expected={
-            'KAIROS_BINANCE_SPOT_EXCHANGE_INFO_PUBLIC_REST_ROUND_TRIP_COMPOSITION_FOUNDATION_REPORT_2026-09-09.md',
+            'KAIROS_LIVE_MARKET_UNIVERSE_INSTRUMENT_METADATA_ACQUISITION_PORT_CONTRACT_FOUNDATION_REPORT_2026-09-09.md',
             'package.json',
-            'scripts/verify-binance-spot-exchange-info-public-rest-round-trip.mjs',
+            'scripts/verify-live-market-universe-instrument-metadata-acquisition-port-contract-foundation.mjs',
+            'src/services/market-data/LiveMarketUniverseInstrumentMetadataAcquisitionPort.ts',
             'src/services/market-data/index.ts',
-            'src/services/market-data/providers/binance/binanceSpotExchangeInfoPublicRestRoundTrip.ts',
-            'tests/binance-spot-exchange-info-public-rest-round-trip.test.ts',
+            'tests/live-market-universe-instrument-metadata-acquisition-port-contract-foundation.test.ts',
           }
           if changed != expected:
-            print('Binance Spot exchangeInfo public REST round trip composition exact scope mismatch',file=sys.stderr)
+            print('Live market universe instrument metadata acquisition port exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             sys.exit(1)
@@ -105,9 +105,11 @@ jobs:
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
 
-      - name: Dedicated Binance Spot exchangeInfo public REST round trip composition verifier/runtime
+      - name: Dedicated live market universe instrument metadata acquisition port verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:live-market-universe-instrument-metadata-acquisition-port-contract-foundation
+          npm run verify:live-market-universe-instrument-metadata-fact-contract-foundation
           npm run verify:binance-spot-exchange-info-public-rest-round-trip
           npm run verify:binance-spot-exchange-info-public-rest-response-delivery-composition-foundation
           npm run verify:binance-spot-exchange-info-instrument-metadata-fact-response-mapping-foundation
@@ -116,7 +118,6 @@ jobs:
           npm run verify:binance-spot-exchange-info-public-rest-response-decode-foundation
           npm run verify:binance-spot-exchange-info-public-rest-request-execution-boundary-foundation
           npm run verify:binance-spot-exchange-info-public-rest-request-descriptor-foundation
-          npm run verify:live-market-universe-instrument-metadata-fact-contract-foundation
           npm run verify:live-market-summary-freshness-classification-policy-foundation
           npm run verify:binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation
           npm run verify:home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation
@@ -133,15 +134,15 @@ jobs:
           npm run verify:p8:navigation-shell
           npm run verify:p1
 
-      - name: Focused round trip composition regression
+      - name: Focused metadata acquisition port regression
         working-directory: .gate-candidate/kairos_p76
-        run: npx vitest run tests/binance-spot-exchange-info-public-rest-round-trip.test.ts tests/binance-spot-exchange-info-public-rest-response-delivery.test.ts tests/binance-spot-exchange-info-instrument-metadata-fact-response.test.ts tests/binance-spot-exchange-info-instrument-metadata-fact-collection.test.ts tests/binance-spot-exchange-info-instrument-metadata-fact.test.ts tests/binance-spot-exchange-info-public-rest-response-decode.test.ts
+        run: npx vitest run tests/live-market-universe-instrument-metadata-acquisition-port-contract-foundation.test.ts tests/live-market-universe-instrument-metadata-fact.test.ts tests/binance-spot-exchange-info-public-rest-round-trip.test.ts tests/binance-spot-exchange-info-public-rest-response-delivery.test.ts tests/binance-spot-exchange-info-instrument-metadata-fact-response.test.ts tests/binance-spot-exchange-info-instrument-metadata-fact-collection.test.ts tests/binance-spot-exchange-info-instrument-metadata-fact.test.ts
 
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
 
-      - name: Full controlled roadmap regression through canonical P21.23 plus Home port, Binance adapter, freshness, universe metadata, exchangeInfo descriptor, execution, decode, metadata mapping, collection mapping, response mapping, response delivery and round trip
+      - name: Full controlled roadmap regression through canonical P21.23 plus Home port, Binance adapter, freshness, universe metadata, exchangeInfo chain and metadata acquisition port
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
@@ -149,6 +150,8 @@ jobs:
           const p=JSON.parse(readFileSync('package.json'));
           const scripts=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:')).sort();
           for(const required of [
+            'verify:live-market-universe-instrument-metadata-acquisition-port-contract-foundation',
+            'verify:live-market-universe-instrument-metadata-fact-contract-foundation',
             'verify:binance-spot-exchange-info-public-rest-round-trip',
             'verify:binance-spot-exchange-info-public-rest-response-delivery-composition-foundation',
             'verify:binance-spot-exchange-info-instrument-metadata-fact-response-mapping-foundation',
@@ -157,7 +160,6 @@ jobs:
             'verify:binance-spot-exchange-info-public-rest-response-decode-foundation',
             'verify:binance-spot-exchange-info-public-rest-request-execution-boundary-foundation',
             'verify:binance-spot-exchange-info-public-rest-request-descriptor-foundation',
-            'verify:live-market-universe-instrument-metadata-fact-contract-foundation',
             'verify:live-market-summary-freshness-classification-policy-foundation',
             'verify:binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation',
             'verify:home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation',
@@ -183,6 +185,8 @@ jobs:
       - name: Historical closures
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:live-market-universe-instrument-metadata-acquisition-port-contract-foundation
+          npm run verify:live-market-universe-instrument-metadata-fact-contract-foundation
           npm run verify:binance-spot-exchange-info-public-rest-round-trip
           npm run verify:binance-spot-exchange-info-public-rest-response-delivery-composition-foundation
           npm run verify:binance-spot-exchange-info-instrument-metadata-fact-response-mapping-foundation
@@ -191,7 +195,6 @@ jobs:
           npm run verify:binance-spot-exchange-info-public-rest-response-decode-foundation
           npm run verify:binance-spot-exchange-info-public-rest-request-execution-boundary-foundation
           npm run verify:binance-spot-exchange-info-public-rest-request-descriptor-foundation
-          npm run verify:live-market-universe-instrument-metadata-fact-contract-foundation
           npm run verify:live-market-summary-freshness-classification-policy-foundation
           npm run verify:binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation
           npm run verify:home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation
@@ -250,5 +253,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_BINANCE_SPOT_EXCHANGE_INFO_PUBLIC_REST_ROUND_TRIP_COMPOSITION_FOUNDATION_REPORT_2026-09-09.md
+          path: .gate-candidate/kairos_p76/KAIROS_LIVE_MARKET_UNIVERSE_INSTRUMENT_METADATA_ACQUISITION_PORT_CONTRACT_FOUNDATION_REPORT_2026-09-09.md
           if-no-files-found: error
