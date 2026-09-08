@@ -43,20 +43,16 @@ jobs:
           import {
             executeBinanceSpotExchangeInfoPublicRestRequest,
             type BinanceSpotExchangeInfoPublicRestRequestConnector,
-            type BinanceSpotExchangeInfoPublicRestRequestExecutionOptions,
+            type BinanceSpotExchangeInfoPublicRestExecutionOptions,
           } from './binanceSpotExchangeInfoPublicRestRequestExecution';
           import {
             mapBinanceSpotExchangeInfoPublicRestResponseDelivery,
-            type BinanceSpotExchangeInfoPublicRestResponseDeliveryResult,
           } from './binanceSpotExchangeInfoPublicRestResponseDelivery';
-
-          export type BinanceSpotExchangeInfoPublicRestRoundTripResult =
-            BinanceSpotExchangeInfoPublicRestResponseDeliveryResult;
 
           export async function composeBinanceSpotExchangeInfoPublicRestRoundTrip(
             connect: BinanceSpotExchangeInfoPublicRestRequestConnector<unknown>,
-            options?: BinanceSpotExchangeInfoPublicRestRequestExecutionOptions,
-          ): Promise<BinanceSpotExchangeInfoPublicRestRoundTripResult> {
+            options?: BinanceSpotExchangeInfoPublicRestExecutionOptions,
+          ) {
             const request = describeBinanceSpotExchangeInfoPublicRestRequest();
             const data = options === undefined
               ? await executeBinanceSpotExchangeInfoPublicRestRequest(request, connect)
