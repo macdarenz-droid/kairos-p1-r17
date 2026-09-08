@@ -39,7 +39,6 @@ jobs:
           cat > "$ROOT/src/services/market-data/providers/binance/binanceSpotExchangeInfoPublicRestRoundTrip.ts" <<'TS'
           import {
             describeBinanceSpotExchangeInfoPublicRestRequest,
-            type BinanceSpotExchangeInfoPublicRestRequestResult,
           } from './binanceSpotExchangeInfoPublicRestRequest';
           import {
             executeBinanceSpotExchangeInfoPublicRestRequest,
@@ -51,28 +50,17 @@ jobs:
             type BinanceSpotExchangeInfoPublicRestResponseDeliveryResult,
           } from './binanceSpotExchangeInfoPublicRestResponseDelivery';
 
-          type RequestFailureReason = Extract<
-            BinanceSpotExchangeInfoPublicRestRequestResult,
-            { readonly ok: false }
-          >['reason'];
-          type ResponseFailureReason = Extract<
-            BinanceSpotExchangeInfoPublicRestResponseDeliveryResult,
-            { readonly ok: false }
-          >['reason'];
-
           export type BinanceSpotExchangeInfoPublicRestRoundTripResult =
-            | Extract<BinanceSpotExchangeInfoPublicRestResponseDeliveryResult, { readonly ok: true }>
-            | { readonly ok: false; readonly reason: RequestFailureReason | ResponseFailureReason };
+            BinanceSpotExchangeInfoPublicRestResponseDeliveryResult;
 
           export async function composeBinanceSpotExchangeInfoPublicRestRoundTrip(
             connect: BinanceSpotExchangeInfoPublicRestRequestConnector<unknown>,
             options?: BinanceSpotExchangeInfoPublicRestRequestExecutionOptions,
           ): Promise<BinanceSpotExchangeInfoPublicRestRoundTripResult> {
-            const described = describeBinanceSpotExchangeInfoPublicRestRequest();
-            if (!described.ok) return described;
+            const request = describeBinanceSpotExchangeInfoPublicRestRequest();
             const data = options === undefined
-              ? await executeBinanceSpotExchangeInfoPublicRestRequest(described.request, connect)
-              : await executeBinanceSpotExchangeInfoPublicRestRequest(described.request, connect, options);
+              ? await executeBinanceSpotExchangeInfoPublicRestRequest(request, connect)
+              : await executeBinanceSpotExchangeInfoPublicRestRequest(request, connect, options);
             return mapBinanceSpotExchangeInfoPublicRestResponseDelivery(data);
           }
           TS
@@ -93,7 +81,7 @@ jobs:
           describe('Binance Spot exchangeInfo public REST round-trip composition foundation', () => {
             it('composes descriptor, exactly one injected execution and released response delivery', async () => {
               const connect = vi.fn(async (request: { readonly url: string }) => {
-                expect(request.url).toContain('/api/v3/exchangeInfo');
+                expect(request.url).toBe('https://data-api.binance.vision/api/v3/exchangeInfo');
                 return JSON.stringify({ symbols: [{ symbol: 'BTCUSDT', status: 'TRADING', baseAsset: 'BTC', quoteAsset: 'USDT' }] });
               });
               const result = await composeBinanceSpotExchangeInfoPublicRestRoundTrip(connect);
@@ -113,7 +101,9 @@ jobs:
 
             it('preserves connector rejection unchanged', async () => {
               const failure = new Error('connector-owned-failure');
-              await expect(composeBinanceSpotExchangeInfoPublicRestRoundTrip(async () => { throw failure; })).rejects.toBe(failure);
+              const connect = vi.fn(async () => { throw failure; });
+              await expect(composeBinanceSpotExchangeInfoPublicRestRoundTrip(connect)).rejects.toBe(failure);
+              expect(connect).toHaveBeenCalledTimes(1);
             });
 
             it('passes through released response-delivery failures', async () => {
@@ -127,7 +117,7 @@ jobs:
 
           Base: canonical Gate #320 response-delivery composition GOLDEN.
 
-          Responsibility: compose the already-released exchangeInfo request descriptor, injected execution seam and response-delivery seam for one round trip. Caller-owned execution options are forwarded only through the released execution owner. Connector rejection propagates unchanged.
+          Responsibility: compose the already-released unconditional exchangeInfo request descriptor, injected execution seam and response-delivery seam for one round trip. Caller-owned execution options are forwarded only through the released execution owner. Connector rejection propagates unchanged.
 
           Non-scope: concrete transport/HTTP Response semantics, retry/backoff/rate policy, acquisition adapter/polling/resume, universe filtering/stablecoin exclusion/ranking/Top-N, freshness, Home/Bubble UI, Your Trades, persistence/chart/navigation/transitions.
           MD
@@ -144,10 +134,15 @@ jobs:
           const read=(p)=>fs.readFileSync(new URL(`../${p}`, import.meta.url),'utf8');
           const src=read('src/services/market-data/providers/binance/binanceSpotExchangeInfoPublicRestRoundTrip.ts');
           const idx=read('src/services/market-data/index.ts');
-          if(!src.includes('describeBinanceSpotExchangeInfoPublicRestRequest()')) throw new Error('descriptor composition missing');
-          if(!src.includes('executeBinanceSpotExchangeInfoPublicRestRequest')) throw new Error('execution composition missing');
+          if(!src.includes('const request = describeBinanceSpotExchangeInfoPublicRestRequest();')) throw new Error('unconditional descriptor composition missing');
+          if(src.includes('described.ok') || src.includes('described.request')) throw new Error('round trip incorrectly treats unconditional exchangeInfo descriptor as a fallible request result');
+          if(!src.includes('executeBinanceSpotExchangeInfoPublicRestRequest(request, connect)')) throw new Error('execution composition missing');
+          if(!src.includes('executeBinanceSpotExchangeInfoPublicRestRequest(request, connect, options)')) throw new Error('execution options forwarding missing');
           if(!src.includes('mapBinanceSpotExchangeInfoPublicRestResponseDelivery(data)')) throw new Error('response delivery composition missing');
           if(!idx.includes("export * from './providers/binance/binanceSpotExchangeInfoPublicRestRoundTrip';")) throw new Error('index export missing');
+          for (const forbidden of ['fetch(', 'XMLHttpRequest', 'WebSocket(', 'setTimeout(', 'setInterval(', 'indexedDB']) {
+            if (src.includes(forbidden)) throw new Error(`round trip broadened into forbidden scope: ${forbidden}`);
+          }
           console.log('exchangeInfo public REST round-trip verifier PASS');
           JS
       - name: Verify reconstructed round trip before packaging
