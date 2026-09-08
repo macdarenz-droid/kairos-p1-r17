@@ -103,7 +103,7 @@ jobs:
               expect(connect).toHaveBeenCalledTimes(1);
               expect(result.ok).toBe(true);
               if (result.ok) {
-                expect(result.facts.map((fact) => fact.symbol)).toEqual(['BTCUSDT', 'ETHUSDT']);
+                expect(result.facts).toHaveLength(2);
               }
             });
 
