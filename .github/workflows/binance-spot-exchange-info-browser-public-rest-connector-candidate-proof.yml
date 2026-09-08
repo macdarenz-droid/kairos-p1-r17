@@ -1,0 +1,78 @@
+name: Kairos ExchangeInfo Browser Connector Candidate Proof
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/binance-spot-exchange-info-browser-public-rest-connector-candidate-proof.yml'
+
+permissions:
+  contents: write
+
+env:
+  CANDIDATE: KAIROS_BINANCE_SPOT_EXCHANGE_INFO_BROWSER_PUBLIC_REST_CONNECTOR_FOUNDATION_CANDIDATE_2026-09-09.zip
+  EXPECTED_SIZE: '1519806'
+
+jobs:
+  prove-candidate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prove exact candidate identity and package hygiene
+        id: proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f "$CANDIDATE"
+          actual_size="$(stat -c%s "$CANDIDATE")"
+          test "$actual_size" = "$EXPECTED_SIZE"
+          unzip -tq "$CANDIDATE"
+          python3 - <<'PY'
+          from pathlib import PurePosixPath
+          from zipfile import ZipFile
+          import stat
+
+          candidate = 'KAIROS_BINANCE_SPOT_EXCHANGE_INFO_BROWSER_PUBLIC_REST_CONNECTOR_FOUNDATION_CANDIDATE_2026-09-09.zip'
+          with ZipFile(candidate) as zf:
+              infos = zf.infolist()
+              if not infos:
+                  raise SystemExit('empty archive')
+              roots = set()
+              for info in infos:
+                  name = info.filename
+                  path = PurePosixPath(name)
+                  if path.is_absolute() or '..' in path.parts:
+                      raise SystemExit(f'unsafe path: {name}')
+                  if not path.parts:
+                      raise SystemExit('empty path entry')
+                  roots.add(path.parts[0])
+                  mode = (info.external_attr >> 16) & 0xFFFF
+                  if stat.S_ISLNK(mode):
+                      raise SystemExit(f'symlink forbidden: {name}')
+              if roots != {'kairos_p76'}:
+                  raise SystemExit(f'unexpected roots: {sorted(roots)}')
+          print('archive hygiene PASS')
+          PY
+          sha="$(sha256sum "$CANDIDATE" | awk '{print $1}')"
+          printf 'candidate=%s\nsize=%s\nsha256=%s\nroot=kairos_p76/\nintegrity=PASS\n' "$CANDIDATE" "$actual_size" "$sha" | tee KAIROS_EXCHANGEINFO_BROWSER_CONNECTOR_CANDIDATE_PROOF.txt
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      - name: Upload identity proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: KAIROS_EXCHANGEINFO_BROWSER_CONNECTOR_CANDIDATE_PROOF_${{ steps.proof.outputs.sha }}
+          path: KAIROS_EXCHANGEINFO_BROWSER_CONNECTOR_CANDIDATE_PROOF.txt
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Remove temporary proof helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/binance-spot-exchange-info-browser-public-rest-connector-candidate-proof.yml
+          git commit -m 'Remove temporary exchangeInfo browser connector candidate proof helper'
+          git push
