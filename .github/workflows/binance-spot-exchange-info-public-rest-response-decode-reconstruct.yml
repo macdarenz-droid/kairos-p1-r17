@@ -1,0 +1,278 @@
+name: Kairos Binance Spot Exchange Info Public REST Response Decode Reconstruction
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/binance-spot-exchange-info-public-rest-response-decode-reconstruct.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reconstruct:
+    runs-on: ubuntu-24.04
+    env:
+      BASE_ZIP: KAIROS_BINANCE_SPOT_EXCHANGE_INFO_PUBLIC_REST_REQUEST_EXECUTION_BOUNDARY_FOUNDATION_CANDIDATE_2026-09-08.zip
+      OUT_ZIP: KAIROS_BINANCE_SPOT_EXCHANGE_INFO_PUBLIC_REST_RESPONSE_DECODE_FOUNDATION_CANDIDATE_2026-09-08.zip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - name: Pin npm
+        run: |
+          npm install --global npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+
+      - name: Reconstruct exact response-decode slice from canonical exchangeInfo execution GOLDEN
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .candidate .package .verify-extract
+          mkdir .candidate
+          unzip -q "$BASE_ZIP" -d .candidate
+          ROOT=.candidate/kairos_p76
+          test -f "$ROOT/src/services/market-data/providers/binance/binanceSpotExchangeInfoPublicRestRequestExecution.ts"
+          test -f "$ROOT/src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineResponseDecode.ts"
+          test -f "$ROOT/src/services/market-data/index.ts"
+
+          cat > "$ROOT/src/services/market-data/providers/binance/binanceSpotExchangeInfoPublicRestResponseDecode.ts" <<'TS'
+          export type BinanceSpotExchangeInfoPublicRestResponseDecodeResult =
+            | { readonly ok: true; readonly payload: unknown }
+            | {
+                readonly ok: false;
+                readonly reason: 'unsupported-response-data' | 'invalid-json';
+              };
+
+          /**
+           * Owns JSON-text response decoding only for the already-executed public
+           * Binance Spot exchangeInfo request. Concrete transport/Response acquisition
+           * and exchangeInfo semantic interpretation stay outside this owner.
+           */
+          export function decodeBinanceSpotExchangeInfoPublicRestResponse(
+            data: unknown,
+          ): BinanceSpotExchangeInfoPublicRestResponseDecodeResult {
+            if (typeof data !== 'string') {
+              return { ok: false, reason: 'unsupported-response-data' };
+            }
+
+            try {
+              return { ok: true, payload: JSON.parse(data) as unknown };
+            } catch {
+              return { ok: false, reason: 'invalid-json' };
+            }
+          }
+          TS
+
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('.candidate/kairos_p76/src/services/market-data/index.ts')
+          s=p.read_text()
+          anchor="export * from './providers/binance/binanceSpotExchangeInfoPublicRestRequestExecution';\n"
+          addition="export * from './providers/binance/binanceSpotExchangeInfoPublicRestResponseDecode';\n"
+          if anchor not in s:
+              raise SystemExit('canonical exchangeInfo execution export anchor not found')
+          if addition not in s:
+              p.write_text(s.replace(anchor, anchor+addition, 1))
+          PY
+
+          cat > "$ROOT/tests/binance-spot-exchange-info-public-rest-response-decode.test.ts" <<'TS'
+          import { describe, expect, it } from 'vitest';
+          import { decodeBinanceSpotExchangeInfoPublicRestResponse } from '../src/services/market-data';
+
+          describe('Binance Spot exchangeInfo public REST response decode foundation', () => {
+            it('decodes exchangeInfo JSON text without interpreting provider metadata semantics', () => {
+              const result = decodeBinanceSpotExchangeInfoPublicRestResponse(
+                '{"timezone":"UTC","symbols":[{"symbol":"BTCUSDT","status":"TRADING","baseAsset":"BTC","quoteAsset":"USDT"}]}',
+              );
+              expect(result).toEqual({
+                ok: true,
+                payload: {
+                  timezone: 'UTC',
+                  symbols: [
+                    {
+                      symbol: 'BTCUSDT',
+                      status: 'TRADING',
+                      baseAsset: 'BTC',
+                      quoteAsset: 'USDT',
+                    },
+                  ],
+                },
+              });
+            });
+
+            it('preserves arbitrary valid JSON payload shape for a later semantic mapper', () => {
+              expect(decodeBinanceSpotExchangeInfoPublicRestResponse('[]')).toEqual({
+                ok: true,
+                payload: [],
+              });
+              expect(decodeBinanceSpotExchangeInfoPublicRestResponse('null')).toEqual({
+                ok: true,
+                payload: null,
+              });
+            });
+
+            it('rejects malformed JSON text deterministically', () => {
+              expect(decodeBinanceSpotExchangeInfoPublicRestResponse('{"symbols":['))
+                .toEqual({ ok: false, reason: 'invalid-json' });
+            });
+
+            it('rejects non-text response data instead of inventing Response/body/binary semantics', () => {
+              expect(decodeBinanceSpotExchangeInfoPublicRestResponse({ symbols: [] }))
+                .toEqual({ ok: false, reason: 'unsupported-response-data' });
+              expect(decodeBinanceSpotExchangeInfoPublicRestResponse(new Uint8Array([1, 2, 3])))
+                .toEqual({ ok: false, reason: 'unsupported-response-data' });
+            });
+          });
+          TS
+
+          cat > "$ROOT/KAIROS_BINANCE_SPOT_EXCHANGE_INFO_PUBLIC_REST_RESPONSE_DECODE_FOUNDATION_REPORT_2026-09-08.md" <<'MD'
+          # Binance Spot Exchange Information Public REST Response Decode Foundation
+
+          ## Authority
+          Base: canonical Binance Spot Exchange Information Public REST Request Execution Boundary Foundation, `Kairos Controlled Roadmap Gate` #315 / run `34206420246`.
+
+          ## Responsibility
+          Canonical #315 can execute one already-described public Binance Spot exchangeInfo request through an injected connector but deliberately does not own response representation or JSON parsing. Released Binance 24h REST architecture already separates execution from a pure JSON-text response decoder. This slice applies that same proven ownership boundary to exchangeInfo: accept already-received response data, accept only text under the existing provider convention, parse JSON exactly once, return `payload: unknown` on success, and return deterministic unsupported-data / invalid-JSON failures.
+
+          ## Explicit non-scope
+          - No fetch/XHR/WebSocket/browser transport or concrete `Response` acquisition.
+          - No HTTP status/header/body acquisition or interpretation.
+          - No exchangeInfo semantic validation or interpretation of `symbols`, `symbol`, `status`, `baseAsset`, `quoteAsset`, filters or permissions.
+          - No mapping to `LiveMarketUniverseInstrumentMetadataFact`; no `status -> tradingEnabled` policy.
+          - No request descriptor/execution widening.
+          - No cache/polling/refresh/retry/backoff/request-weight/rate-limit policy.
+          - No USDT eligibility filtering, stablecoin exclusion, quote-volume ranking, tie-break or Top-N.
+          - No freshness changes, Home React wiring, stale presentation or Bubble rendering.
+          - No Your Trades/journal, persistence/IndexedDB, Saved Analysis, chart/navigation or transition ownership.
+          MD
+
+          cat > "$ROOT/scripts/verify-binance-spot-exchange-info-public-rest-response-decode-foundation.mjs" <<'JS'
+          import { readFileSync } from 'node:fs';
+          const source = readFileSync(new URL('../src/services/market-data/providers/binance/binanceSpotExchangeInfoPublicRestResponseDecode.ts', import.meta.url), 'utf8');
+          const index = readFileSync(new URL('../src/services/market-data/index.ts', import.meta.url), 'utf8');
+          const report = readFileSync(new URL('../KAIROS_BINANCE_SPOT_EXCHANGE_INFO_PUBLIC_REST_RESPONSE_DECODE_FOUNDATION_REPORT_2026-09-08.md', import.meta.url), 'utf8');
+
+          for (const token of [
+            'BinanceSpotExchangeInfoPublicRestResponseDecodeResult',
+            'decodeBinanceSpotExchangeInfoPublicRestResponse',
+            "typeof data !== 'string'",
+            'JSON.parse(data)',
+            "'unsupported-response-data'",
+            "'invalid-json'",
+          ]) if (!source.includes(token)) throw new Error(`exchangeInfo response-decode evidence missing: ${token}`);
+
+          if (!index.includes("export * from './providers/binance/binanceSpotExchangeInfoPublicRestResponseDecode';")) {
+            throw new Error('exchangeInfo response-decode barrel export missing');
+          }
+
+          for (const forbidden of [
+            'fetch(', 'XMLHttpRequest', 'WebSocket(', 'new Response(', '.json(', 'executeBinanceSpotExchangeInfoPublicRestRequest(',
+            'LiveMarketUniverseInstrumentMetadataFact', 'tradingEnabled:', 'quoteVolume24h', '.sort(', 'Top 30', 'topN',
+            'setTimeout(', 'setInterval(', 'indexedDB',
+          ]) if (source.includes(forbidden)) throw new Error(`response decode broadened into forbidden scope: ${forbidden}`);
+
+          for (const token of [
+            'No fetch/XHR/WebSocket/browser transport',
+            'No HTTP status/header/body acquisition or interpretation',
+            'No exchangeInfo semantic validation',
+            'No mapping to `LiveMarketUniverseInstrumentMetadataFact`',
+            'No cache/polling/refresh/retry',
+            'No USDT eligibility filtering',
+            'No freshness changes',
+            'No Your Trades/journal',
+          ]) if (!report.includes(token)) throw new Error(`response-decode report evidence missing: ${token}`);
+
+          console.log('Binance Spot exchangeInfo public REST response decode verification passed.');
+          JS
+
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const p='.candidate/kairos_p76/package.json';
+          const j=JSON.parse(fs.readFileSync(p,'utf8'));
+          j.scripts||={};
+          j.scripts['verify:binance-spot-exchange-info-public-rest-response-decode-foundation']='node scripts/verify-binance-spot-exchange-info-public-rest-response-decode-foundation.mjs';
+          fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');
+          NODE
+
+          python - <<'PY'
+          from pathlib import Path
+          import tempfile, zipfile
+          root=Path('.candidate/kairos_p76')
+          with tempfile.TemporaryDirectory() as td:
+              with zipfile.ZipFile('KAIROS_BINANCE_SPOT_EXCHANGE_INFO_PUBLIC_REST_REQUEST_EXECUTION_BOUNDARY_FOUNDATION_CANDIDATE_2026-09-08.zip') as z:
+                  z.extractall(td)
+              base=Path(td)/'kairos_p76'
+              a={str(p.relative_to(base)):p.read_bytes() for p in base.rglob('*') if p.is_file()}
+              b={str(p.relative_to(root)):p.read_bytes() for p in root.rglob('*') if p.is_file()}
+              changed={p for p in a.keys()|b.keys() if a.get(p)!=b.get(p)}
+          expected={
+            'KAIROS_BINANCE_SPOT_EXCHANGE_INFO_PUBLIC_REST_RESPONSE_DECODE_FOUNDATION_REPORT_2026-09-08.md',
+            'package.json',
+            'scripts/verify-binance-spot-exchange-info-public-rest-response-decode-foundation.mjs',
+            'src/services/market-data/index.ts',
+            'src/services/market-data/providers/binance/binanceSpotExchangeInfoPublicRestResponseDecode.ts',
+            'tests/binance-spot-exchange-info-public-rest-response-decode.test.ts',
+          }
+          print('\n'.join(sorted(changed)))
+          assert changed==expected,(sorted(changed-expected),sorted(expected-changed))
+          PY
+
+      - name: Verify reconstructed response decode before packaging
+        working-directory: .candidate/kairos_p76
+        run: |
+          set -euo pipefail
+          npm ci
+          test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
+          npm run verify:binance-spot-exchange-info-public-rest-response-decode-foundation
+          npm run verify:binance-spot-exchange-info-public-rest-request-execution-boundary-foundation
+          npm run verify:binance-spot-exchange-info-public-rest-request-descriptor-foundation
+          npm run verify:live-market-universe-instrument-metadata-fact-contract-foundation
+          npm run verify:live-market-summary-freshness-classification-policy-foundation
+          npm run typecheck
+          npm run build
+          npx vitest run tests/binance-spot-exchange-info-public-rest-response-decode.test.ts
+          npm test
+          node - <<'NODE'
+          const { spawnSync } = require('node:child_process');
+          const pkg = require('./package.json');
+          const scripts = Object.keys(pkg.scripts || {}).filter((name) => /^verify:p\d/.test(name));
+          for (const name of scripts) {
+            const r = spawnSync('npm', ['run', name], { stdio: 'inherit' });
+            if (r.status !== 0) process.exit(r.status || 1);
+          }
+          NODE
+
+      - name: Restore clean package boundary and commit candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=.candidate/kairos_p76
+          rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite"
+          find "$ROOT" -type f \( -name '*.tsbuildinfo' -o -name '*.log' \) -delete
+          rm -rf .package
+          mkdir .package
+          cp -a "$ROOT" .package/kairos_p76
+          rm -f "$OUT_ZIP"
+          (cd .package && zip -qr "../$OUT_ZIP" kairos_p76)
+          unzip -t "$OUT_ZIP"
+          test "$(unzip -Z1 "$OUT_ZIP" | head -n1 | cut -d/ -f1)" = 'kairos_p76'
+          sha256sum "$OUT_ZIP"
+
+          rm -rf .verify-extract
+          unzip -q "$OUT_ZIP" -d .verify-extract
+          cd .verify-extract/kairos_p76
+          node scripts/verify-binance-spot-exchange-info-public-rest-response-decode-foundation.mjs
+          cd ../..
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "$OUT_ZIP"
+          if git diff --cached --quiet; then
+            echo 'Candidate already present unchanged.'
+          else
+            git commit -m 'Add Binance Spot exchangeInfo response decode candidate'
+            git push
+          fi
