@@ -1,11 +1,11 @@
-# KAIROS BINANCE SPOT EXCHANGE INFO INSTRUMENT METADATA FACT COLLECTION MAPPING GATE — AUTHORITATIVE BASE GATE 317
+# KAIROS BINANCE SPOT EXCHANGE INFO INSTRUMENT METADATA FACT RESPONSE MAPPING GATE — AUTHORITATIVE BASE GATE 318
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_BINANCE_SPOT_EXCHANGE_INFO_INSTRUMENT_METADATA_FACT_COLLECTION_MAPPING_FOUNDATION_CANDIDATE_2026-09-08.zip'
+      - 'KAIROS_BINANCE_SPOT_EXCHANGE_INFO_INSTRUMENT_METADATA_FACT_RESPONSE_MAPPING_FOUNDATION_CANDIDATE_2026-09-08.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_BINANCE_SPOT_EXCHANGE_INFO_INSTRUMENT_METADATA_FACT_MAPPING_FOUNDATION_CANDIDATE_2026-09-08.zip
-  CANDIDATE_ZIP: KAIROS_BINANCE_SPOT_EXCHANGE_INFO_INSTRUMENT_METADATA_FACT_COLLECTION_MAPPING_FOUNDATION_CANDIDATE_2026-09-08.zip
+  BASE_ZIP: KAIROS_BINANCE_SPOT_EXCHANGE_INFO_INSTRUMENT_METADATA_FACT_COLLECTION_MAPPING_FOUNDATION_CANDIDATE_2026-09-08.zip
+  CANDIDATE_ZIP: KAIROS_BINANCE_SPOT_EXCHANGE_INFO_INSTRUMENT_METADATA_FACT_RESPONSE_MAPPING_FOUNDATION_CANDIDATE_2026-09-08.zip
 
 jobs:
   verify-current-candidate:
@@ -35,8 +35,8 @@ jobs:
           from pathlib import Path, PurePosixPath
           import hashlib, os, zipfile
           for key, size, digest in [
-            ('BASE_ZIP', 1491120, '38a829e28f574e8cf7ce65ab450437732d5e9cdb4b7be0a2257e74db0c99ec81'),
-            ('CANDIDATE_ZIP', 1496451, '352fe93a5c255f906e86d6d6f8aae29e6da8d0af1c112f7c70325258920079d0'),
+            ('BASE_ZIP', 1496451, '352fe93a5c255f906e86d6d6f8aae29e6da8d0af1c112f7c70325258920079d0'),
+            ('CANDIDATE_ZIP', 1501745, '81a49eefd9b941e9127f890ea326bd1f4e23f323de11a3fab85d1271bfcbbea7'),
           ]:
             p=Path(os.environ[key]); data=p.read_bytes()
             assert len(data)==size, f'{key}: byte size mismatch'
@@ -61,7 +61,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact controlled Binance Spot exchangeInfo instrument metadata fact collection scope from Gate 317
+      - name: Confirm exact controlled Binance Spot exchangeInfo instrument metadata fact response mapping scope from Gate 318
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -73,15 +73,15 @@ jobs:
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           print('\n'.join(sorted(changed)))
           expected={
-            'KAIROS_BINANCE_SPOT_EXCHANGE_INFO_INSTRUMENT_METADATA_FACT_COLLECTION_MAPPING_FOUNDATION_REPORT_2026-09-08.md',
+            'KAIROS_BINANCE_SPOT_EXCHANGE_INFO_INSTRUMENT_METADATA_FACT_RESPONSE_MAPPING_FOUNDATION_REPORT_2026-09-08.md',
             'package.json',
-            'scripts/verify-binance-spot-exchange-info-instrument-metadata-fact-collection-mapping-foundation.mjs',
+            'scripts/verify-binance-spot-exchange-info-instrument-metadata-fact-response-mapping-foundation.mjs',
             'src/services/market-data/index.ts',
-            'src/services/market-data/providers/binance/binanceSpotExchangeInfoInstrumentMetadataFactCollection.ts',
-            'tests/binance-spot-exchange-info-instrument-metadata-fact-collection.test.ts',
+            'src/services/market-data/providers/binance/binanceSpotExchangeInfoInstrumentMetadataFactResponse.ts',
+            'tests/binance-spot-exchange-info-instrument-metadata-fact-response.test.ts',
           }
           if changed != expected:
-            print('Binance Spot exchangeInfo instrument metadata fact collection exact scope mismatch',file=sys.stderr)
+            print('Binance Spot exchangeInfo instrument metadata fact response mapping exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             sys.exit(1)
@@ -105,9 +105,10 @@ jobs:
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
 
-      - name: Dedicated Binance Spot exchangeInfo instrument metadata fact collection verifier/runtime
+      - name: Dedicated Binance Spot exchangeInfo instrument metadata fact response mapping verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:binance-spot-exchange-info-instrument-metadata-fact-response-mapping-foundation
           npm run verify:binance-spot-exchange-info-instrument-metadata-fact-collection-mapping-foundation
           npm run verify:binance-spot-exchange-info-instrument-metadata-fact-mapping-foundation
           npm run verify:binance-spot-exchange-info-public-rest-response-decode-foundation
@@ -130,15 +131,15 @@ jobs:
           npm run verify:p8:navigation-shell
           npm run verify:p1
 
-      - name: Focused instrument metadata fact collection regression
+      - name: Focused instrument metadata fact response mapping regression
         working-directory: .gate-candidate/kairos_p76
-        run: npx vitest run tests/binance-spot-exchange-info-instrument-metadata-fact-collection.test.ts tests/binance-spot-exchange-info-instrument-metadata-fact.test.ts
+        run: npx vitest run tests/binance-spot-exchange-info-instrument-metadata-fact-response.test.ts tests/binance-spot-exchange-info-instrument-metadata-fact-collection.test.ts tests/binance-spot-exchange-info-instrument-metadata-fact.test.ts
 
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
 
-      - name: Full controlled roadmap regression through canonical P21.23 plus Home port, Binance adapter, freshness, universe metadata, exchangeInfo descriptor, execution boundary, response decode, metadata mapping and metadata collection mapping
+      - name: Full controlled roadmap regression through canonical P21.23 plus Home port, Binance adapter, freshness, universe metadata, exchangeInfo descriptor, execution boundary, response decode, metadata mapping, collection mapping and response mapping
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
@@ -146,6 +147,7 @@ jobs:
           const p=JSON.parse(readFileSync('package.json'));
           const scripts=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:')).sort();
           for(const required of [
+            'verify:binance-spot-exchange-info-instrument-metadata-fact-response-mapping-foundation',
             'verify:binance-spot-exchange-info-instrument-metadata-fact-collection-mapping-foundation',
             'verify:binance-spot-exchange-info-instrument-metadata-fact-mapping-foundation',
             'verify:binance-spot-exchange-info-public-rest-response-decode-foundation',
@@ -177,6 +179,7 @@ jobs:
       - name: Historical closures
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:binance-spot-exchange-info-instrument-metadata-fact-response-mapping-foundation
           npm run verify:binance-spot-exchange-info-instrument-metadata-fact-collection-mapping-foundation
           npm run verify:binance-spot-exchange-info-instrument-metadata-fact-mapping-foundation
           npm run verify:binance-spot-exchange-info-public-rest-response-decode-foundation
@@ -241,5 +244,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_BINANCE_SPOT_EXCHANGE_INFO_INSTRUMENT_METADATA_FACT_COLLECTION_MAPPING_FOUNDATION_REPORT_2026-09-08.md
+          path: .gate-candidate/kairos_p76/KAIROS_BINANCE_SPOT_EXCHANGE_INFO_INSTRUMENT_METADATA_FACT_RESPONSE_MAPPING_FOUNDATION_REPORT_2026-09-08.md
           if-no-files-found: error
