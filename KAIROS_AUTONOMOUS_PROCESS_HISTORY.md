@@ -1,5 +1,23 @@
 # Kairos Autonomous Process History
 
+## Current manual checkpoint — 2026-09-08 — Gate #317 GOLDEN; collection candidate verified for gating
+
+This current checkpoint overrides older autonomous-mode, GOLDEN, and next-action statements below. Current user commands: “Check. Continue” followed by “Check. Reuploaded”. Manual upload mode remains active; the designated V16 fast worker, supervisor, and obsolete workers were freshly verified disabled. No worker has been resumed or created.
+
+- Latest full canonical PASS: Gate #317 / run `34226750711`, job `102062627106` (`verify-current-candidate`), head `87069472c45e184ee70507274d8e7e9e3851388f`. Every required step succeeded, including deterministic install, pinned dependency/type/build, full unit/full verify-script regression, historical closures, and both canonical artifact uploads.
+- Candidate artifact `10056487361`, digest `sha256:b81418a1371b5e9c48734e18334a904ea664231e3d97a36d2b67239789b3d5eb`; evidence artifact `10056487800`, digest `sha256:72164b9c2243f0582f61f506fe99a8d71801f59068cc4f3e87aaf195dd1e7416`. Both exact-run/head records are verified and unexpired.
+- GOLDEN ZIP: `KAIROS_BINANCE_SPOT_EXCHANGE_INFO_INSTRUMENT_METADATA_FACT_MAPPING_FOUNDATION_CANDIDATE_2026-09-08.zip`; 1,491,120 bytes; SHA-256 `38a829e28f574e8cf7ce65ab450437732d5e9cdb4b7be0a2257e74db0c99ec81`; exact canonical Git blob `efaea24241b649512990740563eef7a439f2727e`. Local bytes match that canonical file identity; local ZIP integrity/root are verified. Artifact wrapper downloads to this workspace were unavailable and were not counted as verified downloads.
+- Architecture reconciliation completed on main at `8359af2dad9ce428e30bc3413afff7d1baca68ad`, recording the one-symbol mapping owner and its boundaries. No production candidate bytes changed.
+- Initial collection upload at `b05d6d54d035ef3a12a9dbfba8eb881d71044102` had size 1,310,720 and Git blob `d92f732363b4e5ddad9e0577f4a3cc78fd60dba4`; it did not match the user-supplied expected identity. No canonical gate was started against those bytes.
+- User reupload at `9a0f8d4657de5acf5e95305d8a3b98d4aa4b4f83` is `KAIROS_BINANCE_SPOT_EXCHANGE_INFO_INSTRUMENT_METADATA_FACT_COLLECTION_MAPPING_FOUNDATION_CANDIDATE_2026-09-08.zip`; exact size 1,496,451; SHA-256 `352fe93a5c255f906e86d6d6f8aae29e6da8d0af1c112f7c70325258920079d0`; Git blob `fdebdc055ca7f70c073f0fc32736aa00e5017e1b`. Downloaded bytes independently match the expected screenshot identity and repository Git blob. ZIP integrity and exact root `kairos_p76/` pass.
+- Exact six-file delta from #317: collection report, package verifier registration, dedicated collection verifier, market-data barrel export, `binanceSpotExchangeInfoInstrumentMetadataFactCollection.ts`, and its focused test. All other file contents are identical.
+- Source review: accepts an explicit array, preserves its sequence, delegates every entry to #317, accepts explicit empty arrays, and fails at the first invalid entry with its index and released mapper reason. No whole-response symbols extraction, filtering/ranking/deduplication, provider transport, policy, or UI ownership is added.
+- Local checks actually run: exact SHA/size/Git blob and ZIP integrity/root/path checks; exact six-file diff; package/barrel diff review; dedicated collection and one-symbol verifiers on available Node 24.19.0; prepared canonical gate YAML/job/pinned toolchain/embedded Python validation. Local npm ci, production type/build, Vitest/full runtime regressions were not claimed. Canonical gate remains pinned to Node 22.16.0, npm 10.9.2, and Lightweight Charts 5.2.1.
+- Next action: after fresh lease/main/Actions proof, retarget only the existing canonical workflow from #317 GOLDEN to this exact verified collection candidate. Preserve every existing regression/artifact requirement and add exact size/SHA-256/ZIP integrity checks before extraction. While queued/running, monitor only that exact gate. Collection mapping is not GOLDEN before full canonical PASS.
+- Lease at checkpoint: `MANUAL-COLLECTION-20260908T130346Z`, expires `2026-09-08T13:18:46Z`, acquired and verified for manual workflow/docs work. Release after checkpoint and gate handling while preserving the user's worker pause; dormant autonomous rescheduling conditions do not override manual mode.
+
+---
+
 Branch: `kairos-autonomous-state`
 Status: NON-CANONICAL continuity memory only. Controlling handoff + fresh canonical GitHub always override this file. Detailed earlier process history is preserved in this branch's git history.
 
