@@ -1,0 +1,224 @@
+name: Kairos Binance Spot Exchange Info Public REST Response Delivery Reconstruction
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/binance-spot-exchange-info-public-rest-response-delivery-reconstruct.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reconstruct:
+    runs-on: ubuntu-24.04
+    env:
+      BASE_ZIP: KAIROS_BINANCE_SPOT_EXCHANGE_INFO_INSTRUMENT_METADATA_FACT_RESPONSE_MAPPING_FOUNDATION_CANDIDATE_2026-09-08.zip
+      OUT_ZIP: KAIROS_BINANCE_SPOT_EXCHANGE_INFO_PUBLIC_REST_RESPONSE_DELIVERY_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-09.zip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - name: Pin npm
+        run: |
+          set -euo pipefail
+          npm install --global npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+
+      - name: Reconstruct exact response delivery slice from Gate 319 GOLDEN
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .deliverybase .deliverycandidate .deliveryfresh
+          mkdir .deliverybase .deliverycandidate
+          test -f "$BASE_ZIP"
+          unzip -q "$BASE_ZIP" -d .deliverybase
+          cp -a .deliverybase/. .deliverycandidate/
+          ROOT=.deliverycandidate/kairos_p76
+          test -f "$ROOT/src/services/market-data/providers/binance/binanceSpotExchangeInfoPublicRestResponseDecode.ts"
+          test -f "$ROOT/src/services/market-data/providers/binance/binanceSpotExchangeInfoInstrumentMetadataFactResponse.ts"
+          test -f "$ROOT/src/services/market-data/index.ts"
+
+          cat > "$ROOT/src/services/market-data/providers/binance/binanceSpotExchangeInfoPublicRestResponseDelivery.ts" <<'TS'
+          import { mapBinanceSpotExchangeInfoInstrumentMetadataFactResponse } from './binanceSpotExchangeInfoInstrumentMetadataFactResponse';
+          import { decodeBinanceSpotExchangeInfoPublicRestResponse } from './binanceSpotExchangeInfoPublicRestResponseDecode';
+
+          /**
+           * Composes one already-received Binance Spot exchangeInfo response-data
+           * value through the released JSON-text decoder and the released whole
+           * decoded-response metadata-fact mapper.
+           *
+           * Request description/execution, concrete transport/HTTP response
+           * acquisition, round-trip orchestration, universe/ranking policy,
+           * freshness/cadence and UI remain outside this boundary.
+           */
+          export function mapBinanceSpotExchangeInfoPublicRestResponseDelivery(data: unknown) {
+            const decoded = decodeBinanceSpotExchangeInfoPublicRestResponse(data);
+            if (!decoded.ok) return decoded;
+            return mapBinanceSpotExchangeInfoInstrumentMetadataFactResponse(decoded.payload);
+          }
+          TS
+
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('.deliverycandidate/kairos_p76/src/services/market-data/index.ts')
+          s=p.read_text()
+          addition="export * from './providers/binance/binanceSpotExchangeInfoPublicRestResponseDelivery';\n"
+          if addition not in s:
+              anchors=[
+                  "export * from './providers/binance/binanceSpotExchangeInfoInstrumentMetadataFactResponse';\n",
+                  "export * from './providers/binance/binanceSpotExchangeInfoPublicRestResponseDecode';\n",
+              ]
+              for anchor in anchors:
+                  if anchor in s:
+                      s=s.replace(anchor, anchor+addition, 1)
+                      break
+              else:
+                  raise SystemExit('response-delivery export anchor not found')
+              p.write_text(s)
+          PY
+
+          cat > "$ROOT/tests/binance-spot-exchange-info-public-rest-response-delivery.test.ts" <<'TS'
+          import { describe, expect, it } from 'vitest';
+          import { mapBinanceSpotExchangeInfoPublicRestResponseDelivery } from '../src/services/market-data';
+
+          describe('Binance Spot exchangeInfo public REST response delivery composition foundation', () => {
+            it('composes valid JSON text through decode and whole-response mapping', () => {
+              const result = mapBinanceSpotExchangeInfoPublicRestResponseDelivery(JSON.stringify({ symbols: [] }));
+              expect(result.ok).toBe(true);
+            });
+
+            it('preserves deterministic decoder failures unchanged', () => {
+              expect(mapBinanceSpotExchangeInfoPublicRestResponseDelivery('{"symbols":'))
+                .toEqual({ ok: false, reason: 'invalid-json' });
+              expect(mapBinanceSpotExchangeInfoPublicRestResponseDelivery({ symbols: [] }))
+                .toEqual({ ok: false, reason: 'unsupported-response-data' });
+            });
+
+            it('passes decoded payload to the released whole-response mapper without accepting arrays as responses', () => {
+              const result = mapBinanceSpotExchangeInfoPublicRestResponseDelivery('[]');
+              expect(result.ok).toBe(false);
+            });
+          });
+          TS
+
+          cat > "$ROOT/KAIROS_BINANCE_SPOT_EXCHANGE_INFO_PUBLIC_REST_RESPONSE_DELIVERY_COMPOSITION_FOUNDATION_REPORT_2026-09-09.md" <<'MD'
+          # Binance Spot exchangeInfo Public REST Response Delivery Composition Foundation
+
+          ## Canonical base
+          Exact latest GOLDEN: Binance Spot Exchange Information Instrument Metadata Fact Response Mapping Foundation via `Kairos Controlled Roadmap Gate` #319 / run `34234539616` / job `102088750010` / head `fde4243efc2a00cac82c300e1a9311259cb8927a`.
+
+          ## Source-proven responsibility
+          This slice composes exactly two already-released owners for one already-received response-data value: `decodeBinanceSpotExchangeInfoPublicRestResponse(data)` followed, only on decode success, by `mapBinanceSpotExchangeInfoInstrumentMetadataFactResponse(decoded.payload)`. Decode failures are returned unchanged. The decoded payload is forwarded unchanged to the released whole-response mapper.
+
+          ## Explicit non-scope
+          - No request descriptor or request execution ownership.
+          - No connector, fetch/XHR/WebSocket/browser transport, HTTP status/header/body acquisition, or `Response` ownership.
+          - No full REST round-trip orchestration.
+          - No new exchangeInfo symbol-field interpretation or metadata-fact mapping algorithm.
+          - No USDT filtering, stablecoin exclusion, universe selection, quote-volume ranking, symbol tie-break, or Top-N policy.
+          - No cache, polling, retry/backoff, request-weight, rate-limit, freshness or cadence policy.
+          - No Home/Bubble UI, Your Trades, journal, persistence, chart, navigation, or transitions.
+          MD
+
+          cat > "$ROOT/scripts/verify-binance-spot-exchange-info-public-rest-response-delivery-composition-foundation.mjs" <<'JS'
+          import { readFileSync } from 'node:fs';
+          const source = readFileSync(new URL('../src/services/market-data/providers/binance/binanceSpotExchangeInfoPublicRestResponseDelivery.ts', import.meta.url), 'utf8');
+          const index = readFileSync(new URL('../src/services/market-data/index.ts', import.meta.url), 'utf8');
+          const report = readFileSync(new URL('../KAIROS_BINANCE_SPOT_EXCHANGE_INFO_PUBLIC_REST_RESPONSE_DELIVERY_COMPOSITION_FOUNDATION_REPORT_2026-09-09.md', import.meta.url), 'utf8');
+          for (const token of [
+            'mapBinanceSpotExchangeInfoPublicRestResponseDelivery',
+            'decodeBinanceSpotExchangeInfoPublicRestResponse(data)',
+            'if (!decoded.ok) return decoded',
+            'mapBinanceSpotExchangeInfoInstrumentMetadataFactResponse(decoded.payload)',
+          ]) if (!source.includes(token)) throw new Error(`response-delivery evidence missing: ${token}`);
+          if (!index.includes("export * from './providers/binance/binanceSpotExchangeInfoPublicRestResponseDelivery';")) throw new Error('response-delivery barrel export missing');
+          for (const forbidden of [
+            'fetch(', 'XMLHttpRequest', 'WebSocket(', 'new Response(', 'AbortSignal',
+            'setTimeout(', 'setInterval(', 'indexedDB', 'quoteVolume', 'Top 30',
+          ]) if (source.includes(forbidden)) throw new Error(`response-delivery broadened scope: ${forbidden}`);
+          for (const token of [
+            'No request descriptor or request execution ownership',
+            'No full REST round-trip orchestration',
+            'No USDT filtering',
+            'No cache, polling',
+            'No Home/Bubble UI',
+          ]) if (!report.includes(token)) throw new Error(`response-delivery report evidence missing: ${token}`);
+          console.log('Binance Spot exchangeInfo public REST response delivery composition verification passed.');
+          JS
+
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const p='.deliverycandidate/kairos_p76/package.json';
+          const j=JSON.parse(fs.readFileSync(p,'utf8'));
+          j.scripts ||= {};
+          j.scripts['verify:binance-spot-exchange-info-public-rest-response-delivery-composition-foundation']='node scripts/verify-binance-spot-exchange-info-public-rest-response-delivery-composition-foundation.mjs';
+          fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');
+          NODE
+
+          python - <<'PY'
+          from pathlib import Path
+          a={str(p.relative_to(Path('.deliverybase/kairos_p76'))):p.read_bytes() for p in Path('.deliverybase/kairos_p76').rglob('*') if p.is_file()}
+          b={str(p.relative_to(Path('.deliverycandidate/kairos_p76'))):p.read_bytes() for p in Path('.deliverycandidate/kairos_p76').rglob('*') if p.is_file()}
+          changed={p for p in a.keys()|b.keys() if a.get(p)!=b.get(p)}
+          expected={
+            'KAIROS_BINANCE_SPOT_EXCHANGE_INFO_PUBLIC_REST_RESPONSE_DELIVERY_COMPOSITION_FOUNDATION_REPORT_2026-09-09.md',
+            'package.json',
+            'scripts/verify-binance-spot-exchange-info-public-rest-response-delivery-composition-foundation.mjs',
+            'src/services/market-data/index.ts',
+            'src/services/market-data/providers/binance/binanceSpotExchangeInfoPublicRestResponseDelivery.ts',
+            'tests/binance-spot-exchange-info-public-rest-response-delivery.test.ts',
+          }
+          print('\n'.join(sorted(changed)))
+          assert changed == expected, (sorted(changed-expected), sorted(expected-changed))
+          PY
+
+      - name: Verify reconstructed response delivery before packaging
+        working-directory: .deliverycandidate/kairos_p76
+        run: |
+          set -euo pipefail
+          npm ci
+          test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
+          npm run verify:binance-spot-exchange-info-public-rest-response-delivery-composition-foundation
+          npx vitest run tests/binance-spot-exchange-info-public-rest-response-delivery.test.ts
+          npm run typecheck
+          npm run build
+          npm test
+          node - <<'NODE'
+          const { spawnSync } = require('node:child_process');
+          const pkg = require('./package.json');
+          const scripts = Object.keys(pkg.scripts || {}).filter((name) => /^verify:p\d|^verify:binance-spot-exchange-info/.test(name));
+          for (const name of scripts) {
+            const r = spawnSync('npm', ['run', name], { stdio: 'inherit' });
+            if (r.status !== 0) process.exit(r.status ?? 1);
+          }
+          NODE
+
+      - name: Restore clean package boundary and commit candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=.deliverycandidate/kairos_p76
+          rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite"
+          find "$ROOT" -type f \( -name '*.tsbuildinfo' -o -name '*.log' \) -delete
+          rm -f "$OUT_ZIP"
+          (cd .deliverycandidate && zip -qr "../$OUT_ZIP" kairos_p76)
+          unzip -t "$OUT_ZIP" >/dev/null
+          mapfile -t TOP < <(unzip -Z1 "$OUT_ZIP" | cut -d/ -f1 | sort -u)
+          test "${#TOP[@]}" -eq 1
+          test "${TOP[0]}" = "kairos_p76"
+          mkdir .deliveryfresh
+          unzip -q "$OUT_ZIP" -d .deliveryfresh
+          test -f .deliveryfresh/kairos_p76/src/services/market-data/providers/binance/binanceSpotExchangeInfoPublicRestResponseDelivery.ts
+          (cd .deliveryfresh/kairos_p76 && npm run verify:binance-spot-exchange-info-public-rest-response-delivery-composition-foundation)
+          sha256sum "$OUT_ZIP"
+          stat -c '%s bytes' "$OUT_ZIP"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "$OUT_ZIP"
+          git diff --cached --name-only | grep -Fx "$OUT_ZIP"
+          test "$(git diff --cached --name-only | wc -l)" -eq 1
+          git commit -m 'Add Binance Spot exchangeInfo response delivery candidate'
+          git push
