@@ -1,0 +1,261 @@
+name: Kairos Live Market Universe Instrument Metadata Fact Reconstruction Bridge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/live-market-universe-instrument-metadata-fact-reconstruct.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reconstruct:
+    runs-on: ubuntu-24.04
+    env:
+      BASE_ZIP: KAIROS_LIVE_MARKET_SUMMARY_FRESHNESS_CLASSIFICATION_POLICY_FOUNDATION_CANDIDATE_2026-09-08.zip
+      OUT_ZIP: KAIROS_LIVE_MARKET_UNIVERSE_INSTRUMENT_METADATA_FACT_CONTRACT_FOUNDATION_CANDIDATE_2026-09-08.zip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - name: Pin npm
+        run: |
+          npm install --global npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+
+      - name: Reconstruct universe instrument metadata fact from canonical freshness policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .universebase .universecandidate
+          mkdir .universebase .universecandidate
+          unzip -q "$BASE_ZIP" -d .universebase
+          cp -a .universebase/. .universecandidate/
+          ROOT=.universecandidate/kairos_p76
+          SOURCE="$ROOT/src/services/market-data/liveMarketUniverseInstrumentMetadataFact.ts"
+          INDEX="$ROOT/src/services/market-data/index.ts"
+          REPORT="$ROOT/KAIROS_LIVE_MARKET_UNIVERSE_INSTRUMENT_METADATA_FACT_CONTRACT_FOUNDATION_REPORT_2026-09-08.md"
+          TEST="$ROOT/tests/live-market-universe-instrument-metadata-fact-contract-foundation.test.ts"
+          VERIFY="$ROOT/scripts/verify-live-market-universe-instrument-metadata-fact-contract-foundation.mjs"
+
+          test -f "$ROOT/src/services/market-data/marketDataTypes.ts"
+          test -f "$ROOT/src/services/market-data/liveMarketSummaryFreshnessClassificationPolicy.ts"
+          test -f "$ROOT/src/services/market-data/providers/binance/binanceHomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPortAdapter.ts"
+          test -f "$INDEX"
+
+          cat > "$SOURCE" <<'TS'
+          import type { MarketDataInstrument } from './marketDataTypes';
+
+          /**
+           * Provider-neutral current instrument metadata needed by later universe policy.
+           * This is raw market/provider truth only; it does not select, rank, filter, or limit a universe.
+           */
+          export interface LiveMarketUniverseInstrumentMetadataFact {
+            readonly instrument: MarketDataInstrument;
+            readonly baseAsset: string;
+            readonly quoteAsset: string;
+            readonly tradingEnabled: boolean;
+          }
+
+          export type LiveMarketUniverseInstrumentMetadataFactValidationResult =
+            | { readonly ok: true; readonly fact: LiveMarketUniverseInstrumentMetadataFact }
+            | { readonly ok: false; readonly reason:
+                | 'instrument-required'
+                | 'base-asset-required'
+                | 'quote-asset-required'
+                | 'trading-enabled-invalid' };
+
+          export function validateLiveMarketUniverseInstrumentMetadataFact(
+            fact: LiveMarketUniverseInstrumentMetadataFact,
+          ): LiveMarketUniverseInstrumentMetadataFactValidationResult {
+            if (!fact.instrument.venue.trim() || !fact.instrument.symbol.trim()) {
+              return { ok: false, reason: 'instrument-required' };
+            }
+            if (!fact.baseAsset.trim()) return { ok: false, reason: 'base-asset-required' };
+            if (!fact.quoteAsset.trim()) return { ok: false, reason: 'quote-asset-required' };
+            if (typeof fact.tradingEnabled !== 'boolean') {
+              return { ok: false, reason: 'trading-enabled-invalid' };
+            }
+            return { ok: true, fact };
+          }
+          TS
+
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('.universecandidate/kairos_p76/src/services/market-data/index.ts')
+          s=p.read_text()
+          line="export * from './liveMarketUniverseInstrumentMetadataFact';\n"
+          if line not in s:
+              anchor="export * from './liveMarketSummaryFreshnessClassificationPolicy';\n"
+              if anchor not in s: raise SystemExit('canonical freshness-policy export boundary not found')
+              s=s.replace(anchor, anchor+line, 1)
+          p.write_text(s)
+          PY
+
+          cat > "$TEST" <<'TS'
+          import { describe, expect, it } from 'vitest';
+          import {
+            validateLiveMarketUniverseInstrumentMetadataFact,
+            type LiveMarketUniverseInstrumentMetadataFact,
+          } from '../src/services/market-data';
+
+          const fact: LiveMarketUniverseInstrumentMetadataFact = {
+            instrument: { venue: 'binance-spot', symbol: 'BTCUSDT' },
+            baseAsset: 'BTC',
+            quoteAsset: 'USDT',
+            tradingEnabled: true,
+          };
+
+          describe('Live Market Universe Instrument Metadata Fact Contract Foundation', () => {
+            it('accepts provider-neutral current instrument metadata without applying universe policy', () => {
+              expect(validateLiveMarketUniverseInstrumentMetadataFact(fact)).toEqual({ ok: true, fact });
+              expect(validateLiveMarketUniverseInstrumentMetadataFact({ ...fact, tradingEnabled: false })).toEqual({
+                ok: true,
+                fact: { ...fact, tradingEnabled: false },
+              });
+            });
+
+            it('rejects missing instrument and asset identity', () => {
+              expect(validateLiveMarketUniverseInstrumentMetadataFact({
+                ...fact,
+                instrument: { venue: '', symbol: 'BTCUSDT' },
+              })).toEqual({ ok: false, reason: 'instrument-required' });
+              expect(validateLiveMarketUniverseInstrumentMetadataFact({ ...fact, baseAsset: ' ' })).toEqual({
+                ok: false,
+                reason: 'base-asset-required',
+              });
+              expect(validateLiveMarketUniverseInstrumentMetadataFact({ ...fact, quoteAsset: '' })).toEqual({
+                ok: false,
+                reason: 'quote-asset-required',
+              });
+            });
+          });
+          TS
+
+          cat > "$REPORT" <<'MD'
+          # Live Market Universe Instrument Metadata Fact Contract Foundation
+
+          ## Authority
+          Base: exact canonical Live Market Summary Freshness Classification Policy Foundation promoted by `Kairos Controlled Roadmap Gate` #312 / run `34188023039`.
+
+          Current user-approved P21 Live Crypto Bubble Map V1 authority defines the eligible default universe as actively tradable Binance Spot instruments quoted in USDT, with later deterministic universe policy responsible for configurable stablecoin exclusion, descending 24h quote-volume ranking, deterministic symbol tie-break, and configurable Top-30 limiting.
+
+          ## Source proof
+          Released `LiveMarketSummaryFact` already owns `quoteVolume24h`, so the ranking fact exists. Released instrument identity is only `{ venue, symbol }`; it does not expose base asset, quote asset, or current tradability, and no released Spot exchange-information/instrument-directory owner exists.
+
+          Official Binance Spot documentation identifies `/api/v3/exchangeInfo` as exchange information and defines `quoteAsset` plus `TRADING` status semantics. Therefore current tradability and quote-asset identity belong to provider market metadata, not symbol-suffix inference in the application policy.
+
+          ## Responsibility
+          This slice introduces only a provider-neutral market-data metadata fact contract with instrument identity, base asset, quote asset, and current trading-enabled truth, plus deterministic validation. It sits beside released market facts and is designed for a later Binance Spot metadata mapper and a later separate universe policy owner.
+
+          ## Explicit non-scope
+          No Binance HTTP request, decoder, exchangeInfo adapter, transport, polling or cache; no USDT eligibility decision; no stablecoin exclusion; no quote-volume ranking/sorting/tie-break/top-N; no freshness policy or observation-age work; no Home React wiring; no Bubble renderer/geometry/size/color/interactions; no Your Trades/journal ownership; no persistence/IndexedDB/Saved Analysis/chart/navigation/transition ownership.
+
+          ## Follow-on boundary
+          A later separately controlled Binance Spot adapter may map official exchange-information metadata into this fact. Only after that provider fact source is canonical should a separate deterministic universe-policy owner combine metadata facts with released 24h summary facts.
+          MD
+
+          cat > "$VERIFY" <<'JS'
+          import { readFileSync } from 'node:fs';
+          const source = readFileSync(new URL('../src/services/market-data/liveMarketUniverseInstrumentMetadataFact.ts', import.meta.url), 'utf8');
+          const index = readFileSync(new URL('../src/services/market-data/index.ts', import.meta.url), 'utf8');
+          const report = readFileSync(new URL('../KAIROS_LIVE_MARKET_UNIVERSE_INSTRUMENT_METADATA_FACT_CONTRACT_FOUNDATION_REPORT_2026-09-08.md', import.meta.url), 'utf8');
+
+          for (const token of [
+            'export interface LiveMarketUniverseInstrumentMetadataFact',
+            'readonly instrument: MarketDataInstrument;',
+            'readonly baseAsset: string;',
+            'readonly quoteAsset: string;',
+            'readonly tradingEnabled: boolean;',
+            'validateLiveMarketUniverseInstrumentMetadataFact',
+            "'instrument-required'",
+            "'base-asset-required'",
+            "'quote-asset-required'",
+          ]) if (!source.includes(token)) throw new Error(`universe metadata fact evidence missing: ${token}`);
+
+          if (!index.includes("export * from './liveMarketUniverseInstrumentMetadataFact';")) throw new Error('universe metadata fact public export missing');
+
+          for (const forbidden of [
+            'fetch(', 'XMLHttpRequest', 'WebSocket(', 'Date.now(', 'new Date(', 'setInterval(', 'setTimeout(',
+            '.sort(', '.filter(', 'USDT', 'Top 30', 'stablecoin', 'quoteVolume24h', 'indexedDB', 'React', 'useEffect',
+          ]) if (source.includes(forbidden)) throw new Error(`metadata fact broadened into forbidden policy/transport/presentation scope: ${forbidden}`);
+
+          for (const token of [
+            'provider-neutral market-data metadata fact contract',
+            'Released `LiveMarketSummaryFact` already owns `quoteVolume24h`',
+            'No Binance HTTP request, decoder, exchangeInfo adapter, transport, polling or cache',
+            'separate deterministic universe-policy owner',
+          ]) if (!report.includes(token)) throw new Error(`universe metadata report evidence missing: ${token}`);
+
+          console.log('Live Market Universe instrument metadata fact contract verification passed.');
+          JS
+
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const p='.universecandidate/kairos_p76/package.json';
+          const j=JSON.parse(fs.readFileSync(p,'utf8'));
+          j.scripts||={};
+          j.scripts['verify:live-market-universe-instrument-metadata-fact-contract-foundation']='node scripts/verify-live-market-universe-instrument-metadata-fact-contract-foundation.mjs';
+          fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');
+          NODE
+
+          python - <<'PY'
+          from pathlib import Path
+          a={str(p.relative_to(Path('.universebase/kairos_p76'))):p.read_bytes() for p in Path('.universebase/kairos_p76').rglob('*') if p.is_file()}
+          b={str(p.relative_to(Path('.universecandidate/kairos_p76'))):p.read_bytes() for p in Path('.universecandidate/kairos_p76').rglob('*') if p.is_file()}
+          changed={p for p in a.keys()|b.keys() if a.get(p)!=b.get(p)}
+          expected={
+            'KAIROS_LIVE_MARKET_UNIVERSE_INSTRUMENT_METADATA_FACT_CONTRACT_FOUNDATION_REPORT_2026-09-08.md',
+            'package.json',
+            'scripts/verify-live-market-universe-instrument-metadata-fact-contract-foundation.mjs',
+            'src/services/market-data/index.ts',
+            'src/services/market-data/liveMarketUniverseInstrumentMetadataFact.ts',
+            'tests/live-market-universe-instrument-metadata-fact-contract-foundation.test.ts',
+          }
+          print('Canonical freshness policy -> universe metadata fact changed files:', *sorted(changed), sep='\n- ')
+          if changed != expected: raise SystemExit(f'exact universe-metadata scope mismatch: {sorted(changed ^ expected)}')
+          PY
+
+      - name: Verify reconstructed universe metadata fact before packaging
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd .universecandidate/kairos_p76
+          test "$(node --version)" = "v22.16.0"
+          test "$(npm --version)" = "10.9.2"
+          npm ci
+          node -e "const p=require('./node_modules/lightweight-charts/package.json'); if(p.version!=='5.2.1') throw new Error(p.version)"
+          npm run verify:live-market-universe-instrument-metadata-fact-contract-foundation
+          npx tsc --noEmit
+          npm run build
+          npx vitest run tests/live-market-universe-instrument-metadata-fact-contract-foundation.test.ts
+          npx vitest run
+
+      - name: Restore clean package boundary and package candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=.universecandidate/kairos_p76
+          rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite"
+          find "$ROOT" -type f \( -name '*.tsbuildinfo' -o -name '*.log' \) -delete
+          (cd .universecandidate && zip -qr "../$OUT_ZIP" kairos_p76)
+          unzip -t "$OUT_ZIP"
+          rm -rf .universeverify && mkdir .universeverify
+          unzip -q "$OUT_ZIP" -d .universeverify
+          test -f .universeverify/kairos_p76/src/services/market-data/liveMarketUniverseInstrumentMetadataFact.ts
+          node .universeverify/kairos_p76/scripts/verify-live-market-universe-instrument-metadata-fact-contract-foundation.mjs
+          sha256sum "$OUT_ZIP"
+
+      - name: Commit verified non-canonical candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "$OUT_ZIP"
+          git diff --cached --quiet && exit 0
+          git commit -m 'Add verified live-market universe instrument metadata candidate'
+          git push
