@@ -1,0 +1,256 @@
+name: Kairos Binance Spot Exchange Info Instrument Metadata Acquisition Adapter Reconstruction
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/binance-spot-exchange-info-instrument-metadata-acquisition-adapter-reconstruct.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  reconstruct:
+    runs-on: ubuntu-24.04
+    env:
+      BASE_ZIP: KAIROS_LIVE_MARKET_UNIVERSE_INSTRUMENT_METADATA_ACQUISITION_PORT_CONTRACT_FOUNDATION_CANDIDATE_2026-09-09.zip
+      OUT_ZIP: KAIROS_BINANCE_SPOT_EXCHANGE_INFO_INSTRUMENT_METADATA_ACQUISITION_ADAPTER_FOUNDATION_CANDIDATE_2026-09-09.zip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - name: Pin npm
+        run: |
+          set -euo pipefail
+          npm install --global npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+
+      - name: Reconstruct exact metadata acquisition adapter slice from Gate 322 GOLDEN
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .base .candidate .fresh
+          mkdir .base .candidate
+          test -f "$BASE_ZIP"
+          unzip -q "$BASE_ZIP" -d .base
+          cp -a .base/. .candidate/
+          ROOT=.candidate/kairos_p76
+          PORT="$ROOT/src/services/market-data/LiveMarketUniverseInstrumentMetadataAcquisitionPort.ts"
+          ROUNDTRIP="$ROOT/src/services/market-data/providers/binance/binanceSpotExchangeInfoPublicRestRoundTrip.ts"
+          EXECUTION="$ROOT/src/services/market-data/providers/binance/binanceSpotExchangeInfoPublicRestRequestExecution.ts"
+          ADAPTER="$ROOT/src/services/market-data/providers/binance/binanceSpotExchangeInfoInstrumentMetadataAcquisitionAdapter.ts"
+          INDEX="$ROOT/src/services/market-data/index.ts"
+          test -f "$PORT"
+          test -f "$ROUNDTRIP"
+          test -f "$EXECUTION"
+          test -f "$INDEX"
+
+          cat > "$ADAPTER" <<'TS'
+          import type { LiveMarketUniverseInstrumentMetadataAcquisitionPort } from '../../LiveMarketUniverseInstrumentMetadataAcquisitionPort';
+          import { composeBinanceSpotExchangeInfoPublicRestRoundTrip } from './binanceSpotExchangeInfoPublicRestRoundTrip';
+          import type { BinanceSpotExchangeInfoPublicRestRequestConnector } from './binanceSpotExchangeInfoPublicRestRequestExecution';
+
+          /**
+           * Binance Spot implementation of the provider-neutral instrument metadata
+           * acquisition port. Concrete transport remains injected by the caller.
+           * Universe selection/ranking and freshness/cadence remain separate owners.
+           */
+          export function createBinanceSpotExchangeInfoInstrumentMetadataAcquisitionPort(
+            connect: BinanceSpotExchangeInfoPublicRestRequestConnector<unknown>,
+          ): LiveMarketUniverseInstrumentMetadataAcquisitionPort {
+            return {
+              async acquireInstrumentMetadata(options) {
+                try {
+                  const result = await composeBinanceSpotExchangeInfoPublicRestRoundTrip(connect, options);
+                  if (!result.ok) return { ok: false, reason: 'acquisition-failed' };
+                  return { ok: true, facts: result.facts };
+                } catch {
+                  return { ok: false, reason: 'acquisition-failed' };
+                }
+              },
+            };
+          }
+          TS
+
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('.candidate/kairos_p76/src/services/market-data/index.ts')
+          s=p.read_text()
+          line="export * from './providers/binance/binanceSpotExchangeInfoInstrumentMetadataAcquisitionAdapter';\n"
+          if line not in s:
+              anchor="export * from './providers/binance/binanceSpotExchangeInfoPublicRestRoundTrip';\n"
+              if anchor not in s: raise SystemExit('exchangeInfo round-trip export anchor missing')
+              s=s.replace(anchor, anchor+line, 1)
+          p.write_text(s)
+          PY
+
+          cat > "$ROOT/tests/binance-spot-exchange-info-instrument-metadata-acquisition-adapter.test.ts" <<'TS'
+          import { describe, expect, it, vi } from 'vitest';
+          import { createBinanceSpotExchangeInfoInstrumentMetadataAcquisitionPort } from '../src/services/market-data';
+
+          describe('Binance Spot exchangeInfo instrument metadata acquisition adapter foundation', () => {
+            it('implements the provider-neutral metadata acquisition port using the released exchangeInfo round trip', async () => {
+              const connect = vi.fn(async (request: { readonly url: string }) => {
+                expect(request.url).toBe('https://data-api.binance.vision/api/v3/exchangeInfo');
+                return JSON.stringify({ symbols: [
+                  { symbol: 'BTCUSDT', status: 'TRADING', baseAsset: 'BTC', quoteAsset: 'USDT' },
+                  { symbol: 'ETHUSDT', status: 'TRADING', baseAsset: 'ETH', quoteAsset: 'USDT' },
+                ] });
+              });
+              const port = createBinanceSpotExchangeInfoInstrumentMetadataAcquisitionPort(connect);
+              const result = await port.acquireInstrumentMetadata();
+              expect(connect).toHaveBeenCalledTimes(1);
+              expect(result.ok).toBe(true);
+              if (result.ok) {
+                expect(result.facts.map((fact) => fact.symbol)).toEqual(['BTCUSDT', 'ETHUSDT']);
+              }
+            });
+
+            it('forwards the exact caller-owned AbortSignal through the released execution seam', async () => {
+              const controller = new AbortController();
+              const options = { signal: controller.signal } as const;
+              const connect = vi.fn(async (_request: unknown, received?: { readonly signal?: AbortSignal }) => {
+                expect(received).toBe(options);
+                expect(received?.signal).toBe(controller.signal);
+                return JSON.stringify({ symbols: [] });
+              });
+              const port = createBinanceSpotExchangeInfoInstrumentMetadataAcquisitionPort(connect);
+              await expect(port.acquireInstrumentMetadata(options)).resolves.toEqual({ ok: true, facts: [] });
+              expect(connect).toHaveBeenCalledTimes(1);
+            });
+
+            it('maps released decode/mapping failure to acquisition-failed', async () => {
+              const port = createBinanceSpotExchangeInfoInstrumentMetadataAcquisitionPort(async () => '{"symbols":');
+              await expect(port.acquireInstrumentMetadata()).resolves.toEqual({ ok: false, reason: 'acquisition-failed' });
+            });
+
+            it('maps connector rejection to acquisition-failed without inventing transport semantics', async () => {
+              const port = createBinanceSpotExchangeInfoInstrumentMetadataAcquisitionPort(async () => {
+                throw new Error('connector-owned-failure');
+              });
+              await expect(port.acquireInstrumentMetadata()).resolves.toEqual({ ok: false, reason: 'acquisition-failed' });
+            });
+          });
+          TS
+
+          cat > "$ROOT/KAIROS_BINANCE_SPOT_EXCHANGE_INFO_INSTRUMENT_METADATA_ACQUISITION_ADAPTER_FOUNDATION_REPORT_2026-09-09.md" <<'MD'
+          # Binance Spot exchangeInfo Instrument Metadata Acquisition Adapter Foundation
+
+          ## Canonical base
+          Gate #322 — Live Market Universe Instrument Metadata Acquisition Port Contract Foundation.
+
+          ## Source-proven responsibility
+          Implement the released provider-neutral metadata acquisition port through the already-released Binance Spot exchangeInfo public REST round trip. Forward optional caller-owned cancellation unchanged through the released execution seam. Return successful authoritative metadata facts unchanged. Translate released provider/decode/mapping failure or connector rejection to the existing provider-neutral `acquisition-failed` result.
+
+          ## Explicit non-scope
+          - No concrete browser `fetch`/XHR/WebSocket transport or HTTP status/header/body ownership.
+          - No retry/backoff/rate/request-weight policy.
+          - No cache, polling, visibility, resume, session lifecycle, freshness or cadence ownership.
+          - No USDT eligibility, stablecoin exclusion, 24h quote-volume ranking, symbol tie-break or Top-N policy.
+          - No Home/Live Crypto Bubble UI, Your Trades, journal, persistence, chart, navigation or transitions.
+          MD
+
+          cat > "$ROOT/scripts/verify-binance-spot-exchange-info-instrument-metadata-acquisition-adapter-foundation.mjs" <<'JS'
+          import { readFileSync } from 'node:fs';
+          const adapter = readFileSync(new URL('../src/services/market-data/providers/binance/binanceSpotExchangeInfoInstrumentMetadataAcquisitionAdapter.ts', import.meta.url), 'utf8');
+          const index = readFileSync(new URL('../src/services/market-data/index.ts', import.meta.url), 'utf8');
+          const report = readFileSync(new URL('../KAIROS_BINANCE_SPOT_EXCHANGE_INFO_INSTRUMENT_METADATA_ACQUISITION_ADAPTER_FOUNDATION_REPORT_2026-09-09.md', import.meta.url), 'utf8');
+          for (const token of [
+            'createBinanceSpotExchangeInfoInstrumentMetadataAcquisitionPort(',
+            'LiveMarketUniverseInstrumentMetadataAcquisitionPort',
+            'composeBinanceSpotExchangeInfoPublicRestRoundTrip(connect, options)',
+            "return { ok: false, reason: 'acquisition-failed' }",
+            'return { ok: true, facts: result.facts }',
+          ]) if (!adapter.includes(token)) throw new Error(`metadata adapter evidence missing: ${token}`);
+          if (!index.includes("export * from './providers/binance/binanceSpotExchangeInfoInstrumentMetadataAcquisitionAdapter';")) throw new Error('metadata adapter barrel export missing');
+          for (const forbidden of [
+            'fetch(', 'XMLHttpRequest', 'WebSocket(', 'new Response(', 'new AbortController(',
+            'AbortSignal.any(', 'AbortSignal.timeout(', 'setTimeout(', 'setInterval(', 'indexedDB',
+            'quoteVolume', 'Top 30', 'stablecoin',
+          ]) if (adapter.includes(forbidden)) throw new Error(`metadata adapter broadened scope: ${forbidden}`);
+          for (const token of [
+            'No concrete browser `fetch`/XHR/WebSocket transport',
+            'No retry/backoff/rate/request-weight policy',
+            'No cache, polling',
+            'No USDT eligibility',
+            'No Home/Live Crypto Bubble UI',
+          ]) if (!report.includes(token)) throw new Error(`metadata adapter report evidence missing: ${token}`);
+          console.log('Binance Spot exchangeInfo instrument metadata acquisition adapter verification PASS');
+          JS
+
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const p='.candidate/kairos_p76/package.json';
+          const j=JSON.parse(fs.readFileSync(p,'utf8'));
+          j.scripts ||= {};
+          j.scripts['verify:binance-spot-exchange-info-instrument-metadata-acquisition-adapter-foundation']='node scripts/verify-binance-spot-exchange-info-instrument-metadata-acquisition-adapter-foundation.mjs';
+          fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');
+          NODE
+
+          python - <<'PY'
+          from pathlib import Path
+          a={str(p.relative_to(Path('.base/kairos_p76'))):p.read_bytes() for p in Path('.base/kairos_p76').rglob('*') if p.is_file()}
+          b={str(p.relative_to(Path('.candidate/kairos_p76'))):p.read_bytes() for p in Path('.candidate/kairos_p76').rglob('*') if p.is_file()}
+          changed={p for p in a.keys()|b.keys() if a.get(p)!=b.get(p)}
+          expected={
+            'KAIROS_BINANCE_SPOT_EXCHANGE_INFO_INSTRUMENT_METADATA_ACQUISITION_ADAPTER_FOUNDATION_REPORT_2026-09-09.md',
+            'package.json',
+            'scripts/verify-binance-spot-exchange-info-instrument-metadata-acquisition-adapter-foundation.mjs',
+            'src/services/market-data/index.ts',
+            'src/services/market-data/providers/binance/binanceSpotExchangeInfoInstrumentMetadataAcquisitionAdapter.ts',
+            'tests/binance-spot-exchange-info-instrument-metadata-acquisition-adapter.test.ts',
+          }
+          print('\n'.join(sorted(changed)))
+          assert changed == expected, (sorted(changed-expected), sorted(expected-changed))
+          PY
+
+      - name: Verify reconstructed metadata adapter before packaging
+        working-directory: .candidate/kairos_p76
+        run: |
+          set -euo pipefail
+          npm ci
+          test "$(node --version)" = "v22.16.0"
+          test "$(npm --version)" = "10.9.2"
+          test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
+          npm run verify:binance-spot-exchange-info-instrument-metadata-acquisition-adapter-foundation
+          npx vitest run tests/binance-spot-exchange-info-instrument-metadata-acquisition-adapter.test.ts tests/live-market-universe-instrument-metadata-acquisition-port-contract-foundation.test.ts tests/binance-spot-exchange-info-public-rest-round-trip.test.ts
+          npm run typecheck
+          npm run build
+          npm test -- --run
+          node - <<'NODE'
+          const { spawnSync } = require('node:child_process');
+          const pkg = require('./package.json');
+          const scripts = Object.keys(pkg.scripts || {}).filter((name) => /^verify:p\d|^verify:binance-spot-exchange-info|^verify:live-market-universe/.test(name));
+          for (const name of scripts) {
+            const r = spawnSync('npm', ['run', name], { stdio: 'inherit' });
+            if (r.status !== 0) process.exit(r.status ?? 1);
+          }
+          NODE
+
+      - name: Restore clean package boundary and commit candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=.candidate/kairos_p76
+          rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite"
+          find "$ROOT" -type f \( -name '*.tsbuildinfo' -o -name '*.log' \) -delete
+          rm -f "$OUT_ZIP"
+          (cd .candidate && zip -qr "../$OUT_ZIP" kairos_p76)
+          unzip -t "$OUT_ZIP" >/dev/null
+          mapfile -t TOP < <(unzip -Z1 "$OUT_ZIP" | cut -d/ -f1 | sort -u)
+          test "${#TOP[@]}" -eq 1
+          test "${TOP[0]}" = "kairos_p76"
+          mkdir .fresh
+          unzip -q "$OUT_ZIP" -d .fresh
+          test -f .fresh/kairos_p76/src/services/market-data/providers/binance/binanceSpotExchangeInfoInstrumentMetadataAcquisitionAdapter.ts
+          (cd .fresh/kairos_p76 && npm run verify:binance-spot-exchange-info-instrument-metadata-acquisition-adapter-foundation)
+          sha256sum "$OUT_ZIP"
+          stat -c '%s bytes' "$OUT_ZIP"
+          git config user.name 'kairos-autonomous'
+          git config user.email 'kairos-autonomous@users.noreply.github.com'
+          git add "$OUT_ZIP"
+          test "$(git diff --cached --name-only | wc -l)" -eq 1
+          git diff --cached --name-only | grep -Fx "$OUT_ZIP"
+          git commit -m 'candidate: exchangeInfo instrument metadata acquisition adapter'
+          git push origin HEAD:main
