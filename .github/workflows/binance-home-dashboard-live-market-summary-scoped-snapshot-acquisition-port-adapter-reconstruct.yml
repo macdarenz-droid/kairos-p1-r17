@@ -175,8 +175,8 @@ jobs:
             'readObservedAt: BinanceSpot24hPublicRestBaselineObservedAtSource',
             'HomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPort',
             'return acquireBinanceSpot24hBrowserPublicRestBaselineIntoSessionAndReadScopedSnapshot(',
-            'session,\n                  readObservedAt,\n                  scope,\n                  options,',
           ]) if (!source.includes(token)) throw new Error(`adapter contract evidence missing: ${token}`);
+          if (!/session,\s*readObservedAt,\s*scope,\s*options,/.test(source)) throw new Error('adapter must forward same session/readObservedAt/scope/options in order');
           const calls=(source.match(/acquireBinanceSpot24hBrowserPublicRestBaselineIntoSessionAndReadScopedSnapshot\(/g)||[]).length;
           if (calls !== 1) throw new Error(`adapter must delegate to released P21.23 exactly once, found ${calls}`);
           if (!index.includes("export * from './providers/binance/binanceHomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPortAdapter';")) throw new Error('adapter public export missing');
