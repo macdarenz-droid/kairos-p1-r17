@@ -1,0 +1,263 @@
+name: Kairos Binance Home Dashboard Live Market Summary Scoped Snapshot Acquisition Port Adapter Reconstruction Bridge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-reconstruct.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reconstruct:
+    runs-on: ubuntu-24.04
+    env:
+      BASE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_SCOPED_SNAPSHOT_ACQUISITION_PORT_CONTRACT_FOUNDATION_CANDIDATE_2026-09-08.zip
+      OUT_ZIP: KAIROS_BINANCE_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_SCOPED_SNAPSHOT_ACQUISITION_PORT_ADAPTER_FOUNDATION_CANDIDATE_2026-09-08.zip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - name: Pin npm
+        run: |
+          npm install --global npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+
+      - name: Reconstruct Binance Home acquisition-port adapter from canonical Home port
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .adapterbase .adaptercandidate
+          mkdir .adapterbase .adaptercandidate
+          unzip -q "$BASE_ZIP" -d .adapterbase
+          cp -a .adapterbase/. .adaptercandidate/
+          ROOT=.adaptercandidate/kairos_p76
+          ADAPTER="$ROOT/src/services/market-data/providers/binance/binanceHomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPortAdapter.ts"
+          INDEX="$ROOT/src/services/market-data/index.ts"
+          REPORT="$ROOT/KAIROS_BINANCE_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_SCOPED_SNAPSHOT_ACQUISITION_PORT_ADAPTER_FOUNDATION_REPORT_2026-09-08.md"
+          TEST="$ROOT/tests/binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation.test.ts"
+          VERIFY="$ROOT/scripts/verify-binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation.mjs"
+
+          test -f "$ROOT/src/application/dashboard/homeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPort.ts"
+          test -f "$ROOT/src/services/market-data/liveMarketSummaryStateSession.ts"
+          test -f "$ROOT/src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineAcquisitionAdapter.ts"
+          test -f "$ROOT/src/services/market-data/providers/binance/binanceSpot24hBrowserPublicRestBaselineStateSessionScopedSnapshotAcquisitionComposition.ts"
+          test -f "$INDEX"
+
+          cat > "$ADAPTER" <<'TS'
+          import type { HomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPort } from '../../../../application/dashboard/homeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPort';
+          import type { LiveMarketSummaryStateSession } from '../../liveMarketSummaryStateSession';
+          import type { BinanceSpot24hPublicRestBaselineObservedAtSource } from './binanceSpot24hPublicRestBaselineAcquisitionAdapter';
+          import { acquireBinanceSpot24hBrowserPublicRestBaselineIntoSessionAndReadScopedSnapshot } from './binanceSpot24hBrowserPublicRestBaselineStateSessionScopedSnapshotAcquisitionComposition';
+
+          /**
+           * Provider-owned binding only. Session lifecycle and observed-at ownership stay
+           * with the caller; Home presentation receives only the provider-neutral port.
+           */
+          export function createBinanceHomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPort(
+            session: LiveMarketSummaryStateSession,
+            readObservedAt: BinanceSpot24hPublicRestBaselineObservedAtSource,
+          ): HomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPort {
+            return {
+              acquire(scope, options) {
+                return acquireBinanceSpot24hBrowserPublicRestBaselineIntoSessionAndReadScopedSnapshot(
+                  session,
+                  readObservedAt,
+                  scope,
+                  options,
+                );
+              },
+            };
+          }
+          TS
+
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('.adaptercandidate/kairos_p76/src/services/market-data/index.ts')
+          s=p.read_text()
+          line="export * from './providers/binance/binanceHomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPortAdapter';\n"
+          if line not in s:
+              anchor="export * from './providers/binance/binanceSpot24hBrowserPublicRestBaselineStateSessionScopedSnapshotAcquisitionComposition';\n"
+              if anchor not in s: raise SystemExit('released P21.23 export boundary not found')
+              s=s.replace(anchor, anchor+line, 1)
+          p.write_text(s)
+          PY
+
+          cat > "$TEST" <<'TS'
+          import { afterEach, describe, expect, it, vi } from 'vitest';
+          import {
+            createBinanceHomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPort,
+            createLiveMarketSummaryStateSession,
+            type MarketDataInstrument,
+          } from '../src/services/market-data';
+
+          const originalFetch = globalThis.fetch;
+          const btc: MarketDataInstrument = { venue: 'binance-spot', symbol: 'BTCUSDT' };
+          const observedAt = '2026-09-08T10:00:00.000Z';
+          const payload = JSON.stringify({
+            symbol: 'BTCUSDT', openPrice: '62000', highPrice: '65000', lowPrice: '61000',
+            lastPrice: '64000', volume: '1234', quoteVolume: '78000000', closeTime: 1770000000000,
+          });
+
+          afterEach(() => {
+            globalThis.fetch = originalFetch;
+            vi.restoreAllMocks();
+          });
+
+          describe('Binance Home Dashboard Live Market Summary Scoped Snapshot Acquisition Port Adapter Foundation', () => {
+            it('binds caller-owned session/readObservedAt and delegates one explicit scope acquisition', async () => {
+              const session = createLiveMarketSummaryStateSession();
+              const transition = vi.spyOn(session, 'transition');
+              const getState = vi.spyOn(session, 'getState');
+              const readObservedAt = vi.fn(() => observedAt);
+              globalThis.fetch = vi.fn(async () => ({ text: async () => payload })) as unknown as typeof fetch;
+              const port = createBinanceHomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPort(session, readObservedAt);
+              const scope = [btc] as const;
+
+              const result = await port.acquire(scope);
+
+              expect(transition).toHaveBeenCalledTimes(1);
+              expect(getState).toHaveBeenCalledTimes(1);
+              expect(readObservedAt).toHaveBeenCalledTimes(1);
+              expect(result.orchestrationResult.ok).toBe(true);
+              expect(result.scopedSnapshot).toHaveLength(1);
+              expect(result.scopedSnapshot[0]?.instrument).toBe(btc);
+              expect(result.scopedSnapshot[0]?.fact?.observedAt).toBe(observedAt);
+            });
+
+            it('forwards the exact caller-owned AbortSignal through the released provider composition', async () => {
+              const session = createLiveMarketSummaryStateSession();
+              const controller = new AbortController();
+              const fetchMock = vi.fn(async (_input: URL | RequestInfo, init?: RequestInit) => ({ text: async () => payload, init }));
+              globalThis.fetch = fetchMock as unknown as typeof fetch;
+              const port = createBinanceHomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPort(session, () => observedAt);
+
+              await expect(port.acquire([btc], { signal: controller.signal })).resolves.toMatchObject({
+                orchestrationResult: { ok: true },
+              });
+
+              expect(fetchMock).toHaveBeenCalledTimes(1);
+              expect(fetchMock.mock.calls[0]?.[1]?.signal).toBe(controller.signal);
+            });
+          });
+          TS
+
+          cat > "$REPORT" <<'MD'
+          # Binance Home Dashboard Live Market Summary Scoped Snapshot Acquisition Port Adapter Foundation
+
+          ## Authority
+          Base: exact canonical patch-numberless Home Dashboard Live Market Summary Scoped Snapshot Acquisition Port Contract Foundation promoted by gate #309 / run `34170279174`.
+
+          ## Source-proven responsibility
+          The canonical Home port explicitly leaves provider binding to a later adapter. Released P21.23 already owns Binance browser acquisition into an existing released state session followed by the exact caller-scoped snapshot read. The smallest dependency-safe responsibility is a provider-owned adapter that binds those two already-released seams without moving provider semantics into Home presentation.
+
+          ## Contract
+          - Accept an existing released `LiveMarketSummaryStateSession` and caller-owned released Binance `readObservedAt` at adapter binding time.
+          - Return the canonical `HomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPort`.
+          - Each `acquire(scope, options?)` delegates exactly once to released P21.23 using the same session, `readObservedAt`, exact scope and options.
+          - Return the released P21.23 Promise/result unchanged; add no semantic translation.
+
+          ## Explicit non-scope
+          No new session creation/reset/lifecycle ownership; no clock/readObservedAt creation; no Home React wiring/hooks/effects/UI state; no default universe/scope; no ranking/filtering/grouping/sorting/top-N/popularity/market-cap; no Bubble presentation; no Your Trades/journal ownership; no freshness/TTL/polling/reconnect/scheduling/background work; no new transport/endpoint/status/header/error/retry/rate-limit/timeout/credentials policy; no new AbortController/signal-combination/concurrency/coalescing/subscription framework; no persistence/IndexedDB/Saved Analysis/chart/navigation/transition ownership; no duplication or reinterpretation of released P21.23 semantics.
+          MD
+
+          cat > "$VERIFY" <<'JS'
+          import { readFileSync } from 'node:fs';
+          const source = readFileSync(new URL('../src/services/market-data/providers/binance/binanceHomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPortAdapter.ts', import.meta.url), 'utf8');
+          const index = readFileSync(new URL('../src/services/market-data/index.ts', import.meta.url), 'utf8');
+          const report = readFileSync(new URL('../KAIROS_BINANCE_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_SCOPED_SNAPSHOT_ACQUISITION_PORT_ADAPTER_FOUNDATION_REPORT_2026-09-08.md', import.meta.url), 'utf8');
+          for (const token of [
+            'createBinanceHomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPort',
+            'session: LiveMarketSummaryStateSession',
+            'readObservedAt: BinanceSpot24hPublicRestBaselineObservedAtSource',
+            'HomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPort',
+            'return acquireBinanceSpot24hBrowserPublicRestBaselineIntoSessionAndReadScopedSnapshot(',
+            'session,\n                  readObservedAt,\n                  scope,\n                  options,',
+          ]) if (!source.includes(token)) throw new Error(`adapter contract evidence missing: ${token}`);
+          const calls=(source.match(/acquireBinanceSpot24hBrowserPublicRestBaselineIntoSessionAndReadScopedSnapshot\(/g)||[]).length;
+          if (calls !== 1) throw new Error(`adapter must delegate to released P21.23 exactly once, found ${calls}`);
+          if (!index.includes("export * from './providers/binance/binanceHomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPortAdapter';")) throw new Error('adapter public export missing');
+          for (const forbidden of [
+            'createLiveMarketSummaryStateSession(', 'Date.now(', 'new Date(', 'setTimeout(', 'setInterval(',
+            'fetch(', 'XMLHttpRequest', 'WebSocket(', 'indexedDB', 'new AbortController(', '.sort(', '.filter(', '.reduce(',
+            'React', 'useEffect', 'useState', 'createChart(',
+          ]) if (source.includes(forbidden)) throw new Error(`adapter broadened into forbidden scope: ${forbidden}`);
+          for (const token of [
+            'provider-owned adapter',
+            'delegates exactly once to released P21.23',
+            'Return the released P21.23 Promise/result unchanged',
+            'no Home React wiring/hooks/effects/UI state',
+            'no Your Trades/journal ownership',
+          ]) if (!report.includes(token)) throw new Error(`adapter report evidence missing: ${token}`);
+          console.log('Binance Home Dashboard live-market acquisition-port adapter verification passed.');
+          JS
+
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const p='.adaptercandidate/kairos_p76/package.json';
+          const j=JSON.parse(fs.readFileSync(p,'utf8'));
+          j.scripts||={};
+          j.scripts['verify:binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation']='node scripts/verify-binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation.mjs';
+          fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');
+          NODE
+
+          python - <<'PY'
+          from pathlib import Path
+          a={str(p.relative_to(Path('.adapterbase/kairos_p76'))):p.read_bytes() for p in Path('.adapterbase/kairos_p76').rglob('*') if p.is_file()}
+          b={str(p.relative_to(Path('.adaptercandidate/kairos_p76'))):p.read_bytes() for p in Path('.adaptercandidate/kairos_p76').rglob('*') if p.is_file()}
+          changed={p for p in a.keys()|b.keys() if a.get(p)!=b.get(p)}
+          expected={
+            'KAIROS_BINANCE_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_SCOPED_SNAPSHOT_ACQUISITION_PORT_ADAPTER_FOUNDATION_REPORT_2026-09-08.md',
+            'package.json',
+            'scripts/verify-binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation.mjs',
+            'src/services/market-data/index.ts',
+            'src/services/market-data/providers/binance/binanceHomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPortAdapter.ts',
+            'tests/binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation.test.ts',
+          }
+          print('Home port -> Binance adapter changed files:', *sorted(changed), sep='\n- ')
+          if changed != expected: raise SystemExit(f'exact adapter scope mismatch: {sorted(changed ^ expected)}')
+          PY
+
+      - name: Verify reconstructed adapter before packaging
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd .adaptercandidate/kairos_p76
+          test "$(node --version)" = "v22.16.0"
+          test "$(npm --version)" = "10.9.2"
+          npm ci
+          node -e "const p=require('./node_modules/lightweight-charts/package.json'); if(p.version!=='5.2.1') throw new Error(p.version)"
+          npm run verify:binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation
+          npx tsc --noEmit
+          npm run build
+          npx vitest run tests/binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation.test.ts
+          npx vitest run
+
+      - name: Restore clean package boundary and package candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=.adaptercandidate/kairos_p76
+          rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite"
+          find "$ROOT" -type f \( -name '*.tsbuildinfo' -o -name '*.log' \) -delete
+          (cd .adaptercandidate && zip -qr "../$OUT_ZIP" kairos_p76)
+          unzip -t "$OUT_ZIP"
+          rm -rf .adapterverify && mkdir .adapterverify
+          unzip -q "$OUT_ZIP" -d .adapterverify
+          test -f .adapterverify/kairos_p76/src/services/market-data/providers/binance/binanceHomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPortAdapter.ts
+          node .adapterverify/kairos_p76/scripts/verify-binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation.mjs
+          sha256sum "$OUT_ZIP"
+
+      - name: Commit verified non-canonical candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "$OUT_ZIP"
+          git diff --cached --quiet && exit 0
+          git commit -m 'Add verified Binance Home live-market acquisition-port adapter candidate'
+          git push
