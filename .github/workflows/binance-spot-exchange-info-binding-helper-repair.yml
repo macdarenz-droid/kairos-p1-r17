@@ -1,0 +1,57 @@
+name: Kairos exchangeInfo binding helper narrow repair
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/binance-spot-exchange-info-binding-helper-repair.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Replace only the failing signal assertion strategy
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('.github/workflows/binance-spot-exchange-info-browser-instrument-metadata-acquisition-binding-reconstruct.yml')
+          s=p.read_text()
+          old="""              const controller = new AbortController();
+              const fetchMock = vi.fn(async () => ({ text: async () => JSON.stringify({ symbols: [] }) }));
+              globalThis.fetch = fetchMock as unknown as typeof fetch;
+              const port = createBinanceSpotExchangeInfoBrowserInstrumentMetadataAcquisitionPort();
+
+              await expect(port.acquireInstrumentMetadata({ signal: controller.signal })).resolves.toEqual({ ok: true, facts: [] });
+              const [, init] = fetchMock.mock.calls[0] ?? [];
+              expect(init?.signal).toBe(controller.signal);
+"""
+          new="""              const controller = new AbortController();
+              let capturedSignal: AbortSignal | null | undefined;
+              const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+                capturedSignal = init?.signal;
+                return { text: async () => JSON.stringify({ symbols: [] }) };
+              });
+              globalThis.fetch = fetchMock as unknown as typeof fetch;
+              const port = createBinanceSpotExchangeInfoBrowserInstrumentMetadataAcquisitionPort();
+
+              await expect(port.acquireInstrumentMetadata({ signal: controller.signal })).resolves.toEqual({ ok: true, facts: [] });
+              expect(capturedSignal).toBe(controller.signal);
+"""
+          if s.count(old) != 1:
+              raise SystemExit('expected exact failing test block once')
+          p.write_text(s.replace(old,new,1))
+          PY
+          git diff --check
+          git diff -- .github/workflows/binance-spot-exchange-info-browser-instrument-metadata-acquisition-binding-reconstruct.yml
+          git add .github/workflows/binance-spot-exchange-info-browser-instrument-metadata-acquisition-binding-reconstruct.yml
+          git rm .github/workflows/binance-spot-exchange-info-binding-helper-repair.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'helper: capture binding forwarded signal explicitly'
+          git push
