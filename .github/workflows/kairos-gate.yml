@@ -1,11 +1,11 @@
-# KAIROS HOME DASHBOARD LIVE MARKET SUMMARY SCOPED SNAPSHOT ACQUISITION PORT GATE — AUTHORITATIVE BASE P21.23
+# KAIROS BINANCE HOME DASHBOARD LIVE MARKET SUMMARY SCOPED SNAPSHOT ACQUISITION PORT ADAPTER GATE — AUTHORITATIVE BASE HOME DASHBOARD LIVE MARKET SUMMARY SCOPED SNAPSHOT ACQUISITION PORT
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_SCOPED_SNAPSHOT_ACQUISITION_PORT_CONTRACT_FOUNDATION_CANDIDATE_2026-09-08.zip'
+      - 'KAIROS_BINANCE_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_SCOPED_SNAPSHOT_ACQUISITION_PORT_ADAPTER_FOUNDATION_CANDIDATE_2026-09-08.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P21_23_LIVE_MARKET_SUMMARY_BROWSER_STATE_SESSION_SCOPED_SNAPSHOT_ACQUISITION_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-08.zip
-  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_SCOPED_SNAPSHOT_ACQUISITION_PORT_CONTRACT_FOUNDATION_CANDIDATE_2026-09-08.zip
+  BASE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_SCOPED_SNAPSHOT_ACQUISITION_PORT_CONTRACT_FOUNDATION_CANDIDATE_2026-09-08.zip
+  CANDIDATE_ZIP: KAIROS_BINANCE_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_SCOPED_SNAPSHOT_ACQUISITION_PORT_ADAPTER_FOUNDATION_CANDIDATE_2026-09-08.zip
 
 jobs:
   verify-current-candidate:
@@ -35,7 +35,7 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm exact controlled Home dashboard live-market port scope from authoritative P21.23
+      - name: Confirm exact controlled Binance Home dashboard acquisition-port adapter scope from authoritative Home port
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -47,14 +47,15 @@ jobs:
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           print('\n'.join(sorted(changed)))
           expected={
-            'KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_SCOPED_SNAPSHOT_ACQUISITION_PORT_CONTRACT_FOUNDATION_REPORT_2026-09-08.md',
+            'KAIROS_BINANCE_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_SCOPED_SNAPSHOT_ACQUISITION_PORT_ADAPTER_FOUNDATION_REPORT_2026-09-08.md',
             'package.json',
-            'scripts/verify-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation.mjs',
-            'src/application/dashboard/homeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPort.ts',
-            'tests/home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation.test.ts',
+            'scripts/verify-binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation.mjs',
+            'src/application/dashboard/binanceHomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPortAdapter.ts',
+            'src/application/dashboard/index.ts',
+            'tests/binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation.test.ts',
           }
           if changed != expected:
-            print('Home dashboard live-market port exact scope mismatch',file=sys.stderr)
+            print('Binance Home dashboard acquisition-port adapter exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             sys.exit(1)
@@ -73,9 +74,10 @@ jobs:
       - name: Production build
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
-      - name: Dedicated Home dashboard live-market scoped snapshot acquisition port verifier/runtime
+      - name: Dedicated Binance Home dashboard live-market scoped snapshot acquisition port adapter verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation
           npm run verify:home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation
           npm run verify:p21:23-live-market-summary-browser-state-session-scoped-snapshot-acquisition-composition-foundation
           npm run verify:p21:22-live-market-summary-state-session-scoped-snapshot-binding-foundation
@@ -113,13 +115,14 @@ jobs:
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression through canonical P21.23 plus Home dashboard live-market port
+      - name: Full controlled roadmap regression through canonical P21.23 plus Home dashboard live-market port and Binance adapter
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
           const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
           const p=JSON.parse(readFileSync('package.json')); const s=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:'));
           for(const required of [
+            'verify:binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation',
             'verify:home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation',
             'verify:p1',
             'verify:p15:14-market-data-adapter-system-closure',
@@ -161,6 +164,7 @@ jobs:
       - name: Historical closures
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation
           npm run verify:home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation
           npm run verify:p21:23-live-market-summary-browser-state-session-scoped-snapshot-acquisition-composition-foundation
           npm run verify:p21:22-live-market-summary-state-session-scoped-snapshot-binding-foundation
@@ -215,5 +219,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_SCOPED_SNAPSHOT_ACQUISITION_PORT_CONTRACT_FOUNDATION_REPORT_2026-09-08.md
+          path: .gate-candidate/kairos_p76/KAIROS_BINANCE_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_SCOPED_SNAPSHOT_ACQUISITION_PORT_ADAPTER_FOUNDATION_REPORT_2026-09-08.md
           if-no-files-found: error
