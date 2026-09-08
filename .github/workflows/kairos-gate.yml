@@ -1,11 +1,11 @@
-# KAIROS LIVE MARKET SUMMARY FRESHNESS CLASSIFICATION POLICY GATE — AUTHORITATIVE BASE BINANCE HOME DASHBOARD LIVE MARKET SUMMARY SCOPED SNAPSHOT ACQUISITION PORT ADAPTER
+# KAIROS LIVE MARKET UNIVERSE INSTRUMENT METADATA FACT CONTRACT GATE — AUTHORITATIVE BASE LIVE MARKET SUMMARY FRESHNESS CLASSIFICATION POLICY
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_LIVE_MARKET_SUMMARY_FRESHNESS_CLASSIFICATION_POLICY_FOUNDATION_CANDIDATE_2026-09-08.zip'
+      - 'KAIROS_LIVE_MARKET_UNIVERSE_INSTRUMENT_METADATA_FACT_CONTRACT_FOUNDATION_CANDIDATE_2026-09-08.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_BINANCE_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_SCOPED_SNAPSHOT_ACQUISITION_PORT_ADAPTER_FOUNDATION_CANDIDATE_2026-09-08.zip
-  CANDIDATE_ZIP: KAIROS_LIVE_MARKET_SUMMARY_FRESHNESS_CLASSIFICATION_POLICY_FOUNDATION_CANDIDATE_2026-09-08.zip
+  BASE_ZIP: KAIROS_LIVE_MARKET_SUMMARY_FRESHNESS_CLASSIFICATION_POLICY_FOUNDATION_CANDIDATE_2026-09-08.zip
+  CANDIDATE_ZIP: KAIROS_LIVE_MARKET_UNIVERSE_INSTRUMENT_METADATA_FACT_CONTRACT_FOUNDATION_CANDIDATE_2026-09-08.zip
 
 jobs:
   verify-current-candidate:
@@ -35,7 +35,7 @@ jobs:
           unzip -q "$CANDIDATE_ZIP" -d .gate-candidate
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
-      - name: Confirm exact controlled live-market freshness classification policy scope from authoritative Binance Home adapter
+      - name: Confirm exact controlled live-market universe instrument metadata fact scope from authoritative freshness policy
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -47,15 +47,15 @@ jobs:
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           print('\n'.join(sorted(changed)))
           expected={
-            'KAIROS_LIVE_MARKET_SUMMARY_FRESHNESS_CLASSIFICATION_POLICY_FOUNDATION_REPORT_2026-09-08.md',
+            'KAIROS_LIVE_MARKET_UNIVERSE_INSTRUMENT_METADATA_FACT_CONTRACT_FOUNDATION_REPORT_2026-09-08.md',
             'package.json',
-            'scripts/verify-live-market-summary-freshness-classification-policy-foundation.mjs',
+            'scripts/verify-live-market-universe-instrument-metadata-fact-contract-foundation.mjs',
             'src/services/market-data/index.ts',
-            'src/services/market-data/liveMarketSummaryFreshnessClassificationPolicy.ts',
-            'tests/live-market-summary-freshness-classification-policy-foundation.test.ts',
+            'src/services/market-data/liveMarketUniverseInstrumentMetadataFact.ts',
+            'tests/live-market-universe-instrument-metadata-fact-contract-foundation.test.ts',
           }
           if changed != expected:
-            print('Live-market freshness classification policy exact scope mismatch',file=sys.stderr)
+            print('Live-market universe instrument metadata fact exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             sys.exit(1)
@@ -74,9 +74,10 @@ jobs:
       - name: Production build
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
-      - name: Dedicated live-market freshness classification policy verifier/runtime
+      - name: Dedicated live-market universe instrument metadata fact verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:live-market-universe-instrument-metadata-fact-contract-foundation
           npm run verify:live-market-summary-freshness-classification-policy-foundation
           npm run verify:binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation
           npm run verify:home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation
@@ -116,13 +117,14 @@ jobs:
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
         run: npm test
-      - name: Full controlled roadmap regression through canonical P21.23 plus Home dashboard live-market port, Binance adapter and freshness policy
+      - name: Full controlled roadmap regression through canonical P21.23 plus Home dashboard live-market port, Binance adapter, freshness policy and universe metadata fact
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
           const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
           const p=JSON.parse(readFileSync('package.json')); const s=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:'));
           for(const required of [
+            'verify:live-market-universe-instrument-metadata-fact-contract-foundation',
             'verify:live-market-summary-freshness-classification-policy-foundation',
             'verify:binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation',
             'verify:home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation',
@@ -166,6 +168,7 @@ jobs:
       - name: Historical closures
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:live-market-universe-instrument-metadata-fact-contract-foundation
           npm run verify:live-market-summary-freshness-classification-policy-foundation
           npm run verify:binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation
           npm run verify:home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation
@@ -222,5 +225,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_LIVE_MARKET_SUMMARY_FRESHNESS_CLASSIFICATION_POLICY_FOUNDATION_REPORT_2026-09-08.md
+          path: .gate-candidate/kairos_p76/KAIROS_LIVE_MARKET_UNIVERSE_INSTRUMENT_METADATA_FACT_CONTRACT_FOUNDATION_REPORT_2026-09-08.md
           if-no-files-found: error
