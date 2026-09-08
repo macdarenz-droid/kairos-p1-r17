@@ -1,11 +1,11 @@
-# KAIROS BINANCE SPOT EXCHANGE INFO BROWSER PUBLIC REST CONNECTOR GATE — AUTHORITATIVE BASE GATE 323
+# KAIROS BINANCE SPOT EXCHANGE INFO BROWSER INSTRUMENT METADATA ACQUISITION BINDING GATE — AUTHORITATIVE BASE GATE 324
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_BINANCE_SPOT_EXCHANGE_INFO_BROWSER_PUBLIC_REST_CONNECTOR_FOUNDATION_CANDIDATE_2026-09-09.zip'
+      - 'KAIROS_BINANCE_SPOT_EXCHANGE_INFO_BROWSER_INSTRUMENT_METADATA_ACQUISITION_BINDING_FOUNDATION_CANDIDATE_2026-09-09.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_BINANCE_SPOT_EXCHANGE_INFO_INSTRUMENT_METADATA_ACQUISITION_ADAPTER_FOUNDATION_CANDIDATE_2026-09-09.zip
-  CANDIDATE_ZIP: KAIROS_BINANCE_SPOT_EXCHANGE_INFO_BROWSER_PUBLIC_REST_CONNECTOR_FOUNDATION_CANDIDATE_2026-09-09.zip
+  BASE_ZIP: KAIROS_BINANCE_SPOT_EXCHANGE_INFO_BROWSER_PUBLIC_REST_CONNECTOR_FOUNDATION_CANDIDATE_2026-09-09.zip
+  CANDIDATE_ZIP: KAIROS_BINANCE_SPOT_EXCHANGE_INFO_BROWSER_INSTRUMENT_METADATA_ACQUISITION_BINDING_FOUNDATION_CANDIDATE_2026-09-09.zip
 
 jobs:
   verify-current-candidate:
@@ -35,8 +35,8 @@ jobs:
           from pathlib import Path, PurePosixPath
           import hashlib, os, zipfile
           for key, size, digest in [
-            ('BASE_ZIP', 1516387, 'eee1ca865ca197586fb3abda930be27d90f594dcb15cb17cdfc10ed464647893'),
-            ('CANDIDATE_ZIP', 1519806, '7fa3430bfa41f99bdb541f82839b26413475178614fc5c28a67436a1299faced'),
+            ('BASE_ZIP', 1519806, '7fa3430bfa41f99bdb541f82839b26413475178614fc5c28a67436a1299faced'),
+            ('CANDIDATE_ZIP', 1524401, '34af2c884a191a8eb8163f91d4c721563ad5ecb20e64ac437f6b412f43093659'),
           ]:
             p=Path(os.environ[key]); data=p.read_bytes()
             assert len(data)==size, f'{key}: byte size mismatch'
@@ -61,7 +61,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact controlled Binance exchangeInfo browser public REST connector scope from Gate 323
+      - name: Confirm exact controlled Binance exchangeInfo browser instrument metadata acquisition binding scope from Gate 324
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -73,15 +73,15 @@ jobs:
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           print('\n'.join(sorted(changed)))
           expected={
-            'KAIROS_BINANCE_SPOT_EXCHANGE_INFO_BROWSER_PUBLIC_REST_CONNECTOR_FOUNDATION_REPORT_2026-09-09.md',
+            'KAIROS_BINANCE_SPOT_EXCHANGE_INFO_BROWSER_INSTRUMENT_METADATA_ACQUISITION_BINDING_FOUNDATION_REPORT_2026-09-09.md',
             'package.json',
-            'scripts/verify-binance-spot-exchange-info-browser-public-rest-connector-foundation.mjs',
+            'scripts/verify-binance-spot-exchange-info-browser-instrument-metadata-acquisition-binding-foundation.mjs',
             'src/services/market-data/index.ts',
-            'src/services/market-data/providers/binance/binanceSpotExchangeInfoBrowserPublicRestConnector.ts',
-            'tests/binance-spot-exchange-info-browser-public-rest-connector.test.ts',
+            'src/services/market-data/providers/binance/binanceSpotExchangeInfoBrowserInstrumentMetadataAcquisitionBinding.ts',
+            'tests/binance-spot-exchange-info-browser-instrument-metadata-acquisition-binding.test.ts',
           }
           if changed != expected:
-            print('Binance exchangeInfo browser public REST connector exact scope mismatch',file=sys.stderr)
+            print('Binance exchangeInfo browser instrument metadata acquisition binding exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             sys.exit(1)
@@ -105,9 +105,10 @@ jobs:
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
 
-      - name: Dedicated Binance exchangeInfo browser public REST connector verifier/runtime
+      - name: Dedicated Binance exchangeInfo browser instrument metadata acquisition binding verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p21:binance-spot-exchange-info-browser-instrument-metadata-acquisition-binding-foundation
           npm run verify:binance-spot-exchange-info-browser-public-rest-connector-foundation
           npm run verify:binance-spot-exchange-info-instrument-metadata-acquisition-adapter-foundation
           npm run verify:live-market-universe-instrument-metadata-acquisition-port-contract-foundation
@@ -132,9 +133,9 @@ jobs:
           npm run verify:p8:navigation-shell
           npm run verify:p1
 
-      - name: Focused Binance exchangeInfo browser connector regression
+      - name: Focused Binance exchangeInfo browser metadata acquisition binding regression
         working-directory: .gate-candidate/kairos_p76
-        run: npx vitest run tests/binance-spot-exchange-info-browser-public-rest-connector.test.ts tests/binance-spot-exchange-info-instrument-metadata-acquisition-adapter.test.ts tests/binance-spot-exchange-info-public-rest-round-trip.test.ts
+        run: npx vitest run tests/binance-spot-exchange-info-browser-instrument-metadata-acquisition-binding.test.ts tests/binance-spot-exchange-info-browser-public-rest-connector.test.ts tests/binance-spot-exchange-info-instrument-metadata-acquisition-adapter.test.ts tests/binance-spot-exchange-info-public-rest-round-trip.test.ts
 
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
@@ -148,6 +149,7 @@ jobs:
           const p=JSON.parse(readFileSync('package.json'));
           const scripts=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:')).sort();
           for(const required of [
+            'verify:p21:binance-spot-exchange-info-browser-instrument-metadata-acquisition-binding-foundation',
             'verify:binance-spot-exchange-info-browser-public-rest-connector-foundation',
             'verify:binance-spot-exchange-info-instrument-metadata-acquisition-adapter-foundation',
             'verify:live-market-universe-instrument-metadata-acquisition-port-contract-foundation',
@@ -165,6 +167,7 @@ jobs:
       - name: Historical closures
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p21:binance-spot-exchange-info-browser-instrument-metadata-acquisition-binding-foundation
           npm run verify:binance-spot-exchange-info-browser-public-rest-connector-foundation
           npm run verify:binance-spot-exchange-info-instrument-metadata-acquisition-adapter-foundation
           npm run verify:live-market-universe-instrument-metadata-acquisition-port-contract-foundation
@@ -199,5 +202,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_BINANCE_SPOT_EXCHANGE_INFO_BROWSER_PUBLIC_REST_CONNECTOR_FOUNDATION_REPORT_2026-09-09.md
+          path: .gate-candidate/kairos_p76/KAIROS_BINANCE_SPOT_EXCHANGE_INFO_BROWSER_INSTRUMENT_METADATA_ACQUISITION_BINDING_FOUNDATION_REPORT_2026-09-09.md
           if-no-files-found: error
