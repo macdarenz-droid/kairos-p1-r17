@@ -1,0 +1,243 @@
+name: Kairos Live Market Summary Freshness Classification Policy Reconstruction Bridge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/live-market-summary-freshness-classification-policy-reconstruct.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reconstruct:
+    runs-on: ubuntu-24.04
+    env:
+      BASE_ZIP: KAIROS_BINANCE_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_SCOPED_SNAPSHOT_ACQUISITION_PORT_ADAPTER_FOUNDATION_CANDIDATE_2026-09-08.zip
+      OUT_ZIP: KAIROS_LIVE_MARKET_SUMMARY_FRESHNESS_CLASSIFICATION_POLICY_FOUNDATION_CANDIDATE_2026-09-08.zip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - name: Pin npm
+        run: |
+          npm install --global npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+
+      - name: Reconstruct freshness classification policy from canonical Binance Home adapter
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .freshnessbase .freshnesscandidate
+          mkdir .freshnessbase .freshnesscandidate
+          unzip -q "$BASE_ZIP" -d .freshnessbase
+          cp -a .freshnessbase/. .freshnesscandidate/
+          ROOT=.freshnesscandidate/kairos_p76
+          POLICY="$ROOT/src/services/market-data/liveMarketSummaryFreshnessClassificationPolicy.ts"
+          INDEX="$ROOT/src/services/market-data/index.ts"
+          REPORT="$ROOT/KAIROS_LIVE_MARKET_SUMMARY_FRESHNESS_CLASSIFICATION_POLICY_FOUNDATION_REPORT_2026-09-08.md"
+          TEST="$ROOT/tests/live-market-summary-freshness-classification-policy-foundation.test.ts"
+          VERIFY="$ROOT/scripts/verify-live-market-summary-freshness-classification-policy-foundation.mjs"
+
+          test -f "$ROOT/src/services/market-data/marketDataTypes.ts"
+          test -f "$ROOT/src/services/market-data/liveMarketSummaryStateSession.ts"
+          test -f "$ROOT/src/services/market-data/providers/binance/binanceHomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPortAdapter.ts"
+          test -f "$INDEX"
+
+          cat > "$POLICY" <<'TS'
+          export type LiveMarketSummaryFreshnessClassification = 'fresh' | 'stale' | 'expired';
+
+          export interface LiveMarketSummaryFreshnessClassificationPolicy {
+            readonly freshMaxAgeMs: number;
+            readonly staleMaxAgeMs: number;
+          }
+
+          /**
+           * V1 product-policy thresholds. This module owns classification only; it does
+           * not own a clock, observedAt parsing, acquisition cadence, or presentation.
+           */
+          export const LIVE_MARKET_SUMMARY_FRESHNESS_CLASSIFICATION_POLICY_V1 = Object.freeze({
+            freshMaxAgeMs: 15_000,
+            staleMaxAgeMs: 60_000,
+          }) satisfies LiveMarketSummaryFreshnessClassificationPolicy;
+
+          /**
+           * Classify an already-computed, caller-owned observation age in milliseconds.
+           * Callers are responsible for supplying a deterministic non-negative age.
+           */
+          export function classifyLiveMarketSummaryObservationAge(
+            ageMs: number,
+            policy: LiveMarketSummaryFreshnessClassificationPolicy = LIVE_MARKET_SUMMARY_FRESHNESS_CLASSIFICATION_POLICY_V1,
+          ): LiveMarketSummaryFreshnessClassification {
+            if (ageMs <= policy.freshMaxAgeMs) return 'fresh';
+            if (ageMs <= policy.staleMaxAgeMs) return 'stale';
+            return 'expired';
+          }
+          TS
+
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('.freshnesscandidate/kairos_p76/src/services/market-data/index.ts')
+          s=p.read_text()
+          line="export * from './liveMarketSummaryFreshnessClassificationPolicy';\n"
+          if line not in s:
+              anchor="export * from './liveMarketSummaryStateSessionScopedSnapshotBinding';\n"
+              if anchor not in s:
+                  anchor="export * from './liveMarketSummaryScopedStateSnapshot';\n"
+              if anchor not in s: raise SystemExit('released market-data export boundary not found')
+              s=s.replace(anchor, anchor+line, 1)
+          p.write_text(s)
+          PY
+
+          cat > "$TEST" <<'TS'
+          import { describe, expect, it } from 'vitest';
+          import {
+            LIVE_MARKET_SUMMARY_FRESHNESS_CLASSIFICATION_POLICY_V1,
+            classifyLiveMarketSummaryObservationAge,
+          } from '../src/services/market-data';
+
+          describe('Live Market Summary Freshness Classification Policy Foundation', () => {
+            it('uses the approved V1 threshold boundaries exactly', () => {
+              expect(LIVE_MARKET_SUMMARY_FRESHNESS_CLASSIFICATION_POLICY_V1).toEqual({
+                freshMaxAgeMs: 15_000,
+                staleMaxAgeMs: 60_000,
+              });
+              expect(classifyLiveMarketSummaryObservationAge(0)).toBe('fresh');
+              expect(classifyLiveMarketSummaryObservationAge(15_000)).toBe('fresh');
+              expect(classifyLiveMarketSummaryObservationAge(15_001)).toBe('stale');
+              expect(classifyLiveMarketSummaryObservationAge(60_000)).toBe('stale');
+              expect(classifyLiveMarketSummaryObservationAge(60_001)).toBe('expired');
+            });
+
+            it('keeps thresholds policy-owned instead of presentation-hard-coded', () => {
+              const policy = { freshMaxAgeMs: 1_000, staleMaxAgeMs: 2_000 } as const;
+              expect(classifyLiveMarketSummaryObservationAge(1_000, policy)).toBe('fresh');
+              expect(classifyLiveMarketSummaryObservationAge(1_001, policy)).toBe('stale');
+              expect(classifyLiveMarketSummaryObservationAge(2_000, policy)).toBe('stale');
+              expect(classifyLiveMarketSummaryObservationAge(2_001, policy)).toBe('expired');
+            });
+          });
+          TS
+
+          cat > "$REPORT" <<'MD'
+          # Live Market Summary Freshness Classification Policy Foundation
+
+          ## Authority
+          Base: exact canonical Binance Home Dashboard Live Market Summary Scoped Snapshot Acquisition Port Adapter Foundation promoted by `Kairos Controlled Roadmap Gate` #311 / run `34173799325`.
+
+          Current user-approved P21 Live Crypto Bubble Map V1 product authority defines freshness from deterministic evaluation time minus canonical caller-owned `observedAt`: `fresh` through 15 seconds, `stale` above 15 seconds through 60 seconds, and `expired` above 60 seconds.
+
+          ## Responsibility
+          This slice introduces one provider-neutral deterministic freshness-classification policy owner above released market facts and below presentation. It maps an already-computed caller-owned observation age in milliseconds to `fresh | stale | expired`.
+
+          V1 defaults are policy-owned/configurable inputs: `freshMaxAgeMs = 15_000` and `staleMaxAgeMs = 60_000`. The classification boundary is inclusive at 15s for fresh and 60s for stale.
+
+          ## Explicit non-scope
+          No `Date.now()` / `new Date()` / internal wall-clock ownership; no `observedAt` parsing or evaluation-time ownership; no acquisition, polling, scheduling, page visibility/resume, retry, cancellation or background work; no provider/Binance transport change; no market-universe/default-scope/ranking/filter/top-N/stablecoin policy; no Home React wiring/hooks/UI state; no stale dimming or expired rendering; no Bubble geometry/size/color/interactions; no Your Trades/journal ownership; no persistence/IndexedDB/Saved Analysis/chart/navigation/transition ownership.
+
+          ## Follow-on boundary
+          A later separately controlled owner may compute deterministic observation age from canonical `observedAt` plus caller-owned evaluation time and consume this policy. Visible-dashboard cadence, stale/expired presentation, and universe policy remain separate later responsibilities.
+          MD
+
+          cat > "$VERIFY" <<'JS'
+          import { readFileSync } from 'node:fs';
+          const source = readFileSync(new URL('../src/services/market-data/liveMarketSummaryFreshnessClassificationPolicy.ts', import.meta.url), 'utf8');
+          const index = readFileSync(new URL('../src/services/market-data/index.ts', import.meta.url), 'utf8');
+          const report = readFileSync(new URL('../KAIROS_LIVE_MARKET_SUMMARY_FRESHNESS_CLASSIFICATION_POLICY_FOUNDATION_REPORT_2026-09-08.md', import.meta.url), 'utf8');
+
+          for (const token of [
+            "'fresh' | 'stale' | 'expired'",
+            'freshMaxAgeMs: 15_000',
+            'staleMaxAgeMs: 60_000',
+            'classifyLiveMarketSummaryObservationAge',
+            "if (ageMs <= policy.freshMaxAgeMs) return 'fresh';",
+            "if (ageMs <= policy.staleMaxAgeMs) return 'stale';",
+            "return 'expired';",
+          ]) if (!source.includes(token)) throw new Error(`freshness policy evidence missing: ${token}`);
+
+          if (!index.includes("export * from './liveMarketSummaryFreshnessClassificationPolicy';")) throw new Error('freshness policy public export missing');
+
+          for (const forbidden of [
+            'Date.now(', 'new Date(', 'setTimeout(', 'setInterval(', 'fetch(', 'XMLHttpRequest', 'WebSocket(',
+            'document.', 'visibilityState', 'React', 'useEffect', 'useState', 'indexedDB', 'sourceTimestamp',
+            '.sort(', '.filter(', 'AbortController',
+          ]) if (source.includes(forbidden)) throw new Error(`freshness policy broadened into forbidden scope: ${forbidden}`);
+
+          for (const token of [
+            'provider-neutral deterministic freshness-classification policy owner',
+            'already-computed caller-owned observation age',
+            'No `Date.now()` / `new Date()` / internal wall-clock ownership',
+            'Visible-dashboard cadence, stale/expired presentation, and universe policy remain separate later responsibilities',
+          ]) if (!report.includes(token)) throw new Error(`freshness policy report evidence missing: ${token}`);
+
+          console.log('Live Market Summary freshness classification policy verification passed.');
+          JS
+
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const p='.freshnesscandidate/kairos_p76/package.json';
+          const j=JSON.parse(fs.readFileSync(p,'utf8'));
+          j.scripts||={};
+          j.scripts['verify:live-market-summary-freshness-classification-policy-foundation']='node scripts/verify-live-market-summary-freshness-classification-policy-foundation.mjs';
+          fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');
+          NODE
+
+          python - <<'PY'
+          from pathlib import Path
+          a={str(p.relative_to(Path('.freshnessbase/kairos_p76'))):p.read_bytes() for p in Path('.freshnessbase/kairos_p76').rglob('*') if p.is_file()}
+          b={str(p.relative_to(Path('.freshnesscandidate/kairos_p76'))):p.read_bytes() for p in Path('.freshnesscandidate/kairos_p76').rglob('*') if p.is_file()}
+          changed={p for p in a.keys()|b.keys() if a.get(p)!=b.get(p)}
+          expected={
+            'KAIROS_LIVE_MARKET_SUMMARY_FRESHNESS_CLASSIFICATION_POLICY_FOUNDATION_REPORT_2026-09-08.md',
+            'package.json',
+            'scripts/verify-live-market-summary-freshness-classification-policy-foundation.mjs',
+            'src/services/market-data/index.ts',
+            'src/services/market-data/liveMarketSummaryFreshnessClassificationPolicy.ts',
+            'tests/live-market-summary-freshness-classification-policy-foundation.test.ts',
+          }
+          print('Canonical Binance Home adapter -> freshness policy changed files:', *sorted(changed), sep='\n- ')
+          if changed != expected: raise SystemExit(f'exact freshness-policy scope mismatch: {sorted(changed ^ expected)}')
+          PY
+
+      - name: Verify reconstructed freshness policy before packaging
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd .freshnesscandidate/kairos_p76
+          test "$(node --version)" = "v22.16.0"
+          test "$(npm --version)" = "10.9.2"
+          npm ci
+          node -e "const p=require('./node_modules/lightweight-charts/package.json'); if(p.version!=='5.2.1') throw new Error(p.version)"
+          npm run verify:live-market-summary-freshness-classification-policy-foundation
+          npx tsc --noEmit
+          npm run build
+          npx vitest run tests/live-market-summary-freshness-classification-policy-foundation.test.ts
+          npx vitest run
+
+      - name: Restore clean package boundary and package candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=.freshnesscandidate/kairos_p76
+          rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite"
+          find "$ROOT" -type f \( -name '*.tsbuildinfo' -o -name '*.log' \) -delete
+          (cd .freshnesscandidate && zip -qr "../$OUT_ZIP" kairos_p76)
+          unzip -t "$OUT_ZIP"
+          rm -rf .freshnessverify && mkdir .freshnessverify
+          unzip -q "$OUT_ZIP" -d .freshnessverify
+          test -f .freshnessverify/kairos_p76/src/services/market-data/liveMarketSummaryFreshnessClassificationPolicy.ts
+          node .freshnessverify/kairos_p76/scripts/verify-live-market-summary-freshness-classification-policy-foundation.mjs
+          sha256sum "$OUT_ZIP"
+
+      - name: Commit verified non-canonical candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "$OUT_ZIP"
+          git diff --cached --quiet && exit 0
+          git commit -m 'Add verified live-market freshness classification policy candidate'
+          git push
