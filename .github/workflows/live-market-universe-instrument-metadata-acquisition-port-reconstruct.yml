@@ -1,0 +1,229 @@
+name: Kairos Live Market Universe Instrument Metadata Acquisition Port Reconstruction Bridge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/live-market-universe-instrument-metadata-acquisition-port-reconstruct.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  reconstruct:
+    runs-on: ubuntu-24.04
+    env:
+      BASE_ZIP: KAIROS_BINANCE_SPOT_EXCHANGE_INFO_PUBLIC_REST_ROUND_TRIP_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-09.zip
+      OUT_ZIP: KAIROS_LIVE_MARKET_UNIVERSE_INSTRUMENT_METADATA_ACQUISITION_PORT_CONTRACT_FOUNDATION_CANDIDATE_2026-09-09.zip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - name: Pin npm
+        run: |
+          npm install --global npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+      - name: Reconstruct exact metadata acquisition port slice
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .base .candidate
+          mkdir .base .candidate
+          unzip -q "$BASE_ZIP" -d .base
+          cp -a .base/. .candidate/
+          ROOT=.candidate/kairos_p76
+          test -f "$ROOT/src/services/market-data/liveMarketUniverseInstrumentMetadataFact.ts"
+          test -f "$ROOT/src/services/market-data/index.ts"
+          test -f "$ROOT/package.json"
+
+          cat > "$ROOT/src/services/market-data/LiveMarketUniverseInstrumentMetadataAcquisitionPort.ts" <<'TS'
+          import type { LiveMarketUniverseInstrumentMetadataFact } from './liveMarketUniverseInstrumentMetadataFact';
+
+          /** Provider-neutral acquisition result for authoritative instrument metadata facts. */
+          export type LiveMarketUniverseInstrumentMetadataAcquisitionResult =
+            | {
+                readonly ok: true;
+                readonly facts: readonly LiveMarketUniverseInstrumentMetadataFact[];
+              }
+            | {
+                readonly ok: false;
+                readonly reason: 'acquisition-failed';
+              };
+
+          /**
+           * Provider-neutral port for acquiring authoritative instrument metadata facts.
+           * Provider implementation and caller-owned universe policy remain separate owners.
+           */
+          export interface LiveMarketUniverseInstrumentMetadataAcquisitionPort {
+            acquireInstrumentMetadata(
+              options?: { readonly signal?: AbortSignal },
+            ): Promise<LiveMarketUniverseInstrumentMetadataAcquisitionResult>;
+          }
+          TS
+
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('.candidate/kairos_p76/src/services/market-data/index.ts')
+          s=p.read_text()
+          addition="export * from './LiveMarketUniverseInstrumentMetadataAcquisitionPort';\n"
+          if addition not in s:
+              p.write_text(s + ('' if s.endswith('\n') else '\n') + addition)
+          PY
+
+          cat > "$ROOT/tests/live-market-universe-instrument-metadata-acquisition-port-contract-foundation.test.ts" <<'TS'
+          import { describe, expect, expectTypeOf, it } from 'vitest';
+          import type {
+            LiveMarketUniverseInstrumentMetadataAcquisitionPort,
+            LiveMarketUniverseInstrumentMetadataAcquisitionResult,
+            LiveMarketUniverseInstrumentMetadataFact,
+          } from '../src/services/market-data';
+
+          describe('Live Market Universe Instrument Metadata Acquisition Port Contract Foundation', () => {
+            it('defines an async provider-neutral acquisition port with explicit failure', async () => {
+              const port: LiveMarketUniverseInstrumentMetadataAcquisitionPort = {
+                async acquireInstrumentMetadata() {
+                  return { ok: false, reason: 'acquisition-failed' };
+                },
+              };
+              await expect(port.acquireInstrumentMetadata()).resolves.toEqual({ ok: false, reason: 'acquisition-failed' });
+            });
+
+            it('carries only released authoritative metadata facts on success', async () => {
+              const fact = {
+                instrument: { venue: 'binance-spot', symbol: 'BTCUSDT' },
+                baseAsset: 'BTC',
+                quoteAsset: 'USDT',
+                tradingEnabled: true,
+              } as LiveMarketUniverseInstrumentMetadataFact;
+              const port: LiveMarketUniverseInstrumentMetadataAcquisitionPort = {
+                async acquireInstrumentMetadata() {
+                  return { ok: true, facts: [fact] };
+                },
+              };
+              await expect(port.acquireInstrumentMetadata()).resolves.toEqual({ ok: true, facts: [fact] });
+            });
+
+            it('supports caller-owned cancellation without provider or policy semantics', () => {
+              expectTypeOf<Parameters<LiveMarketUniverseInstrumentMetadataAcquisitionPort['acquireInstrumentMetadata']>[0]>()
+                .toEqualTypeOf<{ readonly signal?: AbortSignal } | undefined>();
+            });
+
+            it('keeps result shape limited to success facts or acquisition failure', () => {
+              expectTypeOf<LiveMarketUniverseInstrumentMetadataAcquisitionResult>().toMatchTypeOf<
+                | { readonly ok: true; readonly facts: readonly LiveMarketUniverseInstrumentMetadataFact[] }
+                | { readonly ok: false; readonly reason: 'acquisition-failed' }
+              >();
+            });
+          });
+          TS
+
+          cat > "$ROOT/scripts/verify-live-market-universe-instrument-metadata-acquisition-port-contract-foundation.mjs" <<'JS'
+          import { readFileSync } from 'node:fs';
+          const port = readFileSync(new URL('../src/services/market-data/LiveMarketUniverseInstrumentMetadataAcquisitionPort.ts', import.meta.url), 'utf8');
+          const index = readFileSync(new URL('../src/services/market-data/index.ts', import.meta.url), 'utf8');
+          for (const token of [
+            'export type LiveMarketUniverseInstrumentMetadataAcquisitionResult =',
+            'readonly facts: readonly LiveMarketUniverseInstrumentMetadataFact[];',
+            "readonly reason: 'acquisition-failed';",
+            'export interface LiveMarketUniverseInstrumentMetadataAcquisitionPort',
+            'acquireInstrumentMetadata(',
+            'options?: { readonly signal?: AbortSignal }',
+            'Promise<LiveMarketUniverseInstrumentMetadataAcquisitionResult>',
+          ]) if (!port.includes(token)) throw new Error(`metadata acquisition port evidence missing: ${token}`);
+          if (!index.includes("export * from './LiveMarketUniverseInstrumentMetadataAcquisitionPort';")) throw new Error('metadata acquisition port export missing');
+          for (const forbidden of ['binance', 'fetch(', 'WebSocket', 'EventSource', 'setInterval(', 'setTimeout(', 'indexedDB', 'USDT', 'stablecoin', 'quoteVolume', 'Top 30', 'bubble']) {
+            if (port.includes(forbidden)) throw new Error(`metadata acquisition port widened into forbidden scope: ${forbidden}`);
+          }
+          console.log('Live Market Universe Instrument Metadata Acquisition Port Contract verification passed.');
+          JS
+
+          cat > "$ROOT/KAIROS_LIVE_MARKET_UNIVERSE_INSTRUMENT_METADATA_ACQUISITION_PORT_CONTRACT_FOUNDATION_REPORT_2026-09-09.md" <<'MD'
+          # KAIROS — Live Market Universe Instrument Metadata Acquisition Port Contract Foundation
+
+          ## Authority
+          Base: canonical Gate #321 Binance Spot Exchange Information Public REST Round Trip Composition Foundation.
+
+          ## Responsibility
+          Introduce only the missing provider-neutral application-facing acquisition port for authoritative `LiveMarketUniverseInstrumentMetadataFact` values, following the released P21.4 acquisition-port convention: async port, explicit `acquisition-failed`, and optional caller-owned cancellation.
+
+          ## Contract
+          - `acquireInstrumentMetadata(options)` acquires authoritative metadata facts without choosing a product universe.
+          - Success carries only released `LiveMarketUniverseInstrumentMetadataFact` values.
+          - Failure is explicit as `acquisition-failed`.
+          - Optional `AbortSignal` is caller-owned cancellation only.
+
+          ## Explicit non-scope
+          - No Binance adapter, exchangeInfo call, concrete transport, HTTP semantics, retry/backoff/rate policy.
+          - No cache, polling, resume, visibility, cadence, or freshness policy.
+          - No USDT eligibility, stablecoin exclusion, quote-volume ranking, symbol tie-break, or Top-N policy.
+          - No Home/Bubble UI, Your Trades, journal, persistence, chart, navigation, or transitions.
+          MD
+
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const p='.candidate/kairos_p76/package.json';
+          const j=JSON.parse(fs.readFileSync(p,'utf8'));
+          j.scripts||={};
+          j.scripts['verify:live-market-universe-instrument-metadata-acquisition-port-contract-foundation']='node scripts/verify-live-market-universe-instrument-metadata-acquisition-port-contract-foundation.mjs';
+          fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');
+          NODE
+
+          python - <<'PY'
+          from pathlib import Path
+          a={str(p.relative_to(Path('.base/kairos_p76'))):p.read_bytes() for p in Path('.base/kairos_p76').rglob('*') if p.is_file()}
+          b={str(p.relative_to(Path('.candidate/kairos_p76'))):p.read_bytes() for p in Path('.candidate/kairos_p76').rglob('*') if p.is_file()}
+          changed={p for p in a.keys()|b.keys() if a.get(p)!=b.get(p)}
+          expected={
+            'KAIROS_LIVE_MARKET_UNIVERSE_INSTRUMENT_METADATA_ACQUISITION_PORT_CONTRACT_FOUNDATION_REPORT_2026-09-09.md',
+            'package.json',
+            'scripts/verify-live-market-universe-instrument-metadata-acquisition-port-contract-foundation.mjs',
+            'src/services/market-data/LiveMarketUniverseInstrumentMetadataAcquisitionPort.ts',
+            'src/services/market-data/index.ts',
+            'tests/live-market-universe-instrument-metadata-acquisition-port-contract-foundation.test.ts',
+          }
+          print('\n'.join(sorted(changed)))
+          assert changed==expected,(sorted(changed-expected),sorted(expected-changed))
+          PY
+
+      - name: Verify reconstructed metadata acquisition port before packaging
+        working-directory: .candidate/kairos_p76
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci
+          test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
+          npm run verify:live-market-universe-instrument-metadata-acquisition-port-contract-foundation
+          npx vitest run tests/live-market-universe-instrument-metadata-acquisition-port-contract-foundation.test.ts
+          npm run typecheck
+          npm run build
+          npm test
+          node - <<'NODE'
+          const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
+          const pkg=JSON.parse(readFileSync('package.json','utf8'));
+          for (const [name] of Object.entries(pkg.scripts||{}).filter(([n])=>n.startsWith('verify:'))) {
+            const r=spawnSync('npm',['run',name],{stdio:'inherit'});
+            if (r.status!==0) process.exit(r.status||1);
+          }
+          NODE
+      - name: Restore clean boundary and package
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=.candidate/kairos_p76
+          rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite"
+          find "$ROOT" -name '*.tsbuildinfo' -delete
+          (cd .candidate && zip -qr "../$OUT_ZIP" kairos_p76)
+          unzip -t "$OUT_ZIP"
+          test "$(unzip -Z1 "$OUT_ZIP" | head -n1)" = 'kairos_p76/'
+          sha256sum "$OUT_ZIP"
+      - name: Commit candidate and remove helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'kairos-autonomous'
+          git config user.email 'kairos-autonomous@users.noreply.github.com'
+          git add "$OUT_ZIP"
+          git rm .github/workflows/live-market-universe-instrument-metadata-acquisition-port-reconstruct.yml
+          git commit -m 'candidate: add metadata acquisition port contract'
+          git push origin HEAD:main
