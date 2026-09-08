@@ -1,0 +1,52 @@
+name: Kairos Gate 316 Living Docs Reconcile
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/kairos-gate316-docs-reconcile.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Append canonical gate 316 architecture checkpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          marker='## Canonical Binance Spot exchangeInfo public REST response decode checkpoint — gate #316'
+          if grep -Fq "$marker" docs/KAIROS_ARCHITECTURE_MAP.md; then
+            echo 'Gate 316 checkpoint already present.'
+            exit 0
+          fi
+          cat >> docs/KAIROS_ARCHITECTURE_MAP.md <<'EOF'
+
+## Canonical Binance Spot exchangeInfo public REST response decode checkpoint — gate #316
+
+The latest canonical GOLDEN after the exchangeInfo request-execution boundary is the **Binance Spot Exchange Information Public REST Response Decode Foundation**. Its patch number is intentionally not inferred.
+
+- Canonical gate: `Kairos Controlled Roadmap Gate` #316 / run `34221724357`, job `102046170749`, exact head `229eb2adbc327b51d2da32509eb6bcc76b7dba4c`, full SUCCESS on 2026-09-08.
+- Production owner seam: `src/services/market-data/providers/binance/binanceSpotExchangeInfoPublicRestResponseDecode.ts`, exported through `src/services/market-data/index.ts`.
+- Responsibility: accept one already-received Binance exchangeInfo response data value, accept only text under the released provider convention, parse JSON exactly once, return `payload: unknown` on success, and return deterministic `unsupported-response-data` / `invalid-json` failures.
+- Canonical candidate artifact: `KAIROS_CURRENT_CANDIDATE` id `10054435720`, wrapper digest `sha256:c77a1657463af34be2df5c8da47fc202e39989b11219d1906a1e70b876d7b8f5`; wrapper contains exactly `KAIROS_BINANCE_SPOT_EXCHANGE_INFO_PUBLIC_REST_RESPONSE_DECODE_FOUNDATION_CANDIDATE_2026-09-08.zip`, inner size `1,486,118`, SHA-256 `05d59cf7353b4280af4900127be2ffe12a5aea6257c05321a5a84adb8f3d42a8`, outer and inner ZIP integrity PASS.
+- Canonical gate evidence: `KAIROS_GATE_EVIDENCE` id `10054436298`, wrapper digest `sha256:acc80f088bff61497ba0ad3db2c831146c648601e0eef41a164a058fdb948d94`; wrapper contains exactly `KAIROS_BINANCE_SPOT_EXCHANGE_INFO_PUBLIC_REST_RESPONSE_DECODE_FOUNDATION_REPORT_2026-09-08.md`, inner size `1,671`, SHA-256 `7ceb298ee1d63afe30a8352aec65210e584486e4c7f400e778a01b677a49791b`, integrity PASS.
+- Data-flow boundary: this decoder owns response representation / JSON parsing only. It deliberately leaves exchangeInfo semantic interpretation and metadata-fact mapping to a later separate provider mapping responsibility.
+- Explicit non-scope: no fetch/XHR/WebSocket/browser transport or concrete `Response` acquisition; no HTTP status/header/body acquisition or interpretation; no semantic validation or interpretation of `symbols`, `symbol`, `status`, `baseAsset`, `quoteAsset`, filters or permissions; no mapping to `LiveMarketUniverseInstrumentMetadataFact`; no `status -> tradingEnabled` policy; no request descriptor/execution widening; no cache/polling/refresh/retry/backoff/request-weight/rate-limit policy; no USDT eligibility, stablecoin exclusion, quote-volume ranking, symbol tie-break or Top-N; no freshness changes; no Home React/stale presentation/Bubble rendering; no Your Trades/journal/persistence/IndexedDB/Saved Analysis/chart/navigation/transition ownership.
+
+This checkpoint extends the primary architecture map without changing any earlier ownership entry. The next provider responsibility must be source-proven from this GOLDEN; universe selection/ranking remains a separate deterministic policy responsibility above provider metadata facts and below presentation. Freshness policy remains separately owned. Live Crypto Bubble Map remains authoritative market/provider truth only; Your Trades Bubble Map remains journal/trade history plus released calculation truth only; UI must not read IndexedDB directly; dashboard transitions remain presentation-only.
+EOF
+          git config user.name 'kairos-docs-bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add docs/KAIROS_ARCHITECTURE_MAP.md
+          if git diff --cached --quiet; then
+            echo 'No docs change required.'
+            exit 0
+          fi
+          git commit -m 'docs: record canonical gate 316 response decode'
+          git push origin HEAD:main
