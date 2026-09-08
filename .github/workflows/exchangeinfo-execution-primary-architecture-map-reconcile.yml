@@ -1,0 +1,68 @@
+name: Kairos ExchangeInfo Execution Primary Architecture Reconciliation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/exchangeinfo-execution-primary-architecture-map-reconcile.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Verify exact canonical parent and append-only architecture update
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "c1e44fdaaa028fe4031f4923a802f7e035ef77e7"
+          test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/exchangeinfo-execution-primary-architecture-map-reconcile.yml"
+          map='docs/KAIROS_ARCHITECTURE_MAP.md'
+          cp "$map" /tmp/KAIROS_ARCHITECTURE_MAP.before.md
+          ! grep -Fq 'Canonical Binance Spot exchangeInfo public REST request execution-boundary checkpoint — gate #315' "$map"
+          cat >> "$map" <<'EOF'
+
+## Canonical Binance Spot exchangeInfo public REST request execution-boundary checkpoint — gate #315
+
+The latest canonical GOLDEN after the exchangeInfo request descriptor is the **Binance Spot Exchange Information Public REST Request Execution Boundary Foundation**. Its patch number is intentionally not inferred.
+
+- Canonical gate: `Kairos Controlled Roadmap Gate` #315 / run `34206420246`, job `101996850014`, exact head `c1e44fdaaa028fe4031f4923a802f7e035ef77e7`, full SUCCESS on 2026-09-08.
+- Production owner seam: `src/services/market-data/providers/binance/binanceSpotExchangeInfoPublicRestRequestExecution.ts`, exported through `src/services/market-data/index.ts`.
+- Responsibility: accept one already-described exchangeInfo public REST request plus an injected connector, invoke that connector exactly once, preserve its returned Promise/result/rejection unchanged, and forward optional caller-owned `signal?: AbortSignal` unchanged.
+- Canonical candidate artifact: `KAIROS_CURRENT_CANDIDATE` id `10048190476`, wrapper digest `sha256:0359787df9302dc7aa5ae4921ccfe9cf374d10a584412a211a698f6b30d9c4dd`; inner candidate size `1,482,060` and SHA-256 `a861e0525b4d8ffb34dbed13a3cc270d4e18be9170bdb9de3f1e3db1f25c8a42`, integrity PASS.
+- Canonical gate evidence: `KAIROS_GATE_EVIDENCE` id `10048191108`, wrapper digest `sha256:d0fef3b15a12f8fd3fb14b9d9630de0f9733443f28f0dbecb5b29c8005c009a1`; inner report SHA-256 `7db735f73d89fac765f0791ecd82302e8ab65239ea3a540e02706b4fc5571b07`, integrity PASS.
+- Boundary: no concrete fetch/XHR/WebSocket/browser transport or `Response`; no HTTP status/header/body interpretation; no JSON decode; no mapping into `LiveMarketUniverseInstrumentMetadataFact`; no cache/polling/refresh/retry/backoff/request-weight/rate-limit policy; no USDT eligibility/stablecoin exclusion/quote-volume ranking/symbol tie-break/Top-N; no freshness changes; no Home/stale/Bubble UI; no Your Trades/journal/persistence/IndexedDB/Saved-Analysis/chart/navigation/transition ownership.
+EOF
+          python3 - <<'PY'
+          from pathlib import Path
+          before = Path('/tmp/KAIROS_ARCHITECTURE_MAP.before.md').read_bytes()
+          after = Path('docs/KAIROS_ARCHITECTURE_MAP.md').read_bytes()
+          if not after.startswith(before):
+              raise SystemExit('architecture map prefix preservation failed')
+          if len(after) <= len(before):
+              raise SystemExit('architecture map did not grow')
+          PY
+          test "$(git diff --name-only)" = "$map"
+          added=$(git diff --numstat -- "$map" | awk '{print $1}')
+          deleted=$(git diff --numstat -- "$map" | awk '{print $2}')
+          test -n "$added"
+          test "$deleted" = "0"
+          grep -Fq 'binanceSpotExchangeInfoPublicRestRequestExecution.ts' "$map"
+          grep -Fq 'a861e0525b4d8ffb34dbed13a3cc270d4e18be9170bdb9de3f1e3db1f25c8a42' "$map"
+
+      - name: Commit reconciled architecture map
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/KAIROS_ARCHITECTURE_MAP.md
+          git commit -m 'docs: reconcile exchangeInfo execution boundary canonical ownership'
+          git push origin HEAD:main
