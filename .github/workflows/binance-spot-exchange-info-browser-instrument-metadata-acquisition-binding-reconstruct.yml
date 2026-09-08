@@ -90,8 +90,8 @@ jobs:
           describe('Binance Spot exchangeInfo browser instrument metadata acquisition binding foundation', () => {
             it('composes the released metadata adapter with the released browser connector', async () => {
               const text = vi.fn(async () => payload);
-              const fetchMock = vi.fn(async () => ({ text })) as unknown as typeof fetch;
-              globalThis.fetch = fetchMock;
+              const fetchMock = vi.fn(async () => ({ text }));
+              globalThis.fetch = fetchMock as unknown as typeof fetch;
               const port = createBinanceSpotExchangeInfoBrowserInstrumentMetadataAcquisitionPort();
 
               const result = await port.acquireInstrumentMetadata();
@@ -104,8 +104,8 @@ jobs:
 
             it('preserves exact caller-owned cancellation through the composed chain', async () => {
               const controller = new AbortController();
-              const fetchMock = vi.fn(async () => ({ text: async () => JSON.stringify({ symbols: [] }) })) as unknown as typeof fetch;
-              globalThis.fetch = fetchMock;
+              const fetchMock = vi.fn(async () => ({ text: async () => JSON.stringify({ symbols: [] }) }));
+              globalThis.fetch = fetchMock as unknown as typeof fetch;
               const port = createBinanceSpotExchangeInfoBrowserInstrumentMetadataAcquisitionPort();
 
               await expect(port.acquireInstrumentMetadata({ signal: controller.signal })).resolves.toEqual({ ok: true, facts: [] });
