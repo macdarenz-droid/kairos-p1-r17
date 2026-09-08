@@ -16,39 +16,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 3
 
-      - name: Verify exact canonical parent and append-only architecture update
+      - name: Verify exact canonical ancestry and append-only architecture update
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = "c1e44fdaaa028fe4031f4923a802f7e035ef77e7"
-          test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/exchangeinfo-execution-primary-architecture-map-reconcile.yml"
+          test "$(git rev-parse HEAD^^)" = "c1e44fdaaa028fe4031f4923a802f7e035ef77e7"
+          test "$(git diff --name-only HEAD^^ HEAD)" = ".github/workflows/exchangeinfo-execution-primary-architecture-map-reconcile.yml"
           map='docs/KAIROS_ARCHITECTURE_MAP.md'
           cp "$map" /tmp/KAIROS_ARCHITECTURE_MAP.before.md
           ! grep -Fq 'Canonical Binance Spot exchangeInfo public REST request execution-boundary checkpoint — gate #315' "$map"
-          cat >> "$map" <<'EOF'
-
-## Canonical Binance Spot exchangeInfo public REST request execution-boundary checkpoint — gate #315
-
-The latest canonical GOLDEN after the exchangeInfo request descriptor is the **Binance Spot Exchange Information Public REST Request Execution Boundary Foundation**. Its patch number is intentionally not inferred.
-
-- Canonical gate: `Kairos Controlled Roadmap Gate` #315 / run `34206420246`, job `101996850014`, exact head `c1e44fdaaa028fe4031f4923a802f7e035ef77e7`, full SUCCESS on 2026-09-08.
-- Production owner seam: `src/services/market-data/providers/binance/binanceSpotExchangeInfoPublicRestRequestExecution.ts`, exported through `src/services/market-data/index.ts`.
-- Responsibility: accept one already-described exchangeInfo public REST request plus an injected connector, invoke that connector exactly once, preserve its returned Promise/result/rejection unchanged, and forward optional caller-owned `signal?: AbortSignal` unchanged.
-- Canonical candidate artifact: `KAIROS_CURRENT_CANDIDATE` id `10048190476`, wrapper digest `sha256:0359787df9302dc7aa5ae4921ccfe9cf374d10a584412a211a698f6b30d9c4dd`; inner candidate size `1,482,060` and SHA-256 `a861e0525b4d8ffb34dbed13a3cc270d4e18be9170bdb9de3f1e3db1f25c8a42`, integrity PASS.
-- Canonical gate evidence: `KAIROS_GATE_EVIDENCE` id `10048191108`, wrapper digest `sha256:d0fef3b15a12f8fd3fb14b9d9630de0f9733443f28f0dbecb5b29c8005c009a1`; inner report SHA-256 `7db735f73d89fac765f0791ecd82302e8ab65239ea3a540e02706b4fc5571b07`, integrity PASS.
-- Boundary: no concrete fetch/XHR/WebSocket/browser transport or `Response`; no HTTP status/header/body interpretation; no JSON decode; no mapping into `LiveMarketUniverseInstrumentMetadataFact`; no cache/polling/refresh/retry/backoff/request-weight/rate-limit policy; no USDT eligibility/stablecoin exclusion/quote-volume ranking/symbol tie-break/Top-N; no freshness changes; no Home/stale/Bubble UI; no Your Trades/journal/persistence/IndexedDB/Saved-Analysis/chart/navigation/transition ownership.
-EOF
-          python3 - <<'PY'
-          from pathlib import Path
-          before = Path('/tmp/KAIROS_ARCHITECTURE_MAP.before.md').read_bytes()
-          after = Path('docs/KAIROS_ARCHITECTURE_MAP.md').read_bytes()
-          if not after.startswith(before):
-              raise SystemExit('architecture map prefix preservation failed')
-          if len(after) <= len(before):
-              raise SystemExit('architecture map did not grow')
-          PY
+          printf '%s' 'CiMjIENhbm9uaWNhbCBCaW5hbmNlIFNwb3QgZXhjaGFuZ2VJbmZvIHB1YmxpYyBSRVNUIHJlcXVlc3QgZXhlY3V0aW9uLWJvdW5kYXJ5IGNoZWNrcG9pbnQg4oCUIGdhdGUgIzMxNQoKVGhlIGxhdGVzdCBjYW5vbmljYWwgR09MREVOIGFmdGVyIHRoZSBleGNoYW5nZUluZm8gcmVxdWVzdCBkZXNjcmlwdG9yIGlzIHRoZSAqKkJpbmFuY2UgU3BvdCBFeGNoYW5nZSBJbmZvcm1hdGlvbiBQdWJsaWMgUkVTVCBSZXF1ZXN0IEV4ZWN1dGlvbiBCb3VuZGFyeSBGb3VuZGF0aW9uKiouIEl0cyBwYXRjaCBudW1iZXIgaXMgaW50ZW50aW9uYWxseSBub3QgaW5mZXJyZWQuCgotIENhbm9uaWNhbCBnYXRlOiBgS2Fpcm9zIENvbnRyb2xsZWQgUm9hZG1hcCBHYXRlYCAjMzE1IC8gcnVuIGAzNDIwNjQyMDI0NmAsIGpvYiBgMTAxOTk2ODUwMDE0YCwgZXhhY3QgaGVhZCBgYzFlNDRmZGFhYTAyOGZlNDAzMWY0OTIzYTgwMmY3ZTAzNWVmNzdlN2AsIGZ1bGwgU1VDQ0VTUyBvbiAyMDI2LTA5LTA4LgotIFByb2R1Y3Rpb24gb3duZXIgc2VhbTogYHNyYy9zZXJ2aWNlcy9tYXJrZXQtZGF0YS9wcm92aWRlcnMvYmluYW5jZS9iaW5hbmNlU3BvdEV4Y2hhbmdlSW5mb1B1YmxpY1Jlc3RSZXF1ZXN0RXhlY3V0aW9uLnRzYCwgZXhwb3J0ZWQgdGhyb3VnaCBgc3JjL3NlcnZpY2VzL21hcmtldC1kYXRhL2luZGV4LnRzYC4KLSBSZXNwb25zaWJpbGl0eTogYWNjZXB0IG9uZSBhbHJlYWR5LWRlc2NyaWJlZCBleGNoYW5nZUluZm8gcHVibGljIFJFU1QgcmVxdWVzdCBwbHVzIGFuIGluamVjdGVkIGNvbm5lY3RvciwgaW52b2tlIHRoYXQgY29ubmVjdG9yIGV4YWN0bHkgb25jZSwgcHJlc2VydmUgaXRzIHJldHVybmVkIFByb21pc2UvcmVzdWx0L3JlamVjdGlvbiB1bmNoYW5nZWQsIGFuZCBmb3J3YXJkIG9wdGlvbmFsIGNhbGxlci1vd25lZCBgc2lnbmFsPzogQWJvcnRTaWduYWxgIHVuY2hhbmdlZC4KLSBDYW5vbmljYWwgY2FuZGlkYXRlIGFydGlmYWN0OiBgS0FJUk9TX0NVUlJFTlRfQ0FORElEQVRFYCBpZCBgMTAwNDgxOTA0NzZgLCB3cmFwcGVyIGRpZ2VzdCBgc2hhMjU2OjAzNTk3ODdkZjkzMDJkYzdhYTVhZTQ5MjFjY2ZlOWNmMzc0ZDEwYTU4NDQxMmEyMTFhNjk4ZjZiMzBkOWM0ZGRgOyBpbm5lciBjYW5kaWRhdGUgc2l6ZSBgMSw0ODIsMDYwYCBhbmQgU0hBLTI1NiBgYTg2MWUwNTI1YjRkOGZmYjM0ZGJlZDEzYTNjYzI3MGQ0ZTE4YmU5MTcwYmRiOWRlM2YxZTNkYjFmMjVjOGE0MmAsIGludGVncml0eSBQQVNTLgotIENhbm9uaWNhbCBnYXRlIGV2aWRlbmNlOiBgS0FJUk9TX0dBVEVfRVZJREVOQ0VgIGlkIGAxMDA0ODE5MTEwOGAsIHdyYXBwZXIgZGlnZXN0IGBzaGEyNTY6ZDBmZWYzYjE1YTEyZjhmZDNmYjE0YjlkOTYzMGRlMGY5NzMzNDQzZjI4ZjBkYmVjYjViMjljODAwNWMwMDlhMWA7IGlubmVyIHJlcG9ydCBTSEEtMjU2IGA3ZGI3MzVmNzNkODlmYWM3NjVmMDc5MWVjZDgyMzAyZThhYjY1MjM5ZWEzYTU0MGUwMjcwNmI0ZmM1NTcxYjA3YCwgaW50ZWdyaXR5IFBBU1MuCi0gQm91bmRhcnk6IG5vIGNvbmNyZXRlIGZldGNoL1hIUi9XZWJTb2NrZXQvYnJvd3NlciB0cmFuc3BvcnQgb3IgYFJlc3BvbnNlYDsgbm8gSFRUUCBzdGF0dXMvaGVhZGVyL2JvZHkgaW50ZXJwcmV0YXRpb247IG5vIEpTT04gZGVjb2RlOyBubyBtYXBwaW5nIGludG8gYExpdmVNYXJrZXRVbml2ZXJzZUluc3RydW1lbnRNZXRhZGF0YUZhY3RgOyBubyBjYWNoZS9wb2xsaW5nL3JlZnJlc2gvcmV0cnkvYmFja29mZi9yZXF1ZXN0LXdlaWdodC9yYXRlLWxpbWl0IHBvbGljeTsgbm8gVVNEVCBlbGlnaWJpbGl0eS9zdGFibGVjb2luIGV4Y2x1c2lvbi9xdW90ZS12b2x1bWUgcmFua2luZy9zeW1ib2wgdGllLWJyZWFrL1RvcC1OOyBubyBmcmVzaG5lc3MgY2hhbmdlczsgbm8gSG9tZS9zdGFsZS9CdWJibGUgVUk7IG5vIFlvdXIgVHJhZGVzL2pvdXJuYWwvcGVyc2lzdGVuY2UvSW5kZXhlZERCL1NhdmVkLUFuYWx5c2lzL2NoYXJ0L25hdmlnYXRpb24vdHJhbnNpdGlvbiBvd25lcnNoaXAuCg==' | base64 --decode >> "$map"
+          python3 -c "from pathlib import Path; b=Path('/tmp/KAIROS_ARCHITECTURE_MAP.before.md').read_bytes(); a=Path('docs/KAIROS_ARCHITECTURE_MAP.md').read_bytes(); assert a.startswith(b) and len(a)>len(b)"
           test "$(git diff --name-only)" = "$map"
           added=$(git diff --numstat -- "$map" | awk '{print $1}')
           deleted=$(git diff --numstat -- "$map" | awk '{print $2}')
