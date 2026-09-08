@@ -1,0 +1,254 @@
+name: Kairos Binance Spot Exchange Info Public REST Request Descriptor Reconstruction
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/binance-spot-exchange-info-public-rest-request-descriptor-reconstruct.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reconstruct:
+    runs-on: ubuntu-24.04
+    env:
+      BASE_ZIP: KAIROS_LIVE_MARKET_UNIVERSE_INSTRUMENT_METADATA_FACT_CONTRACT_FOUNDATION_CANDIDATE_2026-09-08.zip
+      OUT_ZIP: KAIROS_BINANCE_SPOT_EXCHANGE_INFO_PUBLIC_REST_REQUEST_DESCRIPTOR_FOUNDATION_CANDIDATE_2026-09-08.zip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - name: Pin npm
+        run: |
+          npm install --global npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+
+      - name: Reconstruct exact request-descriptor slice from canonical universe metadata GOLDEN
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .candidate .package
+          mkdir .candidate
+          unzip -q "$BASE_ZIP" -d .candidate
+          ROOT=.candidate/kairos_p76
+          test -f "$ROOT/src/services/market-data/liveMarketUniverseInstrumentMetadataFact.ts"
+          test -f "$ROOT/src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineRequest.ts"
+          test -f "$ROOT/src/services/market-data/providers/binance/binanceSpotTradeStream.ts"
+          test -f "$ROOT/src/services/market-data/index.ts"
+
+          cat > "$ROOT/src/services/market-data/providers/binance/binanceSpotExchangeInfoPublicRestRequest.ts" <<'TS'
+          import { BINANCE_SPOT_VENUE } from './binanceSpotTradeStream';
+          import { BINANCE_SPOT_PUBLIC_REST_MARKET_DATA_BASE_URL } from './binanceSpot24hPublicRestBaselineRequest';
+
+          export const BINANCE_SPOT_EXCHANGE_INFO_PATH = '/api/v3/exchangeInfo' as const;
+
+          export interface BinanceSpotExchangeInfoPublicRestRequestDescriptor {
+            readonly venue: typeof BINANCE_SPOT_VENUE;
+            readonly method: 'GET';
+            readonly baseUrl: typeof BINANCE_SPOT_PUBLIC_REST_MARKET_DATA_BASE_URL;
+            readonly path: typeof BINANCE_SPOT_EXCHANGE_INFO_PATH;
+            readonly query: '';
+            readonly url: string;
+          }
+
+          /**
+           * Describes only the public Binance Spot exchange-information request.
+           * Execution, decoding, metadata mapping, caching and universe policy stay outside this owner.
+           */
+          export function describeBinanceSpotExchangeInfoPublicRestRequest(): BinanceSpotExchangeInfoPublicRestRequestDescriptor {
+            return {
+              venue: BINANCE_SPOT_VENUE,
+              method: 'GET',
+              baseUrl: BINANCE_SPOT_PUBLIC_REST_MARKET_DATA_BASE_URL,
+              path: BINANCE_SPOT_EXCHANGE_INFO_PATH,
+              query: '',
+              url: `${BINANCE_SPOT_PUBLIC_REST_MARKET_DATA_BASE_URL}${BINANCE_SPOT_EXCHANGE_INFO_PATH}`,
+            };
+          }
+          TS
+
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('.candidate/kairos_p76/src/services/market-data/index.ts')
+          s=p.read_text()
+          anchor="export * from './providers/binance/binanceSpot24hPublicRestBaselineRequest';\n"
+          addition="export * from './providers/binance/binanceSpotExchangeInfoPublicRestRequest';\n"
+          if anchor not in s:
+              raise SystemExit('canonical Binance public REST request export anchor not found')
+          if addition not in s:
+              p.write_text(s.replace(anchor, anchor+addition, 1))
+          PY
+
+          cat > "$ROOT/tests/binance-spot-exchange-info-public-rest-request.test.ts" <<'TS'
+          import { describe, expect, it } from 'vitest';
+          import {
+            BINANCE_SPOT_EXCHANGE_INFO_PATH,
+            BINANCE_SPOT_PUBLIC_REST_MARKET_DATA_BASE_URL,
+            describeBinanceSpotExchangeInfoPublicRestRequest,
+          } from '../src/services/market-data';
+
+          describe('Binance Spot exchangeInfo public REST request descriptor foundation', () => {
+            it('describes the public all-symbol exchange information request without product filtering', () => {
+              expect(describeBinanceSpotExchangeInfoPublicRestRequest()).toEqual({
+                venue: 'binance-spot',
+                method: 'GET',
+                baseUrl: 'https://data-api.binance.vision',
+                path: '/api/v3/exchangeInfo',
+                query: '',
+                url: 'https://data-api.binance.vision/api/v3/exchangeInfo',
+              });
+            });
+
+            it('reuses the released public market-data base and pins only the exchangeInfo path', () => {
+              expect(BINANCE_SPOT_PUBLIC_REST_MARKET_DATA_BASE_URL).toBe('https://data-api.binance.vision');
+              expect(BINANCE_SPOT_EXCHANGE_INFO_PATH).toBe('/api/v3/exchangeInfo');
+            });
+          });
+          TS
+
+          cat > "$ROOT/KAIROS_BINANCE_SPOT_EXCHANGE_INFO_PUBLIC_REST_REQUEST_DESCRIPTOR_FOUNDATION_REPORT_2026-09-08.md" <<'MD'
+          # Binance Spot Exchange Info Public REST Request Descriptor Foundation
+
+          ## Authority
+          Base: canonical Live Market Universe Instrument Metadata Fact Contract Foundation, `Kairos Controlled Roadmap Gate` #313 / run `34192273207`.
+
+          ## Responsibility
+          The canonical universe-metadata fact now defines provider-neutral `baseAsset`, `quoteAsset`, and current `tradingEnabled` truth, but deliberately owns no Binance HTTP. Existing Kairos Binance REST architecture starts provider acquisition with a pure request-description seam before execution, decode, mapping and concrete browser transport. Current official Binance Spot documentation identifies `GET /api/v3/exchangeInfo` as a public exchange-information endpoint and permits `https://data-api.binance.vision` for public market-data endpoints.
+
+          This slice therefore describes only one public Binance Spot request: `GET https://data-api.binance.vision/api/v3/exchangeInfo`. It intentionally supplies no symbol filter so provider metadata discovery does not become Live Crypto universe policy.
+
+          ## Explicit non-scope
+          - No fetch/XHR/WebSocket/browser transport or request execution.
+          - No JSON parsing, exchangeInfo response decoding, or metadata mapping.
+          - No mapping to `LiveMarketUniverseInstrumentMetadataFact`.
+          - No caching, refresh cadence, polling, retry, backoff, request-weight or rate-limit policy.
+          - No USDT eligibility filtering, stablecoin exclusion, ranking, sorting, tie-break or Top-N policy.
+          - No freshness changes, Home React wiring, stale presentation or Bubble rendering.
+          - No Your Trades/journal, persistence/IndexedDB, Saved Analysis, chart/navigation or transition ownership.
+          MD
+
+          cat > "$ROOT/scripts/verify-binance-spot-exchange-info-public-rest-request-descriptor-foundation.mjs" <<'JS'
+          import { readFileSync } from 'node:fs';
+          const source = readFileSync(new URL('../src/services/market-data/providers/binance/binanceSpotExchangeInfoPublicRestRequest.ts', import.meta.url), 'utf8');
+          const index = readFileSync(new URL('../src/services/market-data/index.ts', import.meta.url), 'utf8');
+          const report = readFileSync(new URL('../KAIROS_BINANCE_SPOT_EXCHANGE_INFO_PUBLIC_REST_REQUEST_DESCRIPTOR_FOUNDATION_REPORT_2026-09-08.md', import.meta.url), 'utf8');
+
+          for (const token of [
+            "BINANCE_SPOT_PUBLIC_REST_MARKET_DATA_BASE_URL",
+            "'/api/v3/exchangeInfo'",
+            "method: 'GET'",
+            "query: ''",
+            'describeBinanceSpotExchangeInfoPublicRestRequest()',
+            'BINANCE_SPOT_VENUE',
+          ]) if (!source.includes(token)) throw new Error(`exchangeInfo request descriptor evidence missing: ${token}`);
+
+          if (!index.includes("export * from './providers/binance/binanceSpotExchangeInfoPublicRestRequest';")) {
+            throw new Error('exchangeInfo request descriptor barrel export missing');
+          }
+
+          for (const forbidden of [
+            'fetch(', 'XMLHttpRequest', 'WebSocket(', 'JSON.parse(', 'baseAsset:', 'quoteAsset:', 'tradingEnabled:',
+            'USDT', 'stablecoin', '.sort(', 'Top 30', 'topN', 'setTimeout(', 'setInterval(', 'indexedDB',
+          ]) if (source.includes(forbidden)) throw new Error(`request descriptor broadened into forbidden scope: ${forbidden}`);
+
+          for (const token of [
+            'No fetch/XHR/WebSocket/browser transport',
+            'No JSON parsing',
+            'No mapping to `LiveMarketUniverseInstrumentMetadataFact`',
+            'No caching',
+            'No USDT eligibility filtering',
+            'No freshness changes',
+            'No Your Trades/journal',
+          ]) if (!report.includes(token)) throw new Error(`request descriptor report evidence missing: ${token}`);
+
+          console.log('Binance Spot exchangeInfo public REST request descriptor verification passed.');
+          JS
+
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const p='.candidate/kairos_p76/package.json';
+          const j=JSON.parse(fs.readFileSync(p,'utf8'));
+          j.scripts||={};
+          j.scripts['verify:binance-spot-exchange-info-public-rest-request-descriptor-foundation']='node scripts/verify-binance-spot-exchange-info-public-rest-request-descriptor-foundation.mjs';
+          fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');
+          NODE
+
+          python - <<'PY'
+          from pathlib import Path
+          root=Path('.candidate/kairos_p76')
+          # Compare against a fresh extract of the exact canonical base.
+          import tempfile, zipfile
+          with tempfile.TemporaryDirectory() as td:
+              with zipfile.ZipFile('KAIROS_LIVE_MARKET_UNIVERSE_INSTRUMENT_METADATA_FACT_CONTRACT_FOUNDATION_CANDIDATE_2026-09-08.zip') as z:
+                  z.extractall(td)
+              base=Path(td)/'kairos_p76'
+              a={str(p.relative_to(base)):p.read_bytes() for p in base.rglob('*') if p.is_file()}
+              b={str(p.relative_to(root)):p.read_bytes() for p in root.rglob('*') if p.is_file()}
+              changed={p for p in a.keys()|b.keys() if a.get(p)!=b.get(p)}
+          expected={
+            'KAIROS_BINANCE_SPOT_EXCHANGE_INFO_PUBLIC_REST_REQUEST_DESCRIPTOR_FOUNDATION_REPORT_2026-09-08.md',
+            'package.json',
+            'scripts/verify-binance-spot-exchange-info-public-rest-request-descriptor-foundation.mjs',
+            'src/services/market-data/index.ts',
+            'src/services/market-data/providers/binance/binanceSpotExchangeInfoPublicRestRequest.ts',
+            'tests/binance-spot-exchange-info-public-rest-request.test.ts',
+          }
+          print('\n'.join(sorted(changed)))
+          assert changed==expected,(sorted(changed-expected),sorted(expected-changed))
+          PY
+
+      - name: Verify reconstructed descriptor before packaging
+        working-directory: .candidate/kairos_p76
+        run: |
+          set -euo pipefail
+          npm ci
+          test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
+          npm run verify:binance-spot-exchange-info-public-rest-request-descriptor-foundation
+          npm run typecheck
+          npm run build
+          npx vitest run tests/binance-spot-exchange-info-public-rest-request.test.ts
+          npm test
+          node - <<'NODE'
+          const { spawnSync } = require('node:child_process');
+          const pkg = require('./package.json');
+          const scripts = Object.keys(pkg.scripts || {}).filter((name) => /^verify:p\d/.test(name));
+          for (const name of scripts) {
+            const r = spawnSync('npm', ['run', name], { stdio: 'inherit' });
+            if (r.status !== 0) process.exit(r.status || 1);
+          }
+          NODE
+
+      - name: Restore clean package boundary and commit candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=.candidate/kairos_p76
+          rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite"
+          find "$ROOT" -type f \( -name '*.tsbuildinfo' -o -name '*.log' \) -delete
+          rm -rf .package
+          mkdir .package
+          cp -a "$ROOT" .package/kairos_p76
+          rm -f "$OUT_ZIP"
+          (cd .package && zip -qr "../$OUT_ZIP" kairos_p76)
+          unzip -t "$OUT_ZIP"
+          test "$(unzip -Z1 "$OUT_ZIP" | head -n1 | cut -d/ -f1)" = 'kairos_p76'
+          sha256sum "$OUT_ZIP"
+
+          rm -rf .verify-extract
+          unzip -q "$OUT_ZIP" -d .verify-extract
+          cd .verify-extract/kairos_p76
+          node scripts/verify-binance-spot-exchange-info-public-rest-request-descriptor-foundation.mjs
+          cd ../..
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "$OUT_ZIP"
+          if git diff --cached --quiet; then
+            echo 'Candidate already present unchanged.'
+          else
+            git commit -m 'Add Binance Spot exchangeInfo request descriptor candidate'
+            git push
+          fi
