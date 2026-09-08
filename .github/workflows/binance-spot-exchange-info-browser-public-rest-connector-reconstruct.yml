@@ -1,0 +1,178 @@
+name: Kairos Binance Spot exchangeInfo Browser Public REST Connector Reconstruction
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/binance-spot-exchange-info-browser-public-rest-connector-reconstruct.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  reconstruct:
+    runs-on: ubuntu-24.04
+    env:
+      BASE_ZIP: KAIROS_BINANCE_SPOT_EXCHANGE_INFO_INSTRUMENT_METADATA_ACQUISITION_ADAPTER_FOUNDATION_CANDIDATE_2026-09-09.zip
+      OUT_ZIP: KAIROS_BINANCE_SPOT_EXCHANGE_INFO_BROWSER_PUBLIC_REST_CONNECTOR_FOUNDATION_CANDIDATE_2026-09-09.zip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - name: Pin npm
+        run: |
+          npm install --global npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+      - name: Reconstruct exact connector slice
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .base .candidate .packagecheck
+          mkdir .base .candidate
+          unzip -q "$BASE_ZIP" -d .base
+          cp -a .base/. .candidate/
+          ROOT=.candidate/kairos_p76
+          EXEC="$ROOT/src/services/market-data/providers/binance/binanceSpotExchangeInfoPublicRestRequestExecution.ts"
+          CONNECTOR="$ROOT/src/services/market-data/providers/binance/binanceSpotExchangeInfoBrowserPublicRestConnector.ts"
+          INDEX="$ROOT/src/services/market-data/index.ts"
+          test -f "$EXEC"
+          test -f "$ROOT/src/services/market-data/providers/binance/binanceSpotExchangeInfoInstrumentMetadataAcquisitionAdapter.ts"
+          test -f "$INDEX"
+          grep -q 'BinanceSpotExchangeInfoPublicRestRequestConnector' "$EXEC"
+          cat > "$CONNECTOR" <<'TS'
+          import type {
+            BinanceSpotExchangeInfoPublicRestRequestConnector,
+          } from './binanceSpotExchangeInfoPublicRestRequestExecution';
+
+          /** Concrete browser transport for one already-described exchangeInfo request. */
+          export const connectBinanceSpotExchangeInfoBrowserPublicRestRequest:
+            BinanceSpotExchangeInfoPublicRestRequestConnector<string> = async (
+              request,
+              options,
+            ) => {
+              const response = await globalThis.fetch(request.url, {
+                method: request.method,
+                signal: options?.signal,
+              });
+              return response.text();
+            };
+          TS
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('.candidate/kairos_p76/src/services/market-data/index.ts')
+          s=p.read_text()
+          line="export * from './providers/binance/binanceSpotExchangeInfoBrowserPublicRestConnector';\n"
+          if line not in s:
+              anchor="export * from './providers/binance/binanceSpotExchangeInfoInstrumentMetadataAcquisitionAdapter';\n"
+              if anchor not in s: raise SystemExit('metadata adapter export boundary not found')
+              s=s.replace(anchor, anchor+line, 1)
+          p.write_text(s)
+          PY
+          cat > "$ROOT/tests/binance-spot-exchange-info-browser-public-rest-connector.test.ts" <<'TS'
+          import { afterEach, describe, expect, it, vi } from 'vitest';
+          import {
+            connectBinanceSpotExchangeInfoBrowserPublicRestRequest,
+            describeBinanceSpotExchangeInfoPublicRestRequest,
+          } from '../src/services/market-data';
+
+          const originalFetch = globalThis.fetch;
+          afterEach(() => { globalThis.fetch = originalFetch; vi.restoreAllMocks(); });
+
+          describe('Binance Spot exchangeInfo browser public REST connector foundation', () => {
+            it('fetches exactly once and returns response text unchanged', async () => {
+              const request = describeBinanceSpotExchangeInfoPublicRestRequest();
+              const text = vi.fn(async () => '{"symbols":[]}');
+              const fetchMock = vi.fn(async () => ({ text })) as unknown as typeof fetch;
+              globalThis.fetch = fetchMock;
+              await expect(connectBinanceSpotExchangeInfoBrowserPublicRestRequest(request)).resolves.toBe('{"symbols":[]}');
+              expect(fetchMock).toHaveBeenCalledTimes(1);
+              expect(fetchMock).toHaveBeenCalledWith(request.url, { method: request.method, signal: undefined });
+              expect(text).toHaveBeenCalledTimes(1);
+            });
+            it('forwards the exact caller-owned AbortSignal', async () => {
+              const request = describeBinanceSpotExchangeInfoPublicRestRequest();
+              const controller = new AbortController();
+              const fetchMock = vi.fn(async () => ({ text: async () => '{}' })) as unknown as typeof fetch;
+              globalThis.fetch = fetchMock;
+              await connectBinanceSpotExchangeInfoBrowserPublicRestRequest(request, { signal: controller.signal });
+              expect(fetchMock).toHaveBeenCalledWith(request.url, { method: request.method, signal: controller.signal });
+            });
+            it('propagates native fetch rejection unchanged', async () => {
+              const request = describeBinanceSpotExchangeInfoPublicRestRequest();
+              const failure = new Error('native-fetch-failure');
+              globalThis.fetch = vi.fn(async () => { throw failure; }) as unknown as typeof fetch;
+              await expect(connectBinanceSpotExchangeInfoBrowserPublicRestRequest(request)).rejects.toBe(failure);
+            });
+            it('does not interpret HTTP status or provider payload semantics', async () => {
+              const request = describeBinanceSpotExchangeInfoPublicRestRequest();
+              const response = { ok:false, status:429, headers:new Headers(), text:vi.fn(async () => '{"code":-1003}') };
+              globalThis.fetch = vi.fn(async () => response as unknown as Response) as unknown as typeof fetch;
+              await expect(connectBinanceSpotExchangeInfoBrowserPublicRestRequest(request)).resolves.toContain('-1003');
+              expect(response.text).toHaveBeenCalledTimes(1);
+            });
+          });
+          TS
+          cat > "$ROOT/KAIROS_BINANCE_SPOT_EXCHANGE_INFO_BROWSER_PUBLIC_REST_CONNECTOR_FOUNDATION_REPORT_2026-09-09.md" <<'MD'
+          # Binance Spot exchangeInfo Browser Public REST Connector Foundation
+
+          Base: canonical Gate #323 Binance Spot exchangeInfo instrument-metadata acquisition adapter foundation.
+
+          Responsibility: implement only the existing exchangeInfo request connector with exactly one native browser `globalThis.fetch` of the already-described request, exact optional caller-owned `AbortSignal` forwarding, exactly one `Response.text()` read, unchanged string return, and unchanged native fetch/text rejection.
+
+          Non-scope: no endpoint/path/query ownership beyond the released descriptor; no HTTP status/header/error taxonomy; no credentials/custom headers/cache/redirect/timeout; no retry/backoff/rate/request-weight policy; no JSON decode/mapping; no acquisition polling/visibility/resume/session lifecycle; no USDT/stablecoin/ranking/tie-break/Top-N universe policy; no freshness/cadence; no Home/Bubble/Your-Trades/journal/persistence/chart/navigation/transitions.
+          MD
+          cat > "$ROOT/scripts/verify-binance-spot-exchange-info-browser-public-rest-connector-foundation.mjs" <<'JS'
+          import { readFileSync } from 'node:fs';
+          const connector=readFileSync(new URL('../src/services/market-data/providers/binance/binanceSpotExchangeInfoBrowserPublicRestConnector.ts', import.meta.url),'utf8');
+          const index=readFileSync(new URL('../src/services/market-data/index.ts', import.meta.url),'utf8');
+          for (const token of ['connectBinanceSpotExchangeInfoBrowserPublicRestRequest','BinanceSpotExchangeInfoPublicRestRequestConnector<string>','globalThis.fetch(request.url,','method: request.method','signal: options?.signal','return response.text()']) if(!connector.includes(token)) throw new Error(`missing ${token}`);
+          if(!index.includes("export * from './providers/binance/binanceSpotExchangeInfoBrowserPublicRestConnector';")) throw new Error('export missing');
+          for (const forbidden of ['response.ok','response.status','response.headers','new AbortController(','AbortSignal.any(','AbortSignal.timeout(','setTimeout(','setInterval(','JSON.parse(','indexedDB','WebSocket(','XMLHttpRequest','credentials:','headers:','cache:','redirect:']) if(connector.includes(forbidden)) throw new Error(`forbidden ${forbidden}`);
+          console.log('exchangeInfo browser connector verification passed.');
+          JS
+          node - <<'NODE'
+          const fs=require('node:fs'); const p='.candidate/kairos_p76/package.json'; const j=JSON.parse(fs.readFileSync(p,'utf8')); j.scripts||={}; j.scripts['verify:binance-spot-exchange-info-browser-public-rest-connector-foundation']='node scripts/verify-binance-spot-exchange-info-browser-public-rest-connector-foundation.mjs'; fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');
+          NODE
+          python - <<'PY'
+          from pathlib import Path
+          a={str(p.relative_to(Path('.base/kairos_p76'))):p.read_bytes() for p in Path('.base/kairos_p76').rglob('*') if p.is_file()}
+          b={str(p.relative_to(Path('.candidate/kairos_p76'))):p.read_bytes() for p in Path('.candidate/kairos_p76').rglob('*') if p.is_file()}
+          changed={p for p in a.keys()|b.keys() if a.get(p)!=b.get(p)}
+          expected={'KAIROS_BINANCE_SPOT_EXCHANGE_INFO_BROWSER_PUBLIC_REST_CONNECTOR_FOUNDATION_REPORT_2026-09-09.md','package.json','scripts/verify-binance-spot-exchange-info-browser-public-rest-connector-foundation.mjs','src/services/market-data/index.ts','src/services/market-data/providers/binance/binanceSpotExchangeInfoBrowserPublicRestConnector.ts','tests/binance-spot-exchange-info-browser-public-rest-connector.test.ts'}
+          print('\n'.join(sorted(changed))); assert changed==expected,(sorted(changed-expected),sorted(expected-changed))
+          PY
+      - name: Verify connector candidate
+        working-directory: .candidate/kairos_p76
+        run: |
+          set -euo pipefail
+          npm ci
+          test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
+          npm run verify:binance-spot-exchange-info-browser-public-rest-connector-foundation
+          npx vitest run tests/binance-spot-exchange-info-browser-public-rest-connector.test.ts
+          npm run typecheck
+          npm run build
+          npm test
+          node - <<'NODE'
+          const {spawnSync}=require('node:child_process'); const pkg=require('./package.json'); const scripts=Object.keys(pkg.scripts||{}).filter(n=>/^verify:p\d/.test(n)); for(const n of scripts){const r=spawnSync('npm',['run',n],{stdio:'inherit'}); if(r.status!==0) process.exit(r.status||1)}
+          NODE
+      - name: Package clean candidate and self-remove helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=.candidate/kairos_p76
+          rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite"
+          find "$ROOT" -type f \( -name '*.tsbuildinfo' -o -name '*.log' \) -delete
+          mkdir .packagecheck
+          (cd .candidate && zip -qr "../$OUT_ZIP" kairos_p76)
+          unzip -q "$OUT_ZIP" -d .packagecheck
+          test -d .packagecheck/kairos_p76
+          test ! -e .packagecheck/kairos_p76/node_modules
+          unzip -t "$OUT_ZIP"
+          sha256sum "$OUT_ZIP"
+          git add "$OUT_ZIP"
+          git rm .github/workflows/binance-spot-exchange-info-browser-public-rest-connector-reconstruct.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Add exchangeInfo browser public REST connector candidate'
+          git push
