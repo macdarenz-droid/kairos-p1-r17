@@ -266,3 +266,14 @@ The latest canonical GOLDEN after the Live Market Universe instrument-metadata f
 - Evidence correction: an earlier non-canonical helper continuity assertion listed candidate size `1,478,648` and SHA-256 `5243f6...`; exact committed-tree and gate-artifact re-proof supersedes that stale assertion with the verified `1,478,000` bytes / `c06073f0...` values above.
 
 This checkpoint extends the primary architecture map without changing any earlier ownership entry. Universe selection/ranking remains a separate deterministic policy responsibility above provider facts and below presentation. Freshness policy remains separately owned. Live Crypto Bubble Map remains authoritative market/provider truth only; Your Trades Bubble Map remains journal/trade history plus released calculation truth only; UI must not read IndexedDB directly; dashboard transitions remain presentation-only.
+
+## Canonical Binance Spot exchangeInfo public REST request execution-boundary checkpoint — gate #315
+
+The latest canonical GOLDEN after the exchangeInfo request descriptor is the **Binance Spot Exchange Information Public REST Request Execution Boundary Foundation**. Its patch number is intentionally not inferred.
+
+- Canonical gate: `Kairos Controlled Roadmap Gate` #315 / run `34206420246`, job `101996850014`, exact head `c1e44fdaaa028fe4031f4923a802f7e035ef77e7`, full SUCCESS on 2026-09-08.
+- Production owner seam: `src/services/market-data/providers/binance/binanceSpotExchangeInfoPublicRestRequestExecution.ts`, exported through `src/services/market-data/index.ts`.
+- Responsibility: accept one already-described exchangeInfo public REST request plus an injected connector, invoke that connector exactly once, preserve its returned Promise/result/rejection unchanged, and forward optional caller-owned `signal?: AbortSignal` unchanged.
+- Canonical candidate artifact: `KAIROS_CURRENT_CANDIDATE` id `10048190476`, wrapper digest `sha256:0359787df9302dc7aa5ae4921ccfe9cf374d10a584412a211a698f6b30d9c4dd`; inner candidate size `1,482,060` and SHA-256 `a861e0525b4d8ffb34dbed13a3cc270d4e18be9170bdb9de3f1e3db1f25c8a42`, integrity PASS.
+- Canonical gate evidence: `KAIROS_GATE_EVIDENCE` id `10048191108`, wrapper digest `sha256:d0fef3b15a12f8fd3fb14b9d9630de0f9733443f28f0dbecb5b29c8005c009a1`; inner report SHA-256 `7db735f73d89fac765f0791ecd82302e8ab65239ea3a540e02706b4fc5571b07`, integrity PASS.
+- Boundary: no concrete fetch/XHR/WebSocket/browser transport or `Response`; no HTTP status/header/body interpretation; no JSON decode; no mapping into `LiveMarketUniverseInstrumentMetadataFact`; no cache/polling/refresh/retry/backoff/request-weight/rate-limit policy; no USDT eligibility/stablecoin exclusion/quote-volume ranking/symbol tie-break/Top-N; no freshness changes; no Home/stale/Bubble UI; no Your Trades/journal/persistence/IndexedDB/Saved-Analysis/chart/navigation/transition ownership.
