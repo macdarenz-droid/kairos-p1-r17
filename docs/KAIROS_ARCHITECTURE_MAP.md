@@ -79,7 +79,7 @@ P20.5: gate #285 / run `34059034331`, job `101556113020`, head `a88b2d480ed0e8ae
 
 Therefore P20.5 closed P20 canonically.
 
-## P21 canonical ownership ledger — OPEN through P21.23
+## P21 canonical ownership ledger — OPEN through Gate 327 quote-volume ordering policy
 
 | Patch | Canonical responsibility | Production owner seam | Boundary |
 |---|---|---|---|
@@ -106,6 +106,7 @@ Therefore P20.5 closed P20 canonically.
 | P21.21 | Live Market Summary Scoped State Snapshot Foundation | `liveMarketSummaryScopedStateSnapshot.ts` | Provider-neutral pure scoped read only; caller scope -> one exact fact-or-null association per request; no ranking/presentation/state/acquisition/persistence/UI semantics |
 | P21.22 | Live Market Summary State Session Scoped Snapshot Binding Foundation | `liveMarketSummaryStateSessionScopedSnapshotBinding.ts` | Read released session state exactly once and delegate exact state + explicit caller scope to released P21.21; no mutation/transition/acquisition/provider/universe/ranking/freshness/persistence/UI semantics |
 | P21.23 | Live Market Summary Browser State Session Scoped Snapshot Acquisition Composition Foundation | `providers/binance/binanceSpot24hBrowserPublicRestBaselineStateSessionScopedSnapshotAcquisitionComposition.ts` | One released P21.20 acquisition then one released P21.22 scoped read after fulfillment using same session/scope; exact outputs unchanged; no new acquisition/provider/universe/ranking/freshness/persistence/UI semantics |
+| Gate 327 | Live Market Universe Quote-Volume Ordering Policy | `src/services/market-data/liveMarketUniverseQuoteVolumeOrderingPolicy.ts`, exported through `src/services/market-data/index.ts` | Deterministically orders already-eligible `LiveMarketSummaryFact` values by descending exact `quoteVolume24h`, then symbol for equal volume, returning a sorted copy; no eligibility/stablecoin/provider/Top-N/freshness/state/persistence/UI ownership |
 
 ## Canonical P21 evidence
 
@@ -394,3 +395,5 @@ The latest canonical GOLDEN is the **Binance Spot Exchange Information Instrumen
 Source/dependency proof after Gate #323 establishes the next smallest missing seam as a **Binance Spot exchangeInfo browser public REST connector** only. The canonical exchangeInfo request-execution boundary still requires an injected `BinanceSpotExchangeInfoPublicRestRequestConnector`, and the canonical metadata acquisition adapter still receives that connector from its caller. The released P21.14 24h browser connector establishes the dependency pattern: one native browser `globalThis.fetch` for an already-described request, exact caller-owned `AbortSignal` forwarding, one `Response.text()` read returned unchanged, native rejection propagation, and no HTTP status/header/retry/provider-semantic ownership. A later browser acquisition binding may compose the connector with the Gate #323 adapter only after this transport seam is separately canonical.
 
 P21 remains open. Universe selection/ranking remains a separate deterministic product-policy owner above authoritative metadata facts and released 24h summary facts and below presentation. Freshness/cadence remains separately owned. Live Crypto Bubble Map remains market/provider truth only; Your Trades Bubble Map remains journal/trade plus released calculation truth only; dashboard transitions remain presentation-only.
+
+Gate 327: `Kairos Controlled Roadmap Gate` #327 / run `34324507102`, job `102378550373`, exact head `6767dcf29db81022ea3bafedc70934ab7dec0a3c`, full SUCCESS. Exact artifacts: `KAIROS_CURRENT_CANDIDATE` `10093564641`, digest `sha256:4f716a9d218f0a9cdfa084b843bf0b0e174e88d8507cf21263beea9009536a0b`; `KAIROS_GATE_EVIDENCE` `10093565170`, digest `sha256:14639e25dd1a9b8105fa7da0a8ab125fec056d8a7c90487f11c9372617a3b9a9`. Released owner is ordering-only; Top-N remains separate.
