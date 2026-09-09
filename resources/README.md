@@ -22,5 +22,9 @@ Purpose: staging area for user-authored educational PDF resources intended for l
 | `KAIROS_MULTI_TIMEFRAME_ANALYSIS.pdf` | `612c010878dca5a8ac262abaf481c5acd9dac458d4651cfc906e565a3430a864` | 2210802 | binary upload pending |
 | `KAIROS_ICT_CONCEPTS.pdf` | `d4b42e3cb38ae982f7d8d7a1d3f683a2fdc3c466c0fed76479c85887a09a29e0` | 1596982 | binary upload pending |
 | `KAIROS_ELLIOTT_WAVE_THEORY.pdf` | `2bb8c38b6390f598b5665a2751fa652e31f4ed1b94b18ada3d89e2b52a9b3770` | 5061758 | binary upload pending |
+| `Trading_Psychology.pdf` | `add5d75fdb15ad99edb2b8a533e1db4279df66130a419151da37b42abe0a1636` | 14812348 | binary upload pending |
+| `Turtle_Soup.pdf` | `16fbb32d6c57c0990a2ca304af6c1ff9a1ee4f562ff3153701d505438ce15089` | 7293903 | binary upload pending |
+| `High_Impact_News_Events.pdf` | `a761c439802a46f14986df1c7e8560983cb929f40ed0dc68684036c709e3b7d1` | 3955661 | binary upload pending |
+| `Trading_Sessions.pdf` | `d6164fb7a09bb5e051ade0597b2fd6dc3c2b2f502c7c18972b73993806239d04` | 4750357 | binary upload pending |
 
 The queue records exact identities so binary assets can be verified after upload.
