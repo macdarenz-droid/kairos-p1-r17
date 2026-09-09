@@ -1,0 +1,593 @@
+name: Kairos Home Dashboard Live Market Summary Acquisition Lifecycle Scheduler Reconstruction
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/home-dashboard-live-market-summary-acquisition-lifecycle-scheduler-reconstruct.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  BASE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_ACQUISITION_CADENCE_POLICY_FOUNDATION_CANDIDATE_2026-09-09.zip
+  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_ACQUISITION_LIFECYCLE_SCHEDULER_FOUNDATION_CANDIDATE_2026-09-09.zip
+  HELPER_PATH: .github/workflows/home-dashboard-live-market-summary-acquisition-lifecycle-scheduler-reconstruct.yml
+
+jobs:
+  reconstruct-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - name: Pin npm
+        run: |
+          npm install --global npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+      - name: Reconstruct lifecycle-scheduler candidate directly from Gate330 GOLDEN
+        run: |
+          set -euo pipefail
+          test -f "$BASE_ZIP"
+          test "$(git hash-object "$BASE_ZIP")" = "7c4909ad24173c762208efc50b1f4a213412e605"
+          test "$(wc -c < "$BASE_ZIP" | tr -d ' ')" = "1538182"
+          rm -rf .lifecycle-work .lifecycle-base
+          mkdir -p .lifecycle-work .lifecycle-base
+          unzip -q "$BASE_ZIP" -d .lifecycle-work
+          unzip -q "$BASE_ZIP" -d .lifecycle-base
+          ROOT=.lifecycle-work/kairos_p76
+          test -f "$ROOT/package.json"
+          test -f "$ROOT/src/application/dashboard/homeDashboardLiveMarketSummaryAcquisitionCadencePolicy.ts"
+          test -f "$ROOT/src/application/dashboard/homeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPort.ts"
+          test -f "$ROOT/src/services/market-data/liveMarketSummaryStateSession.ts"
+
+          cat > "$ROOT/src/application/dashboard/homeDashboardLiveMarketSummaryAcquisitionLifecycleScheduler.ts" <<'TS'
+          import {
+            decideHomeDashboardLiveMarketSummaryAcquisitionCadence,
+            type HomeDashboardLiveMarketSummaryVisibility,
+          } from './homeDashboardLiveMarketSummaryAcquisitionCadencePolicy';
+          import type {
+            HomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPort,
+            HomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionResult,
+          } from './homeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPort';
+          import type { MarketDataInstrument } from '../../services/market-data/marketDataTypes';
+
+          export interface HomeDashboardLiveMarketSummaryAcquisitionLifecycleSchedulerClock {
+            readonly schedule: (callback: () => void, delayMs: number) => unknown;
+            readonly cancel: (handle: unknown) => void;
+          }
+
+          export interface HomeDashboardLiveMarketSummaryAcquisitionLifecycleObserver {
+            readonly onResult?: (
+              result: HomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionResult,
+            ) => void;
+            readonly onError?: (error: unknown) => void;
+          }
+
+          export interface HomeDashboardLiveMarketSummaryAcquisitionLifecycle {
+            readonly enter: () => void;
+            readonly setVisibility: (
+              visibility: HomeDashboardLiveMarketSummaryVisibility,
+            ) => void;
+            readonly close: () => void;
+          }
+
+          export function createHomeDashboardLiveMarketSummaryAcquisitionLifecycle(
+            port: HomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPort,
+            scope: readonly MarketDataInstrument[],
+            scheduler: HomeDashboardLiveMarketSummaryAcquisitionLifecycleSchedulerClock,
+            observer: HomeDashboardLiveMarketSummaryAcquisitionLifecycleObserver = {},
+            initialVisibility: HomeDashboardLiveMarketSummaryVisibility = 'visible',
+          ): HomeDashboardLiveMarketSummaryAcquisitionLifecycle {
+            let closed = false;
+            let entered = false;
+            let visibility = initialVisibility;
+            let pendingSchedule: unknown | null = null;
+            let activeAcquisitionController: AbortController | null = null;
+
+            const cancelPendingSchedule = () => {
+              if (pendingSchedule === null) return;
+              const handle = pendingSchedule;
+              pendingSchedule = null;
+              scheduler.cancel(handle);
+            };
+
+            const abortActiveAcquisition = () => {
+              if (activeAcquisitionController === null) return;
+              const controller = activeAcquisitionController;
+              activeAcquisitionController = null;
+              controller.abort();
+            };
+
+            const runVisibleTrigger = (
+              trigger: 'entry' | 'resume' | 'periodic',
+            ) => {
+              if (closed || !entered) return;
+
+              cancelPendingSchedule();
+              const decision = decideHomeDashboardLiveMarketSummaryAcquisitionCadence(
+                visibility,
+                trigger,
+              );
+
+              if (!decision.acquireNow) {
+                abortActiveAcquisition();
+                return;
+              }
+
+              if (decision.nextVisibleAcquisitionAfterMs !== null) {
+                let handle: unknown;
+                handle = scheduler.schedule(() => {
+                  if (closed || pendingSchedule !== handle) return;
+                  pendingSchedule = null;
+                  runVisibleTrigger('periodic');
+                }, decision.nextVisibleAcquisitionAfterMs);
+                pendingSchedule = handle;
+              }
+
+              // The released state session does not serialize concurrent transitions.
+              // Preserve fixed acquisition starts without stale overlapping transitions.
+              abortActiveAcquisition();
+              const controller = new AbortController();
+              activeAcquisitionController = controller;
+
+              let acquisition: Promise<HomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionResult>;
+              try {
+                acquisition = port.acquire(scope, { signal: controller.signal });
+              } catch (error) {
+                if (activeAcquisitionController === controller) {
+                  activeAcquisitionController = null;
+                }
+                if (!controller.signal.aborted && !closed) {
+                  observer.onError?.(error);
+                }
+                return;
+              }
+
+              void acquisition.then(
+                (result) => {
+                  if (activeAcquisitionController === controller) {
+                    activeAcquisitionController = null;
+                  }
+                  if (!controller.signal.aborted && !closed) {
+                    observer.onResult?.(result);
+                  }
+                },
+                (error: unknown) => {
+                  if (activeAcquisitionController === controller) {
+                    activeAcquisitionController = null;
+                  }
+                  if (!controller.signal.aborted && !closed) {
+                    observer.onError?.(error);
+                  }
+                },
+              );
+            };
+
+            return {
+              enter() {
+                if (closed || entered) return;
+                entered = true;
+                runVisibleTrigger('entry');
+              },
+              setVisibility(nextVisibility) {
+                if (closed || nextVisibility === visibility) return;
+                visibility = nextVisibility;
+                if (!entered) return;
+
+                if (visibility === 'hidden') {
+                  cancelPendingSchedule();
+                  abortActiveAcquisition();
+                  return;
+                }
+
+                runVisibleTrigger('resume');
+              },
+              close() {
+                if (closed) return;
+                closed = true;
+                cancelPendingSchedule();
+                abortActiveAcquisition();
+              },
+            };
+          }
+          TS
+
+          cat > "$ROOT/tests/home-dashboard-live-market-summary-acquisition-lifecycle-scheduler-foundation.test.ts" <<'TS'
+          import { describe, expect, it, vi } from 'vitest';
+          import {
+            createHomeDashboardLiveMarketSummaryAcquisitionLifecycle,
+            type HomeDashboardLiveMarketSummaryAcquisitionLifecycleSchedulerClock,
+          } from '../src/application/dashboard/homeDashboardLiveMarketSummaryAcquisitionLifecycleScheduler';
+          import type {
+            HomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPort,
+            HomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionResult,
+          } from '../src/application/dashboard/homeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPort';
+          import type { MarketDataInstrument } from '../src/services/market-data/marketDataTypes';
+
+          const btc: MarketDataInstrument = { venue: 'binance-spot', symbol: 'BTCUSDT' };
+          const result = { orchestrationResult: { ok: true }, scopedSnapshot: [] } as unknown as HomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionResult;
+
+          function createFakeScheduler() {
+            let callback: (() => void) | null = null;
+            let handleCounter = 0;
+            const schedule = vi.fn((next: () => void, _delayMs: number) => {
+              callback = next;
+              handleCounter += 1;
+              return handleCounter;
+            });
+            const cancel = vi.fn();
+            const scheduler: HomeDashboardLiveMarketSummaryAcquisitionLifecycleSchedulerClock = { schedule, cancel };
+            return {
+              scheduler,
+              schedule,
+              cancel,
+              fire() {
+                const current = callback;
+                callback = null;
+                current?.();
+              },
+            };
+          }
+
+          function createPendingPort() {
+            const calls: Array<{
+              signal: AbortSignal;
+              resolve: (value: HomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionResult) => void;
+              reject: (reason?: unknown) => void;
+            }> = [];
+            const acquire = vi.fn((_scope: readonly MarketDataInstrument[], options?: { signal?: AbortSignal }) =>
+              new Promise<HomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionResult>((resolve, reject) => {
+                calls.push({ signal: options!.signal!, resolve, reject });
+              }));
+            return {
+              port: { acquire } as HomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPort,
+              acquire,
+              calls,
+            };
+          }
+
+          describe('Home Dashboard live-market acquisition lifecycle scheduler', () => {
+            it('starts visible entry immediately and arms exactly one five-second tick', () => {
+              const fake = createFakeScheduler();
+              const pending = createPendingPort();
+              const lifecycle = createHomeDashboardLiveMarketSummaryAcquisitionLifecycle(
+                pending.port,
+                [btc],
+                fake.scheduler,
+              );
+
+              lifecycle.enter();
+              lifecycle.enter();
+
+              expect(pending.acquire).toHaveBeenCalledTimes(1);
+              expect(pending.acquire.mock.calls[0]?.[0]).toEqual([btc]);
+              expect(pending.calls[0]?.signal.aborted).toBe(false);
+              expect(fake.schedule).toHaveBeenCalledTimes(1);
+              expect(fake.schedule.mock.calls[0]?.[1]).toBe(5000);
+            });
+
+            it('uses latest-tick-wins cancellation while preserving fixed five-second starts', () => {
+              const fake = createFakeScheduler();
+              const pending = createPendingPort();
+              const lifecycle = createHomeDashboardLiveMarketSummaryAcquisitionLifecycle(
+                pending.port,
+                [btc],
+                fake.scheduler,
+              );
+
+              lifecycle.enter();
+              const firstSignal = pending.calls[0]!.signal;
+              fake.fire();
+
+              expect(firstSignal.aborted).toBe(true);
+              expect(pending.acquire).toHaveBeenCalledTimes(2);
+              expect(pending.calls[1]?.signal.aborted).toBe(false);
+              expect(fake.schedule).toHaveBeenCalledTimes(2);
+              expect(fake.schedule.mock.calls[1]?.[1]).toBe(5000);
+            });
+
+            it('suspends hidden acquisition by cancelling the pending tick and aborting in-flight work', () => {
+              const fake = createFakeScheduler();
+              const pending = createPendingPort();
+              const lifecycle = createHomeDashboardLiveMarketSummaryAcquisitionLifecycle(
+                pending.port,
+                [btc],
+                fake.scheduler,
+              );
+
+              lifecycle.enter();
+              const signal = pending.calls[0]!.signal;
+              lifecycle.setVisibility('hidden');
+              fake.fire();
+
+              expect(signal.aborted).toBe(true);
+              expect(fake.cancel).toHaveBeenCalledTimes(1);
+              expect(pending.acquire).toHaveBeenCalledTimes(1);
+            });
+
+            it('resumes from hidden with an immediate acquisition and a new five-second tick', () => {
+              const fake = createFakeScheduler();
+              const pending = createPendingPort();
+              const lifecycle = createHomeDashboardLiveMarketSummaryAcquisitionLifecycle(
+                pending.port,
+                [btc],
+                fake.scheduler,
+                {},
+                'hidden',
+              );
+
+              lifecycle.enter();
+              expect(pending.acquire).not.toHaveBeenCalled();
+              expect(fake.schedule).not.toHaveBeenCalled();
+
+              lifecycle.setVisibility('visible');
+              expect(pending.acquire).toHaveBeenCalledTimes(1);
+              expect(fake.schedule).toHaveBeenCalledTimes(1);
+              expect(fake.schedule.mock.calls[0]?.[1]).toBe(5000);
+            });
+
+            it('keeps close idempotent and prevents scheduled work after shutdown', () => {
+              const fake = createFakeScheduler();
+              const pending = createPendingPort();
+              const lifecycle = createHomeDashboardLiveMarketSummaryAcquisitionLifecycle(
+                pending.port,
+                [btc],
+                fake.scheduler,
+              );
+
+              lifecycle.enter();
+              const signal = pending.calls[0]!.signal;
+              lifecycle.close();
+              lifecycle.close();
+              fake.fire();
+              lifecycle.setVisibility('hidden');
+              lifecycle.setVisibility('visible');
+              lifecycle.enter();
+
+              expect(signal.aborted).toBe(true);
+              expect(fake.cancel).toHaveBeenCalledTimes(1);
+              expect(pending.acquire).toHaveBeenCalledTimes(1);
+            });
+
+            it('forwards only the current non-aborted result and suppresses superseded completion', async () => {
+              const fake = createFakeScheduler();
+              const pending = createPendingPort();
+              const onResult = vi.fn();
+              const lifecycle = createHomeDashboardLiveMarketSummaryAcquisitionLifecycle(
+                pending.port,
+                [btc],
+                fake.scheduler,
+                { onResult },
+              );
+
+              lifecycle.enter();
+              fake.fire();
+              pending.calls[0]!.resolve(result);
+              await Promise.resolve();
+              expect(onResult).not.toHaveBeenCalled();
+
+              pending.calls[1]!.resolve(result);
+              await Promise.resolve();
+              expect(onResult).toHaveBeenCalledTimes(1);
+              expect(onResult).toHaveBeenCalledWith(result);
+            });
+
+            it('forwards current acquisition rejection but suppresses lifecycle-driven aborted rejection', async () => {
+              const fake = createFakeScheduler();
+              const pending = createPendingPort();
+              const onError = vi.fn();
+              const lifecycle = createHomeDashboardLiveMarketSummaryAcquisitionLifecycle(
+                pending.port,
+                [btc],
+                fake.scheduler,
+                { onError },
+              );
+
+              lifecycle.enter();
+              fake.fire();
+              const superseded = new Error('superseded');
+              pending.calls[0]!.reject(superseded);
+              await Promise.resolve();
+              expect(onError).not.toHaveBeenCalled();
+
+              const current = new Error('current-network-failure');
+              pending.calls[1]!.reject(current);
+              await Promise.resolve();
+              expect(onError).toHaveBeenCalledTimes(1);
+              expect(onError).toHaveBeenCalledWith(current);
+            });
+          });
+          TS
+
+          cat > "$ROOT/scripts/verify-home-dashboard-live-market-summary-acquisition-lifecycle-scheduler-foundation.mjs" <<'JS'
+          import { readFileSync } from 'node:fs';
+
+          const source = readFileSync('src/application/dashboard/homeDashboardLiveMarketSummaryAcquisitionLifecycleScheduler.ts', 'utf8');
+          const test = readFileSync('tests/home-dashboard-live-market-summary-acquisition-lifecycle-scheduler-foundation.test.ts', 'utf8');
+
+          for (const token of [
+            'decideHomeDashboardLiveMarketSummaryAcquisitionCadence',
+            'HomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPort',
+            'AbortController',
+            'scheduler.schedule',
+            'scheduler.cancel',
+            "runVisibleTrigger('periodic')",
+            "runVisibleTrigger('resume')",
+            "visibility === 'hidden'",
+            'abortActiveAcquisition();',
+            'observer.onResult?.(result)',
+            'observer.onError?.(error)',
+          ]) {
+            if (!source.includes(token)) throw new Error(`missing lifecycle-scheduler evidence: ${token}`);
+          }
+
+          for (const forbidden of [
+            'setInterval(', 'setTimeout(', 'document.', 'visibilityState', 'visibilitychange',
+            'addEventListener(', 'fetch(', 'WebSocket', 'Binance', 'quoteVolume24h', 'stablecoin',
+            'TopN', 'FRESH', 'STALE', 'EXPIRED', 'React', 'useEffect(', 'useState(', 'IndexedDB',
+          ]) {
+            if (source.includes(forbidden)) throw new Error(`lifecycle scheduler leaked forbidden ownership: ${forbidden}`);
+          }
+
+          for (const token of [
+            "toBe(5000)",
+            "setVisibility('hidden')",
+            "setVisibility('visible')",
+            'firstSignal.aborted',
+            'onResult',
+            'onError',
+          ]) {
+            if (!test.includes(token)) throw new Error(`missing focused lifecycle test evidence: ${token}`);
+          }
+
+          console.log('Home Dashboard live-market acquisition lifecycle scheduler foundation verifier PASS');
+          JS
+
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const p='.lifecycle-work/kairos_p76/package.json';
+          const j=JSON.parse(fs.readFileSync(p,'utf8'));
+          j.scripts={...(j.scripts||{}),
+            'verify:home-dashboard-live-market-summary-acquisition-lifecycle-scheduler-foundation':'node scripts/verify-home-dashboard-live-market-summary-acquisition-lifecycle-scheduler-foundation.mjs'
+          };
+          fs.writeFileSync(p, JSON.stringify(j,null,2)+'\n');
+          NODE
+
+          cat > "$ROOT/KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_ACQUISITION_LIFECYCLE_SCHEDULER_FOUNDATION_REPORT_2026-09-09.md" <<'MD'
+          # Kairos Home Dashboard Live Market Summary Acquisition Lifecycle Scheduler Foundation
+
+          Base authority: Gate330 acquisition-cadence canonical GOLDEN.
+
+          Responsibility: provider-neutral application-layer acquisition lifecycle scheduling above the released pure cadence policy and one-shot Home acquisition port.
+
+          Semantics:
+          - visible entry acquires immediately and arms one 5000ms next-visible tick;
+          - each visible periodic tick starts at the approved fixed cadence, aborting any still-in-flight prior caller-owned request before starting the new one so non-serialized state transitions cannot race;
+          - hidden cancels the pending tick and aborts in-flight acquisition;
+          - hidden -> visible resumes with immediate acquisition and one new 5000ms tick;
+          - close is idempotent and prevents future scheduled work;
+          - lifecycle-driven abort settlement is suppressed, while current non-aborted result/error may be forwarded through caller-owned observers.
+
+          Non-scope: no browser timer implementation, DOM/Page Visibility listener, provider transport/selection, session construction, observedAt/freshness policy, universe eligibility/stablecoin/order/Top-N, persistence, React/Home/Bubble presentation, journal/Your Trades truth, chart/navigation, or transitions.
+          MD
+
+      - name: Prove exact five-file Gate330-to-lifecycle candidate scope
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib,sys
+          b=Path('.lifecycle-base/kairos_p76'); c=Path('.lifecycle-work/kairos_p76')
+          def h(p): return hashlib.sha256(p.read_bytes()).hexdigest()
+          x={str(p.relative_to(b)):h(p) for p in b.rglob('*') if p.is_file()}
+          y={str(p.relative_to(c)):h(p) for p in c.rglob('*') if p.is_file()}
+          changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
+          print('\n'.join(sorted(changed)))
+          expected={
+            'KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_ACQUISITION_LIFECYCLE_SCHEDULER_FOUNDATION_REPORT_2026-09-09.md',
+            'package.json',
+            'scripts/verify-home-dashboard-live-market-summary-acquisition-lifecycle-scheduler-foundation.mjs',
+            'src/application/dashboard/homeDashboardLiveMarketSummaryAcquisitionLifecycleScheduler.ts',
+            'tests/home-dashboard-live-market-summary-acquisition-lifecycle-scheduler-foundation.test.ts',
+          }
+          if changed != expected:
+            print('lifecycle-scheduler exact scope mismatch', file=sys.stderr)
+            print('Unexpected:', sorted(changed-expected), file=sys.stderr)
+            print('Missing:', sorted(expected-changed), file=sys.stderr)
+            sys.exit(1)
+          PY
+      - name: Install candidate deterministically
+        working-directory: .lifecycle-work/kairos_p76
+        run: npm ci
+      - name: Prove pinned Lightweight Charts dependency
+        working-directory: .lifecycle-work/kairos_p76
+        run: |
+          test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
+          npm ls lightweight-charts --depth=0
+      - name: Dedicated lifecycle scheduler verifier
+        working-directory: .lifecycle-work/kairos_p76
+        run: npm run verify:home-dashboard-live-market-summary-acquisition-lifecycle-scheduler-foundation
+      - name: Focused lifecycle and dependency regression
+        working-directory: .lifecycle-work/kairos_p76
+        run: |
+          npx vitest run tests/home-dashboard-live-market-summary-acquisition-lifecycle-scheduler-foundation.test.ts
+          npm run verify:home-dashboard-live-market-summary-acquisition-cadence-policy-foundation
+          npm run verify:home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation
+          npm run verify:p21:19-live-market-summary-state-session-foundation
+          npm run verify:binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation
+      - name: Typecheck and build
+        working-directory: .lifecycle-work/kairos_p76
+        run: |
+          npm run typecheck
+          npm run build
+      - name: Full unit regression
+        working-directory: .lifecycle-work/kairos_p76
+        run: npm test
+      - name: Full registered verifier regression
+        working-directory: .lifecycle-work/kairos_p76
+        run: |
+          node - <<'NODE'
+          const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
+          const p=JSON.parse(readFileSync('package.json','utf8'));
+          const scripts=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:')).sort();
+          for(const required of [
+            'verify:home-dashboard-live-market-summary-acquisition-lifecycle-scheduler-foundation',
+            'verify:home-dashboard-live-market-summary-acquisition-cadence-policy-foundation',
+            'verify:home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation',
+            'verify:p21:19-live-market-summary-state-session-foundation',
+            'verify:p20:5-saved-analysis-system-closure',
+            'verify:p19:7-risk-reward-tool-system-closure',
+            'verify:p18:60-drawing-tools-system-closure',
+            'verify:p17:16-chart-engine-system-closure',
+            'verify:p16:18-crypto-live-feed-system-closure',
+            'verify:p15:14-market-data-adapter-system-closure',
+            'verify:p14:9-trade-visualizer-system-closure',
+            'verify:p11:calculation-brain-closure',
+            'verify:p8:navigation-shell','verify:p1'
+          ]) if(!scripts.includes(required)){console.error('Missing '+required);process.exit(1)}
+          for(const name of scripts){const r=spawnSync('npm',['run',name],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
+          NODE
+      - name: Clean and package verified candidate
+        run: |
+          set -euo pipefail
+          ROOT=.lifecycle-work/kairos_p76
+          rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite"
+          find "$ROOT" -type f \( -name '*.tsbuildinfo' -o -name '*.log' \) -delete
+          rm -f "$CANDIDATE_ZIP"
+          (cd .lifecycle-work && zip -qr "../$CANDIDATE_ZIP" kairos_p76)
+          python - <<'PY'
+          from pathlib import Path, PurePosixPath
+          import hashlib,zipfile,os
+          p=Path(os.environ['CANDIDATE_ZIP']); data=p.read_bytes()
+          with zipfile.ZipFile(p) as z:
+            assert z.testzip() is None
+            assert {i.filename.split('/')[0] for i in z.infolist()} == {'kairos_p76'}
+            for i in z.infolist():
+              parts=PurePosixPath(i.filename)
+              assert not parts.is_absolute() and '..' not in parts.parts
+              assert ((i.external_attr >> 16) & 0o170000) != 0o120000
+          print('CANDIDATE_SIZE',len(data))
+          print('CANDIDATE_SHA256',hashlib.sha256(data).hexdigest())
+          PY
+      - name: Upload verified NON-CANONICAL candidate artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KAIROS_HOME_LIVE_MARKET_ACQUISITION_LIFECYCLE_SCHEDULER_CANDIDATE_NONCANONICAL
+          path: ${{ env.CANDIDATE_ZIP }}
+          if-no-files-found: error
+      - name: Place verified candidate at repository root and self-clean helper
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "$CANDIDATE_ZIP"
+          git rm "$HELPER_PATH"
+          git diff --cached --name-only
+          test "$(git diff --cached --name-only | wc -l)" -eq 2
+          git commit -m 'candidate: place verified Home live market acquisition lifecycle scheduler'
+          git push origin HEAD:main
