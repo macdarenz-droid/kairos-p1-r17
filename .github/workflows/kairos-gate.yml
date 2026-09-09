@@ -1,11 +1,11 @@
-# KAIROS LIVE MARKET UNIVERSE QUOTE-VOLUME ORDERING POLICY GATE — AUTHORITATIVE BASE GATE 326
+# KAIROS LIVE MARKET UNIVERSE TOP-N SELECTION POLICY GATE — AUTHORITATIVE BASE GATE 327
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_LIVE_MARKET_UNIVERSE_QUOTE_VOLUME_ORDERING_POLICY_FOUNDATION_CANDIDATE_2026-09-09.zip'
+      - 'KAIROS_LIVE_MARKET_UNIVERSE_TOP_N_SELECTION_POLICY_FOUNDATION_CANDIDATE_2026-09-09.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_LIVE_MARKET_UNIVERSE_INSTRUMENT_ELIGIBILITY_POLICY_FOUNDATION_CANDIDATE_2026-09-09.zip
-  CANDIDATE_ZIP: KAIROS_LIVE_MARKET_UNIVERSE_QUOTE_VOLUME_ORDERING_POLICY_FOUNDATION_CANDIDATE_2026-09-09.zip
+  BASE_ZIP: KAIROS_LIVE_MARKET_UNIVERSE_QUOTE_VOLUME_ORDERING_POLICY_FOUNDATION_CANDIDATE_2026-09-09.zip
+  CANDIDATE_ZIP: KAIROS_LIVE_MARKET_UNIVERSE_TOP_N_SELECTION_POLICY_FOUNDATION_CANDIDATE_2026-09-09.zip
 
 jobs:
   verify-current-candidate:
@@ -35,8 +35,8 @@ jobs:
           from pathlib import Path, PurePosixPath
           import hashlib, os, zipfile
           for key, size, digest in [
-            ('BASE_ZIP', 1528200, '177ab0daeca7146a2d568a9c88c0fcd7e403df7808bc01d4234aaeedd2f4da11'),
-            ('CANDIDATE_ZIP', 1531264, '032d3cda1be2d8f186aaf8ca5e14325afb47c9f773e84b30a8f3e739ce012c3a'),
+            ('BASE_ZIP', 1531264, '032d3cda1be2d8f186aaf8ca5e14325afb47c9f773e84b30a8f3e739ce012c3a'),
+            ('CANDIDATE_ZIP', 1534681, '98a9d95965e5cf18c31710517047c2d54e7ac7223e50219dfb8d8a582b113c19'),
           ]:
             p=Path(os.environ[key]); data=p.read_bytes()
             assert len(data)==size, f'{key}: byte size mismatch'
@@ -61,7 +61,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact controlled Live Market Universe quote-volume ordering policy scope from Gate 326
+      - name: Confirm exact controlled Live Market Universe Top-N selection policy scope from Gate 327
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -73,15 +73,15 @@ jobs:
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           print('\n'.join(sorted(changed)))
           expected={
-            'KAIROS_LIVE_MARKET_UNIVERSE_QUOTE_VOLUME_ORDERING_POLICY_FOUNDATION_REPORT_2026-09-09.md',
+            'KAIROS_LIVE_MARKET_UNIVERSE_TOP_N_SELECTION_POLICY_FOUNDATION_REPORT_2026-09-09.md',
             'package.json',
-            'scripts/verify-live-market-universe-quote-volume-ordering-policy-foundation.mjs',
+            'scripts/verify-live-market-universe-top-n-selection-policy-foundation.mjs',
             'src/services/market-data/index.ts',
-            'src/services/market-data/liveMarketUniverseQuoteVolumeOrderingPolicy.ts',
-            'tests/live-market-universe-quote-volume-ordering-policy-foundation.test.ts',
+            'src/services/market-data/liveMarketUniverseTopNSelectionPolicy.ts',
+            'tests/live-market-universe-top-n-selection-policy-foundation.test.ts',
           }
           if changed != expected:
-            print('Live Market Universe quote-volume ordering policy exact scope mismatch',file=sys.stderr)
+            print('Live Market Universe Top-N selection policy exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             sys.exit(1)
@@ -105,9 +105,10 @@ jobs:
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
 
-      - name: Dedicated Live Market Universe quote-volume ordering policy verifier/runtime
+      - name: Dedicated Live Market Universe Top-N selection policy verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:live-market-universe-top-n-selection-policy-foundation
           npm run verify:live-market-universe-quote-volume-ordering-policy-foundation
           npm run verify:live-market-universe-instrument-eligibility-policy-foundation
           npm run verify:live-market-universe-instrument-metadata-fact-contract-foundation
@@ -128,9 +129,9 @@ jobs:
           npm run verify:p8:navigation-shell
           npm run verify:p1
 
-      - name: Focused Live Market Universe ordering regression
+      - name: Focused Live Market Universe Top-N regression
         working-directory: .gate-candidate/kairos_p76
-        run: npx vitest run tests/live-market-universe-quote-volume-ordering-policy-foundation.test.ts tests/live-market-universe-instrument-eligibility-policy-foundation.test.ts tests/live-market-summary-fact-semantics.test.ts
+        run: npx vitest run tests/live-market-universe-top-n-selection-policy-foundation.test.ts tests/live-market-universe-quote-volume-ordering-policy-foundation.test.ts tests/live-market-universe-instrument-eligibility-policy-foundation.test.ts tests/live-market-summary-fact-semantics.test.ts
 
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
@@ -144,6 +145,7 @@ jobs:
           const p=JSON.parse(readFileSync('package.json'));
           const scripts=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:')).sort();
           for(const required of [
+            'verify:live-market-universe-top-n-selection-policy-foundation',
             'verify:live-market-universe-quote-volume-ordering-policy-foundation',
             'verify:live-market-universe-instrument-eligibility-policy-foundation',
             'verify:live-market-universe-instrument-metadata-fact-contract-foundation',
@@ -164,6 +166,7 @@ jobs:
       - name: Historical closures
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:live-market-universe-top-n-selection-policy-foundation
           npm run verify:live-market-universe-quote-volume-ordering-policy-foundation
           npm run verify:live-market-universe-instrument-eligibility-policy-foundation
           npm run verify:p21:binance-spot-exchange-info-browser-instrument-metadata-acquisition-binding-foundation
@@ -201,5 +204,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_LIVE_MARKET_UNIVERSE_QUOTE_VOLUME_ORDERING_POLICY_FOUNDATION_REPORT_2026-09-09.md
+          path: .gate-candidate/kairos_p76/KAIROS_LIVE_MARKET_UNIVERSE_TOP_N_SELECTION_POLICY_FOUNDATION_REPORT_2026-09-09.md
           if-no-files-found: error
