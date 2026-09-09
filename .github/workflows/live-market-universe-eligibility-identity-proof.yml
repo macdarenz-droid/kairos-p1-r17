@@ -1,5 +1,8 @@
 name: Live Market Universe Eligibility Identity Proof
 on:
+  push:
+    paths:
+      - '.github/workflows/live-market-universe-eligibility-identity-proof.yml'
   workflow_dispatch:
 jobs:
   prove-candidate:
