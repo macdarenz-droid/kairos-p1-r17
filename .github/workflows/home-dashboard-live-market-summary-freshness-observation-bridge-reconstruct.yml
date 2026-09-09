@@ -313,12 +313,12 @@ jobs:
             'Acquisition/session failure is never reinterpreted as stale/expired',
             'evaluation-time source itself throws',
             'No provider/Binance transport',
-            'No provider/Binance transport',
           ]) if (!report.includes(token)) throw new Error(`freshness observation bridge report evidence missing: ${token}`);
 
           console.log('Home Dashboard Live Market Summary Freshness Observation Bridge Foundation verification passed.');
           JS
 
+          cd "$ROOT"
           node - <<'NODE'
           const fs=require('node:fs');
           const p=JSON.parse(fs.readFileSync('package.json','utf8'));
@@ -328,7 +328,6 @@ jobs:
           fs.writeFileSync('package.json', JSON.stringify(p,null,2)+'\n');
           NODE
 
-          cd "$ROOT"
           npm ci
           test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
           npm ls lightweight-charts --depth=0
