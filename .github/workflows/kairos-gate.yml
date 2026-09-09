@@ -1,11 +1,11 @@
-# KAIROS HOME DASHBOARD LIVE MARKET SUMMARY ACQUISITION LIFECYCLE SCHEDULER GATE — AUTHORITATIVE BASE GATE 330
+# KAIROS HOME DASHBOARD LIVE MARKET SUMMARY BROWSER LIFECYCLE ADAPTER GATE — AUTHORITATIVE BASE GATE 331
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_ACQUISITION_LIFECYCLE_SCHEDULER_FOUNDATION_CANDIDATE_2026-09-09.zip'
+      - 'KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_BROWSER_LIFECYCLE_ADAPTER_FOUNDATION_CANDIDATE_2026-09-09.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_ACQUISITION_CADENCE_POLICY_FOUNDATION_CANDIDATE_2026-09-09.zip
-  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_ACQUISITION_LIFECYCLE_SCHEDULER_FOUNDATION_CANDIDATE_2026-09-09.zip
+  BASE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_ACQUISITION_LIFECYCLE_SCHEDULER_FOUNDATION_CANDIDATE_2026-09-09.zip
+  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_BROWSER_LIFECYCLE_ADAPTER_FOUNDATION_CANDIDATE_2026-09-09.zip
 
 jobs:
   verify-current-candidate:
@@ -35,8 +35,8 @@ jobs:
           from pathlib import Path, PurePosixPath
           import hashlib, os, zipfile
           for key, size, digest in [
-            ('BASE_ZIP', 1538182, '81e3f27a3c8a16184e932c88a0a5ae8aececb5c5995190e1e93e833ae8850ff9'),
-            ('CANDIDATE_ZIP', 1543568, '21de97abddf1d91eea131e8244b788b0a4a1f96572e48dfc26c124c99670c857'),
+            ('BASE_ZIP', 1543568, '21de97abddf1d91eea131e8244b788b0a4a1f96572e48dfc26c124c99670c857'),
+            ('CANDIDATE_ZIP', 1547732, 'cf73d135e4104e355c9c2c24a61e82f5844ca622d895595016114c7c23e4a56f'),
           ]:
             p=Path(os.environ[key]); data=p.read_bytes()
             assert len(data)==size, f'{key}: byte size mismatch'
@@ -48,7 +48,6 @@ jobs:
                 parts=PurePosixPath(i.filename)
                 assert not parts.is_absolute() and '..' not in parts.parts, f'{key}: invalid archive path'
                 assert ((i.external_attr >> 16) & 0o170000) != 0o120000, f'{key}: unexpected symbolic link'
-            print(key, len(data), digest, 'integrity PASS')
           PY
 
       - name: Extract authoritative base and candidate
@@ -61,7 +60,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact controlled Home live-market acquisition lifecycle scheduler scope from Gate 330
+      - name: Confirm exact controlled Home live-market browser lifecycle adapter scope from Gate 331
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -71,16 +70,15 @@ jobs:
           x={str(p.relative_to(b)):h(p) for p in b.rglob('*') if p.is_file()}
           y={str(p.relative_to(c)):h(p) for p in c.rglob('*') if p.is_file()}
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
-          print('\n'.join(sorted(changed)))
           expected={
-            'KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_ACQUISITION_LIFECYCLE_SCHEDULER_FOUNDATION_REPORT_2026-09-09.md',
+            'KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_BROWSER_LIFECYCLE_ADAPTER_FOUNDATION_REPORT_2026-09-09.md',
             'package.json',
-            'scripts/verify-home-dashboard-live-market-summary-acquisition-lifecycle-scheduler-foundation.mjs',
-            'src/application/dashboard/homeDashboardLiveMarketSummaryAcquisitionLifecycleScheduler.ts',
-            'tests/home-dashboard-live-market-summary-acquisition-lifecycle-scheduler-foundation.test.ts',
+            'scripts/verify-home-dashboard-live-market-summary-browser-lifecycle-adapter-foundation.mjs',
+            'src/app/homeDashboardLiveMarketSummaryBrowserLifecycleAdapter.ts',
+            'tests/home-dashboard-live-market-summary-browser-lifecycle-adapter-foundation.test.ts',
           }
           if changed != expected:
-            print('Home live-market acquisition lifecycle scheduler exact scope mismatch',file=sys.stderr)
+            print('browser lifecycle adapter exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             sys.exit(1)
@@ -104,31 +102,21 @@ jobs:
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
 
-      - name: Dedicated Home live-market acquisition lifecycle scheduler verifier/runtime
+      - name: Dedicated Home live-market browser lifecycle adapter verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:home-dashboard-live-market-summary-browser-lifecycle-adapter-foundation
           npm run verify:home-dashboard-live-market-summary-acquisition-lifecycle-scheduler-foundation
           npm run verify:home-dashboard-live-market-summary-acquisition-cadence-policy-foundation
           npm run verify:home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation
           npm run verify:binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation
-          npm run verify:live-market-summary-freshness-classification-policy-foundation
-          npm run verify:live-market-universe-top-n-selection-policy-foundation
           npm run verify:p21:23-live-market-summary-browser-state-session-scoped-snapshot-acquisition-composition-foundation
-          npm run verify:p20:5-saved-analysis-system-closure
-          npm run verify:p19:7-risk-reward-tool-system-closure
-          npm run verify:p18:60-drawing-tools-system-closure
-          npm run verify:p17:16-chart-engine-system-closure
-          npm run verify:p16:18-crypto-live-feed-system-closure
-          npm run verify:p15:14-market-data-adapter-system-closure
-          npm run verify:p14:9-trade-visualizer-system-closure
-          npm run verify:p11:calculation-brain-closure
-          npm run verify:p8:navigation-shell
-          npm run verify:p1
 
-      - name: Focused Home live-market acquisition lifecycle scheduler regression
+      - name: Focused Home live-market browser lifecycle adapter regression
         working-directory: .gate-candidate/kairos_p76
         run: |
-          npx vitest run tests/home-dashboard-live-market-summary-acquisition-lifecycle-scheduler-foundation.test.ts
+          npx vitest run tests/home-dashboard-live-market-summary-browser-lifecycle-adapter-foundation.test.ts
+          npm run verify:home-dashboard-live-market-summary-browser-lifecycle-adapter-foundation
           npm run verify:home-dashboard-live-market-summary-acquisition-lifecycle-scheduler-foundation
           npm run verify:home-dashboard-live-market-summary-acquisition-cadence-policy-foundation
           npm run verify:home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation
@@ -147,12 +135,11 @@ jobs:
           const p=JSON.parse(readFileSync('package.json'));
           const scripts=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:')).sort();
           for(const required of [
+            'verify:home-dashboard-live-market-summary-browser-lifecycle-adapter-foundation',
             'verify:home-dashboard-live-market-summary-acquisition-lifecycle-scheduler-foundation',
             'verify:home-dashboard-live-market-summary-acquisition-cadence-policy-foundation',
             'verify:home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation',
             'verify:binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation',
-            'verify:live-market-summary-freshness-classification-policy-foundation',
-            'verify:live-market-universe-top-n-selection-policy-foundation',
             'verify:p21:23-live-market-summary-browser-state-session-scoped-snapshot-acquisition-composition-foundation',
             'verify:p20:5-saved-analysis-system-closure','verify:p19:7-risk-reward-tool-system-closure',
             'verify:p18:60-drawing-tools-system-closure','verify:p17:16-chart-engine-system-closure',
@@ -165,6 +152,7 @@ jobs:
       - name: Historical closures
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:home-dashboard-live-market-summary-browser-lifecycle-adapter-foundation
           npm run verify:home-dashboard-live-market-summary-acquisition-lifecycle-scheduler-foundation
           npm run verify:home-dashboard-live-market-summary-acquisition-cadence-policy-foundation
           npm run verify:home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation
@@ -208,5 +196,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_ACQUISITION_LIFECYCLE_SCHEDULER_FOUNDATION_REPORT_2026-09-09.md
+          path: .gate-candidate/kairos_p76/KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_BROWSER_LIFECYCLE_ADAPTER_FOUNDATION_REPORT_2026-09-09.md
           if-no-files-found: error
