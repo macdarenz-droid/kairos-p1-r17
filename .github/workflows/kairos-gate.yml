@@ -1,11 +1,11 @@
-# KAIROS HOME DASHBOARD LIVE MARKET SUMMARY BROWSER LIFECYCLE ADAPTER GATE — AUTHORITATIVE BASE GATE 331
+# KAIROS LIVE MARKET UNIVERSE COMPOSITION GATE — AUTHORITATIVE BASE GATE 333
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_BROWSER_LIFECYCLE_ADAPTER_FOUNDATION_CANDIDATE_2026-09-09.zip'
+      - 'KAIROS_LIVE_MARKET_UNIVERSE_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-09.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_ACQUISITION_LIFECYCLE_SCHEDULER_FOUNDATION_CANDIDATE_2026-09-09.zip
-  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_BROWSER_LIFECYCLE_ADAPTER_FOUNDATION_CANDIDATE_2026-09-09.zip
+  BASE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_BROWSER_LIFECYCLE_ADAPTER_FOUNDATION_CANDIDATE_2026-09-09.zip
+  CANDIDATE_ZIP: KAIROS_LIVE_MARKET_UNIVERSE_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-09.zip
 
 jobs:
   verify-current-candidate:
@@ -35,8 +35,8 @@ jobs:
           from pathlib import Path, PurePosixPath
           import hashlib, os, zipfile
           for key, size, digest in [
-            ('BASE_ZIP', 1543568, '21de97abddf1d91eea131e8244b788b0a4a1f96572e48dfc26c124c99670c857'),
-            ('CANDIDATE_ZIP', 1548375, 'b7ee13feed0c54e812b3477af4387c93672a156c171be36b0b3e0081f7e1fddb'),
+            ('BASE_ZIP', 1548375, 'b7ee13feed0c54e812b3477af4387c93672a156c171be36b0b3e0081f7e1fddb'),
+            ('CANDIDATE_ZIP', 1553037, 'f9429aa49a062b4476304e952820788fb509e6f6482c38cd8f662c5ff8b5b042'),
           ]:
             p=Path(os.environ[key]); data=p.read_bytes()
             assert len(data)==size, f'{key}: byte size mismatch'
@@ -50,7 +50,7 @@ jobs:
                 assert ((i.external_attr >> 16) & 0o170000) != 0o120000, f'{key}: unexpected symbolic link'
           PY
 
-      - name: Extract authoritative base and candidate
+      - name: Extract authoritative Gate333 base and candidate
         run: |
           set -euo pipefail
           rm -rf .gate-base .gate-candidate
@@ -60,7 +60,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact controlled Home live-market browser lifecycle adapter scope from Gate 331
+      - name: Confirm exact controlled provider-neutral Live Market Universe composition scope from Gate333
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -71,14 +71,15 @@ jobs:
           y={str(p.relative_to(c)):h(p) for p in c.rglob('*') if p.is_file()}
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           expected={
-            'KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_BROWSER_LIFECYCLE_ADAPTER_FOUNDATION_REPORT_2026-09-09.md',
+            'KAIROS_LIVE_MARKET_UNIVERSE_COMPOSITION_FOUNDATION_REPORT_2026-09-09.md',
             'package.json',
-            'scripts/verify-home-dashboard-live-market-summary-browser-lifecycle-adapter-foundation.mjs',
-            'src/app/homeDashboardLiveMarketSummaryBrowserLifecycleAdapter.ts',
-            'tests/home-dashboard-live-market-summary-browser-lifecycle-adapter-foundation.test.ts',
+            'scripts/verify-live-market-universe-composition-foundation.mjs',
+            'src/services/market-data/index.ts',
+            'src/services/market-data/liveMarketUniverseComposition.ts',
+            'tests/live-market-universe-composition-foundation.test.ts',
           }
           if changed != expected:
-            print('browser lifecycle adapter exact scope mismatch',file=sys.stderr)
+            print('Live Market Universe composition exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             sys.exit(1)
@@ -102,9 +103,13 @@ jobs:
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
 
-      - name: Dedicated Home live-market browser lifecycle adapter verifier/runtime
+      - name: Dedicated Live Market Universe composition verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:live-market-universe-composition-foundation
+          npm run verify:live-market-universe-instrument-eligibility-policy-foundation
+          npm run verify:live-market-universe-quote-volume-ordering-policy-foundation
+          npm run verify:live-market-universe-top-n-selection-policy-foundation
           npm run verify:home-dashboard-live-market-summary-browser-lifecycle-adapter-foundation
           npm run verify:home-dashboard-live-market-summary-acquisition-lifecycle-scheduler-foundation
           npm run verify:home-dashboard-live-market-summary-acquisition-cadence-policy-foundation
@@ -112,16 +117,20 @@ jobs:
           npm run verify:binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation
           npm run verify:p21:23-live-market-summary-browser-state-session-scoped-snapshot-acquisition-composition-foundation
 
-      - name: Focused Home live-market browser lifecycle adapter regression
+      - name: Focused Live Market Universe composition regression
         working-directory: .gate-candidate/kairos_p76
         run: |
-          npx vitest run tests/home-dashboard-live-market-summary-browser-lifecycle-adapter-foundation.test.ts
+          npx vitest run \
+            tests/live-market-universe-composition-foundation.test.ts \
+            tests/live-market-universe-instrument-eligibility-policy-foundation.test.ts \
+            tests/live-market-universe-quote-volume-ordering-policy-foundation.test.ts \
+            tests/live-market-universe-top-n-selection-policy-foundation.test.ts \
+            tests/home-dashboard-live-market-summary-browser-lifecycle-adapter-foundation.test.ts
+          npm run verify:live-market-universe-composition-foundation
+          npm run verify:live-market-universe-instrument-eligibility-policy-foundation
+          npm run verify:live-market-universe-quote-volume-ordering-policy-foundation
+          npm run verify:live-market-universe-top-n-selection-policy-foundation
           npm run verify:home-dashboard-live-market-summary-browser-lifecycle-adapter-foundation
-          npm run verify:home-dashboard-live-market-summary-acquisition-lifecycle-scheduler-foundation
-          npm run verify:home-dashboard-live-market-summary-acquisition-cadence-policy-foundation
-          npm run verify:home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation
-          npm run verify:binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation
-          npm run verify:p21:23-live-market-summary-browser-state-session-scoped-snapshot-acquisition-composition-foundation
 
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
@@ -135,6 +144,10 @@ jobs:
           const p=JSON.parse(readFileSync('package.json'));
           const scripts=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:')).sort();
           for(const required of [
+            'verify:live-market-universe-composition-foundation',
+            'verify:live-market-universe-instrument-eligibility-policy-foundation',
+            'verify:live-market-universe-quote-volume-ordering-policy-foundation',
+            'verify:live-market-universe-top-n-selection-policy-foundation',
             'verify:home-dashboard-live-market-summary-browser-lifecycle-adapter-foundation',
             'verify:home-dashboard-live-market-summary-acquisition-lifecycle-scheduler-foundation',
             'verify:home-dashboard-live-market-summary-acquisition-cadence-policy-foundation',
@@ -152,15 +165,16 @@ jobs:
       - name: Historical closures
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:live-market-universe-composition-foundation
+          npm run verify:live-market-universe-top-n-selection-policy-foundation
+          npm run verify:live-market-universe-quote-volume-ordering-policy-foundation
+          npm run verify:live-market-universe-instrument-eligibility-policy-foundation
           npm run verify:home-dashboard-live-market-summary-browser-lifecycle-adapter-foundation
           npm run verify:home-dashboard-live-market-summary-acquisition-lifecycle-scheduler-foundation
           npm run verify:home-dashboard-live-market-summary-acquisition-cadence-policy-foundation
           npm run verify:home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation
           npm run verify:binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation
           npm run verify:live-market-summary-freshness-classification-policy-foundation
-          npm run verify:live-market-universe-top-n-selection-policy-foundation
-          npm run verify:live-market-universe-quote-volume-ordering-policy-foundation
-          npm run verify:live-market-universe-instrument-eligibility-policy-foundation
           npm run verify:p21:binance-spot-exchange-info-browser-instrument-metadata-acquisition-binding-foundation
           npm run verify:binance-spot-exchange-info-browser-public-rest-connector-foundation
           npm run verify:binance-spot-exchange-info-instrument-metadata-acquisition-adapter-foundation
@@ -196,5 +210,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_BROWSER_LIFECYCLE_ADAPTER_FOUNDATION_REPORT_2026-09-09.md
+          path: .gate-candidate/kairos_p76/KAIROS_LIVE_MARKET_UNIVERSE_COMPOSITION_FOUNDATION_REPORT_2026-09-09.md
           if-no-files-found: error
