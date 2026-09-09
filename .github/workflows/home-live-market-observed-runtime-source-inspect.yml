@@ -1,0 +1,44 @@
+name: Kairos Home Live Market Observed Runtime Source Inspect
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/home-live-market-observed-runtime-source-inspect.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kairos-home-live-market-observed-runtime-source-inspect
+  cancel-in-progress: false
+
+jobs:
+  inspect-gate340-source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Gate340 GOLDEN archive and print exact composition source
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_ZIP=KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_FRESHNESS_OBSERVATION_BRIDGE_FOUNDATION_CANDIDATE_2026-09-09.zip
+          test -f "$BASE_ZIP"
+          test "$(stat -c%s "$BASE_ZIP")" = "1580635"
+          echo "04b95a7cc3103fae230153af07e53fa12fea566f9990c3b090a1c99055f2e117  $BASE_ZIP" | sha256sum -c -
+          WORK="$RUNNER_TEMP/gate340-source"
+          rm -rf "$WORK"
+          mkdir -p "$WORK"
+          unzip -q "$BASE_ZIP" -d "$WORK"
+          ROOT="$WORK/kairos_p76"
+          for f in \
+            src/app/binanceHomeDashboardLiveMarketRuntimeBootstrap.ts \
+            src/application/dashboard/homeDashboardLiveMarketSummaryFreshnessObservationBridge.ts \
+            src/application/dashboard/homeDashboardLiveMarketSummaryBrowserLifecycleAdapter.ts \
+            src/application/dashboard/homeDashboardLiveMarketSummaryAcquisitionLifecycleScheduler.ts; do
+            test -f "$ROOT/$f"
+            echo "===== BEGIN $f ====="
+            cat "$ROOT/$f"
+            echo "===== END $f ====="
+          done
