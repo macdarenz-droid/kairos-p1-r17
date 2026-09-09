@@ -4,19 +4,22 @@ on:
     paths:
       - '.github/workflows/live-market-universe-eligibility-identity-proof.yml'
   workflow_dispatch:
+permissions:
+  contents: write
 jobs:
   prove-candidate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Prove exact candidate identity
+      - name: Prove and persist exact candidate identity
         shell: bash
         run: |
           set -euo pipefail
           FILE='KAIROS_LIVE_MARKET_UNIVERSE_INSTRUMENT_ELIGIBILITY_POLICY_FOUNDATION_CANDIDATE_2026-09-09.zip'
+          PROOF='KAIROS_LIVE_MARKET_UNIVERSE_INSTRUMENT_ELIGIBILITY_POLICY_FOUNDATION_IDENTITY_PROOF_2026-09-09.txt'
           test -f "$FILE"
-          echo "SIZE=$(stat -c%s "$FILE")"
-          echo "SHA256=$(sha256sum "$FILE" | awk '{print $1}')"
+          SIZE="$(stat -c%s "$FILE")"
+          SHA256="$(sha256sum "$FILE" | awk '{print $1}')"
           unzip -t "$FILE"
           python3 - <<'PY'
           import zipfile
@@ -32,6 +35,25 @@ jobs:
                   assert '..' not in n.split('/'), n
                   mode=(info.external_attr >> 16) & 0o170000
                   assert mode != 0o120000, f'symlink: {n}'
-          print('ROOT=kairos_p76/')
-          print('ZIP_PATH_SYMLINK_HYGIENE=PASS')
           PY
+          {
+            echo "FILE=$FILE"
+            echo "SIZE=$SIZE"
+            echo "SHA256=$SHA256"
+            echo "ROOT=kairos_p76/"
+            echo "ZIP_INTEGRITY=PASS"
+            echo "ZIP_PATH_SYMLINK_HYGIENE=PASS"
+            echo "SOURCE_HEAD=${GITHUB_SHA}"
+          } > "$PROOF"
+          cat "$PROOF"
+      - name: Commit proof and remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          PROOF='KAIROS_LIVE_MARKET_UNIVERSE_INSTRUMENT_ELIGIBILITY_POLICY_FOUNDATION_IDENTITY_PROOF_2026-09-09.txt'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "$PROOF"
+          git rm '.github/workflows/live-market-universe-eligibility-identity-proof.yml'
+          git commit -m 'ci: record eligibility candidate identity proof'
+          git push
