@@ -1,0 +1,467 @@
+name: Kairos Live Market Universe Acquisition Orchestration Reconstruction
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/live-market-universe-acquisition-orchestration-reconstruct.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kairos-live-market-universe-acquisition-orchestration-reconstruct
+  cancel-in-progress: false
+
+jobs:
+  reconstruct-and-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Pin npm
+        run: |
+          npm install --global npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+
+      - name: Reconstruct universe acquisition orchestration candidate from Gate334 GOLDEN
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_ZIP=KAIROS_LIVE_MARKET_UNIVERSE_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-09.zip
+          OUT_ZIP=KAIROS_LIVE_MARKET_UNIVERSE_ACQUISITION_ORCHESTRATION_FOUNDATION_CANDIDATE_2026-09-09.zip
+          WORK="$RUNNER_TEMP/universe-acquisition-orchestration-work"
+          BASE="$RUNNER_TEMP/universe-acquisition-orchestration-base"
+          rm -rf "$WORK" "$BASE"
+          mkdir -p "$WORK" "$BASE"
+          test -f "$BASE_ZIP"
+          unzip -q "$BASE_ZIP" -d "$WORK"
+          unzip -q "$BASE_ZIP" -d "$BASE"
+          test -f "$WORK/kairos_p76/package.json"
+          test -f "$BASE/kairos_p76/package.json"
+          cd "$WORK/kairos_p76"
+
+          test -f src/services/market-data/LiveMarketUniverseInstrumentMetadataAcquisitionPort.ts
+          test -f src/services/market-data/liveMarketUniverseInstrumentEligibilityPolicy.ts
+          test -f src/services/market-data/LiveMarketSummaryBaselineAcquisitionPort.ts
+          test -f src/services/market-data/liveMarketUniverseComposition.ts
+          test -f src/services/market-data/index.ts
+
+          cat > src/services/market-data/liveMarketUniverseAcquisitionOrchestration.ts <<'TS'
+          import type {
+            LiveMarketUniverseInstrumentMetadataAcquisitionPort,
+          } from './LiveMarketUniverseInstrumentMetadataAcquisitionPort';
+          import type { LiveMarketSummaryBaselineAcquisitionPort } from './LiveMarketSummaryBaselineAcquisitionPort';
+          import type { MarketDataInstrument } from './marketDataTypes';
+          import {
+            composeLiveMarketUniverse,
+            type LiveMarketUniverseCompositionOptions,
+          } from './liveMarketUniverseComposition';
+          import { isLiveMarketUniverseInstrumentEligible } from './liveMarketUniverseInstrumentEligibilityPolicy';
+
+          export interface LiveMarketUniverseAcquisitionOptions extends LiveMarketUniverseCompositionOptions {
+            readonly signal?: AbortSignal;
+          }
+
+          export type LiveMarketUniverseAcquisitionResult =
+            | { readonly ok: true; readonly instruments: readonly MarketDataInstrument[] }
+            | { readonly ok: false; readonly reason: 'acquisition-failed' };
+
+          /**
+           * Provider-neutral one-shot acquisition orchestration for the Live Market Universe.
+           * Acquisition ports own data acquisition; released policies own eligibility and
+           * final ranking/selection. This owner only sequences those released boundaries.
+           */
+          export async function acquireLiveMarketUniverseOnce(
+            metadataAcquisitionPort: LiveMarketUniverseInstrumentMetadataAcquisitionPort,
+            baselineAcquisitionPort: LiveMarketSummaryBaselineAcquisitionPort,
+            options: LiveMarketUniverseAcquisitionOptions,
+          ): Promise<LiveMarketUniverseAcquisitionResult> {
+            const acquisitionOptions = options.signal === undefined ? undefined : { signal: options.signal };
+            const metadataResult = acquisitionOptions === undefined
+              ? await metadataAcquisitionPort.acquireInstrumentMetadata()
+              : await metadataAcquisitionPort.acquireInstrumentMetadata(acquisitionOptions);
+
+            if (!metadataResult.ok) return { ok: false, reason: 'acquisition-failed' };
+
+            const eligibleScope = metadataResult.facts
+              .filter((fact) => isLiveMarketUniverseInstrumentEligible(fact, options))
+              .map((fact) => fact.instrument);
+
+            if (eligibleScope.length === 0) return { ok: true, instruments: [] };
+
+            const baselineResult = acquisitionOptions === undefined
+              ? await baselineAcquisitionPort.acquireBaseline(eligibleScope)
+              : await baselineAcquisitionPort.acquireBaseline(eligibleScope, acquisitionOptions);
+
+            if (!baselineResult.ok) return { ok: false, reason: 'acquisition-failed' };
+
+            return {
+              ok: true,
+              instruments: composeLiveMarketUniverse(
+                metadataResult.facts,
+                baselineResult.delivery.facts,
+                options,
+              ),
+            };
+          }
+          TS
+
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          p=Path('src/services/market-data/index.ts')
+          s=p.read_text()
+          anchor="export * from './liveMarketUniverseComposition';\n"
+          line="export * from './liveMarketUniverseAcquisitionOrchestration';\n"
+          assert anchor in s, 'Gate334 universe composition export boundary missing'
+          assert line not in s, 'unexpected pre-existing universe acquisition orchestration export'
+          p.write_text(s.replace(anchor, anchor+line, 1))
+
+          p=Path('package.json')
+          d=json.loads(p.read_text())
+          key='verify:live-market-universe-acquisition-orchestration-foundation'
+          assert key not in d['scripts'], 'unexpected pre-existing universe acquisition orchestration verifier'
+          scripts={}
+          inserted=False
+          for k,v in d['scripts'].items():
+              scripts[k]=v
+              if k=='verify:live-market-universe-composition-foundation':
+                  scripts[key]='node scripts/verify-live-market-universe-acquisition-orchestration-foundation.mjs'
+                  inserted=True
+          assert inserted, 'Gate334 universe composition verifier registration boundary missing'
+          d['scripts']=scripts
+          p.write_text(json.dumps(d, indent=2)+'\n')
+          PY
+
+          cat > tests/live-market-universe-acquisition-orchestration-foundation.test.ts <<'TS'
+          import { describe, expect, it, vi } from 'vitest';
+          import { parseDecimalString, type DecimalString } from '../src/domain/trades';
+          import {
+            acquireLiveMarketUniverseOnce,
+            type LiveMarketSummaryBaselineAcquisitionPort,
+            type LiveMarketSummaryFact,
+            type LiveMarketUniverseInstrumentMetadataAcquisitionPort,
+            type LiveMarketUniverseInstrumentMetadataFact,
+            type MarketDataInstrument,
+          } from '../src/services/market-data';
+
+          function decimal(value: string): DecimalString {
+            const parsed = parseDecimalString(value);
+            if (!parsed.ok) throw new Error(`bad DecimalString fixture: ${value}`);
+            return parsed.value;
+          }
+
+          function metadata(
+            symbol: string,
+            baseAsset: string,
+            options: { venue?: string; quoteAsset?: string; tradingEnabled?: boolean } = {},
+          ): LiveMarketUniverseInstrumentMetadataFact {
+            return {
+              instrument: { venue: options.venue ?? 'binance-spot', symbol },
+              baseAsset,
+              quoteAsset: options.quoteAsset ?? 'USDT',
+              tradingEnabled: options.tradingEnabled ?? true,
+            };
+          }
+
+          function summary(instrument: MarketDataInstrument, quoteVolume24h: string): LiveMarketSummaryFact {
+            return {
+              instrument,
+              lastPrice: decimal('1'),
+              open24h: decimal('1'),
+              high24h: decimal('1'),
+              low24h: decimal('1'),
+              baseVolume24h: decimal('1'),
+              quoteVolume24h: decimal(quoteVolume24h),
+              observedAt: '2026-09-09T00:00:00.000Z',
+              sourceTimestamp: null,
+            };
+          }
+
+          function baselineSuccess(
+            scope: readonly MarketDataInstrument[],
+            facts: readonly LiveMarketSummaryFact[],
+          ) {
+            return {
+              ok: true as const,
+              delivery: { completeness: 'complete-for-scope' as const, scope, facts },
+            };
+          }
+
+          describe('Live Market Universe one-shot provider-neutral acquisition orchestration', () => {
+            it('sequences metadata -> released eligibility scope -> baseline -> Gate334 composition with caller signal', async () => {
+              const signal = new AbortController().signal;
+              const metadataFacts = [
+                metadata('ETHUSDT', 'ETH'),
+                metadata('BTCUSDT', 'BTC'),
+                metadata('USDCUSDT', 'USDC'),
+                metadata('SOLUSDT', 'SOL', { tradingEnabled: false }),
+                metadata('DOGEFDUSD', 'DOGE', { quoteAsset: 'FDUSD' }),
+              ];
+              const metadataAcquire = vi.fn(async () => ({ ok: true as const, facts: metadataFacts }));
+              const metadataPort: LiveMarketUniverseInstrumentMetadataAcquisitionPort = {
+                acquireInstrumentMetadata: metadataAcquire,
+              };
+              const baselineAcquire = vi.fn(async (scope: readonly MarketDataInstrument[]) => baselineSuccess(scope, [
+                summary({ venue: 'binance-spot', symbol: 'ETHUSDT' }, '200'),
+                summary({ venue: 'binance-spot', symbol: 'BTCUSDT' }, '200'),
+              ]));
+              const baselinePort: LiveMarketSummaryBaselineAcquisitionPort = { acquireBaseline: baselineAcquire };
+
+              await expect(acquireLiveMarketUniverseOnce(metadataPort, baselinePort, {
+                excludedStablecoinBaseAssets: new Set(['USDC']),
+                topNCount: 1,
+                signal,
+              })).resolves.toEqual({
+                ok: true,
+                instruments: [{ venue: 'binance-spot', symbol: 'BTCUSDT' }],
+              });
+
+              expect(metadataAcquire).toHaveBeenCalledTimes(1);
+              expect(metadataAcquire).toHaveBeenCalledWith({ signal });
+              expect(baselineAcquire).toHaveBeenCalledTimes(1);
+              expect(baselineAcquire).toHaveBeenCalledWith([
+                { venue: 'binance-spot', symbol: 'ETHUSDT' },
+                { venue: 'binance-spot', symbol: 'BTCUSDT' },
+              ], { signal });
+            });
+
+            it('does not call baseline acquisition when metadata acquisition fails', async () => {
+              const metadataPort: LiveMarketUniverseInstrumentMetadataAcquisitionPort = {
+                async acquireInstrumentMetadata() { return { ok: false, reason: 'acquisition-failed' }; },
+              };
+              const baselineAcquire = vi.fn(async () => { throw new Error('must not run'); });
+              const baselinePort: LiveMarketSummaryBaselineAcquisitionPort = { acquireBaseline: baselineAcquire };
+
+              await expect(acquireLiveMarketUniverseOnce(metadataPort, baselinePort, {
+                excludedStablecoinBaseAssets: new Set(),
+              })).resolves.toEqual({ ok: false, reason: 'acquisition-failed' });
+              expect(baselineAcquire).not.toHaveBeenCalled();
+            });
+
+            it('does not issue an invalid empty-scope baseline request when no metadata fact is eligible', async () => {
+              const metadataAcquire = vi.fn(async () => ({
+                ok: true as const,
+                facts: [metadata('BTCUSDT', 'BTC', { tradingEnabled: false })],
+              }));
+              const metadataPort: LiveMarketUniverseInstrumentMetadataAcquisitionPort = {
+                acquireInstrumentMetadata: metadataAcquire,
+              };
+              const baselineAcquire = vi.fn(async () => { throw new Error('must not run'); });
+              const baselinePort: LiveMarketSummaryBaselineAcquisitionPort = { acquireBaseline: baselineAcquire };
+
+              await expect(acquireLiveMarketUniverseOnce(metadataPort, baselinePort, {
+                excludedStablecoinBaseAssets: new Set(),
+              })).resolves.toEqual({ ok: true, instruments: [] });
+              expect(metadataAcquire).toHaveBeenCalledWith();
+              expect(baselineAcquire).not.toHaveBeenCalled();
+            });
+
+            it('returns acquisition failure when the explicit-scope baseline acquisition fails', async () => {
+              const btc = metadata('BTCUSDT', 'BTC');
+              const metadataPort: LiveMarketUniverseInstrumentMetadataAcquisitionPort = {
+                async acquireInstrumentMetadata() { return { ok: true, facts: [btc] }; },
+              };
+              const baselinePort: LiveMarketSummaryBaselineAcquisitionPort = {
+                async acquireBaseline() { return { ok: false, reason: 'acquisition-failed' }; },
+              };
+
+              await expect(acquireLiveMarketUniverseOnce(metadataPort, baselinePort, {
+                excludedStablecoinBaseAssets: new Set(),
+              })).resolves.toEqual({ ok: false, reason: 'acquisition-failed' });
+            });
+          });
+          TS
+
+          cat > scripts/verify-live-market-universe-acquisition-orchestration-foundation.mjs <<'JS'
+          import { readFileSync } from 'node:fs';
+          const source = readFileSync(new URL('../src/services/market-data/liveMarketUniverseAcquisitionOrchestration.ts', import.meta.url), 'utf8');
+          const index = readFileSync(new URL('../src/services/market-data/index.ts', import.meta.url), 'utf8');
+          const report = readFileSync(new URL('../KAIROS_LIVE_MARKET_UNIVERSE_ACQUISITION_ORCHESTRATION_FOUNDATION_REPORT_2026-09-09.md', import.meta.url), 'utf8');
+
+          for (const token of [
+            'LiveMarketUniverseInstrumentMetadataAcquisitionPort',
+            'LiveMarketSummaryBaselineAcquisitionPort',
+            'extends LiveMarketUniverseCompositionOptions',
+            'metadataAcquisitionPort.acquireInstrumentMetadata',
+            'isLiveMarketUniverseInstrumentEligible(fact, options)',
+            'baselineAcquisitionPort.acquireBaseline(eligibleScope',
+            'composeLiveMarketUniverse(',
+            "if (eligibleScope.length === 0) return { ok: true, instruments: [] }",
+            "return { ok: false, reason: 'acquisition-failed' }",
+          ]) if (!source.includes(token)) throw new Error(`universe acquisition orchestration evidence missing: ${token}`);
+
+          if (!index.includes("export * from './liveMarketUniverseAcquisitionOrchestration';")) {
+            throw new Error('universe acquisition orchestration public export missing');
+          }
+
+          for (const forbidden of [
+            "quoteAsset === 'USDT'", 'tradingEnabled', 'quoteVolume24h', '.sort(', '.slice(',
+            'DEFAULT_LIVE_MARKET_UNIVERSE_TOP_N_COUNT', '= 30', 'fetch(', 'XMLHttpRequest',
+            'WebSocket(', 'JSON.parse(', 'setInterval(', 'setTimeout(', 'Date.now(', 'new Date(',
+            'indexedDB', 'createChart(', 'React', 'useEffect', 'bubbleSize', 'marketCap', 'retry',
+          ]) if (source.includes(forbidden)) throw new Error(`universe acquisition orchestration duplicated/broadened ownership: ${forbidden}`);
+
+          for (const token of [
+            'provider-neutral one-shot Live Market Universe acquisition orchestration',
+            'metadata acquisition',
+            'released eligibility policy',
+            'exact eligible acquisition scope',
+            'baseline acquisition',
+            'Gate334 composition',
+            'empty eligible scope',
+            'No provider choice or request/transport/decode/mapping',
+            'No freshness/cadence/lifecycle',
+            'No React/Home/Bubble presentation',
+          ]) if (!report.includes(token)) throw new Error(`universe acquisition orchestration report evidence missing: ${token}`);
+
+          console.log('Live Market Universe acquisition orchestration verification passed.');
+          JS
+
+          cat > KAIROS_LIVE_MARKET_UNIVERSE_ACQUISITION_ORCHESTRATION_FOUNDATION_REPORT_2026-09-09.md <<'MD'
+          # KAIROS Live Market Universe Acquisition Orchestration Foundation
+
+          Base: exact canonical Gate #334 GOLDEN Live Market Universe composition candidate.
+
+          This slice owns one provider-neutral one-shot Live Market Universe acquisition orchestration responsibility only. It composes the released provider-neutral instrument metadata acquisition port, released eligibility policy, released provider-neutral 24h baseline acquisition port, and released Gate334 composition owner.
+
+          The orchestration performs exactly one metadata acquisition. On authoritative metadata success it delegates eligibility to the released policy and passes the resulting instrument values, in their surviving metadata order, as the exact eligible acquisition scope to one baseline acquisition. It forwards the same optional caller-owned AbortSignal to both acquisition ports without becoming a cancellation-policy owner. On baseline success it delegates authoritative metadata facts plus the returned authoritative summary facts to Gate334 composition, which continues to own identity association, quote-volume ordering, symbol tie-break, and Top-N selection. Both released acquisition-port failure shapes remain the single existing `acquisition-failed` result; no new provider error taxonomy is invented.
+
+          An empty eligible scope returns an authoritative empty selected scope without calling the baseline port. This is dependency orchestration, not universe policy: the released Binance 24h request descriptor rejects empty scope, and no summary acquisition is required when eligibility produced no instruments.
+
+          Explicit non-scope: No provider choice or request/transport/decode/mapping. No browser connector/fetch binding changes. No observedAt or freshness policy. No freshness/cadence/lifecycle, visibility, timers, polling, retry, scheduling, or new cancellation policy. No persistence or IndexedDB. No React/Home/Bubble presentation, geometry, size/color, interaction, navigation, chart, or transitions. No Your Trades, journal, Calculation Brain, Risk/Reward, or Saved Analysis truth. No new stablecoin exclusion, quote-volume ordering, tie-break, or Top-N policy.
+          MD
+
+          UNIVERSE_ACQ_BASE="$BASE/kairos_p76" python - <<'PY'
+          from pathlib import Path
+          import os
+          A=Path(os.environ['UNIVERSE_ACQ_BASE']); B=Path('.')
+          changed=[]
+          paths=set(x.relative_to(A) for x in A.rglob('*') if x.is_file()) | set(x.relative_to(B) for x in B.rglob('*') if x.is_file())
+          for p in paths:
+              a=A/p; b=B/p
+              if not a.exists() or not b.exists() or a.read_bytes()!=b.read_bytes(): changed.append(str(p))
+          expected=sorted([
+              'KAIROS_LIVE_MARKET_UNIVERSE_ACQUISITION_ORCHESTRATION_FOUNDATION_REPORT_2026-09-09.md',
+              'package.json',
+              'scripts/verify-live-market-universe-acquisition-orchestration-foundation.mjs',
+              'src/services/market-data/index.ts',
+              'src/services/market-data/liveMarketUniverseAcquisitionOrchestration.ts',
+              'tests/live-market-universe-acquisition-orchestration-foundation.test.ts',
+          ])
+          assert sorted(changed)==expected,(sorted(changed),expected)
+          print('exact six-file universe acquisition orchestration scope PASS')
+          PY
+
+      - name: Install candidate deterministically
+        working-directory: ${{ runner.temp }}/universe-acquisition-orchestration-work/kairos_p76
+        run: npm ci
+
+      - name: Verify exact pinned dependency
+        working-directory: ${{ runner.temp }}/universe-acquisition-orchestration-work/kairos_p76
+        run: |
+          test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
+          npm ls lightweight-charts --depth=0
+
+      - name: Dedicated universe acquisition orchestration verification
+        working-directory: ${{ runner.temp }}/universe-acquisition-orchestration-work/kairos_p76
+        run: |
+          npm run verify:live-market-universe-acquisition-orchestration-foundation
+          npm run verify:live-market-universe-instrument-metadata-acquisition-port-contract-foundation
+          npm run verify:live-market-universe-instrument-eligibility-policy-foundation
+          npm run verify:p21:4-live-market-summary-baseline-acquisition-port-foundation
+          npm run verify:live-market-universe-composition-foundation
+          npm run verify:p21:7-binance-spot-24h-public-rest-baseline-request-descriptor-foundation
+
+      - name: Focused universe acquisition orchestration regressions
+        working-directory: ${{ runner.temp }}/universe-acquisition-orchestration-work/kairos_p76
+        run: |
+          npx vitest run \
+            tests/live-market-universe-acquisition-orchestration-foundation.test.ts \
+            tests/live-market-universe-instrument-metadata-acquisition-port-contract-foundation.test.ts \
+            tests/live-market-universe-instrument-eligibility-policy-foundation.test.ts \
+            tests/live-market-summary-baseline-acquisition-port-foundation.test.ts \
+            tests/live-market-universe-composition-foundation.test.ts \
+            tests/binance-spot-24h-public-rest-baseline-request.test.ts
+
+      - name: Production TypeScript compilation
+        working-directory: ${{ runner.temp }}/universe-acquisition-orchestration-work/kairos_p76
+        run: npm run typecheck
+
+      - name: Production build
+        working-directory: ${{ runner.temp }}/universe-acquisition-orchestration-work/kairos_p76
+        run: npm run build
+
+      - name: Full unit regression
+        working-directory: ${{ runner.temp }}/universe-acquisition-orchestration-work/kairos_p76
+        run: npm test -- --run
+
+      - name: Full registered verifier regression
+        working-directory: ${{ runner.temp }}/universe-acquisition-orchestration-work/kairos_p76
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const p=require('./package.json');
+          const {spawnSync}=require('node:child_process');
+          for(const [k,v] of Object.entries(p.scripts).filter(([k])=>k.startsWith('verify:'))){
+            const r=spawnSync(v,{shell:true,stdio:'inherit'});
+            if(r.status!==0) process.exit(r.status||1);
+          }
+          NODE
+
+      - name: Package clean candidate and prove integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="$RUNNER_TEMP/universe-acquisition-orchestration-work/kairos_p76"
+          rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite"
+          find "$ROOT" -name '*.tsbuildinfo' -delete
+          test -z "$(find "$ROOT" -type d \( -name node_modules -o -name dist -o -name coverage -o -name .vite \) -print -quit)"
+          cd "$RUNNER_TEMP/universe-acquisition-orchestration-work"
+          OUT="$GITHUB_WORKSPACE/KAIROS_LIVE_MARKET_UNIVERSE_ACQUISITION_ORCHESTRATION_FOUNDATION_CANDIDATE_2026-09-09.zip"
+          zip -qr "$OUT" kairos_p76
+          unzip -tq "$OUT"
+          OUT="$OUT" python - <<'PY'
+          from pathlib import Path, PurePosixPath
+          import hashlib, os, zipfile
+          p=Path(os.environ['OUT']); data=p.read_bytes()
+          with zipfile.ZipFile(p) as z:
+              assert z.testzip() is None
+              assert {i.filename.split('/')[0] for i in z.infolist()} == {'kairos_p76'}
+              for i in z.infolist():
+                  parts=PurePosixPath(i.filename)
+                  assert not parts.is_absolute() and '..' not in parts.parts
+                  assert ((i.external_attr >> 16) & 0o170000) != 0o120000
+          print(f'candidate-size={len(data)}')
+          print(f'candidate-sha256={hashlib.sha256(data).hexdigest()}')
+          PY
+
+      - name: Upload non-canonical candidate artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KAIROS_LIVE_MARKET_UNIVERSE_ACQUISITION_ORCHESTRATION_CANDIDATE_NONCANONICAL
+          path: KAIROS_LIVE_MARKET_UNIVERSE_ACQUISITION_ORCHESTRATION_FOUNDATION_CANDIDATE_2026-09-09.zip
+          if-no-files-found: error
+
+      - name: Place verified universe acquisition orchestration candidate at repository root
+        shell: bash
+        run: |
+          set -euo pipefail
+          CANDIDATE=KAIROS_LIVE_MARKET_UNIVERSE_ACQUISITION_ORCHESTRATION_FOUNDATION_CANDIDATE_2026-09-09.zip
+          test -f "$CANDIDATE"
+          unzip -tq "$CANDIDATE"
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$CANDIDATE"
+          test "$(git diff --cached --name-only | wc -l)" -eq 1
+          test "$(git diff --cached --name-only)" = "$CANDIDATE"
+          git commit -m "candidate: place verified live market universe acquisition orchestration"
+          git push origin HEAD:main
