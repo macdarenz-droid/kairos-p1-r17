@@ -112,14 +112,12 @@ jobs:
 
           const originalFetch = globalThis.fetch;
           const observedAt = '2026-09-09T17:00:00.000Z';
-
           const exchangeInfoPayload = JSON.stringify({ symbols: [
             { symbol: 'BTCUSDT', status: 'TRADING', baseAsset: 'BTC', quoteAsset: 'USDT' },
             { symbol: 'USDCUSDT', status: 'TRADING', baseAsset: 'USDC', quoteAsset: 'USDT' },
             { symbol: 'SOLUSDT', status: 'BREAK', baseAsset: 'SOL', quoteAsset: 'USDT' },
             { symbol: 'ETHFDUSD', status: 'TRADING', baseAsset: 'ETH', quoteAsset: 'FDUSD' },
           ] });
-
           const btc24hPayload = JSON.stringify({
             symbol: 'BTCUSDT', openPrice: '62000', highPrice: '65000', lowPrice: '61000',
             lastPrice: '64000', volume: '1234', quoteVolume: '78000000', closeTime: 1770000000000,
@@ -148,7 +146,6 @@ jobs:
                 ok: true,
                 instruments: [{ venue: 'binance-spot', symbol: 'BTCUSDT' }],
               });
-
               expect(fetchMock).toHaveBeenCalledTimes(2);
               expect(readObservedAt).toHaveBeenCalledTimes(1);
             });
@@ -171,7 +168,6 @@ jobs:
                 excludedStablecoinBaseAssets: new Set(),
                 signal: controller.signal,
               })).resolves.toMatchObject({ ok: true });
-
               expect(capturedSignals).toEqual([controller.signal, controller.signal]);
             });
 
@@ -186,22 +182,21 @@ jobs:
               await expect(acquireBinanceSpotBrowserLiveMarketUniverseOnce(readObservedAt, {
                 excludedStablecoinBaseAssets: new Set(),
               })).resolves.toEqual({ ok: false, reason: 'acquisition-failed' });
-
               expect(fetchMock).toHaveBeenCalledTimes(1);
               expect(readObservedAt).not.toHaveBeenCalled();
             });
 
             it('preserves Gate335 empty eligible-scope short circuit without baseline request or observation time', async () => {
-              globalThis.fetch = vi.fn(async () => ({ text: async () => JSON.stringify({ symbols: [
+              const fetchMock = vi.fn(async () => ({ text: async () => JSON.stringify({ symbols: [
                 { symbol: 'USDCUSDT', status: 'TRADING', baseAsset: 'USDC', quoteAsset: 'USDT' },
-              ] }) })) as unknown as typeof fetch;
+              ] }) }));
+              globalThis.fetch = fetchMock as unknown as typeof fetch;
               const readObservedAt = vi.fn(() => observedAt);
 
               await expect(acquireBinanceSpotBrowserLiveMarketUniverseOnce(readObservedAt, {
                 excludedStablecoinBaseAssets: new Set(['USDC']),
               })).resolves.toEqual({ ok: true, instruments: [] });
-
-              expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+              expect(fetchMock).toHaveBeenCalledTimes(1);
               expect(readObservedAt).not.toHaveBeenCalled();
             });
 
@@ -272,9 +267,9 @@ jobs:
 
           Base: exact canonical Gate #335 GOLDEN Live Market Universe acquisition-orchestration candidate.
 
-          This slice owns one Binance Spot browser Live Market Universe acquisition binding responsibility only. It composes the already-released browser-ready metadata acquisition port from the Binance Spot exchangeInfo chain, the already-released browser-ready 24h baseline acquisition port, and Gate335 one-shot provider-neutral orchestration.
+          This slice owns one Binance Spot browser Live Market Universe acquisition binding responsibility only. It composes the already-released browser-ready metadata acquisition port from the Binance Spot exchangeInfo chain, the already-released browser-ready baseline acquisition port from the Binance Spot 24h chain, and Gate335 one-shot provider-neutral orchestration.
 
-          The binding creates the two released concrete Binance browser ports and delegates them unchanged to `acquireLiveMarketUniverseOnce(...)`. The caller-owned `readObservedAt` source is passed only to the released baseline browser binding. Caller-owned Gate335 options, including the optional AbortSignal, stablecoin-exclusion configuration and optional Top-N count, are passed unchanged to Gate335. The returned Gate335 result is returned unchanged.
+          The binding creates the two released concrete Binance browser ports and delegates them unchanged to `acquireLiveMarketUniverseOnce(...)`. The caller-owned readObservedAt source and caller-owned options and AbortSignal remain upstream inputs. `readObservedAt` is passed only to the released baseline browser binding. Gate335 options, including stablecoin-exclusion configuration and optional Top-N count, are passed unchanged to Gate335. The returned Gate335 result is returned unchanged.
 
           Ownership constraints:
           - No universe-policy duplication: active/exact-USDT/stablecoin eligibility, quote-volume ordering, symbol tie-break and Top-N remain released policy/composition owners.
