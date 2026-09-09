@@ -37,7 +37,8 @@ The repaired deterministic helper chain:
 - workflow: `Kairos Home Dashboard Live Market Summary Freshness Observation Bridge Reconstruction`
 - run `34407611376`
 - job `102654251073`
-- helper head `d492c30a8e92f4ea44ecf3a77e87353035473264`
+- exact helper head `e253965194de8d68a2f581c8d0e9cc4b350b1e95`
+- display title `helper: repair Home freshness observation bridge reconstruction cwd`
 - conclusion: FULL SUCCESS
 
 The repaired helper passed exact Gate338 GOLDEN reconstruction and archive identity/integrity, exact five-file controlled scope, deterministic install, Node `22.16.0`, npm `10.9.2`, Lightweight Charts `5.2.1`, dedicated bridge and lower-owner verification, production TypeScript/build, focused bridge regressions, full unit regression, all registered `verify:*` controlled-roadmap regressions, clean packaging/integrity, candidate artifact upload, and repository-root byte placement.
@@ -49,11 +50,11 @@ Exact normalized Gate338 -> candidate delta is five files only:
 4. `src/application/dashboard/homeDashboardLiveMarketSummaryFreshnessObservationBridge.ts`
 5. `tests/home-dashboard-live-market-summary-freshness-observation-bridge-foundation.test.ts`
 
-Exact tested candidate:
+Exact tested candidate, corrected from exact repaired-helper job logs and repository-root identity proof:
 - `KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_FRESHNESS_OBSERVATION_BRIDGE_FOUNDATION_CANDIDATE_2026-09-09.zip`
-- size `1580429`
-- SHA256 `54817be38d1494afa670f0bcf9cf43050450aa5195593986a4d02355d6c3ca24`
-- repository Git blob `87f629fcfd0e2b8dc67b80a8ed5f4c514c9a53bd`
+- size `1580635`
+- SHA256 `b8aeb0fe9e57b6a2ae6264b6bc2287768271485971725109723f464f0a5ee76e`
+- repository Git blob `30dec5d4abb12d2c94eec3df85eaf88cad582c55`
 
 Exact helper artifact:
 - `KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_FRESHNESS_OBSERVATION_BRIDGE_CANDIDATE`
@@ -61,10 +62,12 @@ Exact helper artifact:
 - wrapper size `1357828`
 - wrapper digest `sha256:6b25ef8bd2ba277f526468344a10e63ea6f02120f3197f2e02c5ae52d3218229`
 
-Repository-root placement is byte-identical to the tested nested candidate. Fresh main after helper placement is commit `3aee68f48499fea3576b5944b8a7c8d096523c4d` (`helper: place tested Home freshness observation bridge candidate`).
+Repository-root placement is byte-identical to the tested nested candidate. Exact repaired-helper logs prove the successful root placement commit is `084f8a266ff17d5510c453283a8c8598f83704f4` (`candidate: add Home freshness observation bridge`), with the same size `1580635`, SHA256 `b8aeb0fe9e57b6a2ae6264b6bc2287768271485971725109723f464f0a5ee76e`, and Git blob `30dec5d4abb12d2c94eec3df85eaf88cad582c55`.
+
+Correction note: the earlier textual values `1580429` / `54817be38d1494afa670f0bcf9cf43050450aa5195593986a4d02355d6c3ca24` / `87f629fcfd0e2b8dc67b80a8ed5f4c514c9a53bd`, helper head `d492c30a...`, and claimed placement commit `3aee68f...` were stale process-history evidence and are superseded by the exact repaired-helper run/job logs plus fresh repository-root identity evidence above. Canonical authority was never affected because this helper remained non-canonical.
 
 ## Canonical status / next exact action
 
-The helper is NON-CANONICAL supporting evidence only. Gate338 remains GOLDEN. No newer canonical gate was active when this record was written.
+The helper is NON-CANONICAL supporting evidence only. Gate338 remains GOLDEN. Fresh main is `084f8a266ff17d5510c453283a8c8598f83704f4`, and no canonical workflow is queued or in progress at this correction checkpoint.
 
 Next exact controlled action: re-prove fresh main/Actions and exact Gate338 authority, verify the execution lease, then retarget only `.github/workflows/kairos-gate.yml` to verify the exact tested Home freshness-observation bridge candidate above against the exact Gate338 base, preserving the canonical pinned toolchain, exact five-file scope, dedicated/lower-owner verification, focused regressions, full unit suite, all registered controlled-roadmap verifiers, historical closures, and exact-run `KAIROS_CURRENT_CANDIDATE` + `KAIROS_GATE_EVIDENCE` uploads. Until that canonical run FULL PASSES, Gate338 remains GOLDEN.
