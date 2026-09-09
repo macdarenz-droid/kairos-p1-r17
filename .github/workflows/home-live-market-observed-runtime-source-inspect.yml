@@ -7,7 +7,7 @@ on:
       - '.github/workflows/home-live-market-observed-runtime-source-inspect.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: kairos-home-live-market-observed-runtime-source-inspect
@@ -19,7 +19,9 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - name: Verify Gate340 GOLDEN archive and print exact composition source
+        with:
+          fetch-depth: 0
+      - name: Verify Gate340 GOLDEN and materialize exact composition source report
         shell: bash
         run: |
           set -euo pipefail
@@ -32,13 +34,29 @@ jobs:
           mkdir -p "$WORK"
           unzip -q "$BASE_ZIP" -d "$WORK"
           ROOT="$WORK/kairos_p76"
-          for f in \
-            src/app/binanceHomeDashboardLiveMarketRuntimeBootstrap.ts \
-            src/application/dashboard/homeDashboardLiveMarketSummaryFreshnessObservationBridge.ts \
-            src/application/dashboard/homeDashboardLiveMarketSummaryBrowserLifecycleAdapter.ts \
-            src/application/dashboard/homeDashboardLiveMarketSummaryAcquisitionLifecycleScheduler.ts; do
-            test -f "$ROOT/$f"
-            echo "===== BEGIN $f ====="
-            cat "$ROOT/$f"
-            echo "===== END $f ====="
+          test -d "$ROOT/src"
+          REPORT="$GITHUB_WORKSPACE/docs/KAIROS_TEMP_OBSERVED_RUNTIME_SOURCE_INSPECTION.txt"
+          : > "$REPORT"
+          for needle in \
+            startBinanceHomeDashboardLiveMarketRuntime \
+            createHomeDashboardLiveMarketSummaryFreshnessObservationObserver \
+            createHomeDashboardLiveMarketSummaryBrowserLifecycleAdapter \
+            createHomeDashboardLiveMarketSummaryAcquisitionLifecycleScheduler; do
+            mapfile -t matches < <(grep -RIl --include='*.ts' --include='*.tsx' "$needle" "$ROOT/src" | sort -u)
+            if [ "${#matches[@]}" -eq 0 ]; then
+              printf 'MISSING SYMBOL: %s\n' "$needle" >> "$REPORT"
+              continue
+            fi
+            for f in "${matches[@]}"; do
+              rel="${f#"$ROOT/"}"
+              printf '\n===== BEGIN %s =====\n' "$rel" >> "$REPORT"
+              cat "$f" >> "$REPORT"
+              printf '\n===== END %s =====\n' "$rel" >> "$REPORT"
+            done
           done
+          test -s "$REPORT"
+          git config user.name 'kairos-autonomous-worker'
+          git config user.email 'kairos-autonomous-worker@users.noreply.github.com'
+          git add docs/KAIROS_TEMP_OBSERVED_RUNTIME_SOURCE_INSPECTION.txt
+          git commit -m 'helper: record exact Gate340 observed-runtime source'
+          git push origin HEAD:main
