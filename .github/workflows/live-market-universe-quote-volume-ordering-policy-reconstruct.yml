@@ -1,0 +1,151 @@
+name: Kairos Live Market Universe Quote Volume Ordering Reconstruction
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/live-market-universe-quote-volume-ordering-policy-reconstruct.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kairos-live-market-universe-quote-volume-ordering-policy-reconstruct
+  cancel-in-progress: false
+
+jobs:
+  reconstruct-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Pin npm
+        run: npm install --global npm@10.9.2
+      - name: Reconstruct exact ordering candidate from Gate326 GOLDEN
+        shell: bash
+        env:
+          PAYLOAD_JSON: '{"KAIROS_LIVE_MARKET_UNIVERSE_QUOTE_VOLUME_ORDERING_POLICY_FOUNDATION_REPORT_2026-09-09.md": "IyBLYWlyb3MgUDE5IGxpdmUgbWFya2V0IHVuaXZlcnNlIHF1b3RlLXZvbHVtZSBvcmRlcmluZyBwb2xpY3kgZm91bmRhdGlvbiB2ZXJpZmljYXRpb24gcmVwb3J0CgojIyBBdXRob3JpdHkKLSBCYXNlOiBjYW5vbmljYWwgR2F0ZSAzMjYgR09MREVOLiAKLSBBdXRob3JpdGF0aXZlIHZvbHVtZSBpbnB1dDogcHJvdmlkZXItbmV1dHJhbCBgTGl2ZU1hcmtldFN1bW1hcnlGYWN0LnF1b3RlVm9sdW1lMjRoYC4KLSBFbGlnaWJpbGl0eSBpcyBjYWxsZXItb3duZWQgYW5kIGNvbXBsZXRlIGJlZm9yZSB0aGlzIHBvbGljeSBydW5zLgoK## Responsibility
+This foundation owns deterministic ordering for an already-eligible Live Crypto universe only:
+- descending exact 24h `quoteVolume24h`
+- equal-volume tie-break by instrument symbol ordering
+- return a sorted copy without mutating caller-owned input order
+
+Exact decimal comparison routes through the released Decimal calculation kernel.
+
+## Explicit non-scope
+- no instrument eligibility, USDT filtering, or stablecoin exclusion
+- no provider response mapping or request execution
+- no Top-N / Top-30 selection or count ownership
+- no acquisition cadence or freshness
+- no state or persistence
+- no Home/Bubble UI, sizing, color, navigation, chart, or transitions
+
+## Verification
+- dedicated static ordering verifier
+- focused exact-decimal descending-order test
+- focused equal-volume symbol tie-break test
+- focused caller-order immutability test
+- typecheck / production build / full unit regression / registered verifier regression required before candidate acceptance
+", "scripts/verify-live-market-universe-quote-volume-ordering-policy-foundation.mjs": "aW1wb3J0IHsgcmVhZEZpbGVT>8J+RkQ==", "src/services/market-data/liveMarketUniverseQuoteVolumeOrderingPolicy.ts": "aW1wb3J0IHsgZGVjaW1hbFN1YnRyYWN0IH0gZnJvbSAnLi4vLi4vZG9tYWluL2NhbGN1bGF0aW9ucyc7CmltcG9ydCB0eXBlIHsgTGl2ZU1hcmtldFN1bW1hcnlGYWN0IH0gZnJvbSAnLi9tYXJrZXREYXRhVHlwZXMnOwoKZnVuY3Rpb24gY29tcGFyZUluc3RydW1lbnRTeW1ib2xzKGxlZnQ6IHN0cmluZywgcmlnaHQ6IHN0cmluZyk6IG51bWJlciB7CiAgaWYgKGxlZnQgPCByaWdodCkgcmV0dXJuIC0xOwogIGlmIChsZWZ0ID4gcmlnaHQpIHJldHVybiAxOwogIHJldHVybiAwOwp9CgovKioKICogRGV0ZXJtaW5pc3RpYyBwcm92aWRlci1uZXV0cmFsIG9yZGVyaW5nIGZvciBhbiBhbHJlYWR5LWVsaWdpYmxlIExpdmUgQ3J5cHRvIHVuaXZlcnNlLgogKiBFbGlnaWJpbGl0eSwgVG9wLU4gc2VsZWN0aW9uLCBhY3F1aXNpdGlvbiwgZnJlc2huZXNzLCBzdGF0ZSBhbmQgcHJlc2VudGF0aW9uIHJlbWFpbiBzZXBhcmF0ZSBvd25lcnMuCiAqLwpleHBvcnQgZnVuY3Rpb24gb3JkZXJMaXZlTWFya2V0VW5pdmVyc2VCeVF1b3RlVm9sdW1lKAogIGZhY3RzOiByZWFkb25seSBMaXZlTWFya2V0U3VtbWFyeUZhY3RbXSwKKTogcmVhZG9ubHkgTGl2ZU1hcmtldFN1bW1hcnlGYWN0W10gewogIHJldHVybiBbLi4uZmFjdHNdLnNvcnQoKGxlZnQsIHJpZ2h0KSA9PiB7CiAgICBjb25zdCBkaWZmZXJlbmNlID0gZGVjaW1hbFN1YnRyYWN0KGxlZnQucXVvdGVWb2x1bWUyNGgsIHJpZ2h0LnF1b3RlVm9sdW1lMjRoKTsKICAgIGlmICghZGlmZmVyZW5jZS5vaykgewogICAgICB0aHJvdyBuZXcgRXJyb3IoJ2xpdmUtbWFya2V0LXVuaXZlcnNlLXF1b3RlLXZvbHVtZS1pbnZhbGlkJyk7CiAgICB9CiAgICBpZiAoZGlmZmVyZW5jZS52YWx1ZSA9PT0gJzAnKSB7CiAgICAgIHJldHVybiBjb21wYXJlSW5zdHJ1bWVudFN5bWJvbHMobGVmdC5pbnN0cnVtZW50LnN5bWJvbCwgcmlnaHQuaW5zdHJ1bWVudC5zeW1ib2wpOwogICAgfQogICAgcmV0dXJuIGRpZmZlcmVuY2UudmFsdWUuc3RhcnRzV2l0aCgnLScpID8gMSA6IC0xOwogIH0pOwp9Cg==", "tests/live-market-universe-quote-volume-ordering-policy-foundation.test.ts": "aW1wb3J0IHsgZGVzY3JpYmUsIGV4cGVjdCwgaXQgfSBmcm9tICd2aXRlc3QnOwppbXBvcnQgeyBwYXJzZURlY2ltYWxTdHJpbmcsIHR5cGUgRGVjaW1hbFN0cmluZyB9IGZyb20gJy4uL3NyYy9kb21haW4vdHJhZGVzJzsKaW1wb3J0IHsKICBvcmRlckxpdmVNYXJrZXRVbml2ZXJzZUJ5UXVvdGVWb2x1bWUsCiAgdHlwZSBMaXZlTWFya2V0U3VtbWFyeUZhY3QsCn0gZnJvbSAnLi4vc3JjL3NlcnZpY2VzL21hcmtldC1kYXRhJzsKCmZ1bmN0aW9uIGRlY2ltYWwodmFsdWU6IHN0cmluZyk6IERlY2ltYWxTdHJpbmcgewogIGNvbnN0IHBhcnNlZCA9IHBhcnNlRGVjaW1hbFN0cmluZyh2YWx1ZSk7CiAgaWYgKCFwYXJzZWQub2spIHRocm93IG5ldyBFcnJvcihgaW52YWxpZCB0ZXN0IGRlY2ltYWw6ICR7dmFsdWV9YCk7CiAgcmV0dXJuIHBhcnNlZC52YWx1ZTsKfQoKZnVuY3Rpb24gZmFjdChzeW1ib2w6IHN0cmluZywgcXVvdGVWb2x1bWUyNGg6IHN0cmluZyk6IExpdmVNYXJrZXRTdW1tYXJ5RmFjdCB7CiAgcmV0dXJuIHsKICAgIGluc3RydW1lbnQ6IHsgdmVudWU6ICdiaW5hbmNlLXNwb3QnLCBzeW1ib2wgfSwKICAgIGxhc3RQcmljZTogZGVjaW1hbCgnMScpLAogICAgb3BlbjI0aDogZGVjaW1hbCgnMScpLAogICAgaGlnaDI0aDogZGVjaW1hbCgnMScpLAogICAgbG93MjRoOiBkZWNpbWFsKCcxJyksCiAgICBiYXNlVm9sdW1lMjRoOiBkZWNpbWFsKCcxJyksCiAgICBxdW90ZVZvbHVtZTI0aDogZGVjaW1hbChxdW90ZVZvbHVtZTI0aCksCiAgICBvYnNlcnZlZEF0OiAnMjAyNi0wOS0wOVQwMDowMDowMC4wMDBaJywKICAgIHNvdXJjZVRpbWVzdGFtcDogbnVsbCwKICB9Owp9CgpkZXNjcmliZSgnTGl2ZSBNYXJrZXQgVW5pdmVyc2UgcXVvdGUtdm9sdW1lIG9yZGVyaW5nIHBvbGljeSBmb3VuZGF0aW9uJywgKCkgPT4gewogIGl0KCdvcmRlcnMgYWxyZWFkeS1lbGlnaWJsZSBzdW1tYXJ5IGZhY3RzIGJ5IGV4YWN0IGRlc2NlbmRpbmcgMjRoIHF1b3RlIHZvbHVtZScsICgpID0+IHsKICAgIGNvbnN0IGlucHV0ID0gWwogICAgICBmYWN0KCdFVEhVU0RUJywgJzk5OTk5OTk5OTk5OTk5OTk5OTk5Ljk5OTknKSwKICAgICAgZmFjdCgnQlRDVVNEVCcsICcxMDAwMDAwMDAwMDAwMDAwMDAwMDAuMDAwMScpLAogICAgICBmYWN0KCdTT0xVU0RUJywgJzEwMDAwMDAwMDAwMDAwMDAwMDAwMCcpLAogICAgXTsKCiAgICBleHBlY3Qob3JkZXJMaXZlTWFya2V0VW5pdmVyc2VCeVF1b3RlVm9sdW1lKGlucHV0KS5tYXAoKGl0ZW0pID0+IGl0ZW0uaW5zdHJ1bWVudC5zeW1ib2wpKS50b0VxdWFsKFsnQlRDVVNEVCcsICdTT0xVU0RUJywgJ0VUSFVTRFQnXSk7CiAgfSk7CgogIGl0KCd1c2VzIHN5bWJvbCBvcmRlcmluZyBhcyB0aGUgZGV0ZXJtaW5pc3RpYyBlcXVhbC12b2x1bWUgdGllLWJyZWFrJywgKCkgPT4gewogICAgY29uc3QgaW5wdXQgPSBbZmFjdCgnWFJQVVNEVCcsICc0MicpLCBmYWN0KCdBREFVU0RUJywgJzQyJyksIGZhY3QoJ0JUQ1VTRFQnLCAnNDInKV07CiAgICBleHBlY3Qob3JkZXJMaXZlTWFya2V0VW5pdmVyc2VCeVF1b3RlVm9sdW1lKGlucHV0KS5tYXAoKGl0ZW0pID0+IGl0ZW0uaW5zdHJ1bWVudC5zeW1ib2wpKS50b0VxdWFsKFsnQURBVVNEVCcsICdCVENVU0RUJywgJ1hSUFVTRFQnXSk7CiAgfSk7CgogIGl0KCdyZXR1cm5zIGEgc29ydGVkIGNvcHkgd2l0aG91dCBtdXRhdGluZyBjYWxsZXItb3duZWQgZmFjdCBvcmRlcicsICgpID0+IHsKICAgIGNvbnN0IGlucHV0ID0gW2ZhY3QoJ0xPV1VTRFQnLCAnMScpLCBmYWN0KCdISUdIVVNEVCcsICcyJyldOwogICAgY29uc3Qgb3JkZXJlZCA9IG9yZGVyTGl2ZU1hcmtldFVuaXZlcnNlQnlRdW90ZVZvbHVtZShpbnB1dCk7CiAgICBleHBlY3Qob3JkZXJlZC5tYXAoKGl0ZW0pID0+IGl0ZW0uaW5zdHJ1bWVudC5zeW1ib2wpKS50b0VxdWFsKCdISUdIVVNEVCcsICdMT1dVU0RUJ10pOwogICAgZXhwZWN0KGlucHV0Lm1hcCgoaXRlbSkgPT4gaXRlbS5pbnN0cnVtZW50LnN5bWJvbCkpLnRvRXF1YWwoWydMT1dVU0RUJywgJ0hJR0hVU0RUJ10pOwogICAgZXhwZWN0KG9yZGVyZWQpLm5vdC50b0JlKGlucHV0KTsKICB9KTsKfSk7Cg=="}'
+        run: |
+          set -euo pipefail
+          BASE_ZIP=KAIROS_LIVE_MARKET_UNIVERSE_INSTRUMENT_ELIGIBILITY_POLICY_FOUNDATION_CANDIDATE_2026-09-09.zip
+          WORK="$RUNNER_TEMP/ordering-work"
+          BASE="$RUNNER_TEMP/ordering-base"
+          rm -rf "$WORK" "$BASE"
+          mkdir -p "$WORK" "$BASE"
+          unzip -q "$BASE_ZIP" -d "$WORK"
+          unzip -q "$BASE_ZIP" -d "$BASE"
+          test -d "$WORK/kairos_p76"
+          cd "$WORK/kairos_p76"
+          python - <<'PY2'
+          from pathlib import Path
+          import base64, json, os
+          payload=json.loads(os.environ['PAYLOAD_JSON'])
+          for path,data in payload.items():
+              p=Path(path); p.parent.mkdir(parents=True, exist_ok=True); p.write_bytes(base64.b64decode(data))
+          pkg=json.loads(Path('package.json').read_text())
+          pkg['scripts']['verify:live-market-universe-quote-volume-ordering-policy-foundation']='node scripts/verify-live-market-universe-quote-volume-ordering-policy-foundation.mjs'
+          Path('package.json').write_text(json.dumps(pkg, indent=2)+'\n')
+          index=Path('src/services/market-data/index.ts'); text=index.read_text(); export="export * from './liveMarketUniverseQuoteVolumeOrderingPolicy';\n"
+          if export not in text: text += ('\n' if text and not text.endswith('\n') else '') + export
+          index.write_text(text)
+          PY2
+          echo "WORK=$WORK" >> "$GITHUB_ENV"
+          echo "BASE=$BASE" >> "$GITHUB_ENV"
+      - name: Prove exact six-file scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY2'
+          from pathlib import Path
+          base=Path('${{ env.BASE }}')/'kairos_p76'; work=Path('${{ env.WORK }}')/'kairos_p76'
+          allp=set()
+          for r in (base,work):
+              for p in r.rglob('*'):
+                  if p.is_file(): allp.add(p.relative_to(r).as_posix())
+          changed=[rel for rel in sorted(allp) if not (base/rel).exists() or not (work/rel).exists() or (base/rel).read_bytes()!=(work/rel).read_bytes()]
+          expected=sorted(['KAIROS_LIVE_MARKET_UNIVERSE_QUOTE_VOLUME_ORDERING_POLICY_FOUNDATION_REPORT_2026-09-09.md','package.json','scripts/verify-live-market-universe-quote-volume-ordering-policy-foundation.mjs','src/services/market-data/index.ts','src/services/market-data/liveMarketUniverseQuoteVolumeOrderingPolicy.ts','tests/live-market-universe-quote-volume-ordering-policy-foundation.test.ts'])
+          print('CHANGED\n'+'\n'.join(changed))
+          assert changed==expected, (changed,expected)
+          PY2
+      - name: Install candidate deterministically
+        working-directory: ${{ env.WORK }}/kairos_p76
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify pinned lightweight-charts
+        working-directory: ${{ env.WORK }}/kairos_p76
+        run: node -e "const p=require('./node_modules/lightweight-charts/package.json'); if(p.version!=='5.2.1') process.exit(1); console.log(p.version)"
+      - name: Run dedicated ordering verifier
+        working-directory: ${{ env.WORK }}/kairos_p76
+        run: npm run verify:live-market-universe-quote-volume-ordering-policy-foundation
+      - name: Run focused ordering regressions
+        working-directory: ${{ env.WORK }}/kairos_p76
+        run: npx vitest run tests/live-market-universe-quote-volume-ordering-policy-foundation.test.ts tests/live-market-universe-instrument-eligibility-policy-foundation.test.ts tests/p21-2-live-market-summary-fact-contract-foundation.test.ts
+      - name: Typecheck
+        working-directory: ${{ env.WORK }}/kairos_p76
+        run: npm run typecheck
+      - name: Production build
+        working-directory: ${{ env.WORK }}/kairos_p76
+        run: npm run build
+      - name: Full unit regression
+        working-directory: ${{ env.WORK }}/kairos_p76
+        run: npm test
+      - name: Full registered verification regression
+        working-directory: ${{ env.WORK }}/kairos_p76
+        run: |
+          node - <<'NODE'
+          const {spawnSync}=require('child_process'); const scripts=require('./package.json').scripts||{};
+          for(const name of Object.keys(scripts).filter(n=>n.startsWith('verify:')).sort()) { const r=spawnSync('npm',['run',name],{stdio:'inherit'}); if(r.status!==0) process.exit(r.status||1); }
+          NODE
+      - name: Clean, package, verify identity and self-remove
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="${{ env.WORK }}/kairos_p76"
+          rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite"
+          find "$ROOT" -type f \( -name '*.tsbuildinfo' -o -name '*.log' \) -delete
+          CANDIDATE=KAIROS_LIVE_MARKET_UNIVERSE_QUOTE_VOLUME_ORDERING_POLICY_FOUNDATION_CANDIDATE_2026-09-09.zip
+          (cd "${{ env.WORK }}" && zip -qr "$GITHUB_WORKSPACE/$CANDIDATE" kairos_p76)
+          unzip -tq "$CANDIDATE"
+          python - <<'PY2'
+          from pathlib import Path
+          import zipfile,hashlib
+          z=Path('KAIROS_LIVE_MARKET_UNIVERSE_QUOTE_VOLUME_ORDERING_POLICY_FOUNDATION_CANDIDATE_2026-09-09.zip')
+          with zipfile.ZipFile(z) as f:
+              for i in f.infolist():
+                  n=i.filename
+                  assert n.startswith('kairos_p76/') and not n.startswith('/') and '..' not in Path(n).parts
+                  assert ((i.external_attr>>16)&0o170000)!=0o120000
+          print('SIZE',z.stat().st_size); print('SHA256',hashlib.sha256(z.read_bytes()).hexdigest())
+          PY2
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "$CANDIDATE"
+          git rm .github/workflows/live-market-universe-quote-volume-ordering-policy-reconstruct.yml
+          git commit -m 'candidate: live market universe quote-volume ordering policy foundation'
+          git push origin HEAD:main
