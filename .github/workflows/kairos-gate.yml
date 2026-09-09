@@ -1,11 +1,11 @@
-# KAIROS BINANCE HOME DASHBOARD LIVE MARKET RUNTIME BOOTSTRAP GATE — AUTHORITATIVE BASE GATE 336
+# KAIROS LIVE MARKET SUMMARY FRESHNESS EVALUATION PROJECTION GATE — AUTHORITATIVE BASE GATE 337
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_BINANCE_HOME_DASHBOARD_LIVE_MARKET_RUNTIME_BOOTSTRAP_FOUNDATION_CANDIDATE_2026-09-09.zip'
+      - 'KAIROS_LIVE_MARKET_SUMMARY_FRESHNESS_EVALUATION_PROJECTION_FOUNDATION_CANDIDATE_2026-09-09.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_BINANCE_SPOT_BROWSER_LIVE_MARKET_UNIVERSE_ACQUISITION_BINDING_FOUNDATION_CANDIDATE_2026-09-09.zip
-  CANDIDATE_ZIP: KAIROS_BINANCE_HOME_DASHBOARD_LIVE_MARKET_RUNTIME_BOOTSTRAP_FOUNDATION_CANDIDATE_2026-09-09.zip
+  BASE_ZIP: KAIROS_BINANCE_HOME_DASHBOARD_LIVE_MARKET_RUNTIME_BOOTSTRAP_FOUNDATION_CANDIDATE_2026-09-09.zip
+  CANDIDATE_ZIP: KAIROS_LIVE_MARKET_SUMMARY_FRESHNESS_EVALUATION_PROJECTION_FOUNDATION_CANDIDATE_2026-09-09.zip
 
 jobs:
   verify-current-candidate:
@@ -35,8 +35,8 @@ jobs:
           from pathlib import Path, PurePosixPath
           import hashlib, os, zipfile
           for key, size, digest in [
-            ('BASE_ZIP', 1563495, 'c744aff5d7c0367d1a3509e0135e24afbbe520d59da5f6fb1273feba547a96e2'),
-            ('CANDIDATE_ZIP', 1569620, '95fb5c314b856e41c06e6ae8282af320f0aa643a7d7f716825c66d101ad909c3'),
+            ('BASE_ZIP', 1569620, '95fb5c314b856e41c06e6ae8282af320f0aa643a7d7f716825c66d101ad909c3'),
+            ('CANDIDATE_ZIP', 1575134, '6579e55613bccc80cc2d910c97b676111750f52d9d1115f88141ab854dfb2d1c'),
           ]:
             p=Path(os.environ[key]); data=p.read_bytes()
             assert len(data)==size, f'{key}: byte size mismatch'
@@ -50,7 +50,7 @@ jobs:
                 assert ((i.external_attr >> 16) & 0o170000) != 0o120000, f'{key}: unexpected symbolic link'
           PY
 
-      - name: Extract authoritative Gate336 base and candidate
+      - name: Extract authoritative Gate337 base and candidate
         run: |
           set -euo pipefail
           rm -rf .gate-base .gate-candidate
@@ -60,7 +60,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact controlled Binance Home Dashboard live-market runtime bootstrap scope from Gate336
+      - name: Confirm exact controlled live-market freshness evaluation projection scope from Gate337
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -71,14 +71,15 @@ jobs:
           y={str(p.relative_to(c)):h(p) for p in c.rglob('*') if p.is_file()}
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           expected={
-            'KAIROS_BINANCE_HOME_DASHBOARD_LIVE_MARKET_RUNTIME_BOOTSTRAP_FOUNDATION_REPORT_2026-09-09.md',
+            'KAIROS_LIVE_MARKET_SUMMARY_FRESHNESS_EVALUATION_PROJECTION_FOUNDATION_REPORT_2026-09-09.md',
             'package.json',
-            'scripts/verify-binance-home-dashboard-live-market-runtime-bootstrap-foundation.mjs',
-            'src/app/binanceHomeDashboardLiveMarketRuntimeBootstrap.ts',
-            'tests/binance-home-dashboard-live-market-runtime-bootstrap-foundation.test.ts',
+            'scripts/verify-live-market-summary-freshness-evaluation-projection-foundation.mjs',
+            'src/services/market-data/index.ts',
+            'src/services/market-data/liveMarketSummaryFreshnessEvaluationProjection.ts',
+            'tests/live-market-summary-freshness-evaluation-projection-foundation.test.ts',
           }
           if changed != expected:
-            print('Binance Home Dashboard live-market runtime bootstrap exact scope mismatch',file=sys.stderr)
+            print('Live-market freshness evaluation projection exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             sys.exit(1)
@@ -102,36 +103,27 @@ jobs:
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
 
-      - name: Dedicated Binance Home Dashboard live-market runtime bootstrap verifier/runtime
+      - name: Dedicated live-market freshness evaluation projection verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:live-market-summary-freshness-evaluation-projection-foundation
+          npm run verify:live-market-summary-freshness-classification-policy-foundation
           npm run verify:binance-home-dashboard-live-market-runtime-bootstrap-foundation
-          npm run verify:binance-spot-browser-live-market-universe-acquisition-binding-foundation
           npm run verify:p21:19-live-market-summary-state-session-foundation
-          npm run verify:binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation
           npm run verify:home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation
-          npm run verify:home-dashboard-live-market-summary-browser-lifecycle-adapter-foundation
-          npm run verify:home-dashboard-live-market-summary-acquisition-lifecycle-scheduler-foundation
-          npm run verify:home-dashboard-live-market-summary-acquisition-cadence-policy-foundation
-          npm run verify:p21:23-live-market-summary-browser-state-session-scoped-snapshot-acquisition-composition-foundation
-          npm run verify:live-market-universe-acquisition-orchestration-foundation
+          npm run verify:binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation
 
-      - name: Focused Binance Home Dashboard live-market runtime bootstrap regression
+      - name: Focused live-market freshness evaluation projection regression
         working-directory: .gate-candidate/kairos_p76
         run: |
           npx vitest run \
-            tests/binance-home-dashboard-live-market-runtime-bootstrap-foundation.test.ts \
-            tests/binance-spot-browser-live-market-universe-acquisition-binding-foundation.test.ts \
-            tests/live-market-summary-state-session-foundation.test.ts \
-            tests/binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation.test.ts \
-            tests/home-dashboard-live-market-summary-browser-lifecycle-adapter-foundation.test.ts \
-            tests/home-dashboard-live-market-summary-acquisition-lifecycle-scheduler-foundation.test.ts
+            tests/live-market-summary-freshness-evaluation-projection-foundation.test.ts \
+            tests/live-market-summary-freshness-classification-policy-foundation.test.ts \
+            tests/live-market-summary-scoped-state-snapshot-foundation.test.ts \
+            tests/binance-home-dashboard-live-market-runtime-bootstrap-foundation.test.ts
+          npm run verify:live-market-summary-freshness-evaluation-projection-foundation
+          npm run verify:live-market-summary-freshness-classification-policy-foundation
           npm run verify:binance-home-dashboard-live-market-runtime-bootstrap-foundation
-          npm run verify:binance-spot-browser-live-market-universe-acquisition-binding-foundation
-          npm run verify:p21:19-live-market-summary-state-session-foundation
-          npm run verify:binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation
-          npm run verify:home-dashboard-live-market-summary-browser-lifecycle-adapter-foundation
-          npm run verify:home-dashboard-live-market-summary-acquisition-lifecycle-scheduler-foundation
 
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
@@ -145,10 +137,13 @@ jobs:
           const p=JSON.parse(readFileSync('package.json'));
           const scripts=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:')).sort();
           for(const required of [
+            'verify:live-market-summary-freshness-evaluation-projection-foundation',
+            'verify:live-market-summary-freshness-classification-policy-foundation',
             'verify:binance-home-dashboard-live-market-runtime-bootstrap-foundation',
             'verify:binance-spot-browser-live-market-universe-acquisition-binding-foundation',
             'verify:p21:19-live-market-summary-state-session-foundation',
             'verify:binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation',
+            'verify:home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation',
             'verify:home-dashboard-live-market-summary-browser-lifecycle-adapter-foundation',
             'verify:home-dashboard-live-market-summary-acquisition-lifecycle-scheduler-foundation',
             'verify:home-dashboard-live-market-summary-acquisition-cadence-policy-foundation',
@@ -164,6 +159,8 @@ jobs:
       - name: Historical closures
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:live-market-summary-freshness-evaluation-projection-foundation
+          npm run verify:live-market-summary-freshness-classification-policy-foundation
           npm run verify:binance-home-dashboard-live-market-runtime-bootstrap-foundation
           npm run verify:binance-spot-browser-live-market-universe-acquisition-binding-foundation
           npm run verify:live-market-universe-acquisition-orchestration-foundation
@@ -180,7 +177,6 @@ jobs:
           npm run verify:home-dashboard-live-market-summary-acquisition-cadence-policy-foundation
           npm run verify:home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation
           npm run verify:binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation
-          npm run verify:live-market-summary-freshness-classification-policy-foundation
           npm run verify:p21:23-live-market-summary-browser-state-session-scoped-snapshot-acquisition-composition-foundation
           npm run verify:p21:1-home-dashboard-route-ownership-foundation
           npm run verify:p20:5-saved-analysis-system-closure
@@ -211,5 +207,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_BINANCE_HOME_DASHBOARD_LIVE_MARKET_RUNTIME_BOOTSTRAP_FOUNDATION_REPORT_2026-09-09.md
+          path: .gate-candidate/kairos_p76/KAIROS_LIVE_MARKET_SUMMARY_FRESHNESS_EVALUATION_PROJECTION_FOUNDATION_REPORT_2026-09-09.md
           if-no-files-found: error
