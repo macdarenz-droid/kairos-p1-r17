@@ -1,0 +1,411 @@
+name: Kairos Live Market Universe Composition Reconstruction
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/live-market-universe-composition-reconstruct.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kairos-live-market-universe-composition-reconstruct
+  cancel-in-progress: false
+
+jobs:
+  reconstruct-and-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Pin npm
+        run: |
+          npm install --global npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+
+      - name: Reconstruct universe composition candidate from Gate333 GOLDEN
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_ZIP=KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_BROWSER_LIFECYCLE_ADAPTER_FOUNDATION_CANDIDATE_2026-09-09.zip
+          OUT_ZIP=KAIROS_LIVE_MARKET_UNIVERSE_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-09.zip
+          WORK="$RUNNER_TEMP/universe-composition-work"
+          BASE="$RUNNER_TEMP/universe-composition-base"
+          rm -rf "$WORK" "$BASE"
+          mkdir -p "$WORK" "$BASE"
+          test -f "$BASE_ZIP"
+          unzip -q "$BASE_ZIP" -d "$WORK"
+          unzip -q "$BASE_ZIP" -d "$BASE"
+          test -f "$WORK/kairos_p76/package.json"
+          test -f "$BASE/kairos_p76/package.json"
+          cd "$WORK/kairos_p76"
+
+          test -f src/services/market-data/liveMarketUniverseInstrumentMetadataFact.ts
+          test -f src/services/market-data/liveMarketUniverseInstrumentEligibilityPolicy.ts
+          test -f src/services/market-data/liveMarketUniverseQuoteVolumeOrderingPolicy.ts
+          test -f src/services/market-data/liveMarketUniverseTopNSelectionPolicy.ts
+          test -f src/services/market-data/marketDataTypes.ts
+          test -f src/services/market-data/index.ts
+
+          cat > src/services/market-data/liveMarketUniverseComposition.ts <<'TS'
+          import type { LiveMarketSummaryFact, MarketDataInstrument } from './marketDataTypes';
+          import type { LiveMarketUniverseInstrumentMetadataFact } from './liveMarketUniverseInstrumentMetadataFact';
+          import {
+            isLiveMarketUniverseInstrumentEligible,
+            type LiveMarketUniverseInstrumentEligibilityPolicyOptions,
+          } from './liveMarketUniverseInstrumentEligibilityPolicy';
+          import { orderLiveMarketUniverseByQuoteVolume } from './liveMarketUniverseQuoteVolumeOrderingPolicy';
+          import { selectLiveMarketUniverseTopN } from './liveMarketUniverseTopNSelectionPolicy';
+
+          export interface LiveMarketUniverseCompositionOptions
+            extends LiveMarketUniverseInstrumentEligibilityPolicyOptions {
+            readonly topNCount?: number;
+          }
+
+          function instrumentKey(instrument: MarketDataInstrument): string {
+            return `${instrument.venue.trim()}::${instrument.symbol.trim()}`;
+          }
+
+          /**
+           * Provider-neutral composition of already-authoritative universe metadata and
+           * already-available live summary facts. Primitive product policy remains owned
+           * by the released eligibility, ordering, and Top-N policy modules.
+           */
+          export function composeLiveMarketUniverse(
+            metadataFacts: readonly LiveMarketUniverseInstrumentMetadataFact[],
+            summaryFacts: readonly LiveMarketSummaryFact[],
+            options: LiveMarketUniverseCompositionOptions,
+          ): readonly MarketDataInstrument[] {
+            const eligibleInstrumentKeys = new Set(
+              metadataFacts
+                .filter((fact) => isLiveMarketUniverseInstrumentEligible(fact, options))
+                .map((fact) => instrumentKey(fact.instrument)),
+            );
+
+            const joinedSummaryFacts = summaryFacts.filter((fact) =>
+              eligibleInstrumentKeys.has(instrumentKey(fact.instrument)),
+            );
+
+            const orderedFacts = orderLiveMarketUniverseByQuoteVolume(joinedSummaryFacts);
+            const selectedFacts = selectLiveMarketUniverseTopN(orderedFacts, options.topNCount);
+            return selectedFacts.map((fact) => fact.instrument);
+          }
+          TS
+
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          p=Path('src/services/market-data/index.ts')
+          s=p.read_text()
+          anchor="export * from './liveMarketUniverseTopNSelectionPolicy';\n"
+          line="export * from './liveMarketUniverseComposition';\n"
+          assert anchor in s, 'released Top-N export boundary missing'
+          assert line not in s, 'unexpected pre-existing universe composition export'
+          p.write_text(s.replace(anchor, anchor+line, 1))
+
+          p=Path('package.json')
+          d=json.loads(p.read_text())
+          key='verify:live-market-universe-composition-foundation'
+          assert key not in d['scripts'], 'unexpected pre-existing universe composition verifier'
+          scripts={}
+          inserted=False
+          for k,v in d['scripts'].items():
+              scripts[k]=v
+              if k=='verify:live-market-universe-top-n-selection-policy-foundation':
+                  scripts[key]='node scripts/verify-live-market-universe-composition-foundation.mjs'
+                  inserted=True
+          assert inserted, 'released Top-N verifier registration boundary missing'
+          d['scripts']=scripts
+          p.write_text(json.dumps(d,indent=2)+'\n')
+          PY
+
+          cat > tests/live-market-universe-composition-foundation.test.ts <<'TS'
+          import { describe, expect, it } from 'vitest';
+          import { parseDecimalString, type DecimalString } from '../src/domain/trades';
+          import {
+            composeLiveMarketUniverse,
+            type LiveMarketSummaryFact,
+            type LiveMarketUniverseInstrumentMetadataFact,
+          } from '../src/services/market-data';
+
+          function decimal(value: string): DecimalString {
+            const parsed = parseDecimalString(value);
+            if (!parsed.ok) throw new Error(`bad DecimalString fixture: ${value}`);
+            return parsed.value;
+          }
+
+          function metadata(
+            symbol: string,
+            baseAsset: string,
+            options: { venue?: string; quoteAsset?: string; tradingEnabled?: boolean } = {},
+          ): LiveMarketUniverseInstrumentMetadataFact {
+            return {
+              instrument: { venue: options.venue ?? 'binance-spot', symbol },
+              baseAsset,
+              quoteAsset: options.quoteAsset ?? 'USDT',
+              tradingEnabled: options.tradingEnabled ?? true,
+            };
+          }
+
+          function summary(symbol: string, quoteVolume24h: string, venue = 'binance-spot'): LiveMarketSummaryFact {
+            return {
+              instrument: { venue, symbol },
+              lastPrice: decimal('1'),
+              open24h: decimal('1'),
+              high24h: decimal('1'),
+              low24h: decimal('1'),
+              baseVolume24h: decimal('1'),
+              quoteVolume24h: decimal(quoteVolume24h),
+              observedAt: '2026-09-09T00:00:00.000Z',
+              sourceTimestamp: null,
+            };
+          }
+
+          describe('Live Market Universe provider-neutral composition', () => {
+            it('delegates eligibility, exact identity join, ordering, tie-break, and configured Top-N', () => {
+              const metadataFacts = [
+                metadata('ETHUSDT', 'ETH'),
+                metadata('BTCUSDT', 'BTC'),
+                metadata('XRPUSDT', 'XRP'),
+                metadata('USDCUSDT', 'USDC'),
+                metadata('SOLUSDT', 'SOL', { tradingEnabled: false }),
+                metadata('DOGEFDUSD', 'DOGE', { quoteAsset: 'FDUSD' }),
+              ];
+              const summaryFacts = [
+                summary('XRPUSDT', '100'),
+                summary('ETHUSDT', '200'),
+                summary('BTCUSDT', '200'),
+                summary('USDCUSDT', '999'),
+                summary('SOLUSDT', '998'),
+                summary('DOGEFDUSD', '997'),
+                summary('BTCUSDT', '1000', 'different-venue'),
+              ];
+
+              expect(composeLiveMarketUniverse(metadataFacts, summaryFacts, {
+                excludedStablecoinBaseAssets: new Set(['USDC']),
+                topNCount: 2,
+              })).toEqual([
+                { venue: 'binance-spot', symbol: 'BTCUSDT' },
+                { venue: 'binance-spot', symbol: 'ETHUSDT' },
+              ]);
+            });
+
+            it('omits eligible metadata that has no matching summary fact and never synthesizes market facts', () => {
+              expect(composeLiveMarketUniverse(
+                [metadata('BTCUSDT', 'BTC'), metadata('ETHUSDT', 'ETH')],
+                [summary('ETHUSDT', '50')],
+                { excludedStablecoinBaseAssets: new Set() },
+              )).toEqual([{ venue: 'binance-spot', symbol: 'ETHUSDT' }]);
+            });
+
+            it('uses exact trimmed venue plus symbol identity rather than symbol-only association', () => {
+              expect(composeLiveMarketUniverse(
+                [metadata('BTCUSDT', 'BTC', { venue: 'binance-spot' })],
+                [summary('BTCUSDT', '1000', 'other-venue'), summary('BTCUSDT', '10', ' binance-spot ')],
+                { excludedStablecoinBaseAssets: new Set() },
+              )).toEqual([{ venue: ' binance-spot ', symbol: 'BTCUSDT' }]);
+            });
+
+            it('delegates the config-owned default Top-N and does not mutate caller arrays', () => {
+              const metadataFacts = Array.from({ length: 35 }, (_, index) =>
+                metadata(`S${String(index).padStart(2, '0')}USDT`, `S${String(index).padStart(2, '0')}`),
+              );
+              const summaryFacts = metadataFacts.map((fact, index) => summary(fact.instrument.symbol, String(1000-index)));
+              const metadataBefore = [...metadataFacts];
+              const summaryBefore = [...summaryFacts];
+
+              const selected = composeLiveMarketUniverse(metadataFacts, summaryFacts, {
+                excludedStablecoinBaseAssets: new Set(),
+              });
+
+              expect(selected).toHaveLength(30);
+              expect(metadataFacts).toEqual(metadataBefore);
+              expect(summaryFacts).toEqual(summaryBefore);
+            });
+          });
+          TS
+
+          cat > scripts/verify-live-market-universe-composition-foundation.mjs <<'JS'
+          import { readFileSync } from 'node:fs';
+          const source = readFileSync(new URL('../src/services/market-data/liveMarketUniverseComposition.ts', import.meta.url), 'utf8');
+          const index = readFileSync(new URL('../src/services/market-data/index.ts', import.meta.url), 'utf8');
+          const report = readFileSync(new URL('../KAIROS_LIVE_MARKET_UNIVERSE_COMPOSITION_FOUNDATION_REPORT_2026-09-09.md', import.meta.url), 'utf8');
+
+          for (const token of [
+            'LiveMarketUniverseInstrumentMetadataFact',
+            'LiveMarketSummaryFact',
+            'MarketDataInstrument',
+            'extends LiveMarketUniverseInstrumentEligibilityPolicyOptions',
+            'isLiveMarketUniverseInstrumentEligible(fact, options)',
+            '`${instrument.venue.trim()}::${instrument.symbol.trim()}`',
+            'orderLiveMarketUniverseByQuoteVolume(joinedSummaryFacts)',
+            'selectLiveMarketUniverseTopN(orderedFacts, options.topNCount)',
+            'return selectedFacts.map((fact) => fact.instrument)',
+          ]) if (!source.includes(token)) throw new Error(`universe composition evidence missing: ${token}`);
+
+          if (!index.includes("export * from './liveMarketUniverseComposition';")) throw new Error('universe composition public export missing');
+
+          for (const forbidden of [
+            "quoteAsset === 'USDT'", 'tradingEnabled', 'quoteVolume24h', '.sort(', '.slice(',
+            'DEFAULT_LIVE_MARKET_UNIVERSE_TOP_N_COUNT', '= 30', 'fetch(', 'XMLHttpRequest',
+            'WebSocket(', 'JSON.parse(', 'setInterval(', 'setTimeout(', 'Date.now(', 'new Date(',
+            'indexedDB', 'createChart(', 'React', 'useEffect', 'bubbleSize', 'marketCap',
+          ]) if (source.includes(forbidden)) throw new Error(`universe composition duplicated/broadened policy: ${forbidden}`);
+
+          for (const token of [
+            'provider-neutral Live Market Universe composition',
+            'exact instrument-identity join',
+            'released eligibility',
+            'released quote-volume ordering',
+            'released Top-N selection',
+            'No provider transport',
+            'No freshness/cadence/lifecycle',
+            'No React/Home/Bubble presentation',
+          ]) if (!report.includes(token)) throw new Error(`universe composition report evidence missing: ${token}`);
+
+          console.log('Live Market Universe composition verification passed.');
+          JS
+
+          cat > KAIROS_LIVE_MARKET_UNIVERSE_COMPOSITION_FOUNDATION_REPORT_2026-09-09.md <<'MD'
+          # KAIROS Live Market Universe Composition Foundation
+
+          Base: exact canonical Gate #333 GOLDEN Home Dashboard live-market browser lifecycle adapter candidate.
+
+          This slice owns one provider-neutral Live Market Universe composition responsibility only. It consumes already-authoritative `LiveMarketUniverseInstrumentMetadataFact` values and already-available `LiveMarketSummaryFact` values, plus caller-owned stablecoin-exclusion configuration and optional Top-N count. It delegates eligibility to the released Gate326 policy, performs only the exact instrument-identity join needed to associate eligible metadata with matching summary facts, delegates descending quote-volume ordering and symbol tie-break to the released Gate327 policy, delegates default/configured Top-N selection to the released Gate328 policy, and returns only the selected `MarketDataInstrument` scope.
+
+          Missing summary facts are omitted; composition never synthesizes market facts. Instrument identity follows the released market-data convention of trimmed venue plus trimmed symbol. Primitive eligibility, ordering, tie-break, and Top-N policy are not duplicated here.
+
+          Explicit non-scope: No provider transport, request execution, response decoding, or mapping. No observedAt/freshness/session ownership. No freshness/cadence/lifecycle, visibility, timers, abort, polling, or scheduling. No persistence or IndexedDB. No React/Home/Bubble presentation, geometry, size/color, interaction, navigation, chart, or transitions. No Your Trades, journal, or Saved Analysis truth.
+          MD
+
+          UNIVERSE_BASE="$BASE/kairos_p76" python - <<'PY'
+          from pathlib import Path
+          import os
+          A=Path(os.environ['UNIVERSE_BASE']); B=Path('.')
+          changed=[]
+          paths=set(x.relative_to(A) for x in A.rglob('*') if x.is_file()) | set(x.relative_to(B) for x in B.rglob('*') if x.is_file())
+          for p in paths:
+              a=A/p; b=B/p
+              if not a.exists() or not b.exists() or a.read_bytes()!=b.read_bytes(): changed.append(str(p))
+          expected=sorted([
+              'KAIROS_LIVE_MARKET_UNIVERSE_COMPOSITION_FOUNDATION_REPORT_2026-09-09.md',
+              'package.json',
+              'scripts/verify-live-market-universe-composition-foundation.mjs',
+              'src/services/market-data/index.ts',
+              'src/services/market-data/liveMarketUniverseComposition.ts',
+              'tests/live-market-universe-composition-foundation.test.ts',
+          ])
+          assert sorted(changed)==expected,(sorted(changed),expected)
+          print('exact six-file universe composition scope PASS')
+          PY
+
+      - name: Install candidate deterministically
+        working-directory: ${{ runner.temp }}/universe-composition-work/kairos_p76
+        run: npm ci
+
+      - name: Verify exact pinned dependency
+        working-directory: ${{ runner.temp }}/universe-composition-work/kairos_p76
+        run: |
+          test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
+          npm ls lightweight-charts --depth=0
+
+      - name: Dedicated universe composition verification
+        working-directory: ${{ runner.temp }}/universe-composition-work/kairos_p76
+        run: |
+          npm run verify:live-market-universe-composition-foundation
+          npm run verify:live-market-universe-instrument-eligibility-policy-foundation
+          npm run verify:live-market-universe-quote-volume-ordering-policy-foundation
+          npm run verify:live-market-universe-top-n-selection-policy-foundation
+
+      - name: Focused universe composition and primitive regressions
+        working-directory: ${{ runner.temp }}/universe-composition-work/kairos_p76
+        run: |
+          npx vitest run \
+            tests/live-market-universe-composition-foundation.test.ts \
+            tests/live-market-universe-instrument-eligibility-policy-foundation.test.ts \
+            tests/live-market-universe-quote-volume-ordering-policy-foundation.test.ts \
+            tests/live-market-universe-top-n-selection-policy-foundation.test.ts \
+            tests/live-market-universe-instrument-metadata-fact-contract-foundation.test.ts \
+            tests/live-market-summary-fact-contract.test.ts
+
+      - name: Production TypeScript compilation
+        working-directory: ${{ runner.temp }}/universe-composition-work/kairos_p76
+        run: npm run typecheck
+
+      - name: Production build
+        working-directory: ${{ runner.temp }}/universe-composition-work/kairos_p76
+        run: npm run build
+
+      - name: Full unit regression
+        working-directory: ${{ runner.temp }}/universe-composition-work/kairos_p76
+        run: npm test -- --run
+
+      - name: Full registered verifier regression
+        working-directory: ${{ runner.temp }}/universe-composition-work/kairos_p76
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const p=require('./package.json');
+          const {spawnSync}=require('node:child_process');
+          for(const [k,v] of Object.entries(p.scripts).filter(([k])=>k.startsWith('verify:'))){
+            const r=spawnSync(v,{shell:true,stdio:'inherit'});
+            if(r.status!==0) process.exit(r.status||1);
+          }
+          NODE
+
+      - name: Package clean candidate and prove integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="$RUNNER_TEMP/universe-composition-work/kairos_p76"
+          rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite"
+          find "$ROOT" -name '*.tsbuildinfo' -delete
+          test -z "$(find "$ROOT" -type d \( -name node_modules -o -name dist -o -name coverage -o -name .vite \) -print -quit)"
+          cd "$RUNNER_TEMP/universe-composition-work"
+          OUT="$GITHUB_WORKSPACE/KAIROS_LIVE_MARKET_UNIVERSE_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-09.zip"
+          zip -qr "$OUT" kairos_p76
+          unzip -tq "$OUT"
+          OUT="$OUT" python - <<'PY'
+          from pathlib import Path, PurePosixPath
+          import hashlib, os, zipfile
+          p=Path(os.environ['OUT']); data=p.read_bytes()
+          with zipfile.ZipFile(p) as z:
+              assert z.testzip() is None
+              assert {i.filename.split('/')[0] for i in z.infolist()} == {'kairos_p76'}
+              for i in z.infolist():
+                  parts=PurePosixPath(i.filename)
+                  assert not parts.is_absolute() and '..' not in parts.parts
+                  assert ((i.external_attr >> 16) & 0o170000) != 0o120000
+          print(f'candidate-size={len(data)}')
+          print(f'candidate-sha256={hashlib.sha256(data).hexdigest()}')
+          PY
+
+      - name: Upload non-canonical candidate artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KAIROS_LIVE_MARKET_UNIVERSE_COMPOSITION_CANDIDATE_NONCANONICAL
+          path: KAIROS_LIVE_MARKET_UNIVERSE_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-09.zip
+          if-no-files-found: error
+
+      - name: Place verified universe composition candidate at repository root
+        shell: bash
+        run: |
+          set -euo pipefail
+          CANDIDATE=KAIROS_LIVE_MARKET_UNIVERSE_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-09.zip
+          test -f "$CANDIDATE"
+          unzip -tq "$CANDIDATE"
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$CANDIDATE"
+          test "$(git diff --cached --name-only | wc -l)" -eq 1
+          test "$(git diff --cached --name-only)" = "$CANDIDATE"
+          git commit -m "candidate: place verified live market universe composition"
+          git push origin HEAD:main
