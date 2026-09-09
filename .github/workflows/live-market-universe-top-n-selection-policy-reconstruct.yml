@@ -1,0 +1,179 @@
+name: Kairos Live Market Universe Top-N Selection Reconstruction
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/live-market-universe-top-n-selection-policy-reconstruct.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kairos-live-market-universe-top-n-selection-policy-reconstruct
+  cancel-in-progress: false
+
+jobs:
+  reconstruct-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Pin npm
+        run: npm install --global npm@10.9.2
+      - name: Reconstruct Top-N candidate from Gate327 GOLDEN
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_ZIP=KAIROS_LIVE_MARKET_UNIVERSE_QUOTE_VOLUME_ORDERING_POLICY_FOUNDATION_CANDIDATE_2026-09-09.zip
+          WORK="$RUNNER_TEMP/topn-work"
+          BASE="$RUNNER_TEMP/topn-base"
+          rm -rf "$WORK" "$BASE"; mkdir -p "$WORK" "$BASE"
+          unzip -q "$BASE_ZIP" -d "$WORK"; unzip -q "$BASE_ZIP" -d "$BASE"
+          cd "$WORK/kairos_p76"
+          cat > src/services/market-data/liveMarketUniverseTopNSelectionPolicy.ts <<'EOF'
+          import type { LiveMarketSummaryFact } from './marketDataTypes';
+
+          export const DEFAULT_LIVE_MARKET_UNIVERSE_TOP_N_COUNT = 30 as const;
+
+          function resolveTopNCount(count: number | undefined): number {
+            const value = count ?? DEFAULT_LIVE_MARKET_UNIVERSE_TOP_N_COUNT;
+            if (!Number.isInteger(value) || value < 1) {
+              throw new RangeError('Live Market Universe Top-N count must be a positive integer.');
+            }
+            return value;
+          }
+
+          export function selectLiveMarketUniverseTopN(
+            orderedFacts: readonly LiveMarketSummaryFact[],
+            count?: number,
+          ): readonly LiveMarketSummaryFact[] {
+            return orderedFacts.slice(0, resolveTopNCount(count));
+          }
+          EOF
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          p=Path('src/services/market-data/index.ts'); s=p.read_text(); n="export * from './liveMarketUniverseQuoteVolumeOrderingPolicy';\n"; assert n in s and 'liveMarketUniverseTopNSelectionPolicy' not in s; p.write_text(s.replace(n,n+"export * from './liveMarketUniverseTopNSelectionPolicy';\n",1))
+          p=Path('package.json'); d=json.loads(p.read_text()); k='verify:live-market-universe-top-n-selection-policy-foundation'; assert k not in d['scripts']; scripts={};
+          for key,value in d['scripts'].items():
+            scripts[key]=value
+            if key=='verify:live-market-universe-quote-volume-ordering-policy-foundation': scripts[k]='node scripts/verify-live-market-universe-top-n-selection-policy-foundation.mjs'
+          d['scripts']=scripts; p.write_text(json.dumps(d,indent=2)+'\n')
+          PY
+          cat > tests/live-market-universe-top-n-selection-policy-foundation.test.ts <<'EOF'
+          import { describe, expect, it } from 'vitest';
+          import { parseDecimalString, type DecimalString } from '../src/domain/trades';
+          import { DEFAULT_LIVE_MARKET_UNIVERSE_TOP_N_COUNT, selectLiveMarketUniverseTopN, type LiveMarketSummaryFact } from '../src/services/market-data';
+          function decimal(value: string): DecimalString { const parsed=parseDecimalString(value); if(!parsed.ok) throw new Error('bad decimal'); return parsed.value; }
+          function fact(symbol: string, quoteVolume24h='1'): LiveMarketSummaryFact { return {instrument:{venue:'binance-spot',symbol},lastPrice:decimal('1'),open24h:decimal('1'),high24h:decimal('1'),low24h:decimal('1'),baseVolume24h:decimal('1'),quoteVolume24h:decimal(quoteVolume24h),observedAt:'2026-09-09T00:00:00.000Z',sourceTimestamp:null}; }
+          describe('Live Market Universe Top-N selection policy',()=>{
+            it('owns the product default count of 30',()=>{ expect(DEFAULT_LIVE_MARKET_UNIVERSE_TOP_N_COUNT).toBe(30); const ordered=Array.from({length:35},(_,index)=>fact(`S${String(index).padStart(2,'0')}USDT`)); expect(selectLiveMarketUniverseTopN(ordered)).toEqual(ordered.slice(0,30)); });
+            it('selects the requested prefix without re-ranking or mutating caller order',()=>{ const ordered=[fact('ZUSDT','1'),fact('AUSDT','999'),fact('MUSDT','50')]; const selected=selectLiveMarketUniverseTopN(ordered,2); expect(selected).toEqual([ordered[0],ordered[1]]); expect(ordered.map(value=>value.instrument.symbol)).toEqual(['ZUSDT','AUSDT','MUSDT']); expect(selected).not.toBe(ordered); });
+            it('returns all available facts when count exceeds availability',()=>{ const ordered=[fact('BTCUSDT'),fact('ETHUSDT')]; const selected=selectLiveMarketUniverseTopN(ordered,50); expect(selected).toEqual(ordered); expect(selected).not.toBe(ordered); });
+            it.each([0,-1,1.5,Number.NaN,Number.POSITIVE_INFINITY,Number.NEGATIVE_INFINITY])('rejects invalid count %s deterministically',(count)=>{ expect(()=>selectLiveMarketUniverseTopN([],count)).toThrowError(new RangeError('Live Market Universe Top-N count must be a positive integer.')); });
+          });
+          EOF
+          cat > scripts/verify-live-market-universe-top-n-selection-policy-foundation.mjs <<'EOF'
+          import { readFileSync } from 'node:fs';
+          const source=readFileSync(new URL('../src/services/market-data/liveMarketUniverseTopNSelectionPolicy.ts',import.meta.url),'utf8');
+          const index=readFileSync(new URL('../src/services/market-data/index.ts',import.meta.url),'utf8');
+          for(const token of ['DEFAULT_LIVE_MARKET_UNIVERSE_TOP_N_COUNT = 30','Number.isInteger(value)','value < 1',"throw new RangeError('Live Market Universe Top-N count must be a positive integer.')",'orderedFacts.slice(0, resolveTopNCount(count))','LiveMarketSummaryFact']) if(!source.includes(token)) throw new Error('missing '+token);
+          if(!index.includes("export * from './liveMarketUniverseTopNSelectionPolicy';")) throw new Error('missing Top-N selection policy export');
+          for(const forbidden of ['.sort(','decimalSubtract','quoteVolume24h','excludedStablecoinBaseAssets','quoteAsset','fetch(','setInterval(','Date.now(','indexedDB','createChart(','React']) if(source.includes(forbidden)) throw new Error('broadened '+forbidden);
+          console.log('Live Market Universe Top-N selection policy verification passed.');
+          EOF
+          cat > KAIROS_LIVE_MARKET_UNIVERSE_TOP_N_SELECTION_POLICY_FOUNDATION_REPORT_2026-09-09.md <<'EOF'
+          # KAIROS Live Market Universe Top-N Selection Policy Foundation
+          Base: Gate #327 canonical GOLDEN, Live Market Universe quote-volume ordering policy.
+
+          Owns one provider-neutral deterministic selection/config responsibility above released ordering: default count 30 inside policy, strict positive-integer explicit count validation, exact prefix selection preserving already-ordered sequence, non-mutating result, and count-above-availability returning all available facts.
+
+          Non-scope: no quote-volume ordering/tie-break, eligibility/USDT/stablecoin policy, provider transport/decode/mapping, freshness/cadence, state/persistence, Home/Bubble/Your Trades UI, chart, navigation, or transitions.
+          EOF
+          TOPN_BASE="$BASE/kairos_p76" python - <<'PY'
+          from pathlib import Path
+          import os
+          A=Path(os.environ['TOPN_BASE']); B=Path('.')
+          changed=[]
+          for p in set(x.relative_to(A) for x in A.rglob('*') if x.is_file())|set(x.relative_to(B) for x in B.rglob('*') if x.is_file()):
+            a=A/p; b=B/p
+            if not a.exists() or not b.exists() or a.read_bytes()!=b.read_bytes(): changed.append(str(p))
+          expected=sorted(['KAIROS_LIVE_MARKET_UNIVERSE_TOP_N_SELECTION_POLICY_FOUNDATION_REPORT_2026-09-09.md','package.json','scripts/verify-live-market-universe-top-n-selection-policy-foundation.mjs','src/services/market-data/index.ts','src/services/market-data/liveMarketUniverseTopNSelectionPolicy.ts','tests/live-market-universe-top-n-selection-policy-foundation.test.ts'])
+          assert sorted(changed)==expected,(changed,expected)
+          print('exact six-file Top-N scope PASS')
+          PY
+      - name: Install candidate deterministically
+        working-directory: ${{ runner.temp }}/topn-work/kairos_p76
+        run: npm ci
+      - name: Verify pinned Lightweight Charts
+        working-directory: ${{ runner.temp }}/topn-work/kairos_p76
+        run: node -e "const p=require('./node_modules/lightweight-charts/package.json'); if(p.version!=='5.2.1') process.exit(1)"
+      - name: Verify Top-N selection policy
+        working-directory: ${{ runner.temp }}/topn-work/kairos_p76
+        run: npm run verify:live-market-universe-top-n-selection-policy-foundation
+      - name: Focused Top-N and upstream regressions
+        working-directory: ${{ runner.temp }}/topn-work/kairos_p76
+        run: npx vitest run tests/live-market-universe-top-n-selection-policy-foundation.test.ts tests/live-market-universe-quote-volume-ordering-policy-foundation.test.ts tests/live-market-universe-instrument-eligibility-policy-foundation.test.ts tests/live-market-summary-fact-semantics.test.ts
+      - name: TypeScript compilation
+        working-directory: ${{ runner.temp }}/topn-work/kairos_p76
+        run: npm run typecheck
+      - name: Production build
+        working-directory: ${{ runner.temp }}/topn-work/kairos_p76
+        run: npm run build
+      - name: Full unit regression
+        working-directory: ${{ runner.temp }}/topn-work/kairos_p76
+        run: npm test -- --run
+      - name: Full registered verifier regression
+        working-directory: ${{ runner.temp }}/topn-work/kairos_p76
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const p=require('./package.json'); const {spawnSync}=require('node:child_process');
+          for(const [k,v] of Object.entries(p.scripts).filter(([k])=>k.startsWith('verify:'))){ const r=spawnSync(v,{shell:true,stdio:'inherit'}); if(r.status!==0) process.exit(r.status||1); }
+          NODE
+      - name: Package clean candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="$RUNNER_TEMP/topn-work/kairos_p76"
+          rm -rf "$ROOT/node_modules" "$ROOT/dist" "$ROOT/coverage" "$ROOT/.vite"
+          find "$ROOT" -name '*.tsbuildinfo' -delete
+          cd "$RUNNER_TEMP/topn-work"
+          zip -qr "$GITHUB_WORKSPACE/KAIROS_LIVE_MARKET_UNIVERSE_TOP_N_SELECTION_POLICY_FOUNDATION_CANDIDATE_2026-09-09.zip" kairos_p76
+          unzip -tq "$GITHUB_WORKSPACE/KAIROS_LIVE_MARKET_UNIVERSE_TOP_N_SELECTION_POLICY_FOUNDATION_CANDIDATE_2026-09-09.zip"
+          sha256sum "$GITHUB_WORKSPACE/KAIROS_LIVE_MARKET_UNIVERSE_TOP_N_SELECTION_POLICY_FOUNDATION_CANDIDATE_2026-09-09.zip"
+      - name: Upload non-canonical candidate artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KAIROS_TOP_N_SELECTION_CANDIDATE_NONCANONICAL
+          path: KAIROS_LIVE_MARKET_UNIVERSE_TOP_N_SELECTION_POLICY_FOUNDATION_CANDIDATE_2026-09-09.zip
+          if-no-files-found: error
+      - name: Place verified candidate and self-clean helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          CANDIDATE=KAIROS_LIVE_MARKET_UNIVERSE_TOP_N_SELECTION_POLICY_FOUNDATION_CANDIDATE_2026-09-09.zip
+          HELPER=.github/workflows/live-market-universe-top-n-selection-policy-reconstruct.yml
+          test -f "$CANDIDATE"
+          unzip -tq "$CANDIDATE"
+          echo "candidate-bytes=$(stat -c%s "$CANDIDATE")"
+          sha256sum "$CANDIDATE"
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$CANDIDATE"
+          git rm "$HELPER"
+          mapfile -t changed < <(git diff --cached --name-only | sort)
+          printf '%s\n' "${changed[@]}"
+          test "${#changed[@]}" -eq 2
+          test "${changed[0]}" = "$HELPER"
+          test "${changed[1]}" = "$CANDIDATE"
+          git commit -m "candidate: place verified live market Top-N selection policy"
+          git push origin HEAD:main
