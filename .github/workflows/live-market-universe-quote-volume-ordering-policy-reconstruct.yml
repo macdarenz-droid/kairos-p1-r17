@@ -66,7 +66,7 @@ Exact decimal comparison routes through the released Decimal calculation kernel.
           python - <<'PY2'
           from pathlib import Path
           import base64, json, os
-          payload=json.loads(os.environ['PAYLOAD_JSON'])
+          payload=json.loads(os.environ['PAYLOAD_JSON'], strict=False)
           for path,data in payload.items():
               p=Path(path); p.parent.mkdir(parents=True, exist_ok=True); p.write_bytes(base64.b64decode(data))
           pkg=json.loads(Path('package.json').read_text())
