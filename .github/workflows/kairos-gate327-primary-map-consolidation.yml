@@ -1,0 +1,62 @@
+name: Kairos Gate327 Primary Architecture Map Consolidation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/kairos-gate327-primary-map-consolidation.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  consolidate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Assert exact starting authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object docs/KAIROS_ARCHITECTURE_MAP.md)" = "2b485560dc7c6b023bf4d43426193811aa5ff31a"
+          grep -Fq '## P21 canonical ownership ledger — OPEN through P21.23' docs/KAIROS_ARCHITECTURE_MAP.md
+          grep -Fq '| P21.23 | Live Market Summary Browser State Session Scoped Snapshot Acquisition Composition Foundation |' docs/KAIROS_ARCHITECTURE_MAP.md
+          grep -Fq 'Gate 327 Architecture Addendum' docs/KAIROS_GATE327_ARCHITECTURE_ADDENDUM.md
+      - name: Apply exact docs-only consolidation
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('docs/KAIROS_ARCHITECTURE_MAP.md')
+          before = p.read_text()
+          heading = '## P21 canonical ownership ledger — OPEN through P21.23'
+          row_anchor = '| P21.23 | Live Market Summary Browser State Session Scoped Snapshot Acquisition Composition Foundation | `providers/binance/binanceSpot24hBrowserPublicRestBaselineStateSessionScopedSnapshotAcquisitionComposition.ts` | One released P21.20 acquisition then one released P21.22 scoped read after fulfillment using same session/scope; exact outputs unchanged; no new acquisition/provider/universe/ranking/freshness/persistence/UI semantics |'
+          row = '| Gate 327 | Live Market Universe Quote-Volume Ordering Policy | `src/services/market-data/liveMarketUniverseQuoteVolumeOrderingPolicy.ts`, exported through `src/services/market-data/index.ts` | Deterministically orders already-eligible `LiveMarketSummaryFact` values by descending exact `quoteVolume24h`, then symbol for equal volume, returning a sorted copy; no eligibility/stablecoin/provider/Top-N/freshness/state/persistence/UI ownership |'
+          new_heading = '## P21 canonical ownership ledger — OPEN through Gate 327 quote-volume ordering policy'
+          assert before.count(heading) == 1
+          assert before.count(row_anchor) == 1
+          assert row not in before
+          after = before.replace(heading, new_heading, 1).replace(row_anchor, row_anchor + '\n' + row, 1)
+          evidence_anchor = '## Canonical P21 evidence'
+          assert after.count(evidence_anchor) == 1
+          evidence = '\nGate 327: `Kairos Controlled Roadmap Gate` #327 / run `34324507102`, job `102378550373`, exact head `6767dcf29db81022ea3bafedc70934ab7dec0a3c`, full SUCCESS. Exact artifacts: `KAIROS_CURRENT_CANDIDATE` `10093564641`, digest `sha256:4f716a9d218f0a9cdfa084b843bf0b0e174e88d8507cf21263beea9009536a0b`; `KAIROS_GATE_EVIDENCE` `10093565170`, digest `sha256:14639e25dd1a9b8105fa7da0a8ab125fec056d8a7c90487f11c9372617a3b9a9`. Released owner is ordering-only; Top-N remains separate.\n'
+          after += evidence
+          p.write_text(after)
+      - name: Prove exact delta and self-clean helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff -- docs/KAIROS_ARCHITECTURE_MAP.md
+          test "$(git diff --name-only -- docs/KAIROS_ARCHITECTURE_MAP.md | wc -l)" -eq 1
+          grep -Fq 'OPEN through Gate 327 quote-volume ordering policy' docs/KAIROS_ARCHITECTURE_MAP.md
+          grep -Fq '| Gate 327 | Live Market Universe Quote-Volume Ordering Policy |' docs/KAIROS_ARCHITECTURE_MAP.md
+          grep -Fq 'run `34324507102`' docs/KAIROS_ARCHITECTURE_MAP.md
+          rm .github/workflows/kairos-gate327-primary-map-consolidation.yml
+          git config user.name 'kairos-docs-helper'
+          git config user.email 'actions@users.noreply.github.com'
+          git add docs/KAIROS_ARCHITECTURE_MAP.md .github/workflows/kairos-gate327-primary-map-consolidation.yml
+          git diff --cached --name-only | sort
+          test "$(git diff --cached --name-only | wc -l)" -eq 2
+          git commit -m 'docs: consolidate Gate327 architecture ownership'
+          git push origin HEAD:main
