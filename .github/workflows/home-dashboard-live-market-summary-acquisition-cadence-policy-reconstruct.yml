@@ -220,7 +220,7 @@ jobs:
         working-directory: .cadence-work/kairos_p76
         run: |
           npx vitest run tests/home-dashboard-live-market-summary-acquisition-cadence-policy-foundation.test.ts
-          npm run verify:p21:home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-foundation
+          npm run verify:home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation
           npm run verify:live-market-summary-freshness-classification-policy-foundation
           npm run verify:live-market-universe-top-n-selection-policy-foundation
       - name: Typecheck and build
@@ -240,7 +240,7 @@ jobs:
           const scripts=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:')).sort();
           for(const required of [
             'verify:home-dashboard-live-market-summary-acquisition-cadence-policy-foundation',
-            'verify:p21:home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-foundation',
+            'verify:home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation',
             'verify:live-market-summary-freshness-classification-policy-foundation',
             'verify:live-market-universe-top-n-selection-policy-foundation',
             'verify:p20:5-saved-analysis-system-closure',
