@@ -1,11 +1,11 @@
-# KAIROS LIVE MARKET UNIVERSE ACQUISITION ORCHESTRATION GATE — AUTHORITATIVE BASE GATE 334
+# KAIROS BINANCE SPOT BROWSER LIVE MARKET UNIVERSE ACQUISITION BINDING GATE — AUTHORITATIVE BASE GATE 335
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_LIVE_MARKET_UNIVERSE_ACQUISITION_ORCHESTRATION_FOUNDATION_CANDIDATE_2026-09-09.zip'
+      - 'KAIROS_BINANCE_SPOT_BROWSER_LIVE_MARKET_UNIVERSE_ACQUISITION_BINDING_FOUNDATION_CANDIDATE_2026-09-09.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_LIVE_MARKET_UNIVERSE_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-09.zip
-  CANDIDATE_ZIP: KAIROS_LIVE_MARKET_UNIVERSE_ACQUISITION_ORCHESTRATION_FOUNDATION_CANDIDATE_2026-09-09.zip
+  BASE_ZIP: KAIROS_LIVE_MARKET_UNIVERSE_ACQUISITION_ORCHESTRATION_FOUNDATION_CANDIDATE_2026-09-09.zip
+  CANDIDATE_ZIP: KAIROS_BINANCE_SPOT_BROWSER_LIVE_MARKET_UNIVERSE_ACQUISITION_BINDING_FOUNDATION_CANDIDATE_2026-09-09.zip
 
 jobs:
   verify-current-candidate:
@@ -35,8 +35,8 @@ jobs:
           from pathlib import Path, PurePosixPath
           import hashlib, os, zipfile
           for key, size, digest in [
-            ('BASE_ZIP', 1553037, 'f9429aa49a062b4476304e952820788fb509e6f6482c38cd8f662c5ff8b5b042'),
-            ('CANDIDATE_ZIP', 1558343, '6be8caa519df5060503f5182bfcc6ff8e41a49d92cf18cb8d11aa6dbf5a2e9d5'),
+            ('BASE_ZIP', 1558343, '6be8caa519df5060503f5182bfcc6ff8e41a49d92cf18cb8d11aa6dbf5a2e9d5'),
+            ('CANDIDATE_ZIP', 1563495, 'c744aff5d7c0367d1a3509e0135e24afbbe520d59da5f6fb1273feba547a96e2'),
           ]:
             p=Path(os.environ[key]); data=p.read_bytes()
             assert len(data)==size, f'{key}: byte size mismatch'
@@ -50,7 +50,7 @@ jobs:
                 assert ((i.external_attr >> 16) & 0o170000) != 0o120000, f'{key}: unexpected symbolic link'
           PY
 
-      - name: Extract authoritative Gate334 base and candidate
+      - name: Extract authoritative Gate335 base and candidate
         run: |
           set -euo pipefail
           rm -rf .gate-base .gate-candidate
@@ -60,7 +60,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact controlled provider-neutral Live Market Universe acquisition orchestration scope from Gate334
+      - name: Confirm exact controlled Binance Spot browser Live Market Universe acquisition binding scope from Gate335
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -71,15 +71,15 @@ jobs:
           y={str(p.relative_to(c)):h(p) for p in c.rglob('*') if p.is_file()}
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           expected={
-            'KAIROS_LIVE_MARKET_UNIVERSE_ACQUISITION_ORCHESTRATION_FOUNDATION_REPORT_2026-09-09.md',
+            'KAIROS_BINANCE_SPOT_BROWSER_LIVE_MARKET_UNIVERSE_ACQUISITION_BINDING_FOUNDATION_REPORT_2026-09-09.md',
             'package.json',
-            'scripts/verify-live-market-universe-acquisition-orchestration-foundation.mjs',
+            'scripts/verify-binance-spot-browser-live-market-universe-acquisition-binding-foundation.mjs',
             'src/services/market-data/index.ts',
-            'src/services/market-data/liveMarketUniverseAcquisitionOrchestration.ts',
-            'tests/live-market-universe-acquisition-orchestration-foundation.test.ts',
+            'src/services/market-data/providers/binance/binanceSpotBrowserLiveMarketUniverseAcquisitionBinding.ts',
+            'tests/binance-spot-browser-live-market-universe-acquisition-binding-foundation.test.ts',
           }
           if changed != expected:
-            print('Live Market Universe acquisition orchestration exact scope mismatch',file=sys.stderr)
+            print('Binance browser Live Market Universe acquisition binding exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             sys.exit(1)
@@ -103,10 +103,13 @@ jobs:
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
 
-      - name: Dedicated Live Market Universe acquisition orchestration verifier/runtime
+      - name: Dedicated Binance browser Live Market Universe acquisition binding verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:binance-spot-browser-live-market-universe-acquisition-binding-foundation
           npm run verify:live-market-universe-acquisition-orchestration-foundation
+          npm run verify:p21:binance-spot-exchange-info-browser-instrument-metadata-acquisition-binding-foundation
+          npm run verify:p21:15-binance-spot-24h-browser-public-rest-baseline-acquisition-binding-foundation
           npm run verify:live-market-universe-instrument-metadata-acquisition-port-contract-foundation
           npm run verify:live-market-universe-instrument-eligibility-policy-foundation
           npm run verify:p21:4-live-market-summary-baseline-acquisition-port-foundation
@@ -121,11 +124,14 @@ jobs:
           npm run verify:binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation
           npm run verify:p21:23-live-market-summary-browser-state-session-scoped-snapshot-acquisition-composition-foundation
 
-      - name: Focused Live Market Universe acquisition orchestration regression
+      - name: Focused Binance browser Live Market Universe acquisition binding regression
         working-directory: .gate-candidate/kairos_p76
         run: |
           npx vitest run \
+            tests/binance-spot-browser-live-market-universe-acquisition-binding-foundation.test.ts \
             tests/live-market-universe-acquisition-orchestration-foundation.test.ts \
+            tests/binance-spot-exchange-info-browser-instrument-metadata-acquisition-binding.test.ts \
+            tests/binance-spot-24h-browser-public-rest-baseline-acquisition-binding.test.ts \
             tests/live-market-universe-instrument-metadata-acquisition-port-contract-foundation.test.ts \
             tests/live-market-universe-instrument-eligibility-policy-foundation.test.ts \
             tests/live-market-summary-baseline-acquisition-port-foundation.test.ts \
@@ -134,7 +140,10 @@ jobs:
             tests/live-market-universe-top-n-selection-policy-foundation.test.ts \
             tests/binance-spot-24h-public-rest-baseline-request.test.ts \
             tests/home-dashboard-live-market-summary-browser-lifecycle-adapter-foundation.test.ts
+          npm run verify:binance-spot-browser-live-market-universe-acquisition-binding-foundation
           npm run verify:live-market-universe-acquisition-orchestration-foundation
+          npm run verify:p21:binance-spot-exchange-info-browser-instrument-metadata-acquisition-binding-foundation
+          npm run verify:p21:15-binance-spot-24h-browser-public-rest-baseline-acquisition-binding-foundation
           npm run verify:live-market-universe-instrument-metadata-acquisition-port-contract-foundation
           npm run verify:live-market-universe-instrument-eligibility-policy-foundation
           npm run verify:p21:4-live-market-summary-baseline-acquisition-port-foundation
@@ -156,7 +165,10 @@ jobs:
           const p=JSON.parse(readFileSync('package.json'));
           const scripts=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:')).sort();
           for(const required of [
+            'verify:binance-spot-browser-live-market-universe-acquisition-binding-foundation',
             'verify:live-market-universe-acquisition-orchestration-foundation',
+            'verify:p21:binance-spot-exchange-info-browser-instrument-metadata-acquisition-binding-foundation',
+            'verify:p21:15-binance-spot-24h-browser-public-rest-baseline-acquisition-binding-foundation',
             'verify:live-market-universe-composition-foundation',
             'verify:live-market-universe-instrument-metadata-acquisition-port-contract-foundation',
             'verify:live-market-universe-instrument-eligibility-policy-foundation',
@@ -181,7 +193,10 @@ jobs:
       - name: Historical closures
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:binance-spot-browser-live-market-universe-acquisition-binding-foundation
           npm run verify:live-market-universe-acquisition-orchestration-foundation
+          npm run verify:p21:binance-spot-exchange-info-browser-instrument-metadata-acquisition-binding-foundation
+          npm run verify:p21:15-binance-spot-24h-browser-public-rest-baseline-acquisition-binding-foundation
           npm run verify:live-market-universe-composition-foundation
           npm run verify:live-market-universe-top-n-selection-policy-foundation
           npm run verify:live-market-universe-quote-volume-ordering-policy-foundation
@@ -229,5 +244,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_LIVE_MARKET_UNIVERSE_ACQUISITION_ORCHESTRATION_FOUNDATION_REPORT_2026-09-09.md
+          path: .gate-candidate/kairos_p76/KAIROS_BINANCE_SPOT_BROWSER_LIVE_MARKET_UNIVERSE_ACQUISITION_BINDING_FOUNDATION_REPORT_2026-09-09.md
           if-no-files-found: error
