@@ -79,9 +79,10 @@ jobs:
           # Kairos P21 Live Market Universe Quote-Volume Ordering Policy Foundation
           Base: canonical Gate 326 GOLDEN. Owns deterministic ordering for already-eligible LiveMarketSummaryFact facts only: descending exact quoteVolume24h, equal-volume symbol tie-break, sorted copy. Decimal comparison uses released Decimal kernel. No eligibility, provider transport/mapping, Top-N/Top-30 selection, cadence/freshness, state/persistence, Home/Bubble UI, chart/navigation/transitions.
           EOF
-          python - <<'PY'
+          ORDERING_BASE="$BASE/kairos_p76" python - <<'PY'
           from pathlib import Path
-          A=Path("$BASE/kairos_p76"); B=Path('.')
+          import os
+          A=Path(os.environ['ORDERING_BASE']); B=Path('.')
           changed=[]
           for p in set(x.relative_to(A) for x in A.rglob('*') if x.is_file())|set(x.relative_to(B) for x in B.rglob('*') if x.is_file()):
             a=A/p; b=B/p
