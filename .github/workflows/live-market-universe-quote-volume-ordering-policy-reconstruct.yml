@@ -137,3 +137,21 @@ jobs:
           name: KAIROS_ORDERING_CANDIDATE_NONCANONICAL
           path: KAIROS_LIVE_MARKET_UNIVERSE_QUOTE_VOLUME_ORDERING_POLICY_FOUNDATION_CANDIDATE_2026-09-09.zip
           if-no-files-found: error
+      - name: Place verified ordering candidate at repository root
+        shell: bash
+        run: |
+          set -euo pipefail
+          CANDIDATE=KAIROS_LIVE_MARKET_UNIVERSE_QUOTE_VOLUME_ORDERING_POLICY_FOUNDATION_CANDIDATE_2026-09-09.zip
+          test -f "$CANDIDATE"
+          unzip -tq "$CANDIDATE"
+          echo "candidate-bytes=$(stat -c%s "$CANDIDATE")"
+          sha256sum "$CANDIDATE"
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$CANDIDATE"
+          test "$(git diff --cached --name-only | wc -l)" -eq 1
+          test "$(git diff --cached --name-only)" = "$CANDIDATE"
+          git commit -m "candidate: place verified live market quote-volume ordering policy"
+          git push origin HEAD:main
