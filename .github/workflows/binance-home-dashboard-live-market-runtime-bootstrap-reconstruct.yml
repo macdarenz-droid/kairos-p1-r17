@@ -1,0 +1,163 @@
+name: Kairos Binance Home Dashboard Live Market Runtime Bootstrap Reconstruction
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/binance-home-dashboard-live-market-runtime-bootstrap-reconstruct.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kairos-binance-home-dashboard-live-market-runtime-bootstrap-reconstruct
+  cancel-in-progress: false
+
+jobs:
+  reconstruct-and-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Pin npm
+        run: |
+          npm install --global npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+
+      - name: Reconstruct and verify Home live-market runtime bootstrap from Gate336 GOLDEN
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_ZIP=KAIROS_BINANCE_SPOT_BROWSER_LIVE_MARKET_UNIVERSE_ACQUISITION_BINDING_FOUNDATION_CANDIDATE_2026-09-09.zip
+          OUT_ZIP=KAIROS_BINANCE_HOME_DASHBOARD_LIVE_MARKET_RUNTIME_BOOTSTRAP_FOUNDATION_CANDIDATE_2026-09-09.zip
+          PAYLOAD=.github/kairos-helper-payloads/binance-home-dashboard-live-market-runtime-bootstrap.patch.gz
+          WORK="$RUNNER_TEMP/home-runtime-bootstrap-work"
+          BASE="$RUNNER_TEMP/home-runtime-bootstrap-base"
+          PATCH="$RUNNER_TEMP/home-runtime-bootstrap.patch"
+          test -f "$BASE_ZIP"
+          test "$(stat -c%s "$BASE_ZIP")" = "1563495"
+          echo "c744aff5d7c0367d1a3509e0135e24afbbe520d59da5f6fb1273feba547a96e2  $BASE_ZIP" | sha256sum -c -
+          test -f "$PAYLOAD"
+          echo "eb667925a3b68d1dcd08ec1715608f506b7f1870bf56a252bd3af0a88b9b6a0d  $PAYLOAD" | sha256sum -c -
+          gzip -dc "$PAYLOAD" > "$PATCH"
+          echo "a342baf88975b41139f8ac1ef27f8c5a8f719ad2e29615a940b36ba7af3fa1bd  $PATCH" | sha256sum -c -
+          rm -rf "$WORK" "$BASE"
+          mkdir -p "$WORK" "$BASE"
+          unzip -q "$BASE_ZIP" -d "$WORK"
+          unzip -q "$BASE_ZIP" -d "$BASE"
+          test -f "$WORK/kairos_p76/package.json"
+          test -f "$BASE/kairos_p76/package.json"
+          cd "$WORK/kairos_p76"
+          test ! -e src/app/binanceHomeDashboardLiveMarketRuntimeBootstrap.ts
+          git apply --check "$PATCH"
+          git apply "$PATCH"
+
+          npm ci
+          test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
+          npm ls lightweight-charts --depth=0
+          npm run verify:binance-home-dashboard-live-market-runtime-bootstrap-foundation
+          npm run verify:binance-spot-browser-live-market-universe-acquisition-binding-foundation
+          npm run verify:p21:19-live-market-summary-state-session-foundation
+          npm run verify:binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation
+          npm run verify:home-dashboard-live-market-summary-browser-lifecycle-adapter-foundation
+          npm run verify:home-dashboard-live-market-summary-acquisition-lifecycle-scheduler-foundation
+          npm run typecheck
+          npm run build
+          npx vitest run \
+            tests/binance-home-dashboard-live-market-runtime-bootstrap-foundation.test.ts \
+            tests/binance-spot-browser-live-market-universe-acquisition-binding-foundation.test.ts \
+            tests/live-market-summary-state-session-foundation.test.ts \
+            tests/binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation.test.ts \
+            tests/home-dashboard-live-market-summary-browser-lifecycle-adapter-foundation.test.ts \
+            tests/home-dashboard-live-market-summary-acquisition-lifecycle-scheduler-foundation.test.ts
+          npm test
+          node - <<'NODE'
+          const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
+          const p=JSON.parse(readFileSync('package.json'));
+          const scripts=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:')).sort();
+          for(const required of [
+            'verify:binance-home-dashboard-live-market-runtime-bootstrap-foundation',
+            'verify:binance-spot-browser-live-market-universe-acquisition-binding-foundation',
+            'verify:home-dashboard-live-market-summary-browser-lifecycle-adapter-foundation',
+            'verify:home-dashboard-live-market-summary-acquisition-lifecycle-scheduler-foundation',
+            'verify:p21:19-live-market-summary-state-session-foundation',
+            'verify:p20:5-saved-analysis-system-closure','verify:p19:7-risk-reward-tool-system-closure',
+            'verify:p18:60-drawing-tools-system-closure','verify:p17:16-chart-engine-system-closure',
+            'verify:p16:18-crypto-live-feed-system-closure','verify:p15:14-market-data-adapter-system-closure',
+            'verify:p14:9-trade-visualizer-system-closure','verify:p11:calculation-brain-closure','verify:p8:navigation-shell','verify:p1',
+          ]) if(!scripts.includes(required)){console.error('Missing '+required);process.exit(1)}
+          for(const name of scripts){const r=spawnSync('npm',['run',name],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
+          NODE
+
+          rm -rf node_modules dist coverage .vite .cache
+          find . -name '*.tsbuildinfo' -delete
+          find . -name '*.log' -delete
+          cd "$WORK"
+          python - <<'PY'
+          from pathlib import Path, PurePosixPath
+          import hashlib, os, zipfile
+          base=Path(os.environ['RUNNER_TEMP'])/'home-runtime-bootstrap-base'/'kairos_p76'
+          work=Path(os.environ['RUNNER_TEMP'])/'home-runtime-bootstrap-work'/'kairos_p76'
+          forbidden={'node_modules','dist','coverage','.vite','.cache'}
+          for p in work.rglob('*'):
+            assert not any(part in forbidden for part in p.parts), f'forbidden residue: {p}'
+            assert not p.name.endswith('.tsbuildinfo') and not p.name.endswith('.log'), f'forbidden file residue: {p}'
+          def h(p): return hashlib.sha256(p.read_bytes()).hexdigest()
+          x={str(p.relative_to(base)):h(p) for p in base.rglob('*') if p.is_file()}
+          y={str(p.relative_to(work)):h(p) for p in work.rglob('*') if p.is_file()}
+          changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
+          expected={
+            'KAIROS_BINANCE_HOME_DASHBOARD_LIVE_MARKET_RUNTIME_BOOTSTRAP_FOUNDATION_REPORT_2026-09-09.md',
+            'package.json',
+            'scripts/verify-binance-home-dashboard-live-market-runtime-bootstrap-foundation.mjs',
+            'src/app/binanceHomeDashboardLiveMarketRuntimeBootstrap.ts',
+            'tests/binance-home-dashboard-live-market-runtime-bootstrap-foundation.test.ts',
+          }
+          assert changed==expected, f'exact scope mismatch: unexpected={sorted(changed-expected)} missing={sorted(expected-changed)}'
+          out=Path(os.environ['RUNNER_TEMP'])/'KAIROS_BINANCE_HOME_DASHBOARD_LIVE_MARKET_RUNTIME_BOOTSTRAP_FOUNDATION_CANDIDATE_2026-09-09.zip'
+          PY
+          cd "$RUNNER_TEMP"
+          rm -f "$OUT_ZIP"
+          (cd "$WORK" && zip -qr "$RUNNER_TEMP/$OUT_ZIP" kairos_p76)
+          python - <<'PY'
+          from pathlib import Path, PurePosixPath
+          import hashlib, os, zipfile
+          z=Path(os.environ['RUNNER_TEMP'])/'KAIROS_BINANCE_HOME_DASHBOARD_LIVE_MARKET_RUNTIME_BOOTSTRAP_FOUNDATION_CANDIDATE_2026-09-09.zip'
+          data=z.read_bytes()
+          with zipfile.ZipFile(z) as a:
+            assert a.testzip() is None
+            assert {i.filename.split('/')[0] for i in a.infolist()}=={'kairos_p76'}
+            for i in a.infolist():
+              p=PurePosixPath(i.filename)
+              assert not p.is_absolute() and '..' not in p.parts
+              assert ((i.external_attr >> 16) & 0o170000) != 0o120000
+          print('CANDIDATE_SIZE='+str(len(data)))
+          print('CANDIDATE_SHA256='+hashlib.sha256(data).hexdigest())
+          PY
+          cp "$RUNNER_TEMP/$OUT_ZIP" "$GITHUB_WORKSPACE/$OUT_ZIP"
+
+      - name: Upload verified non-canonical candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: KAIROS_BINANCE_HOME_DASHBOARD_LIVE_MARKET_RUNTIME_BOOTSTRAP_CANDIDATE
+          path: KAIROS_BINANCE_HOME_DASHBOARD_LIVE_MARKET_RUNTIME_BOOTSTRAP_FOUNDATION_CANDIDATE_2026-09-09.zip
+          if-no-files-found: error
+
+      - name: Place verified candidate at repository root
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'kairos-autonomous-worker'
+          git config user.email 'kairos-autonomous-worker@users.noreply.github.com'
+          git add KAIROS_BINANCE_HOME_DASHBOARD_LIVE_MARKET_RUNTIME_BOOTSTRAP_FOUNDATION_CANDIDATE_2026-09-09.zip
+          if git diff --cached --quiet; then
+            echo 'Candidate already present with identical bytes.'
+            exit 0
+          fi
+          git commit -m 'candidate: add Home live-market runtime bootstrap'
+          git push origin HEAD:main
