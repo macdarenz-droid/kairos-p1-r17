@@ -1,11 +1,11 @@
-# KAIROS LIVE MARKET UNIVERSE TOP-N SELECTION POLICY GATE — AUTHORITATIVE BASE GATE 327
+# KAIROS HOME DASHBOARD LIVE MARKET SUMMARY ACQUISITION CADENCE POLICY GATE — AUTHORITATIVE BASE GATE 328
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_LIVE_MARKET_UNIVERSE_TOP_N_SELECTION_POLICY_FOUNDATION_CANDIDATE_2026-09-09.zip'
+      - 'KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_ACQUISITION_CADENCE_POLICY_FOUNDATION_CANDIDATE_2026-09-09.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_LIVE_MARKET_UNIVERSE_QUOTE_VOLUME_ORDERING_POLICY_FOUNDATION_CANDIDATE_2026-09-09.zip
-  CANDIDATE_ZIP: KAIROS_LIVE_MARKET_UNIVERSE_TOP_N_SELECTION_POLICY_FOUNDATION_CANDIDATE_2026-09-09.zip
+  BASE_ZIP: KAIROS_LIVE_MARKET_UNIVERSE_TOP_N_SELECTION_POLICY_FOUNDATION_CANDIDATE_2026-09-09.zip
+  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_ACQUISITION_CADENCE_POLICY_FOUNDATION_CANDIDATE_2026-09-09.zip
 
 jobs:
   verify-current-candidate:
@@ -35,8 +35,8 @@ jobs:
           from pathlib import Path, PurePosixPath
           import hashlib, os, zipfile
           for key, size, digest in [
-            ('BASE_ZIP', 1531264, '032d3cda1be2d8f186aaf8ca5e14325afb47c9f773e84b30a8f3e739ce012c3a'),
-            ('CANDIDATE_ZIP', 1534681, '98a9d95965e5cf18c31710517047c2d54e7ac7223e50219dfb8d8a582b113c19'),
+            ('BASE_ZIP', 1534681, '98a9d95965e5cf18c31710517047c2d54e7ac7223e50219dfb8d8a582b113c19'),
+            ('CANDIDATE_ZIP', 1535530, '747ef1071752daba216ce0194755db51f9839ce75e89d762201e01e949a07821'),
           ]:
             p=Path(os.environ[key]); data=p.read_bytes()
             assert len(data)==size, f'{key}: byte size mismatch'
@@ -61,7 +61,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact controlled Live Market Universe Top-N selection policy scope from Gate 327
+      - name: Confirm exact controlled Home live-market acquisition cadence policy scope from Gate 328
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -73,15 +73,14 @@ jobs:
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           print('\n'.join(sorted(changed)))
           expected={
-            'KAIROS_LIVE_MARKET_UNIVERSE_TOP_N_SELECTION_POLICY_FOUNDATION_REPORT_2026-09-09.md',
+            'KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_ACQUISITION_CADENCE_POLICY_FOUNDATION_REPORT_2026-09-09.md',
             'package.json',
-            'scripts/verify-live-market-universe-top-n-selection-policy-foundation.mjs',
-            'src/services/market-data/index.ts',
-            'src/services/market-data/liveMarketUniverseTopNSelectionPolicy.ts',
-            'tests/live-market-universe-top-n-selection-policy-foundation.test.ts',
+            'scripts/verify-home-dashboard-live-market-summary-acquisition-cadence-policy-foundation.mjs',
+            'src/application/dashboard/homeDashboardLiveMarketSummaryAcquisitionCadencePolicy.ts',
+            'tests/home-dashboard-live-market-summary-acquisition-cadence-policy-foundation.test.ts',
           }
           if changed != expected:
-            print('Live Market Universe Top-N selection policy exact scope mismatch',file=sys.stderr)
+            print('Home live-market acquisition cadence policy exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             sys.exit(1)
@@ -105,9 +104,12 @@ jobs:
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
 
-      - name: Dedicated Live Market Universe Top-N selection policy verifier/runtime
+      - name: Dedicated Home live-market acquisition cadence policy verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:home-dashboard-live-market-summary-acquisition-cadence-policy-foundation
+          npm run verify:home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation
+          npm run verify:live-market-summary-freshness-classification-policy-foundation
           npm run verify:live-market-universe-top-n-selection-policy-foundation
           npm run verify:live-market-universe-quote-volume-ordering-policy-foundation
           npm run verify:live-market-universe-instrument-eligibility-policy-foundation
@@ -129,9 +131,13 @@ jobs:
           npm run verify:p8:navigation-shell
           npm run verify:p1
 
-      - name: Focused Live Market Universe Top-N regression
+      - name: Focused Home live-market acquisition cadence regression
         working-directory: .gate-candidate/kairos_p76
-        run: npx vitest run tests/live-market-universe-top-n-selection-policy-foundation.test.ts tests/live-market-universe-quote-volume-ordering-policy-foundation.test.ts tests/live-market-universe-instrument-eligibility-policy-foundation.test.ts tests/live-market-summary-fact-semantics.test.ts
+        run: |
+          npx vitest run tests/home-dashboard-live-market-summary-acquisition-cadence-policy-foundation.test.ts
+          npm run verify:home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation
+          npm run verify:live-market-summary-freshness-classification-policy-foundation
+          npm run verify:live-market-universe-top-n-selection-policy-foundation
 
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
@@ -145,6 +151,9 @@ jobs:
           const p=JSON.parse(readFileSync('package.json'));
           const scripts=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:')).sort();
           for(const required of [
+            'verify:home-dashboard-live-market-summary-acquisition-cadence-policy-foundation',
+            'verify:home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation',
+            'verify:live-market-summary-freshness-classification-policy-foundation',
             'verify:live-market-universe-top-n-selection-policy-foundation',
             'verify:live-market-universe-quote-volume-ordering-policy-foundation',
             'verify:live-market-universe-instrument-eligibility-policy-foundation',
@@ -166,6 +175,9 @@ jobs:
       - name: Historical closures
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:home-dashboard-live-market-summary-acquisition-cadence-policy-foundation
+          npm run verify:home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation
+          npm run verify:live-market-summary-freshness-classification-policy-foundation
           npm run verify:live-market-universe-top-n-selection-policy-foundation
           npm run verify:live-market-universe-quote-volume-ordering-policy-foundation
           npm run verify:live-market-universe-instrument-eligibility-policy-foundation
@@ -204,5 +216,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_LIVE_MARKET_UNIVERSE_TOP_N_SELECTION_POLICY_FOUNDATION_REPORT_2026-09-09.md
+          path: .gate-candidate/kairos_p76/KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_ACQUISITION_CADENCE_POLICY_FOUNDATION_REPORT_2026-09-09.md
           if-no-files-found: error
