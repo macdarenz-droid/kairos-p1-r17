@@ -1,0 +1,34 @@
+name: Live Market Universe Eligibility Identity Proof
+on:
+  workflow_dispatch:
+jobs:
+  prove-candidate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prove exact candidate identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          FILE='KAIROS_LIVE_MARKET_UNIVERSE_INSTRUMENT_ELIGIBILITY_POLICY_FOUNDATION_CANDIDATE_2026-09-09.zip'
+          test -f "$FILE"
+          echo "SIZE=$(stat -c%s "$FILE")"
+          echo "SHA256=$(sha256sum "$FILE" | awk '{print $1}')"
+          unzip -t "$FILE"
+          python3 - <<'PY'
+          import zipfile
+          p='KAIROS_LIVE_MARKET_UNIVERSE_INSTRUMENT_ELIGIBILITY_POLICY_FOUNDATION_CANDIDATE_2026-09-09.zip'
+          with zipfile.ZipFile(p) as z:
+              names=z.namelist()
+              assert names, 'empty archive'
+              roots={n.split('/',1)[0] for n in names if n}
+              assert roots == {'kairos_p76'}, roots
+              for info in z.infolist():
+                  n=info.filename
+                  assert not n.startswith(('/', '\\')), n
+                  assert '..' not in n.split('/'), n
+                  mode=(info.external_attr >> 16) & 0o170000
+                  assert mode != 0o120000, f'symlink: {n}'
+          print('ROOT=kairos_p76/')
+          print('ZIP_PATH_SYMLINK_HYGIENE=PASS')
+          PY
