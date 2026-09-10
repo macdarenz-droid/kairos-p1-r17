@@ -93,7 +93,7 @@ new file mode 100644
 +assert.ok(test.includes('reads acquisition observation time and freshness evaluation time independently'));
 +assert.ok(test.includes('expect(observedAt).toBe(new Date(1_789_056_000_000).toISOString())'));
 +assert.ok(test.includes('expect(evaluationTimeMs).toBe(1_789_056_005_000)'));
-+assert.ok(report.includes('does not collapse acquisition observation time into later freshness-evaluation time'));
++assert.ok(report.includes('do not collapse acquisition observation time into later freshness-evaluation time'));
 +assert.ok(report.includes('owns only browser wall-clock source adaptation'));
 +
 +console.log('PASS: Home Live Crypto Bubble browser wall-clock sources provide separate current-time adapters without absorbing freshness policy, market configuration, lifecycle, geometry, route, or persistence ownership.');
