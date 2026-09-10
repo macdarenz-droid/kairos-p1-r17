@@ -1,0 +1,177 @@
+name: Kairos Home Dashboard Live Crypto Bubble React Area Weight View Model Reconstruction
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/home-dashboard-live-crypto-bubble-react-area-weight-view-model-reconstruct.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kairos-home-dashboard-live-crypto-bubble-react-area-weight-view-model-reconstruct
+  cancel-in-progress: false
+
+jobs:
+  reconstruct-and-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Pin npm
+        run: |
+          npm install --global npm@10.9.2
+          test "$(npm --version)" = "10.9.2"
+
+      - name: Reconstruct and verify Home Bubble React area-weight view model from Gate352 GOLDEN
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_ZIP=KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_AREA_WEIGHT_PROJECTION_FOUNDATION_CANDIDATE_2026-09-10.zip
+          OUT_ZIP=KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_REACT_AREA_WEIGHT_VIEW_MODEL_FOUNDATION_CANDIDATE_2026-09-10.zip
+          PATCH=.github/kairos-helper-payloads/home-bubble-react-area-weight-view-model.patch
+          WORK="$RUNNER_TEMP/home-bubble-react-area-weight-view-model-work"
+          BASE="$RUNNER_TEMP/home-bubble-react-area-weight-view-model-base"
+
+          test -f "$BASE_ZIP"
+          test "$(stat -c%s "$BASE_ZIP")" = "1636871"
+          echo "f899195a8f61c2a817e1c2f4b2d02cf20ec662df8a9fc81631a6f74d98aea1fc  $BASE_ZIP" | sha256sum -c -
+          test -f "$PATCH"
+          echo "cfc8a441e372de7ba42f408911b2cc3176f5ca1bf135a2beaa61ce5eb53635ee  $PATCH" | sha256sum -c -
+
+          rm -rf "$WORK" "$BASE"
+          mkdir -p "$WORK" "$BASE"
+          unzip -q "$BASE_ZIP" -d "$WORK"
+          unzip -q "$BASE_ZIP" -d "$BASE"
+          ROOT="$WORK/kairos_p76"
+          test -f "$ROOT/package.json"
+          test -f "$ROOT/src/app/useHomeDashboardLiveCryptoBubblePresentationObservedRuntime.ts"
+          test -f "$ROOT/src/application/dashboard/homeDashboardLiveCryptoBubbleAreaWeightProjection.ts"
+          test ! -e "$ROOT/src/app/homeDashboardLiveCryptoBubbleReactAreaWeightViewModel.ts"
+
+          cd "$ROOT"
+          git apply --check "$GITHUB_WORKSPACE/$PATCH"
+          git apply "$GITHUB_WORKSPACE/$PATCH"
+
+          npm ci
+          test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
+          npm ls lightweight-charts --depth=0
+          npm run verify:home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation
+          npm run verify:home-dashboard-live-crypto-bubble-area-weight-projection-foundation
+          npm run verify:home-dashboard-live-crypto-bubble-react-runtime-binding-foundation
+          npm run verify:binance-home-dashboard-live-crypto-bubble-presentation-observed-runtime-composition-foundation
+          npm run verify:home-dashboard-live-crypto-bubble-presentation-state-observation-bridge-foundation
+          npm run verify:home-dashboard-live-crypto-bubble-presentation-state-projection-foundation
+          npm run verify:home-dashboard-live-crypto-bubble-metric-observation-bridge-foundation
+          npm run verify:live-crypto-bubble-metric-input-projection-foundation
+          npm run verify:p21:1-home-dashboard-route-ownership-foundation
+          npm run typecheck
+          npm run build
+          npx vitest run \
+            tests/home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation.test.ts \
+            tests/home-dashboard-live-crypto-bubble-area-weight-projection-foundation.test.ts \
+            tests/home-dashboard-live-crypto-bubble-react-runtime-binding-foundation.test.ts \
+            tests/home-dashboard-live-crypto-bubble-presentation-state-projection-foundation.test.ts \
+            tests/home-dashboard-live-crypto-bubble-presentation-state-observation-bridge-foundation.test.ts \
+            tests/router.test.tsx
+          npm test
+          node - <<'NODE'
+          const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
+          const pkg=JSON.parse(readFileSync('package.json'));
+          const scripts=Object.keys(pkg.scripts||{}).filter((x)=>x.startsWith('verify:')).sort();
+          const required=[
+            'verify:home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation',
+            'verify:home-dashboard-live-crypto-bubble-area-weight-projection-foundation',
+            'verify:home-dashboard-live-crypto-bubble-react-runtime-binding-foundation',
+            'verify:binance-home-dashboard-live-crypto-bubble-presentation-observed-runtime-composition-foundation',
+            'verify:home-dashboard-live-crypto-bubble-presentation-state-observation-bridge-foundation',
+            'verify:home-dashboard-live-crypto-bubble-presentation-state-projection-foundation',
+            'verify:home-dashboard-live-crypto-bubble-metric-observation-bridge-foundation',
+            'verify:live-crypto-bubble-metric-input-projection-foundation',
+            'verify:p21:1-home-dashboard-route-ownership-foundation',
+            'verify:p20:5-saved-analysis-system-closure','verify:p19:7-risk-reward-tool-system-closure',
+            'verify:p18:60-drawing-tools-system-closure','verify:p17:16-chart-engine-system-closure',
+            'verify:p16:18-crypto-live-feed-system-closure','verify:p15:14-market-data-adapter-system-closure',
+            'verify:p14:9-trade-visualizer-system-closure','verify:p11:calculation-brain-closure','verify:p8:navigation-shell','verify:p1'
+          ];
+          for(const name of required) if(!scripts.includes(name)){console.error('Missing '+name);process.exit(1)}
+          for(const name of scripts){const r=spawnSync('npm',['run',name],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
+          NODE
+
+          rm -rf node_modules dist coverage .vite .cache
+          find . -name '*.tsbuildinfo' -delete
+          find . -name '*.log' -delete
+
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib, os
+          base=Path(os.environ['BASE'])/'kairos_p76'
+          work=Path(os.environ['WORK'])/'kairos_p76'
+          forbidden={'node_modules','dist','coverage','.vite','.cache'}
+          for p in work.rglob('*'):
+            assert not any(part in forbidden for part in p.parts), f'forbidden residue: {p}'
+            assert not p.name.endswith('.tsbuildinfo') and not p.name.endswith('.log'), f'forbidden file residue: {p}'
+          def h(p): return hashlib.sha256(p.read_bytes()).hexdigest()
+          x={str(p.relative_to(base)):h(p) for p in base.rglob('*') if p.is_file()}
+          y={str(p.relative_to(work)):h(p) for p in work.rglob('*') if p.is_file()}
+          changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
+          expected={
+            'KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_REACT_AREA_WEIGHT_VIEW_MODEL_FOUNDATION_REPORT_2026-09-10.md',
+            'package.json',
+            'scripts/verify-home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation.mjs',
+            'src/app/homeDashboardLiveCryptoBubbleReactAreaWeightViewModel.ts',
+            'tests/home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation.test.ts',
+          }
+          assert changed==expected, f'exact scope mismatch: unexpected={sorted(changed-expected)} missing={sorted(expected-changed)}'
+          PY
+
+          cd "$RUNNER_TEMP"
+          rm -f "$OUT_ZIP"
+          (cd "$WORK" && zip -qr "$RUNNER_TEMP/$OUT_ZIP" kairos_p76)
+          python - <<'PY'
+          from pathlib import Path, PurePosixPath
+          import hashlib, os, zipfile
+          z=Path(os.environ['RUNNER_TEMP'])/'KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_REACT_AREA_WEIGHT_VIEW_MODEL_FOUNDATION_CANDIDATE_2026-09-10.zip'
+          data=z.read_bytes()
+          with zipfile.ZipFile(z) as a:
+            assert a.testzip() is None
+            assert {i.filename.split('/')[0] for i in a.infolist()}=={'kairos_p76'}
+            for i in a.infolist():
+              p=PurePosixPath(i.filename)
+              assert not p.is_absolute() and '..' not in p.parts
+              assert ((i.external_attr >> 16) & 0o170000) != 0o120000
+          print('CANDIDATE_SIZE='+str(len(data)))
+          print('CANDIDATE_SHA256='+hashlib.sha256(data).hexdigest())
+          PY
+          cp "$RUNNER_TEMP/$OUT_ZIP" "$GITHUB_WORKSPACE/$OUT_ZIP"
+        env:
+          BASE: ${{ runner.temp }}/home-bubble-react-area-weight-view-model-base
+          WORK: ${{ runner.temp }}/home-bubble-react-area-weight-view-model-work
+
+      - name: Upload verified non-canonical candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_REACT_AREA_WEIGHT_VIEW_MODEL_CANDIDATE
+          path: KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_REACT_AREA_WEIGHT_VIEW_MODEL_FOUNDATION_CANDIDATE_2026-09-10.zip
+          if-no-files-found: error
+
+      - name: Place verified candidate at repository root
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'kairos-autonomous-worker'
+          git config user.email 'kairos-autonomous-worker@users.noreply.github.com'
+          git pull --rebase origin main
+          git add KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_REACT_AREA_WEIGHT_VIEW_MODEL_FOUNDATION_CANDIDATE_2026-09-10.zip
+          if git diff --cached --quiet; then
+            echo 'Candidate already present with identical bytes.'
+            exit 0
+          fi
+          git commit -m 'candidate: add Home Bubble React area-weight view model'
+          git push origin HEAD:main
