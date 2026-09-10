@@ -1,0 +1,262 @@
+diff --git a/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_HOME_ROUTE_TEXT_RUNTIME_INTEGRATION_FOUNDATION_REPORT_2026-09-11.md b/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_HOME_ROUTE_TEXT_RUNTIME_INTEGRATION_FOUNDATION_REPORT_2026-09-11.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..ed3cc260486d67cc45143bf830a8119c0c7f1e69
+--- /dev/null
++++ b/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_HOME_ROUTE_TEXT_RUNTIME_INTEGRATION_FOUNDATION_REPORT_2026-09-11.md
+@@ -0,0 +1,36 @@
++# Kairos Home Dashboard Live Crypto Bubble Home Route Text Runtime Integration Foundation Report — 2026-09-11
++
++## Authority
++
++This candidate starts only from the exact Gate362 canonical GOLDEN candidate `KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_RUNTIME_PRODUCT_POLICY_FOUNDATION_CANDIDATE_2026-09-11.zip`, size `1,681,458` bytes, SHA-256 `ed812610da32a163627e77f539f749a54f0a09f316010208e3d290e113a1475b`, root exactly `kairos_p76/`.
++
++Gate362 canonically releases the user-approved default runtime product policy. Gate361 already canonically releases the configured browser textual-evidence runtime immediately below eventual Home route integration. This slice connects those two released owners at `HomeRoute` without introducing another product, provider, data, persistence or renderer owner.
++
++## Released responsibility
++
++`src/app/HomeRoute.tsx` performs only the route-level composition required to make the already-released truthful Live Crypto textual evidence observable from the existing `/` Home route:
++
++1. request the exact released Gate362 default product configuration through `createHomeDashboardLiveCryptoBubbleDefaultRuntimeProductConfiguration()` exactly once per HomeRoute render;
++2. pass that exact configuration reference into Gate361 `HomeDashboardLiveCryptoBubbleConfiguredTextEvidenceRuntime` exactly once; and
++3. replace the stale disconnected-dashboard placeholder with the released Live Crypto textual-runtime consumer.
++
++The route does not copy or reinterpret the stablecoin exclusions or neutral threshold. The exact released Gate362 default product configuration remains the sole owner of those values.
++
++## Preserved ownership and regressions
++
++The P21.1 Home-route ownership verifier is minimally evolved so it continues proving the `/` route belongs to `HomeRoute`, preserves the route shell/accessibility boundary, and now recognises the canonically released textual-runtime integration rather than requiring the obsolete disconnected placeholder.
++
++The generic router-shell test mocks only the configured Live Crypto runtime boundary so route navigation remains a deterministic unit test and never performs real market-network acquisition as a side effect of testing route headings. A dedicated regression independently proves that HomeRoute invokes the Gate362 factory once and forwards the exact returned configuration reference into Gate361 once.
++
++## Explicit non-scope
++
++- No Bubble geometry, palette, radius, collision, layout or motion.
++- No square-root radius conversion or viewport-specific min/max radius selection.
++- No provider/request/response/acquisition/retry changes.
++- No ranking, Top-N, stablecoin, movement or freshness recalculation.
++- No timers, clocks, lifecycle or cadence ownership.
++- No IndexedDB, persistence or Saved Analysis changes.
++- No Your Trades, journal, chart, Risk/Reward or Calculation Brain changes.
++- No navigation ownership change beyond the already-released `/` → `HomeRoute` route.
++
++Live Crypto Bubble and Your Trades remain separate truth domains. The approved later renderer policy remains outside this textual route integration.
+diff --git a/package.json b/package.json
+index f3b4fb7e3d26d2d2a9692d6b86bf39b0e3021f44..dc84da5d7f76fdbf7b7cc6d91852c1dff4093783 100644
+--- a/package.json
++++ b/package.json
+@@ -316,7 +316,8 @@
+     "verify:home-dashboard-live-crypto-bubble-browser-text-evidence-runtime-composition-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-browser-text-evidence-runtime-composition-foundation.mjs",
+     "verify:home-dashboard-live-crypto-bubble-runtime-options-composition-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-runtime-options-composition-foundation.mjs",
+     "verify:home-dashboard-live-crypto-bubble-configured-text-evidence-runtime-composition-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-configured-text-evidence-runtime-composition-foundation.mjs",
+-    "verify:home-dashboard-live-crypto-bubble-runtime-product-policy-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-runtime-product-policy-foundation.mjs"
++    "verify:home-dashboard-live-crypto-bubble-runtime-product-policy-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-runtime-product-policy-foundation.mjs",
++    "verify:home-dashboard-live-crypto-bubble-home-route-text-runtime-integration-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-home-route-text-runtime-integration-foundation.mjs"
+   },
+   "dependencies": {
+     "react": "19.2.8",
+diff --git a/scripts/verify-home-dashboard-live-crypto-bubble-home-route-text-runtime-integration-foundation.mjs b/scripts/verify-home-dashboard-live-crypto-bubble-home-route-text-runtime-integration-foundation.mjs
+new file mode 100644
+index 0000000000000000000000000000000000000000..6788d68d59ecc3e33d6ca20fcc0c75bce6dc65ae
+--- /dev/null
++++ b/scripts/verify-home-dashboard-live-crypto-bubble-home-route-text-runtime-integration-foundation.mjs
+@@ -0,0 +1,83 @@
++import { readFileSync } from 'node:fs';
++import assert from 'node:assert/strict';
++
++const home = readFileSync('src/app/HomeRoute.tsx', 'utf8');
++const preservedRouteVerifier = readFileSync('scripts/verify-p21-1-home-dashboard-route-ownership-foundation.mjs', 'utf8');
++const test = readFileSync('tests/home-dashboard-live-crypto-bubble-home-route-text-runtime-integration-foundation.test.tsx', 'utf8');
++const routerTest = readFileSync('tests/router.test.tsx', 'utf8');
++const report = readFileSync('KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_HOME_ROUTE_TEXT_RUNTIME_INTEGRATION_FOUNDATION_REPORT_2026-09-11.md', 'utf8');
++const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
++
++assert.equal(
++  pkg.scripts['verify:home-dashboard-live-crypto-bubble-home-route-text-runtime-integration-foundation'],
++  'node scripts/verify-home-dashboard-live-crypto-bubble-home-route-text-runtime-integration-foundation.mjs',
++);
++
++for (const required of [
++  "import { HomeDashboardLiveCryptoBubbleConfiguredTextEvidenceRuntime }",
++  "import { createHomeDashboardLiveCryptoBubbleDefaultRuntimeProductConfiguration }",
++  'const configuration = createHomeDashboardLiveCryptoBubbleDefaultRuntimeProductConfiguration();',
++  'data-kairos-home-dashboard="live-crypto-text-runtime"',
++  'id="kairos-home-dashboard-heading">Live Crypto Bubble</h2>',
++  '<HomeDashboardLiveCryptoBubbleConfiguredTextEvidenceRuntime configuration={configuration} />',
++]) {
++  assert.ok(home.includes(required), `HomeRoute runtime integration missing exact released delegation: ${required}`);
++}
++
++assert.equal(
++  (home.match(/createHomeDashboardLiveCryptoBubbleDefaultRuntimeProductConfiguration\(\)/g) ?? []).length,
++  1,
++);
++assert.equal(
++  (home.match(/<HomeDashboardLiveCryptoBubbleConfiguredTextEvidenceRuntime/g) ?? []).length,
++  1,
++);
++
++for (const forbidden of [
++  "'USDC'", "'FDUSD'", "'XUSD'", "'USDS'", "'TUSD'", "'USDP'", "'DAI'", "'EURI'", "'AEUR'",
++  "'0.25'", 'new Set(', 'topNCount', 'neutralMaxAbsoluteMovementPercent:', 'excludedStablecoinBaseAssets:',
++  'Date.now(', 'new Date(', 'setInterval(', 'setTimeout(', 'requestAnimationFrame(',
++  'fetch(', 'XMLHttpRequest', 'WebSocket(', 'indexedDB', 'localStorage',
++  '<svg', '<circle', '<canvas', 'style=', 'radius', 'areaWeight',
++]) {
++  assert.ok(!home.includes(forbidden), `HomeRoute must not become a hidden policy/data/renderer owner: ${forbidden}`);
++}
++
++for (const preserved of [
++  'data-kairos-home-dashboard="live-crypto-text-runtime"',
++  'HomeDashboardLiveCryptoBubbleConfiguredTextEvidenceRuntime',
++  'createHomeDashboardLiveCryptoBubbleDefaultRuntimeProductConfiguration',
++]) {
++  assert.ok(
++    preservedRouteVerifier.includes(preserved),
++    `P21.1 route-ownership regression must evolve without losing current route evidence: ${preserved}`,
++  );
++}
++assert.ok(!preservedRouteVerifier.includes('No dashboard insights are connected yet.'));
++
++for (const evidence of [
++  'expect(defaultConfigurationFactoryMock).toHaveBeenCalledTimes(1)',
++  'expect(configuredRuntimeMock).toHaveBeenCalledTimes(1)',
++  'expect(props.configuration).toBe(defaultConfiguration)',
++]) {
++  assert.ok(test.includes(evidence), `route integration test missing exact-reference evidence: ${evidence}`);
++}
++
++for (const isolation of [
++  "vi.mock('../src/app/HomeDashboardLiveCryptoBubbleConfiguredTextEvidenceRuntime'",
++  'HomeDashboardLiveCryptoBubbleConfiguredTextEvidenceRuntime: () => null',
++]) {
++  assert.ok(routerTest.includes(isolation), `router shell test must isolate live runtime side effects: ${isolation}`);
++}
++
++for (const phrase of [
++  'Gate362 canonical GOLDEN',
++  'exact released Gate362 default product configuration',
++  'exact configuration reference into Gate361',
++  'No Bubble geometry, palette, radius, collision, layout or motion',
++  'Live Crypto Bubble and Your Trades remain separate truth domains',
++]) {
++  assert.ok(report.includes(phrase), `foundation report missing route-integration ownership evidence: ${phrase}`);
++}
++
++console.log('PASS: HomeRoute integrates the exact Gate362 default product configuration into the released Gate361 browser textual runtime once, while preserving route ownership, unit-test isolation, and all provider, market, persistence, Your Trades, and visible Bubble-renderer boundaries.');
+diff --git a/scripts/verify-p21-1-home-dashboard-route-ownership-foundation.mjs b/scripts/verify-p21-1-home-dashboard-route-ownership-foundation.mjs
+index 42c247f7782d129fafc4eb58fd07f435cc41e4dd..31007aa4d02102b0a7958fa43ff399b7d6e733cc 100644
+--- a/scripts/verify-p21-1-home-dashboard-route-ownership-foundation.mjs
++++ b/scripts/verify-p21-1-home-dashboard-route-ownership-foundation.mjs
+@@ -16,14 +16,16 @@ for (const token of [
+   'className="kairos-route"',
+   'aria-labelledby="kairos-route-home"',
+   'id="kairos-route-home">Home</h1>',
+-  'data-kairos-home-dashboard="foundation"',
+-  'id="kairos-home-dashboard-heading">Dashboard</h2>',
+-  'No dashboard insights are connected yet.',
+-]) if (!home.includes(token)) throw new Error(`P21.1 HomeRoute foundation evidence missing: ${token}`);
++  'data-kairos-home-dashboard="live-crypto-text-runtime"',
++  'id="kairos-home-dashboard-heading">Live Crypto Bubble</h2>',
++  'HomeDashboardLiveCryptoBubbleConfiguredTextEvidenceRuntime',
++  'createHomeDashboardLiveCryptoBubbleDefaultRuntimeProductConfiguration',
++]) if (!home.includes(token)) throw new Error(`P21.1 HomeRoute ownership/integration evidence missing: ${token}`);
+ 
+ for (const forbidden of [
+   'indexedDB', 'SavedAnalysisRepository', 'TradeRepository', 'lightweight-charts', 'createChart(',
+   'fetch(', 'WebSocket', 'EventSource', 'PnL', 'profit', 'loss', 'riskReward', 'goal', 'discipline',
++  "'USDC'", "'FDUSD'", "'0.25'", 'new Set(', '<svg', '<circle', '<canvas', 'style=',
+ ]) if (home.includes(forbidden)) throw new Error(`P21.1 HomeRoute broadened into forbidden owner/scope: ${forbidden}`);
+ 
+ if (!shell.includes('<Outlet />')) throw new Error('P21.1 must retain AppShell outlet ownership');
+@@ -36,4 +38,4 @@ for (const token of [
+   'No new persistence, query, calculation, provider, or navigation owner',
+ ]) if (!report.includes(token)) throw new Error(`P21.1 report evidence missing: ${token}`);
+ 
+-console.log('P21.1 Home Dashboard route ownership foundation verification passed.');
++console.log('P21.1 Home Dashboard route ownership foundation verification passed with released Live Crypto textual-runtime integration and preserved non-owner boundaries.');
+diff --git a/src/app/HomeRoute.tsx b/src/app/HomeRoute.tsx
+index 93095dcaa9df7a39eabb8f1c5b0abacccddeac91..1c8504532dd620c1315b5a458dd68581a232adce 100644
+--- a/src/app/HomeRoute.tsx
++++ b/src/app/HomeRoute.tsx
+@@ -1,13 +1,22 @@
++import { HomeDashboardLiveCryptoBubbleConfiguredTextEvidenceRuntime } from './HomeDashboardLiveCryptoBubbleConfiguredTextEvidenceRuntime';
++import { createHomeDashboardLiveCryptoBubbleDefaultRuntimeProductConfiguration } from './homeDashboardLiveCryptoBubbleRuntimeProductPolicy';
++
+ export function HomeRoute() {
++  const configuration = createHomeDashboardLiveCryptoBubbleDefaultRuntimeProductConfiguration();
++
+   return (
+-    <section className="kairos-route" aria-labelledby="kairos-route-home" data-kairos-home-dashboard="foundation">
++    <section
++      className="kairos-route"
++      aria-labelledby="kairos-route-home"
++      data-kairos-home-dashboard="live-crypto-text-runtime"
++    >
+       <header>
+         <h1 id="kairos-route-home">Home</h1>
+         <p>Your Kairos dashboard lives here.</p>
+       </header>
+       <section aria-labelledby="kairos-home-dashboard-heading">
+-        <h2 id="kairos-home-dashboard-heading">Dashboard</h2>
+-        <p>No dashboard insights are connected yet.</p>
++        <h2 id="kairos-home-dashboard-heading">Live Crypto Bubble</h2>
++        <HomeDashboardLiveCryptoBubbleConfiguredTextEvidenceRuntime configuration={configuration} />
+       </section>
+     </section>
+   );
+diff --git a/tests/home-dashboard-live-crypto-bubble-home-route-text-runtime-integration-foundation.test.tsx b/tests/home-dashboard-live-crypto-bubble-home-route-text-runtime-integration-foundation.test.tsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..b0336ff578987b9a1afc312d80d9c9326359c385
+--- /dev/null
++++ b/tests/home-dashboard-live-crypto-bubble-home-route-text-runtime-integration-foundation.test.tsx
+@@ -0,0 +1,31 @@
++import { renderToStaticMarkup } from 'react-dom/server';
++import { describe, expect, it, vi } from 'vitest';
++
++const defaultConfiguration = vi.hoisted(() => ({ marker: 'exact-gate362-default-configuration' }));
++const defaultConfigurationFactoryMock = vi.hoisted(() => vi.fn(() => defaultConfiguration));
++const configuredRuntimeMock = vi.hoisted(() => vi.fn((_props: unknown) => null));
++
++vi.mock('../src/app/homeDashboardLiveCryptoBubbleRuntimeProductPolicy', () => ({
++  createHomeDashboardLiveCryptoBubbleDefaultRuntimeProductConfiguration:
++    defaultConfigurationFactoryMock,
++}));
++
++vi.mock('../src/app/HomeDashboardLiveCryptoBubbleConfiguredTextEvidenceRuntime', () => ({
++  HomeDashboardLiveCryptoBubbleConfiguredTextEvidenceRuntime: configuredRuntimeMock,
++}));
++
++import { HomeRoute } from '../src/app/HomeRoute';
++
++describe('Home Live Crypto Bubble HomeRoute textual-runtime integration foundation', () => {
++  it('chooses the released default product configuration once and forwards that exact reference', () => {
++    const markup = renderToStaticMarkup(<HomeRoute />);
++
++    expect(defaultConfigurationFactoryMock).toHaveBeenCalledTimes(1);
++    expect(configuredRuntimeMock).toHaveBeenCalledTimes(1);
++    const props = configuredRuntimeMock.mock.calls[0]![0] as Record<'configuration', unknown>;
++    expect(props.configuration).toBe(defaultConfiguration);
++    expect(markup).toContain('data-kairos-home-dashboard="live-crypto-text-runtime"');
++    expect(markup).toContain('Live Crypto Bubble');
++    expect(markup).not.toContain('No dashboard insights are connected yet.');
++  });
++});
+diff --git a/tests/router.test.tsx b/tests/router.test.tsx
+index 3865ff44d4a0364480169267a9275e39faa101c3..154de4c8ad160036b8e589db79bd70f8f9c3a5a0 100644
+--- a/tests/router.test.tsx
++++ b/tests/router.test.tsx
+@@ -1,9 +1,13 @@
+ import { render, screen } from '@testing-library/react';
+ import { createMemoryRouter } from 'react-router';
+ import { RouterProvider } from 'react-router/dom';
+-import { describe, expect, it } from 'vitest';
++import { describe, expect, it, vi } from 'vitest';
+ import { appRoutes } from '../src/app/routes';
+ 
++vi.mock('../src/app/HomeDashboardLiveCryptoBubbleConfiguredTextEvidenceRuntime', () => ({
++  HomeDashboardLiveCryptoBubbleConfiguredTextEvidenceRuntime: () => null,
++}));
++
+ function renderPath(path: string) {
+   const router = createMemoryRouter(appRoutes, { initialEntries: [path] });
+   return render(<RouterProvider router={router} />);
