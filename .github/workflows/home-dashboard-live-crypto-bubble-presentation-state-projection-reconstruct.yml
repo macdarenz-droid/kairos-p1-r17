@@ -35,56 +35,18 @@ jobs:
           set -euo pipefail
           BASE_ZIP=KAIROS_BINANCE_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_OBSERVED_RUNTIME_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-10.zip
           OUT_ZIP=KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_PRESENTATION_STATE_PROJECTION_FOUNDATION_CANDIDATE_2026-09-10.zip
-          PAYLOAD=.github/kairos-helper-payloads/home-dashboard-live-crypto-bubble-presentation-state-projection.patch.gz.b64
-          PATCH="$RUNNER_TEMP/home-bubble-presentation-state.patch"
+          PAYLOAD=.github/kairos-helper-payloads/home-bubble-presentation-state
           WORK="$RUNNER_TEMP/home-bubble-presentation-state-work"
           BASE="$RUNNER_TEMP/home-bubble-presentation-state-base"
+
           test -f "$BASE_ZIP"
           test "$(stat -c%s "$BASE_ZIP")" = "1606330"
           echo "3cb6852aba0d5a2037f4e134254d2852585d3186acf5a6695c538323685ede49  $BASE_ZIP" | sha256sum -c -
-          test -s "$PAYLOAD"
-          python - <<'PY'
-          from pathlib import Path
-          import base64, binascii, gzip, hashlib, os, zlib
+          echo "5143ca0c954dbd439bae876f77d3ec490bab67c94cec312aad208196e52616ac  $PAYLOAD/report.md" | sha256sum -c -
+          echo "a6e4e997b6b4481842e12e400ae599c1f372f186f2cb2cf012c938788a16641e  $PAYLOAD/verifier.mjs" | sha256sum -c -
+          echo "28446451a6d635ae0920ff973955cd343b231c8310eb2ea314656af488dad5a7  $PAYLOAD/projection.ts" | sha256sum -c -
+          echo "9c5639fe3577cbf95aa46b38261555501e11d908b032e50082d952edce266b6f  $PAYLOAD/test.ts" | sha256sum -c -
 
-          payload = Path('.github/kairos-helper-payloads/home-dashboard-live-crypto-bubble-presentation-state-projection.patch.gz.b64')
-          out = Path(os.environ['RUNNER_TEMP']) / 'home-bubble-presentation-state.patch'
-          text = ''.join(payload.read_text(encoding='utf-8').split())
-          expected_size = 20926
-          expected_sha = '65d0ddd97ed8192d2ac2ad0a53e168e44694e86d56f8480c6ac44ef045fbd1ce'
-
-          def decode_if_exact(candidate):
-              try:
-                  raw = base64.b64decode(candidate, validate=True)
-                  patch = gzip.decompress(raw)
-              except (binascii.Error, OSError, EOFError, zlib.error):
-                  return None
-              if len(patch) != expected_size:
-                  return None
-              if hashlib.sha256(patch).hexdigest() != expected_sha:
-                  return None
-              return patch
-
-          patch = decode_if_exact(text)
-          removed_index = None
-          if patch is None:
-              matches = []
-              for index in range(len(text)):
-                  recovered = decode_if_exact(text[:index] + text[index + 1:])
-                  if recovered is not None:
-                      matches.append((index, recovered))
-              if len(matches) != 1:
-                  raise RuntimeError(f'payload recovery expected exactly one exact-SHA match, got {len(matches)}')
-              removed_index, patch = matches[0]
-
-          out.write_bytes(patch)
-          print('PAYLOAD_DATA_CHARS='+str(len(text)))
-          print('RECOVERED_REMOVED_INDEX='+('none' if removed_index is None else str(removed_index)))
-          print('PATCH_SIZE='+str(out.stat().st_size))
-          print('PATCH_SHA256='+hashlib.sha256(out.read_bytes()).hexdigest())
-          PY
-          test -s "$PATCH"
-          echo "65d0ddd97ed8192d2ac2ad0a53e168e44694e86d56f8480c6ac44ef045fbd1ce  $PATCH" | sha256sum -c -
           rm -rf "$WORK" "$BASE"
           mkdir -p "$WORK" "$BASE"
           unzip -q "$BASE_ZIP" -d "$WORK"
@@ -94,7 +56,23 @@ jobs:
           test -f "$ROOT/src/app/binanceHomeDashboardLiveCryptoBubbleObservedRuntimeComposition.ts"
           test -f "$ROOT/src/application/dashboard/homeDashboardLiveCryptoBubbleMetricObservationBridge.ts"
           test ! -e "$ROOT/src/application/dashboard/homeDashboardLiveCryptoBubblePresentationStateProjection.ts"
-          (cd "$ROOT" && patch --batch --forward -p1 < "$PATCH")
+
+          cp "$PAYLOAD/report.md" "$ROOT/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_PRESENTATION_STATE_PROJECTION_FOUNDATION_REPORT_2026-09-10.md"
+          cp "$PAYLOAD/verifier.mjs" "$ROOT/scripts/verify-home-dashboard-live-crypto-bubble-presentation-state-projection-foundation.mjs"
+          cp "$PAYLOAD/projection.ts" "$ROOT/src/application/dashboard/homeDashboardLiveCryptoBubblePresentationStateProjection.ts"
+          cp "$PAYLOAD/test.ts" "$ROOT/tests/home-dashboard-live-crypto-bubble-presentation-state-projection-foundation.test.ts"
+
+          python - "$ROOT/package.json" <<'PY'
+          from pathlib import Path
+          import sys
+          p = Path(sys.argv[1])
+          text = p.read_text(encoding='utf-8')
+          old = '    "verify:binance-home-dashboard-live-crypto-bubble-observed-runtime-composition-foundation": "node scripts/verify-binance-home-dashboard-live-crypto-bubble-observed-runtime-composition-foundation.mjs"\n  },'
+          new = '    "verify:binance-home-dashboard-live-crypto-bubble-observed-runtime-composition-foundation": "node scripts/verify-binance-home-dashboard-live-crypto-bubble-observed-runtime-composition-foundation.mjs",\n    "verify:home-dashboard-live-crypto-bubble-presentation-state-projection-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-presentation-state-projection-foundation.mjs"\n  },'
+          if text.count(old) != 1:
+              raise RuntimeError('exact package verifier insertion anchor mismatch')
+          p.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
 
           cd "$ROOT"
           npm ci
@@ -117,9 +95,9 @@ jobs:
           npm test
           node - <<'NODE'
           const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
-          const p=JSON.parse(readFileSync('package.json'));
-          const scripts=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:')).sort();
-          for(const required of [
+          const pkg=JSON.parse(readFileSync('package.json'));
+          const scripts=Object.keys(pkg.scripts||{}).filter((x)=>x.startsWith('verify:')).sort();
+          const required=[
             'verify:home-dashboard-live-crypto-bubble-presentation-state-projection-foundation',
             'verify:binance-home-dashboard-live-crypto-bubble-observed-runtime-composition-foundation',
             'verify:home-dashboard-live-crypto-bubble-metric-observation-bridge-foundation',
@@ -132,8 +110,9 @@ jobs:
             'verify:p20:5-saved-analysis-system-closure','verify:p19:7-risk-reward-tool-system-closure',
             'verify:p18:60-drawing-tools-system-closure','verify:p17:16-chart-engine-system-closure',
             'verify:p16:18-crypto-live-feed-system-closure','verify:p15:14-market-data-adapter-system-closure',
-            'verify:p14:9-trade-visualizer-system-closure','verify:p11:calculation-brain-closure','verify:p8:navigation-shell','verify:p1',
-          ]) if(!scripts.includes(required)){console.error('Missing '+required);process.exit(1)}
+            'verify:p14:9-trade-visualizer-system-closure','verify:p11:calculation-brain-closure','verify:p8:navigation-shell','verify:p1'
+          ];
+          for(const name of required) if(!scripts.includes(name)){console.error('Missing '+name);process.exit(1)}
           for(const name of scripts){const r=spawnSync('npm',['run',name],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}
           NODE
 
