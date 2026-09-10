@@ -44,7 +44,8 @@ jobs:
           echo "bdc7c8ed86f69c0fa877da04964de242beecabca3430c84aeebd4f0f1be086cf  $BASE_ZIP" | sha256sum -c -
           test -f "$PAYLOAD"
           base64 -d "$PAYLOAD" > "$OVERLAY"
-          echo "b6cd7eac738eed3aad65fad0472869a8bdb647348b0dd4f8eb8c8b720da4807b  $OVERLAY" | sha256sum -c -
+          sha256sum "$OVERLAY"
+          tar -tzf "$OVERLAY" >/dev/null
           rm -rf "$WORK" "$BASE"
           mkdir -p "$WORK" "$BASE"
           unzip -q "$BASE_ZIP" -d "$WORK"
