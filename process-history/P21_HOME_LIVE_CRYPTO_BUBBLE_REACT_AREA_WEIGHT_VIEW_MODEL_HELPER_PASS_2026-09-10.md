@@ -44,35 +44,47 @@ Explicit non-scope:
 - Helper head: `42bd9b53c6c502a3e798c7b309cdd3d6e7f40ef9`.
 - Helper conclusion: FULL SUCCESS. Deterministic reconstruction/full verification, candidate upload, repository-root placement, and post-run cleanup all completed successfully.
 
-## Exact helper artifact and candidate identity
+## Corrected exact helper candidate identity
+
+The first post-helper note recorded a stale candidate byte-size/SHA/blob tuple. Gate353 correctly rejected that stale binding before any candidate extraction or engineering verification. Fresh byte-level reproof from the downloaded helper artifact plus the repository Git tree establishes the exact helper-tested candidate below.
 
 - Artifact name: `KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_REACT_AREA_WEIGHT_VIEW_MODEL_CANDIDATE`.
 - Artifact id: `10150280570`.
-- Artifact wrapper size: `1406051` bytes.
-- Backend artifact digest: `sha256:6f87271a77d0d26e4fc1746747db7831b74f4dbef9d28687a96c81331d33330a`.
+- GitHub backend artifact metadata originally reported wrapper size `1406051` and digest `sha256:6f87271a77d0d26e4fc1746747db7831b74f4dbef9d28687a96c81331d33330a`; downloaded delivery wrappers may be repacked, so promotion identity is bound to the sole nested candidate bytes, not the transport wrapper bytes.
 - Sole nested candidate: `KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_REACT_AREA_WEIGHT_VIEW_MODEL_FOUNDATION_CANDIDATE_2026-09-10.zip`.
-- Nested candidate size: `1643193` bytes.
-- Nested candidate SHA-256: `0dc21369c460ad4dacac1d270cdc2c28101060352e4f4d00c9f81ad199ac1ea1`.
+- Correct nested candidate size: `1642825` bytes.
+- Correct nested candidate SHA-256: `cea5061c6bd80c1e069b9fa0dfe351935ae8749438481c8145c0cd510fe99cf1`.
 - Candidate root: exactly `kairos_p76/`.
 - ZIP integrity: clean.
-- Candidate Git blob: `924c1c1b9791468edb49d9f8d6a5057b6be88268`.
+- Correct candidate Git blob: `924c1cbfcc598ce176c72dc915ccdf85cdfde3d0`.
 - Helper repository-root placement main commit: `5f69b71c364a7d07c8c28f9ffa3d07fe85b7c760`.
-- Repository-root candidate filename/size/blob match the downloaded helper candidate exactly, proving artifact/root byte identity.
+- The repository Git tree at the Gate353 head reports the same exact filename, `1642825` byte size, and Git blob `924c1cbfcc598ce176c72dc915ccdf85cdfde3d0`; the freshly downloaded helper nested candidate independently computes that same size and blob. This proves helper-artifact/repository-root byte identity.
 
 ## Exact Gate352 → helper candidate delta
 
-Exactly five candidate paths changed, with zero removals:
+A fresh file-by-file SHA-256 comparison against the exact Gate352 canonical candidate proves exactly five changed paths, with zero removals:
 
 1. Added `kairos_p76/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_REACT_AREA_WEIGHT_VIEW_MODEL_FOUNDATION_REPORT_2026-09-10.md`.
 2. Changed `kairos_p76/package.json` only to register the dedicated verifier.
 3. Added `kairos_p76/scripts/verify-home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation.mjs`.
 4. Added `kairos_p76/src/app/homeDashboardLiveCryptoBubbleReactAreaWeightViewModel.ts`.
-5. Changed `kairos_p76/tests/home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation.test.ts`.
+5. Added `kairos_p76/tests/home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation.test.ts`.
 
 No other candidate path changed and no candidate path was removed.
 
+## Gate353 identity-binding failure classification
+
+- Canonical Gate353 run: `34474224151`.
+- Job: `102861021551`.
+- Head: `bd51b84cc768845f88773194d90738340132606e`.
+- Conclusion: FAILURE at `Verify exact uploaded archive identity and integrity`.
+- Exact failure: `AssertionError: CANDIDATE_ZIP: byte size mismatch`.
+- Setup, checkout, Node setup, and npm verification passed.
+- Candidate extraction, exact-scope verification, install, dependency proof, TypeScript/build, dedicated/focused/full regressions, historical closures, and candidate upload were never reached.
+- Therefore Gate353 is an identity-binding/configuration failure, not evidence of a source/test/build defect. Gate352 remains GOLDEN and the failed Gate353 candidate is never a base.
+
 ## Promotion rule / next safe action
 
-This helper PASS is supporting evidence only and does not promote authority. Gate352 remains GOLDEN. After a fresh main/Actions/lease check proves no competing engineering chain, the only safe next mutation is one smallest canonical-gate retarget from exact Gate352 to the exact helper-tested candidate above. The canonical gate must preserve exact five-file scope, Node 22.16.0 / npm 10.9.2 / Lightweight Charts 5.2.1, production TypeScript/build, dedicated current plus Gate352/Gate351/lower-owner verification, focused regressions, full unit regression, all registered `verify:*` controlled-roadmap regressions, historical closures, and exact `KAIROS_CURRENT_CANDIDATE` + `KAIROS_GATE_EVIDENCE` uploads.
+After a fresh main/Actions/lease check proves no competing engineering chain, repair only the stale candidate identity tuple in the canonical gate while preserving the exact Gate352 base, exact five-file scope, Node 22.16.0 / npm 10.9.2 / Lightweight Charts 5.2.1, production TypeScript/build, dedicated current plus Gate352/Gate351/lower-owner verification, focused regressions, full unit regression, all registered `verify:*` controlled-roadmap regressions, historical closures, and exact `KAIROS_CURRENT_CANDIDATE` + `KAIROS_GATE_EVIDENCE` uploads.
 
-While that exact canonical gate is queued/in progress, monitor only it. If it fails, Gate352 remains GOLDEN and any repair must start from Gate352 plus this intended five-file delta; the failed candidate never becomes a base.
+While the repaired exact canonical gate is queued/in progress, monitor only it. If it fails, Gate352 remains GOLDEN and any repair must start from Gate352 plus this intended five-file delta; no failed candidate becomes a base.
