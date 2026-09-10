@@ -1,0 +1,211 @@
+diff --git a/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_RUNTIME_PRODUCT_POLICY_FOUNDATION_REPORT_2026-09-11.md b/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_RUNTIME_PRODUCT_POLICY_FOUNDATION_REPORT_2026-09-11.md
+new file mode 100644
+index 0000000..973e3df
+--- /dev/null
++++ b/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_RUNTIME_PRODUCT_POLICY_FOUNDATION_REPORT_2026-09-11.md
+@@ -0,0 +1,35 @@
++# Kairos Home Dashboard Live Crypto Bubble Runtime Product Policy Foundation Report — 2026-09-11
++
++## Authority
++
++This candidate starts from the exact Gate361 canonical GOLDEN candidate:
++`KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_CONFIGURED_TEXT_EVIDENCE_RUNTIME_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-10.zip`, size `1,676,282` bytes, SHA-256 `89f14c02b5387382c5de67793212ff9de849676e0fe21deda72d329df46ee0fc`, root exactly `kairos_p76/`.
++
++The user explicitly released the prior HOLD_USER boundary by approving the researched P21 Bubble Map policy package. This slice implements only the two approved values consumed by the already-released Gate360 runtime-options boundary.
++
++## Released responsibility
++
++`src/app/homeDashboardLiveCryptoBubbleRuntimeProductPolicy.ts` becomes the single default runtime product-policy owner for:
++
++- the exact approved default stablecoin base-asset exclusion set: `USDC`, `FDUSD`, `XUSD`, `USDS`, `U`, `TUSD`, `USDP`, `DAI`, `EURI`, `AEUR`;
++- the neutral threshold is exactly `0.25` percent absolute 24h movement; and
++- creation of a fresh `HomeDashboardLiveCryptoBubbleRuntimeProductConfiguration` value for a caller that elects to use these approved defaults.
++
++`USDT` remains the required quote asset and is not excluded. `PAXG` is not treated as a stablecoin. The exclusion Set is recreated for each configuration so callers do not share a mutable Set instance.
++
++## Preserved ownership
++
++Top-30 selection remains owned by the released universe policy. Existing quote-volume ranking, symbol tie-break, provider acquisition, browser lifecycle, visible 5-second cadence, freshness thresholds, observed-at/evaluation clocks, and runtime state ownership remain unchanged.
++
++Gate360 remains the runtime-options composition owner and Gate361 remains the configured browser textual-runtime composition owner. This product-policy slice does not wire either boundary into a route.
++
++## Explicit non-scope
++
++- No `HomeRoute` or visible Bubble renderer wiring.
++- No Bubble radius, square-root conversion, min/max radius, collision/packing/layout, labels, SVG/canvas, theme-token mapping, dimming intensity, or motion.
++- No provider/request/response/acquisition/retry behavior.
++- No Top-N count/ranking/tie-break changes.
++- No freshness/cadence/lifecycle/timer/clock changes.
++- No persistence, IndexedDB, Saved Analysis, Your Trades Bubble Map, journal, chart, Risk/Reward, navigation, or transition changes.
++
++The approved renderer policy—area proportional to released `areaWeight`, radius proportional to its square root, theme-token semantic colours, and stale/expired presentation behavior—remains for later controlled presentation slices after this concrete runtime product configuration is canonically released.
+diff --git a/package.json b/package.json
+index 4705ae0..f3b4fb7 100644
+--- a/package.json
++++ b/package.json
+@@ -315,7 +315,8 @@
+     "verify:home-dashboard-live-crypto-bubble-browser-wall-clock-sources-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-browser-wall-clock-sources-foundation.mjs",
+     "verify:home-dashboard-live-crypto-bubble-browser-text-evidence-runtime-composition-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-browser-text-evidence-runtime-composition-foundation.mjs",
+     "verify:home-dashboard-live-crypto-bubble-runtime-options-composition-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-runtime-options-composition-foundation.mjs",
+-    "verify:home-dashboard-live-crypto-bubble-configured-text-evidence-runtime-composition-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-configured-text-evidence-runtime-composition-foundation.mjs"
++    "verify:home-dashboard-live-crypto-bubble-configured-text-evidence-runtime-composition-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-configured-text-evidence-runtime-composition-foundation.mjs",
++    "verify:home-dashboard-live-crypto-bubble-runtime-product-policy-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-runtime-product-policy-foundation.mjs"
+   },
+   "dependencies": {
+     "react": "19.2.8",
+diff --git a/scripts/verify-home-dashboard-live-crypto-bubble-runtime-product-policy-foundation.mjs b/scripts/verify-home-dashboard-live-crypto-bubble-runtime-product-policy-foundation.mjs
+new file mode 100644
+index 0000000..4bbd345
+--- /dev/null
++++ b/scripts/verify-home-dashboard-live-crypto-bubble-runtime-product-policy-foundation.mjs
+@@ -0,0 +1,58 @@
++import { readFileSync } from 'node:fs';
++import assert from 'node:assert/strict';
++
++const source = readFileSync('src/app/homeDashboardLiveCryptoBubbleRuntimeProductPolicy.ts', 'utf8');
++const test = readFileSync('tests/home-dashboard-live-crypto-bubble-runtime-product-policy-foundation.test.ts', 'utf8');
++const report = readFileSync('KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_RUNTIME_PRODUCT_POLICY_FOUNDATION_REPORT_2026-09-11.md', 'utf8');
++const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
++
++assert.equal(
++  pkg.scripts['verify:home-dashboard-live-crypto-bubble-runtime-product-policy-foundation'],
++  'node scripts/verify-home-dashboard-live-crypto-bubble-runtime-product-policy-foundation.mjs',
++);
++
++for (const required of [
++  'HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_DEFAULT_EXCLUDED_STABLECOIN_BASE_ASSETS',
++  'HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_DEFAULT_NEUTRAL_MAX_ABSOLUTE_MOVEMENT_PERCENT',
++  'createHomeDashboardLiveCryptoBubbleDefaultRuntimeProductConfiguration',
++  'HomeDashboardLiveCryptoBubbleRuntimeProductConfiguration',
++  "'USDC'", "'FDUSD'", "'XUSD'", "'USDS'", "'U'", "'TUSD'", "'USDP'", "'DAI'", "'EURI'", "'AEUR'",
++  "'0.25' as DecimalString",
++  'excludedStablecoinBaseAssets: new Set(',
++]) {
++  assert.ok(source.includes(required), `runtime product policy missing approved ownership evidence: ${required}`);
++}
++
++for (const forbidden of [
++  "'USDT'", "'PAXG'", 'topNCount', 'lifecycle:',
++  'Date.now(', 'new Date(', 'setInterval(', 'setTimeout(', 'requestAnimationFrame(',
++  'fetch(', 'XMLHttpRequest', 'WebSocket(', 'indexedDB', 'localStorage',
++  'HomeRoute', '<svg', '<circle', '<canvas', 'style=',
++  'useState(', 'useEffect(', 'useMemo(', 'useCallback(',
++]) {
++  assert.ok(!source.includes(forbidden), `runtime product policy must not own forbidden behavior: ${forbidden}`);
++}
++
++for (const evidence of [
++  "has('USDT')).toBe(false)",
++  "has('PAXG')).toBe(false)",
++  "toBe('0.25')",
++  "expect('topNCount' in configuration).toBe(false)",
++  "expect('lifecycle' in configuration).toBe(false)",
++  'not.toBe(second.excludedStablecoinBaseAssets)',
++]) {
++  assert.ok(test.includes(evidence), `runtime product policy test missing regression evidence: ${evidence}`);
++}
++
++for (const phrase of [
++  'exact approved default stablecoin base-asset exclusion set',
++  'neutral threshold is exactly `0.25` percent absolute 24h movement',
++  '`USDT` remains the required quote asset and is not excluded',
++  '`PAXG` is not treated as a stablecoin',
++  'Top-30 selection remains owned by the released universe policy',
++  'No `HomeRoute` or visible Bubble renderer wiring',
++]) {
++  assert.ok(report.includes(phrase), `foundation report missing approved product-policy evidence: ${phrase}`);
++}
++
++console.log('PASS: Home Live Crypto Bubble runtime product policy owns only the approved default stablecoin exclusion set and 0.25% neutral threshold while preserving all released universe, lifecycle, provider, route, renderer, persistence, and Your Trades ownership boundaries.');
+diff --git a/src/app/homeDashboardLiveCryptoBubbleRuntimeProductPolicy.ts b/src/app/homeDashboardLiveCryptoBubbleRuntimeProductPolicy.ts
+new file mode 100644
+index 0000000..5c92764
+--- /dev/null
++++ b/src/app/homeDashboardLiveCryptoBubbleRuntimeProductPolicy.ts
+@@ -0,0 +1,34 @@
++import type { DecimalString } from '../domain/trades';
++import type { HomeDashboardLiveCryptoBubbleRuntimeProductConfiguration } from './homeDashboardLiveCryptoBubbleRuntimeOptionsComposition';
++
++export const HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_DEFAULT_EXCLUDED_STABLECOIN_BASE_ASSETS = [
++  'USDC',
++  'FDUSD',
++  'XUSD',
++  'USDS',
++  'U',
++  'TUSD',
++  'USDP',
++  'DAI',
++  'EURI',
++  'AEUR',
++] as const;
++
++export const HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_DEFAULT_NEUTRAL_MAX_ABSOLUTE_MOVEMENT_PERCENT =
++  '0.25' as DecimalString;
++
++/**
++ * Approved default product-policy values for the Home Live Crypto Bubble V1.
++ * A fresh Set is returned for each configuration so consumers cannot mutate a
++ * shared default collection. Top-N, lifecycle, provider, route, and renderer
++ * policies remain owned by their existing released boundaries.
++ */
++export function createHomeDashboardLiveCryptoBubbleDefaultRuntimeProductConfiguration(): HomeDashboardLiveCryptoBubbleRuntimeProductConfiguration {
++  return {
++    excludedStablecoinBaseAssets: new Set(
++      HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_DEFAULT_EXCLUDED_STABLECOIN_BASE_ASSETS,
++    ),
++    neutralMaxAbsoluteMovementPercent:
++      HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_DEFAULT_NEUTRAL_MAX_ABSOLUTE_MOVEMENT_PERCENT,
++  };
++}
+diff --git a/tests/home-dashboard-live-crypto-bubble-runtime-product-policy-foundation.test.ts b/tests/home-dashboard-live-crypto-bubble-runtime-product-policy-foundation.test.ts
+new file mode 100644
+index 0000000..9648d5f
+--- /dev/null
++++ b/tests/home-dashboard-live-crypto-bubble-runtime-product-policy-foundation.test.ts
+@@ -0,0 +1,46 @@
++import { describe, expect, it } from 'vitest';
++import {
++  HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_DEFAULT_EXCLUDED_STABLECOIN_BASE_ASSETS,
++  HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_DEFAULT_NEUTRAL_MAX_ABSOLUTE_MOVEMENT_PERCENT,
++  createHomeDashboardLiveCryptoBubbleDefaultRuntimeProductConfiguration,
++} from '../src/app/homeDashboardLiveCryptoBubbleRuntimeProductPolicy';
++
++describe('Home Live Crypto Bubble runtime product policy foundation', () => {
++  it('owns the exact approved default stablecoin exclusions and neutral threshold', () => {
++    expect(HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_DEFAULT_EXCLUDED_STABLECOIN_BASE_ASSETS).toEqual([
++      'USDC',
++      'FDUSD',
++      'XUSD',
++      'USDS',
++      'U',
++      'TUSD',
++      'USDP',
++      'DAI',
++      'EURI',
++      'AEUR',
++    ]);
++    expect(HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_DEFAULT_NEUTRAL_MAX_ABSOLUTE_MOVEMENT_PERCENT).toBe(
++      '0.25',
++    );
++
++    const configuration = createHomeDashboardLiveCryptoBubbleDefaultRuntimeProductConfiguration();
++
++    expect([...configuration.excludedStablecoinBaseAssets]).toEqual(
++      HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_DEFAULT_EXCLUDED_STABLECOIN_BASE_ASSETS,
++    );
++    expect(configuration.excludedStablecoinBaseAssets.has('USDT')).toBe(false);
++    expect(configuration.excludedStablecoinBaseAssets.has('PAXG')).toBe(false);
++    expect(configuration.neutralMaxAbsoluteMovementPercent).toBe('0.25');
++    expect('topNCount' in configuration).toBe(false);
++    expect('lifecycle' in configuration).toBe(false);
++  });
++
++  it('returns a fresh exclusion Set for each default configuration', () => {
++    const first = createHomeDashboardLiveCryptoBubbleDefaultRuntimeProductConfiguration();
++    const second = createHomeDashboardLiveCryptoBubbleDefaultRuntimeProductConfiguration();
++
++    expect(first).not.toBe(second);
++    expect(first.excludedStablecoinBaseAssets).not.toBe(second.excludedStablecoinBaseAssets);
++    expect([...first.excludedStablecoinBaseAssets]).toEqual([...second.excludedStablecoinBaseAssets]);
++  });
++});
