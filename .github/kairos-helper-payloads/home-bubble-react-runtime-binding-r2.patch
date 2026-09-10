@@ -241,7 +241,7 @@ new file mode 100644
 index 0000000..3736ca0
 --- /dev/null
 +++ b/tests/home-dashboard-live-crypto-bubble-react-runtime-binding-foundation.test.ts
-@@ -0,0 +1,108 @@
+@@ -0,0 +1,111 @@
 +import { act, renderHook, waitFor } from '@testing-library/react';
 +import { beforeEach, describe, expect, it, vi } from 'vitest';
 +
@@ -338,7 +338,10 @@ index 0000000..3736ca0
 +
 +  it('preserves an unexpected bootstrap exception as explicit error evidence', async () => {
 +    const error = new Error('bootstrap exception');
-+    mocks.startRuntime.mockImplementation(() => { throw error; });
++    const resultWithThrowingOk = Object.defineProperty({}, 'ok', {
++      get: () => { throw error; },
++    }) as never;
++    mocks.startRuntime.mockResolvedValue(resultWithThrowingOk);
 +    const inputs = createInputs();
 +    const { result } = renderHook(() => useHomeDashboardLiveCryptoBubblePresentationObservedRuntime(
 +      inputs.readObservedAt,
