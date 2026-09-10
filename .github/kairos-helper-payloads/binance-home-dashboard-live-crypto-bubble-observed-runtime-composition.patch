@@ -1,0 +1,235 @@
+diff -ruN a/KAIROS_BINANCE_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_OBSERVED_RUNTIME_COMPOSITION_FOUNDATION_REPORT_2026-09-10.md b/KAIROS_BINANCE_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_OBSERVED_RUNTIME_COMPOSITION_FOUNDATION_REPORT_2026-09-10.md
+--- a/KAIROS_BINANCE_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_OBSERVED_RUNTIME_COMPOSITION_FOUNDATION_REPORT_2026-09-10.md	1970-01-01 00:00:00.000000000 +0000
++++ b/KAIROS_BINANCE_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_OBSERVED_RUNTIME_COMPOSITION_FOUNDATION_REPORT_2026-09-10.md	2026-09-10 04:40:18.876848702 +0000
+@@ -0,0 +1,21 @@
++# Binance Home Dashboard Live Crypto Bubble Observed Runtime Composition Foundation
++
++## Authority
++Base: exact canonical Gate344 Home Dashboard Live Crypto Bubble metric-observation bridge candidate, promoted by `Kairos Controlled Roadmap Gate` #344 / run `34436437129`.
++
++## Source-proven responsibility
++Gate341 already owns the app-level Binance Home live-market observed runtime and accepts caller-owned acquisition `readObservedAt`, freshness `readEvaluationTimeMs`, universe options, browser lifecycle options, and one raw Gate340 freshness-observation sink. Gate344 now owns the provider-neutral adapter that turns a caller-owned Bubble metric observation sink into that exact Gate340-compatible sink. No production owner composes those two released seams, while `HomeRoute` remains presentation-only placeholder state.
++
++This slice adds only the app-level Binance Home Live Crypto Bubble observed-runtime composition. `startBinanceHomeDashboardLiveCryptoBubbleObservedRuntime(...)` preserves the exact caller-owned observation/evaluation time dependencies and Gate341 universe/lifecycle options, constructs exactly one Gate344 adapter from the caller's Bubble metric observation sink, passes that adapter as Gate341's sole raw `observationSink`, delegates exactly once to Gate341, and returns Gate341's runtime bootstrap result unchanged.
++
++The wrapper deliberately omits Gate341's raw `observationSink` from its public options and replaces it with the Gate344 downstream Bubble metric observation sink type, preventing a second raw freshness sink from being merged or silently overridden at this boundary.
++
++## Error and lifecycle boundary
++- Initial universe failure remains Gate341/Gate337 runtime truth and is returned unchanged.
++- Authoritative empty selected scope remains the existing successful idle runtime behavior.
++- Non-empty lifecycle cadence/visibility and close semantics remain released lower-owner behavior.
++- Gate344 projection failures remain observation data through the released adapter; this wrapper does not reinterpret them.
++- Caller observation/evaluation time sources are passed by reference and are not invoked by this wrapper.
++
++## Explicit non-scope
++No React/Home/Bubble rendering or component state; no Bubble palette/color threshold, size/radius scaling, geometry/layout/labels/interactions, or stale/expired/missing visibility treatment; no provider transport, active-USDT/stablecoin/ranking/Top-N policy; no acquisition cadence, visibility lifecycle, retry/backoff, universe refresh or session mutation; no internal clock or freshness threshold; no persistence/IndexedDB; no Your Trades/journal/chart/Risk-Reward/Calculation Brain/navigation/transitions.
+diff -ruN a/package.json b/package.json
+--- a/package.json	2026-09-10 04:05:53.000000000 +0000
++++ b/package.json	2026-09-10 04:40:18.898656133 +0000
+@@ -301,7 +301,8 @@
+     "verify:binance-home-dashboard-live-market-observed-runtime-composition-foundation": "node scripts/verify-binance-home-dashboard-live-market-observed-runtime-composition-foundation.mjs",
+     "verify:live-market-summary-24h-percentage-movement-foundation": "node scripts/verify-live-market-summary-24h-percentage-movement-foundation.mjs",
+     "verify:live-crypto-bubble-metric-input-projection-foundation": "node scripts/verify-live-crypto-bubble-metric-input-projection-foundation.mjs",
+-    "verify:home-dashboard-live-crypto-bubble-metric-observation-bridge-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-metric-observation-bridge-foundation.mjs"
++    "verify:home-dashboard-live-crypto-bubble-metric-observation-bridge-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-metric-observation-bridge-foundation.mjs",
++    "verify:binance-home-dashboard-live-crypto-bubble-observed-runtime-composition-foundation": "node scripts/verify-binance-home-dashboard-live-crypto-bubble-observed-runtime-composition-foundation.mjs"
+   },
+   "dependencies": {
+     "react": "19.2.8",
+diff -ruN a/scripts/verify-binance-home-dashboard-live-crypto-bubble-observed-runtime-composition-foundation.mjs b/scripts/verify-binance-home-dashboard-live-crypto-bubble-observed-runtime-composition-foundation.mjs
+--- a/scripts/verify-binance-home-dashboard-live-crypto-bubble-observed-runtime-composition-foundation.mjs	1970-01-01 00:00:00.000000000 +0000
++++ b/scripts/verify-binance-home-dashboard-live-crypto-bubble-observed-runtime-composition-foundation.mjs	2026-09-10 04:40:18.876082555 +0000
+@@ -0,0 +1,53 @@
++import { readFileSync } from 'node:fs';
++
++const source = readFileSync('src/app/binanceHomeDashboardLiveCryptoBubbleObservedRuntimeComposition.ts', 'utf8');
++const test = readFileSync('tests/binance-home-dashboard-live-crypto-bubble-observed-runtime-composition-foundation.test.ts', 'utf8');
++const report = readFileSync('KAIROS_BINANCE_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_OBSERVED_RUNTIME_COMPOSITION_FOUNDATION_REPORT_2026-09-10.md', 'utf8');
++const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
++
++for (const token of [
++  'startBinanceHomeDashboardLiveCryptoBubbleObservedRuntime',
++  "extends Omit<BinanceHomeDashboardLiveMarketObservedRuntimeCompositionOptions, 'observationSink'>",
++  'createHomeDashboardLiveCryptoBubbleMetricObservationSink(',
++  'options.observationSink,',
++  'startBinanceHomeDashboardLiveMarketObservedRuntime(',
++  'readObservedAt,',
++  'readEvaluationTimeMs,',
++  'universe: options.universe,',
++  'lifecycle: options.lifecycle,',
++  'observationSink,',
++]) {
++  if (!source.includes(token)) throw new Error(`Bubble observed-runtime composition evidence missing: ${token}`);
++}
++
++for (const forbidden of [
++  'Date.now(', 'new Date(', 'setTimeout(', 'setInterval(', 'fetch(', 'XMLHttpRequest', 'WebSocket(',
++  'React', 'useEffect', 'useState', 'indexedDB', 'AbortController', '.sort(', '.filter(', '.reduce(',
++  '15_000', '60_000', 'freshMaxAgeMs', 'staleMaxAgeMs', 'priceChangePercent', 'radius', 'palette', 'color:',
++  'projectLiveCryptoBubbleMetricInputs(', 'createHomeDashboardLiveMarketSummaryFreshnessObservationObserver(',
++]) {
++  if (source.includes(forbidden)) throw new Error(`Bubble observed-runtime composition broadened ownership: ${forbidden}`);
++}
++
++for (const token of [
++  'creates exactly one Gate344 Bubble observation adapter and delegates once to Gate341 while preserving caller dependencies by reference',
++  'preserves a failed Gate341 runtime result unchanged and owns the adaptation slot when no downstream sink is supplied',
++]) {
++  if (!test.includes(token)) throw new Error(`Missing Bubble observed-runtime composition regression: ${token}`);
++}
++
++for (const token of [
++  'app-level Binance Home Live Crypto Bubble observed-runtime composition',
++  'constructs exactly one Gate344 adapter',
++  "returns Gate341's runtime bootstrap result unchanged",
++  'No React/Home/Bubble rendering',
++]) {
++  if (!report.includes(token)) throw new Error(`Bubble observed-runtime composition report evidence missing: ${token}`);
++}
++
++const verifyName = 'verify:binance-home-dashboard-live-crypto-bubble-observed-runtime-composition-foundation';
++if (pkg.scripts?.[verifyName] !== 'node scripts/verify-binance-home-dashboard-live-crypto-bubble-observed-runtime-composition-foundation.mjs') {
++  throw new Error('Bubble observed-runtime composition verifier registration mismatch');
++}
++
++console.log('PASS: Binance Home Live Crypto Bubble observed-runtime composition owns only Gate344-to-Gate341 adaptation and remains presentation-free.');
+diff -ruN a/src/app/binanceHomeDashboardLiveCryptoBubbleObservedRuntimeComposition.ts b/src/app/binanceHomeDashboardLiveCryptoBubbleObservedRuntimeComposition.ts
+--- a/src/app/binanceHomeDashboardLiveCryptoBubbleObservedRuntimeComposition.ts	1970-01-01 00:00:00.000000000 +0000
++++ b/src/app/binanceHomeDashboardLiveCryptoBubbleObservedRuntimeComposition.ts	2026-09-10 04:40:18.874166239 +0000
+@@ -0,0 +1,41 @@
++import type { BinanceSpot24hPublicRestBaselineObservedAtSource } from '../services/market-data';
++import {
++  createHomeDashboardLiveCryptoBubbleMetricObservationSink,
++  type HomeDashboardLiveCryptoBubbleMetricObservationSink,
++} from '../application/dashboard/homeDashboardLiveCryptoBubbleMetricObservationBridge';
++import type { HomeDashboardLiveMarketSummaryFreshnessEvaluationTimeSource } from '../application/dashboard/homeDashboardLiveMarketSummaryFreshnessObservationBridge';
++import {
++  startBinanceHomeDashboardLiveMarketObservedRuntime,
++  type BinanceHomeDashboardLiveMarketObservedRuntimeCompositionOptions,
++} from './binanceHomeDashboardLiveMarketObservedRuntimeComposition';
++import type { BinanceHomeDashboardLiveMarketRuntimeBootstrapResult } from './binanceHomeDashboardLiveMarketRuntimeBootstrap';
++
++export interface BinanceHomeDashboardLiveCryptoBubbleObservedRuntimeCompositionOptions
++  extends Omit<BinanceHomeDashboardLiveMarketObservedRuntimeCompositionOptions, 'observationSink'> {
++  readonly observationSink?: HomeDashboardLiveCryptoBubbleMetricObservationSink;
++}
++
++/**
++ * App-level, non-presentation composition that owns adaptation of the released
++ * Gate344 Bubble metric-observation sink into the released Gate341 Binance Home
++ * observed runtime. Runtime lifecycle and result semantics remain Gate341-owned.
++ */
++export function startBinanceHomeDashboardLiveCryptoBubbleObservedRuntime(
++  readObservedAt: BinanceSpot24hPublicRestBaselineObservedAtSource,
++  readEvaluationTimeMs: HomeDashboardLiveMarketSummaryFreshnessEvaluationTimeSource,
++  options: BinanceHomeDashboardLiveCryptoBubbleObservedRuntimeCompositionOptions,
++): Promise<BinanceHomeDashboardLiveMarketRuntimeBootstrapResult> {
++  const observationSink = createHomeDashboardLiveCryptoBubbleMetricObservationSink(
++    options.observationSink,
++  );
++
++  return startBinanceHomeDashboardLiveMarketObservedRuntime(
++    readObservedAt,
++    readEvaluationTimeMs,
++    {
++      universe: options.universe,
++      lifecycle: options.lifecycle,
++      observationSink,
++    },
++  );
++}
+diff -ruN a/tests/binance-home-dashboard-live-crypto-bubble-observed-runtime-composition-foundation.test.ts b/tests/binance-home-dashboard-live-crypto-bubble-observed-runtime-composition-foundation.test.ts
+--- a/tests/binance-home-dashboard-live-crypto-bubble-observed-runtime-composition-foundation.test.ts	1970-01-01 00:00:00.000000000 +0000
++++ b/tests/binance-home-dashboard-live-crypto-bubble-observed-runtime-composition-foundation.test.ts	2026-09-10 04:40:18.875189307 +0000
+@@ -0,0 +1,91 @@
++import { beforeEach, describe, expect, it, vi } from 'vitest';
++
++const mocks = vi.hoisted(() => {
++  const adaptedObservationSink = { onObservation: vi.fn(), onError: vi.fn() };
++  return {
++    adaptedObservationSink,
++    createBubbleObservationSink: vi.fn(() => adaptedObservationSink),
++    startObservedRuntime: vi.fn(),
++  };
++});
++
++vi.mock('../src/application/dashboard/homeDashboardLiveCryptoBubbleMetricObservationBridge', () => ({
++  createHomeDashboardLiveCryptoBubbleMetricObservationSink: mocks.createBubbleObservationSink,
++}));
++
++vi.mock('../src/app/binanceHomeDashboardLiveMarketObservedRuntimeComposition', () => ({
++  startBinanceHomeDashboardLiveMarketObservedRuntime: mocks.startObservedRuntime,
++}));
++
++import { startBinanceHomeDashboardLiveCryptoBubbleObservedRuntime } from '../src/app/binanceHomeDashboardLiveCryptoBubbleObservedRuntimeComposition';
++
++describe('Binance Home Dashboard Live Crypto Bubble Observed Runtime Composition Foundation', () => {
++  beforeEach(() => {
++    mocks.createBubbleObservationSink.mockClear();
++    mocks.startObservedRuntime.mockReset();
++  });
++
++  it('creates exactly one Gate344 Bubble observation adapter and delegates once to Gate341 while preserving caller dependencies by reference', async () => {
++    const runtimeResult = { ok: true, runtime: { instruments: [], close: vi.fn() } } as const;
++    mocks.startObservedRuntime.mockResolvedValue(runtimeResult);
++    const readObservedAt = vi.fn(() => '2026-09-10T00:00:00.000Z');
++    const readEvaluationTimeMs = vi.fn(() => Date.parse('2026-09-10T00:00:01.000Z'));
++    const observationSink = { onObservation: vi.fn(), onError: vi.fn() };
++    const browserDocument = {} as never;
++    const timer = {} as never;
++    const universe = { excludedStablecoinBaseAssets: new Set<string>(), topNCount: 30 } as never;
++
++    const result = await startBinanceHomeDashboardLiveCryptoBubbleObservedRuntime(
++      readObservedAt,
++      readEvaluationTimeMs,
++      {
++        universe,
++        lifecycle: { document: browserDocument, timer },
++        observationSink,
++      },
++    );
++
++    expect(mocks.createBubbleObservationSink).toHaveBeenCalledTimes(1);
++    expect(mocks.createBubbleObservationSink).toHaveBeenCalledWith(observationSink);
++    expect(mocks.startObservedRuntime).toHaveBeenCalledTimes(1);
++    expect(mocks.startObservedRuntime).toHaveBeenCalledWith(
++      readObservedAt,
++      readEvaluationTimeMs,
++      {
++        universe,
++        lifecycle: { document: browserDocument, timer },
++        observationSink: mocks.adaptedObservationSink,
++      },
++    );
++    expect(readObservedAt).not.toHaveBeenCalled();
++    expect(readEvaluationTimeMs).not.toHaveBeenCalled();
++    expect(result).toBe(runtimeResult);
++  });
++
++  it('preserves a failed Gate341 runtime result unchanged and owns the adaptation slot when no downstream sink is supplied', async () => {
++    const runtimeResult = { ok: false, reason: 'acquisition-failed' } as const;
++    mocks.startObservedRuntime.mockResolvedValue(runtimeResult);
++    const readObservedAt = vi.fn(() => '2026-09-10T00:00:00.000Z');
++    const readEvaluationTimeMs = vi.fn(() => 0);
++    const universe = {} as never;
++
++    const result = await startBinanceHomeDashboardLiveCryptoBubbleObservedRuntime(
++      readObservedAt,
++      readEvaluationTimeMs,
++      { universe },
++    );
++
++    expect(mocks.createBubbleObservationSink).toHaveBeenCalledTimes(1);
++    expect(mocks.createBubbleObservationSink).toHaveBeenCalledWith(undefined);
++    expect(mocks.startObservedRuntime).toHaveBeenCalledWith(
++      readObservedAt,
++      readEvaluationTimeMs,
++      {
++        universe,
++        lifecycle: undefined,
++        observationSink: mocks.adaptedObservationSink,
++      },
++    );
++    expect(result).toBe(runtimeResult);
++  });
++});
