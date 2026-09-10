@@ -1,0 +1,391 @@
+diff --git a/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_AREA_WEIGHT_PROJECTION_FOUNDATION_REPORT_2026-09-10.md b/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_AREA_WEIGHT_PROJECTION_FOUNDATION_REPORT_2026-09-10.md
+new file mode 100644
+index 0000000..9b9d624
+--- /dev/null
++++ b/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_AREA_WEIGHT_PROJECTION_FOUNDATION_REPORT_2026-09-10.md
+@@ -0,0 +1,27 @@
++# Kairos Home Dashboard Live Crypto Bubble Area-Weight Projection Foundation
++
++## Responsibility
++
++This candidate adds one provider-neutral normalized area-weight projection below React rendering. It consumes one already-released Home Dashboard Live Crypto Bubble presentation-state projection and adds only a deterministic relative visual-area preparation value.
++
++The 24h quote volume remains the authoritative size metric. The new projection does not replace or rewrite that metric: each output entry preserves the exact upstream presentation entry by reference and derives only `areaWeight = quoteVolume24h / maximum present quoteVolume24h` with the released Decimal kernel.
++
++## Semantics
++
++- Upstream presentation-state failure is preserved as exact non-renderable evidence.
++- Present entries use only the already-released non-negative `quoteVolume24h`.
++- The largest present quote volume receives exact Decimal weight `1`.
++- Other present entries receive an exact Decimal ratio in the inclusive `[0,1]` range implied by the released non-negative metric contract.
++- Missing entries remain explicit with `areaWeight: null`.
++- If every present quote volume is zero, every present `areaWeight` stays exact Decimal zero. This layer does not invent a minimum visible size.
++- Entry order and upstream metric/freshness/movement semantic identity are unchanged.
++
++## Ownership / non-scope
++
++This is a presentation-only preparation boundary. It does not sort, filter, rank, choose Top-N, select stablecoin exclusions, reclassify movement/freshness, or create provider/runtime/session truth. It has no clock, acquisition, persistence, DOM, React lifecycle, interaction, animation, or Your Trades/journal ownership.
++
++Pixel radius, minimum visible radius, collision/layout and theme color remain later presentation owners. This candidate deliberately performs no square-root conversion, no pixel geometry, no CSS/design-token selection, and no visible rendering.
++
++## Verification intent
++
++Dedicated regression proves exact order/reference preservation, maximum-relative Decimal normalization, explicit missing values, all-zero behavior, upstream failure preservation, and fail-closed handling for inconsistent released entry shape. Static verification rejects sorting, policy constants, clocks, provider/runtime calls, React, pixel/radius/layout and styling ownership.
+diff --git a/package.json b/package.json
+index 791660d..c743234 100644
+--- a/package.json
++++ b/package.json
+@@ -306,7 +306,8 @@
+     "verify:binance-home-dashboard-live-crypto-bubble-presentation-observed-runtime-composition-foundation": "node scripts/verify-binance-home-dashboard-live-crypto-bubble-presentation-observed-runtime-composition-foundation.mjs",
+     "verify:home-dashboard-live-crypto-bubble-presentation-state-projection-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-presentation-state-projection-foundation.mjs",
+     "verify:home-dashboard-live-crypto-bubble-presentation-state-observation-bridge-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-presentation-state-observation-bridge-foundation.mjs",
+-    "verify:home-dashboard-live-crypto-bubble-react-runtime-binding-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-react-runtime-binding-foundation.mjs"
++    "verify:home-dashboard-live-crypto-bubble-react-runtime-binding-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-react-runtime-binding-foundation.mjs",
++    "verify:home-dashboard-live-crypto-bubble-area-weight-projection-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-area-weight-projection-foundation.mjs"
+   },
+   "dependencies": {
+     "react": "19.2.8",
+diff --git a/scripts/verify-home-dashboard-live-crypto-bubble-area-weight-projection-foundation.mjs b/scripts/verify-home-dashboard-live-crypto-bubble-area-weight-projection-foundation.mjs
+new file mode 100644
+index 0000000..542babc
+--- /dev/null
++++ b/scripts/verify-home-dashboard-live-crypto-bubble-area-weight-projection-foundation.mjs
+@@ -0,0 +1,61 @@
++import { readFileSync } from 'node:fs';
++
++const source = readFileSync('src/application/dashboard/homeDashboardLiveCryptoBubbleAreaWeightProjection.ts', 'utf8');
++const test = readFileSync('tests/home-dashboard-live-crypto-bubble-area-weight-projection-foundation.test.ts', 'utf8');
++const report = readFileSync('KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_AREA_WEIGHT_PROJECTION_FOUNDATION_REPORT_2026-09-10.md', 'utf8');
++const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
++
++for (const token of [
++  'projectHomeDashboardLiveCryptoBubbleAreaWeights',
++  'HomeDashboardLiveCryptoBubbleAreaWeightProjectionEntry',
++  'areaWeight: DecimalString | null',
++  'presentationStateProjection: SuccessfulPresentationStateProjection',
++  "reason: 'presentation-state-projection-invalid'",
++  "reason: 'area-weight-entry-inconsistent'",
++  "reason: 'area-weight-derivation-invalid'",
++  'parseDecimalString(String(entry.metricInput.quoteVolume24h))',
++  'decimalSubtract(quoteVolume, maximumPresentQuoteVolume)',
++  'decimalDivide(quoteVolume, maximumPresentQuoteVolume)',
++  "maximumPresentQuoteVolume === '0'",
++  'entries.push({ presentationEntry, areaWeight: null })',
++]) {
++  if (!source.includes(token)) throw new Error(`Bubble area-weight projection evidence missing: ${token}`);
++}
++
++for (const forbidden of [
++  '.sort(', '.filter(', '.reverse(', 'Math.sqrt(', 'Math.pow(', 'Date.now(', 'new Date(',
++  'setTimeout(', 'setInterval(', 'fetch(', 'XMLHttpRequest', 'WebSocket(', "from 'react'", 'useEffect', 'useState',
++  'indexedDB', 'borderRadius', 'radius:', 'minRadius', 'maxRadius', 'width:', 'height:', 'left:', 'top:',
++  'className=', '<div', '<svg', 'neutralMaxAbsoluteMovementPercent', 'stablecoin', 'topN', 'Top 30',
++  'freshMaxAgeMs', 'staleMaxAgeMs', 'startBinanceHomeDashboardLiveCryptoBubble',
++]) {
++  if (source.includes(forbidden)) throw new Error(`Bubble area-weight projection broadened ownership: ${forbidden}`);
++}
++
++for (const token of [
++  'normalizes present 24h quote volume against the maximum while preserving exact entry order and semantic references',
++  'does not sort or rerank when a later entry has the largest quote volume',
++  'keeps missing entries explicitly missing and does not invent a visible minimum area',
++  'keeps all present zero-volume entries at exact zero instead of inventing a minimum radius',
++  'preserves an upstream presentation-state failure exactly as non-renderable evidence',
++  'fails closed when a released presentation entry is inconsistent instead of fabricating area truth',
++]) {
++  if (!test.includes(token)) throw new Error(`Missing Bubble area-weight regression: ${token}`);
++}
++
++for (const token of [
++  'provider-neutral normalized area-weight projection below React rendering',
++  '24h quote volume remains the authoritative size metric',
++  'areaWeight = quoteVolume24h / maximum present quoteVolume24h',
++  'Missing entries remain explicit with `areaWeight: null`',
++  'Pixel radius, minimum visible radius, collision/layout and theme color remain later presentation owners',
++]) {
++  if (!report.includes(token)) throw new Error(`Bubble area-weight report evidence missing: ${token}`);
++}
++
++const verifyName = 'verify:home-dashboard-live-crypto-bubble-area-weight-projection-foundation';
++if (pkg.scripts?.[verifyName] !== 'node scripts/verify-home-dashboard-live-crypto-bubble-area-weight-projection-foundation.mjs') {
++  throw new Error('Bubble area-weight projection verifier registration mismatch');
++}
++
++console.log('PASS: Home Live Crypto Bubble area-weight projection preserves quote-volume truth without owning pixels, layout, theme, policy, or React.');
+diff --git a/src/application/dashboard/homeDashboardLiveCryptoBubbleAreaWeightProjection.ts b/src/application/dashboard/homeDashboardLiveCryptoBubbleAreaWeightProjection.ts
+new file mode 100644
+index 0000000..ab29271
+--- /dev/null
++++ b/src/application/dashboard/homeDashboardLiveCryptoBubbleAreaWeightProjection.ts
+@@ -0,0 +1,146 @@
++import { decimalDivide, decimalSubtract } from '../../domain/calculations';
++import { parseDecimalString, type DecimalString } from '../../domain/trades';
++import type {
++  HomeDashboardLiveCryptoBubblePresentationStateEntry,
++  HomeDashboardLiveCryptoBubblePresentationStateProjectionResult,
++} from './homeDashboardLiveCryptoBubblePresentationStateProjection';
++
++type SuccessfulPresentationStateProjection = Extract<
++  HomeDashboardLiveCryptoBubblePresentationStateProjectionResult,
++  { readonly ok: true }
++>;
++
++type FailedPresentationStateProjection = Extract<
++  HomeDashboardLiveCryptoBubblePresentationStateProjectionResult,
++  { readonly ok: false }
++>;
++
++export interface HomeDashboardLiveCryptoBubbleAreaWeightProjectionEntry {
++  readonly presentationEntry: HomeDashboardLiveCryptoBubblePresentationStateEntry;
++  readonly areaWeight: DecimalString | null;
++}
++
++export type HomeDashboardLiveCryptoBubbleAreaWeightProjectionResult =
++  | {
++      readonly ok: true;
++      readonly presentationStateProjection: SuccessfulPresentationStateProjection;
++      readonly entries: readonly HomeDashboardLiveCryptoBubbleAreaWeightProjectionEntry[];
++    }
++  | {
++      readonly ok: false;
++      readonly reason: 'presentation-state-projection-invalid';
++      readonly presentationStateProjection: FailedPresentationStateProjection;
++    }
++  | {
++      readonly ok: false;
++      readonly reason: 'area-weight-entry-inconsistent' | 'area-weight-derivation-invalid';
++      readonly presentationStateProjection: SuccessfulPresentationStateProjection;
++      readonly entryIndex: number;
++    };
++
++function readPresentQuoteVolume(
++  entry: HomeDashboardLiveCryptoBubblePresentationStateEntry,
++): DecimalString | null {
++  if (entry.availability !== 'present' || entry.metricInput.quoteVolume24h === null) return null;
++  const parsed = parseDecimalString(String(entry.metricInput.quoteVolume24h));
++  return parsed.ok && !parsed.value.startsWith('-') ? parsed.value : null;
++}
++
++/**
++ * Provider-neutral presentation preparation for Live Crypto Bubble visual area.
++ * It normalizes only already-released 24h quote-volume truth into a [0,1]
++ * Decimal area weight. Pixel radius, minimum visible size, layout, theme, React,
++ * provider/universe policy, and runtime ownership remain outside this boundary.
++ */
++export function projectHomeDashboardLiveCryptoBubbleAreaWeights(
++  presentationStateProjection: HomeDashboardLiveCryptoBubblePresentationStateProjectionResult,
++): HomeDashboardLiveCryptoBubbleAreaWeightProjectionResult {
++  if (!presentationStateProjection.ok) {
++    return {
++      ok: false,
++      reason: 'presentation-state-projection-invalid',
++      presentationStateProjection,
++    };
++  }
++
++  let maximumPresentQuoteVolume: DecimalString | null = null;
++  for (let entryIndex = 0; entryIndex < presentationStateProjection.entries.length; entryIndex += 1) {
++    const entry = presentationStateProjection.entries[entryIndex];
++    if (entry.availability === 'missing') {
++      if (entry.metricInput.quoteVolume24h !== null) {
++        return {
++          ok: false,
++          reason: 'area-weight-entry-inconsistent',
++          presentationStateProjection,
++          entryIndex,
++        };
++      }
++      continue;
++    }
++
++    const quoteVolume = readPresentQuoteVolume(entry);
++    if (quoteVolume === null) {
++      return {
++        ok: false,
++        reason: 'area-weight-entry-inconsistent',
++        presentationStateProjection,
++        entryIndex,
++      };
++    }
++
++    if (maximumPresentQuoteVolume === null) {
++      maximumPresentQuoteVolume = quoteVolume;
++      continue;
++    }
++
++    const relativeToMaximum = decimalSubtract(quoteVolume, maximumPresentQuoteVolume);
++    if (!relativeToMaximum.ok) {
++      return {
++        ok: false,
++        reason: 'area-weight-derivation-invalid',
++        presentationStateProjection,
++        entryIndex,
++      };
++    }
++    if (relativeToMaximum.value !== '0' && !relativeToMaximum.value.startsWith('-')) {
++      maximumPresentQuoteVolume = quoteVolume;
++    }
++  }
++
++  const entries: HomeDashboardLiveCryptoBubbleAreaWeightProjectionEntry[] = [];
++  for (let entryIndex = 0; entryIndex < presentationStateProjection.entries.length; entryIndex += 1) {
++    const presentationEntry = presentationStateProjection.entries[entryIndex];
++    if (presentationEntry.availability === 'missing') {
++      entries.push({ presentationEntry, areaWeight: null });
++      continue;
++    }
++
++    const quoteVolume = readPresentQuoteVolume(presentationEntry);
++    if (quoteVolume === null || maximumPresentQuoteVolume === null) {
++      return {
++        ok: false,
++        reason: 'area-weight-entry-inconsistent',
++        presentationStateProjection,
++        entryIndex,
++      };
++    }
++
++    if (maximumPresentQuoteVolume === '0') {
++      entries.push({ presentationEntry, areaWeight: '0' as DecimalString });
++      continue;
++    }
++
++    const areaWeight = decimalDivide(quoteVolume, maximumPresentQuoteVolume);
++    if (!areaWeight.ok) {
++      return {
++        ok: false,
++        reason: 'area-weight-derivation-invalid',
++        presentationStateProjection,
++        entryIndex,
++      };
++    }
++    entries.push({ presentationEntry, areaWeight: areaWeight.value });
++  }
++
++  return { ok: true, presentationStateProjection, entries };
++}
+diff --git a/tests/home-dashboard-live-crypto-bubble-area-weight-projection-foundation.test.ts b/tests/home-dashboard-live-crypto-bubble-area-weight-projection-foundation.test.ts
+new file mode 100644
+index 0000000..e5c56e0
+--- /dev/null
++++ b/tests/home-dashboard-live-crypto-bubble-area-weight-projection-foundation.test.ts
+@@ -0,0 +1,119 @@
++import { describe, expect, it } from 'vitest';
++import type { DecimalString } from '../src/domain/trades';
++import type {
++  HomeDashboardLiveCryptoBubblePresentationStateProjectionResult,
++} from '../src/application/dashboard/homeDashboardLiveCryptoBubblePresentationStateProjection';
++import { projectHomeDashboardLiveCryptoBubbleAreaWeights } from '../src/application/dashboard/homeDashboardLiveCryptoBubbleAreaWeightProjection';
++import type { LiveMarketSummaryFact, MarketDataInstrument } from '../src/services/market-data/marketDataTypes';
++
++const d = (value: string) => value as DecimalString;
++const instrument = (symbol: string): MarketDataInstrument => ({ venue: 'binance-spot', symbol });
++
++function fact(current: MarketDataInstrument, quoteVolume24h: DecimalString): LiveMarketSummaryFact {
++  return {
++    instrument: current,
++    lastPrice: d('100'),
++    open24h: d('100'),
++    high24h: d('110'),
++    low24h: d('90'),
++    baseVolume24h: d('1000'),
++    quoteVolume24h,
++    observedAt: '2026-09-10T05:00:00.000Z',
++    sourceTimestamp: null,
++  };
++}
++
++function successProjection(volumes: readonly (DecimalString | null)[]): Extract<HomeDashboardLiveCryptoBubblePresentationStateProjectionResult, { ok: true }> {
++  const entries = volumes.map((volume, index) => {
++    const current = instrument(['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT'][index] ?? `T${index}USDT`);
++    if (volume === null) {
++      return {
++        metricInput: { instrument: current, fact: null, ageMs: null, freshness: null, quoteVolume24h: null, movementPercent24h: null },
++        availability: 'missing' as const,
++        movementSemantic: null,
++        freshnessState: 'missing' as const,
++      };
++    }
++    const currentFact = fact(current, volume);
++    return {
++      metricInput: { instrument: current, fact: currentFact, ageMs: 1000, freshness: 'fresh' as const, quoteVolume24h: volume, movementPercent24h: d('1') },
++      availability: 'present' as const,
++      movementSemantic: 'positive' as const,
++      freshnessState: 'fresh' as const,
++    };
++  });
++  return {
++    ok: true,
++    metricObservation: { freshnessObservation: {} as never, bubbleMetricProjection: { ok: true, evaluationTimeMs: 1, entries: entries.map((entry) => entry.metricInput) } },
++    entries,
++  };
++}
++
++describe('Home Dashboard Live Crypto Bubble area-weight projection foundation', () => {
++  it('normalizes present 24h quote volume against the maximum while preserving exact entry order and semantic references', () => {
++    const input = successProjection([d('1000'), d('500'), d('250'), null]);
++    const result = projectHomeDashboardLiveCryptoBubbleAreaWeights(input);
++
++    expect(result.ok).toBe(true);
++    if (!result.ok) return;
++    expect(result.presentationStateProjection).toBe(input);
++    expect(result.entries.map((entry) => entry.areaWeight)).toEqual([d('1'), d('0.5'), d('0.25'), null]);
++    result.entries.forEach((entry, index) => expect(entry.presentationEntry).toBe(input.entries[index]));
++  });
++
++  it('does not sort or rerank when a later entry has the largest quote volume', () => {
++    const input = successProjection([d('5'), d('20'), d('10')]);
++    const result = projectHomeDashboardLiveCryptoBubbleAreaWeights(input);
++
++    expect(result.ok).toBe(true);
++    if (!result.ok) return;
++    expect(result.entries.map((entry) => entry.presentationEntry.metricInput.instrument.symbol)).toEqual(['BTCUSDT', 'ETHUSDT', 'SOLUSDT']);
++    expect(result.entries.map((entry) => entry.areaWeight)).toEqual([d('0.25'), d('1'), d('0.5')]);
++  });
++
++  it('keeps missing entries explicitly missing and does not invent a visible minimum area', () => {
++    const input = successProjection([null, d('4'), null]);
++    const result = projectHomeDashboardLiveCryptoBubbleAreaWeights(input);
++
++    expect(result.ok).toBe(true);
++    if (!result.ok) return;
++    expect(result.entries.map((entry) => entry.areaWeight)).toEqual([null, d('1'), null]);
++  });
++
++  it('keeps all present zero-volume entries at exact zero instead of inventing a minimum radius', () => {
++    const input = successProjection([d('0'), d('0'), null]);
++    const result = projectHomeDashboardLiveCryptoBubbleAreaWeights(input);
++
++    expect(result.ok).toBe(true);
++    if (!result.ok) return;
++    expect(result.entries.map((entry) => entry.areaWeight)).toEqual([d('0'), d('0'), null]);
++  });
++
++  it('preserves an upstream presentation-state failure exactly as non-renderable evidence', () => {
++    const input: HomeDashboardLiveCryptoBubblePresentationStateProjectionResult = {
++      ok: false,
++      reason: 'neutral-threshold-invalid',
++      metricObservation: {} as never,
++    };
++    expect(projectHomeDashboardLiveCryptoBubbleAreaWeights(input)).toEqual({
++      ok: false,
++      reason: 'presentation-state-projection-invalid',
++      presentationStateProjection: input,
++    });
++  });
++
++  it('fails closed when a released presentation entry is inconsistent instead of fabricating area truth', () => {
++    const input = successProjection([d('10')]);
++    const inconsistent = {
++      ...input,
++      entries: [{ ...input.entries[0], metricInput: { ...input.entries[0].metricInput, quoteVolume24h: null } }],
++    } as Extract<HomeDashboardLiveCryptoBubblePresentationStateProjectionResult, { ok: true }>;
++
++    expect(projectHomeDashboardLiveCryptoBubbleAreaWeights(inconsistent)).toEqual({
++      ok: false,
++      reason: 'area-weight-entry-inconsistent',
++      presentationStateProjection: inconsistent,
++      entryIndex: 0,
++    });
++  });
++});
