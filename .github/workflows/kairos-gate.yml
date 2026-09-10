@@ -36,7 +36,7 @@ jobs:
           import hashlib, os, zipfile
           for key, size, digest in [
             ('BASE_ZIP', 1613187, '7541f423e42df50968dc1e49dbe019ab6aff6825d7ad3d98b7ff21df92d990c8'),
-            ('CANDIDATE_ZIP', 1618538, 'e75cada42f3578cf03f7218f0005f181db7313dd0b024050cb89a27420bc43aa'),
+            ('CANDIDATE_ZIP', 1618603, '52c851a9e5d39d8750db8558885185654a38cd05ffc0e9090992fa791897ffdd'),
           ]:
             p=Path(os.environ[key]); data=p.read_bytes()
             assert len(data)==size, f'{key}: byte size mismatch'
