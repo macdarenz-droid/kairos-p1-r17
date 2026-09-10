@@ -1,0 +1,352 @@
+diff --git a/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_REACT_RUNTIME_BINDING_FOUNDATION_REPORT_2026-09-10.md b/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_REACT_RUNTIME_BINDING_FOUNDATION_REPORT_2026-09-10.md
+new file mode 100644
+index 0000000..a8c069f
+--- /dev/null
++++ b/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_REACT_RUNTIME_BINDING_FOUNDATION_REPORT_2026-09-10.md
+@@ -0,0 +1,23 @@
++# Home Dashboard Live Crypto Bubble React Runtime Binding Foundation
++
++## Authority
++Base: exact canonical Gate350 Binance Home Live Crypto Bubble presentation-observed runtime composition, `Kairos Controlled Roadmap Gate` #350 / run `34454131565`.
++
++## Source-proven responsibility
++Gate350 canonically releases the complete Binance Home Live Crypto Bubble semantic observed runtime below React. P21.1 already owns `HomeRoute` presentation, but current production source has no React consumer of Gate350. The smallest dependency-safe next step is therefore a React lifecycle/state binding that consumes Gate350 without choosing still-caller-owned market/presentation policy values or visible Bubble geometry.
++
++## Contract
++`useHomeDashboardLiveCryptoBubblePresentationObservedRuntime(...)`:
++- accepts the exact caller-owned observedAt source, evaluation-time source, universe configuration, browser-lifecycle options and Gate346 presentation policy;
++- owns the Gate350 semantic observation-sink slot for React state only;
++- starts one Gate350 runtime per effect activation;
++- preserves the latest exact Gate349 semantic observation by reference;
++- records upstream observation errors separately without erasing the latest semantic observation;
++- preserves Gate350 bootstrap acquisition failure as explicit `acquisition-failed` state;
++- preserves unexpected bootstrap exceptions/rejections as explicit `bootstrap-error` evidence through an internal async `try/catch` boundary;
++- closes the exact successfully resolved runtime on teardown, including when asynchronous bootstrap resolves after unmount.
++
++## Explicit non-scope
++No concrete stablecoin exclusion set or neutral-movement threshold is selected or hard-coded. No provider transport/request/decode/mapping, universe eligibility/ranking/Top-N semantics, freshness thresholds/cadence, internal clocks, direct browser document/timer ownership, persistence/IndexedDB, design palette/tokens, Bubble radius/geometry/collision/layout, labels/copy, accessibility semantics, interactions, animation, visible Bubble circles, HomeRoute rendering changes, Your Trades Bubble Map, journal/chart/Risk-Reward/navigation/transitions.
++
++This slice is React lifecycle/state plumbing only. A later controlled presentation slice may render visible Home Live Crypto Bubbles from this released React state boundary while continuing to consume explicit product/configuration inputs.
+diff --git a/package.json b/package.json
+index f703df9..791660d 100644
+--- a/package.json
++++ b/package.json
+@@ -305,7 +305,8 @@
+     "verify:binance-home-dashboard-live-crypto-bubble-observed-runtime-composition-foundation": "node scripts/verify-binance-home-dashboard-live-crypto-bubble-observed-runtime-composition-foundation.mjs",
+     "verify:binance-home-dashboard-live-crypto-bubble-presentation-observed-runtime-composition-foundation": "node scripts/verify-binance-home-dashboard-live-crypto-bubble-presentation-observed-runtime-composition-foundation.mjs",
+     "verify:home-dashboard-live-crypto-bubble-presentation-state-projection-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-presentation-state-projection-foundation.mjs",
+-    "verify:home-dashboard-live-crypto-bubble-presentation-state-observation-bridge-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-presentation-state-observation-bridge-foundation.mjs"
++    "verify:home-dashboard-live-crypto-bubble-presentation-state-observation-bridge-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-presentation-state-observation-bridge-foundation.mjs",
++    "verify:home-dashboard-live-crypto-bubble-react-runtime-binding-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-react-runtime-binding-foundation.mjs"
+   },
+   "dependencies": {
+     "react": "19.2.8",
+diff --git a/scripts/verify-home-dashboard-live-crypto-bubble-react-runtime-binding-foundation.mjs b/scripts/verify-home-dashboard-live-crypto-bubble-react-runtime-binding-foundation.mjs
+new file mode 100644
+index 0000000..4f472bf
+--- /dev/null
++++ b/scripts/verify-home-dashboard-live-crypto-bubble-react-runtime-binding-foundation.mjs
+@@ -0,0 +1,75 @@
++import { readFileSync } from 'node:fs';
++
++const source = readFileSync('src/app/useHomeDashboardLiveCryptoBubblePresentationObservedRuntime.ts', 'utf8');
++const test = readFileSync('tests/home-dashboard-live-crypto-bubble-react-runtime-binding-foundation.test.ts', 'utf8');
++const report = readFileSync('KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_REACT_RUNTIME_BINDING_FOUNDATION_REPORT_2026-09-10.md', 'utf8');
++const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
++
++for (const token of [
++  "import { useEffect, useState } from 'react';",
++  'useHomeDashboardLiveCryptoBubblePresentationObservedRuntime',
++  "extends Omit<",
++  "'observationSink'",
++  "status: 'starting'",
++  'latestObservation: null',
++  'lastError: null',
++  'startBinanceHomeDashboardLiveCryptoBubblePresentationObservedRuntime(',
++  'readObservedAt,',
++  'readEvaluationTimeMs,',
++  'universe: options.universe,',
++  'lifecycle: options.lifecycle,',
++  'presentationPolicy: options.presentationPolicy,',
++  'onObservation(observation)',
++  'latestObservation: observation',
++  'onError(error)',
++  'lastError: error',
++  "status: 'acquisition-failed'",
++  "status: 'running'",
++  "status: 'bootstrap-error'",
++  'if (result.ok) result.runtime.close();',
++  'closeRuntime = result.runtime.close;',
++  'closeRuntime?.();',
++  'async function bootstrap(): Promise<void>',
++  'const result = await startBinanceHomeDashboardLiveCryptoBubblePresentationObservedRuntime(',
++  '} catch (error: unknown) {',
++  'void bootstrap();',
++]) {
++  if (!source.includes(token)) throw new Error(`React Bubble runtime binding evidence missing: ${token}`);
++}
++
++for (const forbidden of [
++  'Date.now(', 'new Date(', 'fetch(', 'XMLHttpRequest', 'WebSocket(', 'indexedDB', 'localStorage',
++  'excludedStablecoinBaseAssets: new Set', 'topNCount:', 'neutralMaxAbsoluteMovementPercent:',
++  '15_000', '60_000', 'freshMaxAgeMs', 'staleMaxAgeMs', 'priceChangePercent',
++  'radius', 'collision', 'palette', 'background:', 'color:', 'className=', '<section', '<svg', '<canvas',
++  'createHomeDashboardLiveCryptoBubblePresentationStateObservationSink(',
++]) {
++  if (source.includes(forbidden)) throw new Error(`React Bubble runtime binding broadened ownership: ${forbidden}`);
++}
++
++for (const token of [
++  'starts exactly one Gate350 runtime per effect and preserves exact semantic observation plus error evidence without erasing the observation',
++  'closes a successfully resolved runtime exactly once when bootstrap finishes after unmount',
++  'keeps Gate350 acquisition failure explicit instead of inventing usable Bubble state',
++  'preserves an unexpected bootstrap exception as explicit error evidence',
++]) {
++  if (!test.includes(token)) throw new Error(`Missing React Bubble runtime binding regression: ${token}`);
++}
++
++for (const token of [
++  'React lifecycle/state binding',
++  'preserves the latest exact Gate349 semantic observation by reference',
++  'without erasing the latest semantic observation',
++  'No concrete stablecoin exclusion set or neutral-movement threshold is selected or hard-coded',
++  'No provider transport/request/decode/mapping',
++  'visible Bubble circles',
++]) {
++  if (!report.includes(token)) throw new Error(`React Bubble runtime binding report evidence missing: ${token}`);
++}
++
++const verifyName = 'verify:home-dashboard-live-crypto-bubble-react-runtime-binding-foundation';
++if (pkg.scripts?.[verifyName] !== 'node scripts/verify-home-dashboard-live-crypto-bubble-react-runtime-binding-foundation.mjs') {
++  throw new Error('React Bubble runtime binding verifier registration mismatch');
++}
++
++console.log('PASS: Home Live Crypto Bubble React lifecycle/state binding consumes Gate350 without absorbing provider, policy, geometry, persistence or visible rendering truth.');
+diff --git a/src/app/useHomeDashboardLiveCryptoBubblePresentationObservedRuntime.ts b/src/app/useHomeDashboardLiveCryptoBubblePresentationObservedRuntime.ts
+new file mode 100644
+index 0000000..7f4e6e6
+--- /dev/null
++++ b/src/app/useHomeDashboardLiveCryptoBubblePresentationObservedRuntime.ts
+@@ -0,0 +1,108 @@
++import { useEffect, useState } from 'react';
++import type { BinanceSpot24hPublicRestBaselineObservedAtSource } from '../services/market-data';
++import type {
++  HomeDashboardLiveCryptoBubblePresentationStateObservation,
++} from '../application/dashboard/homeDashboardLiveCryptoBubblePresentationStateObservationBridge';
++import type { HomeDashboardLiveMarketSummaryFreshnessEvaluationTimeSource } from '../application/dashboard/homeDashboardLiveMarketSummaryFreshnessObservationBridge';
++import {
++  startBinanceHomeDashboardLiveCryptoBubblePresentationObservedRuntime,
++  type BinanceHomeDashboardLiveCryptoBubblePresentationObservedRuntimeCompositionOptions,
++} from './binanceHomeDashboardLiveCryptoBubblePresentationObservedRuntimeComposition';
++
++export type HomeDashboardLiveCryptoBubbleReactRuntimeStatus =
++  | 'starting'
++  | 'running'
++  | 'acquisition-failed'
++  | 'bootstrap-error';
++
++export interface HomeDashboardLiveCryptoBubbleReactRuntimeState {
++  readonly status: HomeDashboardLiveCryptoBubbleReactRuntimeStatus;
++  readonly latestObservation: HomeDashboardLiveCryptoBubblePresentationStateObservation | null;
++  readonly lastError: unknown | null;
++}
++
++export interface HomeDashboardLiveCryptoBubbleReactRuntimeBindingOptions
++  extends Omit<
++    BinanceHomeDashboardLiveCryptoBubblePresentationObservedRuntimeCompositionOptions,
++    'observationSink'
++  > {}
++
++const INITIAL_STATE: HomeDashboardLiveCryptoBubbleReactRuntimeState = {
++  status: 'starting',
++  latestObservation: null,
++  lastError: null,
++};
++
++/**
++ * React lifecycle/state binding for the canonically released Gate350 Binance Home
++ * Bubble semantic observed runtime. Provider, universe, freshness, metric and
++ * presentation-policy truth stay caller-owned; this hook only starts/closes the
++ * released runtime and preserves its exact semantic observation/error evidence.
++ */
++export function useHomeDashboardLiveCryptoBubblePresentationObservedRuntime(
++  readObservedAt: BinanceSpot24hPublicRestBaselineObservedAtSource,
++  readEvaluationTimeMs: HomeDashboardLiveMarketSummaryFreshnessEvaluationTimeSource,
++  options: HomeDashboardLiveCryptoBubbleReactRuntimeBindingOptions,
++): HomeDashboardLiveCryptoBubbleReactRuntimeState {
++  const [state, setState] = useState<HomeDashboardLiveCryptoBubbleReactRuntimeState>(INITIAL_STATE);
++
++  useEffect(() => {
++    let active = true;
++    let closeRuntime: (() => void) | null = null;
++
++    setState(INITIAL_STATE);
++
++    async function bootstrap(): Promise<void> {
++      try {
++        const result = await startBinanceHomeDashboardLiveCryptoBubblePresentationObservedRuntime(
++          readObservedAt,
++          readEvaluationTimeMs,
++          {
++            universe: options.universe,
++            lifecycle: options.lifecycle,
++            presentationPolicy: options.presentationPolicy,
++            observationSink: {
++              onObservation(observation) {
++                if (!active) return;
++                setState((current) => ({ ...current, latestObservation: observation }));
++              },
++              onError(error) {
++                if (!active) return;
++                setState((current) => ({ ...current, lastError: error }));
++              },
++            },
++          },
++        );
++
++        if (!active) {
++          if (result.ok) result.runtime.close();
++          return;
++        }
++        if (!result.ok) {
++          setState((current) => ({ ...current, status: 'acquisition-failed' }));
++          return;
++        }
++        closeRuntime = result.runtime.close;
++        setState((current) => ({ ...current, status: 'running' }));
++      } catch (error: unknown) {
++        if (!active) return;
++        setState((current) => ({ ...current, status: 'bootstrap-error', lastError: error }));
++      }
++    }
++
++    void bootstrap();
++
++    return () => {
++      active = false;
++      closeRuntime?.();
++    };
++  }, [
++    readObservedAt,
++    readEvaluationTimeMs,
++    options.universe,
++    options.lifecycle,
++    options.presentationPolicy,
++  ]);
++
++  return state;
++}
+diff --git a/tests/home-dashboard-live-crypto-bubble-react-runtime-binding-foundation.test.ts b/tests/home-dashboard-live-crypto-bubble-react-runtime-binding-foundation.test.ts
+new file mode 100644
+index 0000000..3736ca0
+--- /dev/null
++++ b/tests/home-dashboard-live-crypto-bubble-react-runtime-binding-foundation.test.ts
+@@ -0,0 +1,108 @@
++import { act, renderHook, waitFor } from '@testing-library/react';
++import { beforeEach, describe, expect, it, vi } from 'vitest';
++
++const mocks = vi.hoisted(() => ({ startRuntime: vi.fn() }));
++
++vi.mock('../src/app/binanceHomeDashboardLiveCryptoBubblePresentationObservedRuntimeComposition', () => ({
++  startBinanceHomeDashboardLiveCryptoBubblePresentationObservedRuntime: mocks.startRuntime,
++}));
++
++import { useHomeDashboardLiveCryptoBubblePresentationObservedRuntime } from '../src/app/useHomeDashboardLiveCryptoBubblePresentationObservedRuntime';
++
++function createInputs() {
++  return {
++    readObservedAt: vi.fn(() => '2026-09-10T00:00:00.000Z'),
++    readEvaluationTimeMs: vi.fn(() => Date.parse('2026-09-10T00:00:01.000Z')),
++    universe: { excludedStablecoinBaseAssets: new Set<string>(), topNCount: 30 } as never,
++    lifecycle: { document: {} as never, timer: {} as never },
++    presentationPolicy: { neutralMaxAbsoluteMovementPercent: '0.10' } as never,
++  };
++}
++
++describe('Home Dashboard Live Crypto Bubble React Runtime Binding Foundation', () => {
++  beforeEach(() => mocks.startRuntime.mockReset());
++
++  it('starts exactly one Gate350 runtime per effect and preserves exact semantic observation plus error evidence without erasing the observation', async () => {
++    const close = vi.fn();
++    let resolveRuntime!: (value: { readonly ok: true; readonly runtime: { readonly instruments: readonly []; readonly close: () => void } }) => void;
++    mocks.startRuntime.mockReturnValue(new Promise((resolve) => { resolveRuntime = resolve; }));
++    const inputs = createInputs();
++
++    const { result, unmount } = renderHook(() => useHomeDashboardLiveCryptoBubblePresentationObservedRuntime(
++      inputs.readObservedAt,
++      inputs.readEvaluationTimeMs,
++      {
++        universe: inputs.universe,
++        lifecycle: inputs.lifecycle,
++        presentationPolicy: inputs.presentationPolicy,
++      },
++    ));
++
++    expect(result.current).toEqual({ status: 'starting', latestObservation: null, lastError: null });
++    expect(mocks.startRuntime).toHaveBeenCalledTimes(1);
++    const call = mocks.startRuntime.mock.calls[0];
++    expect(call?.[0]).toBe(inputs.readObservedAt);
++    expect(call?.[1]).toBe(inputs.readEvaluationTimeMs);
++    expect(call?.[2].universe).toBe(inputs.universe);
++    expect(call?.[2].lifecycle).toBe(inputs.lifecycle);
++    expect(call?.[2].presentationPolicy).toBe(inputs.presentationPolicy);
++
++    const observation = { metricObservation: { marker: 'metric' }, presentationStateProjection: { marker: 'semantic' } } as never;
++    const acquisitionError = new Error('temporary acquisition failure');
++    act(() => call?.[2].observationSink.onObservation(observation));
++    await waitFor(() => expect(result.current.latestObservation).toBe(observation));
++    act(() => call?.[2].observationSink.onError(acquisitionError));
++    await waitFor(() => expect(result.current.lastError).toBe(acquisitionError));
++    expect(result.current.latestObservation).toBe(observation);
++
++    await act(async () => resolveRuntime({ ok: true, runtime: { instruments: [], close } }));
++    await waitFor(() => expect(result.current.status).toBe('running'));
++    expect(result.current.latestObservation).toBe(observation);
++    expect(result.current.lastError).toBe(acquisitionError);
++
++    unmount();
++    expect(close).toHaveBeenCalledTimes(1);
++  });
++
++  it('closes a successfully resolved runtime exactly once when bootstrap finishes after unmount', async () => {
++    const close = vi.fn();
++    let resolveRuntime!: (value: { readonly ok: true; readonly runtime: { readonly instruments: readonly []; readonly close: () => void } }) => void;
++    mocks.startRuntime.mockReturnValue(new Promise((resolve) => { resolveRuntime = resolve; }));
++    const inputs = createInputs();
++
++    const { unmount } = renderHook(() => useHomeDashboardLiveCryptoBubblePresentationObservedRuntime(
++      inputs.readObservedAt,
++      inputs.readEvaluationTimeMs,
++      { universe: inputs.universe, lifecycle: inputs.lifecycle, presentationPolicy: inputs.presentationPolicy },
++    ));
++    unmount();
++    await act(async () => resolveRuntime({ ok: true, runtime: { instruments: [], close } }));
++    expect(close).toHaveBeenCalledTimes(1);
++  });
++
++  it('keeps Gate350 acquisition failure explicit instead of inventing usable Bubble state', async () => {
++    mocks.startRuntime.mockResolvedValue({ ok: false, reason: 'acquisition-failed' });
++    const inputs = createInputs();
++    const { result } = renderHook(() => useHomeDashboardLiveCryptoBubblePresentationObservedRuntime(
++      inputs.readObservedAt,
++      inputs.readEvaluationTimeMs,
++      { universe: inputs.universe, lifecycle: inputs.lifecycle, presentationPolicy: inputs.presentationPolicy },
++    ));
++    await waitFor(() => expect(result.current.status).toBe('acquisition-failed'));
++    expect(result.current.latestObservation).toBeNull();
++  });
++
++  it('preserves an unexpected bootstrap exception as explicit error evidence', async () => {
++    const error = new Error('bootstrap exception');
++    mocks.startRuntime.mockImplementation(() => { throw error; });
++    const inputs = createInputs();
++    const { result } = renderHook(() => useHomeDashboardLiveCryptoBubblePresentationObservedRuntime(
++      inputs.readObservedAt,
++      inputs.readEvaluationTimeMs,
++      { universe: inputs.universe, lifecycle: inputs.lifecycle, presentationPolicy: inputs.presentationPolicy },
++    ));
++    await waitFor(() => expect(result.current.status).toBe('bootstrap-error'));
++    expect(result.current.lastError).toBe(error);
++    expect(result.current.latestObservation).toBeNull();
++  });
++});
