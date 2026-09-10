@@ -2,7 +2,7 @@ diff --git a/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_BROWSER_WALL_CLOCK_SOURCES
 new file mode 100644
 --- /dev/null
 +++ b/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_BROWSER_WALL_CLOCK_SOURCES_FOUNDATION_REPORT_2026-09-10.md
-@@ -0,0 +1,22 @@
+@@ -0,0 +1,21 @@
 +# Home Dashboard Live Crypto Bubble Browser Wall Clock Sources Foundation
 +
 +## Authority
@@ -41,7 +41,7 @@ diff --git a/scripts/verify-home-dashboard-live-crypto-bubble-browser-wall-clock
 new file mode 100644
 --- /dev/null
 +++ b/scripts/verify-home-dashboard-live-crypto-bubble-browser-wall-clock-sources-foundation.mjs
-@@ -0,0 +1,57 @@
+@@ -0,0 +1,55 @@
 +import assert from 'node:assert/strict';
 +import { readFileSync } from 'node:fs';
 +
@@ -101,7 +101,7 @@ diff --git a/src/app/homeDashboardLiveCryptoBubbleBrowserWallClock.ts b/src/app/
 new file mode 100644
 --- /dev/null
 +++ b/src/app/homeDashboardLiveCryptoBubbleBrowserWallClock.ts
-@@ -0,0 +1,19 @@
+@@ -0,0 +1,18 @@
 +import type { BinanceSpot24hPublicRestBaselineObservedAtSource } from '../services/market-data';
 +import type { HomeDashboardLiveMarketSummaryFreshnessEvaluationTimeSource } from '../application/dashboard/homeDashboardLiveMarketSummaryFreshnessObservationBridge';
 +
@@ -124,7 +124,7 @@ diff --git a/tests/home-dashboard-live-crypto-bubble-browser-wall-clock-sources-
 new file mode 100644
 --- /dev/null
 +++ b/tests/home-dashboard-live-crypto-bubble-browser-wall-clock-sources-foundation.test.ts
-@@ -0,0 +1,24 @@
+@@ -0,0 +1,25 @@
 +import { afterEach, describe, expect, it, vi } from 'vitest';
 +import {
 +  readHomeDashboardLiveCryptoBubbleBrowserEvaluationTimeMs,
