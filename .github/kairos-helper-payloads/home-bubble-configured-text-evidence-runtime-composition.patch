@@ -1,0 +1,180 @@
+diff --git a/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_CONFIGURED_TEXT_EVIDENCE_RUNTIME_COMPOSITION_FOUNDATION_REPORT_2026-09-10.md b/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_CONFIGURED_TEXT_EVIDENCE_RUNTIME_COMPOSITION_FOUNDATION_REPORT_2026-09-10.md
+new file mode 100644
+index 0000000..ba000cb
+--- /dev/null
++++ b/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_CONFIGURED_TEXT_EVIDENCE_RUNTIME_COMPOSITION_FOUNDATION_REPORT_2026-09-10.md
+@@ -0,0 +1,27 @@
++# Kairos Home Dashboard Live Crypto Bubble Configured Text-Evidence Runtime Composition Foundation
++
++## Authority
++
++Base: canonical Gate360 runtime-options composition foundation.
++
++## Responsibility
++
++This slice owns exactly one thin configured browser textual-runtime composition edge between the released Gate360 runtime-options composer and the released Gate359 browser textual-evidence runtime.
++
++`HomeDashboardLiveCryptoBubbleConfiguredTextEvidenceRuntime`:
++- accepts one exact caller-owned product configuration through `HomeDashboardLiveCryptoBubbleRuntimeProductConfiguration`;
++- delegates that exact configuration once to `composeHomeDashboardLiveCryptoBubbleRuntimeBindingOptions`;
++- passes only the resulting runtime options to `HomeDashboardLiveCryptoBubbleBrowserTextEvidenceRuntime`; and
++- renders that released Gate359 browser runtime exactly once.
++
++Gate360 remains runtime-options composition owner. Gate359 remains browser textual-evidence runtime owner. This boundary neither reads nor transforms either product value itself.
++
++## Explicit non-scope
++
++No concrete stablecoin exclusion or neutral-movement value is selected here. No Top-N default. No browser lifecycle override. No state/effects/memo/callbacks. No clocks, timers, page visibility, provider request/acquisition/retry/cadence, or freshness ownership. No arithmetic, validation, normalization, cloning, or hidden defaults. No CSS/theme/palette/dimming. No Bubble radius/layout/collision/labels/SVG/canvas/interactions. No `HomeRoute` or Bubble geometry wiring. No persistence/Saved Analysis. No Your Trades Bubble Map, journal/trade truth, chart, Risk/Reward, Calculation Brain, navigation, or transitions.
++
++## Dependency ownership preserved
++
++Gate360 owns pure composition of the exact caller-owned excluded-stablecoin set and neutral-movement threshold into the released runtime binding options. Gate359 owns the concrete browser-clock-to-textual-runtime edge. Existing released owners retain Top-30, browser lifecycle and visible-cadence defaults, universe/freshness policy, provider/data acquisition, React runtime state, presentation mapping, and lower-layer market truth.
++
++This slice closes only the unowned technical seam between Gate360 and Gate359. The eventual application/route owner still must supply the two explicit product configuration values after those material user-facing choices are authoritatively released.
+diff --git a/package.json b/package.json
+index 089407f..4705ae0 100644
+--- a/package.json
++++ b/package.json
+@@ -314,7 +314,8 @@
+     "verify:home-dashboard-live-crypto-bubble-text-evidence-runtime-composition-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-text-evidence-runtime-composition-foundation.mjs",
+     "verify:home-dashboard-live-crypto-bubble-browser-wall-clock-sources-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-browser-wall-clock-sources-foundation.mjs",
+     "verify:home-dashboard-live-crypto-bubble-browser-text-evidence-runtime-composition-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-browser-text-evidence-runtime-composition-foundation.mjs",
+-    "verify:home-dashboard-live-crypto-bubble-runtime-options-composition-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-runtime-options-composition-foundation.mjs"
++    "verify:home-dashboard-live-crypto-bubble-runtime-options-composition-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-runtime-options-composition-foundation.mjs",
++    "verify:home-dashboard-live-crypto-bubble-configured-text-evidence-runtime-composition-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-configured-text-evidence-runtime-composition-foundation.mjs"
+   },
+   "dependencies": {
+     "react": "19.2.8",
+diff --git a/scripts/verify-home-dashboard-live-crypto-bubble-configured-text-evidence-runtime-composition-foundation.mjs b/scripts/verify-home-dashboard-live-crypto-bubble-configured-text-evidence-runtime-composition-foundation.mjs
+new file mode 100644
+index 0000000..b6363f5
+--- /dev/null
++++ b/scripts/verify-home-dashboard-live-crypto-bubble-configured-text-evidence-runtime-composition-foundation.mjs
+@@ -0,0 +1,52 @@
++import { readFileSync } from 'node:fs';
++import assert from 'node:assert/strict';
++
++const component = readFileSync('src/app/HomeDashboardLiveCryptoBubbleConfiguredTextEvidenceRuntime.tsx', 'utf8');
++const test = readFileSync('tests/home-dashboard-live-crypto-bubble-configured-text-evidence-runtime-composition-foundation.test.tsx', 'utf8');
++const report = readFileSync('KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_CONFIGURED_TEXT_EVIDENCE_RUNTIME_COMPOSITION_FOUNDATION_REPORT_2026-09-10.md', 'utf8');
++const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
++
++assert.equal(
++  pkg.scripts['verify:home-dashboard-live-crypto-bubble-configured-text-evidence-runtime-composition-foundation'],
++  'node scripts/verify-home-dashboard-live-crypto-bubble-configured-text-evidence-runtime-composition-foundation.mjs',
++);
++
++for (const required of [
++  "import { HomeDashboardLiveCryptoBubbleBrowserTextEvidenceRuntime }",
++  'composeHomeDashboardLiveCryptoBubbleRuntimeBindingOptions',
++  'readonly configuration: HomeDashboardLiveCryptoBubbleRuntimeProductConfiguration',
++  'composeHomeDashboardLiveCryptoBubbleRuntimeBindingOptions(configuration)',
++  '<HomeDashboardLiveCryptoBubbleBrowserTextEvidenceRuntime options={options} />',
++]) {
++  assert.ok(component.includes(required), `configured runtime composition missing exact released delegation: ${required}`);
++}
++
++assert.equal((component.match(/composeHomeDashboardLiveCryptoBubbleRuntimeBindingOptions\(configuration\)/g) ?? []).length, 1);
++assert.equal((component.match(/<HomeDashboardLiveCryptoBubbleBrowserTextEvidenceRuntime/g) ?? []).length, 1);
++
++for (const forbidden of [
++  'new Set(', 'neutralMaxAbsoluteMovementPercent:', 'excludedStablecoinBaseAssets:', 'topNCount:', 'lifecycle:',
++  'useState(', 'useEffect(', 'useMemo(', 'useCallback(',
++  'Date.now(', 'new Date(', 'setInterval(', 'setTimeout(', 'requestAnimationFrame(',
++  'fetch(', 'XMLHttpRequest', 'WebSocket(', 'indexedDB', 'localStorage',
++  '<svg', '<circle', '<canvas', 'style=', 'HomeRoute',
++]) {
++  assert.ok(!component.includes(forbidden), `configured runtime composition must not own forbidden behavior: ${forbidden}`);
++}
++
++assert.ok(test.includes('expect(composeRuntimeOptionsMock).toHaveBeenCalledTimes(1)'));
++assert.ok(test.includes('expect(composeRuntimeOptionsMock).toHaveBeenCalledWith(configuration)'));
++assert.ok(test.includes('expect(browserRuntimeMock).toHaveBeenCalledTimes(1)'));
++assert.ok(test.includes('expect(props.options).toBe(composedOptions)'));
++
++for (const phrase of [
++  'exact caller-owned product configuration',
++  'Gate360 remains runtime-options composition owner',
++  'Gate359 remains browser textual-evidence runtime owner',
++  'No concrete stablecoin exclusion or neutral-movement value',
++  'No `HomeRoute` or Bubble geometry wiring',
++]) {
++  assert.ok(report.includes(phrase), `foundation report missing ownership evidence: ${phrase}`);
++}
++
++console.log('PASS: Home Live Crypto Bubble configured textual-evidence runtime composition delegates exact caller configuration through Gate360 into Gate359 once while leaving product values, route, geometry, provider, state, and persistence ownership outside this boundary.');
+diff --git a/src/app/HomeDashboardLiveCryptoBubbleConfiguredTextEvidenceRuntime.tsx b/src/app/HomeDashboardLiveCryptoBubbleConfiguredTextEvidenceRuntime.tsx
+new file mode 100644
+index 0000000..6e4c28d
+--- /dev/null
++++ b/src/app/HomeDashboardLiveCryptoBubbleConfiguredTextEvidenceRuntime.tsx
+@@ -0,0 +1,22 @@
++import { HomeDashboardLiveCryptoBubbleBrowserTextEvidenceRuntime } from './HomeDashboardLiveCryptoBubbleBrowserTextEvidenceRuntime';
++import {
++  composeHomeDashboardLiveCryptoBubbleRuntimeBindingOptions,
++  type HomeDashboardLiveCryptoBubbleRuntimeProductConfiguration,
++} from './homeDashboardLiveCryptoBubbleRuntimeOptionsComposition';
++
++export interface HomeDashboardLiveCryptoBubbleConfiguredTextEvidenceRuntimeProps {
++  readonly configuration: HomeDashboardLiveCryptoBubbleRuntimeProductConfiguration;
++}
++
++/**
++ * Thin configured browser-runtime composition edge. It binds the exact
++ * caller-owned product configuration through the released Gate360 options
++ * composer into the released Gate359 browser textual-evidence runtime.
++ */
++export function HomeDashboardLiveCryptoBubbleConfiguredTextEvidenceRuntime({
++  configuration,
++}: HomeDashboardLiveCryptoBubbleConfiguredTextEvidenceRuntimeProps) {
++  const options = composeHomeDashboardLiveCryptoBubbleRuntimeBindingOptions(configuration);
++
++  return <HomeDashboardLiveCryptoBubbleBrowserTextEvidenceRuntime options={options} />;
++}
+diff --git a/tests/home-dashboard-live-crypto-bubble-configured-text-evidence-runtime-composition-foundation.test.tsx b/tests/home-dashboard-live-crypto-bubble-configured-text-evidence-runtime-composition-foundation.test.tsx
+new file mode 100644
+index 0000000..8d1c5ef
+--- /dev/null
++++ b/tests/home-dashboard-live-crypto-bubble-configured-text-evidence-runtime-composition-foundation.test.tsx
+@@ -0,0 +1,41 @@
++import { renderToStaticMarkup } from 'react-dom/server';
++import { describe, expect, it, vi } from 'vitest';
++import type { DecimalString } from '../src/domain/trades';
++import type { HomeDashboardLiveCryptoBubbleReactRuntimeBindingOptions } from '../src/app/useHomeDashboardLiveCryptoBubblePresentationObservedRuntime';
++import type { HomeDashboardLiveCryptoBubbleRuntimeProductConfiguration } from '../src/app/homeDashboardLiveCryptoBubbleRuntimeOptionsComposition';
++
++const composedOptions = {
++  marker: 'exact-composed-runtime-options-reference',
++} as unknown as HomeDashboardLiveCryptoBubbleReactRuntimeBindingOptions;
++
++const composeRuntimeOptionsMock = vi.hoisted(() => vi.fn((_configuration: unknown) => composedOptions));
++const browserRuntimeMock = vi.hoisted(() => vi.fn((_props: unknown) => null));
++
++vi.mock('../src/app/homeDashboardLiveCryptoBubbleRuntimeOptionsComposition', () => ({
++  composeHomeDashboardLiveCryptoBubbleRuntimeBindingOptions: composeRuntimeOptionsMock,
++}));
++
++vi.mock('../src/app/HomeDashboardLiveCryptoBubbleBrowserTextEvidenceRuntime', () => ({
++  HomeDashboardLiveCryptoBubbleBrowserTextEvidenceRuntime: browserRuntimeMock,
++}));
++
++import { HomeDashboardLiveCryptoBubbleConfiguredTextEvidenceRuntime } from '../src/app/HomeDashboardLiveCryptoBubbleConfiguredTextEvidenceRuntime';
++
++describe('Home Live Crypto Bubble configured textual-evidence runtime composition foundation', () => {
++  it('composes the exact caller configuration once and forwards only the composed options', () => {
++    const configuration: HomeDashboardLiveCryptoBubbleRuntimeProductConfiguration = {
++      excludedStablecoinBaseAssets: new Set(['FIXTURE_STABLE_A', 'FIXTURE_STABLE_B']),
++      neutralMaxAbsoluteMovementPercent: '0.125' as DecimalString,
++    };
++
++    renderToStaticMarkup(
++      <HomeDashboardLiveCryptoBubbleConfiguredTextEvidenceRuntime configuration={configuration} />,
++    );
++
++    expect(composeRuntimeOptionsMock).toHaveBeenCalledTimes(1);
++    expect(composeRuntimeOptionsMock).toHaveBeenCalledWith(configuration);
++    expect(browserRuntimeMock).toHaveBeenCalledTimes(1);
++    const props = browserRuntimeMock.mock.calls[0]![0] as Record<'options', unknown>;
++    expect(props.options).toBe(composedOptions);
++  });
++});
