@@ -1,0 +1,276 @@
+diff --git a/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_REACT_AREA_WEIGHT_HOOK_COMPOSITION_FOUNDATION_REPORT_2026-09-10.md b/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_REACT_AREA_WEIGHT_HOOK_COMPOSITION_FOUNDATION_REPORT_2026-09-10.md
+new file mode 100644
+index 0000000..8390ed2
+--- /dev/null
++++ b/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_REACT_AREA_WEIGHT_HOOK_COMPOSITION_FOUNDATION_REPORT_2026-09-10.md
+@@ -0,0 +1,26 @@
++# Kairos Home Dashboard Live Crypto Bubble React Area-Weight Hook Composition Foundation
++
++## Responsibility
++
++This candidate adds one React-ready composition seam between the released Gate351 runtime hook and the released Gate354 area-weight view model. It closes the remaining app-level consumer gap before visible `HomeRoute` rendering without selecting user-facing geometry or design semantics.
++
++The hook delegates the caller-owned observed-at source, evaluation-time source and exact runtime-binding options unchanged to `useHomeDashboardLiveCryptoBubblePresentationObservedRuntime(...)`. It then passes the exact returned runtime-state reference to `projectHomeDashboardLiveCryptoBubbleReactAreaWeightViewModel(...)` and returns that released projector result unchanged.
++
++## Semantics
++
++- Caller-owned runtime inputs remain unchanged; this layer chooses no universe, lifecycle or presentation-policy defaults.
++- Gate351 remains the sole React lifecycle/state owner.
++- Gate354 remains the sole React area-weight view-model projection owner.
++- The composition does not add a second state/effect owner, cache, timer, observer, provider call or error taxonomy.
++- Runtime-state changes flow directly into the released Gate354 projector on the same React render.
++- The exact Gate354 result is returned without reshaping its runtime-state or area-weight evidence.
++
++## Ownership / non-scope
++
++This seam owns no acquisition, retry, provider, universe, ranking, Top-N, stablecoin-exclusion, movement, freshness, clock, persistence or market-truth behavior. It performs no Decimal arithmetic and does not re-derive Gate352 area weights.
++
++Pixel radius, collision/layout, theme palette/tokens and visible `HomeRoute` rendering remain later responsibilities, as do labels, accessibility copy, interaction and animation. Your Trades/journal truth remains completely separate.
++
++## Verification intent
++
++Dedicated regression proves exact caller-input delegation, exactly one released runtime-hook call per render, exact Gate351 runtime-state delegation into Gate354, no second retained runtime-state owner on rerender, and unchanged return of released Gate354 evidence. Static verification rejects state/effect ownership, clocks/timers, transport/provider composition, market-policy logic, Decimal/radius arithmetic, styling, DOM/JSX and `HomeRoute` wiring.
+diff --git a/package.json b/package.json
+index 95cdba5..7a824ae 100644
+--- a/package.json
++++ b/package.json
+@@ -308,7 +308,8 @@
+     "verify:home-dashboard-live-crypto-bubble-presentation-state-observation-bridge-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-presentation-state-observation-bridge-foundation.mjs",
+     "verify:home-dashboard-live-crypto-bubble-react-runtime-binding-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-react-runtime-binding-foundation.mjs",
+     "verify:home-dashboard-live-crypto-bubble-area-weight-projection-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-area-weight-projection-foundation.mjs",
+-    "verify:home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation.mjs"
++    "verify:home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation.mjs",
++    "verify:home-dashboard-live-crypto-bubble-react-area-weight-hook-composition-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-react-area-weight-hook-composition-foundation.mjs"
+   },
+   "dependencies": {
+     "react": "19.2.8",
+diff --git a/scripts/verify-home-dashboard-live-crypto-bubble-react-area-weight-hook-composition-foundation.mjs b/scripts/verify-home-dashboard-live-crypto-bubble-react-area-weight-hook-composition-foundation.mjs
+new file mode 100644
+index 0000000..daeee97
+--- /dev/null
++++ b/scripts/verify-home-dashboard-live-crypto-bubble-react-area-weight-hook-composition-foundation.mjs
+@@ -0,0 +1,59 @@
++import { readFileSync } from 'node:fs';
++
++const source = readFileSync('src/app/useHomeDashboardLiveCryptoBubbleReactAreaWeightViewModel.ts', 'utf8');
++const test = readFileSync('tests/home-dashboard-live-crypto-bubble-react-area-weight-hook-composition-foundation.test.ts', 'utf8');
++const report = readFileSync('KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_REACT_AREA_WEIGHT_HOOK_COMPOSITION_FOUNDATION_REPORT_2026-09-10.md', 'utf8');
++const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
++
++for (const token of [
++  'useHomeDashboardLiveCryptoBubbleReactAreaWeightViewModel',
++  'useHomeDashboardLiveCryptoBubblePresentationObservedRuntime(',
++  'projectHomeDashboardLiveCryptoBubbleReactAreaWeightViewModel(runtimeState)',
++  'readObservedAt',
++  'readEvaluationTimeMs',
++  'options: HomeDashboardLiveCryptoBubbleReactRuntimeBindingOptions',
++]) {
++  if (!source.includes(token)) throw new Error(`React area-weight hook composition evidence missing: ${token}`);
++}
++
++if ((source.match(/useHomeDashboardLiveCryptoBubblePresentationObservedRuntime\(/g) ?? []).length !== 1) {
++  throw new Error('React area-weight hook must delegate to the released Gate351 runtime hook exactly once');
++}
++if ((source.match(/projectHomeDashboardLiveCryptoBubbleReactAreaWeightViewModel\(runtimeState\)/g) ?? []).length !== 1) {
++  throw new Error('React area-weight hook must delegate the exact runtime state to Gate354 exactly once');
++}
++
++for (const forbidden of [
++  'useEffect', 'useState', 'useMemo', 'useRef', 'Date.now(', 'new Date(', 'setTimeout(', 'setInterval(',
++  'fetch(', 'XMLHttpRequest', 'WebSocket(', 'startBinanceHomeDashboard', 'createHomeDashboard',
++  '.sort(', '.filter(', '.reverse(', 'decimalAdd(', 'decimalSubtract(', 'decimalMultiply(', 'decimalDivide(',
++  'parseDecimalString(', 'Math.sqrt(', 'Math.pow(', 'areaWeight =', 'quoteVolume24h /', 'borderRadius',
++  'minRadius', 'maxRadius', 'className=', '<div', '<svg', 'HomeRoute', 'indexedDB',
++]) {
++  if (source.includes(forbidden)) throw new Error(`React area-weight hook composition broadened ownership: ${forbidden}`);
++}
++
++for (const token of [
++  'delegates caller-owned runtime inputs unchanged and projects the exact released runtime state once',
++  'does not retain a second runtime-state owner when the released runtime binding returns a new state',
++  'keeps the released projector result exact instead of reshaping area-weight evidence in the hook',
++]) {
++  if (!test.includes(token)) throw new Error(`Missing React area-weight hook regression: ${token}`);
++}
++
++for (const token of [
++  'one React-ready composition seam',
++  'Caller-owned runtime inputs remain unchanged',
++  'does not add a second state/effect owner',
++  'Pixel radius, collision/layout, theme palette/tokens and visible `HomeRoute` rendering remain later responsibilities',
++  'Your Trades/journal truth remains completely separate',
++]) {
++  if (!report.includes(token)) throw new Error(`React area-weight hook report evidence missing: ${token}`);
++}
++
++const verifyName = 'verify:home-dashboard-live-crypto-bubble-react-area-weight-hook-composition-foundation';
++if (pkg.scripts?.[verifyName] !== 'node scripts/verify-home-dashboard-live-crypto-bubble-react-area-weight-hook-composition-foundation.mjs') {
++  throw new Error('React area-weight hook composition verifier registration mismatch');
++}
++
++console.log('PASS: Home Live Crypto Bubble React area-weight hook composes released Gate351 runtime state and Gate354 view model without adding rendering or market truth.');
+diff --git a/src/app/useHomeDashboardLiveCryptoBubbleReactAreaWeightViewModel.ts b/src/app/useHomeDashboardLiveCryptoBubbleReactAreaWeightViewModel.ts
+new file mode 100644
+index 0000000..cd1bf91
+--- /dev/null
++++ b/src/app/useHomeDashboardLiveCryptoBubbleReactAreaWeightViewModel.ts
+@@ -0,0 +1,29 @@
++import type { BinanceSpot24hPublicRestBaselineObservedAtSource } from '../services/market-data';
++import type { HomeDashboardLiveMarketSummaryFreshnessEvaluationTimeSource } from '../application/dashboard/homeDashboardLiveMarketSummaryFreshnessObservationBridge';
++import {
++  projectHomeDashboardLiveCryptoBubbleReactAreaWeightViewModel,
++  type HomeDashboardLiveCryptoBubbleReactAreaWeightViewModel,
++} from './homeDashboardLiveCryptoBubbleReactAreaWeightViewModel';
++import {
++  useHomeDashboardLiveCryptoBubblePresentationObservedRuntime,
++  type HomeDashboardLiveCryptoBubbleReactRuntimeBindingOptions,
++} from './useHomeDashboardLiveCryptoBubblePresentationObservedRuntime';
++
++/**
++ * React-ready composition of the released Gate351 runtime binding with the
++ * released Gate354 area-weight view model. This hook adds no state, effects,
++ * provider policy, market semantics, geometry, styling, or visible rendering.
++ */
++export function useHomeDashboardLiveCryptoBubbleReactAreaWeightViewModel(
++  readObservedAt: BinanceSpot24hPublicRestBaselineObservedAtSource,
++  readEvaluationTimeMs: HomeDashboardLiveMarketSummaryFreshnessEvaluationTimeSource,
++  options: HomeDashboardLiveCryptoBubbleReactRuntimeBindingOptions,
++): HomeDashboardLiveCryptoBubbleReactAreaWeightViewModel {
++  const runtimeState = useHomeDashboardLiveCryptoBubblePresentationObservedRuntime(
++    readObservedAt,
++    readEvaluationTimeMs,
++    options,
++  );
++
++  return projectHomeDashboardLiveCryptoBubbleReactAreaWeightViewModel(runtimeState);
++}
+diff --git a/tests/home-dashboard-live-crypto-bubble-react-area-weight-hook-composition-foundation.test.ts b/tests/home-dashboard-live-crypto-bubble-react-area-weight-hook-composition-foundation.test.ts
+new file mode 100644
+index 0000000..b9e01a8
+--- /dev/null
++++ b/tests/home-dashboard-live-crypto-bubble-react-area-weight-hook-composition-foundation.test.ts
+@@ -0,0 +1,124 @@
++import { beforeEach, describe, expect, it, vi } from 'vitest';
++import { renderHook } from '@testing-library/react';
++import type { HomeDashboardLiveCryptoBubbleReactRuntimeState } from '../src/app/useHomeDashboardLiveCryptoBubblePresentationObservedRuntime';
++import type { HomeDashboardLiveCryptoBubbleReactAreaWeightViewModel } from '../src/app/homeDashboardLiveCryptoBubbleReactAreaWeightViewModel';
++
++const mocks = vi.hoisted(() => ({
++  useRuntime: vi.fn(),
++  projectViewModel: vi.fn(),
++}));
++
++vi.mock('../src/app/useHomeDashboardLiveCryptoBubblePresentationObservedRuntime', async (importOriginal) => {
++  const actual = await importOriginal<typeof import('../src/app/useHomeDashboardLiveCryptoBubblePresentationObservedRuntime')>();
++  return {
++    ...actual,
++    useHomeDashboardLiveCryptoBubblePresentationObservedRuntime: mocks.useRuntime,
++  };
++});
++
++vi.mock('../src/app/homeDashboardLiveCryptoBubbleReactAreaWeightViewModel', async (importOriginal) => {
++  const actual = await importOriginal<typeof import('../src/app/homeDashboardLiveCryptoBubbleReactAreaWeightViewModel')>();
++  return {
++    ...actual,
++    projectHomeDashboardLiveCryptoBubbleReactAreaWeightViewModel: mocks.projectViewModel,
++  };
++});
++
++import { useHomeDashboardLiveCryptoBubbleReactAreaWeightViewModel } from '../src/app/useHomeDashboardLiveCryptoBubbleReactAreaWeightViewModel';
++
++function runtimeState(status: HomeDashboardLiveCryptoBubbleReactRuntimeState['status']): HomeDashboardLiveCryptoBubbleReactRuntimeState {
++  return { status, latestObservation: null, lastError: null };
++}
++
++function viewModel(state: HomeDashboardLiveCryptoBubbleReactRuntimeState): HomeDashboardLiveCryptoBubbleReactAreaWeightViewModel {
++  return { runtimeState: state, areaWeightProjection: null };
++}
++
++describe('Home Dashboard Live Crypto Bubble React area-weight hook composition foundation', () => {
++  beforeEach(() => {
++    mocks.useRuntime.mockReset();
++    mocks.projectViewModel.mockReset();
++  });
++
++  it('delegates caller-owned runtime inputs unchanged and projects the exact released runtime state once', () => {
++    const readObservedAt = vi.fn();
++    const readEvaluationTimeMs = vi.fn();
++    const options = {
++      universe: { excludedStablecoinSymbols: new Set(['USDCUSDT']), limit: 30 },
++      lifecycle: { visibleIntervalMs: 5000 },
++      presentationPolicy: { neutralMaxAbsoluteMovementPercent: '0.1' },
++    } as never;
++    const state = runtimeState('running');
++    const projected = viewModel(state);
++    mocks.useRuntime.mockReturnValue(state);
++    mocks.projectViewModel.mockReturnValue(projected);
++
++    const { result } = renderHook(() => useHomeDashboardLiveCryptoBubbleReactAreaWeightViewModel(
++      readObservedAt,
++      readEvaluationTimeMs,
++      options,
++    ));
++
++    expect(mocks.useRuntime).toHaveBeenCalledTimes(1);
++    expect(mocks.useRuntime).toHaveBeenCalledWith(readObservedAt, readEvaluationTimeMs, options);
++    expect(mocks.projectViewModel).toHaveBeenCalledTimes(1);
++    expect(mocks.projectViewModel).toHaveBeenCalledWith(state);
++    expect(result.current).toBe(projected);
++  });
++
++  it('does not retain a second runtime-state owner when the released runtime binding returns a new state', () => {
++    const readObservedAt = vi.fn();
++    const readEvaluationTimeMs = vi.fn();
++    const options = {
++      universe: { marker: 'caller-universe' },
++      lifecycle: { marker: 'caller-lifecycle' },
++      presentationPolicy: { marker: 'caller-presentation-policy' },
++    } as never;
++    const firstState = runtimeState('starting');
++    const secondError = new Error('later acquisition failed');
++    const secondState: HomeDashboardLiveCryptoBubbleReactRuntimeState = {
++      status: 'acquisition-failed',
++      latestObservation: null,
++      lastError: secondError,
++    };
++    const firstViewModel = viewModel(firstState);
++    const secondViewModel = viewModel(secondState);
++    mocks.useRuntime.mockReturnValueOnce(firstState).mockReturnValueOnce(secondState);
++    mocks.projectViewModel.mockImplementation((state) => state === firstState ? firstViewModel : secondViewModel);
++
++    const { result, rerender } = renderHook(() => useHomeDashboardLiveCryptoBubbleReactAreaWeightViewModel(
++      readObservedAt,
++      readEvaluationTimeMs,
++      options,
++    ));
++    expect(result.current).toBe(firstViewModel);
++
++    rerender();
++
++    expect(mocks.useRuntime).toHaveBeenCalledTimes(2);
++    expect(mocks.projectViewModel).toHaveBeenCalledTimes(2);
++    expect(mocks.projectViewModel).toHaveBeenNthCalledWith(2, secondState);
++    expect(result.current).toBe(secondViewModel);
++    expect(result.current.runtimeState.lastError).toBe(secondError);
++  });
++
++  it('keeps the released projector result exact instead of reshaping area-weight evidence in the hook', () => {
++    const readObservedAt = vi.fn();
++    const readEvaluationTimeMs = vi.fn();
++    const options = { universe: {}, lifecycle: {}, presentationPolicy: {} } as never;
++    const state = runtimeState('running');
++    const areaWeightProjection = { ok: false, reason: 'bubble-metric-projection-invalid' } as never;
++    const projected = { runtimeState: state, areaWeightProjection } as HomeDashboardLiveCryptoBubbleReactAreaWeightViewModel;
++    mocks.useRuntime.mockReturnValue(state);
++    mocks.projectViewModel.mockReturnValue(projected);
++
++    const { result } = renderHook(() => useHomeDashboardLiveCryptoBubbleReactAreaWeightViewModel(
++      readObservedAt,
++      readEvaluationTimeMs,
++      options,
++    ));
++
++    expect(result.current).toBe(projected);
++    expect(result.current.areaWeightProjection).toBe(areaWeightProjection);
++  });
++});
