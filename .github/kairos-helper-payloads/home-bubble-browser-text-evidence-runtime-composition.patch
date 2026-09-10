@@ -149,7 +149,7 @@ index 0000000..2bc8f28
 +} from '../src/app/homeDashboardLiveCryptoBubbleBrowserWallClock';
 +import type { HomeDashboardLiveCryptoBubbleReactRuntimeBindingOptions } from '../src/app/useHomeDashboardLiveCryptoBubblePresentationObservedRuntime';
 +
-+const runtimeMock = vi.hoisted(() => vi.fn(() => null));
++const runtimeMock = vi.hoisted(() => vi.fn((_props: unknown) => null));
 +
 +vi.mock('../src/app/HomeDashboardLiveCryptoBubbleTextEvidenceRuntime', () => ({
 +  HomeDashboardLiveCryptoBubbleTextEvidenceRuntime: runtimeMock,
@@ -164,7 +164,7 @@ index 0000000..2bc8f28
 +    );
 +
 +    expect(runtimeMock).toHaveBeenCalledTimes(1);
-+    const props = runtimeMock.mock.calls[0][0];
++    const props = runtimeMock.mock.calls[0]![0] as Record<'readObservedAt' | 'readEvaluationTimeMs' | 'options', unknown>;
 +    expect(props.readObservedAt).toBe(readHomeDashboardLiveCryptoBubbleBrowserObservedAt);
 +    expect(props.readEvaluationTimeMs).toBe(readHomeDashboardLiveCryptoBubbleBrowserEvaluationTimeMs);
 +    expect(props.options).toBe(options);
