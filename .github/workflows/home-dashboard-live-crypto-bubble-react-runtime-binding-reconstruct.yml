@@ -35,7 +35,7 @@ jobs:
           set -euo pipefail
           BASE_ZIP=KAIROS_BINANCE_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_PRESENTATION_OBSERVED_RUNTIME_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-10.zip
           OUT_ZIP=KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_REACT_RUNTIME_BINDING_FOUNDATION_CANDIDATE_2026-09-10.zip
-          PATCH=.github/kairos-helper-payloads/home-bubble-react-runtime-binding.patch
+          PATCH=.github/kairos-helper-payloads/home-bubble-react-runtime-binding-r1.patch
           WORK="$RUNNER_TEMP/home-bubble-react-runtime-binding-work"
           BASE="$RUNNER_TEMP/home-bubble-react-runtime-binding-base"
 
@@ -43,7 +43,7 @@ jobs:
           test "$(stat -c%s "$BASE_ZIP")" = "1623913"
           echo "0df691a0f561841b518a74c97850da42e233d7a24e9669cc70dbe282bc2db619  $BASE_ZIP" | sha256sum -c -
           test -f "$PATCH"
-          echo "14e5b85ab81ca9bc6b63368c9291f4033f0812d6f22e540ecaccc2fd7e53cfd7  $PATCH" | sha256sum -c -
+          echo "b779a0cbc08a06cb78de6d206bbca01f474b87a844134f52835bf93820c9fe2d  $PATCH" | sha256sum -c -
 
           rm -rf "$WORK" "$BASE"
           mkdir -p "$WORK" "$BASE"
