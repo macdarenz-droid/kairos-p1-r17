@@ -1,11 +1,11 @@
-# KAIROS HOME DASHBOARD LIVE CRYPTO BUBBLE HOME ROUTE TEXT RUNTIME INTEGRATION GATE — AUTHORITATIVE BASE GATE 362
+# KAIROS HOME DASHBOARD LIVE CRYPTO BUBBLE RADIUS SCALE PROJECTION GATE — AUTHORITATIVE BASE GATE 363
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_HOME_ROUTE_TEXT_RUNTIME_INTEGRATION_FOUNDATION_CANDIDATE_2026-09-11.zip'
+      - 'KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_RADIUS_SCALE_PROJECTION_FOUNDATION_CANDIDATE_2026-09-11.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_RUNTIME_PRODUCT_POLICY_FOUNDATION_CANDIDATE_2026-09-11.zip
-  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_HOME_ROUTE_TEXT_RUNTIME_INTEGRATION_FOUNDATION_CANDIDATE_2026-09-11.zip
+  BASE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_HOME_ROUTE_TEXT_RUNTIME_INTEGRATION_FOUNDATION_CANDIDATE_2026-09-11.zip
+  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_RADIUS_SCALE_PROJECTION_FOUNDATION_CANDIDATE_2026-09-11.zip
 
 jobs:
   verify-current-candidate:
@@ -35,8 +35,8 @@ jobs:
           from pathlib import Path, PurePosixPath
           import hashlib, os, zipfile
           for key, size, digest in [
-            ('BASE_ZIP', 1681458, 'ed812610da32a163627e77f539f749a54f0a09f316010208e3d290e113a1475b'),
-            ('CANDIDATE_ZIP', 1686493, '24718bc32095bd249cf00b01ec8d6e6b0cac13e5ad66f8c17fc95a68ffd55b71'),
+            ('BASE_ZIP', 1686493, '24718bc32095bd249cf00b01ec8d6e6b0cac13e5ad66f8c17fc95a68ffd55b71'),
+            ('CANDIDATE_ZIP', 1692716, '0c728ba16c6559e62523d1d0cbb1057d59ab86dc4f7febefdeefd4edece4ebf1'),
           ]:
             p=Path(os.environ[key]); data=p.read_bytes()
             assert len(data)==size, f'{key}: byte size mismatch'
@@ -50,7 +50,7 @@ jobs:
                 assert ((i.external_attr >> 16) & 0o170000) != 0o120000, f'{key}: unexpected symbolic link'
           PY
 
-      - name: Extract authoritative Gate362 base and candidate
+      - name: Extract authoritative Gate363 base and candidate
         run: |
           set -euo pipefail
           rm -rf .gate-base .gate-candidate
@@ -60,7 +60,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact controlled Home Bubble HomeRoute text runtime integration scope from Gate362
+      - name: Confirm exact controlled Home Bubble radius-scale projection scope from Gate363
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -71,16 +71,14 @@ jobs:
           y={str(p.relative_to(c)):h(p) for p in c.rglob('*') if p.is_file()}
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           expected={
-            'KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_HOME_ROUTE_TEXT_RUNTIME_INTEGRATION_FOUNDATION_REPORT_2026-09-11.md',
+            'KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_RADIUS_SCALE_PROJECTION_FOUNDATION_REPORT_2026-09-11.md',
             'package.json',
-            'scripts/verify-home-dashboard-live-crypto-bubble-home-route-text-runtime-integration-foundation.mjs',
-            'scripts/verify-p21-1-home-dashboard-route-ownership-foundation.mjs',
-            'src/app/HomeRoute.tsx',
-            'tests/home-dashboard-live-crypto-bubble-home-route-text-runtime-integration-foundation.test.tsx',
-            'tests/router.test.tsx',
+            'scripts/verify-home-dashboard-live-crypto-bubble-radius-scale-projection-foundation.mjs',
+            'src/application/dashboard/homeDashboardLiveCryptoBubbleRadiusScaleProjection.ts',
+            'tests/home-dashboard-live-crypto-bubble-radius-scale-projection-foundation.test.ts',
           }
           if changed != expected or (set(x)-set(y)):
-            print('Home Bubble HomeRoute text runtime integration exact scope mismatch',file=sys.stderr)
+            print('Home Bubble radius-scale projection exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             print('Removed:',sorted(set(x)-set(y)),file=sys.stderr)
@@ -105,9 +103,10 @@ jobs:
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
 
-      - name: Dedicated Home Bubble HomeRoute text runtime integration verifier/runtime
+      - name: Dedicated Home Bubble radius-scale projection verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:home-dashboard-live-crypto-bubble-radius-scale-projection-foundation
           npm run verify:home-dashboard-live-crypto-bubble-home-route-text-runtime-integration-foundation
           npm run verify:home-dashboard-live-crypto-bubble-runtime-product-policy-foundation
           npm run verify:home-dashboard-live-crypto-bubble-configured-text-evidence-runtime-composition-foundation
@@ -133,55 +132,26 @@ jobs:
           npm run verify:p21:17-live-market-summary-baseline-state-orchestration-foundation
           npm run verify:p21:1-home-dashboard-route-ownership-foundation
 
-      - name: Focused Home Bubble HomeRoute text runtime integration regression
+      - name: Focused Home Bubble radius-scale projection regression
         working-directory: .gate-candidate/kairos_p76
         run: |
           npx vitest run \
-            tests/home-dashboard-live-crypto-bubble-home-route-text-runtime-integration-foundation.test.tsx \
-            tests/home-dashboard-live-crypto-bubble-runtime-product-policy-foundation.test.ts \
-            tests/home-dashboard-live-crypto-bubble-configured-text-evidence-runtime-composition-foundation.test.tsx \
-            tests/home-dashboard-live-crypto-bubble-runtime-options-composition-foundation.test.ts \
-            tests/home-dashboard-live-crypto-bubble-browser-text-evidence-runtime-composition-foundation.test.tsx \
-            tests/home-dashboard-live-crypto-bubble-browser-wall-clock-sources-foundation.test.ts \
-            tests/home-dashboard-live-crypto-bubble-text-evidence-runtime-composition-foundation.test.tsx \
-            tests/home-dashboard-live-crypto-bubble-text-evidence-presentation-foundation.test.tsx \
-            tests/home-dashboard-live-crypto-bubble-react-area-weight-hook-composition-foundation.test.ts \
-            tests/home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation.test.ts \
+            tests/home-dashboard-live-crypto-bubble-radius-scale-projection-foundation.test.ts \
             tests/home-dashboard-live-crypto-bubble-area-weight-projection-foundation.test.ts \
-            tests/home-dashboard-live-crypto-bubble-react-runtime-binding-foundation.test.ts \
-            tests/binance-home-dashboard-live-crypto-bubble-presentation-observed-runtime-composition-foundation.test.ts \
-            tests/home-dashboard-live-crypto-bubble-presentation-state-observation-bridge-foundation.test.ts \
-            tests/home-dashboard-live-crypto-bubble-presentation-state-projection-foundation.test.ts \
-            tests/binance-home-dashboard-live-crypto-bubble-observed-runtime-composition-foundation.test.ts \
+            tests/home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation.test.ts \
+            tests/home-dashboard-live-crypto-bubble-react-area-weight-hook-composition-foundation.test.ts \
             tests/home-dashboard-live-crypto-bubble-metric-observation-bridge-foundation.test.ts \
             tests/live-crypto-bubble-metric-input-projection-foundation.test.ts \
-            tests/home-dashboard-live-market-summary-freshness-observation-bridge-foundation.test.ts \
             tests/live-market-summary-24h-percentage-movement-foundation.test.ts \
-            tests/live-market-summary-freshness-evaluation-projection-foundation.test.ts \
             tests/live-market-summary-fact-contract.test.ts \
             tests/percentage-calculator.test.ts \
-            tests/decimal-kernel.test.ts \
-            tests/router.test.tsx
-          npm run verify:home-dashboard-live-crypto-bubble-home-route-text-runtime-integration-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-runtime-product-policy-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-configured-text-evidence-runtime-composition-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-runtime-options-composition-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-browser-text-evidence-runtime-composition-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-browser-wall-clock-sources-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-text-evidence-runtime-composition-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-text-evidence-presentation-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-react-area-weight-hook-composition-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation
+            tests/decimal-kernel.test.ts
+          npm run verify:home-dashboard-live-crypto-bubble-radius-scale-projection-foundation
           npm run verify:home-dashboard-live-crypto-bubble-area-weight-projection-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-react-runtime-binding-foundation
-          npm run verify:binance-home-dashboard-live-crypto-bubble-presentation-observed-runtime-composition-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-presentation-state-observation-bridge-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-presentation-state-projection-foundation
-          npm run verify:binance-home-dashboard-live-crypto-bubble-observed-runtime-composition-foundation
+          npm run verify:home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation
+          npm run verify:home-dashboard-live-crypto-bubble-react-area-weight-hook-composition-foundation
           npm run verify:home-dashboard-live-crypto-bubble-metric-observation-bridge-foundation
           npm run verify:live-crypto-bubble-metric-input-projection-foundation
-          npm run verify:home-dashboard-live-market-summary-freshness-observation-bridge-foundation
-          npm run verify:p21:1-home-dashboard-route-ownership-foundation
 
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
@@ -195,6 +165,7 @@ jobs:
           const p=JSON.parse(readFileSync('package.json'));
           const scripts=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:')).sort();
           for(const required of [
+            'verify:home-dashboard-live-crypto-bubble-radius-scale-projection-foundation',
             'verify:home-dashboard-live-crypto-bubble-home-route-text-runtime-integration-foundation',
             'verify:home-dashboard-live-crypto-bubble-runtime-product-policy-foundation',
             'verify:home-dashboard-live-crypto-bubble-configured-text-evidence-runtime-composition-foundation',
@@ -245,6 +216,7 @@ jobs:
       - name: Historical closures
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:home-dashboard-live-crypto-bubble-radius-scale-projection-foundation
           npm run verify:home-dashboard-live-crypto-bubble-home-route-text-runtime-integration-foundation
           npm run verify:home-dashboard-live-crypto-bubble-runtime-product-policy-foundation
           npm run verify:home-dashboard-live-crypto-bubble-configured-text-evidence-runtime-composition-foundation
@@ -315,5 +287,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_HOME_ROUTE_TEXT_RUNTIME_INTEGRATION_FOUNDATION_REPORT_2026-09-11.md
+          path: .gate-candidate/kairos_p76/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_RADIUS_SCALE_PROJECTION_FOUNDATION_REPORT_2026-09-11.md
           if-no-files-found: error
