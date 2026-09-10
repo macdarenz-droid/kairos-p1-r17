@@ -1,0 +1,262 @@
+diff --git a/KAIROS_BINANCE_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_PRESENTATION_OBSERVED_RUNTIME_COMPOSITION_FOUNDATION_REPORT_2026-09-10.md b/KAIROS_BINANCE_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_PRESENTATION_OBSERVED_RUNTIME_COMPOSITION_FOUNDATION_REPORT_2026-09-10.md
+new file mode 100644
+index 0000000..015de90
+--- /dev/null
++++ b/KAIROS_BINANCE_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_PRESENTATION_OBSERVED_RUNTIME_COMPOSITION_FOUNDATION_REPORT_2026-09-10.md
+@@ -0,0 +1,26 @@
++# Kairos Binance Home Dashboard Live Crypto Bubble Presentation-Observed Runtime Composition Foundation
++
++## Responsibility
++
++This slice adds the app-level Binance Home Live Crypto Bubble presentation-observed runtime composition below React.
++
++It preserves the exact caller-owned Gate345 runtime dependencies and constructs exactly one Gate349 semantic observation adapter from the caller-owned Gate346 presentation policy plus optional semantic observation sink. That adapter is passed unchanged as Gate345's Bubble metric observation sink. The wrapper delegates exactly once to Gate345 and returns Gate345's runtime bootstrap result unchanged.
++
++## Contract
++
++- Preserve exact `readObservedAt` and `readEvaluationTimeMs` references.
++- Preserve exact Gate345 `universe` and optional browser `lifecycle` options.
++- Require one caller-owned `HomeDashboardLiveCryptoBubblePresentationPolicy`.
++- Accept one optional Gate349 `HomeDashboardLiveCryptoBubblePresentationStateObservationSink`.
++- Construct exactly one Gate349 semantic observation adapter.
++- Pass that exact adapter as Gate345's `observationSink`.
++- Delegate exactly once to `startBinanceHomeDashboardLiveCryptoBubbleObservedRuntime(...)`.
++- Return Gate345's runtime bootstrap result unchanged.
++
++## Explicit non-scope
++
++No second raw metric/freshness observation sink. No internal clock/time source. No Binance/provider transport or response mapping. No active-USDT/stablecoin/ranking/Top-N policy. No freshness thresholds or acquisition cadence. No runtime/session mutation beyond delegation to Gate345. No design-system palette/tokens, color choice, radius scaling, geometry/collision/layout, labels/icons, accessibility copy, interactions or animation. No React/Home/Bubble rendering, DOM lifecycle or component state. No persistence/IndexedDB/Saved Analysis. No Your Trades Bubble Map, journal/trade truth, chart, Risk/Reward, navigation or transitions.
++
++## Boundary
++
++This is an application composition seam only. Gate345 remains the owner of Binance Home Bubble observed-runtime composition. Gate349 remains the owner of metric-observation to semantic presentation-state adaptation. Gate346 remains the owner of pure semantic presentation-state projection. A later Home/React slice may consume the released semantic observation stream without absorbing provider/runtime/business truth.
++diff --git a/package.json b/package.json
++index 14b84a7..f703df9 100644
++--- a/package.json
+++++ b/package.json
++@@ -303,6 +303,7 @@
++     "verify:live-crypto-bubble-metric-input-projection-foundation": "node scripts/verify-live-crypto-bubble-metric-input-projection-foundation.mjs",
++     "verify:home-dashboard-live-crypto-bubble-metric-observation-bridge-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-metric-observation-bridge-foundation.mjs",
++     "verify:binance-home-dashboard-live-crypto-bubble-observed-runtime-composition-foundation": "node scripts/verify-binance-home-dashboard-live-crypto-bubble-observed-runtime-composition-foundation.mjs",
+++    "verify:binance-home-dashboard-live-crypto-bubble-presentation-observed-runtime-composition-foundation": "node scripts/verify-binance-home-dashboard-live-crypto-bubble-presentation-observed-runtime-composition-foundation.mjs",
++     "verify:home-dashboard-live-crypto-bubble-presentation-state-projection-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-presentation-state-projection-foundation.mjs",
++     "verify:home-dashboard-live-crypto-bubble-presentation-state-observation-bridge-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-presentation-state-observation-bridge-foundation.mjs"
++   },
++diff --git a/scripts/verify-binance-home-dashboard-live-crypto-bubble-presentation-observed-runtime-composition-foundation.mjs b/scripts/verify-binance-home-dashboard-live-crypto-bubble-presentation-observed-runtime-composition-foundation.mjs
++new file mode 100644
++index 0000000..3b50625
++--- /dev/null
+++++ b/scripts/verify-binance-home-dashboard-live-crypto-bubble-presentation-observed-runtime-composition-foundation.mjs
++@@ -0,0 +1,56 @@
+++import { readFileSync } from 'node:fs';
+++
+++const source = readFileSync('src/app/binanceHomeDashboardLiveCryptoBubblePresentationObservedRuntimeComposition.ts', 'utf8');
+++const test = readFileSync('tests/binance-home-dashboard-live-crypto-bubble-presentation-observed-runtime-composition-foundation.test.ts', 'utf8');
+++const report = readFileSync('KAIROS_BINANCE_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_PRESENTATION_OBSERVED_RUNTIME_COMPOSITION_FOUNDATION_REPORT_2026-09-10.md', 'utf8');
+++const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+++
+++for (const token of [
+++  'startBinanceHomeDashboardLiveCryptoBubblePresentationObservedRuntime',
+++  "extends Omit<BinanceHomeDashboardLiveCryptoBubbleObservedRuntimeCompositionOptions, 'observationSink'>",
+++  'readonly presentationPolicy: HomeDashboardLiveCryptoBubblePresentationPolicy;',
+++  'readonly observationSink?: HomeDashboardLiveCryptoBubblePresentationStateObservationSink;',
+++  'createHomeDashboardLiveCryptoBubblePresentationStateObservationSink(',
+++  'options.presentationPolicy,',
+++  'options.observationSink,',
+++  'startBinanceHomeDashboardLiveCryptoBubbleObservedRuntime(',
+++  'readObservedAt,',
+++  'readEvaluationTimeMs,',
+++  'universe: options.universe,',
+++  'lifecycle: options.lifecycle,',
+++  'observationSink,',
+++]) {
+++  if (!source.includes(token)) throw new Error(`Presentation-observed runtime composition evidence missing: ${token}`);
+++}
+++
+++for (const forbidden of [
+++  'Date.now(', 'new Date(', 'setTimeout(', 'setInterval(', 'fetch(', 'XMLHttpRequest', 'WebSocket(',
+++  'React', 'useEffect', 'useState', 'indexedDB', 'AbortController', '.sort(', '.filter(', '.reduce(',
+++  '15_000', '60_000', 'freshMaxAgeMs', 'staleMaxAgeMs', 'priceChangePercent', 'radius', 'palette', 'color:',
+++  'projectHomeDashboardLiveCryptoBubblePresentationState(', 'createHomeDashboardLiveCryptoBubbleMetricObservationSink(',
+++]) {
+++  if (source.includes(forbidden)) throw new Error(`Presentation-observed runtime composition broadened ownership: ${forbidden}`);
+++}
+++
+++for (const token of [
+++  'creates exactly one Gate349 semantic observation adapter and delegates once to Gate345 while preserving caller dependencies by reference',
+++  'preserves a failed Gate345 runtime result unchanged while owning the semantic adaptation slot without a downstream sink',
+++]) {
+++  if (!test.includes(token)) throw new Error(`Missing presentation-observed runtime regression: ${token}`);
+++}
+++
+++for (const token of [
+++  'app-level Binance Home Live Crypto Bubble presentation-observed runtime composition',
+++  'constructs exactly one Gate349 semantic observation adapter',
+++  "returns Gate345's runtime bootstrap result unchanged",
+++  'No React/Home/Bubble rendering',
+++]) {
+++  if (!report.includes(token)) throw new Error(`Presentation-observed runtime report evidence missing: ${token}`);
+++}
+++
+++const verifyName = 'verify:binance-home-dashboard-live-crypto-bubble-presentation-observed-runtime-composition-foundation';
+++if (pkg.scripts?.[verifyName] !== 'node scripts/verify-binance-home-dashboard-live-crypto-bubble-presentation-observed-runtime-composition-foundation.mjs') {
+++  throw new Error('Presentation-observed runtime composition verifier registration mismatch');
+++}
+++
+++console.log('PASS: Binance Home Live Crypto Bubble presentation-observed runtime composes Gate349 into Gate345 without owning runtime or React presentation truth.');
++diff --git a/src/app/binanceHomeDashboardLiveCryptoBubblePresentationObservedRuntimeComposition.ts b/src/app/binanceHomeDashboardLiveCryptoBubblePresentationObservedRuntimeComposition.ts
++new file mode 100644
++index 0000000..c0f26be
++--- /dev/null
+++++ b/src/app/binanceHomeDashboardLiveCryptoBubblePresentationObservedRuntimeComposition.ts
++@@ -0,0 +1,44 @@
+++import type { BinanceSpot24hPublicRestBaselineObservedAtSource } from '../services/market-data';
+++import {
+++  createHomeDashboardLiveCryptoBubblePresentationStateObservationSink,
+++  type HomeDashboardLiveCryptoBubblePresentationStateObservationSink,
+++} from '../application/dashboard/homeDashboardLiveCryptoBubblePresentationStateObservationBridge';
+++import type { HomeDashboardLiveCryptoBubblePresentationPolicy } from '../application/dashboard/homeDashboardLiveCryptoBubblePresentationStateProjection';
+++import type { HomeDashboardLiveMarketSummaryFreshnessEvaluationTimeSource } from '../application/dashboard/homeDashboardLiveMarketSummaryFreshnessObservationBridge';
+++import {
+++  startBinanceHomeDashboardLiveCryptoBubbleObservedRuntime,
+++  type BinanceHomeDashboardLiveCryptoBubbleObservedRuntimeCompositionOptions,
+++} from './binanceHomeDashboardLiveCryptoBubbleObservedRuntimeComposition';
+++import type { BinanceHomeDashboardLiveMarketRuntimeBootstrapResult } from './binanceHomeDashboardLiveMarketRuntimeBootstrap';
+++
+++export interface BinanceHomeDashboardLiveCryptoBubblePresentationObservedRuntimeCompositionOptions
+++  extends Omit<BinanceHomeDashboardLiveCryptoBubbleObservedRuntimeCompositionOptions, 'observationSink'> {
+++  readonly presentationPolicy: HomeDashboardLiveCryptoBubblePresentationPolicy;
+++  readonly observationSink?: HomeDashboardLiveCryptoBubblePresentationStateObservationSink;
+++}
+++
+++/**
+++ * App-level composition that adapts the released Gate349 semantic presentation
+++ * observation sink into the released Gate345 Binance Bubble observed runtime.
+++ * Runtime/acquisition and semantic projection ownership remain delegated.
+++ */
+++export function startBinanceHomeDashboardLiveCryptoBubblePresentationObservedRuntime(
+++  readObservedAt: BinanceSpot24hPublicRestBaselineObservedAtSource,
+++  readEvaluationTimeMs: HomeDashboardLiveMarketSummaryFreshnessEvaluationTimeSource,
+++  options: BinanceHomeDashboardLiveCryptoBubblePresentationObservedRuntimeCompositionOptions,
+++): Promise<BinanceHomeDashboardLiveMarketRuntimeBootstrapResult> {
+++  const observationSink = createHomeDashboardLiveCryptoBubblePresentationStateObservationSink(
+++    options.presentationPolicy,
+++    options.observationSink,
+++  );
+++
+++  return startBinanceHomeDashboardLiveCryptoBubbleObservedRuntime(
+++    readObservedAt,
+++    readEvaluationTimeMs,
+++    {
+++      universe: options.universe,
+++      lifecycle: options.lifecycle,
+++      observationSink,
+++    },
+++  );
+++}
++diff --git a/tests/binance-home-dashboard-live-crypto-bubble-presentation-observed-runtime-composition-foundation.test.ts b/tests/binance-home-dashboard-live-crypto-bubble-presentation-observed-runtime-composition-foundation.test.ts
++new file mode 100644
++index 0000000..827cef1
++--- /dev/null
+++++ b/tests/binance-home-dashboard-live-crypto-bubble-presentation-observed-runtime-composition-foundation.test.ts
++@@ -0,0 +1,100 @@
+++import { beforeEach, describe, expect, it, vi } from 'vitest';
+++
+++const mocks = vi.hoisted(() => {
+++  const adaptedObservationSink = { onObservation: vi.fn(), onError: vi.fn() };
+++  return {
+++    adaptedObservationSink,
+++    createPresentationObservationSink: vi.fn(() => adaptedObservationSink),
+++    startBubbleObservedRuntime: vi.fn(),
+++  };
+++});
+++
+++vi.mock('../src/application/dashboard/homeDashboardLiveCryptoBubblePresentationStateObservationBridge', () => ({
+++  createHomeDashboardLiveCryptoBubblePresentationStateObservationSink: mocks.createPresentationObservationSink,
+++}));
+++
+++vi.mock('../src/app/binanceHomeDashboardLiveCryptoBubbleObservedRuntimeComposition', () => ({
+++  startBinanceHomeDashboardLiveCryptoBubbleObservedRuntime: mocks.startBubbleObservedRuntime,
+++}));
+++
+++import { startBinanceHomeDashboardLiveCryptoBubblePresentationObservedRuntime } from '../src/app/binanceHomeDashboardLiveCryptoBubblePresentationObservedRuntimeComposition';
+++
+++describe('Binance Home Dashboard Live Crypto Bubble Presentation Observed Runtime Composition Foundation', () => {
+++  beforeEach(() => {
+++    mocks.createPresentationObservationSink.mockClear();
+++    mocks.startBubbleObservedRuntime.mockReset();
+++  });
+++
+++  it('creates exactly one Gate349 semantic observation adapter and delegates once to Gate345 while preserving caller dependencies by reference', async () => {
+++    const runtimeResult = { ok: true, runtime: { instruments: [], close: vi.fn() } } as const;
+++    mocks.startBubbleObservedRuntime.mockResolvedValue(runtimeResult);
+++    const readObservedAt = vi.fn(() => '2026-09-10T00:00:00.000Z');
+++    const readEvaluationTimeMs = vi.fn(() => Date.parse('2026-09-10T00:00:01.000Z'));
+++    const presentationPolicy = { neutralMaxAbsoluteMovementPercent: '0.10' } as never;
+++    const observationSink = { onObservation: vi.fn(), onError: vi.fn() };
+++    const browserDocument = {} as never;
+++    const timer = {} as never;
+++    const universe = { excludedStablecoinBaseAssets: new Set<string>(), topNCount: 30 } as never;
+++
+++    const result = await startBinanceHomeDashboardLiveCryptoBubblePresentationObservedRuntime(
+++      readObservedAt,
+++      readEvaluationTimeMs,
+++      {
+++        universe,
+++        lifecycle: { document: browserDocument, timer },
+++        presentationPolicy,
+++        observationSink,
+++      },
+++    );
+++
+++    expect(mocks.createPresentationObservationSink).toHaveBeenCalledTimes(1);
+++    expect(mocks.createPresentationObservationSink).toHaveBeenCalledWith(
+++      presentationPolicy,
+++      observationSink,
+++    );
+++    expect(mocks.startBubbleObservedRuntime).toHaveBeenCalledTimes(1);
+++    expect(mocks.startBubbleObservedRuntime).toHaveBeenCalledWith(
+++      readObservedAt,
+++      readEvaluationTimeMs,
+++      {
+++        universe,
+++        lifecycle: { document: browserDocument, timer },
+++        observationSink: mocks.adaptedObservationSink,
+++      },
+++    );
+++    expect(readObservedAt).not.toHaveBeenCalled();
+++    expect(readEvaluationTimeMs).not.toHaveBeenCalled();
+++    expect(result).toBe(runtimeResult);
+++  });
+++
+++  it('preserves a failed Gate345 runtime result unchanged while owning the semantic adaptation slot without a downstream sink', async () => {
+++    const runtimeResult = { ok: false, reason: 'acquisition-failed' } as const;
+++    mocks.startBubbleObservedRuntime.mockResolvedValue(runtimeResult);
+++    const readObservedAt = vi.fn(() => '2026-09-10T00:00:00.000Z');
+++    const readEvaluationTimeMs = vi.fn(() => 0);
+++    const presentationPolicy = { neutralMaxAbsoluteMovementPercent: '0' } as never;
+++    const universe = {} as never;
+++
+++    const result = await startBinanceHomeDashboardLiveCryptoBubblePresentationObservedRuntime(
+++      readObservedAt,
+++      readEvaluationTimeMs,
+++      { universe, presentationPolicy },
+++    );
+++
+++    expect(mocks.createPresentationObservationSink).toHaveBeenCalledTimes(1);
+++    expect(mocks.createPresentationObservationSink).toHaveBeenCalledWith(
+++      presentationPolicy,
+++      undefined,
+++    );
+++    expect(mocks.startBubbleObservedRuntime).toHaveBeenCalledWith(
+++      readObservedAt,
+++      readEvaluationTimeMs,
+++      {
+++        universe,
+++        lifecycle: undefined,
+++        observationSink: mocks.adaptedObservationSink,
+++      },
+++    );
+++    expect(result).toBe(runtimeResult);
+++  });
+++});
