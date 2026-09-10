@@ -43,7 +43,7 @@ jobs:
           test "$(stat -c%s "$BASE_ZIP")" = "1623913"
           echo "0df691a0f561841b518a74c97850da42e233d7a24e9669cc70dbe282bc2db619  $BASE_ZIP" | sha256sum -c -
           test -f "$PATCH"
-          echo "7b87c41d490920a17ebb027235a8e00b5d80c5808257f3750a8535c4bcc231c2  $PATCH" | sha256sum -c -
+          echo "31bf55121fd2311e96d8310377fd75d0598d173bca99dfe9a28c2cb7ac8f8140  $PATCH" | sha256sum -c -
 
           rm -rf "$WORK" "$BASE"
           mkdir -p "$WORK" "$BASE"
