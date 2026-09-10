@@ -1,0 +1,152 @@
+diff --git a/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_BROWSER_WALL_CLOCK_SOURCES_FOUNDATION_REPORT_2026-09-10.md b/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_BROWSER_WALL_CLOCK_SOURCES_FOUNDATION_REPORT_2026-09-10.md
+new file mode 100644
+--- /dev/null
++++ b/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_BROWSER_WALL_CLOCK_SOURCES_FOUNDATION_REPORT_2026-09-10.md
+@@ -0,0 +1,22 @@
++# Home Dashboard Live Crypto Bubble Browser Wall Clock Sources Foundation
++
++## Authority
++Base: exact canonical Gate357 Home Live Crypto Bubble textual-evidence runtime composition, `Kairos Controlled Roadmap Gate` #357 / run `34488586757`.
++
++## Responsibility
++Provide the two concrete browser wall-clock source functions required by the released Gate357 runtime-composition path while preserving their existing separate caller-owned interfaces.
++
++`readHomeDashboardLiveCryptoBubbleBrowserObservedAt()` returns the current browser wall-clock instant as an ISO-8601 string when acquisition asks for `observedAt`.
++
++`readHomeDashboardLiveCryptoBubbleBrowserEvaluationTimeMs()` returns the current browser wall-clock epoch-millisecond value when freshness evaluation asks for its evaluation time.
++
++The two functions read the wall clock independently on every call. They do not capture one shared timestamp and therefore do not collapse acquisition observation time into later freshness-evaluation time.
++
++## Ownership boundaries
++This foundation owns only browser wall-clock source adaptation. It does not change freshness thresholds, parse market timestamps, choose universe/stablecoin/Top-N values, choose neutral-movement threshold values, create lifecycle/timer/document options, perform provider requests, own cadence/retry, derive market facts, create React state/effects, render `HomeRoute`, choose Bubble radius/layout/palette/labels, persist data, or touch Your Trades/journal/chart/navigation/transitions.
++
++Gate351 remains React lifecycle/state owner. Gate352 remains normalized area-weight arithmetic owner. Gate354 remains pure area-weight view-model owner. Gate355 remains hook composition owner. Gate356 remains textual semantic presentation owner. Gate357 remains textual-evidence runtime composition owner.
++
++## Why this slice is dependency-safe
++Fresh Gate357 source requires separate `() => string` acquisition-observed-at and `() => number` freshness-evaluation-time dependencies. The released freshness policy explicitly avoids internal wall-clock ownership, and no released Home Bubble app/browser owner currently supplies these concrete sources. Binding only the browser wall clock closes that missing dependency without selecting the still-separate product/configuration or visual contracts.
+diff --git a/package.json b/package.json
+--- a/package.json
++++ b/package.json
+@@ -311,7 +311,8 @@
+     "verify:home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation.mjs",
+     "verify:home-dashboard-live-crypto-bubble-react-area-weight-hook-composition-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-react-area-weight-hook-composition-foundation.mjs",
+     "verify:home-dashboard-live-crypto-bubble-text-evidence-presentation-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-text-evidence-presentation-foundation.mjs",
+-    "verify:home-dashboard-live-crypto-bubble-text-evidence-runtime-composition-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-text-evidence-runtime-composition-foundation.mjs"
++    "verify:home-dashboard-live-crypto-bubble-text-evidence-runtime-composition-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-text-evidence-runtime-composition-foundation.mjs",
++    "verify:home-dashboard-live-crypto-bubble-browser-wall-clock-sources-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-browser-wall-clock-sources-foundation.mjs"
+   },
+   "dependencies": {
+     "react": "19.2.8",
+diff --git a/scripts/verify-home-dashboard-live-crypto-bubble-browser-wall-clock-sources-foundation.mjs b/scripts/verify-home-dashboard-live-crypto-bubble-browser-wall-clock-sources-foundation.mjs
+new file mode 100644
+--- /dev/null
++++ b/scripts/verify-home-dashboard-live-crypto-bubble-browser-wall-clock-sources-foundation.mjs
+@@ -0,0 +1,57 @@
++import assert from 'node:assert/strict';
++import { readFileSync } from 'node:fs';
++
++const source = readFileSync('src/app/homeDashboardLiveCryptoBubbleBrowserWallClock.ts', 'utf8');
++const test = readFileSync('tests/home-dashboard-live-crypto-bubble-browser-wall-clock-sources-foundation.test.ts', 'utf8');
++const report = readFileSync('KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_BROWSER_WALL_CLOCK_SOURCES_FOUNDATION_REPORT_2026-09-10.md', 'utf8');
++const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
++
++for (const required of [
++  'BinanceSpot24hPublicRestBaselineObservedAtSource',
++  'HomeDashboardLiveMarketSummaryFreshnessEvaluationTimeSource',
++  'readHomeDashboardLiveCryptoBubbleBrowserObservedAt',
++  'readHomeDashboardLiveCryptoBubbleBrowserEvaluationTimeMs',
++  'new Date(Date.now()).toISOString()',
++  'Date.now()',
++]) {
++  assert.ok(source.includes(required), `browser wall-clock source missing required evidence: ${required}`);
++}
++
++for (const forbidden of [
++  '15_000',
++  '60_000',
++  'freshMaxAgeMs',
++  'staleMaxAgeMs',
++  'excludedStablecoinBaseAssets',
++  'topNCount',
++  'neutralMaxAbsoluteMovementPercent',
++  'setInterval(',
++  'setTimeout(',
++  'requestAnimationFrame(',
++  'fetch(',
++  'XMLHttpRequest',
++  'WebSocket(',
++  'useState(',
++  'useEffect(',
++  'indexedDB',
++  'HomeRoute',
++  'Math.sqrt(',
++  '<svg',
++  '<circle',
++]) {
++  assert.ok(!source.includes(forbidden), `browser wall-clock source must not own forbidden behavior: ${forbidden}`);
++}
++
++assert.equal(
++  pkg.scripts['verify:home-dashboard-live-crypto-bubble-browser-wall-clock-sources-foundation'],
++  'node scripts/verify-home-dashboard-live-crypto-bubble-browser-wall-clock-sources-foundation.mjs',
++);
++assert.ok(test.includes('reads acquisition observation time and freshness evaluation time independently'));
++assert.ok(test.includes('expect(observedAt).toBe(new Date(1_789_056_000_000).toISOString())'));
++assert.ok(test.includes('expect(evaluationTimeMs).toBe(1_789_056_005_000)'));
++assert.ok(report.includes('does not collapse acquisition observation time into later freshness-evaluation time'));
++assert.ok(report.includes('owns only browser wall-clock source adaptation'));
++
++console.log('PASS: Home Live Crypto Bubble browser wall-clock sources provide separate current-time adapters without absorbing freshness policy, market configuration, lifecycle, geometry, route, or persistence ownership.');
+diff --git a/src/app/homeDashboardLiveCryptoBubbleBrowserWallClock.ts b/src/app/homeDashboardLiveCryptoBubbleBrowserWallClock.ts
+new file mode 100644
+--- /dev/null
++++ b/src/app/homeDashboardLiveCryptoBubbleBrowserWallClock.ts
+@@ -0,0 +1,19 @@
++import type { BinanceSpot24hPublicRestBaselineObservedAtSource } from '../services/market-data';
++import type { HomeDashboardLiveMarketSummaryFreshnessEvaluationTimeSource } from '../application/dashboard/homeDashboardLiveMarketSummaryFreshnessObservationBridge';
++
++/**
++ * Production browser wall-clock source for acquisition observation time.
++ * The current instant is read only when the released acquisition boundary asks.
++ */
++export const readHomeDashboardLiveCryptoBubbleBrowserObservedAt:
++  BinanceSpot24hPublicRestBaselineObservedAtSource =
++  () => new Date(Date.now()).toISOString();
++
++/**
++ * Production browser wall-clock source for freshness evaluation time.
++ * This remains a separate read from acquisition observedAt.
++ */
++export const readHomeDashboardLiveCryptoBubbleBrowserEvaluationTimeMs:
++  HomeDashboardLiveMarketSummaryFreshnessEvaluationTimeSource =
++  () => Date.now();
+diff --git a/tests/home-dashboard-live-crypto-bubble-browser-wall-clock-sources-foundation.test.ts b/tests/home-dashboard-live-crypto-bubble-browser-wall-clock-sources-foundation.test.ts
+new file mode 100644
+--- /dev/null
++++ b/tests/home-dashboard-live-crypto-bubble-browser-wall-clock-sources-foundation.test.ts
+@@ -0,0 +1,24 @@
++import { afterEach, describe, expect, it, vi } from 'vitest';
++import {
++  readHomeDashboardLiveCryptoBubbleBrowserEvaluationTimeMs,
++  readHomeDashboardLiveCryptoBubbleBrowserObservedAt,
++} from '../src/app/homeDashboardLiveCryptoBubbleBrowserWallClock';
++
++describe('Home Live Crypto Bubble browser wall-clock sources foundation', () => {
++  afterEach(() => {
++    vi.restoreAllMocks();
++  });
++
++  it('reads acquisition observation time and freshness evaluation time independently', () => {
++    const now = vi.spyOn(Date, 'now');
++    now
++      .mockReturnValueOnce(1_789_056_000_000)
++      .mockReturnValueOnce(1_789_056_005_000);
++
++    const observedAt = readHomeDashboardLiveCryptoBubbleBrowserObservedAt();
++    const evaluationTimeMs = readHomeDashboardLiveCryptoBubbleBrowserEvaluationTimeMs();
++
++    expect(observedAt).toBe(new Date(1_789_056_000_000).toISOString());
++    expect(evaluationTimeMs).toBe(1_789_056_005_000);
++    expect(now).toHaveBeenCalledTimes(2);
++  });
++});
