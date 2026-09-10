@@ -1,0 +1,172 @@
+diff --git a/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_BROWSER_TEXT_EVIDENCE_RUNTIME_COMPOSITION_FOUNDATION_REPORT_2026-09-10.md b/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_BROWSER_TEXT_EVIDENCE_RUNTIME_COMPOSITION_FOUNDATION_REPORT_2026-09-10.md
+new file mode 100644
+index 0000000..6f876b0
+--- /dev/null
++++ b/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_BROWSER_TEXT_EVIDENCE_RUNTIME_COMPOSITION_FOUNDATION_REPORT_2026-09-10.md
+@@ -0,0 +1,26 @@
++# Kairos Home Dashboard Live Crypto Bubble Browser Text-Evidence Runtime Composition Foundation
++
++## Authority
++
++Base: canonical Gate358 browser wall-clock source foundation.
++
++## Responsibility
++
++This slice owns exactly one thin React composition edge between the released Gate358 browser wall-clock sources and the released Gate357 textual-evidence runtime component.
++
++`HomeDashboardLiveCryptoBubbleBrowserTextEvidenceRuntime`:
++- accepts one exact caller-owned `HomeDashboardLiveCryptoBubbleReactRuntimeBindingOptions` value;
++- injects `readHomeDashboardLiveCryptoBubbleBrowserObservedAt` unchanged as Gate357 `readObservedAt`;
++- injects `readHomeDashboardLiveCryptoBubbleBrowserEvaluationTimeMs` unchanged as Gate357 `readEvaluationTimeMs`;
++- forwards the exact options reference unchanged; and
++- renders the Gate357 component exactly once.
++
++The component does not read either clock itself. The released Gate358 sources remain separate and are read only by their downstream owners when requested.
++
++## Explicit non-scope
++
++No own React state/effects/memo/callbacks. No timers, animation frames, `Date.now()` or `new Date()`. No provider/request/acquisition/retry/cadence ownership. No freshness thresholds or classification. No universe eligibility, stablecoin exclusion contents, ranking/tie-break/Top-N values. No neutral movement threshold or palette/design defaults. No arithmetic. No CSS/theme/dimming. No Bubble radius/layout/collision/labels/SVG/canvas/interactions. No `HomeRoute` or router wiring. No persistence/Saved Analysis. No Your Trades Bubble Map, journal/trade truth, chart, Risk/Reward, Calculation Brain, navigation, or transitions.
++
++## Dependency ownership preserved
++
++Gate351 remains React lifecycle/state owner. Gate352 remains normalized area-weight arithmetic owner. Gate354 remains pure view-model owner. Gate355 remains the area-weight hook composition owner. Gate356 remains semantic textual presentation owner. Gate357 remains injected runtime-to-presenter composition owner. Gate358 remains browser wall-clock source owner. This slice only binds the exact Gate358 source references into Gate357 while leaving runtime configuration caller-owned.
+diff --git a/package.json b/package.json
+index 7c97278..4e9515f 100644
+--- a/package.json
++++ b/package.json
+@@ -312,7 +312,8 @@
+     "verify:home-dashboard-live-crypto-bubble-react-area-weight-hook-composition-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-react-area-weight-hook-composition-foundation.mjs",
+     "verify:home-dashboard-live-crypto-bubble-text-evidence-presentation-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-text-evidence-presentation-foundation.mjs",
+     "verify:home-dashboard-live-crypto-bubble-text-evidence-runtime-composition-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-text-evidence-runtime-composition-foundation.mjs",
+-    "verify:home-dashboard-live-crypto-bubble-browser-wall-clock-sources-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-browser-wall-clock-sources-foundation.mjs"
++    "verify:home-dashboard-live-crypto-bubble-browser-wall-clock-sources-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-browser-wall-clock-sources-foundation.mjs",
++    "verify:home-dashboard-live-crypto-bubble-browser-text-evidence-runtime-composition-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-browser-text-evidence-runtime-composition-foundation.mjs"
+   },
+   "dependencies": {
+     "react": "19.2.8",
+diff --git a/scripts/verify-home-dashboard-live-crypto-bubble-browser-text-evidence-runtime-composition-foundation.mjs b/scripts/verify-home-dashboard-live-crypto-bubble-browser-text-evidence-runtime-composition-foundation.mjs
+new file mode 100644
+index 0000000..fe9b495
+--- /dev/null
++++ b/scripts/verify-home-dashboard-live-crypto-bubble-browser-text-evidence-runtime-composition-foundation.mjs
+@@ -0,0 +1,50 @@
++import { readFileSync } from 'node:fs';
++import assert from 'node:assert/strict';
++
++const component = readFileSync('src/app/HomeDashboardLiveCryptoBubbleBrowserTextEvidenceRuntime.tsx', 'utf8');
++const test = readFileSync('tests/home-dashboard-live-crypto-bubble-browser-text-evidence-runtime-composition-foundation.test.tsx', 'utf8');
++const report = readFileSync('KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_BROWSER_TEXT_EVIDENCE_RUNTIME_COMPOSITION_FOUNDATION_REPORT_2026-09-10.md', 'utf8');
++const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
++
++assert.equal(
++  pkg.scripts['verify:home-dashboard-live-crypto-bubble-browser-text-evidence-runtime-composition-foundation'],
++  'node scripts/verify-home-dashboard-live-crypto-bubble-browser-text-evidence-runtime-composition-foundation.mjs',
++);
++
++for (const required of [
++  "import { HomeDashboardLiveCryptoBubbleTextEvidenceRuntime }",
++  'readHomeDashboardLiveCryptoBubbleBrowserEvaluationTimeMs',
++  'readHomeDashboardLiveCryptoBubbleBrowserObservedAt',
++  'readonly options: HomeDashboardLiveCryptoBubbleReactRuntimeBindingOptions',
++  'readObservedAt={readHomeDashboardLiveCryptoBubbleBrowserObservedAt}',
++  'readEvaluationTimeMs={readHomeDashboardLiveCryptoBubbleBrowserEvaluationTimeMs}',
++  'options={options}',
++]) {
++  assert.ok(component.includes(required), `browser composition missing exact released delegation: ${required}`);
++}
++
++for (const forbidden of [
++  'useState(', 'useEffect(', 'useMemo(', 'useCallback(',
++  'setInterval(', 'setTimeout(', 'requestAnimationFrame(',
++  'Date.now(', 'new Date(',
++  'decimalDivide(', 'decimalMultiply(', 'decimalSubtract(', 'parseDecimalString(', 'Math.sqrt(',
++  '<svg', '<circle', '<canvas', 'style=', "import './HomeRoute", 'indexedDB',
++  'excludedStablecoinBaseAssets:', 'topNCount:', 'neutralMaxAbsoluteMovementPercent:',
++]) {
++  assert.ok(!component.includes(forbidden), `browser composition must not own forbidden behavior: ${forbidden}`);
++}
++
++assert.equal((component.match(/<HomeDashboardLiveCryptoBubbleTextEvidenceRuntime/g) ?? []).length, 1);
++assert.ok(test.includes('expect(runtimeMock).toHaveBeenCalledTimes(1)'));
++assert.ok(test.includes('expect(props.readObservedAt).toBe(readHomeDashboardLiveCryptoBubbleBrowserObservedAt)'));
++assert.ok(test.includes('expect(props.readEvaluationTimeMs).toBe(readHomeDashboardLiveCryptoBubbleBrowserEvaluationTimeMs)'));
++assert.ok(test.includes('expect(props.options).toBe(options)'));
++for (const phrase of [
++  'caller-owned `HomeDashboardLiveCryptoBubbleReactRuntimeBindingOptions`',
++  'No `HomeRoute` or router wiring',
++  'Gate358 remains browser wall-clock source owner',
++]) {
++  assert.ok(report.includes(phrase), `foundation report missing ownership evidence: ${phrase}`);
++}
++
++console.log('PASS: Home Live Crypto Bubble browser-clock textual-evidence runtime composition injects exact Gate358 clock sources into Gate357 once while retaining runtime configuration, route, geometry, policy, and persistence ownership outside this boundary.');
+diff --git a/src/app/HomeDashboardLiveCryptoBubbleBrowserTextEvidenceRuntime.tsx b/src/app/HomeDashboardLiveCryptoBubbleBrowserTextEvidenceRuntime.tsx
+new file mode 100644
+index 0000000..0934833
+--- /dev/null
++++ b/src/app/HomeDashboardLiveCryptoBubbleBrowserTextEvidenceRuntime.tsx
+@@ -0,0 +1,28 @@
++import { HomeDashboardLiveCryptoBubbleTextEvidenceRuntime } from './HomeDashboardLiveCryptoBubbleTextEvidenceRuntime';
++import {
++  readHomeDashboardLiveCryptoBubbleBrowserEvaluationTimeMs,
++  readHomeDashboardLiveCryptoBubbleBrowserObservedAt,
++} from './homeDashboardLiveCryptoBubbleBrowserWallClock';
++import type { HomeDashboardLiveCryptoBubbleReactRuntimeBindingOptions } from './useHomeDashboardLiveCryptoBubblePresentationObservedRuntime';
++
++export interface HomeDashboardLiveCryptoBubbleBrowserTextEvidenceRuntimeProps {
++  readonly options: HomeDashboardLiveCryptoBubbleReactRuntimeBindingOptions;
++}
++
++/**
++ * Browser composition edge for the truthful Home Live Crypto Bubble textual
++ * evidence path. It injects only the released Gate358 wall-clock sources into
++ * the released Gate357 runtime component while keeping runtime policy/options
++ * caller-owned.
++ */
++export function HomeDashboardLiveCryptoBubbleBrowserTextEvidenceRuntime({
++  options,
++}: HomeDashboardLiveCryptoBubbleBrowserTextEvidenceRuntimeProps) {
++  return (
++    <HomeDashboardLiveCryptoBubbleTextEvidenceRuntime
++      readObservedAt={readHomeDashboardLiveCryptoBubbleBrowserObservedAt}
++      readEvaluationTimeMs={readHomeDashboardLiveCryptoBubbleBrowserEvaluationTimeMs}
++      options={options}
++    />
++  );
++}
+diff --git a/tests/home-dashboard-live-crypto-bubble-browser-text-evidence-runtime-composition-foundation.test.tsx b/tests/home-dashboard-live-crypto-bubble-browser-text-evidence-runtime-composition-foundation.test.tsx
+new file mode 100644
+index 0000000..2bc8f28
+--- /dev/null
++++ b/tests/home-dashboard-live-crypto-bubble-browser-text-evidence-runtime-composition-foundation.test.tsx
+@@ -0,0 +1,30 @@
++import { renderToStaticMarkup } from 'react-dom/server';
++import { describe, expect, it, vi } from 'vitest';
++import { HomeDashboardLiveCryptoBubbleBrowserTextEvidenceRuntime } from '../src/app/HomeDashboardLiveCryptoBubbleBrowserTextEvidenceRuntime';
++import {
++  readHomeDashboardLiveCryptoBubbleBrowserEvaluationTimeMs,
++  readHomeDashboardLiveCryptoBubbleBrowserObservedAt,
++} from '../src/app/homeDashboardLiveCryptoBubbleBrowserWallClock';
++import type { HomeDashboardLiveCryptoBubbleReactRuntimeBindingOptions } from '../src/app/useHomeDashboardLiveCryptoBubblePresentationObservedRuntime';
++
++const runtimeMock = vi.hoisted(() => vi.fn(() => null));
++
++vi.mock('../src/app/HomeDashboardLiveCryptoBubbleTextEvidenceRuntime', () => ({
++  HomeDashboardLiveCryptoBubbleTextEvidenceRuntime: runtimeMock,
++}));
++
++describe('Home Live Crypto Bubble browser-clock textual-evidence runtime composition foundation', () => {
++  it('injects the exact released browser clocks once and forwards the exact caller options', () => {
++    const options = { marker: 'exact-runtime-options-reference' } as unknown as HomeDashboardLiveCryptoBubbleReactRuntimeBindingOptions;
++
++    renderToStaticMarkup(
++      <HomeDashboardLiveCryptoBubbleBrowserTextEvidenceRuntime options={options} />,
++    );
++
++    expect(runtimeMock).toHaveBeenCalledTimes(1);
++    const props = runtimeMock.mock.calls[0][0];
++    expect(props.readObservedAt).toBe(readHomeDashboardLiveCryptoBubbleBrowserObservedAt);
++    expect(props.readEvaluationTimeMs).toBe(readHomeDashboardLiveCryptoBubbleBrowserEvaluationTimeMs);
++    expect(props.options).toBe(options);
++  });
++});
