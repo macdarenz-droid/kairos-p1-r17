@@ -45,15 +45,46 @@ jobs:
           test -s "$PAYLOAD"
           python - <<'PY'
           from pathlib import Path
-          import base64, gzip
+          import base64, binascii, gzip, hashlib, os
+
           payload = Path('.github/kairos-helper-payloads/home-dashboard-live-crypto-bubble-presentation-state-projection.patch.gz.b64')
-          out = Path(__import__('os').environ['RUNNER_TEMP']) / 'home-bubble-presentation-state.patch'
+          out = Path(os.environ['RUNNER_TEMP']) / 'home-bubble-presentation-state.patch'
           text = ''.join(payload.read_text(encoding='utf-8').split())
-          decoded = base64.b64decode(text, validate=True)
-          out.write_bytes(gzip.decompress(decoded))
+          expected_size = 20926
+          expected_sha = '65d0ddd97ed8192d2ac2ad0a53e168e44694e86d56f8480c6ac44ef045fbd1ce'
+
+          def decode_if_exact(candidate):
+              try:
+                  raw = base64.b64decode(candidate, validate=True)
+                  patch = gzip.decompress(raw)
+              except (binascii.Error, OSError, EOFError):
+                  return None
+              if len(patch) != expected_size:
+                  return None
+              if hashlib.sha256(patch).hexdigest() != expected_sha:
+                  return None
+              return patch
+
+          patch = decode_if_exact(text)
+          removed_index = None
+          if patch is None:
+              matches = []
+              for index in range(len(text)):
+                  recovered = decode_if_exact(text[:index] + text[index + 1:])
+                  if recovered is not None:
+                      matches.append((index, recovered))
+              if len(matches) != 1:
+                  raise RuntimeError(f'payload recovery expected exactly one exact-SHA match, got {len(matches)}')
+              removed_index, patch = matches[0]
+
+          out.write_bytes(patch)
+          print('PAYLOAD_DATA_CHARS='+str(len(text)))
+          print('RECOVERED_REMOVED_INDEX='+('none' if removed_index is None else str(removed_index)))
           print('PATCH_SIZE='+str(out.stat().st_size))
+          print('PATCH_SHA256='+hashlib.sha256(out.read_bytes()).hexdigest())
           PY
           test -s "$PATCH"
+          echo "65d0ddd97ed8192d2ac2ad0a53e168e44694e86d56f8480c6ac44ef045fbd1ce  $PATCH" | sha256sum -c -
           rm -rf "$WORK" "$BASE"
           mkdir -p "$WORK" "$BASE"
           unzip -q "$BASE_ZIP" -d "$WORK"
