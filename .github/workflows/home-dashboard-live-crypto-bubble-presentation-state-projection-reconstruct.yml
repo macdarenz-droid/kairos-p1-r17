@@ -45,7 +45,7 @@ jobs:
           test -s "$PAYLOAD"
           python - <<'PY'
           from pathlib import Path
-          import base64, binascii, gzip, hashlib, os
+          import base64, binascii, gzip, hashlib, os, zlib
 
           payload = Path('.github/kairos-helper-payloads/home-dashboard-live-crypto-bubble-presentation-state-projection.patch.gz.b64')
           out = Path(os.environ['RUNNER_TEMP']) / 'home-bubble-presentation-state.patch'
@@ -57,7 +57,7 @@ jobs:
               try:
                   raw = base64.b64decode(candidate, validate=True)
                   patch = gzip.decompress(raw)
-              except (binascii.Error, OSError, EOFError):
+              except (binascii.Error, OSError, EOFError, zlib.error):
                   return None
               if len(patch) != expected_size:
                   return None
