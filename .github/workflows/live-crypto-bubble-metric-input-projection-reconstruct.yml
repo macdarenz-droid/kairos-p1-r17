@@ -35,17 +35,13 @@ jobs:
           set -euo pipefail
           BASE_ZIP=KAIROS_LIVE_MARKET_SUMMARY_24H_PERCENTAGE_MOVEMENT_FOUNDATION_CANDIDATE_2026-09-10.zip
           OUT_ZIP=KAIROS_LIVE_CRYPTO_BUBBLE_METRIC_INPUT_PROJECTION_FOUNDATION_CANDIDATE_2026-09-10.zip
-          PAYLOAD=.github/kairos-helper-payloads/live-crypto-bubble-metric-input-projection-overlay.b64
+          PATCH=.github/kairos-helper-payloads/live-crypto-bubble-metric-input-projection.patch
           WORK="$RUNNER_TEMP/live-crypto-bubble-metric-input-projection-work"
           BASE="$RUNNER_TEMP/live-crypto-bubble-metric-input-projection-base"
-          OVERLAY="$RUNNER_TEMP/live-crypto-bubble-metric-input-projection-overlay.tar.gz"
           test -f "$BASE_ZIP"
           test "$(stat -c%s "$BASE_ZIP")" = "1590138"
           echo "bdc7c8ed86f69c0fa877da04964de242beecabca3430c84aeebd4f0f1be086cf  $BASE_ZIP" | sha256sum -c -
-          test -f "$PAYLOAD"
-          base64 -d "$PAYLOAD" > "$OVERLAY"
-          sha256sum "$OVERLAY"
-          tar -tzf "$OVERLAY" >/dev/null
+          test -s "$PATCH"
           rm -rf "$WORK" "$BASE"
           mkdir -p "$WORK" "$BASE"
           unzip -q "$BASE_ZIP" -d "$WORK"
@@ -55,7 +51,7 @@ jobs:
           test -f "$ROOT/src/services/market-data/liveMarketSummaryFreshnessEvaluationProjection.ts"
           test -f "$ROOT/src/services/market-data/liveMarketSummary24hPercentageMovement.ts"
           test ! -e "$ROOT/src/services/market-data/liveCryptoBubbleMetricInputProjection.ts"
-          tar -xzf "$OVERLAY" -C "$ROOT"
+          (cd "$ROOT" && patch --batch --forward -p1 < "$GITHUB_WORKSPACE/$PATCH")
 
           cd "$ROOT"
           npm ci
