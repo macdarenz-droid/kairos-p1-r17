@@ -1,11 +1,11 @@
-# KAIROS HOME DASHBOARD LIVE CRYPTO BUBBLE CONFIGURED TEXT EVIDENCE RUNTIME COMPOSITION GATE — AUTHORITATIVE BASE GATE 360
+# KAIROS HOME DASHBOARD LIVE CRYPTO BUBBLE RUNTIME PRODUCT POLICY GATE — AUTHORITATIVE BASE GATE 361
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_CONFIGURED_TEXT_EVIDENCE_RUNTIME_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-10.zip'
+      - 'KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_RUNTIME_PRODUCT_POLICY_FOUNDATION_CANDIDATE_2026-09-11.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_RUNTIME_OPTIONS_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-10.zip
-  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_CONFIGURED_TEXT_EVIDENCE_RUNTIME_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-10.zip
+  BASE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_CONFIGURED_TEXT_EVIDENCE_RUNTIME_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-10.zip
+  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_RUNTIME_PRODUCT_POLICY_FOUNDATION_CANDIDATE_2026-09-11.zip
 
 jobs:
   verify-current-candidate:
@@ -35,8 +35,8 @@ jobs:
           from pathlib import Path, PurePosixPath
           import hashlib, os, zipfile
           for key, size, digest in [
-            ('BASE_ZIP', 1671496, 'cce4ef61ced3996d5a1b6c5efd3c241ef218acca33dfd10ed8721b7af9966273'),
-            ('CANDIDATE_ZIP', 1676282, '89f14c02b5387382c5de67793212ff9de849676e0fe21deda72d329df46ee0fc'),
+            ('BASE_ZIP', 1676282, '89f14c02b5387382c5de67793212ff9de849676e0fe21deda72d329df46ee0fc'),
+            ('CANDIDATE_ZIP', 1681458, 'ed812610da32a163627e77f539f749a54f0a09f316010208e3d290e113a1475b'),
           ]:
             p=Path(os.environ[key]); data=p.read_bytes()
             assert len(data)==size, f'{key}: byte size mismatch'
@@ -50,7 +50,7 @@ jobs:
                 assert ((i.external_attr >> 16) & 0o170000) != 0o120000, f'{key}: unexpected symbolic link'
           PY
 
-      - name: Extract authoritative Gate360 base and candidate
+      - name: Extract authoritative Gate361 base and candidate
         run: |
           set -euo pipefail
           rm -rf .gate-base .gate-candidate
@@ -60,7 +60,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact controlled Home Bubble configured text-evidence runtime composition scope from Gate360
+      - name: Confirm exact controlled Home Bubble runtime product policy scope from Gate361
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -71,14 +71,14 @@ jobs:
           y={str(p.relative_to(c)):h(p) for p in c.rglob('*') if p.is_file()}
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           expected={
-            'KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_CONFIGURED_TEXT_EVIDENCE_RUNTIME_COMPOSITION_FOUNDATION_REPORT_2026-09-10.md',
+            'KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_RUNTIME_PRODUCT_POLICY_FOUNDATION_REPORT_2026-09-11.md',
             'package.json',
-            'scripts/verify-home-dashboard-live-crypto-bubble-configured-text-evidence-runtime-composition-foundation.mjs',
-            'src/app/HomeDashboardLiveCryptoBubbleConfiguredTextEvidenceRuntime.tsx',
-            'tests/home-dashboard-live-crypto-bubble-configured-text-evidence-runtime-composition-foundation.test.tsx',
+            'scripts/verify-home-dashboard-live-crypto-bubble-runtime-product-policy-foundation.mjs',
+            'src/app/homeDashboardLiveCryptoBubbleRuntimeProductPolicy.ts',
+            'tests/home-dashboard-live-crypto-bubble-runtime-product-policy-foundation.test.ts',
           }
           if changed != expected:
-            print('Home Bubble configured text-evidence runtime composition exact scope mismatch',file=sys.stderr)
+            print('Home Bubble runtime product policy exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             sys.exit(1)
@@ -102,9 +102,10 @@ jobs:
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
 
-      - name: Dedicated Home Bubble configured text-evidence runtime composition verifier/runtime
+      - name: Dedicated Home Bubble runtime product policy verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:home-dashboard-live-crypto-bubble-runtime-product-policy-foundation
           npm run verify:home-dashboard-live-crypto-bubble-configured-text-evidence-runtime-composition-foundation
           npm run verify:home-dashboard-live-crypto-bubble-runtime-options-composition-foundation
           npm run verify:home-dashboard-live-crypto-bubble-browser-text-evidence-runtime-composition-foundation
@@ -128,10 +129,11 @@ jobs:
           npm run verify:p21:17-live-market-summary-baseline-state-orchestration-foundation
           npm run verify:p21:1-home-dashboard-route-ownership-foundation
 
-      - name: Focused Home Bubble configured text-evidence runtime composition regression
+      - name: Focused Home Bubble runtime product policy regression
         working-directory: .gate-candidate/kairos_p76
         run: |
           npx vitest run \
+            tests/home-dashboard-live-crypto-bubble-runtime-product-policy-foundation.test.ts \
             tests/home-dashboard-live-crypto-bubble-configured-text-evidence-runtime-composition-foundation.test.tsx \
             tests/home-dashboard-live-crypto-bubble-runtime-options-composition-foundation.test.ts \
             tests/home-dashboard-live-crypto-bubble-browser-text-evidence-runtime-composition-foundation.test.tsx \
@@ -155,6 +157,7 @@ jobs:
             tests/percentage-calculator.test.ts \
             tests/decimal-kernel.test.ts \
             tests/router.test.tsx
+          npm run verify:home-dashboard-live-crypto-bubble-runtime-product-policy-foundation
           npm run verify:home-dashboard-live-crypto-bubble-configured-text-evidence-runtime-composition-foundation
           npm run verify:home-dashboard-live-crypto-bubble-runtime-options-composition-foundation
           npm run verify:home-dashboard-live-crypto-bubble-browser-text-evidence-runtime-composition-foundation
@@ -185,6 +188,7 @@ jobs:
           const p=JSON.parse(readFileSync('package.json'));
           const scripts=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:')).sort();
           for(const required of [
+            'verify:home-dashboard-live-crypto-bubble-runtime-product-policy-foundation',
             'verify:home-dashboard-live-crypto-bubble-configured-text-evidence-runtime-composition-foundation',
             'verify:home-dashboard-live-crypto-bubble-runtime-options-composition-foundation',
             'verify:home-dashboard-live-crypto-bubble-browser-text-evidence-runtime-composition-foundation',
@@ -233,6 +237,7 @@ jobs:
       - name: Historical closures
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:home-dashboard-live-crypto-bubble-runtime-product-policy-foundation
           npm run verify:home-dashboard-live-crypto-bubble-configured-text-evidence-runtime-composition-foundation
           npm run verify:home-dashboard-live-crypto-bubble-runtime-options-composition-foundation
           npm run verify:home-dashboard-live-crypto-bubble-browser-text-evidence-runtime-composition-foundation
@@ -301,5 +306,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_CONFIGURED_TEXT_EVIDENCE_RUNTIME_COMPOSITION_FOUNDATION_REPORT_2026-09-10.md
+          path: .gate-candidate/kairos_p76/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_RUNTIME_PRODUCT_POLICY_FOUNDATION_REPORT_2026-09-11.md
           if-no-files-found: error
