@@ -1,11 +1,11 @@
-# KAIROS HOME DASHBOARD LIVE CRYPTO BUBBLE AREA WEIGHT PROJECTION GATE — AUTHORITATIVE BASE GATE 351
+# KAIROS HOME DASHBOARD LIVE CRYPTO BUBBLE REACT AREA WEIGHT VIEW MODEL GATE — AUTHORITATIVE BASE GATE 352
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_AREA_WEIGHT_PROJECTION_FOUNDATION_CANDIDATE_2026-09-10.zip'
+      - 'KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_REACT_AREA_WEIGHT_VIEW_MODEL_FOUNDATION_CANDIDATE_2026-09-10.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_REACT_RUNTIME_BINDING_FOUNDATION_CANDIDATE_2026-09-10.zip
-  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_AREA_WEIGHT_PROJECTION_FOUNDATION_CANDIDATE_2026-09-10.zip
+  BASE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_AREA_WEIGHT_PROJECTION_FOUNDATION_CANDIDATE_2026-09-10.zip
+  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_REACT_AREA_WEIGHT_VIEW_MODEL_FOUNDATION_CANDIDATE_2026-09-10.zip
 
 jobs:
   verify-current-candidate:
@@ -35,8 +35,8 @@ jobs:
           from pathlib import Path, PurePosixPath
           import hashlib, os, zipfile
           for key, size, digest in [
-            ('BASE_ZIP', 1630333, '7bd9b572ea642229e95560e29ffa5d119bdf458f5caad80f3d5aabd1f91895ea'),
-            ('CANDIDATE_ZIP', 1636871, 'f899195a8f61c2a817e1c2f4b2d02cf20ec662df8a9fc81631a6f74d98aea1fc'),
+            ('BASE_ZIP', 1636871, 'f899195a8f61c2a817e1c2f4b2d02cf20ec662df8a9fc81631a6f74d98aea1fc'),
+            ('CANDIDATE_ZIP', 1643193, '0dc21369c460ad4dacac1d270cdc2c28101060352e4f4d00c9f81ad199ac1ea1'),
           ]:
             p=Path(os.environ[key]); data=p.read_bytes()
             assert len(data)==size, f'{key}: byte size mismatch'
@@ -50,7 +50,7 @@ jobs:
                 assert ((i.external_attr >> 16) & 0o170000) != 0o120000, f'{key}: unexpected symbolic link'
           PY
 
-      - name: Extract authoritative Gate351 base and candidate
+      - name: Extract authoritative Gate352 base and candidate
         run: |
           set -euo pipefail
           rm -rf .gate-base .gate-candidate
@@ -60,7 +60,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact controlled Home Bubble area-weight projection scope from Gate351
+      - name: Confirm exact controlled Home Bubble React area-weight view-model scope from Gate352
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -71,14 +71,14 @@ jobs:
           y={str(p.relative_to(c)):h(p) for p in c.rglob('*') if p.is_file()}
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           expected={
-            'KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_AREA_WEIGHT_PROJECTION_FOUNDATION_REPORT_2026-09-10.md',
+            'KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_REACT_AREA_WEIGHT_VIEW_MODEL_FOUNDATION_REPORT_2026-09-10.md',
             'package.json',
-            'scripts/verify-home-dashboard-live-crypto-bubble-area-weight-projection-foundation.mjs',
-            'src/application/dashboard/homeDashboardLiveCryptoBubbleAreaWeightProjection.ts',
-            'tests/home-dashboard-live-crypto-bubble-area-weight-projection-foundation.test.ts',
+            'scripts/verify-home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation.mjs',
+            'src/app/homeDashboardLiveCryptoBubbleReactAreaWeightViewModel.ts',
+            'tests/home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation.test.ts',
           }
           if changed != expected:
-            print('Home Bubble area-weight projection exact scope mismatch',file=sys.stderr)
+            print('Home Bubble React area-weight view-model exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             sys.exit(1)
@@ -102,9 +102,10 @@ jobs:
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
 
-      - name: Dedicated Home Bubble area-weight projection verifier/runtime
+      - name: Dedicated Home Bubble React area-weight view-model verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation
           npm run verify:home-dashboard-live-crypto-bubble-area-weight-projection-foundation
           npm run verify:home-dashboard-live-crypto-bubble-react-runtime-binding-foundation
           npm run verify:binance-home-dashboard-live-crypto-bubble-presentation-observed-runtime-composition-foundation
@@ -120,10 +121,11 @@ jobs:
           npm run verify:p21:17-live-market-summary-baseline-state-orchestration-foundation
           npm run verify:p21:1-home-dashboard-route-ownership-foundation
 
-      - name: Focused Home Bubble area-weight projection regression
+      - name: Focused Home Bubble React area-weight view-model regression
         working-directory: .gate-candidate/kairos_p76
         run: |
           npx vitest run \
+            tests/home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation.test.ts \
             tests/home-dashboard-live-crypto-bubble-area-weight-projection-foundation.test.ts \
             tests/home-dashboard-live-crypto-bubble-react-runtime-binding-foundation.test.ts \
             tests/binance-home-dashboard-live-crypto-bubble-presentation-observed-runtime-composition-foundation.test.ts \
@@ -137,7 +139,9 @@ jobs:
             tests/live-market-summary-freshness-evaluation-projection-foundation.test.ts \
             tests/live-market-summary-fact-contract.test.ts \
             tests/percentage-calculator.test.ts \
-            tests/decimal-kernel.test.ts
+            tests/decimal-kernel.test.ts \
+            tests/router.test.tsx
+          npm run verify:home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation
           npm run verify:home-dashboard-live-crypto-bubble-area-weight-projection-foundation
           npm run verify:home-dashboard-live-crypto-bubble-react-runtime-binding-foundation
           npm run verify:binance-home-dashboard-live-crypto-bubble-presentation-observed-runtime-composition-foundation
@@ -160,6 +164,7 @@ jobs:
           const p=JSON.parse(readFileSync('package.json'));
           const scripts=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:')).sort();
           for(const required of [
+            'verify:home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation',
             'verify:home-dashboard-live-crypto-bubble-area-weight-projection-foundation',
             'verify:home-dashboard-live-crypto-bubble-react-runtime-binding-foundation',
             'verify:binance-home-dashboard-live-crypto-bubble-presentation-observed-runtime-composition-foundation',
@@ -194,6 +199,7 @@ jobs:
       - name: Historical closures
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation
           npm run verify:home-dashboard-live-crypto-bubble-area-weight-projection-foundation
           npm run verify:home-dashboard-live-crypto-bubble-react-runtime-binding-foundation
           npm run verify:binance-home-dashboard-live-crypto-bubble-presentation-observed-runtime-composition-foundation
@@ -254,5 +260,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_AREA_WEIGHT_PROJECTION_FOUNDATION_REPORT_2026-09-10.md
+          path: .gate-candidate/kairos_p76/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_REACT_AREA_WEIGHT_VIEW_MODEL_FOUNDATION_REPORT_2026-09-10.md
           if-no-files-found: error
