@@ -1,0 +1,287 @@
+diff --git a/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_PRESENTATION_STATE_OBSERVATION_BRIDGE_FOUNDATION_REPORT_2026-09-10.md b/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_PRESENTATION_STATE_OBSERVATION_BRIDGE_FOUNDATION_REPORT_2026-09-10.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..c7df2cacd8d1cbb2722653f7710cb146748b47c5
+--- /dev/null
++++ b/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_PRESENTATION_STATE_OBSERVATION_BRIDGE_FOUNDATION_REPORT_2026-09-10.md
+@@ -0,0 +1,19 @@
++# Kairos Home Dashboard Live Crypto Bubble Presentation-State Observation Bridge Foundation
++
++## Responsibility
++
++This slice adds the provider-neutral Home Dashboard Live Crypto Bubble presentation-state observation bridge below React. It adapts the already-released Gate344 Bubble metric-observation sink seam to the already-released Gate346 semantic presentation-state projection without taking ownership of numeric market truth, freshness truth, lifecycle, or rendering.
++
++For every exact upstream Bubble metric observation, the bridge delegates exactly once to Gate346 using the exact caller-owned presentation policy. The downstream observation preserves the exact original Bubble metric-observation object and the exact Gate346 projection result as separate inspectable fields.
++
++Deterministic Gate346 projection failures remain observation data rather than being rewritten as lifecycle errors. The upstream error channel is forwarded unchanged. Downstream callback failure behavior remains caller-owned.
++
++## Explicit non-scope
++
++No clocks or time generation. No Binance/provider transport or response mapping. No active-USDT universe, stablecoin exclusion, quote-volume ranking, symbol tie-break, Top-N, cadence, lifecycle, freshness thresholds, or session mutation. No CSS/design-token values, palette, radius scaling, geometry/collision/layout, labels, DOM/React state, route startup/teardown, animation, persistence, Your Trades, journal, chart, Risk/Reward, navigation, or transitions.
++
++## Dependency boundary
++
++The bridge returns the released Gate344 `HomeDashboardLiveCryptoBubbleMetricObservationSink` shape, accepts the released Gate346 `HomeDashboardLiveCryptoBubblePresentationPolicy`, and emits a caller-owned semantic observation containing the exact metric observation plus the exact `HomeDashboardLiveCryptoBubblePresentationStateProjectionResult`.
++
++A later React/Home composition may consume this released semantic stream. This slice intentionally does not start the Binance runtime or render Bubble UI.
+diff --git a/package.json b/package.json
+index 433a87e3d68b90f03d14c325eb028ffaccc6e5a6..14b84a79c8a3b9af10d42b4e47f0d702fbed95ff 100644
+--- a/package.json
++++ b/package.json
+@@ -303,7 +303,8 @@
+     "verify:live-crypto-bubble-metric-input-projection-foundation": "node scripts/verify-live-crypto-bubble-metric-input-projection-foundation.mjs",
+     "verify:home-dashboard-live-crypto-bubble-metric-observation-bridge-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-metric-observation-bridge-foundation.mjs",
+     "verify:binance-home-dashboard-live-crypto-bubble-observed-runtime-composition-foundation": "node scripts/verify-binance-home-dashboard-live-crypto-bubble-observed-runtime-composition-foundation.mjs",
+-    "verify:home-dashboard-live-crypto-bubble-presentation-state-projection-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-presentation-state-projection-foundation.mjs"
++    "verify:home-dashboard-live-crypto-bubble-presentation-state-projection-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-presentation-state-projection-foundation.mjs",
++    "verify:home-dashboard-live-crypto-bubble-presentation-state-observation-bridge-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-presentation-state-observation-bridge-foundation.mjs"
+   },
+   "dependencies": {
+     "react": "19.2.8",
+diff --git a/scripts/verify-home-dashboard-live-crypto-bubble-presentation-state-observation-bridge-foundation.mjs b/scripts/verify-home-dashboard-live-crypto-bubble-presentation-state-observation-bridge-foundation.mjs
+new file mode 100644
+index 0000000000000000000000000000000000000000..38def7fc06707e303f18b8a4fa9ee787b778e22b
+--- /dev/null
++++ b/scripts/verify-home-dashboard-live-crypto-bubble-presentation-state-observation-bridge-foundation.mjs
+@@ -0,0 +1,60 @@
++import { readFileSync } from 'node:fs';
++
++const source = readFileSync('src/application/dashboard/homeDashboardLiveCryptoBubblePresentationStateObservationBridge.ts', 'utf8');
++const test = readFileSync('tests/home-dashboard-live-crypto-bubble-presentation-state-observation-bridge-foundation.test.ts', 'utf8');
++const report = readFileSync('KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_PRESENTATION_STATE_OBSERVATION_BRIDGE_FOUNDATION_REPORT_2026-09-10.md', 'utf8');
++const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
++
++for (const token of [
++  'createHomeDashboardLiveCryptoBubblePresentationStateObservationSink',
++  'HomeDashboardLiveCryptoBubbleMetricObservationSink',
++  'readonly metricObservation: HomeDashboardLiveCryptoBubbleMetricObservation',
++  'readonly presentationStateProjection: HomeDashboardLiveCryptoBubblePresentationStateProjectionResult',
++  'policy: HomeDashboardLiveCryptoBubblePresentationPolicy',
++  'projectHomeDashboardLiveCryptoBubblePresentationState(',
++  'metricObservation,',
++  'policy,',
++  'presentationStateProjection,',
++  'sink.onError?.(error)',
++]) {
++  if (!source.includes(token)) throw new Error(`Bubble presentation-state observation bridge evidence missing: ${token}`);
++}
++
++if ((source.match(/projectHomeDashboardLiveCryptoBubblePresentationState\(/g) ?? []).length !== 1) {
++  throw new Error('Bubble presentation-state projection must be delegated exactly once in the bridge source');
++}
++
++for (const forbidden of [
++  'Date.now(', 'new Date(', 'setTimeout(', 'setInterval(', 'fetch(', 'XMLHttpRequest', 'WebSocket(',
++  "from 'react'", 'useEffect', 'useState', 'indexedDB', 'AbortController', '.sort(', '.filter(', '.reduce(',
++  '15_000', '60_000', 'freshMaxAgeMs', 'staleMaxAgeMs', 'priceChangePercent',
++  'borderRadius', 'width:', 'height:', 'left:', 'top:', 'transform:', 'className=', '<div', '<svg',
++  'startBinanceHomeDashboardLiveCryptoBubbleObservedRuntime(',
++]) {
++  if (source.includes(forbidden)) throw new Error(`Bubble presentation-state observation bridge broadened ownership: ${forbidden}`);
++}
++
++for (const token of [
++  'preserves the exact metric observation and applies the exact caller-owned presentation policy once',
++  'keeps deterministic presentation-state projection failure as observation data rather than lifecycle error',
++  'forwards the upstream error channel unchanged',
++  'does not swallow downstream presentation-state observation sink failures',
++]) {
++  if (!test.includes(token)) throw new Error(`Missing Bubble presentation-state observation bridge regression: ${token}`);
++}
++
++for (const token of [
++  'provider-neutral Home Dashboard Live Crypto Bubble presentation-state observation bridge below React',
++  'exact original Bubble metric-observation object',
++  'Deterministic Gate346 projection failures remain observation data',
++  'does not start the Binance runtime or render Bubble UI',
++]) {
++  if (!report.includes(token)) throw new Error(`Bubble presentation-state observation bridge report evidence missing: ${token}`);
++}
++
++const verifyName = 'verify:home-dashboard-live-crypto-bubble-presentation-state-observation-bridge-foundation';
++if (pkg.scripts?.[verifyName] !== 'node scripts/verify-home-dashboard-live-crypto-bubble-presentation-state-observation-bridge-foundation.mjs') {
++  throw new Error('Bubble presentation-state observation bridge verifier registration mismatch');
++}
++
++console.log('PASS: Home Live Crypto Bubble presentation-state observation bridge preserves exact observation truth and remains below React/runtime/style ownership.');
+diff --git a/src/application/dashboard/homeDashboardLiveCryptoBubblePresentationStateObservationBridge.ts b/src/application/dashboard/homeDashboardLiveCryptoBubblePresentationStateObservationBridge.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..82e6f041b173e79d40fa8f0cc0692d5f5294622d
+--- /dev/null
++++ b/src/application/dashboard/homeDashboardLiveCryptoBubblePresentationStateObservationBridge.ts
+@@ -0,0 +1,47 @@
++import {
++  projectHomeDashboardLiveCryptoBubblePresentationState,
++  type HomeDashboardLiveCryptoBubblePresentationPolicy,
++  type HomeDashboardLiveCryptoBubblePresentationStateProjectionResult,
++} from './homeDashboardLiveCryptoBubblePresentationStateProjection';
++import type {
++  HomeDashboardLiveCryptoBubbleMetricObservation,
++  HomeDashboardLiveCryptoBubbleMetricObservationSink,
++} from './homeDashboardLiveCryptoBubbleMetricObservationBridge';
++
++export interface HomeDashboardLiveCryptoBubblePresentationStateObservation {
++  readonly metricObservation: HomeDashboardLiveCryptoBubbleMetricObservation;
++  readonly presentationStateProjection: HomeDashboardLiveCryptoBubblePresentationStateProjectionResult;
++}
++
++export interface HomeDashboardLiveCryptoBubblePresentationStateObservationSink {
++  readonly onObservation?: (
++    observation: HomeDashboardLiveCryptoBubblePresentationStateObservation,
++  ) => void;
++  readonly onError?: (error: unknown) => void;
++}
++
++/**
++ * Provider-neutral application bridge from released Bubble metric observations
++ * to released semantic presentation-state projection. Numeric metric/freshness
++ * truth and derived semantic state stay separately inspectable below React.
++ */
++export function createHomeDashboardLiveCryptoBubblePresentationStateObservationSink(
++  policy: HomeDashboardLiveCryptoBubblePresentationPolicy,
++  sink: HomeDashboardLiveCryptoBubblePresentationStateObservationSink = {},
++): HomeDashboardLiveCryptoBubbleMetricObservationSink {
++  return {
++    onObservation(metricObservation) {
++      const presentationStateProjection = projectHomeDashboardLiveCryptoBubblePresentationState(
++        metricObservation,
++        policy,
++      );
++      sink.onObservation?.({
++        metricObservation,
++        presentationStateProjection,
++      });
++    },
++    onError(error) {
++      sink.onError?.(error);
++    },
++  };
++}
+diff --git a/tests/home-dashboard-live-crypto-bubble-presentation-state-observation-bridge-foundation.test.ts b/tests/home-dashboard-live-crypto-bubble-presentation-state-observation-bridge-foundation.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..53ff913805fa537e938d621d7c45c7527f53c541
+--- /dev/null
++++ b/tests/home-dashboard-live-crypto-bubble-presentation-state-observation-bridge-foundation.test.ts
+@@ -0,0 +1,123 @@
++import { describe, expect, it, vi } from 'vitest';
++import type { DecimalString } from '../src/domain/trades';
++import type { LiveMarketSummaryFact, MarketDataInstrument } from '../src/services/market-data/marketDataTypes';
++import type { HomeDashboardLiveCryptoBubbleMetricObservation } from '../src/application/dashboard/homeDashboardLiveCryptoBubbleMetricObservationBridge';
++import {
++  createHomeDashboardLiveCryptoBubblePresentationStateObservationSink,
++  type HomeDashboardLiveCryptoBubblePresentationStateObservation,
++} from '../src/application/dashboard/homeDashboardLiveCryptoBubblePresentationStateObservationBridge';
++
++const d = (value: string) => value as DecimalString;
++const btc: MarketDataInstrument = { venue: 'binance-spot', symbol: 'BTCUSDT' };
++
++function fact(): LiveMarketSummaryFact {
++  return {
++    instrument: btc,
++    lastPrice: d('102'),
++    open24h: d('100'),
++    high24h: d('103'),
++    low24h: d('99'),
++    baseVolume24h: d('50'),
++    quoteVolume24h: d('5000'),
++    observedAt: '2026-09-10T00:00:00.000Z',
++    sourceTimestamp: null,
++  };
++}
++
++function successfulMetricObservation(): HomeDashboardLiveCryptoBubbleMetricObservation {
++  const marketFact = fact();
++  return {
++    freshnessObservation: {
++      acquisitionResult: { ok: true, scopedSnapshot: [] } as never,
++      freshnessEvaluation: { ok: true, evaluationTimeMs: 1, entries: [] },
++    },
++    bubbleMetricProjection: {
++      ok: true,
++      evaluationTimeMs: 1,
++      entries: [{
++        instrument: btc,
++        fact: marketFact,
++        ageMs: 10_000,
++        freshness: 'fresh',
++        quoteVolume24h: d('5000'),
++        movementPercent24h: d('0.2'),
++      }],
++    },
++  };
++}
++
++describe('Home Dashboard Live Crypto Bubble presentation-state observation bridge foundation', () => {
++  it('preserves the exact metric observation and applies the exact caller-owned presentation policy once', () => {
++    const metricObservation = successfulMetricObservation();
++    const observations: HomeDashboardLiveCryptoBubblePresentationStateObservation[] = [];
++    const downstream = vi.fn((observation: HomeDashboardLiveCryptoBubblePresentationStateObservation) => {
++      observations.push(observation);
++    });
++    const upstreamSink = createHomeDashboardLiveCryptoBubblePresentationStateObservationSink(
++      { neutralMaxAbsoluteMovementPercent: d('0.25') },
++      { onObservation: downstream },
++    );
++
++    upstreamSink.onObservation?.(metricObservation);
++
++    expect(downstream).toHaveBeenCalledTimes(1);
++    expect(observations).toHaveLength(1);
++    expect(observations[0]?.metricObservation).toBe(metricObservation);
++    expect(observations[0]?.presentationStateProjection.ok).toBe(true);
++    if (observations[0]?.presentationStateProjection.ok) {
++      expect(observations[0].presentationStateProjection.metricObservation).toBe(metricObservation);
++      expect(observations[0].presentationStateProjection.entries[0]?.movementSemantic).toBe('neutral');
++      expect(observations[0].presentationStateProjection.entries[0]?.freshnessState).toBe('fresh');
++    }
++  });
++
++  it('keeps deterministic presentation-state projection failure as observation data rather than lifecycle error', () => {
++    const metricObservation = successfulMetricObservation();
++    const observations: HomeDashboardLiveCryptoBubblePresentationStateObservation[] = [];
++    const errors: unknown[] = [];
++    const upstreamSink = createHomeDashboardLiveCryptoBubblePresentationStateObservationSink(
++      { neutralMaxAbsoluteMovementPercent: d('-0.1') },
++      {
++        onObservation: (observation) => observations.push(observation),
++        onError: (error) => errors.push(error),
++      },
++    );
++
++    upstreamSink.onObservation?.(metricObservation);
++
++    expect(errors).toEqual([]);
++    expect(observations).toHaveLength(1);
++    expect(observations[0]?.metricObservation).toBe(metricObservation);
++    expect(observations[0]?.presentationStateProjection).toEqual({
++      ok: false,
++      reason: 'neutral-threshold-invalid',
++      metricObservation,
++    });
++  });
++
++  it('forwards the upstream error channel unchanged', () => {
++    const failure = new Error('upstream metric observation failed');
++    const errors: unknown[] = [];
++    const onObservation = vi.fn();
++    const upstreamSink = createHomeDashboardLiveCryptoBubblePresentationStateObservationSink(
++      { neutralMaxAbsoluteMovementPercent: d('0.25') },
++      { onObservation, onError: (error) => errors.push(error) },
++    );
++
++    upstreamSink.onError?.(failure);
++
++    expect(errors).toEqual([failure]);
++    expect(onObservation).not.toHaveBeenCalled();
++  });
++
++  it('does not swallow downstream presentation-state observation sink failures', () => {
++    const metricObservation = successfulMetricObservation();
++    const failure = new Error('downstream presentation consumer failed');
++    const upstreamSink = createHomeDashboardLiveCryptoBubblePresentationStateObservationSink(
++      { neutralMaxAbsoluteMovementPercent: d('0.25') },
++      { onObservation: () => { throw failure; } },
++    );
++
++    expect(() => upstreamSink.onObservation?.(metricObservation)).toThrow(failure);
++  });
++});
