@@ -1,0 +1,372 @@
+--- a/KAIROS_LIVE_CRYPTO_BUBBLE_METRIC_INPUT_PROJECTION_FOUNDATION_REPORT_2026-09-10.md
++++ b/KAIROS_LIVE_CRYPTO_BUBBLE_METRIC_INPUT_PROJECTION_FOUNDATION_REPORT_2026-09-10.md
+@@ -0,0 +1,12 @@
++# Live Crypto Bubble Metric-Input Projection Foundation
++
++## Authority
++Base: exact canonical Gate342 Live Market Summary 24h percentage-movement candidate, promoted by `Kairos Controlled Roadmap Gate` #342 / run `34425285844`.
++
++## Source-proven responsibility
++The approved P21 Live Crypto Bubble Map requires two numeric metric truths below presentation: `quoteVolume24h` for bubble size and 24h percentage movement for bubble color. Gate342 now owns provider-neutral percentage-movement derivation; Gate338 already owns provider-neutral per-fact freshness evaluation over the released scoped snapshot. No production owner composes those released truths into a single Bubble-ready metric-input projection.
++
++This slice adds only that composition. It accepts the released freshness-evaluation result rather than recomputing freshness. A failed freshness evaluation fails closed and preserves its deterministic upstream reason. For a successful evaluation, entry order and exact instrument/fact/age/freshness association are preserved. A missing fact stays explicit missing with null size and movement metrics, never numeric zero. A present fact exposes its exact canonical `quoteVolume24h` and delegates 24h percentage movement only to the released Gate342 derivation. Any delegated movement failure fails closed with the exact entry index and delegated reason.
++
++## Explicit non-scope
++No ranking or Top-N selection; no stablecoin exclusion; no provider-specific second truth; no color/palette or positive/negative/near-zero visual policy; no bubble radius/area scaling, geometry, collision/layout or labels; no stale/expired dimming or visibility treatment; no acquisition/cadence/lifecycle/retry/universe refresh; no session mutation; no React/Home/Bubble rendering; no persistence/IndexedDB; no navigation, Your Trades, journal, chart, Risk/Reward, Calculation Brain, Saved Analysis or transition ownership.
+--- a/package.json
++++ b/package.json
+@@ -299,7 +299,8 @@
+     "verify:live-market-summary-freshness-evaluation-projection-foundation": "node scripts/verify-live-market-summary-freshness-evaluation-projection-foundation.mjs",
+     "verify:home-dashboard-live-market-summary-freshness-observation-bridge-foundation": "node scripts/verify-home-dashboard-live-market-summary-freshness-observation-bridge-foundation.mjs",
+     "verify:binance-home-dashboard-live-market-observed-runtime-composition-foundation": "node scripts/verify-binance-home-dashboard-live-market-observed-runtime-composition-foundation.mjs",
+-    "verify:live-market-summary-24h-percentage-movement-foundation": "node scripts/verify-live-market-summary-24h-percentage-movement-foundation.mjs"
++    "verify:live-market-summary-24h-percentage-movement-foundation": "node scripts/verify-live-market-summary-24h-percentage-movement-foundation.mjs",
++    "verify:live-crypto-bubble-metric-input-projection-foundation": "node scripts/verify-live-crypto-bubble-metric-input-projection-foundation.mjs"
+   },
+   "dependencies": {
+     "react": "19.2.8",
+--- a/scripts/verify-live-crypto-bubble-metric-input-projection-foundation.mjs
++++ b/scripts/verify-live-crypto-bubble-metric-input-projection-foundation.mjs
+@@ -0,0 +1,53 @@
++import { readFileSync } from 'node:fs';
++
++const source = readFileSync('src/services/market-data/liveCryptoBubbleMetricInputProjection.ts', 'utf8');
++const barrel = readFileSync('src/services/market-data/index.ts', 'utf8');
++const test = readFileSync('tests/live-crypto-bubble-metric-input-projection-foundation.test.ts', 'utf8');
++const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
++
++const requiredSource = [
++  'projectLiveCryptoBubbleMetricInputs',
++  'LiveMarketSummaryFreshnessEvaluationProjectionResult',
++  'deriveLiveMarketSummary24hPercentageMovement',
++  'quoteVolume24h: entry.fact.quoteVolume24h',
++  'movementPercent24h: movement.movement.movementPercent24h',
++  "reason: 'freshness-evaluation-invalid'",
++  "reason: 'movement-derivation-invalid'",
++  'entryIndex',
++];
++for (const token of requiredSource) {
++  if (!source.includes(token)) throw new Error(`Missing metric-input projection contract token: ${token}`);
++}
++for (const forbidden of [
++  'Date.now(',
++  'setInterval(',
++  'setTimeout(',
++  'parseFloat(',
++  'Number(entry.fact.quoteVolume24h)',
++  'priceChangePercent',
++  'stablecoin',
++  'topN',
++  'Top 30',
++  'radius',
++  'palette',
++  'color:',
++]) {
++  if (source.includes(forbidden)) throw new Error(`Forbidden ownership widened into metric-input projection: ${forbidden}`);
++}
++if (!barrel.includes("export * from './liveCryptoBubbleMetricInputProjection';")) {
++  throw new Error('Metric-input projection is not exported through market-data barrel');
++}
++for (const token of [
++  'keeps a missing fact explicit with null metrics instead of inventing zero',
++  'preserves request/association order without introducing ranking truth',
++  'fails closed on upstream freshness-evaluation failure',
++  'fails closed with the exact entry index',
++  'preserves stale and expired classifications as data without applying visual policy',
++]) {
++  if (!test.includes(token)) throw new Error(`Missing required focused regression: ${token}`);
++}
++const verifyName = 'verify:live-crypto-bubble-metric-input-projection-foundation';
++if (pkg.scripts?.[verifyName] !== 'node scripts/verify-live-crypto-bubble-metric-input-projection-foundation.mjs') {
++  throw new Error('Metric-input projection verifier registration mismatch');
++}
++console.log('PASS: Live Crypto Bubble metric-input projection contract remains provider-neutral, fail-closed, ordered, missing-aware, and presentation-free.');
+--- a/src/services/market-data/index.ts
++++ b/src/services/market-data/index.ts
+@@ -9,6 +9,7 @@
+ export * from './liveMarketSummaryFreshnessClassificationPolicy';
+ export * from './liveMarketSummaryFreshnessEvaluationProjection';
+ export * from './liveMarketSummary24hPercentageMovement';
++export * from './liveCryptoBubbleMetricInputProjection';
+ export * from './liveMarketUniverseInstrumentMetadataFact';
+ export * from './liveMarketUniverseInstrumentEligibilityPolicy';
+ export * from './liveMarketUniverseQuoteVolumeOrderingPolicy';
+--- a/src/services/market-data/liveCryptoBubbleMetricInputProjection.ts
++++ b/src/services/market-data/liveCryptoBubbleMetricInputProjection.ts
+@@ -0,0 +1,116 @@
++import type { DecimalString } from '../../domain/trades';
++import {
++  deriveLiveMarketSummary24hPercentageMovement,
++  type LiveMarketSummary24hPercentageMovementResult,
++} from './liveMarketSummary24hPercentageMovement';
++import type {
++  LiveMarketSummaryFreshnessEvaluationProjectionEntry,
++  LiveMarketSummaryFreshnessEvaluationProjectionResult,
++} from './liveMarketSummaryFreshnessEvaluationProjection';
++import type { LiveMarketSummaryFreshnessClassification } from './liveMarketSummaryFreshnessClassificationPolicy';
++import type {
++  LiveMarketSummaryFact,
++  MarketDataInstrument,
++} from './marketDataTypes';
++
++export interface LiveCryptoBubbleMetricInputProjectionEntry {
++  readonly instrument: MarketDataInstrument;
++  readonly fact: LiveMarketSummaryFact | null;
++  readonly ageMs: number | null;
++  readonly freshness: LiveMarketSummaryFreshnessClassification | null;
++  readonly quoteVolume24h: DecimalString | null;
++  readonly movementPercent24h: DecimalString | null;
++}
++
++type LiveMarketSummaryFreshnessEvaluationFailure = Extract<
++  LiveMarketSummaryFreshnessEvaluationProjectionResult,
++  { readonly ok: false }
++>;
++
++type LiveMarketSummary24hPercentageMovementFailure = Extract<
++  LiveMarketSummary24hPercentageMovementResult,
++  { readonly ok: false }
++>;
++
++export type LiveCryptoBubbleMetricInputProjectionResult =
++  | {
++      readonly ok: true;
++      readonly evaluationTimeMs: number;
++      readonly entries: readonly LiveCryptoBubbleMetricInputProjectionEntry[];
++    }
++  | {
++      readonly ok: false;
++      readonly reason: 'freshness-evaluation-invalid';
++      readonly freshnessReason: LiveMarketSummaryFreshnessEvaluationFailure['reason'];
++    }
++  | {
++      readonly ok: false;
++      readonly reason: 'movement-derivation-invalid';
++      readonly entryIndex: number;
++      readonly movementReason: LiveMarketSummary24hPercentageMovementFailure['reason'];
++    };
++
++function projectMissingEntry(
++  entry: LiveMarketSummaryFreshnessEvaluationProjectionEntry,
++): LiveCryptoBubbleMetricInputProjectionEntry {
++  return {
++    instrument: entry.instrument,
++    fact: null,
++    ageMs: entry.ageMs,
++    freshness: entry.freshness,
++    quoteVolume24h: null,
++    movementPercent24h: null,
++  };
++}
++
++/**
++ * Provider-neutral projection from already-evaluated Live Market Summary
++ * freshness truth into the two numeric metric inputs approved for the Live
++ * Crypto Bubble Map. This owner does not rank, size, color, filter, or render
++ * bubbles. Missing facts remain explicit missing metrics.
++ */
++export function projectLiveCryptoBubbleMetricInputs(
++  freshnessEvaluation: LiveMarketSummaryFreshnessEvaluationProjectionResult,
++): LiveCryptoBubbleMetricInputProjectionResult {
++  if (!freshnessEvaluation.ok) {
++    return {
++      ok: false,
++      reason: 'freshness-evaluation-invalid',
++      freshnessReason: freshnessEvaluation.reason,
++    };
++  }
++
++  const entries: LiveCryptoBubbleMetricInputProjectionEntry[] = [];
++  for (let entryIndex = 0; entryIndex < freshnessEvaluation.entries.length; entryIndex += 1) {
++    const entry = freshnessEvaluation.entries[entryIndex];
++    if (entry.fact === null) {
++      entries.push(projectMissingEntry(entry));
++      continue;
++    }
++
++    const movement = deriveLiveMarketSummary24hPercentageMovement(entry.fact);
++    if (!movement.ok) {
++      return {
++        ok: false,
++        reason: 'movement-derivation-invalid',
++        entryIndex,
++        movementReason: movement.reason,
++      };
++    }
++
++    entries.push({
++      instrument: entry.instrument,
++      fact: entry.fact,
++      ageMs: entry.ageMs,
++      freshness: entry.freshness,
++      quoteVolume24h: entry.fact.quoteVolume24h,
++      movementPercent24h: movement.movement.movementPercent24h,
++    });
++  }
++
++  return {
++    ok: true,
++    evaluationTimeMs: freshnessEvaluation.evaluationTimeMs,
++    entries,
++  };
++}
+--- a/tests/live-crypto-bubble-metric-input-projection-foundation.test.ts
++++ b/tests/live-crypto-bubble-metric-input-projection-foundation.test.ts
+@@ -0,0 +1,157 @@
++import { describe, expect, it } from 'vitest';
++import type { LiveMarketSummaryFreshnessEvaluationProjectionResult } from '../src/services/market-data/liveMarketSummaryFreshnessEvaluationProjection';
++import { projectLiveCryptoBubbleMetricInputs } from '../src/services/market-data/liveCryptoBubbleMetricInputProjection';
++import type { LiveMarketSummaryFact } from '../src/services/market-data/marketDataTypes';
++
++const btc = { provider: 'binance', symbol: 'BTCUSDT' } as const;
++const eth = { provider: 'binance', symbol: 'ETHUSDT' } as const;
++
++function fact(overrides: Partial<LiveMarketSummaryFact> = {}): LiveMarketSummaryFact {
++  return {
++    instrument: btc,
++    lastPrice: '120',
++    open24h: '100',
++    high24h: '125',
++    low24h: '90',
++    baseVolume24h: '1000',
++    quoteVolume24h: '123456.789',
++    observedAt: '2026-09-10T02:00:00.000Z',
++    sourceTimestamp: null,
++    ...overrides,
++  };
++}
++
++describe('Live Crypto Bubble metric-input projection foundation', () => {
++  it('preserves evaluated association and exposes exact quote-volume plus delegated 24h movement', () => {
++    const marketFact = fact();
++    const input: LiveMarketSummaryFreshnessEvaluationProjectionResult = {
++      ok: true,
++      evaluationTimeMs: Date.parse('2026-09-10T02:00:10.000Z'),
++      entries: [
++        { instrument: btc, fact: marketFact, ageMs: 10000, freshness: 'fresh' },
++      ],
++    };
++
++    const result = projectLiveCryptoBubbleMetricInputs(input);
++    expect(result).toEqual({
++      ok: true,
++      evaluationTimeMs: input.evaluationTimeMs,
++      entries: [
++        {
++          instrument: btc,
++          fact: marketFact,
++          ageMs: 10000,
++          freshness: 'fresh',
++          quoteVolume24h: '123456.789',
++          movementPercent24h: '20',
++        },
++      ],
++    });
++    if (result.ok) {
++      expect(result.entries[0].instrument).toBe(input.entries[0].instrument);
++      expect(result.entries[0].fact).toBe(marketFact);
++    }
++  });
++
++  it('preserves request/association order without introducing ranking truth', () => {
++    const ethFact = fact({
++      instrument: eth,
++      lastPrice: '90',
++      open24h: '100',
++      quoteVolume24h: '999999999',
++    });
++    const btcFact = fact({ quoteVolume24h: '1' });
++    const input: LiveMarketSummaryFreshnessEvaluationProjectionResult = {
++      ok: true,
++      evaluationTimeMs: Date.parse('2026-09-10T02:00:10.000Z'),
++      entries: [
++        { instrument: btc, fact: btcFact, ageMs: 10000, freshness: 'fresh' },
++        { instrument: eth, fact: ethFact, ageMs: 60000, freshness: 'stale' },
++      ],
++    };
++
++    const result = projectLiveCryptoBubbleMetricInputs(input);
++    expect(result.ok).toBe(true);
++    if (!result.ok) return;
++    expect(result.entries.map((entry) => entry.instrument.symbol)).toEqual(['BTCUSDT', 'ETHUSDT']);
++    expect(result.entries.map((entry) => entry.quoteVolume24h)).toEqual(['1', '999999999']);
++    expect(result.entries.map((entry) => entry.movementPercent24h)).toEqual(['20', '-10']);
++    expect(result.entries.map((entry) => entry.freshness)).toEqual(['fresh', 'stale']);
++  });
++
++  it('keeps a missing fact explicit with null metrics instead of inventing zero', () => {
++    const input: LiveMarketSummaryFreshnessEvaluationProjectionResult = {
++      ok: true,
++      evaluationTimeMs: 123,
++      entries: [
++        { instrument: btc, fact: null, ageMs: null, freshness: null },
++      ],
++    };
++
++    expect(projectLiveCryptoBubbleMetricInputs(input)).toEqual({
++      ok: true,
++      evaluationTimeMs: 123,
++      entries: [
++        {
++          instrument: btc,
++          fact: null,
++          ageMs: null,
++          freshness: null,
++          quoteVolume24h: null,
++          movementPercent24h: null,
++        },
++      ],
++    });
++  });
++
++  it('fails closed on upstream freshness-evaluation failure and preserves its deterministic reason', () => {
++    expect(projectLiveCryptoBubbleMetricInputs({
++      ok: false,
++      reason: 'observation-after-evaluation',
++    })).toEqual({
++      ok: false,
++      reason: 'freshness-evaluation-invalid',
++      freshnessReason: 'observation-after-evaluation',
++    });
++  });
++
++  it('fails closed with the exact entry index when delegated movement derivation fails', () => {
++    const valid = fact();
++    const invalid = fact({ instrument: eth, open24h: '0' });
++    const input: LiveMarketSummaryFreshnessEvaluationProjectionResult = {
++      ok: true,
++      evaluationTimeMs: Date.parse('2026-09-10T02:00:10.000Z'),
++      entries: [
++        { instrument: btc, fact: valid, ageMs: 10000, freshness: 'fresh' },
++        { instrument: eth, fact: invalid, ageMs: 10000, freshness: 'fresh' },
++      ],
++    };
++
++    expect(projectLiveCryptoBubbleMetricInputs(input)).toEqual({
++      ok: false,
++      reason: 'movement-derivation-invalid',
++      entryIndex: 1,
++      movementReason: 'fact-invalid',
++    });
++  });
++
++  it('preserves stale and expired classifications as data without applying visual policy', () => {
++    const staleFact = fact();
++    const expiredFact = fact({ instrument: eth, lastPrice: '100', open24h: '100' });
++    const input: LiveMarketSummaryFreshnessEvaluationProjectionResult = {
++      ok: true,
++      evaluationTimeMs: Date.parse('2026-09-10T02:02:00.000Z'),
++      entries: [
++        { instrument: btc, fact: staleFact, ageMs: 60000, freshness: 'stale' },
++        { instrument: eth, fact: expiredFact, ageMs: 120000, freshness: 'expired' },
++      ],
++    };
++
++    const result = projectLiveCryptoBubbleMetricInputs(input);
++    expect(result.ok).toBe(true);
++    if (!result.ok) return;
++    expect(result.entries[0].freshness).toBe('stale');
++    expect(result.entries[1].freshness).toBe('expired');
++    expect(result.entries[1].movementPercent24h).toBe('0');
++  });
++});
