@@ -1,0 +1,58 @@
+name: Kairos Binance Home Observed Runtime Candidate Identity Proof
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/binance-home-dashboard-live-market-observed-runtime-composition-identity-proof.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kairos-binance-home-observed-runtime-candidate-identity-proof
+  cancel-in-progress: false
+
+jobs:
+  prove-identity:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Prove exact candidate identity and persist evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          CANDIDATE=KAIROS_BINANCE_HOME_DASHBOARD_LIVE_MARKET_OBSERVED_RUNTIME_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-10.zip
+          PROOF=KAIROS_BINANCE_HOME_DASHBOARD_LIVE_MARKET_OBSERVED_RUNTIME_COMPOSITION_FOUNDATION_IDENTITY_PROOF_2026-09-10.txt
+          test -f "$CANDIDATE"
+          size="$(stat -c%s "$CANDIDATE")"
+          sha256="$(sha256sum "$CANDIDATE" | awk '{print $1}')"
+          blob="$(git hash-object "$CANDIDATE")"
+          python - "$CANDIDATE" <<'PY'
+          from pathlib import Path, PurePosixPath
+          import sys, zipfile
+          z=Path(sys.argv[1])
+          with zipfile.ZipFile(z) as a:
+            assert a.testzip() is None
+            assert {i.filename.split('/')[0] for i in a.infolist()} == {'kairos_p76'}
+            for i in a.infolist():
+              p=PurePosixPath(i.filename)
+              assert not p.is_absolute() and '..' not in p.parts
+              assert ((i.external_attr >> 16) & 0o170000) != 0o120000
+          PY
+          {
+            echo "candidate=$CANDIDATE"
+            echo "size=$size"
+            echo "sha256=$sha256"
+            echo "git_blob=$blob"
+            echo "root=kairos_p76/"
+            echo "zip_integrity=PASS"
+          } > "$PROOF"
+          git config user.name 'kairos-autonomous-worker'
+          git config user.email 'kairos-autonomous-worker@users.noreply.github.com'
+          git add "$PROOF"
+          git commit -m 'evidence: prove observed-runtime candidate identity'
+          git push origin HEAD:main
