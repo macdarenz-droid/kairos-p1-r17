@@ -1,0 +1,313 @@
+diff --git a/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_TEXT_EVIDENCE_PRESENTATION_FOUNDATION_REPORT_2026-09-10.md b/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_TEXT_EVIDENCE_PRESENTATION_FOUNDATION_REPORT_2026-09-10.md
+new file mode 100644
+index 0000000..8b0a014
+--- /dev/null
++++ b/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_TEXT_EVIDENCE_PRESENTATION_FOUNDATION_REPORT_2026-09-10.md
+@@ -0,0 +1,17 @@
++# Home Dashboard Live Crypto Bubble Text Evidence Presentation Foundation
++
++## Responsibility
++
++Introduce the first truthful React presentation consumer for released Home Live Crypto Bubble evidence before any Bubble geometry/design decisions are made.
++
++The component accepts one exact released Gate354 view-model value as a prop. It exposes the released Gate351 runtime status/error-presence evidence and the released Gate352 area-weight projection evidence. On successful projection it preserves entry order and renders only already-released symbol, availability, freshness, movement semantic, 24h quote volume, 24h movement percentage and area weight. Missing and failed projection states remain explicit.
++
++## Ownership boundaries
++
++This foundation does not call the Gate355 runtime/view-model hook and does not own provider transport, acquisition, retries, clocks, lifecycle, market-universe/ranking/Top-N/stablecoin policy, movement/freshness/area-weight arithmetic, retained state/effects/timers, CSS/theme/palette, radius/geometry/layout/collision/labels, SVG/canvas, `HomeRoute` wiring, persistence/Saved Analysis, Your Trades/journal/chart/Risk-Reward/navigation/transitions.
++
++The authoritative Bubble-size metric remains 24h quote volume. Area weight remains only Gate352 normalized presentation evidence. No pixel-radius conversion is introduced.
++
++## Why this slice is dependency-safe
++
++Gate355 canonically closes the app-level React composition gap, while current design-system ownership still does not define Bubble-specific radius, layout, palette, dimming or label rules. A textual semantic presentation boundary follows the existing Kairos P14 pattern of exposing exact facts before geometry. It is reversible, testable and does not invent a user-facing Bubble design contract.
+diff --git a/package.json b/package.json
+index 7a824ae..319a68a 100644
+--- a/package.json
++++ b/package.json
+@@ -309,7 +309,8 @@
+     "verify:home-dashboard-live-crypto-bubble-react-runtime-binding-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-react-runtime-binding-foundation.mjs",
+     "verify:home-dashboard-live-crypto-bubble-area-weight-projection-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-area-weight-projection-foundation.mjs",
+     "verify:home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation.mjs",
+-    "verify:home-dashboard-live-crypto-bubble-react-area-weight-hook-composition-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-react-area-weight-hook-composition-foundation.mjs"
++    "verify:home-dashboard-live-crypto-bubble-react-area-weight-hook-composition-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-react-area-weight-hook-composition-foundation.mjs",
++    "verify:home-dashboard-live-crypto-bubble-text-evidence-presentation-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-text-evidence-presentation-foundation.mjs"
+   },
+   "dependencies": {
+     "react": "19.2.8",
+diff --git a/scripts/verify-home-dashboard-live-crypto-bubble-text-evidence-presentation-foundation.mjs b/scripts/verify-home-dashboard-live-crypto-bubble-text-evidence-presentation-foundation.mjs
+new file mode 100644
+index 0000000..834f02f
+--- /dev/null
++++ b/scripts/verify-home-dashboard-live-crypto-bubble-text-evidence-presentation-foundation.mjs
+@@ -0,0 +1,61 @@
++import { readFileSync } from 'node:fs';
++import assert from 'node:assert/strict';
++
++const component = readFileSync('src/app/HomeDashboardLiveCryptoBubbleTextEvidence.tsx', 'utf8');
++const test = readFileSync('tests/home-dashboard-live-crypto-bubble-text-evidence-presentation-foundation.test.tsx', 'utf8');
++const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
++
++assert.equal(
++  pkg.scripts['verify:home-dashboard-live-crypto-bubble-text-evidence-presentation-foundation'],
++  'node scripts/verify-home-dashboard-live-crypto-bubble-text-evidence-presentation-foundation.mjs',
++);
++
++for (const required of [
++  "import type { HomeDashboardLiveCryptoBubbleReactAreaWeightViewModel }",
++  'readonly model: HomeDashboardLiveCryptoBubbleReactAreaWeightViewModel',
++  'data-runtime-status={runtimeState.status}',
++  "data-projection-status=\"none\"",
++  "data-projection-status=\"failed\"",
++  "data-projection-status=\"available\"",
++  'metricInput.instrument.symbol',
++  'presentationEntry.availability',
++  'presentationEntry.freshnessState',
++  'presentationEntry.movementSemantic',
++  'metricInput.quoteVolume24h',
++  'metricInput.movementPercent24h',
++  'entry.areaWeight',
++]) {
++  assert.ok(component.includes(required), `component missing required released evidence use: ${required}`);
++}
++
++for (const forbidden of [
++  'useHomeDashboardLiveCryptoBubbleReactAreaWeightViewModel',
++  'useHomeDashboardLiveCryptoBubblePresentationObservedRuntime',
++  'useState(',
++  'useEffect(',
++  'useMemo(',
++  'setInterval(',
++  'setTimeout(',
++  'requestAnimationFrame(',
++  'decimalDivide(',
++  'decimalMultiply(',
++  'decimalSubtract(',
++  'parseDecimalString(',
++  'Math.sqrt(',
++  '<svg',
++  '<circle',
++  '<canvas',
++  'style=',
++  "import './",
++  'HomeRoute',
++  'indexedDB',
++]) {
++  assert.ok(!component.includes(forbidden), `component must not own forbidden behavior: ${forbidden}`);
++}
++
++assert.ok(test.includes('renderToStaticMarkup'));
++assert.ok(test.includes("runtimeState('acquisition-failed'"));
++assert.ok(test.includes("reason: 'area-weight-entry-inconsistent'"));
++assert.ok(test.includes("html.indexOf('BTCUSDT')"));
++
++console.log('PASS: Home Live Crypto Bubble textual evidence presentation consumes released view-model truth without owning runtime, arithmetic, geometry, styling, route wiring, or persistence.');
+diff --git a/src/app/HomeDashboardLiveCryptoBubbleTextEvidence.tsx b/src/app/HomeDashboardLiveCryptoBubbleTextEvidence.tsx
+new file mode 100644
+index 0000000..6e7349b
+--- /dev/null
++++ b/src/app/HomeDashboardLiveCryptoBubbleTextEvidence.tsx
+@@ -0,0 +1,80 @@
++import type { HomeDashboardLiveCryptoBubbleReactAreaWeightViewModel } from './homeDashboardLiveCryptoBubbleReactAreaWeightViewModel';
++
++interface HomeDashboardLiveCryptoBubbleTextEvidenceProps {
++  readonly model: HomeDashboardLiveCryptoBubbleReactAreaWeightViewModel;
++}
++
++/**
++ * First truthful React presentation boundary for Home Live Crypto Bubble data.
++ * It exposes only released semantic/metric evidence. Bubble geometry, styling,
++ * route wiring, market/runtime ownership, and all calculations remain outside.
++ */
++export function HomeDashboardLiveCryptoBubbleTextEvidence({
++  model,
++}: HomeDashboardLiveCryptoBubbleTextEvidenceProps) {
++  const { runtimeState, areaWeightProjection } = model;
++
++  return (
++    <section
++      aria-label="Live Crypto Bubble market evidence"
++      data-runtime-status={runtimeState.status}
++      data-runtime-error={runtimeState.lastError === null ? 'none' : 'present'}
++    >
++      <dl>
++        <div>
++          <dt>Runtime status</dt>
++          <dd>{runtimeState.status}</dd>
++        </div>
++      </dl>
++
++      {areaWeightProjection === null ? (
++        <p data-projection-status="none">No market observation</p>
++      ) : !areaWeightProjection.ok ? (
++        <div data-projection-status="failed">
++          <p>Projection status: {areaWeightProjection.reason}</p>
++          {'entryIndex' in areaWeightProjection ? (
++            <p>Entry index: {areaWeightProjection.entryIndex}</p>
++          ) : null}
++        </div>
++      ) : (
++        <ol data-projection-status="available">
++          {areaWeightProjection.entries.map((entry, index) => {
++            const presentationEntry = entry.presentationEntry;
++            const metricInput = presentationEntry.metricInput;
++            return (
++              <li key={`${metricInput.instrument.venue}:${metricInput.instrument.symbol}:${index}`}>
++                <strong>{metricInput.instrument.symbol}</strong>
++                <dl>
++                  <div>
++                    <dt>Availability</dt>
++                    <dd>{presentationEntry.availability}</dd>
++                  </div>
++                  <div>
++                    <dt>Freshness</dt>
++                    <dd>{presentationEntry.freshnessState}</dd>
++                  </div>
++                  <div>
++                    <dt>Movement</dt>
++                    <dd>{presentationEntry.movementSemantic ?? 'missing'}</dd>
++                  </div>
++                  <div>
++                    <dt>24h quote volume</dt>
++                    <dd>{metricInput.quoteVolume24h ?? 'missing'}</dd>
++                  </div>
++                  <div>
++                    <dt>24h movement percent</dt>
++                    <dd>{metricInput.movementPercent24h ?? 'missing'}</dd>
++                  </div>
++                  <div>
++                    <dt>Area weight</dt>
++                    <dd>{entry.areaWeight ?? 'missing'}</dd>
++                  </div>
++                </dl>
++              </li>
++            );
++          })}
++        </ol>
++      )}
++    </section>
++  );
++}
+diff --git a/tests/home-dashboard-live-crypto-bubble-text-evidence-presentation-foundation.test.tsx b/tests/home-dashboard-live-crypto-bubble-text-evidence-presentation-foundation.test.tsx
+new file mode 100644
+index 0000000..1444d32
+--- /dev/null
++++ b/tests/home-dashboard-live-crypto-bubble-text-evidence-presentation-foundation.test.tsx
+@@ -0,0 +1,117 @@
++import { renderToStaticMarkup } from 'react-dom/server';
++import { describe, expect, it } from 'vitest';
++import { HomeDashboardLiveCryptoBubbleTextEvidence } from '../src/app/HomeDashboardLiveCryptoBubbleTextEvidence';
++import type { HomeDashboardLiveCryptoBubbleReactAreaWeightViewModel } from '../src/app/homeDashboardLiveCryptoBubbleReactAreaWeightViewModel';
++import type { HomeDashboardLiveCryptoBubbleReactRuntimeState } from '../src/app/useHomeDashboardLiveCryptoBubblePresentationObservedRuntime';
++import type { DecimalString } from '../src/domain/trades';
++import type { HomeDashboardLiveCryptoBubbleAreaWeightProjectionResult } from '../src/application/dashboard/homeDashboardLiveCryptoBubbleAreaWeightProjection';
++
++const d = (value: string) => value as DecimalString;
++
++function runtimeState(
++  status: HomeDashboardLiveCryptoBubbleReactRuntimeState['status'],
++  lastError: unknown | null = null,
++): HomeDashboardLiveCryptoBubbleReactRuntimeState {
++  return { status, latestObservation: null, lastError };
++}
++
++function model(
++  runtime: HomeDashboardLiveCryptoBubbleReactRuntimeState,
++  projection: HomeDashboardLiveCryptoBubbleAreaWeightProjectionResult | null,
++): HomeDashboardLiveCryptoBubbleReactAreaWeightViewModel {
++  return { runtimeState: runtime, areaWeightProjection: projection };
++}
++
++function successfulProjection(): Extract<HomeDashboardLiveCryptoBubbleAreaWeightProjectionResult, { ok: true }> {
++  const presentMetric = {
++    instrument: { venue: 'binance-spot', symbol: 'BTCUSDT' },
++    fact: {} as never,
++    ageMs: 5000,
++    freshness: 'fresh' as const,
++    quoteVolume24h: d('1250000.5'),
++    movementPercent24h: d('2.75'),
++  };
++  const missingMetric = {
++    instrument: { venue: 'binance-spot', symbol: 'ETHUSDT' },
++    fact: null,
++    ageMs: null,
++    freshness: null,
++    quoteVolume24h: null,
++    movementPercent24h: null,
++  };
++  const presentationStateProjection = {
++    ok: true as const,
++    metricObservation: {} as never,
++    entries: [
++      { metricInput: presentMetric, availability: 'present' as const, movementSemantic: 'positive' as const, freshnessState: 'fresh' as const },
++      { metricInput: missingMetric, availability: 'missing' as const, movementSemantic: null, freshnessState: 'missing' as const },
++    ],
++  };
++  return {
++    ok: true,
++    presentationStateProjection,
++    entries: [
++      { presentationEntry: presentationStateProjection.entries[0], areaWeight: d('1') },
++      { presentationEntry: presentationStateProjection.entries[1], areaWeight: null },
++    ],
++  };
++}
++
++describe('Home Live Crypto Bubble textual evidence presentation foundation', () => {
++  it('exposes exact runtime state without fabricating an observation before one exists', () => {
++    const html = renderToStaticMarkup(
++      <HomeDashboardLiveCryptoBubbleTextEvidence model={model(runtimeState('starting'), null)} />,
++    );
++
++    expect(html).toContain('data-runtime-status="starting"');
++    expect(html).toContain('data-runtime-error="none"');
++    expect(html).toContain('<dd>starting</dd>');
++    expect(html).toContain('data-projection-status="none"');
++    expect(html).toContain('No market observation');
++  });
++
++  it('renders released market evidence in exact entry order without recomputing metric truth', () => {
++    const html = renderToStaticMarkup(
++      <HomeDashboardLiveCryptoBubbleTextEvidence model={model(runtimeState('running'), successfulProjection())} />,
++    );
++
++    expect(html).toContain('data-projection-status="available"');
++    expect(html.indexOf('BTCUSDT')).toBeLessThan(html.indexOf('ETHUSDT'));
++    expect(html).toContain('1250000.5');
++    expect(html).toContain('2.75');
++    expect(html).toContain('<dd>positive</dd>');
++    expect(html).toContain('<dd>fresh</dd>');
++    expect(html).toContain('<dd>1</dd>');
++    expect(html).toContain('<dd>missing</dd>');
++  });
++
++  it('keeps later runtime failure evidence separate while retaining an available projection', () => {
++    const html = renderToStaticMarkup(
++      <HomeDashboardLiveCryptoBubbleTextEvidence
++        model={model(runtimeState('acquisition-failed', new Error('network')), successfulProjection())}
++      />,
++    );
++
++    expect(html).toContain('data-runtime-status="acquisition-failed"');
++    expect(html).toContain('data-runtime-error="present"');
++    expect(html).toContain('data-projection-status="available"');
++    expect(html).toContain('BTCUSDT');
++  });
++
++  it('renders exact released projection failure reason and entry index without inventing fallback metrics', () => {
++    const projection: HomeDashboardLiveCryptoBubbleAreaWeightProjectionResult = {
++      ok: false,
++      reason: 'area-weight-entry-inconsistent',
++      presentationStateProjection: { ok: true, metricObservation: {} as never, entries: [] },
++      entryIndex: 3,
++    };
++    const html = renderToStaticMarkup(
++      <HomeDashboardLiveCryptoBubbleTextEvidence model={model(runtimeState('running'), projection)} />,
++    );
++
++    expect(html).toContain('data-projection-status="failed"');
++    expect(html).toContain('Projection status: area-weight-entry-inconsistent');
++    expect(html).toContain('Entry index: 3');
++    expect(html).not.toContain('BTCUSDT');
++  });
++});
