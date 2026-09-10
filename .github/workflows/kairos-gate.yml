@@ -1,11 +1,11 @@
-# KAIROS LIVE CRYPTO BUBBLE METRIC INPUT PROJECTION GATE — AUTHORITATIVE BASE GATE 342
+# KAIROS HOME DASHBOARD LIVE CRYPTO BUBBLE METRIC OBSERVATION BRIDGE GATE — AUTHORITATIVE BASE GATE 343
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_LIVE_CRYPTO_BUBBLE_METRIC_INPUT_PROJECTION_FOUNDATION_CANDIDATE_2026-09-10.zip'
+      - 'KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_METRIC_OBSERVATION_BRIDGE_FOUNDATION_CANDIDATE_2026-09-10.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_LIVE_MARKET_SUMMARY_24H_PERCENTAGE_MOVEMENT_FOUNDATION_CANDIDATE_2026-09-10.zip
-  CANDIDATE_ZIP: KAIROS_LIVE_CRYPTO_BUBBLE_METRIC_INPUT_PROJECTION_FOUNDATION_CANDIDATE_2026-09-10.zip
+  BASE_ZIP: KAIROS_LIVE_CRYPTO_BUBBLE_METRIC_INPUT_PROJECTION_FOUNDATION_CANDIDATE_2026-09-10.zip
+  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_METRIC_OBSERVATION_BRIDGE_FOUNDATION_CANDIDATE_2026-09-10.zip
 
 jobs:
   verify-current-candidate:
@@ -35,8 +35,8 @@ jobs:
           from pathlib import Path, PurePosixPath
           import hashlib, os, zipfile
           for key, size, digest in [
-            ('BASE_ZIP', 1590138, 'bdc7c8ed86f69c0fa877da04964de242beecabca3430c84aeebd4f0f1be086cf'),
-            ('CANDIDATE_ZIP', 1595701, 'abaf94beb36d46e1e33ffff8b7e6bbd93db785a7260c132d2039b7cf1cee059a'),
+            ('BASE_ZIP', 1595701, 'abaf94beb36d46e1e33ffff8b7e6bbd93db785a7260c132d2039b7cf1cee059a'),
+            ('CANDIDATE_ZIP', 1601034, '1a8845bbc6ad13f9e7c790663c7f18cb365cc020b54e4ff160639402358960e9'),
           ]:
             p=Path(os.environ[key]); data=p.read_bytes()
             assert len(data)==size, f'{key}: byte size mismatch'
@@ -50,7 +50,7 @@ jobs:
                 assert ((i.external_attr >> 16) & 0o170000) != 0o120000, f'{key}: unexpected symbolic link'
           PY
 
-      - name: Extract authoritative Gate342 base and candidate
+      - name: Extract authoritative Gate343 base and candidate
         run: |
           set -euo pipefail
           rm -rf .gate-base .gate-candidate
@@ -60,7 +60,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact controlled Live Crypto Bubble metric-input projection scope from Gate342
+      - name: Confirm exact controlled Home Bubble metric observation bridge scope from Gate343
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -71,15 +71,14 @@ jobs:
           y={str(p.relative_to(c)):h(p) for p in c.rglob('*') if p.is_file()}
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           expected={
-            'KAIROS_LIVE_CRYPTO_BUBBLE_METRIC_INPUT_PROJECTION_FOUNDATION_REPORT_2026-09-10.md',
+            'KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_METRIC_OBSERVATION_BRIDGE_FOUNDATION_REPORT_2026-09-10.md',
             'package.json',
-            'scripts/verify-live-crypto-bubble-metric-input-projection-foundation.mjs',
-            'src/services/market-data/index.ts',
-            'src/services/market-data/liveCryptoBubbleMetricInputProjection.ts',
-            'tests/live-crypto-bubble-metric-input-projection-foundation.test.ts',
+            'scripts/verify-home-dashboard-live-crypto-bubble-metric-observation-bridge-foundation.mjs',
+            'src/application/dashboard/homeDashboardLiveCryptoBubbleMetricObservationBridge.ts',
+            'tests/home-dashboard-live-crypto-bubble-metric-observation-bridge-foundation.test.ts',
           }
           if changed != expected:
-            print('Live Crypto Bubble metric-input projection exact scope mismatch',file=sys.stderr)
+            print('Home Bubble metric observation bridge exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             sys.exit(1)
@@ -103,34 +102,34 @@ jobs:
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
 
-      - name: Dedicated Live Crypto Bubble metric-input projection verifier/runtime
+      - name: Dedicated Home Bubble metric observation bridge verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:home-dashboard-live-crypto-bubble-metric-observation-bridge-foundation
           npm run verify:live-crypto-bubble-metric-input-projection-foundation
+          npm run verify:home-dashboard-live-market-summary-freshness-observation-bridge-foundation
+          npm run verify:binance-home-dashboard-live-market-observed-runtime-composition-foundation
           npm run verify:live-market-summary-24h-percentage-movement-foundation
           npm run verify:live-market-summary-freshness-evaluation-projection-foundation
-          npm run verify:p21:2-live-market-summary-fact-contract-foundation
-          npm run verify:binance-home-dashboard-live-market-observed-runtime-composition-foundation
-          npm run verify:home-dashboard-live-market-summary-freshness-observation-bridge-foundation
           npm run verify:p21:17-live-market-summary-baseline-state-orchestration-foundation
 
-      - name: Focused Live Crypto Bubble metric-input projection regression
+      - name: Focused Home Bubble metric observation bridge regression
         working-directory: .gate-candidate/kairos_p76
         run: |
           npx vitest run \
+            tests/home-dashboard-live-crypto-bubble-metric-observation-bridge-foundation.test.ts \
             tests/live-crypto-bubble-metric-input-projection-foundation.test.ts \
+            tests/home-dashboard-live-market-summary-freshness-observation-bridge-foundation.test.ts \
+            tests/binance-home-dashboard-live-market-observed-runtime-composition-foundation.test.ts \
             tests/live-market-summary-24h-percentage-movement-foundation.test.ts \
             tests/live-market-summary-freshness-evaluation-projection-foundation.test.ts \
             tests/live-market-summary-fact-contract.test.ts \
             tests/percentage-calculator.test.ts \
-            tests/decimal-kernel.test.ts \
-            tests/binance-home-dashboard-live-market-observed-runtime-composition-foundation.test.ts \
-            tests/home-dashboard-live-market-summary-freshness-observation-bridge-foundation.test.ts
+            tests/decimal-kernel.test.ts
+          npm run verify:home-dashboard-live-crypto-bubble-metric-observation-bridge-foundation
           npm run verify:live-crypto-bubble-metric-input-projection-foundation
-          npm run verify:live-market-summary-24h-percentage-movement-foundation
-          npm run verify:live-market-summary-freshness-evaluation-projection-foundation
-          npm run verify:binance-home-dashboard-live-market-observed-runtime-composition-foundation
           npm run verify:home-dashboard-live-market-summary-freshness-observation-bridge-foundation
+          npm run verify:binance-home-dashboard-live-market-observed-runtime-composition-foundation
 
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
@@ -144,6 +143,7 @@ jobs:
           const p=JSON.parse(readFileSync('package.json'));
           const scripts=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:')).sort();
           for(const required of [
+            'verify:home-dashboard-live-crypto-bubble-metric-observation-bridge-foundation',
             'verify:live-crypto-bubble-metric-input-projection-foundation',
             'verify:live-market-summary-24h-percentage-movement-foundation',
             'verify:binance-home-dashboard-live-market-observed-runtime-composition-foundation',
@@ -171,6 +171,7 @@ jobs:
       - name: Historical closures
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:home-dashboard-live-crypto-bubble-metric-observation-bridge-foundation
           npm run verify:live-crypto-bubble-metric-input-projection-foundation
           npm run verify:live-market-summary-24h-percentage-movement-foundation
           npm run verify:binance-home-dashboard-live-market-observed-runtime-composition-foundation
@@ -224,5 +225,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_LIVE_CRYPTO_BUBBLE_METRIC_INPUT_PROJECTION_FOUNDATION_REPORT_2026-09-10.md
+          path: .gate-candidate/kairos_p76/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_METRIC_OBSERVATION_BRIDGE_FOUNDATION_REPORT_2026-09-10.md
           if-no-files-found: error
