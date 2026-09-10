@@ -1,0 +1,195 @@
+diff --git a/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_TEXT_EVIDENCE_RUNTIME_COMPOSITION_FOUNDATION_REPORT_2026-09-10.md b/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_TEXT_EVIDENCE_RUNTIME_COMPOSITION_FOUNDATION_REPORT_2026-09-10.md
+new file mode 100644
+index 0000000..c2aac29
+--- /dev/null
++++ b/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_TEXT_EVIDENCE_RUNTIME_COMPOSITION_FOUNDATION_REPORT_2026-09-10.md
+@@ -0,0 +1,17 @@
++# Home Dashboard Live Crypto Bubble Text Evidence Runtime Composition Foundation
++
++## Responsibility
++
++Join the released Gate355 Home Live Crypto Bubble runtime/view-model hook to the released Gate356 textual evidence presenter through one thin React component while keeping all concrete runtime inputs caller-owned.
++
++The component accepts exact `readObservedAt`, `readEvaluationTimeMs`, and Gate351 runtime-binding options as props; delegates those exact references once to the released Gate355 hook; and passes the exact returned Gate354 view-model reference directly to the released Gate356 textual presenter.
++
++## Ownership boundaries
++
++This foundation introduces no default clock or time source, no market-universe/runtime option defaults, no presentation-policy defaults, no provider/acquisition/retry/cadence logic, no own state/effect/memo/timer/observer, no sorting/filtering/ranking/Top-N/stablecoin policy, no movement/freshness/area-weight arithmetic, no CSS/theme/palette, no Bubble radius/geometry/layout/collision/labels, no SVG/canvas, no `HomeRoute` wiring, no persistence/Saved Analysis, and no Your Trades/journal/chart/Risk-Reward/navigation/transitions ownership.
++
++Gate351 remains runtime lifecycle/state owner. Gate352 remains normalized area-weight arithmetic owner. Gate354 remains pure area-weight view-model owner. Gate355 remains the hook composition owner. Gate356 remains the textual semantic presentation owner.
++
++## Why this slice is dependency-safe
++
++Fresh Gate356 GOLDEN provides the released hook and presenter but no composition component joins them. `HomeRoute` still has no released concrete owner for observed-at/evaluation clocks, runtime/universe options, or presentation-policy defaults, and Bubble-specific geometry/design rules remain unreleased. Joining only the already-released hook and presenter with injected inputs closes one missing React edge without inventing those later contracts.
+diff --git a/package.json b/package.json
+index 319a68a..0d7505b 100644
+--- a/package.json
++++ b/package.json
+@@ -310,7 +310,8 @@
+     "verify:home-dashboard-live-crypto-bubble-area-weight-projection-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-area-weight-projection-foundation.mjs",
+     "verify:home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation.mjs",
+     "verify:home-dashboard-live-crypto-bubble-react-area-weight-hook-composition-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-react-area-weight-hook-composition-foundation.mjs",
+-    "verify:home-dashboard-live-crypto-bubble-text-evidence-presentation-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-text-evidence-presentation-foundation.mjs"
++    "verify:home-dashboard-live-crypto-bubble-text-evidence-presentation-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-text-evidence-presentation-foundation.mjs",
++    "verify:home-dashboard-live-crypto-bubble-text-evidence-runtime-composition-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-text-evidence-runtime-composition-foundation.mjs"
+   },
+   "dependencies": {
+     "react": "19.2.8",
+diff --git a/scripts/verify-home-dashboard-live-crypto-bubble-text-evidence-runtime-composition-foundation.mjs b/scripts/verify-home-dashboard-live-crypto-bubble-text-evidence-runtime-composition-foundation.mjs
+new file mode 100644
+index 0000000..e3f2b72
+--- /dev/null
++++ b/scripts/verify-home-dashboard-live-crypto-bubble-text-evidence-runtime-composition-foundation.mjs
+@@ -0,0 +1,61 @@
++import { readFileSync } from 'node:fs';
++import assert from 'node:assert/strict';
++
++const component = readFileSync('src/app/HomeDashboardLiveCryptoBubbleTextEvidenceRuntime.tsx', 'utf8');
++const test = readFileSync('tests/home-dashboard-live-crypto-bubble-text-evidence-runtime-composition-foundation.test.tsx', 'utf8');
++const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
++
++assert.equal(
++  pkg.scripts['verify:home-dashboard-live-crypto-bubble-text-evidence-runtime-composition-foundation'],
++  'node scripts/verify-home-dashboard-live-crypto-bubble-text-evidence-runtime-composition-foundation.mjs',
++);
++
++for (const required of [
++  "import { HomeDashboardLiveCryptoBubbleTextEvidence }",
++  'useHomeDashboardLiveCryptoBubbleReactAreaWeightViewModel',
++  'readonly readObservedAt: BinanceSpot24hPublicRestBaselineObservedAtSource',
++  'readonly readEvaluationTimeMs: HomeDashboardLiveMarketSummaryFreshnessEvaluationTimeSource',
++  'readonly options: HomeDashboardLiveCryptoBubbleReactRuntimeBindingOptions',
++  'readObservedAt,',
++  'readEvaluationTimeMs,',
++  'options,',
++  '<HomeDashboardLiveCryptoBubbleTextEvidence model={model} />',
++]) {
++  assert.ok(component.includes(required), `runtime composition missing required released delegation: ${required}`);
++}
++
++for (const forbidden of [
++  'useState(',
++  'useEffect(',
++  'useMemo(',
++  'useCallback(',
++  'setInterval(',
++  'setTimeout(',
++  'requestAnimationFrame(',
++  'Date.now(',
++  'new Date(',
++  'decimalDivide(',
++  'decimalMultiply(',
++  'decimalSubtract(',
++  'parseDecimalString(',
++  'Math.sqrt(',
++  '<svg',
++  '<circle',
++  '<canvas',
++  'style=',
++  "import './",
++  'HomeRoute',
++  'indexedDB',
++]) {
++  assert.ok(!component.includes(forbidden), `runtime composition must not own forbidden behavior: ${forbidden}`);
++}
++
++assert.equal((component.match(/useHomeDashboardLiveCryptoBubbleReactAreaWeightViewModel\(/g) ?? []).length, 1);
++assert.equal((component.match(/<HomeDashboardLiveCryptoBubbleTextEvidence model=\{model\} \/>/g) ?? []).length, 1);
++assert.ok(test.includes('expect(hookMock).toHaveBeenCalledTimes(1)'));
++assert.ok(test.includes('expect(observedAtArg).toBe(readObservedAt)'));
++assert.ok(test.includes('expect(evaluationArg).toBe(readEvaluationTimeMs)'));
++assert.ok(test.includes('expect(optionsArg).toBe(options)'));
++assert.ok(test.includes('renderToStaticMarkup'));
++
++console.log('PASS: Home Live Crypto Bubble textual-evidence runtime composition joins released Gate355 hook output to released Gate356 presenter without owning defaults, runtime state, arithmetic, geometry, styling, route wiring, or persistence.');
+diff --git a/src/app/HomeDashboardLiveCryptoBubbleTextEvidenceRuntime.tsx b/src/app/HomeDashboardLiveCryptoBubbleTextEvidenceRuntime.tsx
+new file mode 100644
+index 0000000..7a14ae3
+--- /dev/null
++++ b/src/app/HomeDashboardLiveCryptoBubbleTextEvidenceRuntime.tsx
+@@ -0,0 +1,33 @@
++import type { BinanceSpot24hPublicRestBaselineObservedAtSource } from '../services/market-data';
++import type { HomeDashboardLiveMarketSummaryFreshnessEvaluationTimeSource } from '../application/dashboard/homeDashboardLiveMarketSummaryFreshnessObservationBridge';
++import { HomeDashboardLiveCryptoBubbleTextEvidence } from './HomeDashboardLiveCryptoBubbleTextEvidence';
++import {
++  useHomeDashboardLiveCryptoBubbleReactAreaWeightViewModel,
++} from './useHomeDashboardLiveCryptoBubbleReactAreaWeightViewModel';
++import type { HomeDashboardLiveCryptoBubbleReactRuntimeBindingOptions } from './useHomeDashboardLiveCryptoBubblePresentationObservedRuntime';
++
++export interface HomeDashboardLiveCryptoBubbleTextEvidenceRuntimeProps {
++  readonly readObservedAt: BinanceSpot24hPublicRestBaselineObservedAtSource;
++  readonly readEvaluationTimeMs: HomeDashboardLiveMarketSummaryFreshnessEvaluationTimeSource;
++  readonly options: HomeDashboardLiveCryptoBubbleReactRuntimeBindingOptions;
++}
++
++/**
++ * Thin React composition boundary joining the released Gate355 runtime/view-model
++ * hook to the released Gate356 textual evidence presenter. Caller-owned runtime
++ * inputs remain injected; this component adds no defaults, state, effects,
++ * market policy, calculations, geometry, styling, route wiring, or persistence.
++ */
++export function HomeDashboardLiveCryptoBubbleTextEvidenceRuntime({
++  readObservedAt,
++  readEvaluationTimeMs,
++  options,
++}: HomeDashboardLiveCryptoBubbleTextEvidenceRuntimeProps) {
++  const model = useHomeDashboardLiveCryptoBubbleReactAreaWeightViewModel(
++    readObservedAt,
++    readEvaluationTimeMs,
++    options,
++  );
++
++  return <HomeDashboardLiveCryptoBubbleTextEvidence model={model} />;
++}
+diff --git a/tests/home-dashboard-live-crypto-bubble-text-evidence-runtime-composition-foundation.test.tsx b/tests/home-dashboard-live-crypto-bubble-text-evidence-runtime-composition-foundation.test.tsx
+new file mode 100644
+index 0000000..412e19c
+--- /dev/null
++++ b/tests/home-dashboard-live-crypto-bubble-text-evidence-runtime-composition-foundation.test.tsx
+@@ -0,0 +1,46 @@
++import { renderToStaticMarkup } from 'react-dom/server';
++import { describe, expect, it, vi } from 'vitest';
++import { HomeDashboardLiveCryptoBubbleTextEvidenceRuntime } from '../src/app/HomeDashboardLiveCryptoBubbleTextEvidenceRuntime';
++import type { HomeDashboardLiveCryptoBubbleReactAreaWeightViewModel } from '../src/app/homeDashboardLiveCryptoBubbleReactAreaWeightViewModel';
++import type { HomeDashboardLiveCryptoBubbleReactRuntimeBindingOptions } from '../src/app/useHomeDashboardLiveCryptoBubblePresentationObservedRuntime';
++
++const hookMock = vi.hoisted(() => vi.fn());
++
++vi.mock('../src/app/useHomeDashboardLiveCryptoBubbleReactAreaWeightViewModel', () => ({
++  useHomeDashboardLiveCryptoBubbleReactAreaWeightViewModel: hookMock,
++}));
++
++describe('Home Live Crypto Bubble textual-evidence runtime composition foundation', () => {
++  it('delegates the exact caller-owned runtime inputs once and renders the exact returned model', () => {
++    const readObservedAt = () => '2026-09-10T13:55:00.000Z';
++    const readEvaluationTimeMs = () => 1_789_050_900_000;
++    const options = { marker: 'exact-options-reference' } as unknown as HomeDashboardLiveCryptoBubbleReactRuntimeBindingOptions;
++    const returnedModel = {
++      runtimeState: {
++        status: 'starting',
++        latestObservation: null,
++        lastError: null,
++      },
++      areaWeightProjection: null,
++    } as HomeDashboardLiveCryptoBubbleReactAreaWeightViewModel;
++    hookMock.mockReturnValue(returnedModel);
++
++    const html = renderToStaticMarkup(
++      <HomeDashboardLiveCryptoBubbleTextEvidenceRuntime
++        readObservedAt={readObservedAt}
++        readEvaluationTimeMs={readEvaluationTimeMs}
++        options={options}
++      />,
++    );
++
++    expect(hookMock).toHaveBeenCalledTimes(1);
++    const [observedAtArg, evaluationArg, optionsArg] = hookMock.mock.calls[0];
++    expect(observedAtArg).toBe(readObservedAt);
++    expect(evaluationArg).toBe(readEvaluationTimeMs);
++    expect(optionsArg).toBe(options);
++    expect(html).toContain('aria-label="Live Crypto Bubble market evidence"');
++    expect(html).toContain('data-runtime-status="starting"');
++    expect(html).toContain('data-projection-status="none"');
++    expect(html).toContain('No market observation');
++  });
++});
