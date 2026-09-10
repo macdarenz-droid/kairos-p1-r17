@@ -43,7 +43,7 @@ jobs:
           test "$(stat -c%s "$BASE_ZIP")" = "1658313"
           echo "ab1ee95c0dc45b5847b6e2b7855c9b6dddef6590c630aaad889c739f3705111d  $BASE_ZIP" | sha256sum -c -
           test -f "$PATCH"
-          test "$(git hash-object "$PATCH")" = "8368500a821427f29bca5eb812dd2ac38e9aba34"
+          test "$(git hash-object "$PATCH")" = "97430b5fb1d8088f9ac75a66bea0611c9a1007b3"
 
           rm -rf "$WORK" "$BASE"
           mkdir -p "$WORK" "$BASE"
