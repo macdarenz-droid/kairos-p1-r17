@@ -1,0 +1,295 @@
+diff --git a/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_REACT_AREA_WEIGHT_VIEW_MODEL_FOUNDATION_REPORT_2026-09-10.md b/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_REACT_AREA_WEIGHT_VIEW_MODEL_FOUNDATION_REPORT_2026-09-10.md
+new file mode 100644
+index 0000000..bc74091
+--- /dev/null
++++ b/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_REACT_AREA_WEIGHT_VIEW_MODEL_FOUNDATION_REPORT_2026-09-10.md
+@@ -0,0 +1,26 @@
++# Kairos Home Dashboard Live Crypto Bubble React Area-Weight View-Model Foundation
++
++## Responsibility
++
++This candidate adds one pure app-level composition seam between the canonically released Gate351 React runtime state and the Gate352 normalized area-weight projection. It prepares released state for a later visible renderer without selecting any user-facing geometry or design semantics.
++
++The view model preserves the exact Gate351 runtime-state object by reference. When no semantic observation exists it exposes `areaWeightProjection: null`. When one exists it passes only the exact `presentationStateProjection` into `projectHomeDashboardLiveCryptoBubbleAreaWeights(...)` and exposes that exact Gate352 result separately.
++
++## Semantics
++
++- No observation means no fabricated area-weight evidence.
++- The exact Gate351 runtime-state reference is always preserved, including status and error evidence.
++- The exact latest Gate349 semantic observation remains reachable through that released runtime-state reference.
++- Gate352 receives only the exact released semantic projection and remains the sole normalized area-weight derivation owner.
++- A later acquisition failure does not erase the last authoritative semantic observation or its derived area-weight evidence.
++- An upstream semantic-projection failure remains exact Gate352 non-renderable evidence.
++
++## Ownership / non-scope
++
++This seam owns no acquisition, retry, provider, universe, ranking, Top-N, stablecoin-exclusion, movement, freshness, clock, persistence or market-truth behavior. It does not sort/filter entries or duplicate Gate352 arithmetic.
++
++Pixel radius, minimum/maximum radius, square-root conversion, collision/layout, theme palette/tokens, labels, accessibility copy, interaction, animation, DOM/React rendering and `HomeRoute` wiring remain later presentation responsibilities. Your Trades/journal truth remains completely separate.
++
++## Verification intent
++
++Dedicated regression proves no-observation behavior, exact runtime-state reference preservation, exact Gate352 delegation for a successful semantic observation, last-snapshot preservation across later acquisition failure, bootstrap-error separation, and exact propagation of an upstream semantic-projection failure. Static verification rejects provider/runtime ownership, clocks, sorting/filtering, direct Decimal arithmetic, radius/geometry, styling and visible rendering.
+diff --git a/package.json b/package.json
+index c743234..95cdba5 100644
+--- a/package.json
++++ b/package.json
+@@ -307,7 +307,8 @@
+     "verify:home-dashboard-live-crypto-bubble-presentation-state-projection-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-presentation-state-projection-foundation.mjs",
+     "verify:home-dashboard-live-crypto-bubble-presentation-state-observation-bridge-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-presentation-state-observation-bridge-foundation.mjs",
+     "verify:home-dashboard-live-crypto-bubble-react-runtime-binding-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-react-runtime-binding-foundation.mjs",
+-    "verify:home-dashboard-live-crypto-bubble-area-weight-projection-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-area-weight-projection-foundation.mjs"
++    "verify:home-dashboard-live-crypto-bubble-area-weight-projection-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-area-weight-projection-foundation.mjs",
++    "verify:home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation": "node scripts/verify-home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation.mjs"
+   },
+   "dependencies": {
+     "react": "19.2.8",
+diff --git a/scripts/verify-home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation.mjs b/scripts/verify-home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation.mjs
+new file mode 100644
+index 0000000..6e27857
+--- /dev/null
++++ b/scripts/verify-home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation.mjs
+@@ -0,0 +1,62 @@
++import { readFileSync } from 'node:fs';
++
++const source = readFileSync('src/app/homeDashboardLiveCryptoBubbleReactAreaWeightViewModel.ts', 'utf8');
++const test = readFileSync('tests/home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation.test.ts', 'utf8');
++const report = readFileSync('KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_REACT_AREA_WEIGHT_VIEW_MODEL_FOUNDATION_REPORT_2026-09-10.md', 'utf8');
++const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
++
++for (const token of [
++  'HomeDashboardLiveCryptoBubbleReactAreaWeightViewModel',
++  'runtimeState: HomeDashboardLiveCryptoBubbleReactRuntimeState',
++  'areaWeightProjection: HomeDashboardLiveCryptoBubbleAreaWeightProjectionResult | null',
++  'projectHomeDashboardLiveCryptoBubbleReactAreaWeightViewModel',
++  'const observation = runtimeState.latestObservation',
++  'if (observation === null)',
++  'return { runtimeState, areaWeightProjection: null }',
++  'projectHomeDashboardLiveCryptoBubbleAreaWeights(',
++  'observation.presentationStateProjection',
++]) {
++  if (!source.includes(token)) throw new Error(`React area-weight view-model evidence missing: ${token}`);
++}
++
++if ((source.match(/projectHomeDashboardLiveCryptoBubbleAreaWeights\(/g) ?? []).length !== 1) {
++  throw new Error('React area-weight view model must delegate to Gate352 exactly once');
++}
++
++for (const forbidden of [
++  "from 'react'", 'useEffect', 'useState', 'useMemo', 'Date.now(', 'new Date(', 'setTimeout(', 'setInterval(',
++  'fetch(', 'XMLHttpRequest', 'WebSocket(', 'startBinanceHomeDashboard', '.sort(', '.filter(', '.reverse(',
++  'decimalAdd(', 'decimalSubtract(', 'decimalMultiply(', 'decimalDivide(', 'parseDecimalString(',
++  'Math.sqrt(', 'Math.pow(', 'borderRadius', 'radius:', 'minRadius', 'maxRadius', 'width:', 'height:', 'left:', 'top:',
++  'className=', '<div', '<svg', 'neutralMaxAbsoluteMovementPercent', 'stablecoin', 'topN', 'Top 30',
++  'freshMaxAgeMs', 'staleMaxAgeMs', 'indexedDB',
++]) {
++  if (source.includes(forbidden)) throw new Error(`React area-weight view model broadened ownership: ${forbidden}`);
++}
++
++for (const token of [
++  'preserves exact Gate351 runtime state and exposes no fabricated area weights before the first observation',
++  'derives released Gate352 area weights from the exact latest semantic projection while preserving runtime-state identity',
++  'keeps the last authoritative area-weight evidence available when acquisition later fails',
++  'preserves bootstrap error state without fabricating area-weight evidence when no observation exists',
++  'preserves a released semantic projection failure as exact Gate352 non-renderable evidence',
++]) {
++  if (!test.includes(token)) throw new Error(`Missing React area-weight view-model regression: ${token}`);
++}
++
++for (const token of [
++  'pure app-level composition seam',
++  'preserves the exact Gate351 runtime-state object by reference',
++  'passes only the exact `presentationStateProjection` into `projectHomeDashboardLiveCryptoBubbleAreaWeights(...)`',
++  'Pixel radius, minimum/maximum radius, square-root conversion, collision/layout, theme palette/tokens',
++  'Your Trades/journal truth remains completely separate',
++]) {
++  if (!report.includes(token)) throw new Error(`React area-weight view-model report evidence missing: ${token}`);
++}
++
++const verifyName = 'verify:home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation';
++if (pkg.scripts?.[verifyName] !== 'node scripts/verify-home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation.mjs') {
++  throw new Error('React area-weight view-model verifier registration mismatch');
++}
++
++console.log('PASS: Home Live Crypto Bubble React area-weight view model composes Gate351 state with Gate352 evidence without owning rendering or market truth.');
+diff --git a/src/app/homeDashboardLiveCryptoBubbleReactAreaWeightViewModel.ts b/src/app/homeDashboardLiveCryptoBubbleReactAreaWeightViewModel.ts
+new file mode 100644
+index 0000000..f613194
+--- /dev/null
++++ b/src/app/homeDashboardLiveCryptoBubbleReactAreaWeightViewModel.ts
+@@ -0,0 +1,33 @@
++import {
++  projectHomeDashboardLiveCryptoBubbleAreaWeights,
++  type HomeDashboardLiveCryptoBubbleAreaWeightProjectionResult,
++} from '../application/dashboard/homeDashboardLiveCryptoBubbleAreaWeightProjection';
++import type {
++  HomeDashboardLiveCryptoBubbleReactRuntimeState,
++} from './useHomeDashboardLiveCryptoBubblePresentationObservedRuntime';
++
++export interface HomeDashboardLiveCryptoBubbleReactAreaWeightViewModel {
++  readonly runtimeState: HomeDashboardLiveCryptoBubbleReactRuntimeState;
++  readonly areaWeightProjection: HomeDashboardLiveCryptoBubbleAreaWeightProjectionResult | null;
++}
++
++/**
++ * Pure app-level composition between released React runtime state and the
++ * released normalized Bubble area-weight projection. Visible rendering and
++ * user-facing geometry remain later presentation responsibilities.
++ */
++export function projectHomeDashboardLiveCryptoBubbleReactAreaWeightViewModel(
++  runtimeState: HomeDashboardLiveCryptoBubbleReactRuntimeState,
++): HomeDashboardLiveCryptoBubbleReactAreaWeightViewModel {
++  const observation = runtimeState.latestObservation;
++  if (observation === null) {
++    return { runtimeState, areaWeightProjection: null };
++  }
++
++  return {
++    runtimeState,
++    areaWeightProjection: projectHomeDashboardLiveCryptoBubbleAreaWeights(
++      observation.presentationStateProjection,
++    ),
++  };
++}
+diff --git a/tests/home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation.test.ts b/tests/home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation.test.ts
+new file mode 100644
+index 0000000..0aff69f
+--- /dev/null
++++ b/tests/home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation.test.ts
+@@ -0,0 +1,136 @@
++import { describe, expect, it } from 'vitest';
++import type { DecimalString } from '../src/domain/trades';
++import type { HomeDashboardLiveCryptoBubbleReactRuntimeState } from '../src/app/useHomeDashboardLiveCryptoBubblePresentationObservedRuntime';
++import { projectHomeDashboardLiveCryptoBubbleReactAreaWeightViewModel } from '../src/app/homeDashboardLiveCryptoBubbleReactAreaWeightViewModel';
++import type { HomeDashboardLiveCryptoBubblePresentationStateProjectionResult } from '../src/application/dashboard/homeDashboardLiveCryptoBubblePresentationStateProjection';
++import type { HomeDashboardLiveCryptoBubblePresentationStateObservation } from '../src/application/dashboard/homeDashboardLiveCryptoBubblePresentationStateObservationBridge';
++import type { LiveMarketSummaryFact, MarketDataInstrument } from '../src/services/market-data/marketDataTypes';
++
++const d = (value: string) => value as DecimalString;
++const instrument = (symbol: string): MarketDataInstrument => ({ venue: 'binance-spot', symbol });
++
++function fact(current: MarketDataInstrument, quoteVolume24h: DecimalString): LiveMarketSummaryFact {
++  return {
++    instrument: current,
++    lastPrice: d('100'),
++    open24h: d('100'),
++    high24h: d('110'),
++    low24h: d('90'),
++    baseVolume24h: d('1000'),
++    quoteVolume24h,
++    observedAt: '2026-09-10T05:00:00.000Z',
++    sourceTimestamp: null,
++  };
++}
++
++function successfulPresentationState(volumes: readonly (DecimalString | null)[]): Extract<HomeDashboardLiveCryptoBubblePresentationStateProjectionResult, { ok: true }> {
++  const entries = volumes.map((volume, index) => {
++    const current = instrument(['BTCUSDT', 'ETHUSDT', 'SOLUSDT'][index] ?? `T${index}USDT`);
++    if (volume === null) {
++      return {
++        metricInput: { instrument: current, fact: null, ageMs: null, freshness: null, quoteVolume24h: null, movementPercent24h: null },
++        availability: 'missing' as const,
++        movementSemantic: null,
++        freshnessState: 'missing' as const,
++      };
++    }
++    const currentFact = fact(current, volume);
++    return {
++      metricInput: { instrument: current, fact: currentFact, ageMs: 1000, freshness: 'fresh' as const, quoteVolume24h: volume, movementPercent24h: d('1') },
++      availability: 'present' as const,
++      movementSemantic: 'positive' as const,
++      freshnessState: 'fresh' as const,
++    };
++  });
++
++  return {
++    ok: true,
++    metricObservation: { freshnessObservation: {} as never, bubbleMetricProjection: { ok: true, evaluationTimeMs: 1, entries: entries.map((entry) => entry.metricInput) } },
++    entries,
++  };
++}
++
++function runtimeState(
++  status: HomeDashboardLiveCryptoBubbleReactRuntimeState['status'],
++  observation: HomeDashboardLiveCryptoBubblePresentationStateObservation | null,
++  lastError: unknown | null = null,
++): HomeDashboardLiveCryptoBubbleReactRuntimeState {
++  return { status, latestObservation: observation, lastError };
++}
++
++describe('Home Dashboard Live Crypto Bubble React area-weight view-model foundation', () => {
++  it('preserves exact Gate351 runtime state and exposes no fabricated area weights before the first observation', () => {
++    const state = runtimeState('starting', null);
++    const result = projectHomeDashboardLiveCryptoBubbleReactAreaWeightViewModel(state);
++
++    expect(result.runtimeState).toBe(state);
++    expect(result.areaWeightProjection).toBeNull();
++  });
++
++  it('derives released Gate352 area weights from the exact latest semantic projection while preserving runtime-state identity', () => {
++    const presentationStateProjection = successfulPresentationState([d('100'), d('25'), null]);
++    const observation: HomeDashboardLiveCryptoBubblePresentationStateObservation = {
++      metricObservation: presentationStateProjection.metricObservation,
++      presentationStateProjection,
++    };
++    const state = runtimeState('running', observation);
++    const result = projectHomeDashboardLiveCryptoBubbleReactAreaWeightViewModel(state);
++
++    expect(result.runtimeState).toBe(state);
++    expect(result.areaWeightProjection?.ok).toBe(true);
++    if (result.areaWeightProjection?.ok !== true) return;
++    expect(result.areaWeightProjection.presentationStateProjection).toBe(presentationStateProjection);
++    expect(result.areaWeightProjection.entries.map((entry) => entry.areaWeight)).toEqual([d('1'), d('0.25'), null]);
++    result.areaWeightProjection.entries.forEach((entry, index) => {
++      expect(entry.presentationEntry).toBe(presentationStateProjection.entries[index]);
++    });
++  });
++
++  it('keeps the last authoritative area-weight evidence available when acquisition later fails', () => {
++    const presentationStateProjection = successfulPresentationState([d('10'), d('5')]);
++    const observation: HomeDashboardLiveCryptoBubblePresentationStateObservation = {
++      metricObservation: presentationStateProjection.metricObservation,
++      presentationStateProjection,
++    };
++    const error = new Error('later acquisition failed');
++    const state = runtimeState('acquisition-failed', observation, error);
++    const result = projectHomeDashboardLiveCryptoBubbleReactAreaWeightViewModel(state);
++
++    expect(result.runtimeState).toBe(state);
++    expect(result.runtimeState.lastError).toBe(error);
++    expect(result.areaWeightProjection?.ok).toBe(true);
++    if (result.areaWeightProjection?.ok !== true) return;
++    expect(result.areaWeightProjection.entries.map((entry) => entry.areaWeight)).toEqual([d('1'), d('0.5')]);
++  });
++
++  it('preserves bootstrap error state without fabricating area-weight evidence when no observation exists', () => {
++    const error = new Error('bootstrap failed');
++    const state = runtimeState('bootstrap-error', null, error);
++    const result = projectHomeDashboardLiveCryptoBubbleReactAreaWeightViewModel(state);
++
++    expect(result.runtimeState).toBe(state);
++    expect(result.runtimeState.lastError).toBe(error);
++    expect(result.areaWeightProjection).toBeNull();
++  });
++
++  it('preserves a released semantic projection failure as exact Gate352 non-renderable evidence', () => {
++    const presentationStateProjection: HomeDashboardLiveCryptoBubblePresentationStateProjectionResult = {
++      ok: false,
++      reason: 'neutral-threshold-invalid',
++      metricObservation: {} as never,
++    };
++    const observation: HomeDashboardLiveCryptoBubblePresentationStateObservation = {
++      metricObservation: presentationStateProjection.metricObservation,
++      presentationStateProjection,
++    };
++    const state = runtimeState('running', observation);
++    const result = projectHomeDashboardLiveCryptoBubbleReactAreaWeightViewModel(state);
++
++    expect(result.runtimeState).toBe(state);
++    expect(result.areaWeightProjection).toEqual({
++      ok: false,
++      reason: 'presentation-state-projection-invalid',
++      presentationStateProjection,
++    });
++  });
++});
