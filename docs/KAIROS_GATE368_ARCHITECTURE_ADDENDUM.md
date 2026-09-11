@@ -31,7 +31,7 @@ Gate368 releases `src/app/useHomeDashboardLiveCryptoBubbleBrowserRadiusScaleView
 5. forward the exact caller-owned runtime-options reference unchanged; and
 6. return the exact Gate366 `HomeDashboardLiveCryptoBubbleReactRadiusScaleViewModel` result unchanged.
 
-Gate351 remains the React lifecycle/state owner. Gate352 remains normalized area-weight arithmetic owner. Gate354 remains the area-weight view-model owner. Gate355 remains area-weight React-hook composition owner. Gate358 remains the browser wall-clock owner. Gate364 remains normalized `sqrt(areaWeight)` radius-scale arithmetic owner. Gate365 remains pure radius-scale view-model projection owner. Gate366 remains the injected React radius-scale hook-composition owner. Gate368 adds only the browser clock-injection edge.
+Gate351 remains the React lifecycle/state owner. Gate352 remains normalized area-weight arithmetic owner. Gate354 remains the area-weight view-model owner. Gate355 remains area-weight React-hook composition owner. Gate358 remains the browser wall-clock owner. Gate360 remains runtime product-configuration-to-binding-options composition owner. Gate364 remains normalized `sqrt(areaWeight)` radius-scale arithmetic owner. Gate365 remains pure radius-scale view-model projection owner. Gate366 remains the injected React radius-scale hook-composition owner. Gate368 adds only the browser clock-injection edge.
 
 ## Explicit non-scope
 
@@ -51,17 +51,14 @@ Live Crypto Bubble Map and Your Trades Bubble Map remain separate authoritative 
 
 ## Next dependency-safe responsibility proof
 
-Fresh Gate368 source now exposes a browser-ready React radius-scale view model but still intentionally stops before pixel geometry and visible Bubble rendering. The released Gate364 radius-scale report explicitly leaves responsive pixel sizing and collision/layout to later presentation owners and requires them to consume normalized `radiusScale` without reinterpreting market or area truth.
+A deeper fresh source trace after the canonical PASS shows that the released browser radius-scale hook still accepts `HomeDashboardLiveCryptoBubbleReactRuntimeBindingOptions`, while the actual `HomeRoute` caller owns a `HomeDashboardLiveCryptoBubbleRuntimeProductConfiguration`. Gate360 already owns the pure conversion from that exact configuration to runtime-binding options, and Gate361 established the same configuration-to-browser-runtime composition pattern for the existing textual-evidence path. No released radius-scale-specific configured hook closes this exact dependency edge yet.
 
-The user-approved product contract does not define concrete minimum/maximum pixel radii, viewport breakpoints, collision packing or label-fit values. Those are user-facing presentation choices and must not be invented by a technical worker. Therefore the next dependency-safe technical responsibility must remain **policy-parameterized** and choose no product/design constants.
+Therefore the smallest dependency-safe next responsibility is **configured browser React radius-scale hook composition only**:
+1. accept one exact caller-owned `HomeDashboardLiveCryptoBubbleRuntimeProductConfiguration` reference;
+2. delegate that exact configuration once to released Gate360 `composeHomeDashboardLiveCryptoBubbleRuntimeBindingOptions(...)`;
+3. pass the exact returned runtime-options object once to released Gate368 `useHomeDashboardLiveCryptoBubbleBrowserRadiusScaleViewModel(...)`;
+4. return the exact Gate368 radius-scale view-model result unchanged.
 
-The smallest safe next responsibility is a **pure pixel-radius projection contract with caller-owned bounds only**:
-1. accept one released Gate364 `HomeDashboardLiveCryptoBubbleRadiusScaleProjectionResult` plus an explicit caller-owned pixel-radius policy containing finite non-negative `minimumRadiusPx` and `maximumRadiusPx` with `maximumRadiusPx >= minimumRadiusPx`;
-2. preserve upstream failure evidence without reinterpreting it;
-3. preserve exact entry references and order;
-4. map `radiusScale: null` to `radiusPx: null`;
-5. for finite normalized `radiusScale` in `[0,1]`, project only `radiusPx = minimumRadiusPx + radiusScale * (maximumRadiusPx - minimumRadiusPx)`;
-6. fail closed on invalid policy or inconsistent/non-finite/out-of-range successful radius-scale evidence; and
-7. choose no default pixel values, viewport breakpoints, collision/packing/layout, labels, palette/theme/CSS, opacity, interaction, animation or route behavior.
+This seam must add no state/effects/memo/cache, browser clocks, provider/product policy, radius arithmetic, pixel min/max values, viewport/collision/layout/labels, palette/theme/CSS/motion, route mutation, persistence or Your Trades behavior. It only closes the already-released product-configuration-to-browser-radius-scale-hook dependency edge.
 
-This boundary would establish only the deterministic normalized-scale-to-caller-owned-pixel-bounds arithmetic seam required before later responsive policy selection and layout/rendering. Concrete pixel bounds remain a separate user-facing presentation-policy decision; the worker must not invent them.
+Responsive pixel sizing remains a later presentation responsibility. The user-approved product contract does not specify concrete minimum/maximum pixel radii, breakpoints, collision packing or label-fit values, so those presentation-policy choices must not be invented by this technical composition slice.
