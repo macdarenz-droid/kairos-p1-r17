@@ -132,7 +132,7 @@ jobs:
           npm run verify:live-crypto-bubble-metric-input-projection-foundation
           npm run verify:live-market-summary-24h-percentage-movement-foundation
           npm run verify:home-dashboard-live-market-summary-freshness-observation-bridge-foundation
-          npm run verify:home-dashboard-live-market-summary-freshness-evaluation-projection-foundation
+          npm run verify:live-market-summary-freshness-evaluation-projection-foundation
           npm run verify:binance-home-dashboard-live-market-runtime-bootstrap-foundation
           npm run verify:p21:17-live-market-summary-baseline-state-orchestration-foundation
           npm run verify:p21:1-home-dashboard-route-ownership-foundation
