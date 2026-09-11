@@ -9,3 +9,6 @@ Visual radii now use absolute 24h percentage movement, bounded at 20%, square-ro
 Width/height/position interpolate for 800ms. Instrument identity and hover animation remain stable across fact/ranking refreshes. Market evidence stays mounted but hidden and can be restored later.
 
 Validation: local TypeScript/build passed; full unit suite: 287 files / 1131 tests passed; final focused map rerun: 9 tests passed; presentation verifier passed. Browser executable absent locally and download timed out; canonical browser stage remains mandatory. Canonical pass is pending; this candidate is not GOLDEN.
+
+
+R1 browser-verifier repair: Gate390 run34627059764 failed only at sameAnimation, while DOM/canvas identity and updated facts passed. Element.getAnimations includes CSS transitions as well as CSS animations. Adding resize transitions invalidated index-zero selection. Select kairos-glass-hover by animationName and require the same object to remain present and running. Application source is unchanged. All browser assertions remain mandatory. https://developer.mozilla.org/en-US/docs/Web/API/Element/getAnimations

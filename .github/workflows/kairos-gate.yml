@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_HOME_DASHBOARD_PERCENTAGE_BUBBLE_UI_AMENDMENT_CANDIDATE_2026-09-11.zip'
+      - 'KAIROS_HOME_DASHBOARD_PERCENTAGE_BUBBLE_UI_AMENDMENT_CANDIDATE_2026-09-11-R1.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,7 +13,7 @@ permissions:
 
 env:
   BASE_ZIP: KAIROS_HOME_DASHBOARD_GLASS_BUBBLE_LABEL_FORMATTING_REPAIR_CANDIDATE_2026-09-11.zip
-  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_PERCENTAGE_BUBBLE_UI_AMENDMENT_CANDIDATE_2026-09-11.zip
+  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_PERCENTAGE_BUBBLE_UI_AMENDMENT_CANDIDATE_2026-09-11-R1.zip
 
 jobs:
   verify-current-candidate:
@@ -39,7 +39,7 @@ jobs:
 
           for key, size, digest in [
             ('BASE_ZIP', 3405893, 'd3233db7f672eaee87a0efe942acf361a092d1c2d51e0009b407aa38b1d90da1'),
-            ('CANDIDATE_ZIP', 3330188, '9127ab8748c35bfa62e4f97a38599bec99b4e174cbf07bb2692b1a76f3d5a9d0'),
+            ('CANDIDATE_ZIP', 3330448, '3e954cbbdebf5ea19c60cad1cdd54ff06a8857f3f0d6bfa3b54288eecf3c15c5'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
