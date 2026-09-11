@@ -20,10 +20,6 @@ Local TypeScript compilation, production build, 19 focused behavior/composition/
 A real Chromium browser stage additionally checks material alpha, visible hover, pause, reduced motion, unchanged coordinates across all3 existing themes plus a light stress surface, 8/30 circle views, collisions, overflow and page errors. Screenshots and JSON results are uploaded with gate evidence. Local Chromium152 completed these browser checks successfully; its mobile dark/light screenshots were visually inspected. A missing Bitcoin font glyph was caught and replaced with a scalable SVG icon, then the browser checks passed again. Canonical browser execution is still pending until its stage completes; local/source checks alone are not canonical PASS.
 No old gate, verifier or historical test is weakened. Only after canonical success can this become released ownership. No deployment or full visual-fidelity/performance sign-off is claimed merely from CI.
 
-## Publication checkpoint
-Parent main: abbc1014bc18926652a628ddd50efd666357a0a8.
-Canonical candidate: KAIROS_HOME_DASHBOARD_APPROVED_GLASS_BUBBLE_PRESENTATION_AMENDMENT_CANDIDATE_2026-09-11.zip
-Bytes: 3323981
-SHA-256: fbca690742849e378e3517e4da89695179b848fe7569b69bb7e201f316597871
-Git blob: 0f964c8be8ef54ba92dd90445e4e1a3a307077de
-Exact delta: 14 files, zero removals. Direct Git Data publication, no bridge. Local clean ZIP integrity and fresh extraction verified. Canonical run is pending publication; do not promote from this document. Current manual user approval authorizes this gate; automation enablement is unchanged.
+## R1 — design-system ownership repair
+Gate385/run34602026483 failed the unchanged P2.1 design-system verifier on literal spacing in the glass CSS. The canonical production build, glass identity, browser transparency/themes/motion and full unit regression had passed. Historical closures and candidate upload were skipped, so Gate384 remains GOLDEN.
+R1 is reconstructed from the exact Gate384 archive plus the intended 14-file glass amendment. The label gap and visually hidden element geometry now derive from the existing shared spacing token, including its negative margin. No verifier exception or suppression is added. Approved artwork, animation, data owners and scope are preserved. The unchanged design-system check passed locally after the repair; real Chromium checks also passed again. Local verify:doctor encountered EAI_AGAIN resolving the npm registry and is recorded as HOLD, not PASS. All canonical verifier and environment requirements remain enabled for the new gate.

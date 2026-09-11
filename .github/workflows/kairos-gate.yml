@@ -5,7 +5,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_HOME_DASHBOARD_APPROVED_GLASS_BUBBLE_PRESENTATION_AMENDMENT_CANDIDATE_2026-09-11.zip'
+      - 'KAIROS_HOME_DASHBOARD_APPROVED_GLASS_BUBBLE_PRESENTATION_AMENDMENT_R1_CANDIDATE_2026-09-11.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -14,7 +14,7 @@ permissions:
 
 env:
   BASE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_LAYOUT_BOUNDS_POLICY_CONTRACT_FOUNDATION_CANDIDATE_2026-09-11.zip
-  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_APPROVED_GLASS_BUBBLE_PRESENTATION_AMENDMENT_CANDIDATE_2026-09-11.zip
+  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_APPROVED_GLASS_BUBBLE_PRESENTATION_AMENDMENT_R1_CANDIDATE_2026-09-11.zip
 
 jobs:
   verify-current-candidate:
@@ -37,7 +37,7 @@ jobs:
           import hashlib, os, zipfile
           for key, size, digest in [
             ('BASE_ZIP', 1712853, '017d48b7d69fe984f0700378e4e00deb531213cfac558e926f2a255c562779e4'),
-            ('CANDIDATE_ZIP', 3323981, 'fbca690742849e378e3517e4da89695179b848fe7569b69bb7e201f316597871'),
+            ('CANDIDATE_ZIP', 3324380, '856d6d62929e7bb0f305f4ba0327522470bdc86c85c1a7b5b5fa5ddcfbdcda79'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -182,6 +182,7 @@ jobs:
       - name: Approved glass presentation identity and focused regression
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p2:design-system
           npm run verify:home-dashboard-glass-bubble-presentation-amendment
           npx vitest run tests/home-dashboard-glass-bubble-map.test.tsx
 
