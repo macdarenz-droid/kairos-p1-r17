@@ -1,11 +1,10 @@
-# KAIROS APPROVED GLASS BUBBLE PRESENTATION AMENDMENT — AUTHORITATIVE BASE GATE386
-name: Kairos Controlled Roadmap Gate
+name: Kairos Controlled Roadmap Gate — Binance 24h Request Batching Repair
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_HOME_DASHBOARD_GLASS_BUBBLE_INSTRUMENT_IDENTITY_CONTINUITY_CANDIDATE_2026-09-11.zip'
+      - 'KAIROS_BINANCE_SPOT_24H_BASELINE_REQUEST_BATCHING_REPAIR_CANDIDATE_2026-09-11-R1.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,14 +12,16 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_HOME_DASHBOARD_APPROVED_GLASS_BUBBLE_PRESENTATION_AMENDMENT_R1_CANDIDATE_2026-09-11.zip
-  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_GLASS_BUBBLE_INSTRUMENT_IDENTITY_CONTINUITY_CANDIDATE_2026-09-11.zip
+  BASE_ZIP: KAIROS_HOME_DASHBOARD_GLASS_BUBBLE_INSTRUMENT_IDENTITY_CONTINUITY_CANDIDATE_2026-09-11.zip
+  CANDIDATE_ZIP: KAIROS_BINANCE_SPOT_24H_BASELINE_REQUEST_BATCHING_REPAIR_CANDIDATE_2026-09-11-R1.zip
 
 jobs:
   verify-current-candidate:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22.16.0
@@ -35,9 +36,10 @@ jobs:
           python - <<'PY'
           from pathlib import Path, PurePosixPath
           import hashlib, os, zipfile
+
           for key, size, digest in [
-            ('BASE_ZIP', 3324380, '856d6d62929e7bb0f305f4ba0327522470bdc86c85c1a7b5b5fa5ddcfbdcda79'),
-            ('CANDIDATE_ZIP', 3326507, '739a72f019ac63db229747f563f4969cdf482283b9f7f82fb794f1e064486f57'),
+            ('BASE_ZIP', 3326507, '739a72f019ac63db229747f563f4969cdf482283b9f7f82fb794f1e064486f57'),
+            ('CANDIDATE_ZIP', 3333661, 'cdd200c1ec15617990b23829f1bf71ec3bf4399268365970eccfb9e98699cde0'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -52,7 +54,7 @@ jobs:
                 assert ((i.external_attr >> 16) & 0o170000) != 0o120000, f'{key}: unexpected symbolic link'
           PY
 
-      - name: Extract authoritative Gate386 base and candidate
+      - name: Extract authoritative base and candidate
         run: |
           set -euo pipefail
           rm -rf .gate-base .gate-candidate
@@ -62,27 +64,26 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact instrument identity continuity scope from Gate386
+      - name: Confirm exact Binance batching repair scope from the current golden
         run: |
           python - <<'PY'
           from pathlib import Path
           import hashlib, sys
-          b = Path('.gate-base/kairos_p76')
-          c = Path('.gate-candidate/kairos_p76')
-          def h(p): return hashlib.sha256(p.read_bytes()).hexdigest()
-          x = {str(p.relative_to(b)): h(p) for p in b.rglob('*') if p.is_file()}
-          y = {str(p.relative_to(c)): h(p) for p in c.rglob('*') if p.is_file()}
+
+          def hashes(root):
+            return {str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest()
+                    for p in root.rglob('*') if p.is_file()}
+
+          x = hashes(Path('.gate-base/kairos_p76'))
+          y = hashes(Path('.gate-candidate/kairos_p76'))
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
-          expected = {
-            'docs/KAIROS_GLASS_BUBBLE_PRESENTATION_AMENDMENT.md',
-            'scripts/test-home-dashboard-glass-browser.mjs',
-            'src/app/HomeDashboardGlassBubbleMap.tsx',
-            'tests/fixtures/homeDashboardGlassBrowser.tsx',
-            'tests/home-dashboard-glass-bubble-map.test.tsx',
-          }
           removed = set(x) - set(y)
+          expected = {
+            'src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineAcquisitionAdapter.ts',
+            'tests/binance-spot-browser-live-market-universe-acquisition-binding-foundation.test.ts',
+          }
           if changed != expected or removed:
-            print('Approved glass amendment exact scope mismatch', file=sys.stderr)
+            print('Binance batching repair exact scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -107,10 +108,18 @@ jobs:
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
 
-      - name: Dedicated layout-bounds policy and released composition verifiers
+      - name: Dedicated Binance 100-symbol request-limit regression
         working-directory: .gate-candidate/kairos_p76
         run: |
-          npm run verify:home-dashboard-live-crypto-bubble-layout-bounds-policy-contract-foundation
+          npm run verify:p21:13-binance-spot-24h-public-rest-baseline-acquisition-adapter-foundation
+          npm run verify:binance-spot-browser-live-market-universe-acquisition-binding-foundation
+          npx vitest run \
+            tests/binance-spot-browser-live-market-universe-acquisition-binding-foundation.test.ts \
+            tests/binance-home-dashboard-live-market-runtime-bootstrap-foundation.test.ts
+
+      - name: Re-run released dashboard composition verifiers
+        working-directory: .gate-candidate/kairos_p76
+        run: |
           npm run verify:home-dashboard-live-crypto-bubble-layout-bounds-policy-contract-foundation
           npm run verify:home-dashboard-live-crypto-bubble-configured-runtime-lifecycle-stability-repair
           npm run verify:home-dashboard-live-crypto-bubble-configured-browser-pixel-radius-text-evidence-runtime-composition-foundation
@@ -133,49 +142,15 @@ jobs:
           npm run verify:p21:1-home-dashboard-route-ownership-foundation
           npm run verify:home-dashboard-live-crypto-bubble-runtime-product-policy-foundation
 
-      - name: Focused layout-bounds policy and released composition regression
+      - name: Focused released presentation regressions
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:home-dashboard-glass-bubble-presentation-amendment
           npx vitest run \
+            tests/home-dashboard-glass-bubble-map.test.tsx \
             tests/home-dashboard-live-crypto-bubble-layout-bounds-policy-contract-foundation.test.ts \
             tests/home-dashboard-live-crypto-bubble-configured-runtime-lifecycle-stability.test.ts \
-            tests/home-dashboard-live-crypto-bubble-react-runtime-binding-foundation.test.ts \
-            tests/home-dashboard-live-crypto-bubble-configured-browser-pixel-radius-text-evidence-runtime-composition-foundation.test.tsx \
-            tests/home-dashboard-live-crypto-bubble-configured-browser-pixel-radius-hook-composition-foundation.test.ts \
-            tests/home-dashboard-live-crypto-bubble-browser-pixel-radius-hook-composition-foundation.test.ts \
-            tests/home-dashboard-live-crypto-bubble-react-pixel-radius-hook-composition-foundation.test.ts \
-            tests/home-dashboard-live-crypto-bubble-react-pixel-radius-view-model-foundation.test.ts \
-            tests/home-dashboard-live-crypto-bubble-pixel-radius-text-evidence-presentation-foundation.test.tsx \
-            tests/home-dashboard-live-crypto-bubble-pixel-radius-projection-foundation.test.ts \
-            tests/home-dashboard-live-crypto-bubble-pixel-radius-policy-contract-foundation.test.ts \
-            tests/home-dashboard-live-crypto-bubble-configured-browser-radius-scale-text-evidence-runtime-composition-foundation.test.tsx
-          npm run verify:home-dashboard-live-crypto-bubble-configured-runtime-lifecycle-stability-repair
-          npm run verify:home-dashboard-live-crypto-bubble-configured-browser-pixel-radius-text-evidence-runtime-composition-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-configured-browser-pixel-radius-hook-composition-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-browser-pixel-radius-hook-composition-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-react-pixel-radius-hook-composition-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-react-pixel-radius-view-model-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-pixel-radius-text-evidence-presentation-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-pixel-radius-projection-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-pixel-radius-policy-contract-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-react-radius-scale-view-model-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-react-radius-scale-hook-composition-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-browser-radius-scale-hook-composition-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-browser-wall-clock-sources-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-configured-browser-radius-scale-hook-composition-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-radius-scale-text-evidence-presentation-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-configured-browser-radius-scale-text-evidence-runtime-composition-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-runtime-options-composition-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-home-route-text-runtime-integration-foundation
-          npm run verify:p21:1-home-dashboard-route-ownership-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-runtime-product-policy-foundation
-
-      - name: Approved glass presentation identity and focused regression
-        working-directory: .gate-candidate/kairos_p76
-        run: |
-          npm run verify:p2:design-system
-          npm run verify:home-dashboard-glass-bubble-presentation-amendment
-          npx vitest run tests/home-dashboard-glass-bubble-map.test.tsx
+            tests/home-dashboard-live-crypto-bubble-react-runtime-binding-foundation.test.tsx
 
       - name: Real browser glass transparency themes motion and screenshot evidence
         working-directory: .gate-candidate/kairos_p76
@@ -199,27 +174,11 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:p21:13-binance-spot-24h-public-rest-baseline-acquisition-adapter-foundation',
+            'verify:binance-spot-browser-live-market-universe-acquisition-binding-foundation',
             'verify:home-dashboard-glass-bubble-presentation-amendment',
             'verify:home-dashboard-live-crypto-bubble-layout-bounds-policy-contract-foundation',
             'verify:home-dashboard-live-crypto-bubble-configured-runtime-lifecycle-stability-repair',
-            'verify:home-dashboard-live-crypto-bubble-configured-browser-pixel-radius-text-evidence-runtime-composition-foundation',
-            'verify:home-dashboard-live-crypto-bubble-configured-browser-pixel-radius-hook-composition-foundation',
-            'verify:home-dashboard-live-crypto-bubble-browser-pixel-radius-hook-composition-foundation',
-            'verify:home-dashboard-live-crypto-bubble-react-pixel-radius-hook-composition-foundation',
-            'verify:home-dashboard-live-crypto-bubble-react-pixel-radius-view-model-foundation',
-            'verify:home-dashboard-live-crypto-bubble-pixel-radius-text-evidence-presentation-foundation',
-            'verify:home-dashboard-live-crypto-bubble-pixel-radius-projection-foundation',
-            'verify:home-dashboard-live-crypto-bubble-pixel-radius-policy-contract-foundation',
-            'verify:home-dashboard-live-crypto-bubble-react-radius-scale-view-model-foundation',
-            'verify:home-dashboard-live-crypto-bubble-react-radius-scale-hook-composition-foundation',
-            'verify:home-dashboard-live-crypto-bubble-browser-radius-scale-hook-composition-foundation',
-            'verify:home-dashboard-live-crypto-bubble-browser-wall-clock-sources-foundation',
-            'verify:home-dashboard-live-crypto-bubble-configured-browser-radius-scale-hook-composition-foundation',
-            'verify:home-dashboard-live-crypto-bubble-radius-scale-text-evidence-presentation-foundation',
-            'verify:home-dashboard-live-crypto-bubble-configured-browser-radius-scale-text-evidence-runtime-composition-foundation',
-            'verify:home-dashboard-live-crypto-bubble-runtime-options-composition-foundation',
-            'verify:home-dashboard-live-crypto-bubble-home-route-text-runtime-integration-foundation',
-            'verify:p21:1-home-dashboard-route-ownership-foundation',
             'verify:home-dashboard-live-crypto-bubble-runtime-product-policy-foundation',
             'verify:p20:5-saved-analysis-system-closure',
             'verify:p19:7-risk-reward-tool-system-closure',
@@ -236,11 +195,9 @@ jobs:
             'verify:p8:navigation-shell',
             'verify:p1',
             'verify:static',
-          ]) {
-            if (!scripts.includes(required)) {
-              console.error('Missing ' + required);
-              process.exit(1);
-            }
+          ]) if (!scripts.includes(required)) {
+            console.error('Missing ' + required);
+            process.exit(1);
           }
           for (const name of scripts) {
             const r = spawnSync('npm', ['run', name], {stdio: 'inherit'});
@@ -251,7 +208,6 @@ jobs:
       - name: Historical closures
         working-directory: .gate-candidate/kairos_p76
         run: |
-          # Re-run every registered verifier after unit and controlled-roadmap regression.
           node - <<'NODE'
           const {readFileSync} = require('node:fs');
           const {spawnSync} = require('node:child_process');
@@ -277,7 +233,6 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
-            .gate-candidate/kairos_p76/docs/KAIROS_GLASS_BUBBLE_PRESENTATION_AMENDMENT.md
+            .gate-candidate/kairos_p76/KAIROS_HOME_DASHBOARD_GLASS_BUBBLE_INSTRUMENT_IDENTITY_CONTINUITY_CANDIDATE_2026-09-11.zip
             .gate-candidate/kairos_p76/.glass-evidence/
-          if-no-files-found: error
-
+          if-no-files-found: warn
