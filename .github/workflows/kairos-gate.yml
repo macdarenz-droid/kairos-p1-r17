@@ -1,11 +1,11 @@
-# KAIROS APPROVED GLASS BUBBLE PRESENTATION AMENDMENT — AUTHORITATIVE BASE GATE384
+# KAIROS APPROVED GLASS BUBBLE PRESENTATION AMENDMENT — AUTHORITATIVE BASE GATE386
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_HOME_DASHBOARD_APPROVED_GLASS_BUBBLE_PRESENTATION_AMENDMENT_R1_CANDIDATE_2026-09-11.zip'
+      - 'KAIROS_HOME_DASHBOARD_GLASS_BUBBLE_INSTRUMENT_IDENTITY_CONTINUITY_CANDIDATE_2026-09-11.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_LAYOUT_BOUNDS_POLICY_CONTRACT_FOUNDATION_CANDIDATE_2026-09-11.zip
-  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_APPROVED_GLASS_BUBBLE_PRESENTATION_AMENDMENT_R1_CANDIDATE_2026-09-11.zip
+  BASE_ZIP: KAIROS_HOME_DASHBOARD_APPROVED_GLASS_BUBBLE_PRESENTATION_AMENDMENT_R1_CANDIDATE_2026-09-11.zip
+  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_GLASS_BUBBLE_INSTRUMENT_IDENTITY_CONTINUITY_CANDIDATE_2026-09-11.zip
 
 jobs:
   verify-current-candidate:
@@ -36,8 +36,8 @@ jobs:
           from pathlib import Path, PurePosixPath
           import hashlib, os, zipfile
           for key, size, digest in [
-            ('BASE_ZIP', 1712853, '017d48b7d69fe984f0700378e4e00deb531213cfac558e926f2a255c562779e4'),
-            ('CANDIDATE_ZIP', 3324380, '856d6d62929e7bb0f305f4ba0327522470bdc86c85c1a7b5b5fa5ddcfbdcda79'),
+            ('BASE_ZIP', 3324380, '856d6d62929e7bb0f305f4ba0327522470bdc86c85c1a7b5b5fa5ddcfbdcda79'),
+            ('CANDIDATE_ZIP', 3326507, '739a72f019ac63db229747f563f4969cdf482283b9f7f82fb794f1e064486f57'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -52,7 +52,7 @@ jobs:
                 assert ((i.external_attr >> 16) & 0o170000) != 0o120000, f'{key}: unexpected symbolic link'
           PY
 
-      - name: Extract authoritative Gate384 base and candidate
+      - name: Extract authoritative Gate386 base and candidate
         run: |
           set -euo pipefail
           rm -rf .gate-base .gate-candidate
@@ -62,7 +62,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact approved glass presentation amendment scope from Gate384
+      - name: Confirm exact instrument identity continuity scope from Gate386
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -75,18 +75,9 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           expected = {
             'docs/KAIROS_GLASS_BUBBLE_PRESENTATION_AMENDMENT.md',
-            'package.json',
             'scripts/test-home-dashboard-glass-browser.mjs',
-            'scripts/verify-home-dashboard-glass-bubble-presentation-amendment.mjs',
             'src/app/HomeDashboardGlassBubbleMap.tsx',
-            'src/app/HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTextEvidenceRuntime.tsx',
-            'src/app/HomeRoute.tsx',
-            'src/app/homeDashboardGlassBubbleMap.css',
-            'src/app/homeDashboardGlassLayout.ts',
-            'src/app/homeDashboardGlassMaterial.ts',
-            'src/assets/kairos-glass-approved.png',
             'tests/fixtures/homeDashboardGlassBrowser.tsx',
-            'tests/fixtures/homeDashboardGlassModel.ts',
             'tests/home-dashboard-glass-bubble-map.test.tsx',
           }
           removed = set(x) - set(y)

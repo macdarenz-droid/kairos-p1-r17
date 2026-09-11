@@ -1,3 +1,11 @@
+# Pending instrument identity continuity gate — 11 September 2026
+
+Base Gate386 remains GOLDEN. A behavior regression proved rank-based React keys recreated bubbles and changed hover timing. The key-only repair then failed the real browser Animation-object check because rank moves still moved DOM nodes. Final repair uses instrument tuple keys, stable identity-based DOM order and deterministic instrument hover timing. Layout still consumes the exact upstream ranking and radii; new facts remain immediate. No claim that positions are frozen under ranking or radius changes.
+
+Local validation: initial regression FAIL against Gate386; final 8 focused tests PASS; 1126 tests across286 files PASS; TypeScript/build, existing P2 design system and glass verifier PASS; real Chromium retains identical bubble/canvas/Animation objects across rank changes, and passes existing theme/alpha/pause/reduced-motion/collision checks. No verifier weakened.
+Candidate KAIROS_HOME_DASHBOARD_GLASS_BUBBLE_INSTRUMENT_IDENTITY_CONTINUITY_CANDIDATE_2026-09-11.zip; bytes3326507; SHA256739a72f019ac63db229747f563f4969cdf482283b9f7f82fb794f1e064486f57; blob43bece6aaff6416c289055fd088954b5d8f24e49; exact5-file delta, zero removals. Approved image byte-identical. Direct publication only; no bridge. Canonical result remains pending. Prior Gate386 evidence and ownership are retained below.
+
+---
 # Gate386 — approved glass bubble UI: GOLDEN
 Verified 11 September 2026.
 
