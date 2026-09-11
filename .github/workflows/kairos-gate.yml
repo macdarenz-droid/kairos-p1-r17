@@ -1,11 +1,11 @@
-# KAIROS CONFIGURED BUBBLE RUNTIME LIFECYCLE STABILITY REPAIR — AUTHORITATIVE BASE GATE382
+# KAIROS LIVE CRYPTO BUBBLE LAYOUT BOUNDS POLICY CONTRACT — AUTHORITATIVE BASE GATE383
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_CONFIGURED_RUNTIME_LIFECYCLE_STABILITY_REPAIR_CANDIDATE_2026-09-11.zip'
+      - 'KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_LAYOUT_BOUNDS_POLICY_CONTRACT_FOUNDATION_CANDIDATE_2026-09-11.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_CONFIGURED_BROWSER_PIXEL_RADIUS_TEXT_EVIDENCE_RUNTIME_COMPOSITION_FIXTURE_REPAIR_R1_CANDIDATE_2026-09-11.zip
-  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_CONFIGURED_RUNTIME_LIFECYCLE_STABILITY_REPAIR_CANDIDATE_2026-09-11.zip
+  BASE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_CONFIGURED_RUNTIME_LIFECYCLE_STABILITY_REPAIR_CANDIDATE_2026-09-11.zip
+  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_LAYOUT_BOUNDS_POLICY_CONTRACT_FOUNDATION_CANDIDATE_2026-09-11.zip
 
 jobs:
   verify-current-candidate:
@@ -36,8 +36,8 @@ jobs:
           from pathlib import Path, PurePosixPath
           import hashlib, os, zipfile
           for key, size, digest in [
-            ('BASE_ZIP', 1696072, '780ba3281773e6b476ab36cab5064a3d4e4427a69bad7da4e128f73551177e58'),
-            ('CANDIDATE_ZIP', 1700687, '2204855d3ed2aabf81fcb8502f94c2de8c6527e460e435cfd86f85ffd9dc93f1'),
+            ('BASE_ZIP', 1700687, '2204855d3ed2aabf81fcb8502f94c2de8c6527e460e435cfd86f85ffd9dc93f1'),
+            ('CANDIDATE_ZIP', 1712853, '017d48b7d69fe984f0700378e4e00deb531213cfac558e926f2a255c562779e4'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -52,7 +52,7 @@ jobs:
                 assert ((i.external_attr >> 16) & 0o170000) != 0o120000, f'{key}: unexpected symbolic link'
           PY
 
-      - name: Extract authoritative Gate382 base and candidate
+      - name: Extract authoritative Gate383 base and candidate
         run: |
           set -euo pipefail
           rm -rf .gate-base .gate-candidate
@@ -62,7 +62,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact controlled runtime lifecycle stability repair scope from Gate382
+      - name: Confirm exact default-free layout-bounds policy contract scope from Gate383
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -74,15 +74,15 @@ jobs:
           y = {str(p.relative_to(c)): h(p) for p in c.rglob('*') if p.is_file()}
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           expected = {
-            'KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_CONFIGURED_RUNTIME_LIFECYCLE_STABILITY_REPAIR_REPORT_2026-09-11.md',
+            'KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_LAYOUT_BOUNDS_POLICY_CONTRACT_FOUNDATION_REPORT_2026-09-11.md',
             'package.json',
-            'scripts/verify-home-dashboard-live-crypto-bubble-configured-runtime-lifecycle-stability-repair.mjs',
-            'src/app/useHomeDashboardLiveCryptoBubblePresentationObservedRuntime.ts',
-            'tests/home-dashboard-live-crypto-bubble-configured-runtime-lifecycle-stability.test.ts',
+            'scripts/verify-home-dashboard-live-crypto-bubble-layout-bounds-policy-contract-foundation.mjs',
+            'src/application/dashboard/homeDashboardLiveCryptoBubbleLayoutBoundsPolicy.ts',
+            'tests/home-dashboard-live-crypto-bubble-layout-bounds-policy-contract-foundation.test.ts',
           }
           removed = set(x) - set(y)
           if changed != expected or removed:
-            print('Runtime lifecycle stability repair exact scope mismatch', file=sys.stderr)
+            print('Layout-bounds policy contract exact scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -107,9 +107,11 @@ jobs:
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
 
-      - name: Dedicated lifecycle stability repair and released composition verifiers
+      - name: Dedicated layout-bounds policy and released composition verifiers
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:home-dashboard-live-crypto-bubble-layout-bounds-policy-contract-foundation
+          npm run verify:home-dashboard-live-crypto-bubble-layout-bounds-policy-contract-foundation
           npm run verify:home-dashboard-live-crypto-bubble-configured-runtime-lifecycle-stability-repair
           npm run verify:home-dashboard-live-crypto-bubble-configured-browser-pixel-radius-text-evidence-runtime-composition-foundation
           npm run verify:home-dashboard-live-crypto-bubble-configured-browser-pixel-radius-hook-composition-foundation
@@ -131,10 +133,11 @@ jobs:
           npm run verify:p21:1-home-dashboard-route-ownership-foundation
           npm run verify:home-dashboard-live-crypto-bubble-runtime-product-policy-foundation
 
-      - name: Focused lifecycle stability repair and released composition regression
+      - name: Focused layout-bounds policy and released composition regression
         working-directory: .gate-candidate/kairos_p76
         run: |
           npx vitest run \
+            tests/home-dashboard-live-crypto-bubble-layout-bounds-policy-contract-foundation.test.ts \
             tests/home-dashboard-live-crypto-bubble-configured-runtime-lifecycle-stability.test.ts \
             tests/home-dashboard-live-crypto-bubble-react-runtime-binding-foundation.test.ts \
             tests/home-dashboard-live-crypto-bubble-configured-browser-pixel-radius-text-evidence-runtime-composition-foundation.test.tsx \
@@ -180,6 +183,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:home-dashboard-live-crypto-bubble-layout-bounds-policy-contract-foundation',
             'verify:home-dashboard-live-crypto-bubble-configured-runtime-lifecycle-stability-repair',
             'verify:home-dashboard-live-crypto-bubble-configured-browser-pixel-radius-text-evidence-runtime-composition-foundation',
             'verify:home-dashboard-live-crypto-bubble-configured-browser-pixel-radius-hook-composition-foundation',
@@ -254,5 +258,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_CONFIGURED_RUNTIME_LIFECYCLE_STABILITY_REPAIR_REPORT_2026-09-11.md
+          path: .gate-candidate/kairos_p76/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_LAYOUT_BOUNDS_POLICY_CONTRACT_FOUNDATION_REPORT_2026-09-11.md
           if-no-files-found: error
