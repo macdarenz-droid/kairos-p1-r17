@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — Compact Bubble Size Contrast and Rim Smoke
+name: Kairos Controlled Roadmap Gate — Compact Bubble Size Contrast and Rim Smoke R1
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_HOME_DASHBOARD_COMPACT_BUBBLE_SMOKE_AMENDMENT_CANDIDATE_2026-09-11.zip'
+      - 'KAIROS_HOME_DASHBOARD_COMPACT_BUBBLE_SMOKE_AMENDMENT_CANDIDATE_2026-09-11-R1.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,7 +13,7 @@ permissions:
 
 env:
   BASE_ZIP: KAIROS_HOME_DASHBOARD_PERCENTAGE_BUBBLE_UI_AMENDMENT_CANDIDATE_2026-09-11-R1.zip
-  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_COMPACT_BUBBLE_SMOKE_AMENDMENT_CANDIDATE_2026-09-11.zip
+  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_COMPACT_BUBBLE_SMOKE_AMENDMENT_CANDIDATE_2026-09-11-R1.zip
 
 jobs:
   verify-current-candidate:
@@ -39,7 +39,7 @@ jobs:
 
           for key, size, digest in [
             ('BASE_ZIP', 3330448, '3e954cbbdebf5ea19c60cad1cdd54ff06a8857f3f0d6bfa3b54288eecf3c15c5'),
-            ('CANDIDATE_ZIP', 3335872, '5de4a7638d378776acf85d2dc960fd8c154a876a37584f159cc4bbebcb098456'),
+            ('CANDIDATE_ZIP', 3413708, '006f4ec83cdba6988dc569be8841e7c7280fdebcb8bcd7f6cb497f19b4ab7253'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -85,12 +85,13 @@ jobs:
             'src/app/HomeDashboardGlassBubbleMap.tsx',
             'src/app/homeDashboardGlassBubbleMap.css',
             'src/app/homeDashboardGlassViewportLayout.ts',
+            'src/design-system/themes/themeEngine.ts',
             'tests/fixtures/homeDashboardGlassBrowser.tsx',
             'tests/home-dashboard-glass-bubble-map.test.tsx',
             'tests/home-dashboard-glass-viewport-layout.test.ts',
           }
           if changed != expected or removed:
-            print('Percentage bubble UI amendment scope mismatch', file=sys.stderr)
+            print('Compact bubble smoke R1 scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -100,6 +101,10 @@ jobs:
       - name: Install candidate deterministically
         working-directory: .gate-candidate/kairos_p76
         run: npm ci
+
+      - name: Enforce design-system token ownership repair
+        working-directory: .gate-candidate/kairos_p76
+        run: npm run verify:p2:design-system
 
       - name: Prove real Lightweight Charts dependency remains exact
         working-directory: .gate-candidate/kairos_p76
