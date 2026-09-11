@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — Binance 24h Request Batching Repair
+name: Kairos Controlled Roadmap Gate — Live Bubble Label Formatting Repair
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_BINANCE_SPOT_24H_BASELINE_REQUEST_BATCHING_REPAIR_CANDIDATE_2026-09-11-R1.zip'
+      - 'KAIROS_HOME_DASHBOARD_GLASS_BUBBLE_LABEL_FORMATTING_REPAIR_CANDIDATE_2026-09-11.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_HOME_DASHBOARD_GLASS_BUBBLE_INSTRUMENT_IDENTITY_CONTINUITY_CANDIDATE_2026-09-11.zip
-  CANDIDATE_ZIP: KAIROS_BINANCE_SPOT_24H_BASELINE_REQUEST_BATCHING_REPAIR_CANDIDATE_2026-09-11-R1.zip
+  BASE_ZIP: KAIROS_BINANCE_SPOT_24H_BASELINE_REQUEST_BATCHING_REPAIR_CANDIDATE_2026-09-11-R1.zip
+  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_GLASS_BUBBLE_LABEL_FORMATTING_REPAIR_CANDIDATE_2026-09-11.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 3326507, '739a72f019ac63db229747f563f4969cdf482283b9f7f82fb794f1e064486f57'),
-            ('CANDIDATE_ZIP', 3333661, 'cdd200c1ec15617990b23829f1bf71ec3bf4399268365970eccfb9e98699cde0'),
+            ('BASE_ZIP', 3333661, 'cdd200c1ec15617990b23829f1bf71ec3bf4399268365970eccfb9e98699cde0'),
+            ('CANDIDATE_ZIP', 3405893, 'd3233db7f672eaee87a0efe942acf361a092d1c2d51e0009b407aa38b1d90da1'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -79,8 +79,12 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineAcquisitionAdapter.ts',
-            'tests/binance-spot-browser-live-market-universe-acquisition-binding-foundation.test.ts',
+            'KAIROS_HOME_DASHBOARD_GLASS_BUBBLE_LABEL_FORMATTING_REPAIR_REPORT_2026-09-11.md',
+            'src/app/HomeDashboardGlassBubbleMap.tsx',
+            'src/app/homeDashboardGlassBubbleFormatting.ts',
+            'src/app/homeDashboardGlassBubbleMap.css',
+            'tests/home-dashboard-glass-bubble-formatting.test.ts',
+            'tests/home-dashboard-glass-bubble-map.test.tsx',
           }
           if changed != expected or removed:
             print('Binance batching repair exact scope mismatch', file=sys.stderr)
@@ -233,6 +237,6 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
-            .gate-candidate/kairos_p76/KAIROS_HOME_DASHBOARD_GLASS_BUBBLE_INSTRUMENT_IDENTITY_CONTINUITY_CANDIDATE_2026-09-11.zip
+            .gate-candidate/kairos_p76/KAIROS_BINANCE_SPOT_24H_BASELINE_REQUEST_BATCHING_REPAIR_CANDIDATE_2026-09-11-R1.zip
             .gate-candidate/kairos_p76/.glass-evidence/
           if-no-files-found: warn
