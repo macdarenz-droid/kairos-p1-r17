@@ -411,3 +411,16 @@ The latest canonical GOLDEN is the **Home Live Crypto Bubble Configured Runtime 
 
 Fresh Gate383 source proves the configured pixel-radius runtime is stable. The next dependency step must first establish whether a caller-supplied, default-free presentation contract can be isolated without choosing the still-unreleased visible Bubble design/layout semantics. Concrete defaults must not be guessed.
 
+## Canonical compact Bubble size contrast and rim-smoke checkpoint — Gate393
+
+The latest canonical GOLDEN is the **Home Dashboard Compact Bubble Size Contrast and Rim Smoke R1 Amendment**.
+
+- Canonical gate: `Kairos Controlled Roadmap Gate` #393 / run `34637154497`, job `103387722000`, exact head `9fb5310cc658d54b95417f718016c122af998675`, full SUCCESS on 2026-09-11.
+- Candidate: `KAIROS_HOME_DASHBOARD_COMPACT_BUBBLE_SMOKE_AMENDMENT_CANDIDATE_2026-09-11-R1.zip`, size `3,413,708`, SHA-256 `006f4ec83cdba6988dc569be8841e7c7280fdebcb8bcd7f6cb497f19b4ab7253`, repository Git blob `2978ddbedad02b2474b5f0e393f2d0686369871e`, root exactly `kairos_p76/`, integrity PASS.
+- Exact-run artifacts: `KAIROS_CURRENT_CANDIDATE` `10277974235`, digest `sha256:0522a02461a7ae1ad5d5f19e8837900ff59af887e385e49ef75a237450253562`; `KAIROS_GATE_EVIDENCE` `10277974240`, digest `sha256:58582eae6bc95f38a982c069d197e1de4e1ac91ee990f1d3d0df7492ca5f1cf5`.
+- Presentation owners: `src/app/HomeDashboardGlassBubbleMap.tsx`, `src/app/homeDashboardGlassBubbleMap.css`, and `src/app/homeDashboardGlassViewportLayout.ts` own the compact all-30 viewport layout, readable initials, icon/label sizing, obvious percentage-size contrast and approved V5-derived animated rim-smoke presentation.
+- Design-token owner: `src/design-system/themes/themeEngine.ts` owns `--kairos-bubble-smoke-1` through `--kairos-bubble-smoke-4`; route CSS consumes those registered inherited values and does not own literal palette primitives.
+- Preserved boundaries: reduced-motion and hidden-page suspension, freshness dimming, stable instrument identity, Binance-compliant acquisition batching, ranking and Top-30 selection remain with their already released owners. This amendment adds no provider, universe, ranking, freshness, persistence, journal, Your Trades, navigation or transition truth.
+- Gate392 remains failed evidence only. Gate393’s early design-system verification plus all canonical regressions and browser evidence prove the repaired ownership boundary.
+
+This checkpoint records only the user-authorized compact Bubble/smoke repair. It does not authorize another visual-design slice.

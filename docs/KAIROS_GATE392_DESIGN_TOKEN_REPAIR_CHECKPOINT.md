@@ -20,3 +20,9 @@ Reconstruct from Gate391 GOLDEN archive plus intended Gate392 changed paths, add
 Locally prepared archive (not uploaded): KAIROS_HOME_DASHBOARD_COMPACT_BUBBLE_SMOKE_AMENDMENT_CANDIDATE_2026-09-11-R1.zip,3336229 bytes,SHA256 7e9b8b8e6cb6e5d27d1c0d8ffaddceb5cc0aa925be74b07d767b11080def2a4d,blob f483612ccddd6a64ce7462ad87c662b5cf6c4de1. Stored in /workspace/scratch/b0166db37617/repo with smoke-r1-meta.json in workspace root; corrected working source in compact/kairos_p76. A reconstruction may have different ZIP timestamps; verify/recompute identity instead of blindly reusing these pins.
 
 Publication blocked by exec-server environment_offline (409); both exec_command and node_repl unavailable. No candidate blob uploaded, no gate retargeted or new canonical run launched. This documentation-only checkpoint preserves recovery detail. Once workspace recovers, acquire shared lease, inspect fresh main/Actions, recover or reconstruct bytes, directly publish through Git Data with identity/main/lease guards and verify the new canonical run. User-visible fix is not released until full gate plus both artifacts.
+
+## Resolution
+
+Recovered workspace publication used the exact Gate391 GOLDEN plus the intended Gate392 delta and the design-token repair above. The final frozen R1 candidate is `KAIROS_HOME_DASHBOARD_COMPACT_BUBBLE_SMOKE_AMENDMENT_CANDIDATE_2026-09-11-R1.zip`, 3,413,708 bytes, SHA-256 `006f4ec83cdba6988dc569be8841e7c7280fdebcb8bcd7f6cb497f19b4ab7253`, Git blob `2978ddbedad02b2474b5f0e393f2d0686369871e`. It was published on head `9fb5310cc658d54b95417f718016c122af998675`.
+
+Canonical Gate393 / run `34637154497`, job `103387722000`, completed FULL SUCCESS. Every required verification stage, historical closures, `KAIROS_CURRENT_CANDIDATE` artifact `10277974235`, and `KAIROS_GATE_EVIDENCE` artifact `10277974240` passed. Gate393 supersedes this recovery checkpoint as the authoritative GOLDEN. Gate392 remains a failed candidate and is never a base.
