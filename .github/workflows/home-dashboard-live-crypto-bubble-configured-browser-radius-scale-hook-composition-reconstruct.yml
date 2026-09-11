@@ -45,13 +45,13 @@ jobs:
           echo "737394acc0e44408e6305320a35a3da5050656b227f11c7d2ceed67849bc2e06  $BASE_ZIP" | sha256sum -c -
 
           test -f "$PAYLOAD"
-          test "$(stat -c%s "$PAYLOAD")" = "4512"
-          test "$(git hash-object "$PAYLOAD")" = "1494d08c0e71c07507e4b8e65f13396583fdef08"
-          echo "96527e0f615fd47b5bd24e65b9a7000c41297232797e3be7c34635fe9943400c  $PAYLOAD" | sha256sum -c -
+          test "$(stat -c%s "$PAYLOAD")" = "4540"
+          test "$(git hash-object "$PAYLOAD")" = "b0084021c754292ee0ea7cfabc043b9867cf45bb"
+          echo "57250bd0e7f8957afa13da4b55ffdc0d54181336b37d9abb69d53421b72d3e06  $PAYLOAD" | sha256sum -c -
           base64 -d "$PAYLOAD" | gzip -dc > "$PATCH"
-          test "$(stat -c%s "$PATCH")" = "14787"
-          test "$(git hash-object "$PATCH")" = "f883e3cda83614a5578a4d1307f2b4922fb6ec9b"
-          echo "e27a25a105dc5d013c8bad2aec882e39ac7966e9c8e495e8755d6035fdc72008  $PATCH" | sha256sum -c -
+          test "$(stat -c%s "$PATCH")" = "15109"
+          test "$(git hash-object "$PATCH")" = "8c79e2c467421fc46cee385ef6a3ef3c427f553d"
+          echo "a699cd598dc500c103cb8175d398816e41fe37872143c7acb0ab3f5249d2ab8a  $PATCH" | sha256sum -c -
 
           rm -rf "$WORK" "$BASE"
           mkdir -p "$WORK" "$BASE"
