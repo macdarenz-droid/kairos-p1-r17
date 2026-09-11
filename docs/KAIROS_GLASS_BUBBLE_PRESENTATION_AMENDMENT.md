@@ -1,3 +1,34 @@
+# Gate386 — approved glass bubble UI: GOLDEN
+Verified 11 September 2026.
+
+## Canonical result
+Kairos Controlled Roadmap Gate #386, run34603897084, job103277560057 (verify-current-candidate), head b1fda78ea33ff4b2762ee80ae178b1ed271c2894 completed FULL SUCCESS. Every required stage succeeded: exact archives/scope, deterministic install, pinned toolchain and Lightweight Charts5.2.1, TypeScript/build, focused and browser checks, full unit, full controlled-roadmap, historical closures, both uploads.
+Gate386 supersedes Gate384 as GOLDEN. Gate385 remains failed evidence; its unregistered CSS spacing was repaired without weakening P2 or any other verifier.
+
+## Frozen candidate and artifacts
+Candidate: KAIROS_HOME_DASHBOARD_APPROVED_GLASS_BUBBLE_PRESENTATION_AMENDMENT_R1_CANDIDATE_2026-09-11.zip
+Bytes:3324380
+SHA256:856d6d62929e7bb0f305f4ba0327522470bdc86c85c1a7b5b5fa5ddcfbdcda79
+Git blob:c25929733a239e2ed6c5ff80f9218c7cffac28e4
+Exact14-file delta from Gate384; no removals.
+Exact-run KAIROS_CURRENT_CANDIDATE artifact10266515300, wrapper SHA2561252b2588f084bdb82d6b9eb88421503e18d804ef65b6d6152bcd1c6430d0eae.
+Exact-run KAIROS_GATE_EVIDENCE artifact10266910052, wrapper SHA25696d4069dc35720c52d516dc8c280fcf6bda6aea74df1b1cf857d5e1a35511d24.
+Both downloaded wrappers passed hash and ZIP CRC checks. Nested candidate byte size/hash and byte-for-byte equality against published local candidate verified. Evidence JSON reports passed:true, corner/centre alpha0, three existing themes plus a light stress fixture,8/30 circles, hover/pause/reducedMotion/noOverlap true, errors[]. Canonical dark screenshot inspected.
+
+## Released presentation ownership
+HomeRoute enables the visual option of its existing configured radius-scale runtime. The existing hook runs once; its model feeds the glass renderer and retained textual details. Provider acquisition, ranking, freshness, volume metrics and Decimal facts retain existing owners.
+HomeDashboardGlassBubbleMap measures its container and consumes the released pixel-radius projection. homeDashboardGlassLayout validates released bounds and performs deterministic irregular packing without shrinking supplied radii. Hover is presentation only and pauses/reduces independently of authoritative data.
+Approved image remains exact black-matted RGB source with removed upper-left white patch. homeDashboardGlassMaterial converts black to alpha at runtime, with feathered/blurred decorative layers behind crisp SVG icons and labels. Theme colors stay semantic; R1 spacing derives from shared tokens.
+This is production React integration in the canonical candidate, not a standalone HTML prototype. No hosting/deployment or complete visual acceptance is claimed by this gate.
+
+## Continuation boundary
+The approved image-to-gate task is complete. Future changes start from this exact GOLDEN archive. Keep workers in the user's current paused/manual mode unless explicitly resumed; this reconciliation changes no schedules.
+Source inspection identifies a concrete follow-up review: renderer keys currently include array index and packing is recomputed from rank-ordered inputs on each model update. Verify identity/position behavior under a 5-second market refresh and rank changes before selecting a narrowly scoped motion-continuity amendment. Static theme/overlap tests do not prove rank-change continuity. Do not change provider/ranking truth to stabilize visuals.
+Preserve current GOLDEN, Gate384 rollback and Gate385 failure evidence. No bridge/helper needed for direct publication.
+
+---
+## Original implementation and repair record (historical pending statuses superseded above)
+
 # Approved glass bubble presentation amendment — 11 September 2026
 
 ## Authority and exact base
