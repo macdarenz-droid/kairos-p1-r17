@@ -1,11 +1,11 @@
-# KAIROS HOME DASHBOARD LIVE CRYPTO BUBBLE BROWSER PIXEL RADIUS HOOK COMPOSITION FOUNDATION GATE — AUTHORITATIVE BASE GATE 378
+# KAIROS HOME DASHBOARD LIVE CRYPTO BUBBLE CONFIGURED BROWSER PIXEL RADIUS HOOK COMPOSITION FOUNDATION GATE — AUTHORITATIVE BASE GATE 379
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_BROWSER_PIXEL_RADIUS_HOOK_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-11.zip'
+      - 'KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_CONFIGURED_BROWSER_PIXEL_RADIUS_HOOK_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-11.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_REACT_PIXEL_RADIUS_HOOK_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-11.zip
-  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_BROWSER_PIXEL_RADIUS_HOOK_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-11.zip
+  BASE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_BROWSER_PIXEL_RADIUS_HOOK_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-11.zip
+  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_CONFIGURED_BROWSER_PIXEL_RADIUS_HOOK_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-11.zip
 
 jobs:
   verify-current-candidate:
@@ -36,22 +36,23 @@ jobs:
           from pathlib import Path, PurePosixPath
           import hashlib, os, zipfile
           for key, size, digest in [
-            ('BASE_ZIP', 1755402, '5590d98e7b4beafc594e226bbd97254e825fa130a8e05081042388a626a967ee'),
-            ('CANDIDATE_ZIP', 1760678, '69a9c95e70def8ea2035ee8bcfb9b25f49809707a47b961eee5fc1598f2ae651'),
+            ('BASE_ZIP', 1760678, '69a9c95e70def8ea2035ee8bcfb9b25f49809707a47b961eee5fc1598f2ae651'),
+            ('CANDIDATE_ZIP', 1766211, 'a4530878e81b8683f90a523652066170c284a6ea7d9fd4610e1763cf1968785e'),
           ]:
-            p=Path(os.environ[key]); data=p.read_bytes()
-            assert len(data)==size, f'{key}: byte size mismatch'
-            assert hashlib.sha256(data).hexdigest()==digest, f'{key}: SHA-256 mismatch'
+            p = Path(os.environ[key])
+            data = p.read_bytes()
+            assert len(data) == size, f'{key}: byte size mismatch'
+            assert hashlib.sha256(data).hexdigest() == digest, f'{key}: SHA-256 mismatch'
             with zipfile.ZipFile(p) as z:
               assert z.testzip() is None, f'{key}: ZIP integrity failure'
-              assert {i.filename.split('/')[0] for i in z.infolist()}=={'kairos_p76'}, f'{key}: wrong ZIP root'
+              assert {i.filename.split('/')[0] for i in z.infolist()} == {'kairos_p76'}, f'{key}: wrong ZIP root'
               for i in z.infolist():
-                parts=PurePosixPath(i.filename)
+                parts = PurePosixPath(i.filename)
                 assert not parts.is_absolute() and '..' not in parts.parts, f'{key}: invalid archive path'
                 assert ((i.external_attr >> 16) & 0o170000) != 0o120000, f'{key}: unexpected symbolic link'
           PY
 
-      - name: Extract authoritative Gate378 base and candidate
+      - name: Extract authoritative Gate379 base and candidate
         run: |
           set -euo pipefail
           rm -rf .gate-base .gate-candidate
@@ -61,28 +62,30 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact controlled browser pixel-radius hook composition foundation scope from Gate378
+      - name: Confirm exact controlled configured browser pixel-radius hook composition foundation scope from Gate379
         run: |
           python - <<'PY'
           from pathlib import Path
-          import hashlib,sys
-          b=Path('.gate-base/kairos_p76'); c=Path('.gate-candidate/kairos_p76')
+          import hashlib, sys
+          b = Path('.gate-base/kairos_p76')
+          c = Path('.gate-candidate/kairos_p76')
           def h(p): return hashlib.sha256(p.read_bytes()).hexdigest()
-          x={str(p.relative_to(b)):h(p) for p in b.rglob('*') if p.is_file()}
-          y={str(p.relative_to(c)):h(p) for p in c.rglob('*') if p.is_file()}
-          changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
-          expected={
-            'KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_BROWSER_PIXEL_RADIUS_HOOK_COMPOSITION_FOUNDATION_REPORT_2026-09-11.md',
+          x = {str(p.relative_to(b)): h(p) for p in b.rglob('*') if p.is_file()}
+          y = {str(p.relative_to(c)): h(p) for p in c.rglob('*') if p.is_file()}
+          changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
+          expected = {
+            'KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_CONFIGURED_BROWSER_PIXEL_RADIUS_HOOK_COMPOSITION_FOUNDATION_REPORT_2026-09-11.md',
             'package.json',
-            'scripts/verify-home-dashboard-live-crypto-bubble-browser-pixel-radius-hook-composition-foundation.mjs',
-            'src/app/useHomeDashboardLiveCryptoBubbleBrowserPixelRadiusViewModel.ts',
-            'tests/home-dashboard-live-crypto-bubble-browser-pixel-radius-hook-composition-foundation.test.ts',
+            'scripts/verify-home-dashboard-live-crypto-bubble-configured-browser-pixel-radius-hook-composition-foundation.mjs',
+            'src/app/useHomeDashboardLiveCryptoBubbleConfiguredBrowserPixelRadiusViewModel.ts',
+            'tests/home-dashboard-live-crypto-bubble-configured-browser-pixel-radius-hook-composition-foundation.test.ts',
           }
-          if changed != expected or (set(x)-set(y)):
-            print('Browser pixel-radius hook composition foundation exact scope mismatch',file=sys.stderr)
-            print('Unexpected:',sorted(changed-expected),file=sys.stderr)
-            print('Missing:',sorted(expected-changed),file=sys.stderr)
-            print('Removed:',sorted(set(x)-set(y)),file=sys.stderr)
+          removed = set(x) - set(y)
+          if changed != expected or removed:
+            print('Configured browser pixel-radius hook composition foundation exact scope mismatch', file=sys.stderr)
+            print('Unexpected:', sorted(changed - expected), file=sys.stderr)
+            print('Missing:', sorted(expected - changed), file=sys.stderr)
+            print('Removed:', sorted(removed), file=sys.stderr)
             sys.exit(1)
           PY
 
@@ -104,9 +107,10 @@ jobs:
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
 
-      - name: Dedicated browser pixel-radius hook composition foundation verifier
+      - name: Dedicated configured browser pixel-radius hook composition foundation verifier
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:home-dashboard-live-crypto-bubble-configured-browser-pixel-radius-hook-composition-foundation
           npm run verify:home-dashboard-live-crypto-bubble-browser-pixel-radius-hook-composition-foundation
           npm run verify:home-dashboard-live-crypto-bubble-react-pixel-radius-hook-composition-foundation
           npm run verify:home-dashboard-live-crypto-bubble-react-pixel-radius-view-model-foundation
@@ -120,21 +124,25 @@ jobs:
           npm run verify:home-dashboard-live-crypto-bubble-configured-browser-radius-scale-hook-composition-foundation
           npm run verify:home-dashboard-live-crypto-bubble-radius-scale-text-evidence-presentation-foundation
           npm run verify:home-dashboard-live-crypto-bubble-configured-browser-radius-scale-text-evidence-runtime-composition-foundation
+          npm run verify:home-dashboard-live-crypto-bubble-runtime-options-composition-foundation
           npm run verify:home-dashboard-live-crypto-bubble-home-route-text-runtime-integration-foundation
           npm run verify:p21:1-home-dashboard-route-ownership-foundation
           npm run verify:home-dashboard-live-crypto-bubble-runtime-product-policy-foundation
 
-      - name: Focused browser pixel-radius hook composition foundation regression
+      - name: Focused configured browser pixel-radius hook composition foundation regression
         working-directory: .gate-candidate/kairos_p76
         run: |
           npx vitest run \
+            tests/home-dashboard-live-crypto-bubble-configured-browser-pixel-radius-hook-composition-foundation.test.ts \
             tests/home-dashboard-live-crypto-bubble-browser-pixel-radius-hook-composition-foundation.test.ts \
             tests/home-dashboard-live-crypto-bubble-react-pixel-radius-hook-composition-foundation.test.ts \
             tests/home-dashboard-live-crypto-bubble-react-pixel-radius-view-model-foundation.test.ts \
+            tests/home-dashboard-live-crypto-bubble-runtime-options-composition-foundation.test.ts \
             tests/home-dashboard-live-crypto-bubble-browser-radius-scale-hook-composition-foundation.test.ts \
             tests/home-dashboard-live-crypto-bubble-browser-wall-clock-sources-foundation.test.ts \
             tests/home-dashboard-live-crypto-bubble-pixel-radius-projection-foundation.test.ts \
             tests/home-dashboard-live-crypto-bubble-pixel-radius-policy-contract-foundation.test.ts
+          npm run verify:home-dashboard-live-crypto-bubble-configured-browser-pixel-radius-hook-composition-foundation
           npm run verify:home-dashboard-live-crypto-bubble-browser-pixel-radius-hook-composition-foundation
           npm run verify:home-dashboard-live-crypto-bubble-react-pixel-radius-hook-composition-foundation
           npm run verify:home-dashboard-live-crypto-bubble-react-pixel-radius-view-model-foundation
@@ -148,6 +156,7 @@ jobs:
           npm run verify:home-dashboard-live-crypto-bubble-configured-browser-radius-scale-hook-composition-foundation
           npm run verify:home-dashboard-live-crypto-bubble-radius-scale-text-evidence-presentation-foundation
           npm run verify:home-dashboard-live-crypto-bubble-configured-browser-radius-scale-text-evidence-runtime-composition-foundation
+          npm run verify:home-dashboard-live-crypto-bubble-runtime-options-composition-foundation
           npm run verify:home-dashboard-live-crypto-bubble-home-route-text-runtime-integration-foundation
           npm run verify:p21:1-home-dashboard-route-ownership-foundation
           npm run verify:home-dashboard-live-crypto-bubble-runtime-product-policy-foundation
@@ -160,10 +169,12 @@ jobs:
         working-directory: .gate-candidate/kairos_p76
         run: |
           node - <<'NODE'
-          const {readFileSync}=require('node:fs'),{spawnSync}=require('node:child_process');
-          const p=JSON.parse(readFileSync('package.json'));
-          const scripts=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:')).sort();
-          for(const required of [
+          const {readFileSync} = require('node:fs');
+          const {spawnSync} = require('node:child_process');
+          const p = JSON.parse(readFileSync('package.json'));
+          const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
+          for (const required of [
+            'verify:home-dashboard-live-crypto-bubble-configured-browser-pixel-radius-hook-composition-foundation',
             'verify:home-dashboard-live-crypto-bubble-browser-pixel-radius-hook-composition-foundation',
             'verify:home-dashboard-live-crypto-bubble-react-pixel-radius-hook-composition-foundation',
             'verify:home-dashboard-live-crypto-bubble-react-pixel-radius-view-model-foundation',
@@ -177,6 +188,7 @@ jobs:
             'verify:home-dashboard-live-crypto-bubble-configured-browser-radius-scale-hook-composition-foundation',
             'verify:home-dashboard-live-crypto-bubble-radius-scale-text-evidence-presentation-foundation',
             'verify:home-dashboard-live-crypto-bubble-configured-browser-radius-scale-text-evidence-runtime-composition-foundation',
+            'verify:home-dashboard-live-crypto-bubble-runtime-options-composition-foundation',
             'verify:home-dashboard-live-crypto-bubble-home-route-text-runtime-integration-foundation',
             'verify:p21:1-home-dashboard-route-ownership-foundation',
             'verify:home-dashboard-live-crypto-bubble-runtime-product-policy-foundation',
@@ -195,87 +207,33 @@ jobs:
             'verify:p8:navigation-shell',
             'verify:p1',
             'verify:static',
-          ]) if(!scripts.includes(required)){console.error('Missing '+required);process.exit(1)}
-          for(const name of scripts){
-            const r=spawnSync('npm',['run',name],{stdio:'inherit'});
-            if(r.status!==0) process.exit(r.status||1);
+          ]) {
+            if (!scripts.includes(required)) {
+              console.error('Missing ' + required);
+              process.exit(1);
+            }
+          }
+          for (const name of scripts) {
+            const r = spawnSync('npm', ['run', name], {stdio: 'inherit'});
+            if (r.status !== 0) process.exit(r.status || 1);
           }
           NODE
 
       - name: Historical closures
         working-directory: .gate-candidate/kairos_p76
         run: |
-          npm run verify:home-dashboard-live-crypto-bubble-browser-pixel-radius-hook-composition-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-react-pixel-radius-hook-composition-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-react-pixel-radius-view-model-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-pixel-radius-text-evidence-presentation-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-pixel-radius-projection-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-pixel-radius-policy-contract-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-home-route-text-runtime-integration-foundation
-          npm run verify:p21:1-home-dashboard-route-ownership-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-configured-browser-radius-scale-text-evidence-runtime-composition-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-radius-scale-text-evidence-presentation-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-configured-browser-radius-scale-hook-composition-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-browser-radius-scale-hook-composition-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-browser-wall-clock-sources-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-react-radius-scale-hook-composition-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-react-radius-scale-view-model-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-radius-scale-projection-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-runtime-product-policy-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-configured-text-evidence-runtime-composition-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-runtime-options-composition-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-browser-text-evidence-runtime-composition-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-browser-wall-clock-sources-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-text-evidence-runtime-composition-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-text-evidence-presentation-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-react-area-weight-hook-composition-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-area-weight-projection-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-react-runtime-binding-foundation
-          npm run verify:binance-home-dashboard-live-crypto-bubble-presentation-observed-runtime-composition-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-presentation-state-observation-bridge-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-presentation-state-projection-foundation
-          npm run verify:binance-home-dashboard-live-crypto-bubble-observed-runtime-composition-foundation
-          npm run verify:home-dashboard-live-crypto-bubble-metric-observation-bridge-foundation
-          npm run verify:live-crypto-bubble-metric-input-projection-foundation
-          npm run verify:live-market-summary-24h-percentage-movement-foundation
-          npm run verify:binance-home-dashboard-live-market-observed-runtime-composition-foundation
-          npm run verify:home-dashboard-live-market-summary-freshness-observation-bridge-foundation
-          npm run verify:live-market-summary-freshness-evaluation-projection-foundation
-          npm run verify:live-market-summary-freshness-classification-policy-foundation
-          npm run verify:binance-home-dashboard-live-market-runtime-bootstrap-foundation
-          npm run verify:binance-spot-browser-live-market-universe-acquisition-binding-foundation
-          npm run verify:live-market-universe-acquisition-orchestration-foundation
-          npm run verify:live-market-universe-composition-foundation
-          npm run verify:live-market-universe-top-n-selection-policy-foundation
-          npm run verify:live-market-universe-quote-volume-ordering-policy-foundation
-          npm run verify:live-market-universe-instrument-eligibility-policy-foundation
-          npm run verify:live-market-universe-instrument-metadata-acquisition-port-contract-foundation
-          npm run verify:p21:19-live-market-summary-state-session-foundation
-          npm run verify:p21:17-live-market-summary-baseline-state-orchestration-foundation
-          npm run verify:p21:4-live-market-summary-baseline-acquisition-port-foundation
-          npm run verify:p21:7-binance-spot-24h-public-rest-baseline-request-descriptor-foundation
-          npm run verify:home-dashboard-live-market-summary-browser-lifecycle-adapter-foundation
-          npm run verify:home-dashboard-live-market-summary-acquisition-lifecycle-scheduler-foundation
-          npm run verify:home-dashboard-live-market-summary-acquisition-cadence-policy-foundation
-          npm run verify:home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-contract-foundation
-          npm run verify:binance-home-dashboard-live-market-summary-scoped-snapshot-acquisition-port-adapter-foundation
-          npm run verify:p21:23-live-market-summary-browser-state-session-scoped-snapshot-acquisition-composition-foundation
-          npm run verify:p20:5-saved-analysis-system-closure
-          npm run verify:p19:7-risk-reward-tool-system-closure
-          npm run verify:p18:60-drawing-tools-system-closure
-          npm run verify:p17:16-chart-engine-system-closure
-          npm run verify:p16:18-crypto-live-feed-system-closure
-          npm run verify:p15:14-market-data-adapter-system-closure
-          npm run verify:p14:9-trade-visualizer-system-closure
-          npm run verify:p13:20-visual-pnl-system-closure
-          npm run verify:p12:journal-history-closure
-          npm run verify:p11:calculation-brain-closure
-          npm run verify:p10:manual-trade-journal-route
-          npm run verify:p9:trade-persistence
-          npm run verify:p8:navigation-shell
-          npm run verify:p1
-          npm run verify:static
+          # Stronger than the prior explicit subset: re-run every registered verifier
+          # after the full unit and controlled-roadmap regressions.
+          node - <<'NODE'
+          const {readFileSync} = require('node:fs');
+          const {spawnSync} = require('node:child_process');
+          const p = JSON.parse(readFileSync('package.json'));
+          const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
+          for (const name of scripts) {
+            const r = spawnSync('npm', ['run', name], {stdio: 'inherit'});
+            if (r.status !== 0) process.exit(r.status || 1);
+          }
+          NODE
 
       - name: Upload candidate
         uses: actions/upload-artifact@v4
@@ -289,5 +247,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_BROWSER_PIXEL_RADIUS_HOOK_COMPOSITION_FOUNDATION_REPORT_2026-09-11.md
+          path: .gate-candidate/kairos_p76/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_CONFIGURED_BROWSER_PIXEL_RADIUS_HOOK_COMPOSITION_FOUNDATION_REPORT_2026-09-11.md
           if-no-files-found: error
