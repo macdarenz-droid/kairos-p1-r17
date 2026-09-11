@@ -1,11 +1,11 @@
-# KAIROS HOME DASHBOARD LIVE CRYPTO BUBBLE HOME ROUTE RADIUS SCALE TEXT RUNTIME INTEGRATION AMENDMENT GATE — AUTHORITATIVE BASE GATE 372
+# KAIROS HOME DASHBOARD LIVE CRYPTO BUBBLE PIXEL RADIUS POLICY CONTRACT FOUNDATION GATE — AUTHORITATIVE BASE GATE 373
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_HOME_ROUTE_RADIUS_SCALE_TEXT_RUNTIME_INTEGRATION_AMENDMENT_CANDIDATE_2026-09-11.zip'
+      - 'KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_PIXEL_RADIUS_POLICY_CONTRACT_FOUNDATION_CANDIDATE_2026-09-11.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_CONFIGURED_BROWSER_RADIUS_SCALE_TEXT_EVIDENCE_RUNTIME_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-11.zip
-  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_HOME_ROUTE_RADIUS_SCALE_TEXT_RUNTIME_INTEGRATION_AMENDMENT_CANDIDATE_2026-09-11.zip
+  BASE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_HOME_ROUTE_RADIUS_SCALE_TEXT_RUNTIME_INTEGRATION_AMENDMENT_CANDIDATE_2026-09-11.zip
+  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_PIXEL_RADIUS_POLICY_CONTRACT_FOUNDATION_CANDIDATE_2026-09-11.zip
 
 jobs:
   verify-current-candidate:
@@ -35,8 +35,8 @@ jobs:
           from pathlib import Path, PurePosixPath
           import hashlib, os, zipfile
           for key, size, digest in [
-            ('BASE_ZIP', 1724390, '4189c15eb44908c46a1010108c873b838939cfc24322525c3b8b06e99983160a'),
-            ('CANDIDATE_ZIP', 1726756, '2097fc3a416362e7cbeca85eb8b0dc1fb6878c57d6c207c560f43e182e9d05e3'),
+            ('BASE_ZIP', 1726756, '2097fc3a416362e7cbeca85eb8b0dc1fb6878c57d6c207c560f43e182e9d05e3'),
+            ('CANDIDATE_ZIP', 1732158, 'a95edc13e580b44c51f59b77cb2754c71d64442e3517e1a6365b222b0b107a6f'),
           ]:
             p=Path(os.environ[key]); data=p.read_bytes()
             assert len(data)==size, f'{key}: byte size mismatch'
@@ -50,7 +50,7 @@ jobs:
                 assert ((i.external_attr >> 16) & 0o170000) != 0o120000, f'{key}: unexpected symbolic link'
           PY
 
-      - name: Extract authoritative Gate372 base and candidate
+      - name: Extract authoritative Gate373 base and candidate
         run: |
           set -euo pipefail
           rm -rf .gate-base .gate-candidate
@@ -60,7 +60,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact controlled HomeRoute radius-scale text runtime integration amendment scope from Gate372
+      - name: Confirm exact controlled pixel-radius policy contract foundation scope from Gate373
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -71,15 +71,14 @@ jobs:
           y={str(p.relative_to(c)):h(p) for p in c.rglob('*') if p.is_file()}
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           expected={
-            'KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_HOME_ROUTE_RADIUS_SCALE_TEXT_RUNTIME_INTEGRATION_AMENDMENT_REPORT_2026-09-11.md',
-            'scripts/verify-home-dashboard-live-crypto-bubble-home-route-text-runtime-integration-foundation.mjs',
-            'scripts/verify-p21-1-home-dashboard-route-ownership-foundation.mjs',
-            'src/app/HomeRoute.tsx',
-            'tests/home-dashboard-live-crypto-bubble-home-route-text-runtime-integration-foundation.test.tsx',
-            'tests/router.test.tsx',
+            'KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_PIXEL_RADIUS_POLICY_CONTRACT_FOUNDATION_REPORT_2026-09-11.md',
+            'package.json',
+            'scripts/verify-home-dashboard-live-crypto-bubble-pixel-radius-policy-contract-foundation.mjs',
+            'src/application/dashboard/homeDashboardLiveCryptoBubblePixelRadiusPolicy.ts',
+            'tests/home-dashboard-live-crypto-bubble-pixel-radius-policy-contract-foundation.test.ts',
           }
           if changed != expected or (set(x)-set(y)):
-            print('HomeRoute radius-scale text runtime integration amendment exact scope mismatch',file=sys.stderr)
+            print('Pixel-radius policy contract foundation exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             print('Removed:',sorted(set(x)-set(y)),file=sys.stderr)
@@ -104,9 +103,10 @@ jobs:
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
 
-      - name: Dedicated HomeRoute radius-scale text runtime integration amendment verifier
+      - name: Dedicated pixel-radius policy contract foundation verifier
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:home-dashboard-live-crypto-bubble-pixel-radius-policy-contract-foundation
           npm run verify:home-dashboard-live-crypto-bubble-home-route-text-runtime-integration-foundation
           npm run verify:p21:1-home-dashboard-route-ownership-foundation
           npm run verify:home-dashboard-live-crypto-bubble-configured-browser-radius-scale-text-evidence-runtime-composition-foundation
@@ -139,10 +139,11 @@ jobs:
           npm run verify:binance-home-dashboard-live-market-runtime-bootstrap-foundation
           npm run verify:p21:17-live-market-summary-baseline-state-orchestration-foundation
 
-      - name: Focused HomeRoute radius-scale text runtime integration amendment regression
+      - name: Focused pixel-radius policy contract foundation regression
         working-directory: .gate-candidate/kairos_p76
         run: |
           npx vitest run \
+            tests/home-dashboard-live-crypto-bubble-pixel-radius-policy-contract-foundation.test.ts \
             tests/home-dashboard-live-crypto-bubble-home-route-text-runtime-integration-foundation.test.tsx \
             tests/router.test.tsx \
             tests/home-dashboard-live-crypto-bubble-configured-browser-radius-scale-text-evidence-runtime-composition-foundation.test.tsx \
@@ -154,6 +155,7 @@ jobs:
             tests/home-dashboard-live-crypto-bubble-radius-scale-projection-foundation.test.ts \
             tests/home-dashboard-live-crypto-bubble-react-area-weight-view-model-foundation.test.ts \
             tests/home-dashboard-live-crypto-bubble-react-area-weight-hook-composition-foundation.test.ts
+          npm run verify:home-dashboard-live-crypto-bubble-pixel-radius-policy-contract-foundation
           npm run verify:home-dashboard-live-crypto-bubble-home-route-text-runtime-integration-foundation
           npm run verify:p21:1-home-dashboard-route-ownership-foundation
           npm run verify:home-dashboard-live-crypto-bubble-configured-browser-radius-scale-text-evidence-runtime-composition-foundation
@@ -180,6 +182,7 @@ jobs:
           const p=JSON.parse(readFileSync('package.json'));
           const scripts=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:')).sort();
           for(const required of [
+            'verify:home-dashboard-live-crypto-bubble-pixel-radius-policy-contract-foundation',
             'verify:home-dashboard-live-crypto-bubble-configured-browser-radius-scale-text-evidence-runtime-composition-foundation',
             'verify:home-dashboard-live-crypto-bubble-radius-scale-text-evidence-presentation-foundation',
             'verify:home-dashboard-live-crypto-bubble-configured-browser-radius-scale-hook-composition-foundation',
@@ -237,6 +240,7 @@ jobs:
       - name: Historical closures
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:home-dashboard-live-crypto-bubble-pixel-radius-policy-contract-foundation
           npm run verify:home-dashboard-live-crypto-bubble-home-route-text-runtime-integration-foundation
           npm run verify:p21:1-home-dashboard-route-ownership-foundation
           npm run verify:home-dashboard-live-crypto-bubble-configured-browser-radius-scale-text-evidence-runtime-composition-foundation
@@ -314,5 +318,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_HOME_ROUTE_RADIUS_SCALE_TEXT_RUNTIME_INTEGRATION_AMENDMENT_REPORT_2026-09-11.md
+          path: .gate-candidate/kairos_p76/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_PIXEL_RADIUS_POLICY_CONTRACT_FOUNDATION_REPORT_2026-09-11.md
           if-no-files-found: error
