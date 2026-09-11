@@ -1,11 +1,11 @@
-# KAIROS HOME DASHBOARD LIVE CRYPTO BUBBLE REACT RADIUS SCALE HOOK COMPOSITION GATE — AUTHORITATIVE BASE GATE 365
+# KAIROS HOME DASHBOARD LIVE CRYPTO BUBBLE BROWSER RADIUS SCALE HOOK COMPOSITION GATE — AUTHORITATIVE BASE GATE 366
 name: Kairos Controlled Roadmap Gate
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_REACT_RADIUS_SCALE_HOOK_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-11.zip'
+      - 'KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_BROWSER_RADIUS_SCALE_HOOK_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-11.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_REACT_RADIUS_SCALE_VIEW_MODEL_FOUNDATION_CANDIDATE_2026-09-11.zip
-  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_REACT_RADIUS_SCALE_HOOK_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-11.zip
+  BASE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_REACT_RADIUS_SCALE_HOOK_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-11.zip
+  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_BROWSER_RADIUS_SCALE_HOOK_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-11.zip
 
 jobs:
   verify-current-candidate:
@@ -35,8 +35,8 @@ jobs:
           from pathlib import Path, PurePosixPath
           import hashlib, os, zipfile
           for key, size, digest in [
-            ('BASE_ZIP', 1698058, '09123bb0172535aac5191a5c642541e2b7e6976020a0bb3609ee30e0f546439c'),
-            ('CANDIDATE_ZIP', 1703684, '7a117e395785cb6abadf28473eb6a600071df509d8613727765bfbca950435b1'),
+            ('BASE_ZIP', 1703684, '7a117e395785cb6abadf28473eb6a600071df509d8613727765bfbca950435b1'),
+            ('CANDIDATE_ZIP', 1709137, '6fe438034cce3c3a63f5f8ffc501a18466518edf445ca4b5c5e8cfc02e21c219'),
           ]:
             p=Path(os.environ[key]); data=p.read_bytes()
             assert len(data)==size, f'{key}: byte size mismatch'
@@ -50,7 +50,7 @@ jobs:
                 assert ((i.external_attr >> 16) & 0o170000) != 0o120000, f'{key}: unexpected symbolic link'
           PY
 
-      - name: Extract authoritative Gate365 base and candidate
+      - name: Extract authoritative Gate366 base and candidate
         run: |
           set -euo pipefail
           rm -rf .gate-base .gate-candidate
@@ -60,7 +60,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact controlled Home Bubble React radius-scale hook composition scope from Gate365
+      - name: Confirm exact controlled Home Bubble browser radius-scale hook composition scope from Gate366
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -71,14 +71,14 @@ jobs:
           y={str(p.relative_to(c)):h(p) for p in c.rglob('*') if p.is_file()}
           changed={p for p in x.keys()|y.keys() if x.get(p)!=y.get(p)}
           expected={
-            'KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_REACT_RADIUS_SCALE_HOOK_COMPOSITION_FOUNDATION_REPORT_2026-09-11.md',
+            'KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_BROWSER_RADIUS_SCALE_HOOK_COMPOSITION_FOUNDATION_REPORT_2026-09-11.md',
             'package.json',
-            'scripts/verify-home-dashboard-live-crypto-bubble-react-radius-scale-hook-composition-foundation.mjs',
-            'src/app/useHomeDashboardLiveCryptoBubbleReactRadiusScaleViewModel.ts',
-            'tests/home-dashboard-live-crypto-bubble-react-radius-scale-hook-composition-foundation.test.ts',
+            'scripts/verify-home-dashboard-live-crypto-bubble-browser-radius-scale-hook-composition-foundation.mjs',
+            'src/app/useHomeDashboardLiveCryptoBubbleBrowserRadiusScaleViewModel.ts',
+            'tests/home-dashboard-live-crypto-bubble-browser-radius-scale-hook-composition-foundation.test.ts',
           }
           if changed != expected or (set(x)-set(y)):
-            print('Home Bubble React radius-scale hook composition exact scope mismatch',file=sys.stderr)
+            print('Home Bubble browser radius-scale hook composition exact scope mismatch',file=sys.stderr)
             print('Unexpected:',sorted(changed-expected),file=sys.stderr)
             print('Missing:',sorted(expected-changed),file=sys.stderr)
             print('Removed:',sorted(set(x)-set(y)),file=sys.stderr)
@@ -103,9 +103,10 @@ jobs:
         working-directory: .gate-candidate/kairos_p76
         run: npm run build
 
-      - name: Dedicated Home Bubble React radius-scale hook composition verifier/runtime
+      - name: Dedicated Home Bubble browser radius-scale hook composition verifier/runtime
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:home-dashboard-live-crypto-bubble-browser-radius-scale-hook-composition-foundation
           npm run verify:home-dashboard-live-crypto-bubble-react-radius-scale-hook-composition-foundation
           npm run verify:home-dashboard-live-crypto-bubble-react-radius-scale-view-model-foundation
           npm run verify:home-dashboard-live-crypto-bubble-radius-scale-projection-foundation
@@ -134,10 +135,11 @@ jobs:
           npm run verify:p21:17-live-market-summary-baseline-state-orchestration-foundation
           npm run verify:p21:1-home-dashboard-route-ownership-foundation
 
-      - name: Focused Home Bubble React radius-scale hook composition regression
+      - name: Focused Home Bubble browser radius-scale hook composition regression
         working-directory: .gate-candidate/kairos_p76
         run: |
           npx vitest run \
+            tests/home-dashboard-live-crypto-bubble-browser-radius-scale-hook-composition-foundation.test.ts \
             tests/home-dashboard-live-crypto-bubble-react-radius-scale-hook-composition-foundation.test.ts \
             tests/home-dashboard-live-crypto-bubble-react-radius-scale-view-model-foundation.test.ts \
             tests/home-dashboard-live-crypto-bubble-radius-scale-projection-foundation.test.ts \
@@ -146,6 +148,7 @@ jobs:
             tests/home-dashboard-live-crypto-bubble-text-evidence-presentation-foundation.test.tsx \
             tests/home-dashboard-live-crypto-bubble-home-route-text-runtime-integration-foundation.test.tsx \
             tests/router.test.tsx
+          npm run verify:home-dashboard-live-crypto-bubble-browser-radius-scale-hook-composition-foundation
           npm run verify:home-dashboard-live-crypto-bubble-react-radius-scale-hook-composition-foundation
           npm run verify:home-dashboard-live-crypto-bubble-react-radius-scale-view-model-foundation
           npm run verify:home-dashboard-live-crypto-bubble-radius-scale-projection-foundation
@@ -166,6 +169,7 @@ jobs:
           const p=JSON.parse(readFileSync('package.json'));
           const scripts=Object.keys(p.scripts||{}).filter(x=>x.startsWith('verify:')).sort();
           for(const required of [
+            'verify:home-dashboard-live-crypto-bubble-browser-radius-scale-hook-composition-foundation',
             'verify:home-dashboard-live-crypto-bubble-react-radius-scale-hook-composition-foundation',
             'verify:home-dashboard-live-crypto-bubble-react-radius-scale-view-model-foundation',
             'verify:home-dashboard-live-crypto-bubble-radius-scale-projection-foundation',
@@ -219,6 +223,7 @@ jobs:
       - name: Historical closures
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:home-dashboard-live-crypto-bubble-browser-radius-scale-hook-composition-foundation
           npm run verify:home-dashboard-live-crypto-bubble-react-radius-scale-hook-composition-foundation
           npm run verify:home-dashboard-live-crypto-bubble-react-radius-scale-view-model-foundation
           npm run verify:home-dashboard-live-crypto-bubble-radius-scale-projection-foundation
@@ -292,5 +297,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAIROS_GATE_EVIDENCE
-          path: .gate-candidate/kairos_p76/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_REACT_RADIUS_SCALE_HOOK_COMPOSITION_FOUNDATION_REPORT_2026-09-11.md
+          path: .gate-candidate/kairos_p76/KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_BROWSER_RADIUS_SCALE_HOOK_COMPOSITION_FOUNDATION_REPORT_2026-09-11.md
           if-no-files-found: error
