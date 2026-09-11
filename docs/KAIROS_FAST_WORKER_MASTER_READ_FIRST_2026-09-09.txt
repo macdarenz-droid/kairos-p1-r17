@@ -4,6 +4,7 @@ Purpose: compressed runtime handoff for Kairos fast workers.
 Goal: reduce time spent searching old handoffs/sandbox records WITHOUT weakening evidence, GOLDEN, gate, QA, ownership, or NO-GUESS rules.
 
 IMPORTANT:
+- Direct publication update (2026-09-11): before preparing any candidate upload or helper, read docs/KAIROS_DIRECT_CANDIDATE_UPLOAD_AND_GATE_PUBLICATION.md. Prefer exact ZIP -> Git blob -> atomic tree (candidate + canonical gate + necessary docs) -> commit -> guarded main fast-forward. No bridge files/workflow when required direct tools are available. Check worker capabilities first; upload is not canonical PASS. Preserve current manual pause and actual scheduling limits.
 - This file is CONTINUITY + OPERATING RULES, not canonical project authority.
 - Fresh GitHub canonical truth always overrides stale checkpoint details in this file.
 - Do NOT scan old sandbox/handoff files by default.
