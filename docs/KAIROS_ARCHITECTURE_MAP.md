@@ -397,3 +397,17 @@ Source/dependency proof after Gate #323 establishes the next smallest missing se
 P21 remains open. Universe selection/ranking remains a separate deterministic product-policy owner above authoritative metadata facts and released 24h summary facts and below presentation. Freshness/cadence remains separately owned. Live Crypto Bubble Map remains market/provider truth only; Your Trades Bubble Map remains journal/trade plus released calculation truth only; dashboard transitions remain presentation-only.
 
 Gate 327: `Kairos Controlled Roadmap Gate` #327 / run `34324507102`, job `102378550373`, exact head `6767dcf29db81022ea3bafedc70934ab7dec0a3c`, full SUCCESS. Exact artifacts: `KAIROS_CURRENT_CANDIDATE` `10093564641`, digest `sha256:4f716a9d218f0a9cdfa084b843bf0b0e174e88d8507cf21263beea9009536a0b`; `KAIROS_GATE_EVIDENCE` `10093565170`, digest `sha256:14639e25dd1a9b8105fa7da0a8ab125fec056d8a7c90487f11c9372617a3b9a9`. Released owner is ordering-only; Top-N remains separate.
+
+## Canonical Home Live Crypto Bubble configured runtime lifecycle stability checkpoint — gate #383
+
+The latest canonical GOLDEN is the **Home Live Crypto Bubble Configured Runtime Lifecycle Stability Repair**.
+
+- Canonical gate: `Kairos Controlled Roadmap Gate` #383 / run `34588719761`, job `103228822544`, exact head `775c5d82bfd8c9623757c2ec6cc1ea30abffedc3`, full SUCCESS on 2026-09-11.
+- Candidate: `KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_CONFIGURED_RUNTIME_LIFECYCLE_STABILITY_REPAIR_CANDIDATE_2026-09-11.zip`, size `1,700,687`, SHA-256 `2204855d3ed2aabf81fcb8502f94c2de8c6527e460e435cfd86f85ffd9dc93f1`, repository Git blob `491b2dbedabdcf8f60f50c716d98fe13900efea5`, root exactly `kairos_p76/`, integrity PASS.
+- Exact-run artifacts: `KAIROS_CURRENT_CANDIDATE` `10195203836`, digest `sha256:14cb05505a51c7db9bd8625c661df0b6241074a87a5160e5e71f8c10cffa2191`; `KAIROS_GATE_EVIDENCE` `10195204285`, digest `sha256:3e0d9b1f0f841c1ea6d9bd3865b0ee00cb7928e842a83fedcb7d363a3956d0e3`.
+- Production owner: `src/app/useHomeDashboardLiveCryptoBubblePresentationObservedRuntime.ts`.
+- Responsibility: preserve one React lifecycle/state owner while keying its effect to effective caller inputs instead of recreated configured wrapper identities, so equivalent rerenders retain observation/error evidence and changed effective inputs still clean up and restart once.
+- Explicit non-scope: no second lifecycle/state/cache/timer owner; no deep comparison or in-place collection mutation support; no provider, universe, ranking, freshness or metric-policy change; no default Bubble radii, viewport/breakpoint, collision/packing/layout, label-fit/hit-target, renderer, palette/dimming, CSS/motion, `HomeRoute`, persistence or Your Trades ownership.
+
+Fresh Gate383 source proves the configured pixel-radius runtime is stable. The next dependency step must first establish whether a caller-supplied, default-free presentation contract can be isolated without choosing the still-unreleased visible Bubble design/layout semantics. Concrete defaults must not be guessed.
+
