@@ -1,0 +1,11 @@
+# Compact bubble size contrast and rim smoke amendment
+
+Base: FULL canonical Gate391 run34627355628, head d5edeb01b5ed70c3ae7eab0f01e065e3f00987c5. All canonical steps and both nonexpired artifacts verified fresh.
+
+User scope: fit/compact the long bubble scroll; retain readable initials, enlarge genuine icons relative to labels, obvious big/small percentage sizes; restore earlier animated smoke.
+
+Presentation-only changes: normalized absolute percentage weight .24+.76*(magnitude/maximum)^.7; measured viewport packing, 10px clearance and smaller hover envelope; 28px minimum radius for label readability; no markets dropped; unusually short/zoomed bounds fall back to released scrolling geometry rather than hiding markets. Geometry sorts largest first only for packing; provider selection/ranking remain untouched, same instrument DOM identity and memoized geometry. Home title remains accessible but visually compacted; navigation and other routes unchanged. Icons scale larger; initial fallback and full ticker retained.
+
+Recovered smoke authority: Library KAIROS_Floating_Glass_V5.html version4, libfile_51c4a2bbb46081918143978cb3b2168f. Restore its outer-rim conic gradient, radial mask and 18s alternate curl (-14deg/.985 to19deg/1.03). Adapt opacity .65 and blur2px for visible small-screen rims. No fog over labels. Preserve reduced-motion/hidden-page suspension and freshness dimming, with no manual pause control. Existing approved glass image unchanged.
+
+Validation: production compilation/build and presentation verifier passed. Full local unit suite 288 files/1133 tests passed before final readable-minimum/short-screen refinement; focused sizing/layout tests rerun for final refinement. Real Chromium passed glass transparency, theme stability, hover identity, separate smoke motion/reduced motion, 30-circle spacing, no runtime errors. Additional actual AppShell fixture at390x844 proves all30 fit above navigation with no page scroll, >2x diameter contrast and retained icons/tickers; screenshot inspected. Original 24px browser gap assertion deliberately amended to10px alongside smaller hover amplitude; no-overlap requirement retained. Canonical full/historical gates and both artifacts remain mandatory; candidate is not GOLDEN before full PASS.
