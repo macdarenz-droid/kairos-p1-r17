@@ -24,3 +24,7 @@ Roadmap state remains P17/P18/P19/P20 component systems closed, P21 active, P22â
 6. **Review and remaining roadmap.** Reassess the actual P21 experience, close only with evidence and user review, then prove the next P22 responsibility from current ownership. Further indicators, replay, provider/asset expansion and advanced TradingView-like features need their own roadmap scope; none is silently bundled or promised here.
 
 Each implementation slice starts from latest FULL GOLDEN, has one owned responsibility and canonical evidence, and updates this ledger's actual status. The next responsibility after reviewed sizing is item2's source/identity/history boundary, not an unsupported cosmetic chart or automatic P22 progression. This planning document introduces no dependency, provider policy, runtime, schema or phase closure.
+
+## Status update after Gate405
+
+Item1 implementation is FULL canonical PASS: run34696306217/head acef469e115c61412407bf0f840d5c15504feadd, all32stages and both exact-run artifacts verified. Profit sizing is ready for deployed UI review. Items2â€“6 remain unimplemented by this amendment; no real candle/Analysis workspace completion is claimed. Proceed next with item2 after reviewed sizing and continuation, using Gate405 as the current GOLDEN source.

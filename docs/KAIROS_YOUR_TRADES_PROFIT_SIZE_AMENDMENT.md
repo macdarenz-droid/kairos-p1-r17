@@ -29,3 +29,15 @@ Canonical verification and both exact-run artifacts remain required before this 
 Candidate: KAIROS_YOUR_TRADES_PROFIT_SIZE_UI_CANDIDATE_2026-09-12.zip. Source-only kairos_p76/ root, bounded delta from404, no removals or build/cache/evidence/log residue. Dependencies/lockfile stay exact. Publish with guarded direct Git Data and fresh main/Actions checks, then verify the full canonical run and both artifacts. Do not claim Cloudflare deployment.
 
 P21 remains active. Journal's symbolic Trade map and Analysis's saved-trade picker do not satisfy the requested candle workspace. KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md records unfinished integration in dependency order before P21 closure/P22 progression. Component closure is not proof of a completed route.
+
+## FULL canonical completion — Gate405
+
+Fresh GitHub verification: canonical run34696306217/job103560275701 on head acef469e115c61412407bf0f840d5c15504feadd completed successfully. All32actual stages passed, including exact archive/scope, saved-result/decimal ownership, released drag, TypeScript/build, all browser scripts, full unit regression, all registered verifiers and historical closures. The environment doctor passed in the canonical environment.
+
+Both exact-run nonexpired artifacts match that head: KAIROS_CURRENT_CANDIDATE10299400624 (artifact digest sha256:b37a42b7ebd6974534def66da1afcbe205d77ca279485370735d1555740543dc) and KAIROS_GATE_EVIDENCE10299370734 (artifact digest sha256:6f99794e3f019ed899ad3d1d8914abeb90d2d97640c09cd71b74c0b3e30fa05e). These artifact digests identify the Actions wrappers, not the source ZIP bytes.
+
+GOLDEN candidate: KAIROS_YOUR_TRADES_PROFIT_SIZE_UI_CANDIDATE_2026-09-12.zip;3482304bytes;SHA2564a0f1871c67defb68cd2968bf9655927f0db76b23f1e33c67605e5a82df7d205;Git blob5e1ca533a29661f5b3bb267eaa66bc59a5dc95a7. Published archive Git identity and canonical workflow match the locally frozen candidate exactly. The pending checkpoints above and within the immutable ZIP are superseded by this completion evidence.
+
+Run: https://github.com/macdarenz-droid/kairos-p1-r17/actions/runs/34696306217
+
+UI VISIBLE: larger saved profits have larger Your Trades bubbles; losses remain small. Existing drag and exact saved details remain. This is ready for the user's Cloudflare deployment/review; no deployment or approval of this new UI is claimed. P21 remains active. The next responsibility after reviewed sizing is the existing P15/P16 candle-source/identity/history boundary recorded in KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md, followed by the standalone Analysis workspace. This completion update changes repository documentation only, not the verified source ZIP/workflow, and does not open another gate.

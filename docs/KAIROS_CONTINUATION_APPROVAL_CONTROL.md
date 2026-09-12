@@ -1,3 +1,9 @@
+## Current release checkpoint — FULL Gate405, new sizing UI ready for review
+
+Canonical Gate405/run34696306217/head acef469e115c61412407bf0f840d5c15504feadd is FULL PASS: all32actual stages and both exact-run nonexpired candidate/evidence artifacts verified. The profit-size source ZIP/workflow are frozen and match the tested candidate. Prior Gate404 drag was user-approved; Gate405 sizing is newly visible and ready for Cloudflare deployment/review, which has not yet been claimed. Provide the exact build command for KAIROS_YOUR_TRADES_PROFIT_SIZE_UI_CANDIDATE_2026-09-12.zip. Do not silently advance a new visible feature before this review.
+
+The unfinished candle/Analysis concerns remain recorded in KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md. After reviewed sizing and continuation, prove the P15/P16 candle-source/identity/history responsibility, then compose the P17 standalone Analysis workspace and subsequent dependent integration. Do not claim these chart features already exist or close P21. Manual-only control remains in force. This checkpoint supersedes older candidate-only status without changing user approvals or restarting automation.
+
 ## Latest explicit continuation — profit sizing and chart concerns, 12 September 2026
 
 The user confirmed deployed hold/drag works and approved prior changes through the latest gates. They requested Your Trades bubbles grow with saved profit while negative outcomes remain small. After first seeing Journal and Analysis live, they clarified that actual candle visualization and a TradingView-like Analysis workspace are expected. They authorized continuing in roadmap/dependency order, deferring concerns only to correct slices, then reiterated “Continue”.
