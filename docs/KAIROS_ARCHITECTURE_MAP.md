@@ -429,3 +429,11 @@ This checkpoint records only the user-authorized compact Bubble/smoke repair. It
 ## Home Your Trades V1 candidate from Gate395
 
 Gate395 is the latest FULL canonical GOLDEN and user-approved live Bubble visual baseline. User approved continuing with the second Home view. HomeRoute now selects exactly one Live Market or Your Trades runtime. New application/dashboard/homeDashboardYourTradesQuery delegates listJournalHistory and its P11/P13 results, retaining individual saved trade IDs and only available closed/realized outcomes. New app/HomeDashboardYourTrades owns read lifecycle, pagination, selection and presentation; generic glass decorations, viewport packing and motion are reused. No inferred currencies, percentages, market facts or new data/calculation owner. See docs/KAIROS_HOME_YOUR_TRADES_V1.md for tests and exact scope. Candidate pending full canonical gate/artifacts; not P21 closure. Paused workers remain paused.
+
+## Journal execution-entry integration amendment from Gate396
+
+Gate396 is FULL canonical PASS: run34670701285/job103491385531/headb016648c08f2b45a0acb2793afeec1c71764553e, all required stages and both nonexpired exact-run artifacts verified. Your Trades V1 is released; P21 remains open.
+
+The next user-approved amendment exposes existing P10 save capability through JournalExecutionFields and manualTradeExecutionDraft. New row state is ephemeral and separate from plans; financial strings flow unchanged to existing saveManualTrade validation and atomic persistence. Explicit device-local timestamps normalize to UTC. Existing history/P11/P13/P21 consumers retain calculations, missing-value/currency rules and result meaning. No schema, repository, calculator or provider changes. See docs/KAIROS_JOURNAL_EXECUTION_ENTRY_AMENDMENT.md. This candidate requires its own full canonical PASS; it does not close P21.
+
+Latest user control: resume the same hourly worker after manual publication; require explicit user approval before each subsequent new slice, including its UI. Verification/repairs of the already-approved slice remain autonomous. See docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md.

@@ -1,0 +1,27 @@
+# Kairos continuation and approval control — 12 September 2026
+
+## Current user instruction
+
+Continue the best dependency-safe work under the roadmap, consider UI quality and seek the user's approval before proceeding to the next slice. Turn the existing autonomous worker on after the manual job is done. This supersedes previous unconditional next-slice continuation, the completed Binance482-symbol repair pointer and the former paused control state once manual publication finishes. It does not authorize replacement workers or faster-than-supported scheduling.
+
+## Scope approved now
+
+Journal actual execution-entry integration from verified Gate396: expose existing entry/exit/quantity/time/fee save capability, retain plan/execution separation, delegate existing calculation and history results, compact theme-owned form presentation, and verify the real Journal-to-Your-Trades flow. Routine repairs within this scope are authorized. Live Bubble design is user-approved and remains the visual baseline.
+
+## Approval boundary for every subsequent slice
+
+1. Resolve the exact active canonical chain first. Monitor a running gate; repair a failure from the latest FULL canonical GOLDEN plus the approved intended delta. Gate-only defects receive gate-only fixes. Never weaken verification or create competing candidates.
+2. Verify every canonical stage and both exact-run artifacts before GOLDEN. Reconcile source-owned capability with the promised user workflow; phase closure is not proof that a complete screen exists.
+3. Before implementing a new slice, prepare one concrete, reviewable proposal: roadmap owner, missing user capability, exact proposed behavior/UI, dependencies, preserved data boundaries, limits, and validation plan. Include a UI preview when visual design requires a choice. Read-only investigation and review-only design preparation are allowed; approval cannot be inferred from broad roadmap intent, worker enablement, time elapsed or silence.
+4. Ask the user to approve that exact proposal. Record approval identity/scope in continuity. Until explicit approval exists, do not implement/publish that new feature candidate, change metric/product meaning, start a new phase, or declare system closure. Do not repeatedly send the same approval request; remain in awaiting-approval monitoring mode.
+5. Once explicitly approved, complete that slice and its evidence-based repairs autonomously, then repeat the approval boundary for the next slice.
+
+## Worker and supervisor
+
+Use existing V16 worker6a9d8b63fbf081918a26452faf51e747 and supervisor6a9a872c15d08191ac18ed249add1448. Scheduler-owned HOURLY recurrence; no sub-hour self-rearming, successors, duplicate tasks or artificial keepalive. User pause/stop always wins. Supervisor is GitHub/project read-only and must enforce the same approval boundary. Waiting for approval is healthy; the supervisor must not treat it as a failure requiring implementation.
+
+Both use fresh GitHub plus the master worker rules and direct-publication instructions. Use the shared lease6a9c887ae4e881919758b86977bbc2eb before mutations, immediately verify ownership, refresh main/Actions before later writes and release after meaningful continuity. Resume automations only after the manual candidate's publication/checkpoint; never compete with a held manual lease. Preserve other automations unchanged.
+
+## Roadmap position
+
+P21 remains open. P10 execution capture is a supporting integration amendment. Fee/result currency evidence and the P14/P17/P19 logged-trade candle/risk-box UI are known separate gaps, requiring source inspection and a scoped proposal rather than automatic implementation. P22 Goals & Discipline follows P21 only after an explicitly approved and canonically verified closure. P40 remains release hardening, not a reason to omit required functional UI until the end.
