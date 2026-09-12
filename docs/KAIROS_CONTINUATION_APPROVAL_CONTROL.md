@@ -7,6 +7,10 @@ Use existing V16 6a9d8b63fbf081918a26452faf51e747 and read-only supervisor 6a9a8
 
 ## Current canonical checkpoint and next bounded slice — 13 September 2026
 
+Gate412/run34715445353/job103611731702/head984a92642ec12a8b89e44a222e86ddffede76b56 is FULL canonical PASS. All33 stages succeeded; exact-run candidate artifact10304744045 and evidence artifact10304689074 and the nested archive identity were independently verified. Gate412 is GOLDEN and Gate411 is the rollback.
+
+The current autonomous slice is the non-UI production renderer binding in `KAIROS_LIVE_CANDLE_PRODUCTION_RENDERER_BINDING.md`. It exposes the released P17 incremental candle path through the existing Analysis production renderer while leaving provider subscription, P16.19 update/backfill decisions, reconnect and route lifecycle with their existing owners. It adds no data acquisition, journal mutation, calculation, persistence, drawing, marker or visible control. Candidate publication and canonical verification remain pending.
+
 Gate411/run34712539135/job103603792084/head8ddbe796f437ce3a2b9b0b937963017620783d04 is FULL canonical PASS. All32 required stages succeeded; exact-run nonexpired candidate10303926868/evidence10304136422 and nested archive identity were independently verified. Gate411 is GOLDEN and Gate410 is the rollback.
 
 Under the latest autonomous continuation authority, the current one-slice scope is the non-UI P16.19 Binance Spot trade-to-candle update projection in `KAIROS_LIVE_CANDLE_UPDATE_PROJECTION_FOUNDATION.md`. It may update the current candle or append only the immediate next UTC interval and must fail for backfill across gaps. It does not mount a stream, make Analysis live, change journal facts, infer executions/FX/P&L, or alter P14/P18/P19/Live Bubble ownership. Candidate publication and canonical verification remain pending.

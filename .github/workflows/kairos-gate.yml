@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — Binance Spot Trade Candle Update Projection
+name: Kairos Controlled Roadmap Gate — Live Candle Production Renderer Binding
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_BINANCE_SPOT_TRADE_CANDLE_UPDATE_PROJECTION_FOUNDATION_CANDIDATE_2026-09-13.zip'
+      - 'KAIROS_LIVE_CANDLE_PRODUCTION_RENDERER_BINDING_CANDIDATE_2026-09-13.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_JOURNAL_ACTUAL_ENTRY_TRADE_MAP_UI_CANDIDATE_2026-09-13.zip
-  CANDIDATE_ZIP: KAIROS_BINANCE_SPOT_TRADE_CANDLE_UPDATE_PROJECTION_FOUNDATION_CANDIDATE_2026-09-13.zip
+  BASE_ZIP: KAIROS_BINANCE_SPOT_TRADE_CANDLE_UPDATE_PROJECTION_FOUNDATION_CANDIDATE_2026-09-13.zip
+  CANDIDATE_ZIP: KAIROS_LIVE_CANDLE_PRODUCTION_RENDERER_BINDING_CANDIDATE_2026-09-13.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 3546115, '1a0c9c33fa731ce7947338a702ce49f5a323dc0d0b1567526e310f7316ac1157'),
-            ('CANDIDATE_ZIP', 3628221, '99c2bc4ce900287b1a187e6f0aae4ac912a424d2195a46cf958f853610e14a87'),
+            ('BASE_ZIP', 3628221, '99c2bc4ce900287b1a187e6f0aae4ac912a424d2195a46cf958f853610e14a87'),
+            ('CANDIDATE_ZIP', 3633181, '41e1de8c9ffbf386245fb9b5506b0dccceee5329a481f7e09d4bb5e125880a4e'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact P16.19 live candle update projection scope from Gate411
+      - name: Confirm exact live candle production renderer binding scope from Gate412
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -80,18 +80,19 @@ jobs:
           removed = set(x) - set(y)
           expected = {
             'docs/KAIROS_ARCHITECTURE_MAP.md',
-            'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
-            'docs/KAIROS_JOURNAL_ACTUAL_ENTRY_TRADE_MAP_AMENDMENT.md',
-            'docs/KAIROS_LIVE_CANDLE_UPDATE_PROJECTION_FOUNDATION.md',
+            'docs/KAIROS_LIVE_CANDLE_PRODUCTION_RENDERER_BINDING.md',
             'package.json',
-            'scripts/verify-p16-19-binance-spot-trade-candle-update-projection.mjs',
-            'src/services/market-data/index.ts',
-            'src/services/market-data/providers/binance/binanceSpotTradeCandleUpdateProjection.ts',
-            'tests/binance-spot-trade-candle-update-projection.test.ts',
+            'scripts/verify-live-candle-production-renderer-binding.mjs',
+            'scripts/verify-p17-10-lightweight-charts-v5-production-renderer.mjs',
+            'src/features/chart/index.ts',
+            'src/features/chart/lightweightChartsV5ProductionRenderer.ts',
+            'src/features/chart/projectedChartRenderer.ts',
+            'tests/lightweight-charts-v5-production-renderer.test.ts',
+            'tests/projected-incremental-candle-renderer.test.ts',
           }
           if changed != expected or removed:
-            print('P16.19 live candle update projection scope mismatch', file=sys.stderr)
+            print('Live candle production renderer binding scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -199,6 +200,19 @@ jobs:
           npm run verify:p16:19-binance-spot-trade-candle-update-projection
           npx vitest run tests/binance-spot-trade-candle-update-projection.test.ts
 
+      - name: Live candle production renderer binding
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          npm run verify:live-candle-production-renderer-binding
+          npm run verify:p17:10-lightweight-charts-v5-production-renderer
+          npm run verify:p17:12-incremental-chart-engine-driver
+          npx vitest run \
+            tests/projected-incremental-candle-renderer.test.ts \
+            tests/lightweight-charts-v5-production-renderer.test.ts \
+            tests/projected-chart-renderer.test.ts \
+            tests/chart-engine-driver-incremental.test.ts \
+            tests/lightweight-charts-v5-incremental-update.test.ts
+
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
         run: npm run typecheck
@@ -284,6 +298,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:live-candle-production-renderer-binding',
             'verify:p16:19-binance-spot-trade-candle-update-projection',
             'verify:p14:10-journal-trade-map-actual-entry',
             'verify:analysis-history-workspace',
@@ -347,6 +362,7 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/docs/KAIROS_LIVE_CANDLE_PRODUCTION_RENDERER_BINDING.md
             .gate-candidate/kairos_p76/docs/KAIROS_LIVE_CANDLE_UPDATE_PROJECTION_FOUNDATION.md
             .gate-candidate/kairos_p76/docs/KAIROS_JOURNAL_ACTUAL_ENTRY_TRADE_MAP_AMENDMENT.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_CANDLE_VALUES_MOBILE_OVERFLOW_REPAIR.md
