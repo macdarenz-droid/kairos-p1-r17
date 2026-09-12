@@ -338,3 +338,12 @@ Read-only follow-up inquiry: During Gate403 verification, the user asked whether
 ## Dashboard hold, drag and bounce — candidate from FULL Gate403
 
 User-approved P21 presentation amendment after the explicit “Continue then” response to the hold/drag/flick/settle proposal. Existing homeDashboardGlassMotion.ts remains the sole bounded collision/velocity owner; useHomeDashboardGlassMotion.ts owns one retained identity-keyed frame lifecycle shared by Live Market and Your Trades. New homeDashboardGlassDrag.ts binds ephemeral pointer/touch input to that owner. No market, trade, storage, sizing, colour, selection or financial-calculation responsibility moves into motion. A grabbed body has zero inverse mass for collision displacement, bounded sweep positions and capped input velocity; excess collision/release energy decays to normal drift. Reduced motion permits direct controlled movement with no autonomous release inertia. This section describes a candidate only; P21 remains open until separately approved closure, and this amendment needs its own FULL canonical PASS.
+
+
+## User-reviewed Gate404 and current profit-size candidate
+
+Gate404 is FULL canonical PASS (run34692607390/head d0343cffd708afbaf6d3a0dc8ae92828e639d128, all31stages and both exact-run artifacts). The user confirmed deployed hold/drag works and approved prior gates. The preceding candidate-only drag status is superseded by that evidence; shared motion/input ownership is unchanged.
+
+The current P21 candidate adds src/app/homeDashboardYourTradesSizing.ts as a pure saved-result-to-presentation-weight projection consumed by HomeDashboardYourTrades.tsx. P11 decimalKernel owns decimal comparison/division; P11/P13 and the existing dashboard query own result/currency/outcome. The existing viewport packer owns pixels/bounds, shared motion owns collisions/drag, and Live Market sizing is unchanged. This candidate needs its own canonical PASS; P21 remains open. See KAIROS_YOUR_TRADES_PROFIT_SIZE_AMENDMENT.md.
+
+KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md records the user's newly observed Journal/Analysis gaps against actual source. P17–P20 component closures do not establish a deployed candle workspace. Next integration responsibility after reviewed sizing is exact candle source/identity/history in existing P15/P16, followed by standalone P17 Analysis, live continuity, then P14/P19 trade overlays and P18/P20 tools/save UI. This is a dependency/status ledger, not new production ownership or premature P22 advancement.
