@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — Analysis Historical Candles UI R1
+name: Kairos Controlled Roadmap Gate — Analysis Candle Values Mobile Containment Repair
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_ANALYSIS_HISTORICAL_CANDLES_UI_R1_CANDIDATE_2026-09-12.zip'
+      - 'KAIROS_ANALYSIS_CANDLE_VALUES_MOBILE_CONTAINMENT_REPAIR_CANDIDATE_2026-09-13.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_BINANCE_SPOT_CANDLE_HISTORY_FOUNDATION_CANDIDATE_2026-09-12.zip
-  CANDIDATE_ZIP: KAIROS_ANALYSIS_HISTORICAL_CANDLES_UI_R1_CANDIDATE_2026-09-12.zip
+  BASE_ZIP: KAIROS_ANALYSIS_HISTORICAL_CANDLES_UI_R1_CANDIDATE_2026-09-12.zip
+  CANDIDATE_ZIP: KAIROS_ANALYSIS_CANDLE_VALUES_MOBILE_CONTAINMENT_REPAIR_CANDIDATE_2026-09-13.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 3500259, '25673f82dca0dd8b529f3b2d5330af48c5aa7c3ed6c656f7a8201bef038d9c5d'),
-            ('CANDIDATE_ZIP', 3527586, '33b8c48474dbd4d0eabef905900a9f043716c4726bda4b675ccbea7391e67505'),
+            ('BASE_ZIP', 3527586, '33b8c48474dbd4d0eabef905900a9f043716c4726bda4b675ccbea7391e67505'),
+            ('CANDIDATE_ZIP', 3539252, '6c9a6c70b1682e7338329387f0ed81b204a6001346bfc6be7c70ae741e8317cf'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact historical Analysis UI scope from Gate406
+      - name: Confirm exact expanded mobile Candle values repair scope from Gate408
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,30 +79,14 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'docs/KAIROS_ANALYSIS_HISTORICAL_CANDLES_UI_AMENDMENT.md',
-            'docs/KAIROS_ARCHITECTURE_MAP.md',
-            'docs/KAIROS_BINANCE_SPOT_CANDLE_HISTORY_FOUNDATION.md',
-            'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
+            'docs/KAIROS_ANALYSIS_CANDLE_VALUES_MOBILE_OVERFLOW_REPAIR.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
-            'docs/KAIROS_TIME_BASED_TRADE_SNAPSHOT_FEASIBILITY.md',
-            'package.json',
             'scripts/test-analysis-history-browser.mjs',
             'scripts/verify-analysis-history-workspace.mjs',
-            'src/app/AnalysisCandleCanvas.tsx',
-            'src/app/AnalysisHistoryWorkspace.tsx',
-            'src/app/AnalysisRoute.tsx',
             'src/app/analysisHistory.css',
-            'src/app/analysisHistoryPorts.ts',
-            'src/design-system/tokens.css',
-            'src/design-system/tokens/geometry.ts',
-            'src/features/chart/lightweightChartsV5ModuleAdapter.ts',
-            'src/features/chart/lightweightChartsV5ProductionRenderer.ts',
-            'tests/analysis-chart-presentation.test.ts',
-            'tests/analysis-history-workspace.test.tsx',
-            'tests/fixtures/analysisHistoryBrowser.tsx',
           }
           if changed != expected or removed:
-            print('Historical Analysis UI scope mismatch', file=sys.stderr)
+            print('Expanded mobile Candle values repair scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -186,7 +170,7 @@ jobs:
           mkdir -p .candle-history-evidence
           npx vitest run tests/binance-spot-candle-history.test.ts --reporter=default --reporter=json --outputFile=.candle-history-evidence/tests.json
 
-      - name: Historical Analysis UI identity cancellation and presentation regressions
+      - name: Historical Analysis UI, exact-value table containment and presentation regressions
         working-directory: .gate-candidate/kairos_p76
         run: |
           npm run verify:analysis-history-workspace
@@ -339,6 +323,7 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_CANDLE_VALUES_MOBILE_OVERFLOW_REPAIR.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_HISTORICAL_CANDLES_UI_AMENDMENT.md
             .gate-candidate/kairos_p76/.analysis-history-evidence/
             .gate-candidate/kairos_p76/docs/KAIROS_BINANCE_SPOT_CANDLE_HISTORY_FOUNDATION.md
