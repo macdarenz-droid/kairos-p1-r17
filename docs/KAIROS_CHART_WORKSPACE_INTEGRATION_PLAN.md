@@ -57,3 +57,7 @@ The expanded Candle values mobile defect is canonically resolved from Gate408; G
 Gate411 is FULL canonical PASS: run34712539135/job103603792084/head8ddbe796f437ce3a2b9b0b937963017620783d04, all32 stages and both exact-run artifacts verified. The P14 Journal actual-entry projection/presentation is released without changing candle/provider ownership.
 
 The next contained item4 dependency is P16.19 trade-to-candle update projection. It consumes an already-validated exact Binance Spot trade observation and latest selected candle, updates the same UTC bucket, appends only the immediately adjacent bucket, ignores stale observations and requires history backfill across a gap. Subscription/reconnect, route lifecycle and P17 incremental rendering remain subsequent bounded composition work. This foundation has no visible UI and does not yet describe Analysis as live.
+
+## Status after FULL Gate413
+
+Gate412's trade-to-candle projection and Gate413's production incremental renderer binding are both FULL canonical releases. The next contained item4 candidate composes only those two released owners inside an application session. It advances the latest candle after a successful renderer update, preserves stale/rejected state and emits an explicit scoped backfill request across a gap. Provider subscription/reconnect, history reacquisition, hidden/offline behavior, Analysis route lifecycle and visible live status remain subsequent slices. No UI changes in this candidate, and Analysis is still not described as live.
