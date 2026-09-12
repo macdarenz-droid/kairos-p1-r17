@@ -1,3 +1,9 @@
+## Current continuation — historical candle acquisition foundation
+
+After receiving FULL Gate405 and its build command, the user said “Continue”. This is fresh authorization to execute the next dependency-backed foundation in the existing chart integration plan; it is not a claim that a physical UI review occurred. Current scope is one bounded historical OHLC acquisition boundary under P15/P16 from FULL405, with the existing P17 renderer reserved for the following composition slice. No new visible feature is mounted here, no provider/cost/authentication change, no P21 closure/P22 progression and no automation restart.
+
+See KAIROS_BINANCE_SPOT_CANDLE_HISTORY_FOUNDATION.md and KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md. Require the candidate's full canonical PASS and both artifacts. If a gate is running, monitor that exact chain only. After PASS the next responsibility is standalone historical-candle Analysis composition with explicit market/timeframe and cancelled/stale request handling. Record and expose UI changes before claiming a completed chart workspace. Existing manual-only control remains in force.
+
 ## Current release checkpoint — FULL Gate405, new sizing UI ready for review
 
 Canonical Gate405/run34696306217/head acef469e115c61412407bf0f840d5c15504feadd is FULL PASS: all32actual stages and both exact-run nonexpired candidate/evidence artifacts verified. The profit-size source ZIP/workflow are frozen and match the tested candidate. Prior Gate404 drag was user-approved; Gate405 sizing is newly visible and ready for Cloudflare deployment/review, which has not yet been claimed. Provide the exact build command for KAIROS_YOUR_TRADES_PROFIT_SIZE_UI_CANDIDATE_2026-09-12.zip. Do not silently advance a new visible feature before this review.

@@ -28,3 +28,10 @@ Each implementation slice starts from latest FULL GOLDEN, has one owned responsi
 ## Status update after Gate405
 
 Item1 implementation is FULL canonical PASS: run34696306217/head acef469e115c61412407bf0f840d5c15504feadd, all32stages and both exact-run artifacts verified. Profit sizing is ready for deployed UI review. Items2–6 remain unimplemented by this amendment; no real candle/Analysis workspace completion is claimed. Proceed next with item2 after reviewed sizing and continuation, using Gate405 as the current GOLDEN source.
+
+
+## Current foundation candidate after the user's next Continue
+
+Item2 now has a bounded acquisition candidate: neutral historical OHLC request/page contract, exact Binance Spot UTC request descriptor, decimal/time/page validation, immutable-scope/cancellation/HTTP acquisition composition and a native public-data connector. It awaits its own full canonical gate and artifacts. Current source and tested boundaries are detailed in KAIROS_BINANCE_SPOT_CANDLE_HISTORY_FOUNDATION.md. Metadata/selection and stale-response suppression remain caller responsibilities; native provider connectivity was attempted but locally blocked by DNS EAI_AGAIN. No fake connectivity or real prices are claimed.
+
+No UI changed. After PASS, item3 is the next bounded composition: standalone historical-candle Analysis using existing P17, explicit supported instrument/timeframe selection from existing metadata, loading/error/empty states and real browser evidence. Verify actual provider availability before claiming live data. Item4 live continuity and item5 overlays/tools/save still follow; this foundation does not complete those items or close P21.
