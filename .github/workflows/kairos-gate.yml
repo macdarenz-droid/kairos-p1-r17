@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — BTC and ETH Identity Highlights
+name: Kairos Controlled Roadmap Gate — Home Your Trades V1
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_HOME_DASHBOARD_BTC_ETH_IDENTITY_HIGHLIGHTS_CANDIDATE_2026-09-12.zip'
+      - 'KAIROS_HOME_DASHBOARD_YOUR_TRADES_V1_CANDIDATE_2026-09-12.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_HOME_DASHBOARD_SCATTERED_DYNAMIC_BUBBLES_CANDIDATE_2026-09-12.zip
-  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_BTC_ETH_IDENTITY_HIGHLIGHTS_CANDIDATE_2026-09-12.zip
+  BASE_ZIP: KAIROS_HOME_DASHBOARD_BTC_ETH_IDENTITY_HIGHLIGHTS_CANDIDATE_2026-09-12.zip
+  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_YOUR_TRADES_V1_CANDIDATE_2026-09-12.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 3340991, '913266e332d0f6dba4383d199167f0785a80fbab7f057ba37991f36012d56b46'),
-            ('CANDIDATE_ZIP', 3342734, '68891a3844dbf0ddebe51aa88404e6705142fd10724a01e496c205047f17fb64'),
+            ('BASE_ZIP', 3342734, '68891a3844dbf0ddebe51aa88404e6705142fd10724a01e496c205047f17fb64'),
+            ('CANDIDATE_ZIP', 3354108, '923f77fa924693fd8b5a75b463de69bba066bd1a80d0b01bf7fb0e5b7c389a43'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact BTC and ETH identity amendment scope from Gate394
+      - name: Confirm exact Home Your Trades scope from Gate395
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,11 +79,18 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'docs/KAIROS_BTC_ETH_IDENTITY_AMENDMENT.md',
+            'docs/KAIROS_ARCHITECTURE_MAP.md',
+            'docs/KAIROS_HOME_YOUR_TRADES_V1.md',
             'scripts/test-home-dashboard-glass-browser.mjs',
+            'scripts/verify-home-dashboard-your-trades.mjs',
             'src/app/HomeDashboardGlassBubbleMap.tsx',
-            'src/app/homeDashboardGlassBubbleMap.css',
-            'src/design-system/themes/themeEngine.ts',
+            'src/app/HomeDashboardYourTrades.tsx',
+            'src/app/HomeRoute.tsx',
+            'src/app/homeDashboardYourTrades.css',
+            'src/application/dashboard/homeDashboardYourTradesQuery.ts',
+            'tests/fixtures/homeDashboardGlassBrowser.tsx',
+            'tests/home-dashboard-view-switch.test.tsx',
+            'tests/home-dashboard-your-trades.test.tsx',
           }
           if changed != expected or removed:
             print('Compact bubble smoke R1 scope mismatch', file=sys.stderr)
@@ -106,6 +113,12 @@ jobs:
         run: |
           test "$(node -p "require('./node_modules/lightweight-charts/package.json').version")" = "5.2.1"
           npm ls lightweight-charts --depth=0
+
+      - name: Your Trades saved-data ownership and view-switch regressions
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          node scripts/verify-home-dashboard-your-trades.mjs
+          npx vitest run tests/home-dashboard-your-trades.test.tsx tests/home-dashboard-view-switch.test.tsx
 
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
@@ -242,6 +255,6 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
-            .gate-candidate/kairos_p76/docs/KAIROS_BTC_ETH_IDENTITY_AMENDMENT.md
+            .gate-candidate/kairos_p76/docs/KAIROS_HOME_YOUR_TRADES_V1.md
             .gate-candidate/kairos_p76/.glass-evidence/
           if-no-files-found: warn

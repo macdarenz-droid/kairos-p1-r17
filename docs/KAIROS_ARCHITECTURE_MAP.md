@@ -424,3 +424,8 @@ The latest canonical GOLDEN is the **Home Dashboard Compact Bubble Size Contrast
 - Gate392 remains failed evidence only. Gate393’s early design-system verification plus all canonical regressions and browser evidence prove the repaired ownership boundary.
 
 This checkpoint records only the user-authorized compact Bubble/smoke repair. It does not authorize another visual-design slice.
+
+
+## Home Your Trades V1 candidate from Gate395
+
+Gate395 is the latest FULL canonical GOLDEN and user-approved live Bubble visual baseline. User approved continuing with the second Home view. HomeRoute now selects exactly one Live Market or Your Trades runtime. New application/dashboard/homeDashboardYourTradesQuery delegates listJournalHistory and its P11/P13 results, retaining individual saved trade IDs and only available closed/realized outcomes. New app/HomeDashboardYourTrades owns read lifecycle, pagination, selection and presentation; generic glass decorations, viewport packing and motion are reused. No inferred currencies, percentages, market facts or new data/calculation owner. See docs/KAIROS_HOME_YOUR_TRADES_V1.md for tests and exact scope. Candidate pending full canonical gate/artifacts; not P21 closure. Paused workers remain paused.
