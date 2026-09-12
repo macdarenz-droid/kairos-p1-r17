@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — Explicit Journal P&L Currency UI
+name: Kairos Controlled Roadmap Gate — Journal Theme Token Repair
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_JOURNAL_PNL_CURRENCY_UI_CANDIDATE_2026-09-12.zip'
+      - 'KAIROS_JOURNAL_THEME_TOKEN_REPAIR_CANDIDATE_2026-09-12.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_JOURNAL_OPEN_TRADE_UPDATE_UI_CANDIDATE_2026-09-12.zip
-  CANDIDATE_ZIP: KAIROS_JOURNAL_PNL_CURRENCY_UI_CANDIDATE_2026-09-12.zip
+  BASE_ZIP: KAIROS_JOURNAL_PNL_CURRENCY_UI_CANDIDATE_2026-09-12.zip
+  CANDIDATE_ZIP: KAIROS_JOURNAL_THEME_TOKEN_REPAIR_CANDIDATE_2026-09-12.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 3386785, '4adb85401d42cb6394f9df4133a2270d6a3531755878e6f5b98d27782cd97a10'),
-            ('CANDIDATE_ZIP', 3399296, '91fa89853107f19ab4a5a17abb4651e6229ea39458e9ca2b89f8a415b5927121'),
+            ('BASE_ZIP', 3399296, '91fa89853107f19ab4a5a17abb4651e6229ea39458e9ca2b89f8a415b5927121'),
+            ('CANDIDATE_ZIP', 3406426, 'cc0d95a4a052268c1bf6d380b00ac4ab9374e148da2ff17a807383283ba29b40'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact explicit currency scope from Gate398
+      - name: Confirm exact Journal presentation repair scope from Gate399
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,25 +79,14 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
-            'docs/KAIROS_JOURNAL_PNL_CURRENCY_AMENDMENT.md',
-            'scripts/test-journal-pnl-currency-browser.mjs',
-            'scripts/verify-journal-pnl-currency.mjs',
-            'src/app/JournalHistoryList.tsx',
-            'src/app/JournalOpenTradeUpdate.tsx',
-            'src/app/JournalPriceCurrencyField.tsx',
-            'src/app/JournalRoute.tsx',
-            'src/application/journal/historyQuery.ts',
-            'src/application/trades/manualTradeDraft.ts',
-            'src/application/trades/saveManualTrade.ts',
-            'src/application/trades/updateOpenManualTrade.ts',
-            'src/domain/trades/tradeTypes.ts',
-            'src/domain/trades/tradeValidation.ts',
-            'tests/journal-pnl-currency.test.tsx',
+            'docs/KAIROS_JOURNAL_THEME_TOKEN_REPAIR.md',
+            'scripts/test-journal-theme-browser.mjs',
+            'scripts/verify-journal-theme-tokens.mjs',
+            'src/app/journalRoute.css',
           }
           if changed != expected or removed:
-            print('Explicit currency scope mismatch', file=sys.stderr)
+            print('Journal theme repair scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -110,7 +99,9 @@ jobs:
 
       - name: Enforce design-system token ownership repair
         working-directory: .gate-candidate/kairos_p76
-        run: npm run verify:p2:design-system
+        run: |
+          npm run verify:p2:design-system
+          node scripts/verify-journal-theme-tokens.mjs
 
       - name: Prove real Lightweight Charts dependency remains exact
         working-directory: .gate-candidate/kairos_p76
@@ -207,6 +198,7 @@ jobs:
           node scripts/test-journal-execution-browser.mjs
           node scripts/test-journal-open-trade-browser.mjs
           node scripts/test-journal-pnl-currency-browser.mjs
+          node scripts/test-journal-theme-browser.mjs
 
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
@@ -280,6 +272,8 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/docs/KAIROS_JOURNAL_THEME_TOKEN_REPAIR.md
+            .gate-candidate/kairos_p76/.journal-theme-evidence/
             .gate-candidate/kairos_p76/docs/KAIROS_JOURNAL_PNL_CURRENCY_AMENDMENT.md
             .gate-candidate/kairos_p76/.pnl-currency-evidence/
             .gate-candidate/kairos_p76/docs/KAIROS_OPEN_TRADE_UPDATE_AMENDMENT.md
