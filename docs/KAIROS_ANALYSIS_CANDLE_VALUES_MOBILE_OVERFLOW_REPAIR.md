@@ -32,4 +32,10 @@ The Gate408 archive was independently downloaded and verified before editing: ex
 
 The runtime has Playwright1.62.1 but no Chromium binary; two official browser installation attempts failed through the runtime network with repeated timeout/truncated-archive/502 responses. Therefore no local rendered result is claimed. The unchanged canonical GitHub browser stage remains mandatory and is the authority for the controlled legacy reproduction, repaired mobile screenshots and exact geometry evidence.
 
+### Gate409 evidence and R1 correction
+
+Gate409/run `34709983982` reached the mandatory real-browser stage after every earlier archive, scope, ownership, focused, TypeScript and production-build check passed. Its controlled legacy reproduction produced a `662px` layout/page width inside the requested `320px` mobile visual viewport, but the regression compared `scrollWidth` with `innerWidth`. Under Chromium mobile emulation both values expand together, so the assertion failed even though it had reproduced the defect.
+
+R1 measures the user-visible viewport with `visualViewport.width` (falling back to `documentElement.clientWidth`) and records `innerWidth` separately as the layout viewport. The production CSS is unchanged from Gate409. The canonical browser stage must now prove the legacy page is wider than the visual viewport and that removing the legacy override returns the repaired table to page containment with internal scrolling at `320px` and `390px` in all three themes.
+
 The candidate is not GOLDEN until `.github/workflows/kairos-gate.yml` job `verify-current-candidate` passes every stage and both exact-run nonexpired artifacts are verified. The frozen report remains pre-gate evidence; later root continuity records the canonical result without changing candidate bytes.

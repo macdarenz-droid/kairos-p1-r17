@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — Analysis Candle Values Mobile Containment Repair
+name: Kairos Controlled Roadmap Gate — Analysis Candle Values Mobile Containment Repair R1
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_ANALYSIS_CANDLE_VALUES_MOBILE_CONTAINMENT_REPAIR_CANDIDATE_2026-09-13.zip'
+      - 'KAIROS_ANALYSIS_CANDLE_VALUES_MOBILE_CONTAINMENT_REPAIR_CANDIDATE_2026-09-13-R1.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,7 +13,7 @@ permissions:
 
 env:
   BASE_ZIP: KAIROS_ANALYSIS_HISTORICAL_CANDLES_UI_R1_CANDIDATE_2026-09-12.zip
-  CANDIDATE_ZIP: KAIROS_ANALYSIS_CANDLE_VALUES_MOBILE_CONTAINMENT_REPAIR_CANDIDATE_2026-09-13.zip
+  CANDIDATE_ZIP: KAIROS_ANALYSIS_CANDLE_VALUES_MOBILE_CONTAINMENT_REPAIR_CANDIDATE_2026-09-13-R1.zip
 
 jobs:
   verify-current-candidate:
@@ -39,7 +39,7 @@ jobs:
 
           for key, size, digest in [
             ('BASE_ZIP', 3527586, '33b8c48474dbd4d0eabef905900a9f043716c4726bda4b675ccbea7391e67505'),
-            ('CANDIDATE_ZIP', 3539252, '6c9a6c70b1682e7338329387f0ed81b204a6001346bfc6be7c70ae741e8317cf'),
+            ('CANDIDATE_ZIP', 3614526, '441020dd226ecdbc22b18ae9e7a2ea20acf2b669f57b16b17a1de869760a244e'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()

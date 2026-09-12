@@ -9,6 +9,8 @@ Gate408/run34704149011/job103581033773/head ce12e31264e3d440f50ae9725a86b4292e64
 
 Current bounded work investigates the expanded mobile Analysis Candle values table. Confirm the suspected grid/min-content overflow with real browser evidence, contain exact numeric values inside the table's own horizontal scroller, preserve chart interaction and saved facts, and add focused320/390px three-theme evidence. This is a presentation repair only: no data, calculation, provider, recorded execution, P14/P18/P19 or Live Bubble ownership change. Publish/promote only through the full canonical gate, then continue the next smallest roadmap dependency under this authority.
 
+Gate409/run `34709983982` failed only in the new browser regression after reproducing a `662px` mobile layout/page width for the requested `320px` visual viewport. The check incorrectly used Chromium mobile `innerWidth`, which expands with the min-content layout and therefore equalled `scrollWidth`. R1 retains the exact Gate408-based production repair and measures the visual viewport explicitly; Gate408 remains GOLDEN until every R1 canonical stage and both exact-run artifacts pass.
+
 Gradually apply accepted Linear/Vercel/Height principles within touched slices: quiet hierarchy, consistent spacing and semantic borders, readable numeric typography, clear states, contextual controls and panels. Reuse Kairos design-system tokens and existing themes; no global redesign or duplicated styling owner.
 
 ---
