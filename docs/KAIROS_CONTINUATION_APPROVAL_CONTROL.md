@@ -1,3 +1,7 @@
+## Active repair — Analysis geometry tokens after failed Gate407
+
+The user asked “Fix” after Gate407/run34703312431 failed its existing design-system verifier. Complete only this same-scope repair. R1 preserves the original chart geometry using registered design-system tokens; its dedicated local checks pass, and the full canonical gate remains required. Gate406 remains GOLDEN. Preserve the original407 ZIP and failed-run evidence. No local full-suite rerun, next feature or automation restart is requested. See KAIROS_ANALYSIS_HISTORICAL_CANDLES_UI_AMENDMENT.md for exact failure, reconstruction, changes and evidence.
+
 ## Current explicit continuation — standalone historical Analysis UI
 
 The user said “Okay continue” after the Gate406 result and next-chart recommendation. This authorizes one bounded standalone historical Analysis composition from FULL406. Exact visible scope and limits were explained before implementation. KAIROS_ANALYSIS_HISTORICAL_CANDLES_UI_AMENDMENT.md owns the scope/evidence ledger: explicit metadata-backed symbol/timeframe, historical candles, chart interactions, request cleanup and preserved optional saved-trade review. Complete the candidate and all canonical checks, then provide the visible UI build for review. Do not claim continuous live data, trade overlays, P21 closure or P22 advancement. Manual-only controls remain.

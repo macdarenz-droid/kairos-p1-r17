@@ -44,3 +44,13 @@ Time-assisted readonly trade preview/reference provenance can follow this histor
 - https://tradingview.github.io/lightweight-charts/docs/api/interfaces/ChartOptionsImpl (autoSize, appearance and interactions)
 - https://tradingview.github.io/lightweight-charts/docs/api/interfaces/HandleScrollOptions (horizontal versus vertical touch handling)
 - Gate406's documented Binance Spot historical endpoint contract is reused unchanged.
+
+## Gate407 repair — design-system geometry ownership
+
+Gate407/run34703312431/job103578774742 failed at the unchanged P2 design-system verifier: analysisHistory.css contained a literal 160px minimum height and 280px maximum height outside the registered owner. Archive identity, exact Gate406 delta, extraction and deterministic install all passed. Gate406 remains the latest FULL canonical GOLDEN;407 is failed evidence only.
+
+R1 was reconstructed from the exact FULL Gate406 archive plus the proven19-file approved Analysis delta. It moves the canvas clamp, empty-state minimum height and table maximum height into src/design-system/tokens.css and the matching geometryTokens.layout entries. CSS now consumes those registered values. All values are identical to the original candidate; calculations, chart behavior and the UI appearance are unchanged. No verifier, dependency or lockfile is modified.
+
+Targeted local repair evidence: all six commands from the previously failed canonical design-system step pass, and verify-analysis-history-workspace passes. Resolving the three new geometry variables reproduces the original Analysis CSS byte for byte. The earlier1250-test/build evidence belongs to the original candidate; full unit/build/browser/historical checks were not rerun locally for R1 and are required by the next canonical gate. The workflow retains every existing stage and both artifact uploads, updates only candidate identity and the exact delta allowlist, and continues to pin FULL Gate406 as base.
+
+User instruction: fix the failed gate, preserving the existing approved chart slice. No next feature, deployment, GOLDEN promotion or automation restart is claimed. Next safe action is to verify the exact R1 canonical run and, only after full success plus both artifacts, provide the build for visible review.

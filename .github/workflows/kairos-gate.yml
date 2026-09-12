@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — Analysis Historical Candles UI
+name: Kairos Controlled Roadmap Gate — Analysis Historical Candles UI R1
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_ANALYSIS_HISTORICAL_CANDLES_UI_CANDIDATE_2026-09-12.zip'
+      - 'KAIROS_ANALYSIS_HISTORICAL_CANDLES_UI_R1_CANDIDATE_2026-09-12.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,7 +13,7 @@ permissions:
 
 env:
   BASE_ZIP: KAIROS_BINANCE_SPOT_CANDLE_HISTORY_FOUNDATION_CANDIDATE_2026-09-12.zip
-  CANDIDATE_ZIP: KAIROS_ANALYSIS_HISTORICAL_CANDLES_UI_CANDIDATE_2026-09-12.zip
+  CANDIDATE_ZIP: KAIROS_ANALYSIS_HISTORICAL_CANDLES_UI_R1_CANDIDATE_2026-09-12.zip
 
 jobs:
   verify-current-candidate:
@@ -39,7 +39,7 @@ jobs:
 
           for key, size, digest in [
             ('BASE_ZIP', 3500259, '25673f82dca0dd8b529f3b2d5330af48c5aa7c3ed6c656f7a8201bef038d9c5d'),
-            ('CANDIDATE_ZIP', 3527844, '32442556d7760b3527fedc8e4aeaace221516a98d270746a5fe61360ad750c39'),
+            ('CANDIDATE_ZIP', 3527586, '33b8c48474dbd4d0eabef905900a9f043716c4726bda4b675ccbea7391e67505'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -93,6 +93,8 @@ jobs:
             'src/app/AnalysisRoute.tsx',
             'src/app/analysisHistory.css',
             'src/app/analysisHistoryPorts.ts',
+            'src/design-system/tokens.css',
+            'src/design-system/tokens/geometry.ts',
             'src/features/chart/lightweightChartsV5ModuleAdapter.ts',
             'src/features/chart/lightweightChartsV5ProductionRenderer.ts',
             'tests/analysis-chart-presentation.test.ts',
