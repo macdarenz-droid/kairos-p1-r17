@@ -1,3 +1,11 @@
+## Current checkpoint — FULL Gate406 and researched snapshot proposal
+
+Gate406/run34699361404/head 02a0efe039cad60119336f590d9f4f039c3e921e is FULL canonical PASS: all33actual stages and both nonexpired exact-run candidate/evidence artifacts verified. Historical candle acquisition is GOLDEN, with no visible UI change and no claim of native provider connectivity. The prior candidate-only status below is superseded by this completion.
+
+The user asked, while the gate was running, to research a time/date-assisted trade snapshot alongside precise manual journaling. This was read-only research; no feature was inserted into the running gate. KAIROS_TIME_BASED_TRADE_SNAPSHOT_FEASIBILITY.md records source evidence, approximation limits and proposed slices. Do not treat that feasibility inquiry as approval to fill real execution records or actual P&L with estimated market prices.
+
+Next controlled implementation is the standalone historical Analysis chart under existing P17 using the now-passed history port, explicit provider/instrument/timeframe and proper request lifecycle. The time-assisted preview can be proposed immediately after that chart, before continuous live updates; durable snapshot/provenance contracts follow separately. P21 remains active, no P22 advancement, and all manual-only/visible-review controls remain. No automation restart.
+
 ## Current continuation — historical candle acquisition foundation
 
 After receiving FULL Gate405 and its build command, the user said “Continue”. This is fresh authorization to execute the next dependency-backed foundation in the existing chart integration plan; it is not a claim that a physical UI review occurred. Current scope is one bounded historical OHLC acquisition boundary under P15/P16 from FULL405, with the existing P17 renderer reserved for the following composition slice. No new visible feature is mounted here, no provider/cost/authentication change, no P21 closure/P22 progression and no automation restart.

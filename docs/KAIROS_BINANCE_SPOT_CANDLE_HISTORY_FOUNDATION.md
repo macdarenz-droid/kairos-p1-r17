@@ -46,3 +46,17 @@ A single read-only native request to the public BTCUSDT5m endpoint was attempted
 Candidate: KAIROS_BINANCE_SPOT_CANDLE_HISTORY_FOUNDATION_CANDIDATE_2026-09-12.zip. Clean kairos_p76/ source root, exact intended delta from405, current completion docs carried, no build/cache/evidence/log residue or removals. Preserve every canonical405stage, full registered verifiers, historical closures, browser regression and artifact upload; add the dedicated candle history stage and this report. Only a FULL canonical PASS with both exact-run artifacts establishes GOLDEN. This report is a pre-gate checkpoint.
 
 UI VISIBLE: NO. Historical acquisition is now available for composition; the deployed Analysis/Journal chart is not changed by this foundation. After FULL PASS, the next bounded responsibility is standalone historical-candle Analysis composition using the existing P17 renderer and explicit supported instrument/timeframe selection, with cancellation/stale-response handling and real browser evidence. Existing metadata supplies instrument choices; ambiguous saved trade symbols cannot pick a venue automatically. Native provider connectivity must be demonstrated or clearly reported unavailable. Live candle continuity, exact trade overlays and tools/save integration follow their recorded dependencies. P21 remains open and P22 has not begun.
+
+## FULL canonical completion — Gate406
+
+Canonical run34699361404/job103568267556/head 02a0efe039cad60119336f590d9f4f039c3e921e completed successfully. All33actual stages passed, including archive/scope verification, dedicated historical OHLC precision/cancellation/HTTP cases, all released UI/browser regressions, full unit regression, all320registered verifiers and historical closures.
+
+Both exact-run artifacts are nonexpired and match this head: KAIROS_CURRENT_CANDIDATE10300111753 (sha256:2d08a79bc673faecc742a12fa149f5161c598e90dda5b3a9292603f3d9b79917) and KAIROS_GATE_EVIDENCE10299962095 (sha256:b8c17674d3c26723068daa93e67c2090941d47208e51423fe28e54f2a1dee4b2). Artifact digests describe Actions wrappers; source ZIP identity is separate.
+
+GOLDEN source: KAIROS_BINANCE_SPOT_CANDLE_HISTORY_FOUNDATION_CANDIDATE_2026-09-12.zip;3500259bytes;SHA25625673f82dca0dd8b529f3b2d5330af48c5aa7c3ed6c656f7a8201bef038d9c5d;Git blob4d0cd0a5e659a6f3e8af1250f39d8d0cc4272c78. The verified source ZIP and canonical workflow remain immutable. This repository-documentation completion supersedes the pre-gate checkpoints above and inside the ZIP.
+
+Run: https://github.com/macdarenz-droid/kairos-p1-r17/actions/runs/34699361404
+
+UI VISIBLE:NO. This completes the bounded acquisition foundation, not the chart route or a claim of native Binance connectivity. Local provider DNS limitation remains honestly recorded. Next implementation responsibility is the standalone historical-candle Analysis composition using existing P17 and exact supported instrument/timeframe selection, with cancellation/stale response handling, real browser evidence and explicit provider availability.
+
+During the run the user requested research into time-based estimated trade snapshots alongside precise manual entry. Read-only findings are recorded in KAIROS_TIME_BASED_TRADE_SNAPSHOT_FEASIBILITY.md. This feature is feasible as a later controlled amendment after the historical chart; it was not added to Gate406 and requires explicit estimate provenance separate from actual executions/performance. P21 remains open.
