@@ -35,3 +35,17 @@ Local tests do not establish GOLDEN; this candidate remains pending until all re
 Candidate KAIROS_JOURNAL_CURRENCY_GUIDANCE_REPAIR_CANDIDATE_2026-09-12.zip, clean kairos_p76/ root, exact delta against402 enforced by the gate. Preserve all existing canonical stages, historical/current verifiers, browser scripts and both artifact uploads; add dedicated repair tests/verifier/browser evidence. Preserve pinned Node22.16.0/npm10.9.2/Lightweight Charts5.2.1/Playwright1.62.1. Direct Git Data guarded publication uses frozen ZIP hash/blob, current parent/tree, fresh main/Actions after each mutation, the shared lease and no force push. Existing hourly worker/supervisor stay enabled with schedules unchanged.
 
 UI VISIBLE: price-currency label/help, rejected amount-like input and missing-fill guidance in Journal create/update forms. Existing stored records are preserved, so a previously saved “50 USD” value is not silently corrected. P21 remains open. Give build/review instructions after FULL PASS and await fresh continuation before another feature.
+
+## Canonical completion — Gate403
+
+FULL canonical PASS verified 12 September 2026: Gate403/run34688331500/job103539144108/head 3f86b952a7bf4cca223326dcafcbf280cae51ebf; all 30 actual stages succeeded. Both exact-run artifacts are present, nonexpired and bound to this head: KAIROS_CURRENT_CANDIDATE 10296801277 and KAIROS_GATE_EVIDENCE 10296776333. Workflow .github/workflows/kairos-gate.yml/job verify-current-candidate remains sole promotion authority. Archive KAIROS_JOURNAL_CURRENCY_GUIDANCE_REPAIR_CANDIDATE_2026-09-12.zip; 3441426 bytes; SHA256 963049022be4e7137dd5d0b33155c766f7ba6692284d24276a00abcc96b97f8f; Git blob 8edaf3afeabb642cb7f23a4494d3a853c493cca5. Latest FULL GOLDEN is now403; immediate verified rollback402. Preserve401 and failed400 evidence. The candidate ZIP and workflow remain frozen; this root documentation update records verified completion without repackaging.
+
+Canonical full unit, current roadmap and historical regression stages all passed, together with production typecheck/build, new and released browser checks, exact archive identity, exact18-file scope, and both uploads. This resolves the local doctor DNS limitation without altering that check. The frozen candidate's earlier pending-gate wording is historical; this root completion entry is current.
+
+Review the new UI in Journal create/update. Example: “50 USD” is rejected as currency; “USD” is accepted. Closed trades missing actual fills explain unavailable P&L before Save. Existing stored records remain unchanged, including legacy amount-like currency. Build from the exact released ZIP:
+
+```bash
+rm -rf .pages-build && mkdir -p .pages-build && unzip -q KAIROS_JOURNAL_CURRENCY_GUIDANCE_REPAIR_CANDIDATE_2026-09-12.zip -d .pages-build && cd .pages-build/kairos_p76 && npm ci && npm run build
+```
+
+Output directory: `.pages-build/kairos_p76/dist`. No Cloudflare deployment is claimed. P21 remains open. The user's newer manual-only instruction disables all autonomous work; do not resume scheduled tasks or show routine automation status. The bubble drag/bounce inquiry is feasible read-only planning and has not been implemented in this release.
