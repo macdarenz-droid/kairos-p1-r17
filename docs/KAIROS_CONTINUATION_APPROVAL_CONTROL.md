@@ -4,6 +4,12 @@ The user's latest instruction is: “Remove autonomous for now, i dont want to s
 
 Keep ordinary replies focused on the requested work, visible UI changes, important results and blockers. Do not show routine worker/supervisor/lease status or recreate automation cards for normal manual turns. After releasing the current manual session's own lease, keep its record disabled. With autonomous workers off, use fresh repository/main/Actions checks and avoid competing manual writes; do not restart task-based coordination just to begin an ordinary manual turn. Historical cadence/lease/enablement entries below remain historical and are subordinate to this latest control.
 
+## Current explicit manual continuation — dashboard hold, drag and bounce
+
+The user asked whether any dashboard bubble could be held and dragged, making others move aside or scatter when bumped. The concrete proposal explained hold to grab, drag to push neighbours, flick/release to bounce, return to usual float, bounded positions, preserved scrolling and trade-selection taps, and unchanged market values/sizes/colours. After that proposal and the completed Gate403 repair/build, the user explicitly said “Continue then”. This approves ONE contained P21 dashboard UI amendment in the shared presentation motion owner, for Live Market and Your Trades, including evidence-based repairs and canonical verification. It supersedes the preceding feasibility-only pointer for this scope. No automation restart, separate feature/phase closure, new data/calculation/provider owner or saved position persistence is authorized.
+
+Base is FULL canonical Gate403, freshly verified all30stages and both exact-run nonexpired artifacts. Implement from its exact candidate archive and carry current post-PASS root docs forward. Verify real touchscreen hold/swipe/collision/release, desktop pointer, keyboard trade selection, interrupted gestures, live identity refresh, all30 bubbles, mobile bounds, existing themes and reduced motion, plus full current/historical gates. Then present visible changes and the exact verified build for user review; a following slice needs fresh manual continuation.
+
 # Kairos continuation and approval control — 12 September 2026
 
 ## Current user instruction

@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — Journal Currency Guidance Repair UI
+name: Kairos Controlled Roadmap Gate — Dashboard Bubble Drag and Bounce UI
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_JOURNAL_CURRENCY_GUIDANCE_REPAIR_CANDIDATE_2026-09-12.zip'
+      - 'KAIROS_DASHBOARD_BUBBLE_DRAG_UI_CANDIDATE_2026-09-12.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_SAVED_TRADE_REVIEW_UI_CANDIDATE_2026-09-12.zip
-  CANDIDATE_ZIP: KAIROS_JOURNAL_CURRENCY_GUIDANCE_REPAIR_CANDIDATE_2026-09-12.zip
+  BASE_ZIP: KAIROS_JOURNAL_CURRENCY_GUIDANCE_REPAIR_CANDIDATE_2026-09-12.zip
+  CANDIDATE_ZIP: KAIROS_DASHBOARD_BUBBLE_DRAG_UI_CANDIDATE_2026-09-12.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 3426535, 'f0aedc23ef00e025be70d0ac3e16096ce32c3e88684f301768167c72815b1c1d'),
-            ('CANDIDATE_ZIP', 3441426, '963049022be4e7137dd5d0b33155c766f7ba6692284d24276a00abcc96b97f8f'),
+            ('BASE_ZIP', 3441426, '963049022be4e7137dd5d0b33155c766f7ba6692284d24276a00abcc96b97f8f'),
+            ('CANDIDATE_ZIP', 3466532, '7337eb53bcb9d1098e20777f3c4ebfd393f8917ce6167c9270d912eba848469b'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact currency guidance repair scope from Gate402
+      - name: Confirm exact dashboard bubble drag scope from Gate403
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -81,25 +81,20 @@ jobs:
           expected = {
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
+            'docs/KAIROS_DASHBOARD_BUBBLE_DRAG_UI_AMENDMENT.md',
             'docs/KAIROS_JOURNAL_CURRENCY_GUIDANCE_REPAIR.md',
-            'scripts/test-journal-currency-guidance-browser.mjs',
-            'scripts/test-journal-pnl-currency-browser.mjs',
-            'scripts/test-trade-review-browser.mjs',
-            'scripts/verify-journal-currency-guidance.mjs',
-            'scripts/verify-p10-manual-trade-journal-route.mjs',
-            'scripts/verify-p13-11r1-journal-daily-results-boundary.mjs',
-            'src/app/JournalClosedTradeGuidance.tsx',
-            'src/app/JournalOpenTradeUpdate.tsx',
-            'src/app/JournalPriceCurrencyField.tsx',
-            'src/app/JournalRoute.tsx',
-            'src/application/trades/priceCurrencyInput.ts',
-            'src/application/trades/saveManualTrade.ts',
-            'src/application/trades/updateOpenManualTrade.ts',
-            'tests/journal-currency-guidance.test.tsx',
-            'tests/journal-pnl-currency.test.tsx',
+            'scripts/test-home-dashboard-bubble-drag-browser.mjs',
+            'scripts/verify-home-dashboard-bubble-drag.mjs',
+            'src/app/homeDashboardGlassBubbleMap.css',
+            'src/app/homeDashboardGlassDrag.ts',
+            'src/app/homeDashboardGlassMotion.ts',
+            'src/app/useHomeDashboardGlassMotion.ts',
+            'tests/home-dashboard-glass-drag-lifecycle.test.tsx',
+            'tests/home-dashboard-glass-drag-motion.test.ts',
+            'tests/home-dashboard-glass-drag.test.ts',
           }
           if changed != expected or removed:
-            print('Currency guidance repair scope mismatch', file=sys.stderr)
+            print('Dashboard bubble drag scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -164,6 +159,12 @@ jobs:
           node scripts/verify-p13-11r1-journal-daily-results-boundary.mjs
           npx vitest run tests/journal-currency-guidance.test.tsx
 
+      - name: Dashboard hold drag bounce and input ownership regressions
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          node scripts/verify-home-dashboard-bubble-drag.mjs
+          npx vitest run tests/home-dashboard-glass-drag.test.ts tests/home-dashboard-glass-drag-motion.test.ts tests/home-dashboard-glass-drag-lifecycle.test.tsx tests/home-dashboard-glass-motion.test.ts tests/home-dashboard-glass-bubble-map.test.tsx
+
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
         run: npm run typecheck
@@ -226,6 +227,7 @@ jobs:
           npm install --prefix "$KAIROS_BROWSER_PACKAGE_DIR" --no-save --package-lock=false playwright@1.62.1
           node "$KAIROS_BROWSER_PACKAGE_DIR/node_modules/playwright/cli.js" install --with-deps chromium
           node scripts/test-home-dashboard-glass-browser.mjs
+          node scripts/test-home-dashboard-bubble-drag-browser.mjs
           node scripts/test-journal-execution-browser.mjs
           node scripts/test-journal-open-trade-browser.mjs
           node scripts/test-journal-pnl-currency-browser.mjs
@@ -305,6 +307,8 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/docs/KAIROS_DASHBOARD_BUBBLE_DRAG_UI_AMENDMENT.md
+            .gate-candidate/kairos_p76/.bubble-drag-evidence/
             .gate-candidate/kairos_p76/docs/KAIROS_JOURNAL_CURRENCY_GUIDANCE_REPAIR.md
             .gate-candidate/kairos_p76/.currency-guidance-evidence/
             .gate-candidate/kairos_p76/docs/KAIROS_SAVED_TRADE_REVIEW_AMENDMENT.md
