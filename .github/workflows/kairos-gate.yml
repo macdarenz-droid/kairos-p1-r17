@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — Binance Spot Candle History Foundation
+name: Kairos Controlled Roadmap Gate — Analysis Historical Candles UI
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_BINANCE_SPOT_CANDLE_HISTORY_FOUNDATION_CANDIDATE_2026-09-12.zip'
+      - 'KAIROS_ANALYSIS_HISTORICAL_CANDLES_UI_CANDIDATE_2026-09-12.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_YOUR_TRADES_PROFIT_SIZE_UI_CANDIDATE_2026-09-12.zip
-  CANDIDATE_ZIP: KAIROS_BINANCE_SPOT_CANDLE_HISTORY_FOUNDATION_CANDIDATE_2026-09-12.zip
+  BASE_ZIP: KAIROS_BINANCE_SPOT_CANDLE_HISTORY_FOUNDATION_CANDIDATE_2026-09-12.zip
+  CANDIDATE_ZIP: KAIROS_ANALYSIS_HISTORICAL_CANDLES_UI_CANDIDATE_2026-09-12.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 3482304, '4a0f1871c67defb68cd2968bf9655927f0db76b23f1e33c67605e5a82df7d205'),
-            ('CANDIDATE_ZIP', 3500259, '25673f82dca0dd8b529f3b2d5330af48c5aa7c3ed6c656f7a8201bef038d9c5d'),
+            ('BASE_ZIP', 3500259, '25673f82dca0dd8b529f3b2d5330af48c5aa7c3ed6c656f7a8201bef038d9c5d'),
+            ('CANDIDATE_ZIP', 3527844, '32442556d7760b3527fedc8e4aeaace221516a98d270746a5fe61360ad750c39'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact historical candle acquisition scope from Gate405
+      - name: Confirm exact historical Analysis UI scope from Gate406
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,23 +79,28 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
+            'docs/KAIROS_ANALYSIS_HISTORICAL_CANDLES_UI_AMENDMENT.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_BINANCE_SPOT_CANDLE_HISTORY_FOUNDATION.md',
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
-            'docs/KAIROS_YOUR_TRADES_PROFIT_SIZE_AMENDMENT.md',
+            'docs/KAIROS_TIME_BASED_TRADE_SNAPSHOT_FEASIBILITY.md',
             'package.json',
-            'scripts/verify-binance-spot-candle-history.mjs',
-            'src/services/market-data/MarketCandleHistoryPort.ts',
-            'src/services/market-data/marketDataObservationSemantics.ts',
-            'src/services/market-data/providers/binance/binanceSpotCandleHistoryAcquisition.ts',
-            'src/services/market-data/providers/binance/binanceSpotCandleHistoryBrowserConnector.ts',
-            'src/services/market-data/providers/binance/binanceSpotCandleHistoryRequest.ts',
-            'src/services/market-data/providers/binance/binanceSpotCandleHistoryResponse.ts',
-            'tests/binance-spot-candle-history.test.ts',
+            'scripts/test-analysis-history-browser.mjs',
+            'scripts/verify-analysis-history-workspace.mjs',
+            'src/app/AnalysisCandleCanvas.tsx',
+            'src/app/AnalysisHistoryWorkspace.tsx',
+            'src/app/AnalysisRoute.tsx',
+            'src/app/analysisHistory.css',
+            'src/app/analysisHistoryPorts.ts',
+            'src/features/chart/lightweightChartsV5ModuleAdapter.ts',
+            'src/features/chart/lightweightChartsV5ProductionRenderer.ts',
+            'tests/analysis-chart-presentation.test.ts',
+            'tests/analysis-history-workspace.test.tsx',
+            'tests/fixtures/analysisHistoryBrowser.tsx',
           }
           if changed != expected or removed:
-            print('Historical candle acquisition scope mismatch', file=sys.stderr)
+            print('Historical Analysis UI scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -179,6 +184,13 @@ jobs:
           mkdir -p .candle-history-evidence
           npx vitest run tests/binance-spot-candle-history.test.ts --reporter=default --reporter=json --outputFile=.candle-history-evidence/tests.json
 
+      - name: Historical Analysis UI identity cancellation and presentation regressions
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          npm run verify:analysis-history-workspace
+          mkdir -p .analysis-history-evidence
+          npx vitest run tests/analysis-history-workspace.test.tsx tests/analysis-chart-presentation.test.ts --reporter=default --reporter=json --outputFile=.analysis-history-evidence/tests.json
+
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
         run: npm run typecheck
@@ -249,6 +261,7 @@ jobs:
           node scripts/test-journal-theme-browser.mjs
           node scripts/test-trade-review-browser.mjs
           node scripts/test-journal-currency-guidance-browser.mjs
+          node scripts/test-analysis-history-browser.mjs
 
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
@@ -263,6 +276,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:analysis-history-workspace',
             'verify:binance-spot-candle-history',
             'verify:p21:13-binance-spot-24h-public-rest-baseline-acquisition-adapter-foundation',
             'verify:binance-spot-browser-live-market-universe-acquisition-binding-foundation',
@@ -323,6 +337,8 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_HISTORICAL_CANDLES_UI_AMENDMENT.md
+            .gate-candidate/kairos_p76/.analysis-history-evidence/
             .gate-candidate/kairos_p76/docs/KAIROS_BINANCE_SPOT_CANDLE_HISTORY_FOUNDATION.md
             .gate-candidate/kairos_p76/.candle-history-evidence/
             .gate-candidate/kairos_p76/docs/KAIROS_YOUR_TRADES_PROFIT_SIZE_AMENDMENT.md

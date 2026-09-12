@@ -1,5 +1,11 @@
 # Chart workspace integration — user concerns recorded 12 September 2026
 
+## Current controlled candidate — historical Analysis UI
+
+Item3 now has a candidate from FULL406: Analysis mounts the existing P17 renderer above optional saved-trade review, using explicit supported Binance Spot metadata identity/timeframe and one bounded history page. It includes mobile pan/pinch, keyboard/zoom/fit, theme-preserving presentation, cancellation/deadlines and honest unavailable states. It awaits its own full canonical gate and deployed review. See KAIROS_ANALYSIS_HISTORICAL_CANDLES_UI_AMENDMENT.md. Continuous updates, time-assisted references, exact execution markers, drawings/RR/save and phase closure remain separate work.
+
+User's latest future request: discuss an amount/leverage button with position size expressed in ETH/base-asset units. Capture only for later discussion; amount semantics, leverage/margin and asset/contract/lot handling are not approved implementation in this slice. Preserve P11/manual execution truth.
+
 ## Current product gap
 
 After first inspecting the deployed UI following Gate404, the user expected trade visualization on actual candles and a TradingView-like Analysis chart workspace, including analysis without choosing a saved trade first. These are accepted product requirements. Existing component tests do not resolve these concerns. The user authorized addressing them in proper slices and deferring work only where dependencies belong later.

@@ -1,3 +1,9 @@
+## Current explicit continuation — standalone historical Analysis UI
+
+The user said “Okay continue” after the Gate406 result and next-chart recommendation. This authorizes one bounded standalone historical Analysis composition from FULL406. Exact visible scope and limits were explained before implementation. KAIROS_ANALYSIS_HISTORICAL_CANDLES_UI_AMENDMENT.md owns the scope/evidence ledger: explicit metadata-backed symbol/timeframe, historical candles, chart interactions, request cleanup and preserved optional saved-trade review. Complete the candidate and all canonical checks, then provide the visible UI build for review. Do not claim continuous live data, trade overlays, P21 closure or P22 advancement. Manual-only controls remain.
+
+The user's future amount/leverage/ETH-size button is deferred discussion. Do not implement or infer amount/margin/quantity semantics now. Earlier leverage/P&L explanation was question-only; existing calculations and inputs remain authoritative.
+
 ## Current checkpoint — FULL Gate406 and researched snapshot proposal
 
 Gate406/run34699361404/head 02a0efe039cad60119336f590d9f4f039c3e921e is FULL canonical PASS: all33actual stages and both nonexpired exact-run candidate/evidence artifacts verified. Historical candle acquisition is GOLDEN, with no visible UI change and no claim of native provider connectivity. The prior candidate-only status below is superseded by this completion.
