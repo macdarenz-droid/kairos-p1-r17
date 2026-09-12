@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — Analysis Live Candle Browser Subscription Composition
+name: Kairos Controlled Roadmap Gate — Analysis Live Candle Browser Runtime Sources
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_ANALYSIS_LIVE_CANDLE_BROWSER_SUBSCRIPTION_COMPOSITION_CANDIDATE_2026-09-13.zip'
+      - 'KAIROS_ANALYSIS_LIVE_CANDLE_BROWSER_RUNTIME_SOURCES_CANDIDATE_2026-09-13.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_ANALYSIS_LIVE_CANDLE_PROJECTION_RENDERER_COORDINATION_CANDIDATE_2026-09-13.zip
-  CANDIDATE_ZIP: KAIROS_ANALYSIS_LIVE_CANDLE_BROWSER_SUBSCRIPTION_COMPOSITION_CANDIDATE_2026-09-13.zip
+  BASE_ZIP: KAIROS_ANALYSIS_LIVE_CANDLE_BROWSER_SUBSCRIPTION_COMPOSITION_CANDIDATE_2026-09-13.zip
+  CANDIDATE_ZIP: KAIROS_ANALYSIS_LIVE_CANDLE_BROWSER_RUNTIME_SOURCES_CANDIDATE_2026-09-13.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 3639661, '7486c927b2645d7bec0fe52b8aff641b91268fadae67a2681dfba0ef5795f9e5'),
-            ('CANDIDATE_ZIP', 3646839, '30176109b6552494d61517241af7bc568a1ccfd5f3fa199bb3d7a27c02118ec4'),
+            ('BASE_ZIP', 3646839, '30176109b6552494d61517241af7bc568a1ccfd5f3fa199bb3d7a27c02118ec4'),
+            ('CANDIDATE_ZIP', 3652381, '0cd995893d95dc51c063350be4e907d1eb2e8e317601c10f01b5664143006a1f'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact Analysis live candle browser subscription scope from Gate414
+      - name: Confirm exact Analysis live candle browser runtime sources scope from Gate415
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,17 +79,17 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'docs/KAIROS_ANALYSIS_LIVE_CANDLE_BROWSER_SUBSCRIPTION_COMPOSITION.md',
+            'docs/KAIROS_ANALYSIS_LIVE_CANDLE_BROWSER_RUNTIME_SOURCES.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
             'package.json',
-            'scripts/verify-analysis-live-candle-browser-subscription-composition.mjs',
-            'src/app/binanceAnalysisLiveCandleBrowserSubscriptionComposition.ts',
-            'tests/binance-analysis-live-candle-browser-subscription-composition.test.ts',
+            'scripts/verify-analysis-live-candle-browser-runtime-sources.mjs',
+            'src/app/binanceAnalysisLiveCandleBrowserRuntimeSources.ts',
+            'tests/binance-analysis-live-candle-browser-runtime-sources.test.ts',
           }
           if changed != expected or removed:
-            print('Analysis live candle browser subscription scope mismatch', file=sys.stderr)
+            print('Analysis live candle browser runtime sources scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -232,6 +232,20 @@ jobs:
             tests/binance-analysis-live-candle-projection-renderer-coordination.test.ts \
             tests/binance-spot-browser-public-trade-reconnect-subscription.test.ts
 
+      - name: Analysis live candle browser runtime sources
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          npm run verify:analysis-live-candle-browser-runtime-sources
+          npm run verify:analysis-live-candle-browser-subscription-composition
+          npm run verify:p16:17-binance-spot-browser-public-trade-reconnect-subscription
+          npm run verify:p15:6-market-data-reconnect-scheduler
+          npm run verify:p15:7-market-data-reconnect-jitter
+          npx vitest run \
+            tests/binance-analysis-live-candle-browser-runtime-sources.test.ts \
+            tests/binance-analysis-live-candle-browser-subscription-composition.test.ts \
+            tests/binance-analysis-live-candle-projection-renderer-coordination.test.ts \
+            tests/binance-spot-browser-public-trade-reconnect-subscription.test.ts
+
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
         run: npm run typecheck
@@ -317,6 +331,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:analysis-live-candle-browser-runtime-sources',
             'verify:analysis-live-candle-browser-subscription-composition',
             'verify:analysis-live-candle-projection-renderer-coordination',
             'verify:live-candle-production-renderer-binding',
@@ -383,6 +398,7 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_LIVE_CANDLE_BROWSER_RUNTIME_SOURCES.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_LIVE_CANDLE_BROWSER_SUBSCRIPTION_COMPOSITION.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_LIVE_CANDLE_PROJECTION_RENDERER_COORDINATION.md
             .gate-candidate/kairos_p76/docs/KAIROS_LIVE_CANDLE_PRODUCTION_RENDERER_BINDING.md

@@ -65,3 +65,7 @@ Gate412's trade-to-candle projection and Gate413's production incremental render
 ## Status after FULL Gate414
 
 Gate414's projection/renderer application session is FULL canonical release. The next contained item4 candidate connects the already-released P16.17 reconnecting browser trade subscription to that session. It forwards exact stream configuration, observations, connection/error state, projection dispositions, backfill demand and close lifecycle. It does not mount the route, reacquire history, decide hidden/offline behavior or present live status. No UI changes in this candidate, and Analysis is not described as continuously live until those remaining caller responsibilities have production composition and browser evidence.
+
+## Status after FULL Gate415
+
+Gate415's browser subscription-to-session boundary is FULL canonical release. The next smallest item4 candidate supplies its missing production browser mechanics: lazy receipt clock, timeout schedule/cancel and reconnect entropy sources. P15 still owns policy and jitter validation, while route selection, initial history, backfill execution, hidden/offline lifecycle and visible status remain later. This source boundary starts no timer or subscription on import, has no UI change, and does not yet make Analysis continuously live.
