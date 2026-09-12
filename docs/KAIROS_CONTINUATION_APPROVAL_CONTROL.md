@@ -5,6 +5,12 @@ The user explicitly requested: "enable the workers", "just let them continue eve
 
 Use existing V16 6a9d8b63fbf081918a26452faf51e747 and read-only supervisor 6a9a872c15d08191ac18ed249add1448 on existing supported hourly schedules. No replacements, child tasks, sub-hour rearming or cadence bypass. Shared execution lease 6a9c887ae4e881919758b86977bbc2eb stays a disabled coordination record; acquire and verify ownership before mutations, release only own lease. Supervisor never writes project files or implements.
 
+## Current canonical checkpoint and bounded slice — 13 September 2026
+
+Gate414/run34721256424/job103627429881/head37546d6fae3e21313320617672f73775679c137a is FULL canonical PASS. Every stage succeeded. Exact-run nonexpired candidate artifact10306362920 and evidence artifact10306193222 were independently downloaded and matched their artifact digests. Nested archive `KAIROS_ANALYSIS_LIVE_CANDLE_PROJECTION_RENDERER_COORDINATION_CANDIDATE_2026-09-13.zip`;3639661bytes;SHA256 `7486c927b2645d7bec0fe52b8aff641b91268fadae67a2681dfba0ef5795f9e5`;Git blob `06893acca20d9f0abceac4e9881c6f4591785608`; exact root/integrity pass. Gate414 is GOLDEN and Gate413 is the rollback.
+
+The current autonomous slice is the non-UI Analysis browser subscription composition in `KAIROS_ANALYSIS_LIVE_CANDLE_BROWSER_SUBSCRIPTION_COMPOSITION.md`. It composes the released P16.17 reconnecting Binance public-trade browser subscription with the released Gate414 projection/renderer session, forwards exact configuration/lifecycle evidence, and reports session dispositions/backfill demand. Initial history, backfill execution, route/selection/hidden/offline lifecycle and visible status remain later owners. No persistence, journal/calculation, drawing/marker or Live Bubble responsibility changes. Candidate publication and canonical verification remain pending.
+
 ## Current canonical checkpoint and next bounded slice — 13 September 2026
 
 Gate413/run34718213202/job103619135962/headbc1473833d436e90fa9a4c6bd30a25dd76a82dce is FULL canonical PASS. All34 stages succeeded. Exact-run nonexpired candidate artifact10305177559 and evidence artifact10304958030 were independently downloaded and matched their artifact digests. The nested archive is `KAIROS_LIVE_CANDLE_PRODUCTION_RENDERER_BINDING_CANDIDATE_2026-09-13.zip`;3633181bytes;SHA256 `41e1de8c9ffbf386245fb9b5506b0dccceee5329a481f7e09d4bb5e125880a4e`;Git blob `796a17caca6cdd5ce877de46408df37074b04c64`, with exact `kairos_p76/` root and clean integrity. Gate413 is GOLDEN and Gate412 is the rollback.

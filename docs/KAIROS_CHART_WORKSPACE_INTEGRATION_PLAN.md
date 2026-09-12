@@ -61,3 +61,7 @@ The next contained item4 dependency is P16.19 trade-to-candle update projection.
 ## Status after FULL Gate413
 
 Gate412's trade-to-candle projection and Gate413's production incremental renderer binding are both FULL canonical releases. The next contained item4 candidate composes only those two released owners inside an application session. It advances the latest candle after a successful renderer update, preserves stale/rejected state and emits an explicit scoped backfill request across a gap. Provider subscription/reconnect, history reacquisition, hidden/offline behavior, Analysis route lifecycle and visible live status remain subsequent slices. No UI changes in this candidate, and Analysis is still not described as live.
+
+## Status after FULL Gate414
+
+Gate414's projection/renderer application session is FULL canonical release. The next contained item4 candidate connects the already-released P16.17 reconnecting browser trade subscription to that session. It forwards exact stream configuration, observations, connection/error state, projection dispositions, backfill demand and close lifecycle. It does not mount the route, reacquire history, decide hidden/offline behavior or present live status. No UI changes in this candidate, and Analysis is not described as continuously live until those remaining caller responsibilities have production composition and browser evidence.
