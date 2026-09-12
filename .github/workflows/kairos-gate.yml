@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — Compact Bubble Size Contrast and Rim Smoke R1
+name: Kairos Controlled Roadmap Gate — Scattered Dynamic Bubbles
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_HOME_DASHBOARD_COMPACT_BUBBLE_SMOKE_AMENDMENT_CANDIDATE_2026-09-11-R1.zip'
+      - 'KAIROS_HOME_DASHBOARD_SCATTERED_DYNAMIC_BUBBLES_CANDIDATE_2026-09-12.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_HOME_DASHBOARD_PERCENTAGE_BUBBLE_UI_AMENDMENT_CANDIDATE_2026-09-11-R1.zip
-  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_COMPACT_BUBBLE_SMOKE_AMENDMENT_CANDIDATE_2026-09-11-R1.zip
+  BASE_ZIP: KAIROS_HOME_DASHBOARD_COMPACT_BUBBLE_SMOKE_AMENDMENT_CANDIDATE_2026-09-11-R1.zip
+  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_SCATTERED_DYNAMIC_BUBBLES_CANDIDATE_2026-09-12.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 3330448, '3e954cbbdebf5ea19c60cad1cdd54ff06a8857f3f0d6bfa3b54288eecf3c15c5'),
-            ('CANDIDATE_ZIP', 3413708, '006f4ec83cdba6988dc569be8841e7c7280fdebcb8bcd7f6cb497f19b4ab7253'),
+            ('BASE_ZIP', 3413708, '006f4ec83cdba6988dc569be8841e7c7280fdebcb8bcd7f6cb497f19b4ab7253'),
+            ('CANDIDATE_ZIP', 3340991, '913266e332d0f6dba4383d199167f0785a80fbab7f057ba37991f36012d56b46'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact compact bubble and smoke amendment scope from Gate391
+      - name: Confirm exact compact bubble and smoke amendment scope from Gate393
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,16 +79,14 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'docs/KAIROS_COMPACT_BUBBLE_SMOKE_AMENDMENT.md',
+            'docs/KAIROS_DYNAMIC_BUBBLE_MOTION_AMENDMENT.md',
             'scripts/test-home-dashboard-glass-browser.mjs',
-            'scripts/verify-home-dashboard-glass-bubble-presentation-amendment.mjs',
             'src/app/HomeDashboardGlassBubbleMap.tsx',
             'src/app/homeDashboardGlassBubbleMap.css',
+            'src/app/homeDashboardGlassMotion.ts',
             'src/app/homeDashboardGlassViewportLayout.ts',
-            'src/design-system/themes/themeEngine.ts',
-            'tests/fixtures/homeDashboardGlassBrowser.tsx',
-            'tests/home-dashboard-glass-bubble-map.test.tsx',
-            'tests/home-dashboard-glass-viewport-layout.test.ts',
+            'src/app/useHomeDashboardGlassMotion.ts',
+            'tests/home-dashboard-glass-motion.test.ts',
           }
           if changed != expected or removed:
             print('Compact bubble smoke R1 scope mismatch', file=sys.stderr)
@@ -161,6 +159,7 @@ jobs:
           npx vitest run \
             tests/home-dashboard-glass-bubble-map.test.tsx \
             tests/home-dashboard-glass-viewport-layout.test.ts \
+            tests/home-dashboard-glass-motion.test.ts \
             tests/home-dashboard-live-crypto-bubble-layout-bounds-policy-contract-foundation.test.ts \
             tests/home-dashboard-live-crypto-bubble-configured-runtime-lifecycle-stability.test.ts \
             tests/home-dashboard-live-crypto-bubble-react-runtime-binding-foundation.test.tsx
@@ -246,6 +245,6 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
-            .gate-candidate/kairos_p76/docs/KAIROS_COMPACT_BUBBLE_SMOKE_AMENDMENT.md
+            .gate-candidate/kairos_p76/docs/KAIROS_DYNAMIC_BUBBLE_MOTION_AMENDMENT.md
             .gate-candidate/kairos_p76/.glass-evidence/
           if-no-files-found: warn
