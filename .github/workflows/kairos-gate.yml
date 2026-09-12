@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — Journal Theme Token Repair R1
+name: Kairos Controlled Roadmap Gate — Saved Trade Review UI
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_JOURNAL_THEME_TOKEN_REPAIR_R1_CANDIDATE_2026-09-12.zip'
+      - 'KAIROS_SAVED_TRADE_REVIEW_UI_CANDIDATE_2026-09-12.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_JOURNAL_PNL_CURRENCY_UI_CANDIDATE_2026-09-12.zip
-  CANDIDATE_ZIP: KAIROS_JOURNAL_THEME_TOKEN_REPAIR_R1_CANDIDATE_2026-09-12.zip
+  BASE_ZIP: KAIROS_JOURNAL_THEME_TOKEN_REPAIR_R1_CANDIDATE_2026-09-12.zip
+  CANDIDATE_ZIP: KAIROS_SAVED_TRADE_REVIEW_UI_CANDIDATE_2026-09-12.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 3399296, '91fa89853107f19ab4a5a17abb4651e6229ea39458e9ca2b89f8a415b5927121'),
-            ('CANDIDATE_ZIP', 3408043, '5e5d0b0a498a891e2c4fccc16e16299a8e752f8b5a67ad5a9be39ae6e305d231'),
+            ('BASE_ZIP', 3408043, '5e5d0b0a498a891e2c4fccc16e16299a8e752f8b5a67ad5a9be39ae6e305d231'),
+            ('CANDIDATE_ZIP', 3426535, 'f0aedc23ef00e025be70d0ac3e16096ce32c3e88684f301768167c72815b1c1d'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact Journal presentation repair scope from Gate399
+      - name: Confirm exact saved trade review scope from Gate401
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,18 +79,27 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
+            'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
-            'docs/KAIROS_JOURNAL_THEME_TOKEN_REPAIR.md',
-            'scripts/test-journal-theme-browser.mjs',
-            'scripts/verify-journal-theme-tokens.mjs',
-            'scripts/verify-p13-14-streak-presentation.mjs',
-            'scripts/verify-p13-16-performance-summary-presentation.mjs',
-            'scripts/verify-p14-6-journal-trade-map-marker-semantics.mjs',
-            'scripts/verify-p14-7-journal-trade-map-execution-time.mjs',
+            'docs/KAIROS_SAVED_TRADE_REVIEW_AMENDMENT.md',
+            'scripts/test-trade-review-browser.mjs',
+            'scripts/verify-trade-review.mjs',
+            'src/app/AnalysisRoute.tsx',
+            'src/app/HomeDashboardYourTrades.tsx',
+            'src/app/JournalHistoryList.tsx',
+            'src/app/ReviewTradeLink.tsx',
+            'src/app/TradeReviewDetails.tsx',
             'src/app/journalRoute.css',
+            'src/app/routes.tsx',
+            'src/app/tradeReview.css',
+            'src/application/journal/historyQuery.ts',
+            'src/application/journal/index.ts',
+            'src/application/journal/loadTradeReview.ts',
+            'tests/fixtures/tradeReviewBrowser.tsx',
+            'tests/trade-review.test.tsx',
           }
           if changed != expected or removed:
-            print('Journal theme repair scope mismatch', file=sys.stderr)
+            print('Saved trade review scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -140,6 +149,12 @@ jobs:
         run: |
           node scripts/verify-journal-pnl-currency.mjs
           npx vitest run tests/journal-pnl-currency.test.tsx
+
+      - name: Saved trade review exact identity and readonly regressions
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          node scripts/verify-trade-review.mjs
+          npx vitest run tests/trade-review.test.tsx
 
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
@@ -207,6 +222,7 @@ jobs:
           node scripts/test-journal-open-trade-browser.mjs
           node scripts/test-journal-pnl-currency-browser.mjs
           node scripts/test-journal-theme-browser.mjs
+          node scripts/test-trade-review-browser.mjs
 
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
@@ -280,6 +296,8 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/docs/KAIROS_SAVED_TRADE_REVIEW_AMENDMENT.md
+            .gate-candidate/kairos_p76/.trade-review-evidence/
             .gate-candidate/kairos_p76/docs/KAIROS_JOURNAL_THEME_TOKEN_REPAIR.md
             .gate-candidate/kairos_p76/.journal-theme-evidence/
             .gate-candidate/kairos_p76/docs/KAIROS_JOURNAL_PNL_CURRENCY_AMENDMENT.md
