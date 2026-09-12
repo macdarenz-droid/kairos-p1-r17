@@ -377,3 +377,9 @@ Gate410/run34710348520/job103597867967/head20bd695aad7fdd80f2c44e0df490773e97d29
 ## Journal actual-entry Trade Map candidate from FULL Gate410
 
 P14 `tradeVisualizerFacts.ts` remains the sole projection owner and now exposes saved entry executions separately from planned levels and saved exits, preserving exact execution id, price, quantity and time with no arithmetic or inference. `tradeVisualizerDisplayModel.ts` adds explicit `executed-entry` semantics. `JournalTradeMap.tsx`, `JournalTradeMapGraphic.tsx` and `journalRoute.css` own only accessible presentation using existing theme/motion tokens and a distinct non-colour cross marker. P11/P12/P13 financial truth, P17 candle rendering, P18/P19/P20 systems, storage/schema/provider and Live Bubble ownership are unchanged. See `KAIROS_JOURNAL_ACTUAL_ENTRY_TRADE_MAP_AMENDMENT.md`. Candidate pending its own canonical gate; it does not claim candle overlays or P21 closure.
+
+## Gate411 release and P16.19 live candle update projection candidate
+
+Gate411/run34712539135/job103603792084/head8ddbe796f437ce3a2b9b0b937963017620783d04 is FULL canonical PASS with all32 stages, both exact-run artifacts and nested candidate identity verified. P14 actual-entry Trade Map ownership is now released; Gate410 is the immediate rollback.
+
+The next candidate adds only `src/services/market-data/providers/binance/binanceSpotTradeCandleUpdateProjection.ts` under existing P16 provider ownership. It projects one validated exact-instrument trade observation against the latest caller-selected historical candle. Same-bucket updates and a single adjacent append preserve DecimalString facts; stale events are ignored and gaps require authoritative backfill. P15 subscription/reconnect, P17 presentation, P9–P14 journal/storage/calculation, Analysis route lifecycle and Live Bubble ownership are unchanged. See `KAIROS_LIVE_CANDLE_UPDATE_PROJECTION_FOUNDATION.md`. UI VISIBLE:NO; live Analysis is not yet claimed.

@@ -28,7 +28,6 @@ This Journal presentation amendment is groundwork for later exact candle overlay
 - Production TypeScript compilation and build: pass with Node 22-compatible pinned project dependencies.
 - Real browser script was extended to create the trade only through the released Journal save UI, reload it, and require the actual-entry cross plus exact price/quantity/time before navigating to Your Trades. Local Chromium download was unavailable because the Playwright CDN timed out; no local browser PASS is claimed. The canonical gate must install Chromium and pass this unchanged evidence step before promotion.
 
-## Candidate status
+## Canonical status
 
-Candidate publication and its full canonical gate remain pending. P21 remains active. A canonical PASS will require every current and historical verifier, the extended actual-browser flow, both exact-run artifacts and independent archive identity verification.
-
+Gate411/run `34712539135`, job `103603792084`, head `8ddbe796f437ce3a2b9b0b937963017620783d04` completed FULL canonical PASS. All 32 stages succeeded, including the extended real-browser flow, all unit/current/historical regressions and both uploads. Exact-run artifacts `KAIROS_CURRENT_CANDIDATE` (`10303926868`) and `KAIROS_GATE_EVIDENCE` (`10304136422`) are present, nonexpired and bound to the exact head. The nested archive identity was independently verified: 3,546,115 bytes, SHA-256 `1a0c9c33fa731ce7947338a702ce49f5a323dc0d0b1567526e310f7316ac1157`, Git blob `50ee31633a0591715150445bb761a2e7d7e1245a`, exact `kairos_p76/` root and valid ZIP integrity. Gate411 is the current GOLDEN; Gate410 is the immediate rollback.

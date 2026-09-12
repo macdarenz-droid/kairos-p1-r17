@@ -51,3 +51,9 @@ New user-requested research: KAIROS_TIME_BASED_TRADE_SNAPSHOT_FEASIBILITY.md eva
 ## Status after FULL Gate410
 
 The expanded Candle values mobile defect is canonically resolved from Gate408; Gate410 is the latest FULL GOLDEN and Gate409 is failed assertion evidence only. The next contained P14 candidate closes the source-proven Journal summary omission by projecting and displaying actual entry fills with their exact saved price, quantity and time. This prepares authoritative entry facts for later overlay composition but does not change item4 live continuity, establish an instrument venue match, or render item5 markers on candles. Those responsibilities remain separate.
+
+## Status after FULL Gate411 and current live-update foundation
+
+Gate411 is FULL canonical PASS: run34712539135/job103603792084/head8ddbe796f437ce3a2b9b0b937963017620783d04, all32 stages and both exact-run artifacts verified. The P14 Journal actual-entry projection/presentation is released without changing candle/provider ownership.
+
+The next contained item4 dependency is P16.19 trade-to-candle update projection. It consumes an already-validated exact Binance Spot trade observation and latest selected candle, updates the same UTC bucket, appends only the immediately adjacent bucket, ignores stale observations and requires history backfill across a gap. Subscription/reconnect, route lifecycle and P17 incremental rendering remain subsequent bounded composition work. This foundation has no visible UI and does not yet describe Analysis as live.
