@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — Journal Theme Token Repair
+name: Kairos Controlled Roadmap Gate — Journal Theme Token Repair R1
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_JOURNAL_THEME_TOKEN_REPAIR_CANDIDATE_2026-09-12.zip'
+      - 'KAIROS_JOURNAL_THEME_TOKEN_REPAIR_R1_CANDIDATE_2026-09-12.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,7 +13,7 @@ permissions:
 
 env:
   BASE_ZIP: KAIROS_JOURNAL_PNL_CURRENCY_UI_CANDIDATE_2026-09-12.zip
-  CANDIDATE_ZIP: KAIROS_JOURNAL_THEME_TOKEN_REPAIR_CANDIDATE_2026-09-12.zip
+  CANDIDATE_ZIP: KAIROS_JOURNAL_THEME_TOKEN_REPAIR_R1_CANDIDATE_2026-09-12.zip
 
 jobs:
   verify-current-candidate:
@@ -39,7 +39,7 @@ jobs:
 
           for key, size, digest in [
             ('BASE_ZIP', 3399296, '91fa89853107f19ab4a5a17abb4651e6229ea39458e9ca2b89f8a415b5927121'),
-            ('CANDIDATE_ZIP', 3406426, 'cc0d95a4a052268c1bf6d380b00ac4ab9374e148da2ff17a807383283ba29b40'),
+            ('CANDIDATE_ZIP', 3408043, '5e5d0b0a498a891e2c4fccc16e16299a8e752f8b5a67ad5a9be39ae6e305d231'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -83,6 +83,10 @@ jobs:
             'docs/KAIROS_JOURNAL_THEME_TOKEN_REPAIR.md',
             'scripts/test-journal-theme-browser.mjs',
             'scripts/verify-journal-theme-tokens.mjs',
+            'scripts/verify-p13-14-streak-presentation.mjs',
+            'scripts/verify-p13-16-performance-summary-presentation.mjs',
+            'scripts/verify-p14-6-journal-trade-map-marker-semantics.mjs',
+            'scripts/verify-p14-7-journal-trade-map-execution-time.mjs',
             'src/app/journalRoute.css',
           }
           if changed != expected or removed:
@@ -102,6 +106,10 @@ jobs:
         run: |
           npm run verify:p2:design-system
           node scripts/verify-journal-theme-tokens.mjs
+          node scripts/verify-p13-14-streak-presentation.mjs
+          node scripts/verify-p13-16-performance-summary-presentation.mjs
+          node scripts/verify-p14-6-journal-trade-map-marker-semantics.mjs
+          node scripts/verify-p14-7-journal-trade-map-execution-time.mjs
 
       - name: Prove real Lightweight Charts dependency remains exact
         working-directory: .gate-candidate/kairos_p76
