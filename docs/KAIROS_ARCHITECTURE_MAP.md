@@ -2,438 +2,290 @@
 
 ## Purpose
 
-This is the living ownership map for Kairos. Canonical code/gate truth always overrides this descriptive document.
+This is not a file tree. GitHub already shows where files sit. This
+document answers a different question: **which phase owns which
+concept, fact, or boundary, and where does that ownership live in
+code.** It exists so that six months from now, or for a new developer,
+"where do I look for X" and "am I allowed to touch Y" have a fast,
+authoritative answer instead of requiring a re-read of forty phases of
+handoffs.
 
-## Maintenance rule
+## Maintenance rule (read this before editing)
 
-Update this file after every canonical PASS that establishes, extends, moves, or clarifies a production responsibility/owner/boundary, and at every phase closure. Only canonically proven ownership belongs here. Helper/candidate-only results are not architecture authority.
+Update this file **after every canonical PASS that establishes, extends, moves, or clarifies a production responsibility/owner/boundary**, and at every phase closure. A PASS that changes no architecture still requires an audit, but not a meaningless edit. Each update must come from the same evidence discipline as everything else in Kairos:
+
+- Only add a row once a phase has an actual **canonical PASS**.
+- Pull the "owner," "file/module," and "boundary" columns from the
+  real diff and the phase's own stated non-scope — never from memory
+  or assumption.
+- If a later phase changes an existing owner (e.g. a boundary gets
+  split or a module gets renamed), **edit the existing row** with a
+  note like "moved from X in P17.9" rather than leaving two
+  conflicting entries.
+- This file is descriptive, not authoritative. If it ever disagrees
+  with the actual code or a canonical gate, the code/gate wins, and
+  this file gets corrected — never the other way around.
+
+Audit exception recorded 2026-09-05: the user explicitly required a pre-closure
+P18 ownership verification. The P18 ledger below was rebuilt from canonical
+artifacts, retained per-patch reports, verifier-enforced changed source
+boundaries, and production modules. P18.51R3 was added only after its canonical PASS #262; P18.52/P18.53/P18.54/P18.55/P18.56/P18.57/P18.58 were added only after canonical PASSes #263/#264/#265/#266/#267/#268/#269; failed P18.51 runs #259-#261 remain evidence only.
+
+---
 
 ## Core Truth Ownership
 
 | Concept / Truth | Owner (Phase) | File / Module | Boundary — what it must NOT do |
 |---|---|---|---|
-| Journal execution truth | P9 / P10 | canonical journal domain/application seams | Never silently overwritten by market data |
-| Derived financial metrics | P11 Calculation Brain | canonical P11 calculation seams | UI is never a second calculation owner |
-| Journal history / record listing | P12 | canonical P12 seams | No duplicate execution/calculation truth |
-| Visual P&L presentation | P13 | canonical P13 seams | Must not aggregate incomparable currencies |
-| Trade visualizer | P14 | canonical P14 seams | Visualization does not own journal truth |
-| Market data acquisition | P15 | canonical P15 seams | Never overwrites journal execution truth |
-| Binance Spot provider | P16 | canonical P16 provider seams | Provider mapping is not journal truth |
-| Chart rendering / presentation | P17 | canonical P17 seams | Presentation only; never decides financial truth |
-| Drawing tools / generic drawing-edit lifecycle | P18, CLOSED canonically at P18.60 | `src/features/chart/` and canonical P18 application/provider seams | No persistence/P20 ownership; no Risk/Reward/P19 meaning; no journal/calculation truth |
-| Risk/Reward semantics + provider-neutral chart composition | P19, CLOSED canonically at P19.7 | `src/application/risk-reward/`, `src/app/riskRewardChartStyleProjection.ts`, `src/app/riskRewardChartPlacementProjection.ts`, `src/app/riskRewardChartObjectProjection.ts` | Owns RR meaning and provider-neutral logical composition only; no P18 provider machinery, P11 truth, P20 persistence, UI/pixels, or hard-coded colors |
-| Saved Analysis logical persistence contract | P20.1 | `src/app/savedAnalysisContract.ts`, `src/app/savedAnalysisIdentity.ts` | Logical composition only; no DB/schema/repository/backup/UI/provider/pixel ownership |
-| Saved Analysis persisted storage / backup / restore | P20.2 | `src/data/database/`, `src/data/repositories/SavedAnalysisRepository.ts`, `src/data/backup/` | Persists/restores P20.1 truth only; no UI/provider/pixel or speculative query ownership |
-| Saved Analysis application save orchestration | P20.3 | `src/application/saved-analysis/saveSavedAnalysis.ts`, `src/application/saved-analysis/index.ts` | Fresh-id allocation + one atomic write only; no read/update/delete/list ownership |
-| Saved Analysis application load-one orchestration | P20.4 | `src/application/saved-analysis/loadSavedAnalysis.ts`, exported through `src/application/saved-analysis/index.ts` | One stable-id read only; no list/update/delete/schema/UI/provider ownership |
-| Saved Analysis system | P20, CLOSED canonically at P20.5 | P20.1 + P20.2 + P20.3 + P20.4 | Closure adds no new runtime owner or speculative CRUD expansion |
-| Home Dashboard route presentation ownership | P21.1 | `src/app/HomeRoute.tsx`, wired by `src/app/routes.tsx` | Presentation/semantic dashboard boundary only; no navigation/provider/persistence/calculation/Bubble/Saved-Analysis/P22/P40 truth |
-| Live market summary provider-neutral fact contract | P21.2 | `src/services/market-data/marketDataTypes.ts`, `src/services/market-data/liveMarketSummaryFactSemantics.ts`, exported through `src/services/market-data/index.ts` | Validated raw per-instrument market-summary facts only; no transport/universe/state/Bubble/Home/persistence/journal/transition ownership |
-| Live market summary delivery completeness contract | P21.3 | `src/services/market-data/marketDataTypes.ts`, `src/services/market-data/liveMarketSummaryDeliverySemantics.ts`, exported through `src/services/market-data/index.ts` | `incremental` vs caller-scoped `complete-for-scope` semantics only; no scope selection, transport, state, UI, persistence, journal or transition ownership |
-| Live market summary baseline acquisition port contract | P21.4 | `src/services/market-data/LiveMarketSummaryBaselineAcquisitionPort.ts`, `src/services/market-data/liveMarketSummaryBaselineAcquisitionSemantics.ts`, exported through `src/services/market-data/index.ts` | Provider-neutral explicit-scope baseline port/result/validation only; no universe/provider endpoint/state/Bubble/Home/persistence/transition ownership |
-| Binance Spot 24h summary fact provider mapping | P21.5 under P16 | `src/services/market-data/providers/binance/binanceSpot24hSummaryFact.ts`, exported through `src/services/market-data/index.ts` | One decoded Binance ticker + caller-owned `observedAt` -> one validated P21.2 fact; no HTTP/request/batching/P21.4/state/UI ownership |
-| Binance Spot 24h baseline delivery provider composition | P21.6 under P16 | `src/services/market-data/providers/binance/binanceSpot24hBaselineDelivery.ts`, exported through `src/services/market-data/index.ts` | Explicit scope + decoded one-or-many ticker payload + `observedAt` -> validated P21.3 `complete-for-scope`; response order is not ranking truth; no transport/query/state/UI ownership |
-| Binance Spot 24h public REST baseline request descriptor | P21.7 under P16 | `src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineRequest.ts`, exported through `src/services/market-data/index.ts` | Pure request description for explicit scope: public GET `https://data-api.binance.vision/api/v3/ticker/24hr`, `symbol` or encoded `symbols`, `type=FULL`; no transport/execution/decode/batching/rate-limit/retry/P21.4/state/UI ownership |
-| Binance Spot 24h public REST baseline request execution boundary | P21.8 under P16 | `src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineRequestExecution.ts`, exported through `src/services/market-data/index.ts` | Invoke one externally supplied generic connector exactly once for one P21.7 request and return its result unchanged; no concrete transport/response/decode/state/UI ownership |
-| Binance Spot 24h public REST baseline response decode | P21.9 under P16 | `src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineResponseDecode.ts`, exported through `src/services/market-data/index.ts` | Deterministic JSON-text decode only: string -> `JSON.parse` -> `unknown`; malformed -> `invalid-json`; non-text -> `unsupported-response-data`; no Response/status/body/ticker semantics/P21.6/state/UI ownership |
-| Binance Spot 24h public REST baseline response delivery composition | P21.10 under P16 | `src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineResponseDelivery.ts`, exported through `src/services/market-data/index.ts` | Explicit caller scope + one already-received response data value + caller-owned `observedAt` -> reuse P21.9 decode -> reuse P21.6 mapping -> existing delivery/failure. No request description/execution, concrete transport/Response/status/header/body acquisition, new ticker validation/completeness algorithm, scope/universe/ranking, batching/rate-limit/retry, concrete P21.4 adapter, state/freshness/reconnect, Bubble/Your-Trades/Home/persistence/transitions |
-| Binance Spot 24h public REST baseline round-trip composition | P21.11 under P16 | `src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineRoundTrip.ts`, exported through `src/services/market-data/index.ts` | Explicit caller scope + caller-owned `observedAt` + externally supplied P21.8 connector -> P21.7 request description -> exactly one P21.8 execution -> P21.10 response delivery; connector rejection propagates unchanged. No P21.4/`AbortSignal` ownership, concrete transport/Response/status/header/body acquisition, retry/rate-limit/polling, new request/decode/ticker/completeness algorithm, state/freshness/reconnect, Bubble/Your-Trades/Home/persistence/transitions |
-| Binance Spot 24h public REST baseline caller cancellation propagation | P21.12 under P16 | `src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineRequestExecution.ts`, `src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineRoundTrip.ts`, exported through `src/services/market-data/index.ts` | Optional caller-owned execution options carrying `signal?: AbortSignal` are forwarded unchanged through P21.8 and P21.11; no-options callers retain exact one-argument connector invocation and connector result/rejection semantics remain unchanged. No concrete transport/Response/status/body acquisition, AbortController creation/signal combination/timeout/abort interpretation/error translation, concrete P21.4 adapter, retry/rate-limit/polling, new semantic algorithm, state, or UI ownership |
-| Binance Spot 24h public REST baseline acquisition adapter | P21.13 under P15/P16 | `src/services/market-data/providers/binance/binanceSpot24hPublicRestBaselineAcquisitionAdapter.ts`, exported through `src/services/market-data/index.ts` | Implements the P21.4 acquisition composition using released P21.11/P21.12 seams: injected transport, one caller-owned observation-time read per acquisition, unchanged caller options propagation, P21.4 success validation, and existing `acquisition-failed` mapping only. No concrete transport/HTTP response acquisition, clock/freshness policy, abort taxonomy, retry/rate-limit/polling, universe/ranking/batching, new provider semantics, state/persistence, Bubble/Home/Your-Trades/Saved-Analysis/transitions |
-| Binance Spot 24h browser public REST baseline connector | P21.14 under P16 | `src/services/market-data/providers/binance/binanceSpot24hBrowserPublicRestBaselineConnector.ts`, exported through `src/services/market-data/index.ts` | Concrete P21.8-compatible browser transport only: exactly one `globalThis.fetch(request.url, { method: request.method, signal: options?.signal })`, exact caller signal forwarding, exactly one `Response.text()`, unchanged string return, unchanged native fetch/text rejection. No endpoint/query/symbol policy, HTTP status/header interpretation, retry/rate-limit policy, credentials, timeout/controller policy, provider decode/validation, clock/freshness, universe/ranking/state/persistence, Bubble/Home/Your-Trades/Saved-Analysis/transitions |
-| Binance Spot 24h browser public REST baseline acquisition binding | P21.15 under P15/P16 | `src/services/market-data/providers/binance/binanceSpot24hBrowserPublicRestBaselineAcquisitionBinding.ts`, exported through `src/services/market-data/index.ts` | Browser-ready factory only: compose released P21.13 acquisition adapter + released P21.14 browser connector and require caller-owned `readObservedAt`; preserve existing cancellation/result/rejection semantics. No new transport/Response acquisition, endpoint/query/status/header/error/retry/rate-limit/credentials/timeout policy, clock/freshness/polling/reconnect/scheduling, provider semantics, state/persistence, Bubble/Home/Your-Trades/Saved-Analysis/transitions |
-| Live market summary delivery state | P21.16 | `src/services/market-data/liveMarketSummaryDeliveryState.ts`, exported through `src/services/market-data/index.ts` | Provider-neutral current-summary state only: key by normalized instrument identity, validate every P21.3 delivery, incremental upsert only delivered facts, `complete-for-scope` replace only its explicit scope while preserving out-of-scope facts, invalid delivery -> `delivery-invalid` with exact prior state unchanged, caller delivery order only. No universe/ranking/filtering/grouping/sorting/Bubble/Home, acquisition/provider/transport, timestamp/freshness/TTL/polling, persistence/journal/Saved-Analysis/chart/transition ownership; Map iteration order is never ranking/presentation truth |
-| Live market summary baseline state orchestration | P21.17 | `src/services/market-data/liveMarketSummaryBaselineStateOrchestration.ts`, exported through `src/services/market-data/index.ts` | Compose only existing P21.16 state application + an existing P21.4 baseline acquisition port for one caller-owned scope/options invocation: exactly one acquisition, `acquisition-failed` preserves exact prior state, successful delivery applies only through P21.16, and `delivery-invalid` preserves exact prior state. No state store/lifecycle, universe/ranking/freshness/persistence/UI ownership |
-| Binance Spot 24h browser public REST baseline state binding | P21.18 under P15/P16 | `src/services/market-data/providers/binance/binanceSpot24hBrowserPublicRestBaselineStateBinding.ts`, exported through `src/services/market-data/index.ts` | Browser/provider binding only: accept existing P21.16 state plus caller-owned `readObservedAt`, explicit caller-owned scope and optional caller-owned acquisition options; create only the released P21.15 browser acquisition port and delegate acquisition/state application only through released P21.17. Preserve `acquisition-failed`, `delivery-invalid`, cancellation/options forwarding and exact-prior-state semantics unchanged. No universe/ranking/freshness/persistence/UI or new transport/provider/delivery semantics |
-| Live market summary state session | P21.19 | `src/services/market-data/liveMarketSummaryStateSession.ts`, exported through `src/services/market-data/index.ts` | Provider-neutral in-memory ownership of one current released P21.16 state only: initialize from caller state or released empty state, expose exact current snapshot, apply only explicit caller-driven async transitions, commit only returned state, and preserve exact prior-state identity/content on rejection. No provider/transport, universe/ranking/freshness/polling/scheduling/concurrency policy, persistence, Bubble/Home/UI subscription, journal/Saved-Analysis/chart/transition, or duplicated P21.16 semantics |
-| Live market summary browser state session binding | P21.20 under P15/P16 | `src/services/market-data/providers/binance/binanceSpot24hBrowserPublicRestBaselineStateSessionBinding.ts`, exported through `src/services/market-data/index.ts` | Compose only the released P21.18 browser-ready one-shot state binding with the released P21.19 provider-neutral state session through exactly one explicit caller-driven session transition. Accept caller-owned `readObservedAt`, explicit scope and optional acquisition options; delegate the session's exact current state to P21.18, commit only released `result.state` through P21.19, and surface the exact released orchestration result unchanged. No new provider/transport, universe/ranking/freshness/polling/scheduling/concurrency/persistence/UI semantics or duplicated P21.16/P21.18/P21.19 truth |
-| Live market summary scoped state snapshot | P21.21 | `src/services/market-data/liveMarketSummaryScopedStateSnapshot.ts`, exported through `src/services/market-data/index.ts` | Provider-neutral pure read only: accept released P21.16 state plus explicit caller-owned instrument scope; return one association per caller request with the exact released current fact or explicit `null`; resolve only through released `getLiveMarketSummaryDeliveryStateFact(...)`; preserve caller scope sequence only as request/association order, never ranking/presentation truth. No universe/default-scope discovery, sorting/filtering/ranking, state mutation/session transition/acquisition, freshness, provider/transport, persistence, Bubble/Home/UI subscription, journal/Saved-Analysis/chart/transition ownership or duplicated released semantics |
-| Live market summary state-session scoped snapshot binding | P21.22 | `src/services/market-data/liveMarketSummaryStateSessionScopedSnapshotBinding.ts`, exported through `src/services/market-data/index.ts` | Pure binding only: read an existing released P21.19 session state exactly once per explicit caller invocation, delegate that exact state and explicit caller scope only to released P21.21 scoped snapshot projection, and return the released result unchanged. No mutation/session transition/acquisition, provider/transport, universe/ranking/freshness, persistence, Bubble/Home/UI subscription, journal/Saved-Analysis/chart/transition ownership or duplicated released semantics |
-| Live market summary browser state-session scoped snapshot acquisition composition | P21.23 under P15/P16 | `src/services/market-data/providers/binance/binanceSpot24hBrowserPublicRestBaselineStateSessionScopedSnapshotAcquisitionComposition.ts`, exported through `src/services/market-data/index.ts` | Compose released P21.20 exactly once, then only after fulfillment released P21.22 exactly once using the same existing session and exact caller-owned scope; surface both released outputs unchanged; rejection propagates unchanged with no scoped read. No universe/default scope/ranking/filtering/grouping/sorting/top-N/popularity/market-cap, Bubble/Home/Your-Trades/journal ownership, new provider/transport/error/retry/freshness/polling/scheduling/concurrency/subscription/persistence/IndexedDB/Saved-Analysis/chart/UI-reactivity/transition semantics, or reinterpretation of released P21 truth |
+| Journal execution truth (entry/exit/qty as user logged) | P9 / P10 | *(fill in exact path)* | Never silently overwritten by market data |
+| Derived financial metrics (P&L, R-multiple, fees, risk) | P11 (Calculation Brain) | *(fill in exact path)* | UI is never a second calculation owner |
+| Journal history / record listing | P12 | *(fill in exact path)* | — |
+| Visual P&L presentation | P13 | *(fill in exact path)* | Must not aggregate incomparable currencies |
+| Trade visualizer (plan vs. actual diagram) | P14 | *(fill in exact path)* | Not-to-scale disclosure until real geometry exists |
+| Market data acquisition (provider-neutral) | P15 | *(fill in exact path)* | Never overwrites journal execution truth |
+| Binance Spot live feed (concrete provider) | P16 | *(fill in exact path)* | Provider mapping is not journal execution truth |
+| Chart rendering / presentation | P17 | *(fill in exact path)* | Presentation only — never decides financial truth |
+| Drawing tools through complete generic drawing/edit lifecycle system closure | P18 (canonical through P18.60) | `src/features/chart/` modules listed below | No persistence/P20 ownership; no Risk/Reward/P19 semantics; no journal/calculation truth |
+| Risk/Reward Tool — semantics + provider-neutral logical chart-object composition | P19 (SYSTEM CLOSED through P19.7) | `src/application/risk-reward/`, `src/app/riskRewardChartStyleProjection.ts`, `src/app/riskRewardChartPlacementProjection.ts`, `src/app/riskRewardChartObjectProjection.ts` | P19 owns RR meaning and provider-neutral logical composition only. Closure adds no runtime owner. P18 retains generic provider/interaction machinery; P11 calculations; P14 journal/execution truth; P20 Saved Analysis persistence; P2/P3 token values; later UI owns DOM/pixel presentation. |
 
-## P18 closure boundary
+---
 
-P18.1–P18.59 establish the generic drawing/provider/interaction/selection/deletion/trend-line editing lifecycle owners. P18.60 is the canonical P18 system closure. P18 remains generic chart drawing/provider/interaction ownership and does not absorb Risk/Reward semantics or persistence.
+## P18 Drawing Tools Ownership Ledger — canonical through P18.60
 
-## P19 canonical ownership ledger — CLOSED through P19.7
+Each row records one distinct **patch responsibility**. Some later patches extend
+an already-established owner module; those rows are marked as an extension rather
+than a second owner.
 
-P19.7 remains the canonical P19 system closure via `Kairos Controlled Roadmap Gate` #280 / run `34021672747`.
+| Patch | One distinct responsibility | Production file / owner seam | Boundary / ownership note |
+|---|---|---|---|
+| P18.1 | Provider-neutral committed drawing contract | `chartDrawingContract.ts` | Drawing shape/truth only; no renderer/provider/persistence/interaction |
+| P18.2 | Single drawing/anchor truth -> renderer projection | `chartDrawingProjection.ts` | Sole domain drawing -> renderer drawing projection owner |
+| P18.3 | Provider-neutral drawing-layer lifecycle port | `chartDrawingLayerPort.ts` | Lifecycle seam only; no Lightweight Charts implementation |
+| P18.4 | Provider primitive attach/detach driver | `lightweightChartsV5DrawingLayerDriver.ts` | Owns provider primitive attachment lifecycle only |
+| P18.5 | Renderer logical time/price -> provider screen segments | `lightweightChartsV5TrendLineCoordinateProjection.ts` | Forward screen projection only; no Canvas/hit-test |
+| P18.6 | Canvas trend-line rendering | `lightweightChartsV5TrendLinePaneRenderer.ts` | Draws already-projected segments; no coordinate ownership |
+| P18.7 | Trend-line primitive view/lifecycle composition | `lightweightChartsV5TrendLinePrimitive.ts` | Primitive view/update lifecycle; no attach/detach owner |
+| P18.8 | Trend-line primitive factory | `lightweightChartsV5TrendLinePrimitiveFactory.ts` | Factory/stroke snapshot only |
+| P18.9 | Neutral series handle -> provider series resolution | `lightweightChartsV5ModuleAdapter.ts` (`resolveSeries`) | Series identity map only; neutral handle stays provider-free |
+| P18.10 | Trend-line drawing-layer provider composition/adaptation | `lightweightChartsV5TrendLineDrawingLayerComposition.ts` | Composes P18.4/P18.8/P18.9; no new lifecycle owner |
+| P18.11 | Series + drawing presentation resource lifecycle | `chartDrawingPresentationPort.ts` | Sole series/drawing presentation ordering owner |
+| P18.12 | Point-to-segment hit-test geometry | `lightweightChartsV5TrendLineHitTest.ts` | Pure geometry/top-most resolution; no subscription |
+| P18.13 | Primitive hit-test identity binding | `lightweightChartsV5TrendLinePrimitive.ts` | Binds P18.12 result into provider primitive hit shape; no second geometry owner |
+| P18.14 | Provider hover event -> current-snapshot drawing-hover projection | `lightweightChartsV5DrawingHoverProjection.ts` | Evidence projection only; no hover subscription lifecycle |
+| P18.15 | Crosshair hover subscription lifecycle | `lightweightChartsV5DrawingHoverSubscription.ts` | Sole `subscribeCrosshairMove`/`unsubscribeCrosshairMove` owner |
+| P18.16 | Neutral series handle -> provider chart resolution | `lightweightChartsV5ModuleAdapter.ts` (`resolveChart`) | Chart identity map only; distinct from P18.9 series lookup |
+| P18.17 | Provider hover binding composition | `lightweightChartsV5DrawingHoverBindingComposition.ts` | Resolves chart/capabilities then delegates lifecycle to P18.15 |
+| P18.18 | Provider-neutral hover lifecycle port | `chartDrawingHoverPort.ts` | Neutral attach/destroy/observation lifecycle; no provider subscription implementation |
+| P18.19 | Neutral hover port -> Lightweight Charts binding composition | `lightweightChartsV5DrawingHoverPortComposition.ts` | Adapter composition only; P18.18/P18.17 remain owners |
+| P18.20 | Hover attachment ordering inside presentation lifecycle | `chartDrawingPresentationPort.ts` | Extension of P18.11; no second presentation or hover owner |
+| P18.21 | Drawing interaction-state shape vocabulary | `chartDrawingInteractionContract.ts` | State shape only; no transition semantics/current-state storage |
+| P18.22 | Drawing interaction-event vocabulary | `chartDrawingInteractionEvent.ts` | Intent/evidence vocabulary only; no transition acceptance |
+| P18.23 | Drawing interaction transition semantics | `chartDrawingInteractionReducer.ts` | Sole pure reducer/transition owner |
+| P18.24 | Active ephemeral interaction session + dispatch | `chartDrawingInteractionPort.ts` | Sole current-state storage/dispatch owner; delegates transitions to P18.23 |
+| P18.25 | Provider click coordinates/event -> neutral drawing anchor | `lightweightChartsV5DrawingAnchorProjection.ts` | Reverse provider evidence projection only; domain parser validates decimal truth |
+| P18.26 | Provider click subscription lifecycle | `lightweightChartsV5DrawingClickSubscription.ts` | Sole `subscribeClick`/`unsubscribeClick` owner |
+| P18.27 | Provider chart/series click binding composition | `lightweightChartsV5DrawingClickBindingComposition.ts` | Resolves capabilities then delegates lifecycle to P18.26 and anchor projection to P18.25 |
+| P18.28 | Ephemeral 0/1/2 trend-line draft-anchor collection | `chartTrendLineDraftAnchorCollection.ts` | Draft evidence only; not committed drawing truth |
+| P18.29 | Draft anchors <-> interaction-session coordination | `chartTrendLineDraftInteractionCoordination.ts` | Coordinates P18.24/P18.28; stores no second state/anchor collection |
+| P18.30 | Provider click -> draft-interaction lifecycle composition | `lightweightChartsV5TrendLineDraftInteractionComposition.ts` | Composes P18.27/P18.29; no direct click subscription owner |
+| P18.31 | Complete two-anchor draft -> committed trend-line construction | `chartTrendLineDraftCommitConstruction.ts` | Pure constructor; caller supplies ID; no commit dispatch/collection |
+| P18.32 | Preview draft -> committed interaction coordination | `chartTrendLineDraftCommitCoordination.ts` | Coordinates construction + authoritative commit transition; no ID allocation/collection |
+| P18.33 | Committed in-memory drawing collection | `chartDrawingCollection.ts` | Sole committed runtime set owner; no persistence/P20 |
+| P18.34 | Fresh chart drawing ID allocation | `chartDrawingIdentity.ts` | UUID allocation only; separate from trade-domain identity owner |
+| P18.35 | ID + draft commit + collection orchestration | `chartTrendLineCommitCollectionCoordination.ts` | Orchestration only; delegates ID/commit/collection ownership |
+| P18.36 | Ordered collection snapshot -> renderer snapshot projection | `chartDrawingProjection.ts` (`projectChartDrawings`) | Extension inside P18.2 projection owner; no second projection truth owner |
+| P18.37 | Committed collection -> presentation coordination | `chartDrawingCollectionPresentationCoordination.ts` | Reads P18.33, delegates P18.36 projection and P18.11 presentation |
+| P18.38 | Selected-drawing interaction semantic amendment | `chartDrawingInteractionContract.ts`, `chartDrawingInteractionEvent.ts`, `chartDrawingInteractionReducer.ts` | Extends P18.21/P18.22/P18.23 owners; creates no second state/event/reducer owner |
+| P18.39 | Provider primitive hit -> current-snapshot drawing-selection evidence | `lightweightChartsV5DrawingSelectionProjection.ts` | Selection evidence projection only; stale/non-drawing evidence fails closed |
+| P18.40 | Raw provider click evidence fan-out | `lightweightChartsV5DrawingClickSubscription.ts`, `lightweightChartsV5DrawingClickBindingComposition.ts` | Extension inside P18.26/P18.27 single-click path; no second subscription owner |
+| P18.41 | Validated selection evidence -> interaction dispatch coordination | `lightweightChartsV5DrawingSelectionInteractionCoordination.ts` | Delegates P18.39 validation and P18.24 dispatch; no subscription/state/mutation owner |
+| P18.42 | Selection coordination inside the existing provider click lifecycle | `lightweightChartsV5TrendLineDraftInteractionComposition.ts` | Extension of P18.30; same P18.26 click subscription and same P18.24 state owner |
+| P18.43 | Authoritative interaction state + current renderer snapshot -> selection presentation evidence | `chartDrawingSelectionPresentationProjection.ts` | Provider-neutral fail-closed projection only; no second interaction/projection/collection owner |
+| P18.44 | Identity-preserving committed drawing replace/remove mutation | `chartDrawingCollection.ts` | Controlled extension of P18.33 sole committed-set owner; no second collection/mutation owner |
+| P18.45 | Authoritative deleting-state -> committed removal + interaction reset coordination | `chartDrawingDeletionCoordination.ts` | Orchestration only; delegates transition/current-state to P18.23/P18.24 and removal to P18.33/P18.44 |
+| P18.46 | Drawing-only presentation refresh on existing active series | `chartDrawingPresentationPort.ts` | Controlled extension of P18.11/P18.20; reuses active series/drawing layer and renews hover snapshot evidence |
+| P18.47 | Committed collection -> drawing-only presentation refresh coordination | `chartDrawingCollectionPresentationCoordination.ts` | Controlled extension of P18.37; delegates P18.36 projection and P18.46 drawing-only refresh without duplicating coordination ownership |
+| P18.48 | Identity-preserving provider-neutral trend-line edit construction | `chartTrendLineEditConstruction.ts` | Pure constructor only; explicit start/end endpoint + replacement anchor -> same drawing ID/kind; no collection mutation or interaction dispatch |
+| P18.49R1 | Authoritative trend-line edit-endpoint interaction semantics + typecheck fixture repair | `chartDrawingInteractionContract.ts`, `chartDrawingInteractionEvent.ts`, `chartDrawingInteractionReducer.ts` | Controlled extension of P18.21/P18.22/P18.23: accepted editing state stores exact drawing ID + P18.48 endpoint; no edit mutation/provider gesture owner; R1 fixes only invalid test fixtures from failed #256 |
+| P18.50 | Authoritative editing-state -> committed identity-preserving trend-line replacement + interaction reset coordination | `chartTrendLineEditCoordination.ts` | Orchestration only; consumes P18.49R1 drawing ID/endpoint authority, delegates construction to P18.48 and replacement to P18.33/P18.44; no provider gesture or presentation owner |
+| P18.51R3 | Successful authoritative trend-line edit -> drawing-only presentation refresh composition | `chartTrendLineEditPresentationCoordination.ts` | Composes P18.50 edit execution with P18.47 refresh; presentation failure never rolls back committed edit truth; R1-R3 repaired test/type evidence only |
+| P18.52 | Authoritative deletion execution -> drawing-only presentation refresh composition | `chartDrawingDeletionPresentationCoordination.ts` | Composes P18.45 with P18.47 only; no deletion initiation, direct mutation/projection, or rollback of committed truth on presentation failure |
+| P18.53 | Authoritative selected drawing -> deletion-intent initiation coordination | `chartDrawingDeletionInitiationCoordination.ts` | Reads exact selected identity from P18.24 state and delegates existing `start-deleting` transition; caller cannot supply drawing ID; no deletion execution/provider/UI owner |
+| P18.54 | Authoritative selected drawing + typed endpoint -> edit-intent initiation coordination | `chartTrendLineEditInitiationCoordination.ts` | Reads exact selected identity from P18.24 state, accepts only P18.48 endpoint evidence, and delegates existing `start-editing` transition; caller cannot supply drawing ID; no endpoint hit-test/execution/provider/UI owner |
+| P18.55 | Projected trend-line endpoint geometry -> typed edit-endpoint hit evidence | `lightweightChartsV5TrendLineHitTest.ts` | Controlled extension of P18.12 geometry owner; derives exact drawing ID + P18.48 `start`/`end` endpoint from P18.5 projected endpoints; no interaction/provider-subscription/edit-execution owner |
+| P18.56 | Typed endpoint-hit drawing identity -> authoritative selected edit-initiation coordination | `chartTrendLineEditEndpointHitCoordination.ts` | Binds P18.55 hit identity to current P18.24 selected identity before delegating only endpoint to P18.54; no direct dispatch/geometry/execution/provider owner |
+| P18.57 | Raw provider click point + current projected endpoint segments -> authoritative edit-initiation coordination | `lightweightChartsV5TrendLineEditEndpointClickCoordination.ts` | Composes existing P18.40 click evidence through P18.55/P18.56 only; no provider subscription, projection, direct dispatch, or edit execution owner |
+| P18.58 | Existing single click lifecycle -> selected endpoint edit-click composition | `lightweightChartsV5TrendLineDraftInteractionComposition.ts` | Optional lifecycle wiring only; delegates same raw P18.40 click to P18.57 before P18.41 selection so pre-click selected identity remains authoritative; no second subscription or edit execution owner |
+| P18.59 | Existing single click lifecycle -> already-authoritative edit execution + drawing-only refresh composition | `lightweightChartsV5TrendLineDraftInteractionComposition.ts` | Optional lifecycle extension only; snapshots pre-click `editing` state so the initiation click cannot self-execute, then delegates a later projected anchor to P18.51R3; P18.26 remains the sole subscription owner and P18.50/P18.51R3 remain mutation/refresh owners |
 
-## P20 canonical ownership ledger — CLOSED through P20.5
+### P18 ownership-overlap audit notes
+
+The following pairs/groups touch the same module or concept and therefore look
+potentially overlapping, but current canonical source preserves one owner:
+
+- **P18.2 / P18.36:** same projection module. P18.36 is an ordered collection
+  helper that delegates every element to P18.2; P18.2 remains the sole drawing
+  truth -> renderer projection owner.
+- **P18.9 / P18.16:** same provider binding module, but separate identity maps:
+  provider series vs provider chart.
+- **P18.11 / P18.20 / P18.46:** same presentation module. P18.20 extends P18.11 resource
+  ordering with optional hover attachment; P18.46 extends the same owner with drawing-only
+  refresh on the active series and hover-snapshot renewal. Neither creates a second
+  presentation lifecycle or hover lifecycle.
+- **P18.12 / P18.13:** hit-test geometry vs primitive/provider hit-shape binding.
+- **P18.14 / P18.18:** provider hover projection vs provider-neutral hover
+  lifecycle/observation port.
+- **P18.15 / P18.17 / P18.19:** provider hover subscription lifecycle vs provider
+  binding composition vs neutral-port/provider composition.
+- **P18.21 / P18.22 / P18.23 / P18.24 / P18.38:** state shape, event vocabulary,
+  transition semantics, active state/dispatch, and the later selection semantic
+  amendment remain separate. P18.38 extends the first three owners rather than
+  replacing or duplicating them.
+- **P18.25 / P18.5:** reverse provider click-coordinate -> domain anchor projection
+  is distinct from forward renderer logical coordinate -> provider screen projection.
+- **P18.26 / P18.27 / P18.30 / P18.40 / P18.41 / P18.42:** one click subscription
+  owner (P18.26), one provider binding composition (P18.27), one click-to-draft
+  lifecycle composition (P18.30), one raw-event fan-out amendment (P18.40), one
+  selection-to-interaction coordinator (P18.41), and one composition amendment
+  that wires selection into that same lifecycle (P18.42). Current source contains
+  only one actual `subscribeClick`/`unsubscribeClick` implementation.
+- **P18.29 / P18.32 / P18.35:** all are coordination seams, but at different
+  lifecycle boundaries: draft anchor/state, preview commit, and committed
+  collection orchestration.
+
+- **P18.38 / P18.43:** interaction semantics/state remain owned by P18.21-P18.24/P18.38; P18.43 only projects already-authoritative selected/editing/deleting state against the current renderer snapshot for presentation evidence.
+- **P18.33 / P18.44 / P18.45:** P18.44 extends the existing P18.33 committed collection owner with strict identity-preserving replace/remove operations; P18.45 only coordinates an already-authoritative deleting state into that owner and does not create a second committed-set or mutation owner.
+- **P18.37 / P18.47:** same collection-to-presentation coordination module. P18.47 adds the drawing-only refresh route through P18.46 while P18.37 remains the sole committed collection -> presentation coordination owner.
+- **P18.50 / P18.51R3:** P18.50 remains the authoritative edit-execution coordinator; P18.51R3 only composes a successful edit into the existing P18.47 presentation-refresh owner and never becomes a second mutation/projection/presentation owner.
+- **P18.45 / P18.52 / P18.53:** P18.45 remains the authoritative deletion-execution coordinator; P18.52 only composes successful deletion into P18.47 drawing-only refresh; P18.53 only initiates the existing deleting transition from authoritative selected identity and never executes deletion or becomes a second mutation/projection/presentation owner.
+- **P18.48 / P18.49R1 / P18.50 / P18.51R3 / P18.54:** P18.48 owns endpoint vocabulary/construction; P18.49R1 stores accepted endpoint authority; P18.50 executes; P18.51R3 refreshes presentation; P18.54 only initiates editing from selected identity plus typed endpoint evidence and cannot accept caller-supplied drawing identity.
+
+- **P18.54 / P18.55:** P18.54 initiates editing only from authoritative selected identity plus typed endpoint evidence; P18.55 derives that endpoint evidence from existing projected endpoint geometry without dispatching interaction or executing edits.
+- **P18.55 / P18.56:** P18.55 remains endpoint geometry/evidence owner; P18.56 only binds that hit drawing identity to authoritative selected identity before delegating endpoint initiation to P18.54.
+- **P18.57 / P18.58 / P18.42:** P18.57 coordinates one already-observed raw click against current projected endpoint segments; P18.58 wires that coordinator into the existing P18.30/P18.42 single click lifecycle and evaluates edit evidence before P18.41 selection evidence; P18.26 remains the sole actual provider click subscription owner.
+- **P18.50 / P18.51R3 / P18.58 / P18.59:** P18.50 remains authoritative committed edit execution and P18.51R3 remains edit->drawing-only-refresh composition; P18.58 only initiates edit intent from an endpoint click, while P18.59 extends the same single click lifecycle to route a later projected anchor through P18.51R3 only when `editing` was already authoritative before that click.
+
+No duplicate authoritative owner was found among canonical P18.1-P18.60; P18.60 is the explicit Drawing Tools system closure.
+
+---
+
+## P19 Risk/Reward Ownership Ledger — canonical through P19.6
+
+Each row records one canonically passed P19 responsibility. P19 owns Risk/Reward meaning and provider-neutral logical composition; it deliberately consumes existing domain/chart/design-system types without taking their ownership.
+
+| Patch | One distinct responsibility | Production file / owner seam | Boundary / ownership note |
+|---|---|---|---|
+| P19.1 | Provider-neutral Risk/Reward analysis identity, side, and entry/stop/target levels | `src/application/risk-reward/riskRewardAnalysisContract.ts` | Reuses `TradeSide` + `DecimalString`; no ratio/R math, direction/order validation, chart geometry, provider API, UI/editing, persistence, journal writes, or execution-price mutation |
+| P19.2 | Semantic risk/reward price-zone projection | `src/application/risk-reward/riskRewardZoneSemantics.ts` | `risk` = entry→stop and `reward` = entry→target; no ratio math, price ordering/normalization, styling, chart geometry/provider API, P18 widening, persistence, or journal mutation |
+| P19.3 | Immutable RR-specific chart semantic composition | `src/application/risk-reward/riskRewardChartSemantics.ts` | Composes identity/side, semantic entry/stop/target levels, and P19.2 zones; no timestamp/span/screen geometry, provider/LWC API, P18 `ChartDrawing` widening, UI/editing, persistence, or P11 math |
+| P19.4 | Semantic role → existing design-token reference projection at app boundary | `src/app/riskRewardChartStyleProjection.ts` | Maps entry/stop/target/risk/reward to existing P2/P3 semantic token CSS-variable references; does not own token values, business semantics, geometry, provider APIs, CSS/UI, persistence, or calculations |
+| P19.5 | Caller-supplied logical horizontal placement projection | `src/app/riskRewardChartPlacementProjection.ts` | Preserves analysis id + generic `ChartTimestamp` start/end only; `ChartTimestamp` remains generic chart-infrastructure ownership; no order/normalization, price/R math, pixels/provider APIs, P18 widening, UI/editing, or P20 persistence |
+| P19.6 | Provider-neutral logical RR chart-object geometry composition | `src/app/riskRewardChartObjectProjection.ts` | Entry/stop/target become logical horizontal spans; risk/reward become logical rectangles using P19.3 prices/zones + P19.4 token refs + P19.5 logical extent. No provider/LWC API, numeric renderer conversion, pixels, P18 widening, DOM/UI/editing, P20 persistence, P14 mutation, P11 math, normalization/order validation, or hard-coded colors |
+
+### P19 ownership-overlap audit notes
+
+- **P19.1 / P19.2 / P19.3:** analysis truth, zone semantics, and RR chart semantic composition are distinct. P19.3 composes earlier owners rather than replacing them.
+- **P19.3 / P19.4:** semantic roles/prices remain application truth; P19.4 only attaches existing design-token references at the presentation boundary.
+- **P19.5 / P18 chart infrastructure:** P19.5 consumes existing generic `ChartTimestamp`; it does not move timestamp ownership into P19 or widen P18.
+- **P19.3 / P19.4 / P19.5 / P19.6:** P19.6 is not a redundant combined view model. It owns the newly established provider-neutral logical geometry, while semantic, style-reference, and placement owners remain separate and authoritative.
+- **P19 / P11 / P14 / P20:** P11 remains calculation/R-multiple owner, P14 remains journal/execution truth, and P20 remains later Saved Analysis persistence. P19.1-P19.6 do not duplicate those responsibilities.
+
+No duplicate authoritative owner was found among canonical P19.1-P19.6.
+
+---
+
+## Cross-Cutting Rules (not owned by one phase, apply everywhere)
+
+| Rule | Established In | Notes |
+|---|---|---|
+| One owner per number/fact | P0 architecture lock | Two legitimately different facts (e.g. execution price vs. market reference price) may coexist — the bug is either masquerading as the other |
+| Decimal-safe math, no binary float for money | P0 / P11 | — |
+| Offline-first — journal works with no network | P0 / P15 | Market/cloud features are enhancements, never dependencies |
+| Local PASS ≠ canonical PASS | Process rule (all phases) | Only GitHub Actions canonical run is authoritative |
+| Motion/animation is presentation-only | P14 (established) / P40 (final polish) | Never gates a real data/business state change |
+
+---
+
+## How to use this file
+
+- **"Where do I find X?"** — scan the Concept column, go to the
+  File/Module column.
+- **"Am I allowed to change Y here?"** — check the Boundary column
+  before touching it; if a change would cross that boundary, it
+  belongs to a different phase/owner, not this one.
+- **"Does a new patch conflict with existing ownership?"** — check
+  this table before scoping a new patch. If the new patch would touch
+  a row it doesn't own, that's a sign the patch is scoped too broadly.
+
+---
+
+*Last evidence audit: 2026-09-06 — P18 ownership ledger verified through canonical P18.60 / Kairos Controlled Roadmap Gate #273, and P19 ownership ledger verified through canonical P19.6 / Kairos Controlled Roadmap Gate #279 (`34018858400`). Other older phase rows that still say `(fill in exact path)` remain intentionally unfilled and must be repaired only from their own canonical evidence.*
+
+## P18 Drawing Tools — system closure (P18.60)
+
+Canonical closure intent: P18 owns generic chart drawing and interaction machinery only: drawing lifecycle, projection/rendering, hover/hit testing, click evidence, selection, editing/deletion interaction infrastructure, and provider plumbing. P18 does not own Risk/Reward business truth, journal execution truth, or persistence semantics reserved for later roadmap phases. P19 may consume the generic P18 drawing machinery while owning Risk/Reward meaning and composition. This closure adds no new runtime/business owner; it closes the verified P18 responsibility set after P18.59.
+
+
+---
+
+## P19 Risk/Reward Tool System Closure — canonical P19.7
+
+P19 closes only the roadmap-owned **Risk/Reward Tool semantic and provider-neutral logical composition boundary**. Canonical P19.1–P19.6 already establish analysis identity/side/prices, risk/reward zones, chart semantics, semantic token-reference projection, logical time placement, and logical chart-object composition. P19.7 adds **no production runtime behavior and no new production owner**.
+
+Closure boundary:
+
+- P19 owns Risk/Reward semantic truth and provider-neutral logical chart-object composition.
+- P18 remains the sole generic chart drawing / provider / interaction machinery owner; P19 does not widen P18.
+- P11 remains calculation truth; P14 remains journal/execution truth.
+- P20 owns later Saved Analysis persistence; P19 closure implements no persistence.
+- P2/P3 retain semantic token values; P19 only references established semantic tokens.
+- DOM/UI/CSS, renderer-number conversion, Lightweight Charts production calls, and pixel/screen geometry remain outside this closure.
+
+Canonical phase rule: after P19.7 receives a full canonical PASS, P19 is closed. Any later Risk/Reward amendment must be a new controlled amendment from the latest GOLDEN and must preserve these ownership boundaries.
+
+
+---
+
+## P20 canonical ownership ledger — SYSTEM CLOSED through P20.5
 
 | Patch | Canonical responsibility | Production owner seam | Boundary |
 |---|---|---|---|
-| P20.1 | Saved Analysis contract foundation and identity | `src/app/savedAnalysisContract.ts`, `src/app/savedAnalysisIdentity.ts` | Logical Saved Analysis composition only |
-| P20.2 | Saved Analysis persistence foundation | DB V4 `savedAnalyses`; `SavedAnalysisRepository`; backup/restore seams | Persist/restore P20.1 truth atomically |
-| P20.3 | Saved Analysis save orchestration | `src/application/saved-analysis/saveSavedAnalysis.ts` | Fresh id + one atomic write only |
-| P20.4 | Saved Analysis load-one-by-id orchestration | `src/application/saved-analysis/loadSavedAnalysis.ts` | One stable-id read only |
-| P20.5 | Saved Analysis SYSTEM CLOSURE | verification/docs/package closure only | No new runtime seam |
-
-## Canonical P20 evidence
-
-P20.1: gate #281 / run `34025578061` SUCCESS.
-P20.2: gate #282 / run `34040888312` SUCCESS.
-P20.3: gate #283 / run `34045317884` SUCCESS.
-P20.4: gate #284 / run `34051280988`, job `101535244582`, head `5fcbafc31c5c91b13e07f1687332d5f2cc29ef61`, SUCCESS.
-P20.5: gate #285 / run `34059034331`, job `101556113020`, head `a88b2d480ed0e8ae5cb571ead97a91d36693c4b0`, SUCCESS. Exact artifacts: `KAIROS_CURRENT_CANDIDATE` `9996997282`, 1,167,501 bytes, `sha256:adf73735e84fe2bc79a0651fe14d76f2ee95860c1165f5da67c9337db9bfd6cd`; `KAIROS_GATE_EVIDENCE` `9996997437`, 1,003 bytes, `sha256:869936a9c79813fd93e330c2d94bcb18f2ad5c08671bcf84f32e7939c282d8aa`.
-
-Therefore P20.5 closed P20 canonically.
-
-## P21 canonical ownership ledger — OPEN through Gate 327 quote-volume ordering policy
-
-| Patch | Canonical responsibility | Production owner seam | Boundary |
-|---|---|---|---|
-| P21.1 | Home Dashboard Route Ownership Foundation | `src/app/HomeRoute.tsx`, `src/app/routes.tsx` | Home presentation only |
-| P21.2 | Live Market Summary Fact Contract Foundation | `marketDataTypes.ts`, `liveMarketSummaryFactSemantics.ts` | Provider-neutral raw facts only |
-| P21.3 | Live Market Summary Delivery Completeness Contract Foundation | `liveMarketSummaryDeliverySemantics.ts` | Explicit completeness semantics only |
-| P21.4 | Live Market Summary Baseline Acquisition Port Foundation | `LiveMarketSummaryBaselineAcquisitionPort.ts`, `liveMarketSummaryBaselineAcquisitionSemantics.ts` | Provider-neutral explicit-scope baseline port only |
-| P21.5 | Binance Spot 24h Summary Fact Mapping Foundation | `providers/binance/binanceSpot24hSummaryFact.ts` | One decoded ticker -> one P21.2 fact only |
-| P21.6 | Binance Spot 24h Baseline Delivery Mapping Foundation | `providers/binance/binanceSpot24hBaselineDelivery.ts` | Decoded one-or-many payload -> validated caller-scope delivery only |
-| P21.7 | Binance Spot 24h Public REST Baseline Request Descriptor Foundation | `providers/binance/binanceSpot24hPublicRestBaselineRequest.ts` | Request description only |
-| P21.8 | Binance Spot 24h Public REST Baseline Request Execution Boundary Foundation | `providers/binance/binanceSpot24hPublicRestBaselineRequestExecution.ts` | One supplied generic connector call only |
-| P21.9 | Binance Spot 24h Public REST Baseline Response Decode Foundation | `providers/binance/binanceSpot24hPublicRestBaselineResponseDecode.ts` | JSON-text decode to `unknown` only |
-| P21.10 | Binance Spot 24h Public REST Baseline Response Delivery Composition Foundation | `providers/binance/binanceSpot24hPublicRestBaselineResponseDelivery.ts` | Compose P21.9 decode + P21.6 delivery mapping for one already-received response data value; no transport/status/body/acquisition/state/UI ownership |
-| P21.11 | Binance Spot 24h Public REST Baseline Round Trip Composition Foundation | `providers/binance/binanceSpot24hPublicRestBaselineRoundTrip.ts` | Compose P21.7 request description + exactly one P21.8 connector execution + P21.10 response delivery; no P21.4 cancellation ownership, concrete transport/status/body, retry/rate-limit/polling, state, or UI ownership |
-| P21.12 | Binance Spot 24h Public REST Baseline Caller Cancellation Propagation Foundation | `providers/binance/binanceSpot24hPublicRestBaselineRequestExecution.ts`, `providers/binance/binanceSpot24hPublicRestBaselineRoundTrip.ts` | Forward optional caller-owned `signal?: AbortSignal` unchanged through existing P21.8/P21.11 seams while preserving exact no-options invocation and rejection/result behavior; no concrete transport, cancellation policy, concrete P21.4 adapter, state, or UI ownership |
-| P21.13 | Binance Spot 24h Public REST Baseline Acquisition Adapter Foundation | `providers/binance/binanceSpot24hPublicRestBaselineAcquisitionAdapter.ts` | Compose the P21.4 port onto P21.11/P21.12 with injected transport, one observation-time read, unchanged caller options, P21.4 validation, and existing `acquisition-failed`; no concrete transport/HTTP response acquisition, clock/freshness policy, abort taxonomy, retry/rate-limit/polling, universe/ranking/state/UI ownership |
-| P21.14 | Binance Spot 24h Browser Public REST Baseline Connector Foundation | `providers/binance/binanceSpot24hBrowserPublicRestBaselineConnector.ts` | Concrete browser connector only: one native fetch + exact signal forwarding + one text read + unchanged string/rejection; no request/provider/status/retry/state/UI semantics |
-| P21.15 | Binance Spot 24h Browser Public REST Baseline Acquisition Binding Foundation | `providers/binance/binanceSpot24hBrowserPublicRestBaselineAcquisitionBinding.ts` | Browser-ready composition of released P21.13 + P21.14 only; `readObservedAt` remains mandatory/external; no new clock/lifecycle/transport/provider/state/UI ownership |
-| P21.16 | Live Market Summary Delivery State Foundation | `liveMarketSummaryDeliveryState.ts` | Provider-neutral current-summary delivery state only; no universe/ranking/freshness/persistence/UI ownership |
-| P21.17 | Live Market Summary Baseline State Orchestration Foundation | `liveMarketSummaryBaselineStateOrchestration.ts` | Compose existing state + baseline acquisition for one explicit caller scope/options execution only; no state store/lifecycle/universe/ranking/freshness/persistence/UI ownership |
-| P21.18 | Binance Spot 24h Browser Public REST Baseline State Binding Foundation | `providers/binance/binanceSpot24hBrowserPublicRestBaselineStateBinding.ts` | Compose released P21.15 browser acquisition binding with released P21.17 state orchestration for caller-owned state/readObservedAt/scope/options only; no new transport/provider/lifecycle/universe/ranking/freshness/persistence/UI semantics |
-| P21.19 | Live Market Summary State Session Foundation | `liveMarketSummaryStateSession.ts` | Provider-neutral in-memory current-state session only; explicit caller-driven transitions only; no provider/lifecycle/freshness/persistence/UI ownership |
-| P21.20 | Live Market Summary Browser State Session Binding Foundation | `providers/binance/binanceSpot24hBrowserPublicRestBaselineStateSessionBinding.ts` | Compose released P21.18 + P21.19 for exactly one explicit caller-driven browser acquisition transition only; no new provider/universe/freshness/concurrency/persistence/UI semantics |
-| P21.21 | Live Market Summary Scoped State Snapshot Foundation | `liveMarketSummaryScopedStateSnapshot.ts` | Provider-neutral pure scoped read only; caller scope -> one exact fact-or-null association per request; no ranking/presentation/state/acquisition/persistence/UI semantics |
-| P21.22 | Live Market Summary State Session Scoped Snapshot Binding Foundation | `liveMarketSummaryStateSessionScopedSnapshotBinding.ts` | Read released session state exactly once and delegate exact state + explicit caller scope to released P21.21; no mutation/transition/acquisition/provider/universe/ranking/freshness/persistence/UI semantics |
-| P21.23 | Live Market Summary Browser State Session Scoped Snapshot Acquisition Composition Foundation | `providers/binance/binanceSpot24hBrowserPublicRestBaselineStateSessionScopedSnapshotAcquisitionComposition.ts` | One released P21.20 acquisition then one released P21.22 scoped read after fulfillment using same session/scope; exact outputs unchanged; no new acquisition/provider/universe/ranking/freshness/persistence/UI semantics |
-| Gate 327 | Live Market Universe Quote-Volume Ordering Policy | `src/services/market-data/liveMarketUniverseQuoteVolumeOrderingPolicy.ts`, exported through `src/services/market-data/index.ts` | Deterministically orders already-eligible `LiveMarketSummaryFact` values by descending exact `quoteVolume24h`, then symbol for equal volume, returning a sorted copy; no eligibility/stablecoin/provider/Top-N/freshness/state/persistence/UI ownership |
-
-## Canonical P21 evidence
-
-P21.1: gate #286 / run `34061840453`, job `101563628073`, head `13d55093a569a156f316ccb848e6bd84e4e437ea`, SUCCESS.
-P21.2: gate #287 / run `34066483131`, job `101576023230`, head `13a7ac6de0b3753c39a7da006eef995fec94ce42`, SUCCESS.
-P21.3: gate #288 / run `34069156361`, job `101583192503`, head `b8e6742e707d3c8eaf75c1b555e7d382663e579b`, SUCCESS.
-P21.4: gate #289 / run `34072260372`, job `101591633032`, head `67440a867790f45326bcc55b631b2367f2f3593f`, SUCCESS.
-P21.5: gate #290 / run `34074736949`, job `101598528300`, head `cb34148873183fa058fea6bdf39b51e4ee8bd132`, SUCCESS.
-P21.6: gate #291 / run `34078317199`, job `101608666615`, head `f68abdf067e81a63cdb9c5223526449c138b841a`, SUCCESS.
-P21.7: gate #292 / run `34083915392`, job `101624231092`, head `fb7ce6e9b74916e58266f4f96f92641ed86175d1`, SUCCESS.
-P21.8: gate #293 / run `34087112414`, job `101633147869`, head `a435ba0d0369336dc89389aa7c2ebc7d3d2c95e2`, SUCCESS.
-P21.9: gate #294 / run `34090844909`, job `101643824896`, head `bce74c2f64ec9922af34cfdc4baaaf44a4ecdb0d`, SUCCESS. Exact artifacts: `KAIROS_CURRENT_CANDIDATE` `10006980372`, 1,199,745 bytes, `sha256:e5cc179e938db367df6da82447148de1077ab752a52fb2e3366a36de7114c03a`; `KAIROS_GATE_EVIDENCE` `10006980609`, 1,273 bytes, `sha256:1cd631a1f71a191a290e925a90fd266ae2190f787d4d7acff0ef7d6563a498f7`.
-
-P21.10: `Kairos Controlled Roadmap Gate` #295 / run `34095614597`, job `101658498951`, exact head `0ecbc2c92b1f367808971b244df28305de5f969d`, completed full SUCCESS on 2026-09-07. Exact artifacts: `KAIROS_CURRENT_CANDIDATE` `10008642188`, 1,203,658 bytes, `sha256:f1cde60eb75f1aec12cc194d83f0ae6a2208c6b71d97e50db65eef03466fc6e7`; `KAIROS_GATE_EVIDENCE` `10008642596`, 1,405 bytes, `sha256:31a60cddc58405cad782a09418dbf092694266a976dce7dc60af5c7b937b35a0`.
-P21.11: gate #296 / run `34100573164`, job `101673831809`, head `dc9809c9596c204aa1ef79726d82ee5951a9afd6`, full SUCCESS. Exact artifacts: `KAIROS_CURRENT_CANDIDATE` `10010555876`, 1,207,322 bytes, `sha256:06c89d2d7f9671744aed5af7a3b3600d8d78bcdf2aa72a96ef7c6c9ecb5ada2c`; `KAIROS_GATE_EVIDENCE` `10010556483`, 1,138 bytes, `sha256:ea67c8609ec24cc060590f9444d565e7650a7bad81cde177283ae1cfb97183d8`.
-P21.12: gate #297 / run `34110678855`, job `101705933902`, head `92aa69b8c5c40acc67dcc9a281b2442d772cdd13`, full SUCCESS. Exact artifacts: `KAIROS_CURRENT_CANDIDATE` `10013962614`, 1,210,677 bytes, `sha256:47c20bd9b7dddee283c6b7fad8cd9b5069865830736eb5c1f1a91574ee74bc24`; `KAIROS_GATE_EVIDENCE` `10013962954`, 1,255 bytes, `sha256:b80cfd8c7ab7b1f55b8e784037c17690f38187eb9df34852057231da24360844`.
-P21.13: gate #298 / run `34114301112`, job `101717432752`, head `2cd8025bd01ca4ea3b3eeff3e4d4f5ac20b077dd`, full SUCCESS. Exact artifacts: `KAIROS_CURRENT_CANDIDATE` `10015885398`, 1,213,929 bytes, `sha256:488840e5cbf0d4d0416fb15f6254e62838ceacb7f5446820b309ba7158a0b0d5`; `KAIROS_GATE_EVIDENCE` `10015886009`, 1,379 bytes, `sha256:9b08b224c0b3f62c26be1d2f289ad302bedda89723c78225202ed90c65096271`.
-P21.14: gate #299 / run `34118010684`, job `101729246550`, head `09c972193f3311491a8d9991063bc2e5010488fb`, full SUCCESS. Exact artifacts: `KAIROS_CURRENT_CANDIDATE` `10017326486`, 1,218,116 bytes, `sha256:7c5da8726b9bcbdfb739ba8353c7389acab0fa3588fc71f0521a59e0a5ab1060`; `KAIROS_GATE_EVIDENCE` `10017326839`, 1,542 bytes, `sha256:49e504b9d145bac667ef9db87d9a6054f0aee823261776f08ea596af48417f4e`.
-P21.15: gate #300 / run `34123121667`, job `101745506818`, head `a7b1acd295e503990aafcbf2e6aff17716069640`, full SUCCESS. Exact artifacts: `KAIROS_CURRENT_CANDIDATE` `10019300279`, 1,222,065 bytes, `sha256:00a88bb1e5fe6615b47aa1a9e6ac41fc89eececb4471a6119fe51e7976ea9cc0`; `KAIROS_GATE_EVIDENCE` `10019300678`, 1,457 bytes, `sha256:ed1086b8ce41cfacf39fd2a1a71995c65536cf9434da8d5605bb7124f82f90bb`.
-P21.16: gate #301 / run `34133279485`, job `101778268241`, head `ed1fc72faaa0df1607930dd13ad88ba11b45e88b`, full SUCCESS. Exact artifacts: `KAIROS_CURRENT_CANDIDATE` `10023353581`, 1,225,815 bytes, `sha256:887a04620cc884f1ad4e11a27fccc38bd2363f238b531564747f1f42168fdf1f`; `KAIROS_GATE_EVIDENCE` `10023353839`, 1,668 bytes, `sha256:28923daaad1407cc1318627321c33fe2b5e21622aa31717145285e007372fe21`.
-P21.17: gate #302 / run `34140732046`, job `101801891405`, head `50a0c1a0fd7424a7b75abf3c251b750e5f0a4a5d`, full SUCCESS. Exact artifacts: `KAIROS_CURRENT_CANDIDATE` `10025960042`, 1,230,475 bytes, `sha256:ebdc2cb0b17f24f04f903855bed18de751a9aced0e82da0c32e6c335e5d72ba2`; `KAIROS_GATE_EVIDENCE` `10025960437`, 1,368 bytes, `sha256:bc941c776651ff0f14fa470a6f856baaffee2806dfa1ad98f9280c2d1a401fb9`.
-P21.18: gate #303 / run `34146322758`, job `101819033273`, head `99b9156f74449d57155913e90b97d2ebdc52ed6d`, full SUCCESS. Exact artifacts: `KAIROS_CURRENT_CANDIDATE` `10027998066`, 1,235,325 bytes, `sha256:c95e487a11e282952bcffec1c4b562a4585d222a640fa20c99132fe489fc62f3`; `KAIROS_GATE_EVIDENCE` `10027998323`, 1,472 bytes, `sha256:f9a4acdfe151dee4a022b983b206ce7b0ec82def0b2bbe6bd95b46e58ba9eb63`.
-P21.19: gate #304 / run `34150339551`, job `101831111641`, head `f5fecb9238188dd01b002df2945a510d4aec5976`, full SUCCESS. Exact artifacts: `KAIROS_CURRENT_CANDIDATE` `10029250590`, 1,238,765 bytes, `sha256:bc7194acfa2c20bfc65e8b321509ac2564903ad6a315f9b9d382ea66bcf59bc3`; `KAIROS_GATE_EVIDENCE` `10029250923`, 1,390 bytes, `sha256:5ba71fe5b5c80009ccd0fd81c9e19e168908bb67656f4fdb1fa074e397b1bb17`.
-P21.20: gate #305 / run `34154165151`, job `101842400128`, head `8a51bf3a82c8cb837507db23d738ee8f6f8ff035`, full SUCCESS. Exact artifacts: `KAIROS_CURRENT_CANDIDATE` `10030567996`, 1,243,036 bytes, `sha256:4af82d635bacb06d03518d6f6510a3d4bfcdeb9c4e2169b29911bfe14ee8a8dd`; `KAIROS_GATE_EVIDENCE` `10030568221`, 1,434 bytes, `sha256:3ca82d3360ee9c33f3076b3718b50bf63588a91097cf15f7b83d0d22bfdaa313`.
-P21.21: `Kairos Controlled Roadmap Gate` #306 / run `34158212484`, job `101854342019`, exact head `e65a31df4e9a0405a8721376ace32d3d132b2c95`, completed full SUCCESS on 2026-09-08. Every required canonical stage succeeded: authoritative P21.20/P21.21 extraction, exact controlled P21.20→P21.21 six-file scope, deterministic install, exact Lightweight Charts 5.2.1 proof, production TypeScript compilation/build, dedicated P21.21 Live Market Summary Scoped State Snapshot verifier/runtime, full unit regression, full controlled-roadmap regression through P21.21, historical closures, and both exact-run artifact uploads.
-
-Exact P21.21 artifacts:
-- `KAIROS_CURRENT_CANDIDATE` artifact `10031880520`, 1,246,254 bytes, digest `sha256:62054a562312723bb8efe98c167b21e5a453f4d1f3d65ce41ebb51ec062b98ee`.
-- `KAIROS_GATE_EVIDENCE` artifact `10031880792`, 1,276 bytes, digest `sha256:dfaf16fcacfed28a1b181b26e00524aa869e418b7ceb4fb77d48526adfab80ba`.
-
-P21.22: `Kairos Controlled Roadmap Gate` #307 / run `34161793405`, job `101864964674`, exact head `5d53c4949c4396ba2d770546a041529225a06032`, completed full SUCCESS on 2026-09-08. Every required canonical stage succeeded: authoritative P21.21/P21.22 extraction, exact controlled P21.21→P21.22 six-file scope, deterministic install, exact Lightweight Charts 5.2.1 proof, production TypeScript compilation/build, dedicated P21.22 Live Market Summary State Session Scoped Snapshot Binding verifier/runtime, full unit regression, full controlled-roadmap regression through P21.22, historical closures, and both exact-run artifact uploads.
-
-Exact P21.22 artifacts:
-- `KAIROS_CURRENT_CANDIDATE` artifact `10033011782`, 1,249,728 bytes, digest `sha256:266ca286a6cdebfbde784fa03ae9b9e3f1687e392102e7d1c2251447a3514e70`.
-- `KAIROS_GATE_EVIDENCE` artifact `10033012029`, 1,311 bytes, digest `sha256:5eba906623d27f752a1db492f69feb962b4a922c5d4b0ff691fe1160f87d0e0b`.
-
-P21.23: `Kairos Controlled Roadmap Gate` #308 / run `34166273061`, job `101877808027`, exact head `cebee6db66e8b5d9202e83a70d90b4256e82e825`, completed full SUCCESS on 2026-09-08. Every required canonical stage succeeded: authoritative P21.22/P21.23 extraction, exact controlled P21.22→P21.23 six-file scope, deterministic install, exact Lightweight Charts 5.2.1 proof, production TypeScript compilation/build, dedicated P21.23 Live Market Summary Browser State Session Scoped Snapshot Acquisition Composition verifier/runtime, full unit regression, full controlled-roadmap regression through P21.23, historical closures, and both exact-run artifact uploads.
-
-Exact P21.23 artifacts:
-- `KAIROS_CURRENT_CANDIDATE` artifact `10034353837`, 1,254,394 bytes, digest `sha256:8189b8964d4b6fdb22684003c9499941bf97cfe1f342168e77a19297ec778e6b`.
-- `KAIROS_GATE_EVIDENCE` artifact `10034354076`, 1,468 bytes, digest `sha256:6e6603927cd04e0b25ea090f779db3fd7aace470d4b0e4bb67b851e82c0e3b2b`.
-- Downloaded `KAIROS_CURRENT_CANDIDATE` contains exactly `KAIROS_P21_23_LIVE_MARKET_SUMMARY_BROWSER_STATE_SESSION_SCOPED_SNAPSHOT_ACQUISITION_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-08.zip`, inner size 1,456,599 bytes, SHA-256 `6af714da590dd3b609436fc056987d638cbbbbaa519aa3cd74d1994d61451be2`; ZIP integrity PASS.
-- Downloaded `KAIROS_GATE_EVIDENCE` contains exactly `KAIROS_P21_23_LIVE_MARKET_SUMMARY_BROWSER_STATE_SESSION_SCOPED_SNAPSHOT_ACQUISITION_COMPOSITION_FOUNDATION_REPORT_2026-09-08.md`, inner size 2,368 bytes, SHA-256 `d54e4f880da57dd361dc20b45f4cba626362a771852753dbb1c0abbc711fed36`; ZIP integrity PASS.
-
-Therefore P21.23 is the canonical GOLDEN. P21 remains OPEN; later P21 responsibilities must be independently source-proven before implementation.
-
-## Ownership rules that remain invariant
-
-- One owner per responsibility; later patches extend or compose existing owners rather than silently duplicating them.
-- P11 remains calculation truth.
-- P12 remains bounded journal-history/listing truth; Home/Bubble UI must not bypass it with direct IndexedDB reads.
-- P14 remains journal/trade-visualization truth where assigned.
-- P15 remains market acquisition truth and P16 remains Binance Spot provider ownership.
-- P21.5 owns provider fact mapping; P21.6 decoded-payload delivery composition; P21.7 request description; P21.8 generic execution boundary; P21.9 deterministic JSON-text response decoding; P21.10 response-delivery composition; P21.11 composes P21.7 -> P21.8 -> P21.10 for one explicit-scope round trip with an externally supplied connector; P21.12 adds caller-owned cancellation propagation only across P21.8/P21.11; P21.13 composes the provider-neutral P21.4 acquisition port onto those released Binance seams; P21.14 supplies only the concrete browser connector for P21.8/P21.13; P21.15 supplies only the browser-ready binding that composes P21.13 + P21.14 while leaving observation time external. P21.16 adds only provider-neutral current-summary delivery state over validated P21.3 deliveries. P21.17 composes only an existing baseline acquisition port with existing P21.16 state application for one explicit caller-owned scope/options execution. P21.18 composes only the released P21.15 browser acquisition binding with released P21.17 baseline-state orchestration for caller-owned state/readObservedAt/scope/options. P21.19 adds only provider-neutral in-memory ownership of one current released P21.16 state across explicit caller-driven transitions. P21.20 composes only the released P21.18 browser state binding with the released P21.19 state session for exactly one explicit caller-driven acquisition transition. P21.21 adds only a provider-neutral pure scoped read projection over released P21.16 state using the released single-instrument getter. P21.22 composes only the released P21.19 state-session snapshot read with released P21.21 scoped projection for one explicit caller-owned scope and does not add new truth. P21.23 composes only released P21.20 browser acquisition with released P21.22 scoped snapshot read for the same existing session and exact caller-owned scope, after successful fulfillment, and does not add new truth. None of these move endpoint/query/provider semantics, observation-time/freshness policy, retry/rate-limit policy, universe/ranking, persistence, or UI truth out of their existing or future explicit owners.
-- P18 remains generic drawing/provider/interaction machinery.
-- P19 remains Risk/Reward semantic and provider-neutral logical composition truth.
-- P20 remains closed Saved Analysis truth; no generic CRUD expansion is inferred from P21 work.
-- P21.1 owns only Home route presentation/composition semantics; P8 navigation remains authoritative.
-- P21.2 owns only provider-neutral Live Market Summary raw facts.
-- P21.3 owns only delivery completeness semantics.
-- P21.4 owns only the provider-neutral baseline acquisition port/result/validation contract; caller supplies scope.
-- P21.5 owns only one decoded Binance ticker -> P21.2 mapping with caller-owned `observedAt`.
-- P21.6 owns only one-or-many decoded payload -> validated P21.3 `complete-for-scope` delivery.
-- P21.7 owns only pure Binance Spot public REST request description.
-- P21.8 owns only one injected generic execution call and unchanged connector result, with optional caller-owned execution options forwarded unchanged when supplied.
-- P21.9 owns only JSON-text decoding to `unknown`.
-- P21.10 owns only response-delivery composition over existing P21.9/P21.6 owners for already-received response data; it does not execute a request or define HTTP response acquisition semantics.
-- P21.11 owns only the explicit-scope round-trip composition over existing P21.7/P21.8/P21.10 owners.
-- P21.12 owns only propagation of optional caller-owned execution options carrying `signal?: AbortSignal` through existing P21.8/P21.11 seams; it creates no controller, combines no signals, and defines no timeout/abort error semantics.
-- P21.13 owns only the concrete Binance composition adapter for the existing P21.4 port. It reads the caller-owned observation-time source once, forwards P21.4 caller options unchanged, reuses P21.4 success validation, and maps released composition failure or connector rejection only to existing `acquisition-failed`.
-- P21.14 owns only the concrete browser transport connector: exactly one native fetch for the exact P21.7 request description, exact caller `AbortSignal` forwarding, exactly one response-text read, unchanged text return, and unchanged native fetch/text rejection. It does not interpret HTTP status/headers, create retries, create/merge cancellation signals, decode provider payloads, choose symbols/universe, manage state, or wire UI.
-- P21.15 owns only the browser-ready acquisition binding: it composes the released P21.13 acquisition adapter with the released P21.14 browser connector, requires the caller-owned `readObservedAt`, and preserves existing cancellation, result, and rejection behavior. It does not acquire time, own lifecycle/freshness, add transport semantics, choose scope/universe, manage state, or wire UI.
-- P21.16 owns only provider-neutral current-summary delivery state keyed by normalized instrument identity. It validates each P21.3 delivery; applies incremental upserts only for delivered facts; applies `complete-for-scope` as replacement only inside the explicit delivery scope while preserving out-of-scope facts; rejects invalid deliveries with `delivery-invalid` and exact prior state; and applies deliveries in caller order with no timestamp comparison or freshness inference. Map iteration order is storage detail only and never ranking/presentation truth.
-- P21.17 owns only baseline-state orchestration over released P21.4/P21.16 seams: it accepts caller-owned scope/options, invokes acquisition exactly once, preserves `acquisition-failed` with exact prior state, applies successful delivery only through P21.16, and preserves `delivery-invalid` exact-prior-state behavior. It adds no state store, lifecycle policy, universe/ranking policy, freshness arbitration, persistence, or UI truth.
-- P21.18 owns only the browser/provider baseline-state binding over released P21.15/P21.17 seams: it accepts caller-owned state, `readObservedAt`, scope and optional acquisition options, creates the released browser acquisition port, and delegates one baseline-state orchestration unchanged. It adds no state store/lifecycle policy, clock/time acquisition, transport/provider/error policy, universe/ranking/freshness policy, persistence, or UI truth.
-- P21.19 owns only the provider-neutral in-memory state session: it starts from a caller-supplied released P21.16 state or the released empty-state factory, returns the exact current snapshot, invokes only explicit caller-supplied async transitions against the exact current state, commits only the returned state, and preserves exact prior-state identity/content when a transition rejects. It adds no provider/transport/universe/ranking/freshness/reset/polling/scheduling/concurrency/coalescing/persistence/UI subscription policy and duplicates no P21.16 validation/application semantics.
-- P21.20 owns only the browser/provider state-session binding over released P21.18/P21.19 seams: it accepts an existing released state session plus caller-owned `readObservedAt`, explicit scope and optional acquisition options, performs exactly one explicit session transition, delegates the exact current state only through P21.18, commits only released `result.state` through P21.19, and returns the exact released P21.18 orchestration result. It adds no provider/transport/error policy, clock/freshness policy, universe/ranking policy, reset/polling/scheduling/concurrency policy, persistence, UI subscription, Bubble, Home, journal, Saved-Analysis, chart, or transition truth.
-- P21.21 owns only a provider-neutral scoped read projection over released P21.16 state: each explicit caller request is resolved only through `getLiveMarketSummaryDeliveryStateFact(...)` to the exact current fact or `null`; request order is preserved only for request/result association and is never ranking/presentation truth. It adds no universe/default scope, sorting/filtering/ranking, state mutation, acquisition/session transition, provider/transport, freshness, persistence, Bubble/Home/UI subscription, journal, Saved-Analysis, chart, or transition truth.
-- P21.22 owns only the pure binding from a released P21.19 state session to the released P21.21 scoped snapshot projection: it reads `session.getState()` exactly once per explicit caller invocation, delegates that exact state and exact caller scope, and returns the released P21.21 result unchanged. It adds no session transition, acquisition, mutation, provider/transport, universe/ranking/freshness, persistence, subscription/UI, Bubble/Home, journal, Saved-Analysis, chart, or transition truth.
-- P21.23 owns only browser acquisition + scoped snapshot composition over released P21.20/P21.22 seams: it accepts an existing released state session, caller-owned `readObservedAt`, explicit caller-owned scope and optional released acquisition options, invokes P21.20 exactly once, invokes P21.22 exactly once only after fulfillment using the same session and exact scope, surfaces both released outputs unchanged, and propagates P21.20 rejection unchanged with no scoped read. It adds no universe/default scope, ranking/filtering/grouping/sorting/top-N/popularity/market-cap, Bubble/Home/Your-Trades/journal ownership, new provider/transport/error/retry/freshness/polling/scheduling/concurrency/subscription/persistence/IndexedDB/Saved-Analysis/chart/UI-reactivity/transition truth, and reinterprets no released P21 semantics.
-- Live Crypto Bubble Map and Your Trades Bubble Map remain distinct products with distinct authoritative upstream data flows. Shared future bubble-layout code must remain presentation-only.
-- Approved dashboard transitions remain presentation-only and may never own or delay route/navigation/data/persistence/calculation/chart/Saved-Analysis/dashboard-selection truth.
-- P2/P3 design tokens remain style-value authority.
-- UI/presentation amendments must preserve business/data/navigation truth and use controlled amendments from latest GOLDEN.
-
-## Next audit checkpoint
-
-P21 is open through canonical P21.23. Before any later P21 implementation, reread controlling handoff/current user rules, exact P21.23 GOLDEN, continuity/process history, Retry Ledger, current P15/P16/P21 market owners, P12 journal-history seam, Home/dashboard consumers, and current official provider behavior as needed. Prove exactly one smallest dependency-safe next responsibility and explicit non-scope. Do not infer a next patch by numbering. In particular, do not infer HTTP status/header error policy, retry/rate-limit/polling, credentials, timeout/AbortController ownership, market-universe selection/ranking, freshness/TTL/stale-eviction/reset/reconnect behavior, Bubble size/color/ranking/grouping/filter/interactions, Your-Trades visualization semantics, persistence, UI subscription/reactivity, concurrency/coalescing policy, or transition implementation merely from P21.23's browser acquisition + scoped snapshot composition seam.
-
-## Canonical Home Dashboard live-market acquisition port checkpoint — gate #309
-
-The latest canonical GOLDEN after P21.23 is the **Home Dashboard Live Market Summary Scoped Snapshot Acquisition Port Contract Foundation**. Its patch number is intentionally not inferred.
-
-- Canonical gate: `Kairos Controlled Roadmap Gate` #309 / run `34170279174`, job `101889120990`, exact head `17c424c2c8b47b71b8d545d5040eea8f41eb8559`, full SUCCESS on 2026-09-08.
-- Production owner seam: `src/application/dashboard/homeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPort.ts`.
-- Responsibility: provider-neutral, application-facing contract outside React presentation; accepts explicit caller-owned `readonly MarketDataInstrument[]` scope plus optional caller-owned cancellation options compatible with `signal?: AbortSignal`; exposes only already-released `LiveMarketSummaryBaselineStateOrchestrationResult` plus `readonly LiveMarketSummaryScopedStateSnapshotEntry[]` truth.
-- Exact canonical artifacts: `KAIROS_CURRENT_CANDIDATE` id `10035662549`, size `1,257,785`, digest `sha256:eb38d01b3763e05e7bb149a7963c734a36516f3515360cc17d751c1ba3f309cf`; `KAIROS_GATE_EVIDENCE` id `10035662755`, size `1,272`, digest `sha256:b3403db9e80fd5fa57afce4b7e748ebff07b2d99cad45883157c6af2a3d48c5c`.
-- Downloaded integrity: candidate wrapper contains exactly `KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_SCOPED_SNAPSHOT_ACQUISITION_PORT_CONTRACT_FOUNDATION_CANDIDATE_2026-09-08.zip`, inner size `1,461,024`, SHA-256 `09800fad35d0ddea517733d6472933701d3563a3ee5730c1fc1977bb854ceb63`, ZIP integrity PASS; gate-evidence wrapper contains exactly `KAIROS_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_SCOPED_SNAPSHOT_ACQUISITION_PORT_CONTRACT_FOUNDATION_REPORT_2026-09-08.md`, inner size `1,794`, SHA-256 `0de91cbe11b8cda918332b4f6fe86619523b91c892baf5c2a1c887128728211c`, ZIP integrity PASS.
-- Boundary: chooses no provider/session/transport and introduces no new validation, ranking, completeness, state, snapshot, clock, or lifecycle algorithm.
-- Explicit non-scope: no Binance/provider adapter; no Home React wiring/hooks/effects/UI state/loading/error rendering; no universe/default scope; no ranking/filtering/grouping/sorting/top-N/popularity/market-cap; no Live Crypto Bubble sizing/color/geometry/interactions/animation; no Your Trades/journal ownership; no caller clock/readObservedAt construction; no freshness/TTL/stale eviction/polling/reconnect/scheduling/background work; no provider transport/error/retry/rate-limit/timeout policy; no new AbortController/signal combination/concurrency/coalescing/subscription framework; no persistence/IndexedDB/Saved Analysis/chart/navigation/transition ownership; no reinterpretation of released P21 semantics.
-
-This checkpoint extends the primary architecture map without changing any earlier ownership entry. Live Crypto Bubble Map remains sourced only from authoritative live/current market/provider truth; Your Trades Bubble Map remains sourced only from journal/trade history plus released calculation truth; these owners must never merge. UI must not read IndexedDB directly, and dashboard transitions remain presentation-only.
-
-## Canonical Binance Home Dashboard acquisition-port adapter checkpoint — gate #311
-
-The latest canonical GOLDEN after the Home Dashboard acquisition-port foundation is the **Binance Home Dashboard Live Market Summary Scoped Snapshot Acquisition Port Adapter Foundation**. Its patch number is intentionally not inferred.
-
-- Canonical gate: `Kairos Controlled Roadmap Gate` #311 / run `34173799325`, job `101899109660`, exact head `69f39d09b9574ae5d9bf9fd963aff18324ca2844`, full SUCCESS on 2026-09-08.
-- Production owner seam: `src/services/market-data/providers/binance/binanceHomeDashboardLiveMarketSummaryScopedSnapshotAcquisitionPortAdapter.ts`, exported through `src/services/market-data/index.ts`.
-- Responsibility: bind an existing released `LiveMarketSummaryStateSession` plus caller-owned released Binance `readObservedAt` into the canonical Home Dashboard acquisition port; each `acquire(scope, options?)` delegates exactly once to released P21.23 with the same session/readObservedAt/exact caller scope/unchanged options and returns the released result unchanged.
-- Exact canonical artifacts: `KAIROS_CURRENT_CANDIDATE` id `10036804259`, size `1,261,496`, digest `sha256:304239363cf6f273689c6aa4bb1e4086e63a4e5c9cade57f1ecda578426d8d8c`; `KAIROS_GATE_EVIDENCE` id `10036804501`, size `1,259`, digest `sha256:0fa3cc46239c942fcaf9a42e1cd85533064dd7572f8cc28334519acb6ada7445`.
-- Downloaded integrity: candidate wrapper contains exactly `KAIROS_BINANCE_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_SCOPED_SNAPSHOT_ACQUISITION_PORT_ADAPTER_FOUNDATION_CANDIDATE_2026-09-08.zip`, inner size `1,465,879`, SHA-256 `54a210648d0559fd1638942e4d0e04c920d1cd11dbc6b0f8cdd284cde10284fe`, ZIP integrity PASS; gate-evidence wrapper contains exactly `KAIROS_BINANCE_HOME_DASHBOARD_LIVE_MARKET_SUMMARY_SCOPED_SNAPSHOT_ACQUISITION_PORT_ADAPTER_FOUNDATION_REPORT_2026-09-08.md`, inner size `1,871`, SHA-256 `56ec41b90572afcd9ef582d411a22f08300b66e57d317e5036e4d57fd9a98097`, ZIP integrity PASS.
-- Boundary: this provider adapter binds already-released session/readObservedAt dependencies to the already-canonical Home application port and delegates only through released P21.23; it does not create a session, clock, provider policy, universe, or presentation semantics.
-- Explicit non-scope: no session creation/reset/lifecycle owner; no clock/readObservedAt construction; no Home React wiring/hooks/effects/UI state; no default universe/scope; no ranking/filtering/grouping/sorting/top-N/popularity/market-cap; no Live Crypto Bubble presentation semantics; no Your Trades/journal ownership; no freshness/TTL/polling/reconnect/scheduling/background work; no new transport/endpoint/status/header/error/retry/rate-limit/timeout/credentials policy; no new AbortController/signal combination/concurrency/coalescing/subscription framework; no persistence/IndexedDB/Saved Analysis/chart/navigation/transition ownership; no duplication or reinterpretation of released P21.23 semantics.
-
-This checkpoint extends the primary architecture map without changing any earlier ownership entry. Live Crypto Bubble Map remains market/provider truth only; Your Trades Bubble Map remains journal/trade history plus released calculation truth only; UI must not read IndexedDB directly; dashboard transitions remain presentation-only.
-
-## Canonical Live Market Summary freshness classification policy checkpoint — gate #312
-
-The latest canonical GOLDEN after the Binance Home Dashboard acquisition-port adapter is the **Live Market Summary Freshness Classification Policy Foundation**. Its patch number is intentionally not inferred.
-
-- Canonical gate: `Kairos Controlled Roadmap Gate` #312 / run `34188023039`, job `101940182795`, exact head `ef0e9ff05802ee1a4d84b04ab4815ecaf010154c`, full SUCCESS on 2026-09-08.
-- Production owner seam: `src/services/market-data/liveMarketSummaryFreshnessClassificationPolicy.ts`, exported through `src/services/market-data/index.ts`.
-- Responsibility: provider-neutral deterministic classification of an already-computed caller-owned observation age in milliseconds to `fresh | stale | expired`.
-- V1 defaults: `freshMaxAgeMs = 15_000`, `staleMaxAgeMs = 60_000`; `fresh` for age <=15,000ms, `stale` for age >15,000ms and <=60,000ms, and `expired` for age >60,000ms.
-- Exact canonical artifacts: `KAIROS_CURRENT_CANDIDATE` id `10041358029`, size `1,264,322`, digest `sha256:0de5538c535efa534c5a5520dd97022c5994cede8e0e4625d6e60c17f53b22e5`; `KAIROS_GATE_EVIDENCE` id `10041358329`, size `1,245`, digest `sha256:b7844cae36314ca01d308eca40425b97dc8ec7e3e15cac06e345d077e871131d`.
-- Downloaded integrity: candidate wrapper contains exactly `KAIROS_LIVE_MARKET_SUMMARY_FRESHNESS_CLASSIFICATION_POLICY_FOUNDATION_CANDIDATE_2026-09-08.zip`, inner size `1,469,920`, SHA-256 `64435ec7d4af49a27b7c09cb12241a9ec8639d55962a4b71dbb200aa90f5bdca`, outer and inner ZIP integrity PASS; gate-evidence wrapper contains exactly `KAIROS_LIVE_MARKET_SUMMARY_FRESHNESS_CLASSIFICATION_POLICY_FOUNDATION_REPORT_2026-09-08.md`, inner size `1,880`, SHA-256 `7fc7bfd58bb143d52ba65f70d7d37a296534bfc96739bb7e1b4028e21317a58b`, wrapper ZIP integrity PASS.
-- Boundary: classification policy only; the caller computes observation age from canonical caller-owned `observedAt` plus caller-owned deterministic evaluation time.
-- Explicit non-scope: no `Date.now()` / `new Date()` / internal wall clock; no `observedAt` parsing or evaluation-time ownership; no acquisition/polling/scheduling/visibility/resume/retry/cancellation; no Binance/provider transport; no universe/default-scope/ranking/filter/top-N/stablecoin policy; no Home React wiring; no stale/expired presentation; no Bubble geometry/size/color/interactions; no Your Trades/journal ownership; no persistence/IndexedDB/Saved Analysis/chart/navigation/transition ownership.
-
-This checkpoint extends the primary architecture map without changing any earlier ownership entry. Universe policy, visible-dashboard cadence, deterministic age computation/evaluation-time ownership, and stale/expired presentation remain separate responsibilities. Live Crypto Bubble Map remains market/provider truth only; Your Trades Bubble Map remains journal/trade history plus released calculation truth only; UI must not read IndexedDB directly; dashboard transitions remain presentation-only.
-
-## Canonical Live Market Universe instrument metadata fact checkpoint — gate #313
-
-The latest canonical GOLDEN after the Live Market Summary freshness-classification policy is the **Live Market Universe Instrument Metadata Fact Contract Foundation**. Its patch number is intentionally not inferred.
-
-- Canonical gate: `Kairos Controlled Roadmap Gate` #313 / run `34192273207`, job `101952590811`, exact head `7597411be395b869ce787833c431979bf07bcebe`, full SUCCESS on 2026-09-08.
-- Production owner seam: `src/services/market-data/liveMarketUniverseInstrumentMetadataFact.ts`, exported through `src/services/market-data/index.ts`.
-- Responsibility: provider-neutral validated instrument metadata fact carrying released instrument identity plus authoritative `baseAsset`, `quoteAsset`, and current `tradingEnabled` truth for later caller-owned universe policy.
-- Exact canonical artifacts: `KAIROS_CURRENT_CANDIDATE` id `10042806980`, size `1,267,754`, digest `sha256:6a35692206b8f36d2717d6d3d4b2974d20776343ea511816dc58c2a8ba6a3109`; `KAIROS_GATE_EVIDENCE` id `10042807299`, size `1,409`, digest `sha256:b0fb1b72da0cba50fb884dfc44be955488e7ffc6e2b43d5865d868477f15be4d`.
-- Downloaded integrity: candidate wrapper contains exactly `KAIROS_LIVE_MARKET_UNIVERSE_INSTRUMENT_METADATA_FACT_CONTRACT_FOUNDATION_CANDIDATE_2026-09-08.zip`, inner size `1,474,122`, SHA-256 `dc5ddd3d9dac6057636dcc8535b402896372026e2328e62d8488017ac4ee9186`, outer and inner ZIP integrity PASS; gate-evidence wrapper contains exactly `KAIROS_LIVE_MARKET_UNIVERSE_INSTRUMENT_METADATA_FACT_CONTRACT_FOUNDATION_REPORT_2026-09-08.md`, inner size `2,304`, SHA-256 `13caca969c0914e4851dd4e35f404ded2b91ca3c4e39fad7b5a6f57a9a60b07e`, wrapper ZIP integrity PASS.
-- Data-flow boundary: this fact contract provides metadata truth only. A later separate deterministic universe-policy owner may combine this metadata with released 24h summary facts such as `quoteVolume24h`; provider adapters do not own the Live Crypto universe product policy.
-- Explicit non-scope: no Binance HTTP / `/api/v3/exchangeInfo` request, decode, mapping or transport; no metadata cache/polling/refresh; no USDT eligibility filtering; no stablecoin exclusion; no quote-volume ranking/sort/tie-break/Top-N; no freshness-age/classification changes; no Home React wiring; no stale/expired presentation; no Bubble geometry/size/color/interactions; no Your Trades/journal ownership; no persistence/IndexedDB/Saved Analysis/chart/navigation/transition ownership.
-
-This checkpoint extends the primary architecture map without changing any earlier ownership entry. Universe selection/ranking remains a separate deterministic policy responsibility. Freshness policy remains separately owned. Live Crypto Bubble Map remains authoritative market/provider truth only; Your Trades Bubble Map remains journal/trade history plus released calculation truth only; UI must not read IndexedDB directly; dashboard transitions remain presentation-only.
-
-## Canonical Binance Spot exchangeInfo public REST request descriptor checkpoint — gate #314
-
-The latest canonical GOLDEN after the Live Market Universe instrument-metadata fact contract is the **Binance Spot Exchange Information Public REST Request Descriptor Foundation**. Its patch number is intentionally not inferred.
-
-- Canonical gate: `Kairos Controlled Roadmap Gate` #314 / run `34195620691`, job `101962579345`, exact head `a42c2480d7d11b624ec93466e102718ab6d5f01f`, full SUCCESS on 2026-09-08.
-- Production owner seam: `src/services/market-data/providers/binance/binanceSpotExchangeInfoPublicRestRequest.ts`, exported through `src/services/market-data/index.ts`.
-- Responsibility: pure Binance-provider request descriptor for public Spot exchange information: `GET https://data-api.binance.vision/api/v3/exchangeInfo` with an empty query and no credentials or product filtering.
-- Exact canonical artifacts: `KAIROS_CURRENT_CANDIDATE` id `10044020112`, size `1,271,076`, digest `sha256:c2ed121e6bc4dd59a54cd58fa4b8355c982747ff9bd2c8b9ee071e261c62d9af`; `KAIROS_GATE_EVIDENCE` id `10044020584`, size `1,161`, digest `sha256:53812f771276b1c83021747e3d818ebda53a68549a2890b3d317cc28d35426ab`.
-- Downloaded integrity: candidate wrapper contains exactly `KAIROS_BINANCE_SPOT_EXCHANGE_INFO_PUBLIC_REST_REQUEST_DESCRIPTOR_FOUNDATION_CANDIDATE_2026-09-08.zip`, inner size `1,478,000`, SHA-256 `c06073f0a30893df5f58f34069789be82b3afa0f26258330249a78d3bb81556d`, Git blob `d04540980f44101ad88fdd88f5848565ea8e2f51`, outer and inner ZIP integrity PASS; gate-evidence wrapper contains exactly `KAIROS_BINANCE_SPOT_EXCHANGE_INFO_PUBLIC_REST_REQUEST_DESCRIPTOR_FOUNDATION_REPORT_2026-09-08.md`, inner size `1,642`, SHA-256 `f33ce544980622142c4e04f18f3cf77407a5179bf0e1e8e5e4e598db67296118`, wrapper ZIP integrity PASS.
-- Data-flow boundary: this descriptor is only the provider-specific request description upstream of later request execution, response decode, and metadata-fact mapping. It does not itself obtain, decode, validate, cache, rank, or present market data.
-- Explicit non-scope: no fetch/XHR/WebSocket/request execution; no JSON decode; no mapping into `LiveMarketUniverseInstrumentMetadataFact`; no cache/polling/refresh/retry/rate-limit/request-weight policy; no USDT eligibility filter; no stablecoin exclusion; no 24h quote-volume ranking/sort/tie-break/Top-N; no freshness changes; no Home React/stale presentation/Bubble rendering; no Your Trades/journal; no persistence/IndexedDB/Saved Analysis/chart/navigation/transition ownership.
-- Evidence correction: an earlier non-canonical helper continuity assertion listed candidate size `1,478,648` and SHA-256 `5243f6...`; exact committed-tree and gate-artifact re-proof supersedes that stale assertion with the verified `1,478,000` bytes / `c06073f0...` values above.
-
-This checkpoint extends the primary architecture map without changing any earlier ownership entry. Universe selection/ranking remains a separate deterministic policy responsibility above provider facts and below presentation. Freshness policy remains separately owned. Live Crypto Bubble Map remains authoritative market/provider truth only; Your Trades Bubble Map remains journal/trade history plus released calculation truth only; UI must not read IndexedDB directly; dashboard transitions remain presentation-only.
-
-## Canonical Binance Spot exchangeInfo public REST request execution-boundary checkpoint — gate #315
-
-The latest canonical GOLDEN after the exchangeInfo request descriptor is the **Binance Spot Exchange Information Public REST Request Execution Boundary Foundation**. Its patch number is intentionally not inferred.
-
-- Canonical gate: `Kairos Controlled Roadmap Gate` #315 / run `34206420246`, job `101996850014`, exact head `c1e44fdaaa028fe4031f4923a802f7e035ef77e7`, full SUCCESS on 2026-09-08.
-- Production owner seam: `src/services/market-data/providers/binance/binanceSpotExchangeInfoPublicRestRequestExecution.ts`, exported through `src/services/market-data/index.ts`.
-- Responsibility: accept one already-described exchangeInfo public REST request plus an injected connector, invoke that connector exactly once, preserve its returned Promise/result/rejection unchanged, and forward optional caller-owned `signal?: AbortSignal` unchanged.
-- Canonical candidate artifact: `KAIROS_CURRENT_CANDIDATE` id `10048190476`, wrapper digest `sha256:0359787df9302dc7aa5ae4921ccfe9cf374d10a584412a211a698f6b30d9c4dd`; inner candidate size `1,482,060` and SHA-256 `a861e0525b4d8ffb34dbed13a3cc270d4e18be9170bdb9de3f1e3db1f25c8a42`, integrity PASS.
-- Canonical gate evidence: `KAIROS_GATE_EVIDENCE` id `10048191108`, wrapper digest `sha256:d0fef3b15a12f8fd3fb14b9d9630de0f9733443f28f0dbecb5b29c8005c009a1`; inner report SHA-256 `7db735f73d89fac765f0791ecd82302e8ab65239ea3a540e02706b4fc5571b07`, integrity PASS.
-- Boundary: no concrete fetch/XHR/WebSocket/browser transport or `Response`; no HTTP status/header/body interpretation; no JSON decode; no mapping into `LiveMarketUniverseInstrumentMetadataFact`; no cache/polling/refresh/retry/backoff/request-weight/rate-limit policy; no USDT eligibility/stablecoin exclusion/quote-volume ranking/symbol tie-break/Top-N; no freshness changes; no Home/stale/Bubble UI; no Your Trades/journal/persistence/IndexedDB/Saved-Analysis/chart/navigation/transition ownership.
-
-
-## Canonical Binance Spot exchangeInfo public REST response decode checkpoint — gate #316
-
-The latest canonical GOLDEN after the exchangeInfo request-execution boundary is the **Binance Spot Exchange Information Public REST Response Decode Foundation**. Its patch number is intentionally not inferred.
-
-- Canonical gate: `Kairos Controlled Roadmap Gate` #316 / run `34221724357`, job `102046170749`, exact head `229eb2adbc327b51d2da32509eb6bcc76b7dba4c`, full SUCCESS on 2026-09-08.
-- Production owner seam: `src/services/market-data/providers/binance/binanceSpotExchangeInfoPublicRestResponseDecode.ts`, exported through `src/services/market-data/index.ts`.
-- Responsibility: accept one already-received Binance exchangeInfo response data value, accept only text under the released provider convention, parse JSON exactly once, return `payload: unknown` on success, and return deterministic `unsupported-response-data` / `invalid-json` failures.
-- Canonical candidate artifact: `KAIROS_CURRENT_CANDIDATE` id `10054435720`, wrapper digest `sha256:c77a1657463af34be2df5c8da47fc202e39989b11219d1906a1e70b876d7b8f5`; wrapper contains exactly `KAIROS_BINANCE_SPOT_EXCHANGE_INFO_PUBLIC_REST_RESPONSE_DECODE_FOUNDATION_CANDIDATE_2026-09-08.zip`, inner size `1,486,118`, SHA-256 `05d59cf7353b4280af4900127be2ffe12a5aea6257c05321a5a84adb8f3d42a8`, outer and inner ZIP integrity PASS.
-- Canonical gate evidence: `KAIROS_GATE_EVIDENCE` id `10054436298`, wrapper digest `sha256:acc80f088bff61497ba0ad3db2c831146c648601e0eef41a164a058fdb948d94`; wrapper contains exactly `KAIROS_BINANCE_SPOT_EXCHANGE_INFO_PUBLIC_REST_RESPONSE_DECODE_FOUNDATION_REPORT_2026-09-08.md`, inner size `1,671`, SHA-256 `7ceb298ee1d63afe30a8352aec65210e584486e4c7f400e778a01b677a49791b`, integrity PASS.
-- Data-flow boundary: this decoder owns response representation / JSON parsing only. It deliberately leaves exchangeInfo semantic interpretation and metadata-fact mapping to a later separate provider mapping responsibility.
-- Explicit non-scope: no fetch/XHR/WebSocket/browser transport or concrete `Response` acquisition; no HTTP status/header/body acquisition or interpretation; no semantic validation or interpretation of `symbols`, `symbol`, `status`, `baseAsset`, `quoteAsset`, filters or permissions; no mapping to `LiveMarketUniverseInstrumentMetadataFact`; no `status -> tradingEnabled` policy; no request descriptor/execution widening; no cache/polling/refresh/retry/backoff/request-weight/rate-limit policy; no USDT eligibility, stablecoin exclusion, quote-volume ranking, symbol tie-break or Top-N; no freshness changes; no Home React/stale presentation/Bubble rendering; no Your Trades/journal/persistence/IndexedDB/Saved Analysis/chart/navigation/transition ownership.
-
-This checkpoint extends the primary architecture map without changing any earlier ownership entry. The next provider responsibility must be source-proven from this GOLDEN; universe selection/ranking remains a separate deterministic policy responsibility above provider metadata facts and below presentation. Freshness policy remains separately owned. Live Crypto Bubble Map remains authoritative market/provider truth only; Your Trades Bubble Map remains journal/trade history plus released calculation truth only; UI must not read IndexedDB directly; dashboard transitions remain presentation-only.
-
-
-## Canonical Binance Spot exchangeInfo instrument metadata fact mapping checkpoint — gate #317
-
-The latest fully verified canonical GOLDEN is **Binance Spot Exchange Information Instrument Metadata Fact Mapping Foundation**. This checkpoint supersedes the #316 pending-state handoff and older continuity pointers.
-
-- Canonical authority: `Kairos Controlled Roadmap Gate`, `.github/workflows/kairos-gate.yml`, job `verify-current-candidate`; run #317 / `34226750711`, job `102062627106`, head `87069472c45e184ee70507274d8e7e9e3851388f`; every required step completed SUCCESS on 2026-09-08.
-- Verified stages: exact six-file scope from response decode; deterministic install; Lightweight Charts 5.2.1; production TypeScript/build; dedicated and focused runtime checks; full unit and all `verify:` regressions; historical closures; both canonical artifact uploads.
-- Exact-run artifacts: `KAIROS_CURRENT_CANDIDATE` id `10056487361`, digest `sha256:b81418a1371b5e9c48734e18334a904ea664231e3d97a36d2b67239789b3d5eb`; `KAIROS_GATE_EVIDENCE` id `10056487800`, digest `sha256:72164b9c2243f0582f61f506fe99a8d71801f59068cc4f3e87aaf195dd1e7416`. Both artifact records belong to the exact run/head and are unexpired.
-- The locally available candidate matches the exact canonical commit's Git blob `efaea24241b649512990740563eef7a439f2727e`: 1,491,120 bytes, SHA-256 `38a829e28f574e8cf7ce65ab450437732d5e9cdb4b7be0a2257e74db0c99ec81`, valid ZIP root `kairos_p76/`. Artifact-wrapper download to this workspace was unavailable; this byte identity was independently verified against the canonical commit's file identity.
-- Production owner: `src/services/market-data/providers/binance/binanceSpotExchangeInfoInstrumentMetadataFact.ts`, exported through the existing market-data barrel.
-- Responsibility: map one already-decoded Binance Spot exchangeInfo symbol object into one released provider-neutral metadata fact. Validate provider symbol/status/baseAsset/quoteAsset representation; exact `TRADING` maps to trading enabled and other nonempty statuses to disabled; delegate final validation to `validateLiveMarketUniverseInstrumentMetadataFact`.
-- Boundary: one symbol object only. No collection/whole-response extraction, networking, JSON parsing, filtering/ranking/Top-N/stablecoin policy, caching/polling/freshness changes, Home/Bubble UI, journal/persistence/Saved Analysis/chart/navigation/transition ownership.
-
-P21 remains open. Collection mapping remains a candidate until its own full canonical gate passes. Manual candidate upload mode remains active; workers and supervisor are disabled by the user's instruction. Live Crypto and Your Trades retain separate truth owners; animation remains presentation-only.
-
-
-## Canonical Binance Spot exchangeInfo instrument metadata fact collection mapping checkpoint — gate #318
-
-The canonical GOLDEN after the one-symbol exchangeInfo metadata-fact mapper is the **Binance Spot Exchange Information Instrument Metadata Fact Collection Mapping Foundation**. Its patch number is intentionally not inferred.
-
-- Canonical gate: `Kairos Controlled Roadmap Gate` #318 / run `34230096640`, job `102073764678`, exact head `32dcac28bff156eb92b62328eccb5d8421ab1c7d`, full SUCCESS on 2026-09-08.
-- Production owner seam: `src/services/market-data/providers/binance/binanceSpotExchangeInfoInstrumentMetadataFactCollection.ts`, exported through `src/services/market-data/index.ts`.
-- Responsibility: accept one explicit already-decoded collection value, require an array, preserve caller/provider sequence, delegate each entry unchanged to the released one-symbol mapper, accept an explicit empty array, and fail on the first invalid entry with its exact index and released mapper reason.
-- Exact canonical artifacts: `KAIROS_CURRENT_CANDIDATE` id `10057756180`, wrapper size `1,284,298`, digest `sha256:11ca0ba565fe69cf0460098a8083202d3ff7da9a07e6ecb48c6b8ab2d60a416e`; `KAIROS_GATE_EVIDENCE` id `10057756872`, wrapper size `1,745`, digest `sha256:b0c26eb1274a7c86639662d09250e8ecde030b5e1a850dfae3d643a53abaf39c`.
-- Downloaded integrity: candidate wrapper contains exactly `KAIROS_BINANCE_SPOT_EXCHANGE_INFO_INSTRUMENT_METADATA_FACT_COLLECTION_MAPPING_FOUNDATION_CANDIDATE_2026-09-08.zip`, inner size `1,496,451`, SHA-256 `352fe93a5c255f906e86d6d6f8aae29e6da8d0af1c112f7c70325258920079d0`, integrity PASS; gate-evidence wrapper contains exactly `KAIROS_BINANCE_SPOT_EXCHANGE_INFO_INSTRUMENT_METADATA_FACT_COLLECTION_MAPPING_FOUNDATION_REPORT_2026-09-08.md`, inner size `3,185`, SHA-256 `43d5559edd718a8bc04857184d67b396c3d59d9140db9f3ec16c9ec24e9285f2`, integrity PASS.
-- Boundary: collection mapping only. No whole-response `.symbols` extraction; no request execution, transport or JSON decoding; no filtering/deduplication; no USDT/stablecoin/universe policy; no quote-volume ranking/sort/tie-break/Top-N; no freshness/cadence; no Home/Bubble/Your-Trades/persistence/chart/navigation/transition ownership.
-
-## Canonical Binance Spot exchangeInfo instrument metadata fact response mapping checkpoint — gate #319
-
-The latest canonical GOLDEN is the **Binance Spot Exchange Information Instrument Metadata Fact Response Mapping Foundation**. Its patch number is intentionally not inferred.
-
-- Canonical gate: `Kairos Controlled Roadmap Gate` #319 / run `34234539616`, job `102088750010`, exact head `fde4243efc2a00cac82c300e1a9311259cb8927a`, full SUCCESS on 2026-09-08.
-- Production owner seam: `src/services/market-data/providers/binance/binanceSpotExchangeInfoInstrumentMetadataFactResponse.ts`, exported through `src/services/market-data/index.ts`.
-- Responsibility: accept one whole already-decoded Binance Spot `exchangeInfo` response value, require a non-null non-array object, extract only its exact `.symbols` value, and delegate that value unchanged to the released #318 collection mapper.
-- Exact canonical artifacts: `KAIROS_CURRENT_CANDIDATE` id `10059654951`, wrapper size `1,288,755`, digest `sha256:886fe2194dd48c6d4151711409cdf3e2bee37d7831a37ac4c642219f54ffa99a`; `KAIROS_GATE_EVIDENCE` id `10059655733`, wrapper size `1,831`, digest `sha256:e5d6e8a849ae736ecaf36ec9df6dc593a3cc4837897bfb395206722d1b26c776`.
-- Downloaded integrity: candidate wrapper contains exactly `KAIROS_BINANCE_SPOT_EXCHANGE_INFO_INSTRUMENT_METADATA_FACT_RESPONSE_MAPPING_FOUNDATION_CANDIDATE_2026-09-08.zip`, inner size `1,501,745`, SHA-256 `81a49eefd9b941e9127f890ea326bd1f4e23f323de11a3fab85d1271bfcbbea7`, integrity PASS; gate-evidence wrapper contains exactly `KAIROS_BINANCE_SPOT_EXCHANGE_INFO_INSTRUMENT_METADATA_FACT_RESPONSE_MAPPING_FOUNDATION_REPORT_2026-09-08.md`, inner size `3,488`, SHA-256 `ecad5f47e788e0205f16019eb959456e3d3f5efefa94062436a563f6b4907f8c`, integrity PASS.
-- Data-flow boundary: this seam owns only whole decoded-response shape validation plus `.symbols` extraction and delegation. It does not execute or describe requests, decode JSON, create provider transport, cache metadata, or choose product universe/ranking/freshness/presentation policy.
-- Explicit non-scope: no request execution/transport/JSON decode; no USDT eligibility/stablecoin exclusion; no 24h quote-volume ranking/sort/tie-break/Top-N; no freshness/cadence; no Home/Bubble presentation; no Your Trades/journal; no persistence/IndexedDB/Saved Analysis/chart/navigation/transition ownership.
-
-P21 remains open. The next provider composition must be proven separately from current source ownership; a later separate deterministic universe-policy owner may combine authoritative metadata facts with released 24h summary facts only after the upstream exchangeInfo acquisition/composition path is canonically complete. Live Crypto Bubble Map remains market/provider truth only; Your Trades Bubble Map remains journal/trade plus released calculation truth only; transitions remain presentation-only.
-
-
-## Canonical Binance Spot exchangeInfo public REST response delivery composition checkpoint — gate #320
-
-The latest canonical GOLDEN is the **Binance Spot Exchange Information Public REST Response Delivery Composition Foundation**. Its patch number is intentionally not inferred.
-
-- Canonical gate: `Kairos Controlled Roadmap Gate` #320 / run `34243123277`, job `102118112800`, exact head `b895ebf3a2b1ba8ab3c78d835863b8cc9dbf0767`, full SUCCESS on 2026-09-08.
-- Production owner seam: `src/services/market-data/providers/binance/binanceSpotExchangeInfoPublicRestResponseDelivery.ts`, exported through `src/services/market-data/index.ts`.
-- Responsibility: accept one already-received exchangeInfo response-data value, invoke released `decodeBinanceSpotExchangeInfoPublicRestResponse` exactly once, preserve any decode failure unchanged, otherwise pass exact `decoded.payload` unchanged to released `mapBinanceSpotExchangeInfoInstrumentMetadataFactResponse`, and return that released mapping result unchanged.
-- Exact canonical artifacts: `KAIROS_CURRENT_CANDIDATE` id `10063333110`, wrapper size `1,292,900`, digest `sha256:e1f130d40760878bfddf73afd7de71cda3a780a95cd27b46fe9cc27f674b7ae4`; `KAIROS_GATE_EVIDENCE` id `10063333602`, wrapper size `1,118`, digest `sha256:37794d3c7a952cca944a4daeb6fb68534802448025fdce244607a4233ab6b8ec`.
-- Downloaded integrity: candidate wrapper contains exactly `KAIROS_BINANCE_SPOT_EXCHANGE_INFO_PUBLIC_REST_RESPONSE_DELIVERY_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-09.zip`, inner size `1,505,480`, SHA-256 `adb7aa2d78693a088d0904acd8b87d9f9c32e0ab901c2d89ea053324f5816414`, root exactly `kairos_p76/`, outer and inner ZIP integrity PASS; gate-evidence wrapper contains exactly `KAIROS_BINANCE_SPOT_EXCHANGE_INFO_PUBLIC_REST_RESPONSE_DELIVERY_COMPOSITION_FOUNDATION_REPORT_2026-09-09.md`, inner size `1,396`, SHA-256 `806e92c608d5597e7eb99f34816a02a04c5544cf4f1d3019ae5a8233c6117f64`, wrapper integrity PASS.
-- Data-flow boundary: this seam composes only already-released exchangeInfo JSON-text decode and whole decoded-response metadata mapping. It does not describe or execute a request, acquire or interpret a concrete HTTP `Response`, own the full request round trip, or create any new provider semantic algorithm.
-- Explicit non-scope: no request descriptor/execution widening; no connector/concrete transport/status/header/body acquisition; no full round trip; no cache/polling/refresh/retry/backoff/request-weight/rate-limit policy; no USDT eligibility/stablecoin exclusion; no 24h quote-volume ranking/sort/tie-break/Top-N; no freshness/cadence; no Home/Bubble presentation; no Your Trades/journal; no persistence/IndexedDB/Saved Analysis/chart/navigation/transition ownership.
-
-P21 remains open. A later provider round-trip or acquisition responsibility must be source-proven separately from current released ownership. Universe selection/ranking remains a separate deterministic product-policy owner above provider metadata facts and released 24h summary facts and below presentation. Freshness remains separately owned. Live Crypto Bubble Map remains authoritative market/provider truth only; Your Trades Bubble Map remains journal/trade plus released calculation truth only; transitions remain presentation-only.
-
-## Canonical Binance Spot exchangeInfo public REST round trip composition checkpoint — gate #321
-
-The latest canonical GOLDEN is the **Binance Spot Exchange Information Public REST Round Trip Composition Foundation**. Its patch number is intentionally not inferred.
-
-- Canonical gate: `Kairos Controlled Roadmap Gate` #321 / run `34254917222`, job `102158147289`, exact head `a233ef2da22020eeed5d960b9d759ec9d8f26a26`, full SUCCESS on 2026-09-09.
-- Production owner seam: `src/services/market-data/providers/binance/binanceSpotExchangeInfoPublicRestRoundTrip.ts`, exported through `src/services/market-data/index.ts`.
-- Responsibility: obtain the released unconditional exchangeInfo public REST request descriptor, execute that exact descriptor once through the released injected request-execution boundary, forward optional caller-owned `BinanceSpotExchangeInfoPublicRestExecutionOptions` unchanged through that released seam when supplied, preserve connector rejection naturally, then pass the exact returned response-data value unchanged into released `mapBinanceSpotExchangeInfoPublicRestResponseDelivery` and return its result.
-- Exact canonical artifacts: `KAIROS_CURRENT_CANDIDATE` id `10067919395`, wrapper size `1,295,250`, digest `sha256:1bbe2a77b06a159432f7976832a5cfb2a8c7d10bb352a03676246f9fc5532d3e`; `KAIROS_GATE_EVIDENCE` id `10067919789`, wrapper size `736`, digest `sha256:8a98dda3e3f9f770cf86f7a3de8522ddb12c1edb9fa58063d2981258891636a9`.
-- Downloaded integrity: candidate wrapper contains exactly `KAIROS_BINANCE_SPOT_EXCHANGE_INFO_PUBLIC_REST_ROUND_TRIP_COMPOSITION_FOUNDATION_CANDIDATE_2026-09-09.zip`, inner size `1,508,727`, SHA-256 `704925a6235a061561eacef5dda832fa9919001b2153af45a6e72e14d3b6b307`, root exactly `kairos_p76/`, integrity PASS; gate-evidence wrapper contains exactly `KAIROS_BINANCE_SPOT_EXCHANGE_INFO_PUBLIC_REST_ROUND_TRIP_COMPOSITION_FOUNDATION_REPORT_2026-09-09.md`, inner size `697`, SHA-256 `ecbedfe3f25033cb61e4421b41161d93a9fec8cdec4d2b57e203a44dca7d68f7`, integrity PASS.
-- Data-flow boundary: this seam composes only already-released exchangeInfo descriptor, execution and response-delivery owners for one caller-driven round trip. It adds no concrete transport or acquisition lifecycle policy.
-- Explicit non-scope: no concrete `fetch`/XHR/WebSocket/browser transport or HTTP `Response`/status/header/body semantics; no retry/backoff/request-weight/rate-limit policy; no acquisition adapter, visible polling, resume or scheduling ownership; no USDT eligibility/stablecoin exclusion/24h quote-volume ranking/sort/tie-break/Top-N; no freshness/cadence; no Home/Bubble presentation; no Your Trades/journal; no persistence/IndexedDB/Saved Analysis/chart/navigation/transition ownership.
-
-P21 remains open. Any next exchangeInfo transport/acquisition or universe-policy responsibility must be independently source-proven from this canonical GOLDEN. Universe selection/ranking remains a separate deterministic product-policy owner above authoritative provider metadata facts and released 24h summary facts and below presentation. Freshness remains separately owned. Live Crypto Bubble Map remains market/provider truth only; Your Trades Bubble Map remains journal/trade plus released calculation truth only; transitions remain presentation-only.
-
-## Canonical Live Market Universe instrument metadata acquisition port checkpoint — gate #322
-
-The latest canonical GOLDEN is the **Live Market Universe Instrument Metadata Acquisition Port Contract Foundation**. Its patch number is intentionally not inferred.
-
-- Canonical gate: `Kairos Controlled Roadmap Gate` #322 / run `34264957069`, job `102191873997`, exact head `95a8a6f0eecbb4452504ba5bcda2d30cbdbf3120`, full SUCCESS on 2026-09-09.
-- Production owner seam: `src/services/market-data/LiveMarketUniverseInstrumentMetadataAcquisitionPort.ts`, exported through `src/services/market-data/index.ts`.
-- Responsibility: provider-neutral asynchronous acquisition contract for authoritative `LiveMarketUniverseInstrumentMetadataFact` collections. `acquireInstrumentMetadata(options?)` accepts only optional caller-owned `signal?: AbortSignal`; success returns the authoritative facts collection and failure uses the single released `acquisition-failed` reason.
-- Exact canonical artifacts: `KAIROS_CURRENT_CANDIDATE` id `10071936774`, wrapper size `1,297,613`, digest `sha256:5300ea8c820e8b97d01ea5ec79c507c516a8d3efc672d4ce61ce1aa29d3809d4`; `KAIROS_GATE_EVIDENCE` id `10071937616`, wrapper size `961`, digest `sha256:ded2514cdc106a2ec95debe2f6715aa0fc8226aeee17f00a63edc5190caa3f3f`.
-- Candidate identity verified by the canonical gate: `KAIROS_LIVE_MARKET_UNIVERSE_INSTRUMENT_METADATA_ACQUISITION_PORT_CONTRACT_FOUNDATION_CANDIDATE_2026-09-09.zip`, inner size `1,512,294`, SHA-256 `4d5b70cb255ae987990702b703db49aa8d2f19cad5e0dfb74abfeec63bb12a36`, root exactly `kairos_p76/`, integrity PASS.
-- Data-flow boundary: provider-specific acquisition implementations may depend on this port; this port does not depend on Binance or choose a product universe. It carries authoritative provider-neutral metadata facts only.
-- Explicit non-scope: no Binance exchangeInfo adapter or concrete transport; no fetch/XHR/WebSocket/HTTP status/header/body semantics; no cache/polling/resume/visibility/retry/rate/request-weight policy; no USDT eligibility, stablecoin exclusion, 24h quote-volume ranking, symbol tie-break or Top-N; no freshness/cadence; no Home/Bubble presentation; no Your Trades/journal; no persistence/IndexedDB/Saved Analysis/chart/navigation/transition ownership.
-
-Source/dependency proof after Gate #322 establishes the next smallest missing seam as a **Binance Spot exchangeInfo instrument-metadata acquisition adapter** only: the provider-neutral metadata acquisition port now exists, while the released Binance exchangeInfo round trip already yields `{ ok: true, facts }` or provider/decode/mapping failure. The analogous canonical P21.13 baseline adapter proves the dependency direction provider-neutral acquisition port -> provider-specific adapter -> released provider round trip. A future adapter must translate any released round-trip failure or connector rejection to the port's existing `acquisition-failed`, forward optional caller-owned cancellation unchanged, and return successful facts unchanged. Concrete browser transport, universe policy, cadence/freshness and UI remain separate later owners.
-
-P21 remains open. Live Crypto Bubble Map remains market/provider truth only; Your Trades Bubble Map remains journal/trade plus released calculation truth only; universe and freshness policies remain separate owners; dashboard transitions remain presentation-only.
-
-## Canonical Binance Spot exchangeInfo instrument metadata acquisition adapter checkpoint — gate #323
-
-The latest canonical GOLDEN is the **Binance Spot Exchange Information Instrument Metadata Acquisition Adapter Foundation**. Its patch number is intentionally not inferred.
-
-- Canonical gate: `Kairos Controlled Roadmap Gate` #323 / run `34272459493`, job `102217190352`, exact head `0c73846a12ccaeaf237a4bd260085f2ea88725e3`, full SUCCESS on 2026-09-09.
-- Production owner seam: `src/services/market-data/providers/binance/binanceSpotExchangeInfoInstrumentMetadataAcquisitionAdapter.ts`, exported through `src/services/market-data/index.ts`.
-- Responsibility: implement the released provider-neutral `LiveMarketUniverseInstrumentMetadataAcquisitionPort` through the already-released Binance Spot exchangeInfo public REST round trip. The adapter forwards optional caller-owned cancellation unchanged through the released execution seam, returns successful authoritative metadata facts unchanged, and translates released round-trip failure or connector rejection to the existing provider-neutral `acquisition-failed` result.
-- Exact canonical artifacts: `KAIROS_CURRENT_CANDIDATE` id `10074817236`, wrapper size `1,300,359`, digest `sha256:31f8e38c926875905cd9e8f9f4a1da6c7d2a02f75f14b2f1984794bae0edb38f`; `KAIROS_GATE_EVIDENCE` id `10074817973`, wrapper size `932`, digest `sha256:afdac5a8be738c8865244474f3d19bf15d03507a38ae6aed15a6fd96efd0e217`.
-- Canonical candidate identity: `KAIROS_BINANCE_SPOT_EXCHANGE_INFO_INSTRUMENT_METADATA_ACQUISITION_ADAPTER_FOUNDATION_CANDIDATE_2026-09-09.zip`, inner size `1,516,387`, SHA-256 `eee1ca865ca197586fb3abda930be27d90f594dcb15cb17cdfc10ed464647893`, root exactly `kairos_p76/`, integrity PASS.
-- Data-flow boundary: the provider-neutral metadata acquisition port remains the application-facing contract; this Binance adapter binds that contract to the released exchangeInfo round trip while concrete network transport remains injected by the caller. Product universe selection/ranking and freshness/cadence remain separate owners.
-- Explicit non-scope: no concrete browser `fetch`/XHR/WebSocket transport or HTTP status/header/body semantics; no retry/backoff/rate/request-weight policy; no cache/polling/resume/visibility/session lifecycle; no USDT eligibility, stablecoin exclusion, 24h quote-volume ranking, symbol tie-break or Top-N; no freshness/cadence; no Home/Live Crypto Bubble presentation; no Your Trades/journal; no persistence/IndexedDB/Saved Analysis/chart/navigation/transition ownership.
-
-Source/dependency proof after Gate #323 establishes the next smallest missing seam as a **Binance Spot exchangeInfo browser public REST connector** only. The canonical exchangeInfo request-execution boundary still requires an injected `BinanceSpotExchangeInfoPublicRestRequestConnector`, and the canonical metadata acquisition adapter still receives that connector from its caller. The released P21.14 24h browser connector establishes the dependency pattern: one native browser `globalThis.fetch` for an already-described request, exact caller-owned `AbortSignal` forwarding, one `Response.text()` read returned unchanged, native rejection propagation, and no HTTP status/header/retry/provider-semantic ownership. A later browser acquisition binding may compose the connector with the Gate #323 adapter only after this transport seam is separately canonical.
-
-P21 remains open. Universe selection/ranking remains a separate deterministic product-policy owner above authoritative metadata facts and released 24h summary facts and below presentation. Freshness/cadence remains separately owned. Live Crypto Bubble Map remains market/provider truth only; Your Trades Bubble Map remains journal/trade plus released calculation truth only; dashboard transitions remain presentation-only.
-
-Gate 327: `Kairos Controlled Roadmap Gate` #327 / run `34324507102`, job `102378550373`, exact head `6767dcf29db81022ea3bafedc70934ab7dec0a3c`, full SUCCESS. Exact artifacts: `KAIROS_CURRENT_CANDIDATE` `10093564641`, digest `sha256:4f716a9d218f0a9cdfa084b843bf0b0e174e88d8507cf21263beea9009536a0b`; `KAIROS_GATE_EVIDENCE` `10093565170`, digest `sha256:14639e25dd1a9b8105fa7da0a8ab125fec056d8a7c90487f11c9372617a3b9a9`. Released owner is ordering-only; Top-N remains separate.
-
-## Canonical Home Live Crypto Bubble configured runtime lifecycle stability checkpoint — gate #383
-
-The latest canonical GOLDEN is the **Home Live Crypto Bubble Configured Runtime Lifecycle Stability Repair**.
-
-- Canonical gate: `Kairos Controlled Roadmap Gate` #383 / run `34588719761`, job `103228822544`, exact head `775c5d82bfd8c9623757c2ec6cc1ea30abffedc3`, full SUCCESS on 2026-09-11.
-- Candidate: `KAIROS_HOME_DASHBOARD_LIVE_CRYPTO_BUBBLE_CONFIGURED_RUNTIME_LIFECYCLE_STABILITY_REPAIR_CANDIDATE_2026-09-11.zip`, size `1,700,687`, SHA-256 `2204855d3ed2aabf81fcb8502f94c2de8c6527e460e435cfd86f85ffd9dc93f1`, repository Git blob `491b2dbedabdcf8f60f50c716d98fe13900efea5`, root exactly `kairos_p76/`, integrity PASS.
-- Exact-run artifacts: `KAIROS_CURRENT_CANDIDATE` `10195203836`, digest `sha256:14cb05505a51c7db9bd8625c661df0b6241074a87a5160e5e71f8c10cffa2191`; `KAIROS_GATE_EVIDENCE` `10195204285`, digest `sha256:3e0d9b1f0f841c1ea6d9bd3865b0ee00cb7928e842a83fedcb7d363a3956d0e3`.
-- Production owner: `src/app/useHomeDashboardLiveCryptoBubblePresentationObservedRuntime.ts`.
-- Responsibility: preserve one React lifecycle/state owner while keying its effect to effective caller inputs instead of recreated configured wrapper identities, so equivalent rerenders retain observation/error evidence and changed effective inputs still clean up and restart once.
-- Explicit non-scope: no second lifecycle/state/cache/timer owner; no deep comparison or in-place collection mutation support; no provider, universe, ranking, freshness or metric-policy change; no default Bubble radii, viewport/breakpoint, collision/packing/layout, label-fit/hit-target, renderer, palette/dimming, CSS/motion, `HomeRoute`, persistence or Your Trades ownership.
-
-Fresh Gate383 source proves the configured pixel-radius runtime is stable. The next dependency step must first establish whether a caller-supplied, default-free presentation contract can be isolated without choosing the still-unreleased visible Bubble design/layout semantics. Concrete defaults must not be guessed.
-
-## Canonical compact Bubble size contrast and rim-smoke checkpoint — Gate393
-
-The latest canonical GOLDEN is the **Home Dashboard Compact Bubble Size Contrast and Rim Smoke R1 Amendment**.
-
-- Canonical gate: `Kairos Controlled Roadmap Gate` #393 / run `34637154497`, job `103387722000`, exact head `9fb5310cc658d54b95417f718016c122af998675`, full SUCCESS on 2026-09-11.
-- Candidate: `KAIROS_HOME_DASHBOARD_COMPACT_BUBBLE_SMOKE_AMENDMENT_CANDIDATE_2026-09-11-R1.zip`, size `3,413,708`, SHA-256 `006f4ec83cdba6988dc569be8841e7c7280fdebcb8bcd7f6cb497f19b4ab7253`, repository Git blob `2978ddbedad02b2474b5f0e393f2d0686369871e`, root exactly `kairos_p76/`, integrity PASS.
-- Exact-run artifacts: `KAIROS_CURRENT_CANDIDATE` `10277974235`, digest `sha256:0522a02461a7ae1ad5d5f19e8837900ff59af887e385e49ef75a237450253562`; `KAIROS_GATE_EVIDENCE` `10277974240`, digest `sha256:58582eae6bc95f38a982c069d197e1de4e1ac91ee990f1d3d0df7492ca5f1cf5`.
-- Presentation owners: `src/app/HomeDashboardGlassBubbleMap.tsx`, `src/app/homeDashboardGlassBubbleMap.css`, and `src/app/homeDashboardGlassViewportLayout.ts` own the compact all-30 viewport layout, readable initials, icon/label sizing, obvious percentage-size contrast and approved V5-derived animated rim-smoke presentation.
-- Design-token owner: `src/design-system/themes/themeEngine.ts` owns `--kairos-bubble-smoke-1` through `--kairos-bubble-smoke-4`; route CSS consumes those registered inherited values and does not own literal palette primitives.
-- Preserved boundaries: reduced-motion and hidden-page suspension, freshness dimming, stable instrument identity, Binance-compliant acquisition batching, ranking and Top-30 selection remain with their already released owners. This amendment adds no provider, universe, ranking, freshness, persistence, journal, Your Trades, navigation or transition truth.
-- Gate392 remains failed evidence only. Gate393’s early design-system verification plus all canonical regressions and browser evidence prove the repaired ownership boundary.
-
-This checkpoint records only the user-authorized compact Bubble/smoke repair. It does not authorize another visual-design slice.
-
+| P20.1 | Saved Analysis logical contract foundation | `src/app/savedAnalysisContract.ts` | Owns Saved Analysis logical shape and stable identity only; no persistence/UI/provider ownership |
+| P20.2 | Saved Analysis persistence foundation | `src/data/repositories/SavedAnalysisRepository.ts` plus existing database/backup/restore seams | Owns raw persisted storage and backup/restore of the logical contract; no application orchestration/UI/provider ownership |
+| P20.3 | Saved Analysis application-save orchestration | `src/application/saved-analysis/saveSavedAnalysis.ts`, `src/application/saved-analysis/index.ts` | Fresh-id allocation + one atomic repository write only; no inferred read/update/delete/list ownership |
+| P20.4 | Saved Analysis application load-one-by-id orchestration | `src/application/saved-analysis/loadSavedAnalysis.ts`, exported through `src/application/saved-analysis/index.ts` | One stable-id repository read only; no UI/provider/pixels, list/update/delete orchestration, schema/backup/index changes, or invented metadata |
+| P20.5 | Saved Analysis system closure | verification/docs/package boundary only; no production runtime owner added | Proves P20.1 logical contract + P20.2 persistence/backup/restore + P20.3 save + P20.4 load-one as the complete source-proven P20 boundary; does not invent list/update/delete/UI/provider/pixel ownership |
+
+## P20 Saved Analysis System Closure — P20.5
+
+P20 closes the source-proven Saved Analysis boundary established by P20.1–P20.4. P20.5 adds **no production runtime behavior and no new production owner**.
+
+Closure boundary:
+
+- P20.1 owns the Saved Analysis logical contract and stable identity.
+- P20.2 owns persisted storage plus backup/restore of that logical contract.
+- P20.3 owns application save orchestration: fresh id allocation plus exactly one persisted write.
+- P20.4 owns application load-one-by-stable-id orchestration: exactly one repository read.
+- Raw repository lifecycle primitives such as listAll/delete/replaceAll remain data-layer capabilities unless a later source-proven product requirement assigns application ownership; P20 closure does not invent generic CRUD.
+- P17/P18/P19 retain chart/drawing/Risk-Reward logical truth. P20 composes/persists that truth and does not redefine it.
+- UI/routes/dashboard/provider rendering/pixels remain outside P20 and belong to later roadmap phases.
+
+Canonical phase rule: P20 is closed only after the authoritative `Kairos Controlled Roadmap Gate` passes this exact closure candidate and publishes both canonical artifacts. P21 may not begin before that PASS.
 
 ## Home Your Trades V1 candidate from Gate395
 
-Gate395 is the latest FULL canonical GOLDEN and user-approved live Bubble visual baseline. User approved continuing with the second Home view. HomeRoute now selects exactly one Live Market or Your Trades runtime. New application/dashboard/homeDashboardYourTradesQuery delegates listJournalHistory and its P11/P13 results, retaining individual saved trade IDs and only available closed/realized outcomes. New app/HomeDashboardYourTrades owns read lifecycle, pagination, selection and presentation; generic glass decorations, viewport packing and motion are reused. No inferred currencies, percentages, market facts or new data/calculation owner. See docs/KAIROS_HOME_YOUR_TRADES_V1.md for tests and exact scope. Candidate pending full canonical gate/artifacts; not P21 closure. Paused workers remain paused.
+User-approved P21 continuation: HomeRoute selects Live Market or Your Trades and mounts exactly one runtime. New application/dashboard/homeDashboardYourTradesQuery delegates listJournalHistory and its released calculation/outcome projections, projecting individual saved trade identity and available closed/realized results without arithmetic or currency inference. New app/HomeDashboardYourTrades owns read lifecycle, pagination, selection and presentation, reusing exported glass decorations/icons and generic viewport/motion owners. Approved live-market design/provider/policy and P11/P12/P13/P14 truth are preserved. Tests and scope: docs/KAIROS_HOME_YOUR_TRADES_V1.md. Pending canonical promotion; not P21 closure.
+
 
 ## Journal execution-entry integration amendment from Gate396
 
 Gate396 is FULL canonical PASS: run34670701285/job103491385531/headb016648c08f2b45a0acb2793afeec1c71764553e, all required stages and both nonexpired exact-run artifacts verified. Your Trades V1 is released; P21 remains open.
 
-The next user-approved amendment exposes existing P10 save capability through JournalExecutionFields and manualTradeExecutionDraft. New row state is ephemeral and separate from plans; financial strings flow unchanged to existing saveManualTrade validation and atomic persistence. Explicit device-local timestamps normalize to UTC. Existing history/P11/P13/P21 consumers retain calculations, missing-value/currency rules and result meaning. No schema, repository, calculator or provider changes. See docs/KAIROS_JOURNAL_EXECUTION_ENTRY_AMENDMENT.md. This candidate requires its own full canonical PASS; it does not close P21.
+The next user-approved amendment exposes existing P10 save capability through JournalExecutionFields and manualTradeExecutionDraft. New row state is ephemeral and separate from plans; financial strings flow unchanged to existing saveManualTrade validation and atomic persistence. Explicit device-local timestamps normalize to UTC. Existing history/P11/P13/P21 consumers retain calculations, missing-value/currency rules and result meaning. No schema, repository, calculator or provider changes. See KAIROS_JOURNAL_EXECUTION_ENTRY_AMENDMENT.md. This candidate requires its own full canonical PASS; it does not close P21.
 
-Latest user control: resume the same hourly worker after manual publication; require explicit user approval before each subsequent new slice, including its UI. Verification/repairs of the already-approved slice remain autonomous. See docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md.
+Latest user control: resume the same hourly worker after manual publication; require explicit user approval before each subsequent new slice, including its UI. Verification/repairs of the already-approved slice remain autonomous. See KAIROS_CONTINUATION_APPROVAL_CONTROL.md.
+
+
+## Existing Open manual trade update amendment from Gate397
+
+Gate397 is FULL canonical PASS (run34673378828/job103498808783/head8b712e51cf6f2fd6b7a5d2e32e793d3229801e47), with all stages and both artifacts verified. The user's next explicit continuation authorizes one P10/P12 integration amendment: updateOpenManualTrade reuses the existing prepareManualTrade validation owner and existing atomic repositories to append new executions/fees and manually update Open/Closed status on the same saved manual trade. Snapshot checking prevents stale/duplicate appends; existing identity, plan, entries/exits and linked fees remain intact. JournalOpenTradeUpdate presents the new flow within JournalHistoryList, while JournalRoute owns refresh. P11/P12/P13/P14/P21 result truth and approved Live Bubble UI remain unchanged. No schema, provider or dependency changes. See KAIROS_OPEN_TRADE_UPDATE_AMENDMENT.md and the latest approval control. This amendment needs its own full canonical gate; P21 remains open and a following slice awaits UI review.

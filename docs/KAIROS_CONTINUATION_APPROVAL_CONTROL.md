@@ -25,3 +25,10 @@ Both use fresh GitHub plus the master worker rules and direct-publication instru
 ## Roadmap position
 
 P21 remains open. P10 execution capture is a supporting integration amendment. Fee/result currency evidence and the P14/P17/P19 logged-trade candle/risk-box UI are known separate gaps, requiring source inspection and a scoped proposal rather than automatic implementation. P22 Goals & Discipline follows P21 only after an explicitly approved and canonically verified closure. P40 remains release hardening, not a reason to omit required functional UI until the end.
+
+
+## Current manual continuation — after Gate397 review
+
+User message: “Okay continue nxt slice”, following the Gate397 progress report and explanation that opening/closing times are saved manually. This current explicit instruction authorizes one next contained roadmap slice selected from source: existing Open manual trades can receive additional actual entries/exits/fees and be explicitly marked Closed, keeping their identity, original facts and plan. The action was explained in live commentary before implementation. This is not an automation/timed-order or candle-chart request. See KAIROS_OPEN_TRADE_UPDATE_AMENDMENT.md for exact scope and evidence.
+
+Gate397 is now the verified FULL canonical GOLDEN, all stages and both exact-run artifacts passed. Complete and verify the open-trade update candidate, including mobile UI evidence, then present it for review. Do not start a subsequent slice until the user approves continuation after that review. The standing review boundary remains; this recorded current instruction supersedes the older Gate397-only scope above for this one manual continuation. Worker enablement alone authorizes no further slices.
