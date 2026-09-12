@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — Update Existing Open Trades UI
+name: Kairos Controlled Roadmap Gate — Explicit Journal P&L Currency UI
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_JOURNAL_OPEN_TRADE_UPDATE_UI_CANDIDATE_2026-09-12.zip'
+      - 'KAIROS_JOURNAL_PNL_CURRENCY_UI_CANDIDATE_2026-09-12.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_JOURNAL_EXECUTION_ENTRY_UI_AMENDMENT_CANDIDATE_2026-09-12.zip
-  CANDIDATE_ZIP: KAIROS_JOURNAL_OPEN_TRADE_UPDATE_UI_CANDIDATE_2026-09-12.zip
+  BASE_ZIP: KAIROS_JOURNAL_OPEN_TRADE_UPDATE_UI_CANDIDATE_2026-09-12.zip
+  CANDIDATE_ZIP: KAIROS_JOURNAL_PNL_CURRENCY_UI_CANDIDATE_2026-09-12.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 3369543, 'f37462225a6ac0e188e0ebb891f598b98fa453176d532ef64da472a101ecf410'),
-            ('CANDIDATE_ZIP', 3386785, '4adb85401d42cb6394f9df4133a2270d6a3531755878e6f5b98d27782cd97a10'),
+            ('BASE_ZIP', 3386785, '4adb85401d42cb6394f9df4133a2270d6a3531755878e6f5b98d27782cd97a10'),
+            ('CANDIDATE_ZIP', 3399296, '91fa89853107f19ab4a5a17abb4651e6229ea39458e9ca2b89f8a415b5927121'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact open-trade update scope from Gate397
+      - name: Confirm exact explicit currency scope from Gate398
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -81,19 +81,23 @@ jobs:
           expected = {
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
-            'docs/KAIROS_OPEN_TRADE_UPDATE_AMENDMENT.md',
-            'scripts/test-journal-open-trade-browser.mjs',
-            'scripts/verify-journal-open-trade-update.mjs',
+            'docs/KAIROS_JOURNAL_PNL_CURRENCY_AMENDMENT.md',
+            'scripts/test-journal-pnl-currency-browser.mjs',
+            'scripts/verify-journal-pnl-currency.mjs',
             'src/app/JournalHistoryList.tsx',
             'src/app/JournalOpenTradeUpdate.tsx',
+            'src/app/JournalPriceCurrencyField.tsx',
             'src/app/JournalRoute.tsx',
-            'src/app/journalOpenTradeUpdate.css',
+            'src/application/journal/historyQuery.ts',
+            'src/application/trades/manualTradeDraft.ts',
             'src/application/trades/saveManualTrade.ts',
             'src/application/trades/updateOpenManualTrade.ts',
-            'tests/journal-open-trade-update.test.tsx',
+            'src/domain/trades/tradeTypes.ts',
+            'src/domain/trades/tradeValidation.ts',
+            'tests/journal-pnl-currency.test.tsx',
           }
           if changed != expected or removed:
-            print('Open-trade update scope mismatch', file=sys.stderr)
+            print('Explicit currency scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -131,6 +135,12 @@ jobs:
         run: |
           node scripts/verify-journal-open-trade-update.mjs
           npx vitest run tests/journal-open-trade-update.test.tsx
+
+      - name: Explicit saved currency and fee-result regressions
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          node scripts/verify-journal-pnl-currency.mjs
+          npx vitest run tests/journal-pnl-currency.test.tsx
 
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
@@ -196,6 +206,7 @@ jobs:
           node scripts/test-home-dashboard-glass-browser.mjs
           node scripts/test-journal-execution-browser.mjs
           node scripts/test-journal-open-trade-browser.mjs
+          node scripts/test-journal-pnl-currency-browser.mjs
 
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
@@ -269,6 +280,8 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/docs/KAIROS_JOURNAL_PNL_CURRENCY_AMENDMENT.md
+            .gate-candidate/kairos_p76/.pnl-currency-evidence/
             .gate-candidate/kairos_p76/docs/KAIROS_OPEN_TRADE_UPDATE_AMENDMENT.md
             .gate-candidate/kairos_p76/.open-trade-evidence/
             .gate-candidate/kairos_p76/docs/KAIROS_JOURNAL_EXECUTION_ENTRY_AMENDMENT.md
