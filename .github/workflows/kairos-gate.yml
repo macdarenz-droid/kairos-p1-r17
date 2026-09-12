@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — Analysis Candle Values Mobile Containment Repair R1
+name: Kairos Controlled Roadmap Gate — Journal Actual Entry Trade Map UI
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_ANALYSIS_CANDLE_VALUES_MOBILE_CONTAINMENT_REPAIR_CANDIDATE_2026-09-13-R1.zip'
+      - 'KAIROS_JOURNAL_ACTUAL_ENTRY_TRADE_MAP_UI_CANDIDATE_2026-09-13.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_ANALYSIS_HISTORICAL_CANDLES_UI_R1_CANDIDATE_2026-09-12.zip
-  CANDIDATE_ZIP: KAIROS_ANALYSIS_CANDLE_VALUES_MOBILE_CONTAINMENT_REPAIR_CANDIDATE_2026-09-13-R1.zip
+  BASE_ZIP: KAIROS_ANALYSIS_CANDLE_VALUES_MOBILE_CONTAINMENT_REPAIR_CANDIDATE_2026-09-13-R1.zip
+  CANDIDATE_ZIP: KAIROS_JOURNAL_ACTUAL_ENTRY_TRADE_MAP_UI_CANDIDATE_2026-09-13.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 3527586, '33b8c48474dbd4d0eabef905900a9f043716c4726bda4b675ccbea7391e67505'),
-            ('CANDIDATE_ZIP', 3614526, '441020dd226ecdbc22b18ae9e7a2ea20acf2b669f57b16b17a1de869760a244e'),
+            ('BASE_ZIP', 3614526, '441020dd226ecdbc22b18ae9e7a2ea20acf2b669f57b16b17a1de869760a244e'),
+            ('CANDIDATE_ZIP', 3546115, '1a0c9c33fa731ce7947338a702ce49f5a323dc0d0b1567526e310f7316ac1157'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact expanded mobile Candle values repair scope from Gate408
+      - name: Confirm exact actual-entry Trade Map scope from Gate410
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,14 +79,26 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'docs/KAIROS_ANALYSIS_CANDLE_VALUES_MOBILE_OVERFLOW_REPAIR.md',
+            'docs/KAIROS_ARCHITECTURE_MAP.md',
+            'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
-            'scripts/test-analysis-history-browser.mjs',
-            'scripts/verify-analysis-history-workspace.mjs',
-            'src/app/analysisHistory.css',
+            'docs/KAIROS_JOURNAL_ACTUAL_ENTRY_TRADE_MAP_AMENDMENT.md',
+            'package.json',
+            'scripts/test-journal-execution-browser.mjs',
+            'scripts/verify-p14-10-journal-trade-map-actual-entry.mjs',
+            'scripts/verify-p14-9-trade-visualizer-system-closure.mjs',
+            'src/app/JournalTradeMap.tsx',
+            'src/app/JournalTradeMapGraphic.tsx',
+            'src/app/journalRoute.css',
+            'src/application/trade-visualizer/tradeVisualizerDisplayModel.ts',
+            'src/application/trade-visualizer/tradeVisualizerFacts.ts',
+            'tests/journal-trade-map-actual-entry.test.tsx',
+            'tests/journal-trade-map-presentation.test.tsx',
+            'tests/trade-visualizer-display-model.test.ts',
+            'tests/trade-visualizer-facts.test.ts',
           }
           if changed != expected or removed:
-            print('Expanded mobile Candle values repair scope mismatch', file=sys.stderr)
+            print('Actual-entry Trade Map scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -177,6 +189,17 @@ jobs:
           mkdir -p .analysis-history-evidence
           npx vitest run tests/analysis-history-workspace.test.tsx tests/analysis-chart-presentation.test.ts --reporter=default --reporter=json --outputFile=.analysis-history-evidence/tests.json
 
+      - name: Exact actual-entry Trade Map ownership and UI regressions
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          npm run verify:p14:10-journal-trade-map-actual-entry
+          npm run verify:p14:9-trade-visualizer-system-closure
+          npx vitest run \
+            tests/trade-visualizer-facts.test.ts \
+            tests/trade-visualizer-display-model.test.ts \
+            tests/journal-trade-map-actual-entry.test.tsx \
+            tests/journal-trade-map-presentation.test.tsx
+
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
         run: npm run typecheck
@@ -262,6 +285,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:p14:10-journal-trade-map-actual-entry',
             'verify:analysis-history-workspace',
             'verify:binance-spot-candle-history',
             'verify:p21:13-binance-spot-24h-public-rest-baseline-acquisition-adapter-foundation',
@@ -323,6 +347,7 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/docs/KAIROS_JOURNAL_ACTUAL_ENTRY_TRADE_MAP_AMENDMENT.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_CANDLE_VALUES_MOBILE_OVERFLOW_REPAIR.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_HISTORICAL_CANDLES_UI_AMENDMENT.md
             .gate-candidate/kairos_p76/.analysis-history-evidence/
