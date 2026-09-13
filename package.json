@@ -175,6 +175,7 @@
     "verify:analysis-candle-renderer-session": "node scripts/verify-analysis-candle-renderer-session.mjs",
     "verify:analysis-live-candle-route-session": "node scripts/verify-analysis-live-candle-route-session.mjs",
     "verify:analysis-live-candle-react-binding": "node scripts/verify-analysis-live-candle-react-binding.mjs",
+    "verify:analysis-live-candle-viewport-controls-binding": "node scripts/verify-analysis-live-candle-viewport-controls-binding.mjs",
     "verify:p17:1-chart-render-contract-foundation": "node scripts/verify-p17-1-chart-render-contract-foundation.mjs",
     "verify:p17:2-chart-renderer-lifecycle-boundary": "node scripts/verify-p17-2-chart-renderer-lifecycle-boundary.mjs",
     "verify:p17:3-chart-series-projection-boundary": "node scripts/verify-p17-3-chart-series-projection-boundary.mjs",

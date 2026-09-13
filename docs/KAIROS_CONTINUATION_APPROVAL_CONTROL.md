@@ -1,6 +1,12 @@
 <!-- Current authority is intentionally repeated inside each frozen candidate. -->
 # Latest user authority — autonomous V16 continuation, 12 September 2026
 
+## Autonomous Gate432 slice — 13 September 2026
+
+Gate431/run34760085551/job103731274679/headdf3f815a6afe80df5fc3c4d94cb39ec09b5dde2b is FULL canonical PASS: every current, browser, unit, controlled-roadmap, historical and upload stage succeeded. Exact-run nonexpired `KAIROS_CURRENT_CANDIDATE`10319470117 outer SHA256 `c32241c33186574460bedb05743e0022f4897268c1f9374809b61faf230a187f` and `KAIROS_GATE_EVIDENCE`10319415178 outer SHA256 `0aa5218ea9a855724cf99566c26984c542377e0b831d3b014124da8194e2a840` were independently downloaded and matched. Nested `KAIROS_ANALYSIS_LIVE_CANDLE_REACT_BINDING_CANDIDATE_2026-09-13.zip`;3638841bytes;SHA256 `ecb04eb0b93b2f744cdfe3a4805427a7247bc265d194bf10ce9c746459053aa7`;Git blob `2740dc08e8da5dec8411a8e7575ab096bc9bd58f`; exact `kairos_p76` root/path safety/integrity pass. Gate430 R1 is the immediate rollback.
+
+Under the latest autonomous continuation authority, the next smallest dependency-safe item-4 slice adds stable viewport command delegation to the released Gate431 React binding. Pan, zoom and reset ask Gate430 for its current renderer and forward exact caller values; no renderer or second viewport state is created. Analysis workspace/route mounting, selected-scope presentation and visible provider status/copy remain later. See `KAIROS_ANALYSIS_LIVE_CANDLE_VIEWPORT_CONTROLS_BINDING.md`. UI VISIBLE:NO; candidate publication and canonical verification remain pending.
+
 ## Autonomous Gate431 slice — 13 September 2026
 
 Gate430 R1/run34757802503/job103725113338/head5deeccc6e19740168f9f7d06c8c487abfe6984c7 is FULL canonical PASS: every functional/upload stage succeeded. Exact-run nonexpired `KAIROS_CURRENT_CANDIDATE`10318670607 outer SHA256 `fadad79450493565093030d4fea4771df1defd6027e6b6c585fd4d9d34564ffa` and `KAIROS_GATE_EVIDENCE`10318014788 outer SHA256 `841514a9e6b09d3c7bf036f09c04f61e02fa22775016391bc9199a60b747b67e` were independently downloaded and matched. Nested `KAIROS_ANALYSIS_LIVE_CANDLE_ROUTE_SESSION_CANDIDATE_2026-09-13.zip`;3709412bytes;SHA256 `93c7d86f70a6f931ab4c0f7cc96d5de7cd67d838e778c208bbac0d218f5ea563`;Git blob `6b6d6a0ff9b1fea15b1b6dca5da5970da3e9120a`; exact `kairos_p76` root/path safety/integrity/local-publication match. Gate429 failed only before extraction because its workflow bound `CANDIDATE_ZIP` to the base filename; Gate430 is the gate-only repair and Gate428 is the immediate rollback.

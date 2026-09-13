@@ -105,3 +105,7 @@ Gate428's synchronous authoritative-history renderer handoff is FULL canonical r
 ## Status after FULL Gate430
 
 Gate430 R1's route-session composition is FULL canonical release; Gate429 remains failed pre-extraction gate evidence and Gate428 is the immediate rollback. The next smallest item-4 boundary binds one released route session to React lifecycle and retains its exact raw observations without choosing copy. It reuses the same session for selection replacement, uses theme-only updates without reacquisition, suppresses stale callbacks/completions and closes on unmount. Analysis workspace replacement, selected-scope presentation, visible provider status/copy and viewport controls remain later. UI VISIBLE:NO; the hook is not yet mounted by the route.
+
+## Status after FULL Gate431
+
+Gate431's React lifecycle/raw-observation binding is FULL canonical release. The next smallest item-4 boundary exposes stable pan, zoom and fit commands through that binding by asking Gate430 for its current renderer at invocation time. P17 retains viewport behavior and numeric interpretation; the binding creates no renderer or second viewport state and does not reacquire selection/history. Analysis workspace/route mounting, selected-scope presentation and visible provider status/copy remain later. UI VISIBLE:NO.

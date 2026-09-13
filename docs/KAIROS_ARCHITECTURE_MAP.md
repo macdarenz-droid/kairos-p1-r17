@@ -196,6 +196,10 @@ No duplicate authoritative owner was found among canonical P19.1-P19.6.
 
 ## Cross-Cutting Rules (not owned by one phase, apply everywhere)
 
+### Analysis live-candle viewport control integration amendment — Gate432 candidate
+
+The released Gate431 React lifecycle binding now delegates caller viewport commands through Gate430's current renderer. Gate430 remains the renderer/session replacement owner and P17 remains the viewport behavior and numeric-interpretation owner. The binding owns no renderer construction, viewport state, route/workspace mount, visible status, provider lifecycle, persistence, journal truth, calculation, drawing, marker, or Live Bubble behavior. This candidate requires its own complete canonical PASS and does not close P21.
+
 | Rule | Established In | Notes |
 |---|---|---|
 | One owner per number/fact | P0 architecture lock | Two legitimately different facts (e.g. execution price vs. market reference price) may coexist — the bug is either masquerading as the other |

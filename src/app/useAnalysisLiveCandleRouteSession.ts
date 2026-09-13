@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ThemeId } from '../design-system/themes';
 import type { MarketDataConnectionState, MarketDataInstrument } from '../services/market-data/marketDataTypes';
 import {
@@ -33,6 +33,13 @@ export interface AnalysisLiveCandleReactBindingState {
   readonly lastError: unknown | null;
 }
 
+export interface AnalysisLiveCandleReactBindingResult extends AnalysisLiveCandleReactBindingState {
+  /** Delegates exact viewport demand to the renderer currently owned by Gate430. */
+  readonly pan: (fraction: number) => void;
+  readonly zoom: (factor: number) => void;
+  readonly resetView: () => void;
+}
+
 const initialState = (): AnalysisLiveCandleReactBindingState => ({
   availability: null,
   activation: null,
@@ -56,7 +63,7 @@ export function useAnalysisLiveCandleRouteSession({
   themeId,
   revision = 0,
   createSession = createAnalysisLiveCandleRouteSession,
-}: AnalysisLiveCandleReactBindingOptions): AnalysisLiveCandleReactBindingState {
+}: AnalysisLiveCandleReactBindingOptions): AnalysisLiveCandleReactBindingResult {
   const [state, setState] = useState<AnalysisLiveCandleReactBindingState>(initialState);
   const session = useRef<AnalysisLiveCandleRouteSession | null>(null);
   const generation = useRef(0);
@@ -119,5 +126,15 @@ export function useAnalysisLiveCandleRouteSession({
     session.current?.setTheme(themeId);
   }, [createSession, themeId]);
 
-  return state;
+  const pan = useCallback((fraction: number) => {
+    session.current?.currentRenderer()?.pan(fraction);
+  }, []);
+  const zoom = useCallback((factor: number) => {
+    session.current?.currentRenderer()?.zoom(factor);
+  }, []);
+  const resetView = useCallback(() => {
+    session.current?.currentRenderer()?.resetView();
+  }, []);
+
+  return { ...state, pan, zoom, resetView };
 }
