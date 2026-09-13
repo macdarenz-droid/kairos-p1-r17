@@ -196,9 +196,13 @@ No duplicate authoritative owner was found among canonical P19.1-P19.6.
 
 ## Cross-Cutting Rules (not owned by one phase, apply everywhere)
 
-### Analysis live-candle status presentation amendment — Gate433 candidate
+### Analysis live-candle canvas presentation amendment — Gate434 candidate
 
-The released Gate432 React binding remains the raw lifecycle/viewport delegation owner. This bounded candidate adds only a pure immutable presentation projection: exact availability, activation, connection, gap-recovery and safe error evidence become distinct status facts, and only the exact `live` connection state may claim live candles. It owns no route/workspace mount, selected-scope UI, renderer, provider execution, persistence, journal truth, calculation, drawing, marker or Live Bubble behavior. The candidate requires its own complete canonical PASS and does not close P21.
+Gate433 remains the truthful status-projection owner and Gate432 remains the raw React lifecycle/viewport owner. This bounded candidate only supplies their selected-scope DOM presentation: one real chart container, exact symbol/timeframe status, accessible state regions and delegation of the existing viewport commands. It does not mount or replace `AnalysisHistoryWorkspace`/`AnalysisRoute`, choose metadata, request history, implement provider lifecycle, or own persistence, journal truth, calculation, drawing, marker or Live Bubble behavior. The candidate requires its own complete canonical PASS and does not close P21.
+
+### Analysis live-candle status presentation amendment — Gate433 release
+
+The released Gate432 React binding remains the raw lifecycle/viewport delegation owner. Gate433 adds only a pure immutable presentation projection: exact availability, activation, connection, gap-recovery and safe error evidence become distinct status facts, and only the exact `live` connection state may claim live candles. It owns no route/workspace mount, selected-scope UI, renderer, provider execution, persistence, journal truth, calculation, drawing, marker or Live Bubble behavior. Gate433 passed every canonical stage and both exact-run artifacts; it does not close P21.
 
 ### Analysis live-candle viewport control integration amendment — Gate432 candidate
 

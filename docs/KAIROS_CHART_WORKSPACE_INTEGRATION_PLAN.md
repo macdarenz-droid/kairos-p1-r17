@@ -113,3 +113,7 @@ Gate431's React lifecycle/raw-observation binding is FULL canonical release. The
 ## Status after FULL Gate432
 
 Gate432's viewport-control delegation is FULL canonical release, including every canonical stage and both independently verified exact-run artifacts. The next smallest item-4 prerequisite projects Gate432's retained raw lifecycle evidence into immutable status facts. Only an exact live connection after authoritative-history activation may produce a live claim; loading, reconnect, recovery, hidden/offline pause, empty, unavailable and error evidence stay distinct. Route/workspace mounting and selected-scope presentation remain later. UI VISIBLE:NO.
+
+## Status after FULL Gate433
+
+Gate433's provider-safe live-candle status projection is FULL canonical release, including every canonical stage and both independently verified exact-run artifacts. The next smallest item-4 candidate adds an unmounted selected-scope canvas presentation component: it gives Gate432 one real DOM container, renders Gate433's exact status facts with the caller's symbol/timeframe and delegates existing viewport commands. `AnalysisHistoryWorkspace` and `AnalysisRoute` are unchanged; replacing the historical-only canvas and making live candles visible remains a later route-integration slice. UI VISIBLE:NO.
