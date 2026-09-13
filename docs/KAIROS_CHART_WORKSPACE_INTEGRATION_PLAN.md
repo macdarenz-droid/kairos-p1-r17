@@ -101,3 +101,7 @@ Gate427 R1's shared Analysis history/reconnect product policy is FULL canonical 
 ## Status after FULL Gate428
 
 Gate428's synchronous authoritative-history renderer handoff is FULL canonical release, including all45 stages and both independently verified exact-run artifacts. The next smallest item-4 candidate composes that renderer owner with Gate423's production lifecycle and Gate427's exact product policy for one caller-selected route scope. It owns renderer replacement and cleanup, forwards lifecycle observations and fails closed after activation, recovery or resume failure. React mounting, selected-scope presentation and visible provider status/copy remain later. UI VISIBLE:NO; this boundary alone does not describe Analysis as live.
+
+## Status after FULL Gate430
+
+Gate430 R1's route-session composition is FULL canonical release; Gate429 remains failed pre-extraction gate evidence and Gate428 is the immediate rollback. The next smallest item-4 boundary binds one released route session to React lifecycle and retains its exact raw observations without choosing copy. It reuses the same session for selection replacement, uses theme-only updates without reacquisition, suppresses stale callbacks/completions and closes on unmount. Analysis workspace replacement, selected-scope presentation, visible provider status/copy and viewport controls remain later. UI VISIBLE:NO; the hook is not yet mounted by the route.
