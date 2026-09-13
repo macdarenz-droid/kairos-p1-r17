@@ -1,6 +1,30 @@
 <!-- Current authority is intentionally repeated inside each frozen candidate. -->
 # Latest user authority — autonomous V16 continuation, 12 September 2026
 
+## Autonomous Gate421 slice — 13 September 2026
+
+Gate420 is FULL canonical PASS: run34739148740/job103675742542/heade8802c7153256a5457fde018992b77a71350fa76, all40 functional/upload stages succeeded. Exact-run nonexpired KAIROS_CURRENT_CANDIDATE10311809079 and KAIROS_GATE_EVIDENCE10312118236 were independently downloaded and matched their artifact digests. Nested candidate `KAIROS_ANALYSIS_HISTORY_LIVE_CANDLE_BOOTSTRAP_COORDINATION_CANDIDATE_2026-09-13.zip`;3594704bytes;SHA256 `20e2eec6b3e1d148936645b22a87282b56705eecebd01ccd97976b15faba93fe`;Git blob `3f3f095c83da3ac6983ec253e2a062bfc629e124`; exact root/integrity pass. Gate419 is the immediate rollback.
+
+The next smallest dependency-safe item-4 slice coordinates exact-scope gap demand back through Gate420's authoritative history/bootstrap replacement. It coalesces duplicate recovery, suppresses superseded selection/completion, rejects venue/symbol/interval mismatch, and removes the live claim after failed authoritative recovery. No new provider request, route mount, hidden/offline lifecycle, visible status, persistence, journal/calculation, drawing/marker or Live Bubble behavior changes. See `KAIROS_ANALYSIS_LIVE_CANDLE_GAP_BACKFILL_RECOVERY_COORDINATION.md`. Candidate publication and canonical verification remain pending.
+
+## Autonomous Gate420 slice — 13 September 2026
+
+Gate419 is FULL canonical PASS: run34733823775/job103661486863/headf76056ff7edb0724e680f8f491f708606f581df9, every canonical stage succeeded. Exact-run nonexpired artifacts KAIROS_CURRENT_CANDIDATE10310233423 and KAIROS_GATE_EVIDENCE10310313332 plus the nested candidate size/SHA256/blob/root/integrity were independently verified. Gate418 is the immediate rollback.
+
+The next smallest dependency-safe item-4 slice coordinates one caller-authoritative recent-history acquisition into Gate419's selected live-candle session owner. It aborts and suppresses superseded acquisition, requires an exact returned venue/symbol/interval/limit scope, refuses empty history, delegates snapshot rendering to the caller, and starts live updates from only the returned final candle. Initial selection, history limit, reconnect policy, renderer creation, visible state and gap-backfill execution remain caller-owned. No route mount, hidden/offline lifecycle, visible status, persistence, journal/calculation, drawing/marker or Live Bubble behavior changes. See `KAIROS_ANALYSIS_HISTORY_LIVE_CANDLE_BOOTSTRAP_COORDINATION.md`. Candidate publication and canonical verification remain pending.
+
+## Autonomous Gate419 slice — 13 September 2026
+
+Gate418 is FULL canonical PASS: run34731514029/job103655040164/head67b0b5df8c175ac8c0e707b0a6c436ae52cf600e, every canonical stage succeeded. Exact-run nonexpired artifacts KAIROS_CURRENT_CANDIDATE10309342943 and KAIROS_GATE_EVIDENCE10309702085 plus the nested candidate size/SHA256/blob/root/integrity were independently verified. Gate417 is the immediate rollback.
+
+The next smallest dependency-safe item-4 slice owns replacement and cleanup for one selected Analysis live-candle session. It invalidates late callbacks before closing an old selection and starts the replacement through Gate418's released production binding. Initial history, backfill execution, route mounting, hidden/offline behavior and visible status remain later. No UI, persistence, journal/calculation, drawing/marker or Live Bubble behavior changes. See `KAIROS_ANALYSIS_SELECTED_LIVE_CANDLE_SESSION_CONTROLLER.md`.
+
+## Autonomous Gate418 slice — 13 September 2026
+
+Gate417 is FULL canonical PASS: run34728813652/job103647711023/headc12ac1a308af28f7a60e75f8df76b5e6c5e2f0b1, every canonical stage succeeded and both exact-run artifacts plus nested candidate size/SHA256/blob/root/integrity were independently verified. Gate416 remains failed date-fixture evidence only; Gate415 is the immediate rollback.
+
+Under the user's latest autonomous continuation authority, the next smallest dependency-safe item-4 slice binds the released Gate417 browser runtime sources into the released Gate415 live-candle subscription composition. It supplies only receipt clock, timeout schedule/cancel and reconnect entropy mechanics. The caller still owns reconnect policy, initial history, backfill execution, route/session replacement, hidden/offline lifecycle and visible status. No UI, persistence, journal/calculation, drawing/marker or Live Bubble behavior changes. See `KAIROS_ANALYSIS_LIVE_CANDLE_PRODUCTION_BROWSER_SESSION.md`. Candidate publication and canonical verification remain pending.
+
 The user explicitly requested: "enable the workers", "just let them continue even it has ui patches", "Ill verify tomorrow", "continue the safest slice every patch from here while im away" and "Turn on v16". This supersedes all older manual-only, one-slice-only and routine UI approval pauses below and in frozen handoffs. Continue one dependency-safe roadmap slice at a time, including visible UI; no routine approval pause between successful slices. A newer user pause always wins.
 
 Use existing V16 6a9d8b63fbf081918a26452faf51e747 and read-only supervisor 6a9a872c15d08191ac18ed249add1448 on existing supported hourly schedules. No replacements, child tasks, sub-hour rearming or cadence bypass. Shared execution lease 6a9c887ae4e881919758b86977bbc2eb stays a disabled coordination record; acquire and verify ownership before mutations, release only own lease. Supervisor never writes project files or implements.

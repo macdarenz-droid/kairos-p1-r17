@@ -69,3 +69,15 @@ Gate414's projection/renderer application session is FULL canonical release. The
 ## Status after FULL Gate415
 
 Gate415's browser subscription-to-session boundary is FULL canonical release. The next smallest item4 candidate supplies its missing production browser mechanics: lazy receipt clock, timeout schedule/cancel and reconnect entropy sources. P15 still owns policy and jitter validation, while route selection, initial history, backfill execution, hidden/offline lifecycle and visible status remain later. This source boundary starts no timer or subscription on import, has no UI change, and does not yet make Analysis continuously live.
+
+Gate417's browser runtime-source adapter is FULL canonical release; Gate416 is failed inherited date-fixture evidence only. The next smallest item4 candidate binds those released browser mechanics to Gate415's released subscription composition without adding a reconnect policy or route lifecycle. Initial history, backfill execution, selected-session replacement, hidden/offline lifecycle and visible status remain later. UI VISIBLE:NO; Analysis is not yet described as continuously live.
+
+Gate418's production browser-session binding is FULL canonical release. The next smallest item4 candidate owns one selected session's replacement and cleanup: invalidate the old generation, close its subscription, start the new exact scope and suppress late callbacks. Initial history, backfill execution, route mount, hidden/offline lifecycle and visible status remain later. UI VISIBLE:NO; this lifecycle boundary alone does not make Analysis continuously live.
+
+## Status after FULL Gate419
+
+Gate419's selected live-candle session replacement controller is FULL canonical release. The next smallest item4 candidate coordinates one authoritative recent-history page into that controller: cancel and suppress superseded acquisition, verify exact venue/symbol/interval/limit scope, refuse an empty page, let the caller render the returned snapshot, then seed Gate419 from only its final candle. Selection, history limit, reconnect policy, renderer creation, visible state, gap-backfill execution, route/hidden/offline lifecycle and status presentation remain later caller responsibilities. UI VISIBLE:NO; this bootstrap boundary alone does not make Analysis continuously live.
+
+## Status after FULL Gate420
+
+Gate420's authoritative history-to-selected-live bootstrap is FULL canonical release. The next smallest item4 candidate owns only gap recovery above that boundary: one exact-scope demand reacquires and rerenders authoritative recent history through Gate420, duplicate demand is coalesced, and late or superseded recovery cannot restart an old selection. Route mounting, selected scope, history limit, reconnect policy, renderer creation, hidden/offline lifecycle and visible status remain later. UI VISIBLE:NO; continuous live Analysis is not claimed until those remaining responsibilities and browser evidence are complete.
