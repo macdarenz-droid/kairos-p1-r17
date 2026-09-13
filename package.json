@@ -173,6 +173,7 @@
     "verify:analysis-live-candle-production-lifecycle": "node scripts/verify-analysis-live-candle-production-lifecycle.mjs",
     "verify:analysis-live-candle-product-policy": "node scripts/verify-analysis-live-candle-product-policy.mjs",
     "verify:analysis-candle-renderer-session": "node scripts/verify-analysis-candle-renderer-session.mjs",
+    "verify:analysis-live-candle-route-session": "node scripts/verify-analysis-live-candle-route-session.mjs",
     "verify:p17:1-chart-render-contract-foundation": "node scripts/verify-p17-1-chart-render-contract-foundation.mjs",
     "verify:p17:2-chart-renderer-lifecycle-boundary": "node scripts/verify-p17-2-chart-renderer-lifecycle-boundary.mjs",
     "verify:p17:3-chart-series-projection-boundary": "node scripts/verify-p17-3-chart-series-projection-boundary.mjs",

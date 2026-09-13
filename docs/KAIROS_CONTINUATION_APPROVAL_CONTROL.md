@@ -1,6 +1,12 @@
 <!-- Current authority is intentionally repeated inside each frozen candidate. -->
 # Latest user authority — autonomous V16 continuation, 12 September 2026
 
+## Autonomous Gate429 slice — 13 September 2026
+
+Gate428/run34753482318/job103713825895/headdce81b0f37477bc3cf6ea68469fbe8278c6a702f is FULL canonical PASS: all45 functional/upload stages succeeded. Exact-run nonexpired `KAIROS_CURRENT_CANDIDATE`10315809503 outer SHA256 `1dc60636bc2d2f0cb8b486a9e2495365859e7ac2f2cbe10d0a8b362f63feb0ea` and `KAIROS_GATE_EVIDENCE`10317025048 outer SHA256 `24f45ff877770f8ae680769a98ee12dc7e101f3c3af80935d92012bb7c567502` were independently downloaded and matched. Nested `KAIROS_ANALYSIS_CANDLE_RENDERER_SESSION_HANDOFF_CANDIDATE_2026-09-13.zip`;3701417bytes;SHA256 `fc649ff87d326315f3fca8c7275fce3f03a88240cafa9f6a51f3f5c12ee8bc76`;Git blob `39d7a3725fb06c05f9f8cd097ede4a760fb813a3`; exact `kairos_p76` root/integrity/local-publication match. Gate428 is GOLDEN and Gate427 R1 is the immediate rollback.
+
+Under the latest autonomous continuation authority, the next smallest dependency-safe item-4 slice is the non-UI Analysis live-candle route session in `KAIROS_ANALYSIS_LIVE_CANDLE_ROUTE_SESSION.md`. It supplies the released exact product policy to Gate423, creates the Gate428 renderer for authoritative history and incremental updates, forwards exact-scope lifecycle observations and owns renderer replacement/failure/close cleanup. React mounting, selected-scope UI, visible provider status/copy and viewport presentation remain later. No provider, persistence, journal/calculation, drawing/marker or Live Bubble owner changes. Candidate publication and canonical verification remain pending. UI VISIBLE:NO.
+
 ## Autonomous Gate424 slice — 13 September 2026
 
 Gate423 is FULL canonical PASS: run34746482060/job103695233500/headf783181bd849b5c655775165543c914ec7624897, every canonical stage succeeded. Exact-run nonexpired `KAIROS_CURRENT_CANDIDATE`10313703236 outer SHA256 `8ec73b58fe5daa98083833eb69c04497d2892119c93bd4394d0da8cf1c00cc19` and `KAIROS_GATE_EVIDENCE`10314536465 outer SHA256 `9260ba7bb8fb4d9c7be497d94c51ff5b319584bdf6b346e1739d26dc7159b546` were independently downloaded and matched. Nested candidate `KAIROS_ANALYSIS_LIVE_CANDLE_PRODUCTION_LIFECYCLE_CANDIDATE_2026-09-13.zip`;3614180bytes;SHA256 `0806b84b1c2f1ff1f086b871fda352e1387a9dded3f111165945a4f1b046b1b8`;Git blob `84ca28b95e78fbcd8f5bfea916cdf2d5a2220cc2`; exact `kairos_p76` root/integrity pass. Gate422 is the immediate rollback.

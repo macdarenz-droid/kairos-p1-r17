@@ -97,3 +97,7 @@ Gate423's inert production lifecycle composition is FULL canonical release. The 
 ## Status after FULL Gate427
 
 Gate427 R1's shared Analysis history/reconnect product policy is FULL canonical release. Gate424–426 remain failed inherited-verifier evidence only; Gate423 is the immediate rollback. The next smallest item-4 prerequisite is a synchronous authoritative-history renderer session shared by the existing historical canvas and the later live lifecycle mount. It creates one released production P17 renderer, applies the selected theme, renders the exact caller-supplied snapshot, frames recent candles and returns that same incremental renderer. Route mounting, selection activation, provider-connected visible status and live lifecycle ownership remain later. UI VISIBLE:NO; no request, subscription or timer starts in this slice.
+
+## Status after FULL Gate428
+
+Gate428's synchronous authoritative-history renderer handoff is FULL canonical release, including all45 stages and both independently verified exact-run artifacts. The next smallest item-4 candidate composes that renderer owner with Gate423's production lifecycle and Gate427's exact product policy for one caller-selected route scope. It owns renderer replacement and cleanup, forwards lifecycle observations and fails closed after activation, recovery or resume failure. React mounting, selected-scope presentation and visible provider status/copy remain later. UI VISIBLE:NO; this boundary alone does not describe Analysis as live.
