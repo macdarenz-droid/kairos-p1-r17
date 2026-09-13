@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — Analysis Live Candle Product Policy R1
+name: Kairos Controlled Roadmap Gate — Analysis Candle Renderer Session Handoff
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_ANALYSIS_LIVE_CANDLE_PRODUCT_POLICY_CANDIDATE_2026-09-13-R1.zip'
+      - 'KAIROS_ANALYSIS_CANDLE_RENDERER_SESSION_HANDOFF_CANDIDATE_2026-09-13.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_ANALYSIS_LIVE_CANDLE_PRODUCTION_LIFECYCLE_CANDIDATE_2026-09-13.zip
-  CANDIDATE_ZIP: KAIROS_ANALYSIS_LIVE_CANDLE_PRODUCT_POLICY_CANDIDATE_2026-09-13-R1.zip
+  BASE_ZIP: KAIROS_ANALYSIS_LIVE_CANDLE_PRODUCT_POLICY_CANDIDATE_2026-09-13-R1.zip
+  CANDIDATE_ZIP: KAIROS_ANALYSIS_CANDLE_RENDERER_SESSION_HANDOFF_CANDIDATE_2026-09-13.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 3614180, '0806b84b1c2f1ff1f086b871fda352e1387a9dded3f111165945a4f1b046b1b8'),
-            ('CANDIDATE_ZIP', 3696126, 'ec9ea72766f4d579e51ab301c9cefa13a090b9ffd11eb8cf19a8e76827a11cb2'),
+            ('BASE_ZIP', 3696126, 'ec9ea72766f4d579e51ab301c9cefa13a090b9ffd11eb8cf19a8e76827a11cb2'),
+            ('CANDIDATE_ZIP', 3701417, 'fc649ff87d326315f3fca8c7275fce3f03a88240cafa9f6a51f3f5c12ee8bc76'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact Analysis live candle product policy scope from Gate423
+      - name: Confirm exact Analysis candle renderer session handoff scope from Gate427
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,19 +79,19 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'docs/KAIROS_ANALYSIS_LIVE_CANDLE_PRODUCT_POLICY.md',
+            'docs/KAIROS_ANALYSIS_CANDLE_RENDERER_SESSION.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
             'package.json',
+            'scripts/verify-analysis-candle-renderer-session.mjs',
             'scripts/verify-analysis-history-workspace.mjs',
-            'scripts/verify-analysis-live-candle-product-policy.mjs',
-            'src/app/AnalysisHistoryWorkspace.tsx',
-            'src/app/analysisLiveCandleProductPolicy.ts',
-            'tests/analysis-live-candle-product-policy.test.ts',
+            'src/app/AnalysisCandleCanvas.tsx',
+            'src/app/analysisCandleRendererSession.ts',
+            'tests/analysis-candle-renderer-session.test.ts',
           }
           if changed != expected or removed:
-            print('Analysis live candle product policy scope mismatch', file=sys.stderr)
+            print('Analysis candle renderer session handoff scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -327,6 +327,19 @@ jobs:
             tests/analysis-history-workspace.test.tsx \
             tests/binance-analysis-live-candle-production-lifecycle.test.ts
 
+      - name: Analysis authoritative-history candle renderer session handoff
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          npm run verify:analysis-candle-renderer-session
+          npm run verify:analysis-live-candle-product-policy
+          npm run verify:analysis-history-workspace
+          npm run verify:live-candle-production-renderer-binding
+          npx vitest run \
+            tests/analysis-candle-renderer-session.test.ts \
+            tests/analysis-chart-presentation.test.ts \
+            tests/analysis-history-workspace.test.tsx \
+            tests/binance-analysis-live-candle-production-lifecycle.test.ts
+
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
         run: npm run typecheck
@@ -412,6 +425,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:analysis-candle-renderer-session',
             'verify:analysis-live-candle-product-policy',
             'verify:analysis-live-candle-production-lifecycle',
             'verify:analysis-live-candle-browser-availability-lifecycle',
@@ -486,6 +500,7 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_CANDLE_RENDERER_SESSION.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_LIVE_CANDLE_PRODUCT_POLICY.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_LIVE_CANDLE_PRODUCTION_LIFECYCLE.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_LIVE_CANDLE_BROWSER_AVAILABILITY_LIFECYCLE.md

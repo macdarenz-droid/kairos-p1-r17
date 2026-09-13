@@ -93,3 +93,7 @@ Gate422's browser visibility/connectivity lifecycle is FULL canonical release. T
 ## Status after FULL Gate423
 
 Gate423's inert production lifecycle composition is FULL canonical release. The next smallest item4 candidate establishes the route-owned product configuration needed before mounting it: the existing exact 500-candle page limit becomes shared with the historical workspace, and reconnect is explicitly bounded to four P15-governed attempts from 1 second to an 8-second cap. React mounting, selected-scope activation, renderer handoff and visible connection status remain later. UI VISIBLE:NO; Analysis is still not described as continuously live.
+
+## Status after FULL Gate427
+
+Gate427 R1's shared Analysis history/reconnect product policy is FULL canonical release. Gate424–426 remain failed inherited-verifier evidence only; Gate423 is the immediate rollback. The next smallest item-4 prerequisite is a synchronous authoritative-history renderer session shared by the existing historical canvas and the later live lifecycle mount. It creates one released production P17 renderer, applies the selected theme, renders the exact caller-supplied snapshot, frames recent candles and returns that same incremental renderer. Route mounting, selection activation, provider-connected visible status and live lifecycle ownership remain later. UI VISIBLE:NO; no request, subscription or timer starts in this slice.

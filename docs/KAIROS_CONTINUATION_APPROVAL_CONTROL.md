@@ -141,6 +141,12 @@ Base is FULL canonical Gate403, freshly verified all30stages and both exact-run 
 
 # Kairos continuation and approval control — 12 September 2026
 
+## Current autonomous checkpoint — FULL Gate427 and renderer handoff candidate
+
+Gate427 R1/run34750353216/job103705652679/head9b18bc0b671c15474b8ecaa499610b7de98ee701 is FULL canonical PASS. Every stage succeeded. Exact-run nonexpired candidate artifact10315524308 and evidence artifact10316190520 were independently downloaded and matched their outer digests. Nested `KAIROS_ANALYSIS_LIVE_CANDLE_PRODUCT_POLICY_CANDIDATE_2026-09-13-R1.zip`;3696126bytes;SHA256 `ec9ea72766f4d579e51ab301c9cefa13a090b9ffd11eb8cf19a8e76827a11cb2`;Git blob `ee9bca21416633fd7a16ac5b17716410b923ed7a`; exact root/integrity pass. Gate427 is GOLDEN, Gate423 is the immediate rollback and Gate424–426 remain failed verifier evidence only.
+
+Under the latest autonomous continuation authority, the next smallest dependency-safe item-4 slice is the non-UI synchronous Analysis candle renderer handoff in `KAIROS_ANALYSIS_CANDLE_RENDERER_SESSION.md`. It lets the existing historical canvas and later live lifecycle share one exact production P17 renderer after authoritative history is rendered. Route mounting, selection activation, provider-connected status, requests/subscriptions/timers and all persistence/journal/calculation/drawing/marker/Live Bubble owners remain unchanged. Candidate publication and canonical verification remain pending. UI VISIBLE:NO.
+
 ## Current user instruction
 
 Continue the best dependency-safe work under the roadmap, consider UI quality and seek the user's approval before proceeding to the next slice. Turn the existing autonomous worker on after the manual job is done. This supersedes previous unconditional next-slice continuation, the completed Binance482-symbol repair pointer and the former paused control state once manual publication finishes. It does not authorize replacement workers or faster-than-supported scheduling.
