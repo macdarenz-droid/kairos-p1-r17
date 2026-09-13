@@ -109,3 +109,7 @@ Gate430 R1's route-session composition is FULL canonical release; Gate429 remain
 ## Status after FULL Gate431
 
 Gate431's React lifecycle/raw-observation binding is FULL canonical release. The next smallest item-4 boundary exposes stable pan, zoom and fit commands through that binding by asking Gate430 for its current renderer at invocation time. P17 retains viewport behavior and numeric interpretation; the binding creates no renderer or second viewport state and does not reacquire selection/history. Analysis workspace/route mounting, selected-scope presentation and visible provider status/copy remain later. UI VISIBLE:NO.
+
+## Status after FULL Gate432
+
+Gate432's viewport-control delegation is FULL canonical release, including every canonical stage and both independently verified exact-run artifacts. The next smallest item-4 prerequisite projects Gate432's retained raw lifecycle evidence into immutable status facts. Only an exact live connection after authoritative-history activation may produce a live claim; loading, reconnect, recovery, hidden/offline pause, empty, unavailable and error evidence stay distinct. Route/workspace mounting and selected-scope presentation remain later. UI VISIBLE:NO.

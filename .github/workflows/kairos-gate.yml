@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — Analysis Live Candle Viewport Controls Binding
+name: Kairos Controlled Roadmap Gate — Analysis Live Candle Status Presentation
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_ANALYSIS_LIVE_CANDLE_VIEWPORT_CONTROLS_BINDING_CANDIDATE_2026-09-13.zip'
+      - 'KAIROS_ANALYSIS_LIVE_CANDLE_STATUS_PRESENTATION_CANDIDATE_2026-09-13.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_ANALYSIS_LIVE_CANDLE_REACT_BINDING_CANDIDATE_2026-09-13.zip
-  CANDIDATE_ZIP: KAIROS_ANALYSIS_LIVE_CANDLE_VIEWPORT_CONTROLS_BINDING_CANDIDATE_2026-09-13.zip
+  BASE_ZIP: KAIROS_ANALYSIS_LIVE_CANDLE_VIEWPORT_CONTROLS_BINDING_CANDIDATE_2026-09-13.zip
+  CANDIDATE_ZIP: KAIROS_ANALYSIS_LIVE_CANDLE_STATUS_PRESENTATION_CANDIDATE_2026-09-13.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 3638841, 'ecb04eb0b93b2f744cdfe3a4805427a7247bc265d194bf10ce9c746459053aa7'),
-            ('CANDIDATE_ZIP', 3642951, '7c525e5b60df633b7655ec1f39834606e715dcc3a37d4a735913817eaffaccbf'),
+            ('BASE_ZIP', 3642951, '7c525e5b60df633b7655ec1f39834606e715dcc3a37d4a735913817eaffaccbf'),
+            ('CANDIDATE_ZIP', 3727174, '7ba59c28c87dad13616b3fe4a06a91d9802a1917db2f7f0b80a38cdbd53f68cf'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact Analysis live candle viewport controls binding scope from Gate431
+      - name: Confirm exact Analysis live candle status presentation scope from Gate432
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,17 +79,17 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'docs/KAIROS_ANALYSIS_LIVE_CANDLE_VIEWPORT_CONTROLS_BINDING.md',
+            'docs/KAIROS_ANALYSIS_LIVE_CANDLE_STATUS_PRESENTATION.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
             'package.json',
-            'scripts/verify-analysis-live-candle-viewport-controls-binding.mjs',
-            'src/app/useAnalysisLiveCandleRouteSession.ts',
-            'tests/analysis-live-candle-viewport-controls-binding.test.tsx',
+            'scripts/verify-analysis-live-candle-status-presentation.mjs',
+            'src/app/analysisLiveCandleStatusPresentation.ts',
+            'tests/analysis-live-candle-status-presentation.test.ts',
           }
           if changed != expected or removed:
-            print('Analysis live candle viewport controls binding scope mismatch', file=sys.stderr)
+            print('Analysis live candle status presentation scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -375,6 +375,18 @@ jobs:
             tests/analysis-live-candle-route-session.test.ts \
             tests/analysis-candle-renderer-session.test.ts
 
+      - name: Analysis live candle status presentation
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          npm run verify:analysis-live-candle-status-presentation
+          npm run verify:analysis-live-candle-viewport-controls-binding
+          npm run verify:analysis-live-candle-react-binding
+          npx vitest run \
+            tests/analysis-live-candle-status-presentation.test.ts \
+            tests/analysis-live-candle-viewport-controls-binding.test.tsx \
+            tests/analysis-live-candle-react-binding.test.tsx \
+            tests/analysis-live-candle-route-session.test.ts
+
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
         run: npm run typecheck
@@ -460,6 +472,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:analysis-live-candle-status-presentation',
             'verify:analysis-live-candle-viewport-controls-binding',
             'verify:analysis-live-candle-react-binding',
             'verify:analysis-live-candle-route-session',
@@ -538,6 +551,7 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_LIVE_CANDLE_STATUS_PRESENTATION.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_LIVE_CANDLE_VIEWPORT_CONTROLS_BINDING.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_LIVE_CANDLE_REACT_BINDING.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_LIVE_CANDLE_ROUTE_SESSION.md

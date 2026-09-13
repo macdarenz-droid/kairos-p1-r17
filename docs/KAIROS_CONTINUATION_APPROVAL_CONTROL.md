@@ -1,6 +1,12 @@
 <!-- Current authority is intentionally repeated inside each frozen candidate. -->
 # Latest user authority — autonomous V16 continuation, 12 September 2026
 
+## Autonomous Gate433 slice — 13 September 2026
+
+Gate432/run34761855085/job103735977089/head4e86b775b1a7f627a3453b7d191758fb6e587466 is FULL canonical PASS: every current, browser, unit, controlled-roadmap, historical and upload stage succeeded. Exact-run nonexpired `KAIROS_CURRENT_CANDIDATE`10319990913 outer SHA256 `391e2cbac6585a38f71d0876fa183bcf0e6fafce9771b0445ed577ff546e6cc2` and `KAIROS_GATE_EVIDENCE`10319417755 outer SHA256 `09d328e55a1c05300c84ecbef583dd2f851a681e8e840eea8501bd36a497d47a` were independently downloaded and matched. Nested `KAIROS_ANALYSIS_LIVE_CANDLE_VIEWPORT_CONTROLS_BINDING_CANDIDATE_2026-09-13.zip`;3642951bytes;SHA256 `7c525e5b60df633b7655ec1f39834606e715dcc3a37d4a735913817eaffaccbf`;Git blob `3985549f102bfeee5423c538306e240544e1f5da`; exact `kairos_p76` root/path safety/integrity pass. Gate431 is the immediate rollback.
+
+Under the latest autonomous continuation authority, the next smallest dependency-safe item-4 slice is the unmounted status presentation projection in `KAIROS_ANALYSIS_LIVE_CANDLE_STATUS_PRESENTATION.md`. It converts only Gate432's exact raw lifecycle evidence into immutable loading/connection/recovery/pause/unavailable/error facts and permits a live claim only from the exact live connection state. Analysis workspace/route mounting and selected-scope presentation remain later. UI VISIBLE:NO; candidate publication and canonical verification remain pending.
+
 ## Autonomous Gate432 slice — 13 September 2026
 
 Gate431/run34760085551/job103731274679/headdf3f815a6afe80df5fc3c4d94cb39ec09b5dde2b is FULL canonical PASS: every current, browser, unit, controlled-roadmap, historical and upload stage succeeded. Exact-run nonexpired `KAIROS_CURRENT_CANDIDATE`10319470117 outer SHA256 `c32241c33186574460bedb05743e0022f4897268c1f9374809b61faf230a187f` and `KAIROS_GATE_EVIDENCE`10319415178 outer SHA256 `0aa5218ea9a855724cf99566c26984c542377e0b831d3b014124da8194e2a840` were independently downloaded and matched. Nested `KAIROS_ANALYSIS_LIVE_CANDLE_REACT_BINDING_CANDIDATE_2026-09-13.zip`;3638841bytes;SHA256 `ecb04eb0b93b2f744cdfe3a4805427a7247bc265d194bf10ce9c746459053aa7`;Git blob `2740dc08e8da5dec8411a8e7575ab096bc9bd58f`; exact `kairos_p76` root/path safety/integrity pass. Gate430 R1 is the immediate rollback.
