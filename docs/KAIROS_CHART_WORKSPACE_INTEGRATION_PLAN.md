@@ -85,3 +85,7 @@ Gate420's authoritative history-to-selected-live bootstrap is FULL canonical rel
 ## Status after FULL Gate421
 
 Gate421's exact-scope gap-backfill recovery coordination is FULL canonical release. The next smallest item4 candidate owns only browser availability around that boundary: hidden or offline state stops acquisition/subscription ownership, while visible-and-online resume reacquires authoritative history before live updates restart. It retains only the latest caller selection, suppresses late activation and removes visibility/online/offline listeners on close. Route mounting, selected-scope UI, reconnect-policy choice and visible status remain later caller responsibilities. UI VISIBLE:NO; Analysis is not yet described as continuously live.
+
+## Status after FULL Gate422
+
+Gate422's browser visibility/connectivity lifecycle is FULL canonical release. The next smallest item4 candidate is the production composition root that assembles the existing Analysis history port, selected-session replacement, authoritative bootstrap, gap recovery and browser availability owners. It starts nothing on creation and leaves selection, limit, reconnect policy, renderer and visible state with the later route owner. UI VISIBLE:NO; route mounting and provider-connected visible status remain subsequent work.

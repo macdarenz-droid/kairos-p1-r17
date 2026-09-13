@@ -1,6 +1,12 @@
 <!-- Current authority is intentionally repeated inside each frozen candidate. -->
 # Latest user authority — autonomous V16 continuation, 12 September 2026
 
+## Autonomous Gate423 slice — 13 September 2026
+
+Gate422 is FULL canonical PASS: run34744061435/job103688568620/head467d11d76c1f2c774c810176959f50a4d72fbffb, every canonical stage succeeded. Exact-run nonexpired `KAIROS_CURRENT_CANDIDATE`10313228637 and `KAIROS_GATE_EVIDENCE`10313103820 were independently downloaded and matched artifact digests. Nested candidate `KAIROS_ANALYSIS_LIVE_CANDLE_BROWSER_AVAILABILITY_LIFECYCLE_CANDIDATE_2026-09-13.zip`;3685009bytes;SHA256 `e85743e6ad498822684b97ef2b6192af14ee8ce05a921a2c6a569773212fd26a`;Git blob `046cecee5169b0e70e21be28b7a067fb5273dfa4`; exact `kairos_p76` root/integrity pass. Gate421 is the immediate rollback.
+
+The next smallest dependency-safe item-4 slice supplies a production composition root for the released history, selected-session, gap-recovery and browser-availability owners. It starts nothing on creation and leaves selection, history limit, reconnect policy, renderer, callbacks and visible copy to the caller. React route mounting and visible status remain later. No provider implementation/default, persistence, journal/calculation, drawing/marker or Live Bubble behavior changes. See `KAIROS_ANALYSIS_LIVE_CANDLE_PRODUCTION_LIFECYCLE.md`. UI VISIBLE:NO; candidate publication and canonical verification remain pending.
+
 ## Autonomous Gate422 slice — 13 September 2026
 
 Gate421 is FULL canonical PASS: run34741551602/job103681990530/head23304be7de82c61091ee66a4b9342d8771face5b, every canonical stage succeeded. Exact-run nonexpired `KAIROS_CURRENT_CANDIDATE`10312882133 and `KAIROS_GATE_EVIDENCE`10312887187 were independently downloaded and matched their artifact digests. Nested candidate `KAIROS_ANALYSIS_LIVE_CANDLE_GAP_BACKFILL_RECOVERY_COORDINATION_CANDIDATE_2026-09-13.zip`;3601038bytes;SHA256 `06b5ca828e5222a0ef60e73d500af3ee2ad033cef4375630c67a2161db103aa2`;Git blob `d80892af6b8bb9594f1c30a456a71bddd4870c38`; exact root/integrity pass. Gate420 is the immediate rollback.
