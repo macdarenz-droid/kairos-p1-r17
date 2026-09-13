@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — Analysis Live Candle Production Lifecycle
+name: Kairos Controlled Roadmap Gate — Analysis Live Candle Product Policy
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_ANALYSIS_LIVE_CANDLE_PRODUCTION_LIFECYCLE_CANDIDATE_2026-09-13.zip'
+      - 'KAIROS_ANALYSIS_LIVE_CANDLE_PRODUCT_POLICY_CANDIDATE_2026-09-13.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_ANALYSIS_LIVE_CANDLE_BROWSER_AVAILABILITY_LIFECYCLE_CANDIDATE_2026-09-13.zip
-  CANDIDATE_ZIP: KAIROS_ANALYSIS_LIVE_CANDLE_PRODUCTION_LIFECYCLE_CANDIDATE_2026-09-13.zip
+  BASE_ZIP: KAIROS_ANALYSIS_LIVE_CANDLE_PRODUCTION_LIFECYCLE_CANDIDATE_2026-09-13.zip
+  CANDIDATE_ZIP: KAIROS_ANALYSIS_LIVE_CANDLE_PRODUCT_POLICY_CANDIDATE_2026-09-13.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 3685009, 'e85743e6ad498822684b97ef2b6192af14ee8ce05a921a2c6a569773212fd26a'),
-            ('CANDIDATE_ZIP', 3614180, '0806b84b1c2f1ff1f086b871fda352e1387a9dded3f111165945a4f1b046b1b8'),
+            ('BASE_ZIP', 3614180, '0806b84b1c2f1ff1f086b871fda352e1387a9dded3f111165945a4f1b046b1b8'),
+            ('CANDIDATE_ZIP', 3695704, 'b8d583b6ab024aa0747a28c6313469a8533594eb80ea3026839918666c2085e9'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact Analysis live candle production lifecycle scope from Gate422
+      - name: Confirm exact Analysis live candle product policy scope from Gate423
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,17 +79,18 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'docs/KAIROS_ANALYSIS_LIVE_CANDLE_PRODUCTION_LIFECYCLE.md',
+            'docs/KAIROS_ANALYSIS_LIVE_CANDLE_PRODUCT_POLICY.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
             'package.json',
-            'scripts/verify-analysis-live-candle-production-lifecycle.mjs',
-            'src/app/binanceAnalysisLiveCandleProductionLifecycle.ts',
-            'tests/binance-analysis-live-candle-production-lifecycle.test.ts',
+            'scripts/verify-analysis-live-candle-product-policy.mjs',
+            'src/app/AnalysisHistoryWorkspace.tsx',
+            'src/app/analysisLiveCandleProductPolicy.ts',
+            'tests/analysis-live-candle-product-policy.test.ts',
           }
           if changed != expected or removed:
-            print('Analysis live candle production lifecycle scope mismatch', file=sys.stderr)
+            print('Analysis live candle product policy scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -314,6 +315,17 @@ jobs:
             tests/binance-analysis-history-live-candle-bootstrap-coordination.test.ts \
             tests/binance-analysis-selected-live-candle-session-controller.test.ts
 
+      - name: Analysis live candle product policy
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          npm run verify:analysis-live-candle-product-policy
+          npm run verify:analysis-live-candle-production-lifecycle
+          npm run verify:analysis-history-workspace
+          npx vitest run \
+            tests/analysis-live-candle-product-policy.test.ts \
+            tests/analysis-history-workspace.test.tsx \
+            tests/binance-analysis-live-candle-production-lifecycle.test.ts
+
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
         run: npm run typecheck
@@ -399,6 +411,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:analysis-live-candle-product-policy',
             'verify:analysis-live-candle-production-lifecycle',
             'verify:analysis-live-candle-browser-availability-lifecycle',
             'verify:analysis-live-candle-gap-backfill-recovery-coordination',
@@ -472,6 +485,7 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_LIVE_CANDLE_PRODUCT_POLICY.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_LIVE_CANDLE_PRODUCTION_LIFECYCLE.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_LIVE_CANDLE_BROWSER_AVAILABILITY_LIFECYCLE.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_LIVE_CANDLE_GAP_BACKFILL_RECOVERY_COORDINATION.md

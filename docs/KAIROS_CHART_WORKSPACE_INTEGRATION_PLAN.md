@@ -89,3 +89,7 @@ Gate421's exact-scope gap-backfill recovery coordination is FULL canonical relea
 ## Status after FULL Gate422
 
 Gate422's browser visibility/connectivity lifecycle is FULL canonical release. The next smallest item4 candidate is the production composition root that assembles the existing Analysis history port, selected-session replacement, authoritative bootstrap, gap recovery and browser availability owners. It starts nothing on creation and leaves selection, limit, reconnect policy, renderer and visible state with the later route owner. UI VISIBLE:NO; route mounting and provider-connected visible status remain subsequent work.
+
+## Status after FULL Gate423
+
+Gate423's inert production lifecycle composition is FULL canonical release. The next smallest item4 candidate establishes the route-owned product configuration needed before mounting it: the existing exact 500-candle page limit becomes shared with the historical workspace, and reconnect is explicitly bounded to four P15-governed attempts from 1 second to an 8-second cap. React mounting, selected-scope activation, renderer handoff and visible connection status remain later. UI VISIBLE:NO; Analysis is still not described as continuously live.

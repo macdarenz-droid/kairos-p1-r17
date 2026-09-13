@@ -1,6 +1,12 @@
 <!-- Current authority is intentionally repeated inside each frozen candidate. -->
 # Latest user authority — autonomous V16 continuation, 12 September 2026
 
+## Autonomous Gate424 slice — 13 September 2026
+
+Gate423 is FULL canonical PASS: run34746482060/job103695233500/headf783181bd849b5c655775165543c914ec7624897, every canonical stage succeeded. Exact-run nonexpired `KAIROS_CURRENT_CANDIDATE`10313703236 outer SHA256 `8ec73b58fe5daa98083833eb69c04497d2892119c93bd4394d0da8cf1c00cc19` and `KAIROS_GATE_EVIDENCE`10314536465 outer SHA256 `9260ba7bb8fb4d9c7be497d94c51ff5b319584bdf6b346e1739d26dc7159b546` were independently downloaded and matched. Nested candidate `KAIROS_ANALYSIS_LIVE_CANDLE_PRODUCTION_LIFECYCLE_CANDIDATE_2026-09-13.zip`;3614180bytes;SHA256 `0806b84b1c2f1ff1f086b871fda352e1387a9dded3f111165945a4f1b046b1b8`;Git blob `84ca28b95e78fbcd8f5bfea916cdf2d5a2220cc2`; exact `kairos_p76` root/integrity pass. Gate422 is the immediate rollback.
+
+The next smallest dependency-safe item-4 slice defines the route-owned product values required before React mounting: reuse the exact 500-candle authoritative history limit and supply a bounded P15 reconnect policy of four attempts, 1-second initial delay and 8-second cap. P15 still owns validation, exponential delay and jitter; Gate423 remains lifecycle owner. No request, stream, timer, route mount, visible status, provider, persistence, journal/calculation, drawing/marker or Live Bubble behavior changes. See `KAIROS_ANALYSIS_LIVE_CANDLE_PRODUCT_POLICY.md`. UI VISIBLE:NO; candidate publication and canonical verification remain pending.
+
 ## Autonomous Gate423 slice — 13 September 2026
 
 Gate422 is FULL canonical PASS: run34744061435/job103688568620/head467d11d76c1f2c774c810176959f50a4d72fbffb, every canonical stage succeeded. Exact-run nonexpired `KAIROS_CURRENT_CANDIDATE`10313228637 and `KAIROS_GATE_EVIDENCE`10313103820 were independently downloaded and matched artifact digests. Nested candidate `KAIROS_ANALYSIS_LIVE_CANDLE_BROWSER_AVAILABILITY_LIFECYCLE_CANDIDATE_2026-09-13.zip`;3685009bytes;SHA256 `e85743e6ad498822684b97ef2b6192af14ee8ce05a921a2c6a569773212fd26a`;Git blob `046cecee5169b0e70e21be28b7a067fb5273dfa4`; exact `kairos_p76` root/integrity pass. Gate421 is the immediate rollback.
