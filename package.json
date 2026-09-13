@@ -178,6 +178,7 @@
     "verify:analysis-live-candle-viewport-controls-binding": "node scripts/verify-analysis-live-candle-viewport-controls-binding.mjs",
     "verify:analysis-live-candle-status-presentation": "node scripts/verify-analysis-live-candle-status-presentation.mjs",
     "verify:analysis-live-candle-canvas-presentation": "node scripts/verify-analysis-live-candle-canvas-presentation.mjs",
+    "verify:analysis-live-candle-snapshot-details-presentation": "node scripts/verify-analysis-live-candle-canvas-presentation.mjs",
     "verify:p17:1-chart-render-contract-foundation": "node scripts/verify-p17-1-chart-render-contract-foundation.mjs",
     "verify:p17:2-chart-renderer-lifecycle-boundary": "node scripts/verify-p17-2-chart-renderer-lifecycle-boundary.mjs",
     "verify:p17:3-chart-series-projection-boundary": "node scripts/verify-p17-3-chart-series-projection-boundary.mjs",

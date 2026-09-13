@@ -11,6 +11,8 @@ import {
 export interface AnalysisLiveCandleCanvasProps {
   readonly instrument: MarketDataInstrument;
   readonly interval: string;
+  /** Caller-authoritative display unit from the selected metadata fact. */
+  readonly quoteAsset: string;
   /** Caller-owned refresh key; changing it reacquires the exact selected scope. */
   readonly revision?: number;
   readonly useBinding?: (options: AnalysisLiveCandleReactBindingOptions) => AnalysisLiveCandleReactBindingResult;
@@ -29,6 +31,7 @@ function MountedPresentation({
   container,
   instrument,
   interval,
+  quoteAsset,
   revision = 0,
   helpId,
   themeId,
@@ -37,6 +40,7 @@ function MountedPresentation({
 }: MountedPresentationProps) {
   const binding = useBinding({ container, instrument, interval, themeId, revision });
   const presentation = presentAnalysisLiveCandleStatus(binding);
+  const snapshot = binding.activation?.ok ? binding.activation.snapshot : null;
 
   useEffect(() => {
     const controls = { pan: binding.pan, zoom: binding.zoom, resetView: binding.resetView };
@@ -60,6 +64,20 @@ function MountedPresentation({
       <button type="button" onClick={() => binding.zoom(.8)} aria-label="Zoom in">+</button>
       <button type="button" onClick={binding.resetView}>Fit candles</button>
     </div>
+    {snapshot ? <>
+      <p className="kairos-analysis-chart__note">{snapshot.candles.length} candles · Prices in {quoteAsset} · Times in UTC</p>
+      <p className="kairos-analysis-chart__note">Snapshot received {snapshot.observedAt.replace('T', ' ').replace('Z', ' UTC')}. Live updates follow this authoritative page; the final candle may be unfinished.</p>
+      <details className="kairos-analysis-chart__data">
+        <summary>Candle values</summary>
+        <div className="kairos-analysis-chart__table-scroll" tabIndex={0} role="region" aria-label="Candle values table">
+          <table>
+            <caption>{instrument.symbol} · {interval} · UTC · {quoteAsset}</caption>
+            <thead><tr><th scope="col">Open time</th><th scope="col">Open</th><th scope="col">High</th><th scope="col">Low</th><th scope="col">Close</th></tr></thead>
+            <tbody>{snapshot.candles.map(candle => <tr key={candle.openTime}><th scope="row">{candle.openTime.replace('T', ' ').replace('.000Z', '')}</th><td>{candle.open}</td><td>{candle.high}</td><td>{candle.low}</td><td>{candle.close}</td></tr>)}</tbody>
+          </table>
+        </div>
+      </details>
+    </> : null}
     <p id={helpId} className="kairos-analysis-chart__note">Drag sideways to pan. Pinch or use + / − to zoom. Hold to inspect. Keyboard: arrows, + / − and Home.</p>
   </>;
 }

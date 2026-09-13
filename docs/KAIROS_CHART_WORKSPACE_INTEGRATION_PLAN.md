@@ -117,3 +117,7 @@ Gate432's viewport-control delegation is FULL canonical release, including every
 ## Status after FULL Gate433
 
 Gate433's provider-safe live-candle status projection is FULL canonical release, including every canonical stage and both independently verified exact-run artifacts. The next smallest item-4 candidate adds an unmounted selected-scope canvas presentation component: it gives Gate432 one real DOM container, renders Gate433's exact status facts with the caller's symbol/timeframe and delegates existing viewport commands. `AnalysisHistoryWorkspace` and `AnalysisRoute` are unchanged; replacing the historical-only canvas and making live candles visible remains a later route-integration slice. UI VISIBLE:NO.
+
+## Status after FULL Gate434
+
+Gate434's selected-scope live-candle canvas presentation is FULL canonical release, including every canonical stage and both independently verified exact-run artifacts. Before route mounting can replace the historical-only request/renderer lifecycle, the released live canvas must preserve the exact Candle Values and UTC snapshot context currently shown by the historical workspace without causing a second history request. The next smallest item-4 candidate therefore presents only Gate434's already-returned successful activation snapshot: exact count, caller-authoritative quote asset, UTC observed time and unchanged OHLC strings. Workspace/route source remains unchanged and UI VISIBLE:NO; the following bounded slice may then replace the duplicate historical lifecycle and make the released live chart visible.

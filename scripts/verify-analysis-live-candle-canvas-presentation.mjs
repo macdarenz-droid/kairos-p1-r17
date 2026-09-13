@@ -15,6 +15,13 @@ for (const expected of [
   'binding.resetView',
   'props.instrument.symbol',
   'props.interval',
+  'quoteAsset',
+  'binding.activation?.ok',
+  'snapshot.candles.length',
+  'Snapshot received',
+  'Candle values',
+  'Candle values table',
+  'Times in UTC',
 ]) {
   if (!source.includes(expected)) throw new Error(`missing live-canvas presentation evidence: ${expected}`);
 }
@@ -30,6 +37,8 @@ for (const forbidden of [
 if (!tests.includes('binds the exact selected scope to the real chart container without mounting the Analysis route')) throw new Error('missing exact-scope/container test');
 if (!tests.includes('delegates buttons and keyboard commands to the released viewport controls')) throw new Error('missing viewport delegation test');
 if (!tests.includes('never substitutes generic raw error copy')) throw new Error('missing safe status-copy test');
+if (!tests.includes('presents the exact authoritative activation snapshot and keeps zero and non-zero decimal strings distinct')) throw new Error('missing authoritative snapshot details test');
+if (!tests.includes('does not present snapshot details before authoritative activation')) throw new Error('missing pre-activation suppression test');
 if (!report.includes('UI visible: no')) throw new Error('component must remain unmounted in this slice');
 
 console.log('Analysis live-candle canvas presentation verification passed.');

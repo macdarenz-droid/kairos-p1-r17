@@ -5,6 +5,15 @@ import type { AnalysisLiveCandleReactBindingOptions, AnalysisLiveCandleReactBind
 import { AnalysisLiveCandleCanvas } from '../src/app/AnalysisLiveCandleCanvas';
 
 const instrument = { venue: 'binance-spot', symbol: 'ETHUSDT' } as const;
+const snapshot = {
+  source: 'market-reference',
+  timeZone: 'UTC',
+  request: { instrument, interval: '1m', limit: 500 },
+  observedAt: '2026-09-13T16:00:01.000Z',
+  candles: [
+    { openTime: '2026-09-13T16:00:00.000Z', closeTime: '2026-09-13T16:00:59.999Z', open: '0', high: '1.25', low: '0', close: '1.2' },
+  ],
+} as never;
 
 function binding(overrides: Partial<AnalysisLiveCandleReactBindingResult> = {}): AnalysisLiveCandleReactBindingResult {
   return {
@@ -24,7 +33,7 @@ function binding(overrides: Partial<AnalysisLiveCandleReactBindingResult> = {}):
 
 function renderCanvas(result: AnalysisLiveCandleReactBindingResult, revision = 0) {
   const useBinding = vi.fn((_options: AnalysisLiveCandleReactBindingOptions) => result);
-  const rendered = render(<ThemeProvider><AnalysisLiveCandleCanvas instrument={instrument} interval="1m" revision={revision} useBinding={useBinding} /></ThemeProvider>);
+  const rendered = render(<ThemeProvider><AnalysisLiveCandleCanvas instrument={instrument} interval="1m" quoteAsset="USDT" revision={revision} useBinding={useBinding} /></ThemeProvider>);
   return { ...rendered, useBinding };
 }
 
@@ -43,7 +52,7 @@ it('binds the exact selected scope to the real chart container without mounting 
 it('renders the released exact-live projection and never substitutes generic raw error copy', () => {
   const secret = new Error('private transport detail');
   const live = binding({
-    activation: { ok: true, snapshot: {} as never },
+    activation: { ok: true, snapshot },
     connection: 'live',
     lastError: null,
   });
@@ -53,12 +62,30 @@ it('renders the released exact-live projection and never substitutes generic raw
 
   view.unmount();
   renderCanvas(binding({
-    activation: { ok: true, snapshot: {} as never },
+    activation: { ok: true, snapshot },
     connection: 'error',
     lastError: secret,
   }));
   expect(screen.getByRole('alert')).toHaveTextContent('Live candle connection error');
   expect(screen.getByRole('alert')).not.toHaveTextContent('private transport detail');
+});
+
+it('presents the exact authoritative activation snapshot and keeps zero and non-zero decimal strings distinct', () => {
+  renderCanvas(binding({ activation: { ok: true, snapshot }, connection: 'live' }));
+  expect(screen.getByText('1 candles · Prices in USDT · Times in UTC')).toBeInTheDocument();
+  expect(screen.getByText(/Snapshot received 2026-09-13 16:00:01.000 UTC/)).toBeInTheDocument();
+  fireEvent.click(screen.getByText('Candle values'));
+  expect(screen.getByRole('region', { name: 'Candle values table' })).toHaveTextContent('2026-09-13 16:00:00');
+  expect(screen.getByRole('region', { name: 'Candle values table' })).toHaveTextContent('0');
+  expect(screen.getByRole('region', { name: 'Candle values table' })).toHaveTextContent('1.25');
+  expect(screen.getByRole('caption')).toHaveTextContent('ETHUSDT · 1m · UTC · USDT');
+  expect(screen.getAllByRole('cell').map(cell => cell.textContent)).toEqual(['0', '1.25', '0', '1.2']);
+});
+
+it('does not present snapshot details before authoritative activation', () => {
+  renderCanvas(binding());
+  expect(screen.queryByText('Candle values')).not.toBeInTheDocument();
+  expect(screen.queryByRole('region', { name: 'Candle values table' })).not.toBeInTheDocument();
 });
 
 it('delegates buttons and keyboard commands to the released viewport controls', () => {

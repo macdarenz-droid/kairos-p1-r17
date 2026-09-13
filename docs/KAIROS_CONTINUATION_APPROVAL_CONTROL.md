@@ -1,6 +1,12 @@
 <!-- Current authority is intentionally repeated inside each frozen candidate. -->
 # Latest user authority — autonomous V16 continuation, 12 September 2026
 
+## Autonomous Gate435 slice — 13 September 2026
+
+Gate434/run34767319569/job103750497429/headedc06f416e4f6295d3361a6f91d89c1f31cc7a2e is FULL canonical PASS: every current, browser, unit, controlled-roadmap, historical and upload stage succeeded. Exact-run nonexpired `KAIROS_CURRENT_CANDIDATE`10321560038 outer SHA256 `d1f24a8a6c45fda21077bbc7666eb7c621a97f78de9451216d42af8575f8af4e` and `KAIROS_GATE_EVIDENCE`10321208696 outer SHA256 `36103900454a5a791c5d2d4223bbd327c1c2f01ddee4727049706fe3ca76ae74` were independently downloaded and matched. Nested `KAIROS_ANALYSIS_LIVE_CANDLE_CANVAS_PRESENTATION_CANDIDATE_2026-09-13.zip`;3733596bytes;SHA256 `23d289a47b018d5a1f925185f169e699d59df31db63335ac7429a21d28165511`;Git blob `a29aed21004765bc03c5b8ace1e3d51a2cbf8679`; exact `kairos_p76` root/path safety/integrity pass. Gate433 is the immediate rollback.
+
+The next smallest dependency-safe item-4 prerequisite is the unmounted authoritative snapshot-details presentation in `KAIROS_ANALYSIS_LIVE_CANDLE_SNAPSHOT_DETAILS_PRESENTATION.md`. Gate434 already receives the exact successful activation snapshot used to seed its renderer/live session; this slice presents that page's unchanged count, caller-provided quote asset, UTC receipt time and exact OHLC strings. It prepares the later workspace replacement without dropping the existing Candle Values evidence or creating a second history request. `AnalysisHistoryWorkspace` and `AnalysisRoute` remain unchanged. UI VISIBLE:NO; candidate publication and canonical verification remain pending.
+
 ## Autonomous Gate434 slice — 13 September 2026
 
 Gate433/run34763844888/job103741201531/head30ab9352d9c9f26d63e038f42c024375c4e1f416 is FULL canonical PASS: every current, browser, unit, controlled-roadmap, historical and upload stage succeeded. Exact-run nonexpired `KAIROS_CURRENT_CANDIDATE`10320570103 outer SHA256 `8d6a968c04cdfb697fa6c7482a016d197cf039720273cdf682a59daefe079975` and `KAIROS_GATE_EVIDENCE`10320056224 outer SHA256 `040f805e6ed5f4f8b6ea8683722b877bffe83d648f4a6594fcac94bde260c7aa` were independently downloaded and matched. Nested `KAIROS_ANALYSIS_LIVE_CANDLE_STATUS_PRESENTATION_CANDIDATE_2026-09-13.zip`;3727174bytes;SHA256 `7ba59c28c87dad13616b3fe4a06a91d9802a1917db2f7f0b80a38cdbd53f68cf`;Git blob `f316798955cf3925c549d913f23e557c859a8a21`; exact `kairos_p76` root/path safety/integrity pass. Gate432 is the immediate rollback.
