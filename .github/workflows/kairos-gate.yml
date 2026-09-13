@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — Analysis Live Candle Product Policy
+name: Kairos Controlled Roadmap Gate — Analysis Live Candle Product Policy R1
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_ANALYSIS_LIVE_CANDLE_PRODUCT_POLICY_CANDIDATE_2026-09-13.zip'
+      - 'KAIROS_ANALYSIS_LIVE_CANDLE_PRODUCT_POLICY_CANDIDATE_2026-09-13-R1.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,7 +13,7 @@ permissions:
 
 env:
   BASE_ZIP: KAIROS_ANALYSIS_LIVE_CANDLE_PRODUCTION_LIFECYCLE_CANDIDATE_2026-09-13.zip
-  CANDIDATE_ZIP: KAIROS_ANALYSIS_LIVE_CANDLE_PRODUCT_POLICY_CANDIDATE_2026-09-13.zip
+  CANDIDATE_ZIP: KAIROS_ANALYSIS_LIVE_CANDLE_PRODUCT_POLICY_CANDIDATE_2026-09-13-R1.zip
 
 jobs:
   verify-current-candidate:
@@ -39,7 +39,7 @@ jobs:
 
           for key, size, digest in [
             ('BASE_ZIP', 3614180, '0806b84b1c2f1ff1f086b871fda352e1387a9dded3f111165945a4f1b046b1b8'),
-            ('CANDIDATE_ZIP', 3695704, 'b8d583b6ab024aa0747a28c6313469a8533594eb80ea3026839918666c2085e9'),
+            ('CANDIDATE_ZIP', 3696126, 'ec9ea72766f4d579e51ab301c9cefa13a090b9ffd11eb8cf19a8e76827a11cb2'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -84,6 +84,7 @@ jobs:
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
             'package.json',
+            'scripts/verify-analysis-history-workspace.mjs',
             'scripts/verify-analysis-live-candle-product-policy.mjs',
             'src/app/AnalysisHistoryWorkspace.tsx',
             'src/app/analysisLiveCandleProductPolicy.ts',
