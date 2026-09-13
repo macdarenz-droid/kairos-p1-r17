@@ -81,3 +81,7 @@ Gate419's selected live-candle session replacement controller is FULL canonical 
 ## Status after FULL Gate420
 
 Gate420's authoritative history-to-selected-live bootstrap is FULL canonical release. The next smallest item4 candidate owns only gap recovery above that boundary: one exact-scope demand reacquires and rerenders authoritative recent history through Gate420, duplicate demand is coalesced, and late or superseded recovery cannot restart an old selection. Route mounting, selected scope, history limit, reconnect policy, renderer creation, hidden/offline lifecycle and visible status remain later. UI VISIBLE:NO; continuous live Analysis is not claimed until those remaining responsibilities and browser evidence are complete.
+
+## Status after FULL Gate421
+
+Gate421's exact-scope gap-backfill recovery coordination is FULL canonical release. The next smallest item4 candidate owns only browser availability around that boundary: hidden or offline state stops acquisition/subscription ownership, while visible-and-online resume reacquires authoritative history before live updates restart. It retains only the latest caller selection, suppresses late activation and removes visibility/online/offline listeners on close. Route mounting, selected-scope UI, reconnect-policy choice and visible status remain later caller responsibilities. UI VISIBLE:NO; Analysis is not yet described as continuously live.

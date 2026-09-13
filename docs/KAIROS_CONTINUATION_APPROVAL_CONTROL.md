@@ -1,6 +1,12 @@
 <!-- Current authority is intentionally repeated inside each frozen candidate. -->
 # Latest user authority — autonomous V16 continuation, 12 September 2026
 
+## Autonomous Gate422 slice — 13 September 2026
+
+Gate421 is FULL canonical PASS: run34741551602/job103681990530/head23304be7de82c61091ee66a4b9342d8771face5b, every canonical stage succeeded. Exact-run nonexpired `KAIROS_CURRENT_CANDIDATE`10312882133 and `KAIROS_GATE_EVIDENCE`10312887187 were independently downloaded and matched their artifact digests. Nested candidate `KAIROS_ANALYSIS_LIVE_CANDLE_GAP_BACKFILL_RECOVERY_COORDINATION_CANDIDATE_2026-09-13.zip`;3601038bytes;SHA256 `06b5ca828e5222a0ef60e73d500af3ee2ad033cef4375630c67a2161db103aa2`;Git blob `d80892af6b8bb9594f1c30a456a71bddd4870c38`; exact root/integrity pass. Gate420 is the immediate rollback.
+
+The next smallest dependency-safe item-4 slice places browser visibility/connectivity lifecycle around Gate421. Hidden or offline state stops pending history and the selected subscription; visible-and-online resume must reacquire authoritative history before live updates restart. Repeated unchanged events are ignored, unavailable selection retains only the latest exact scope, late completions are suppressed and close removes all listeners. Route mounting and visible status remain later. No provider request, policy default, timer, persistence, journal/calculation, drawing/marker or Live Bubble behavior changes. See `KAIROS_ANALYSIS_LIVE_CANDLE_BROWSER_AVAILABILITY_LIFECYCLE.md`. UI VISIBLE:NO; candidate publication and canonical verification remain pending.
+
 ## Autonomous Gate421 slice — 13 September 2026
 
 Gate420 is FULL canonical PASS: run34739148740/job103675742542/heade8802c7153256a5457fde018992b77a71350fa76, all40 functional/upload stages succeeded. Exact-run nonexpired KAIROS_CURRENT_CANDIDATE10311809079 and KAIROS_GATE_EVIDENCE10312118236 were independently downloaded and matched their artifact digests. Nested candidate `KAIROS_ANALYSIS_HISTORY_LIVE_CANDLE_BOOTSTRAP_COORDINATION_CANDIDATE_2026-09-13.zip`;3594704bytes;SHA256 `20e2eec6b3e1d148936645b22a87282b56705eecebd01ccd97976b15faba93fe`;Git blob `3f3f095c83da3ac6983ec253e2a062bfc629e124`; exact root/integrity pass. Gate419 is the immediate rollback.
