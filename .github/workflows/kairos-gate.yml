@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_ANALYSIS_LIVE_CANDLE_WORKSPACE_MOUNT_CANDIDATE_2026-09-14.zip'
+      - 'KAIROS_ANALYSIS_LIVE_CANDLE_WORKSPACE_MOUNT_CANDIDATE_2026-09-14-R1.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,7 +13,7 @@ permissions:
 
 env:
   BASE_ZIP: KAIROS_ANALYSIS_LIVE_CANDLE_SNAPSHOT_DETAILS_PRESENTATION_CANDIDATE_2026-09-14.zip
-  CANDIDATE_ZIP: KAIROS_ANALYSIS_LIVE_CANDLE_WORKSPACE_MOUNT_CANDIDATE_2026-09-14.zip
+  CANDIDATE_ZIP: KAIROS_ANALYSIS_LIVE_CANDLE_WORKSPACE_MOUNT_CANDIDATE_2026-09-14-R1.zip
 
 jobs:
   verify-current-candidate:
@@ -39,7 +39,7 @@ jobs:
 
           for key, size, digest in [
             ('BASE_ZIP', 3736887, '7dd8feb8fb92a7f0e921e1c1e25ba182dde234dbecfc9470970aed9d31d5499c'),
-            ('CANDIDATE_ZIP', 3740386, '28a646210d671b9762fb6d55bb6ee7591bca99f52d6f5836485ee1f7f161e016'),
+            ('CANDIDATE_ZIP', 3741023, 'a5938d13c3198bdd4a980526cf49507a2ffd68bf842d2b937bcc8b69b635671c'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact Analysis live candle workspace mount scope from Gate435
+      - name: Confirm exact Analysis live candle workspace mount R1 scope from Gate435
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -86,12 +86,13 @@ jobs:
             'package.json',
             'scripts/test-analysis-history-browser.mjs',
             'scripts/verify-analysis-history-workspace.mjs',
+            'scripts/verify-analysis-live-candle-product-policy.mjs',
             'scripts/verify-analysis-live-candle-workspace-mount.mjs',
             'src/app/AnalysisHistoryWorkspace.tsx',
             'tests/analysis-history-workspace.test.tsx',
           }
           if changed != expected or removed:
-            print('Analysis live candle workspace mount scope mismatch', file=sys.stderr)
+            print('Analysis live candle workspace mount R1 scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
