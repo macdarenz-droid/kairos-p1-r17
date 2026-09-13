@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — Analysis Live Candle Browser Runtime Sources
+name: Kairos Controlled Roadmap Gate — Analysis Live Candle Browser Runtime Sources R1
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_ANALYSIS_LIVE_CANDLE_BROWSER_RUNTIME_SOURCES_CANDIDATE_2026-09-13.zip'
+      - 'KAIROS_ANALYSIS_LIVE_CANDLE_BROWSER_RUNTIME_SOURCES_CANDIDATE_2026-09-13-R1.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,7 +13,7 @@ permissions:
 
 env:
   BASE_ZIP: KAIROS_ANALYSIS_LIVE_CANDLE_BROWSER_SUBSCRIPTION_COMPOSITION_CANDIDATE_2026-09-13.zip
-  CANDIDATE_ZIP: KAIROS_ANALYSIS_LIVE_CANDLE_BROWSER_RUNTIME_SOURCES_CANDIDATE_2026-09-13.zip
+  CANDIDATE_ZIP: KAIROS_ANALYSIS_LIVE_CANDLE_BROWSER_RUNTIME_SOURCES_CANDIDATE_2026-09-13-R1.zip
 
 jobs:
   verify-current-candidate:
@@ -39,7 +39,7 @@ jobs:
 
           for key, size, digest in [
             ('BASE_ZIP', 3646839, '30176109b6552494d61517241af7bc568a1ccfd5f3fa199bb3d7a27c02118ec4'),
-            ('CANDIDATE_ZIP', 3652381, '0cd995893d95dc51c063350be4e907d1eb2e8e317601c10f01b5664143006a1f'),
+            ('CANDIDATE_ZIP', 3577751, '1f21d414d5f5ba28dfd2fbdcb4bde90faf2943e23a4f53042f2a23f25ae75c6e'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact Analysis live candle browser runtime sources scope from Gate415
+      - name: Confirm exact Analysis live candle browser runtime sources R1 scope from Gate415
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -87,6 +87,7 @@ jobs:
             'scripts/verify-analysis-live-candle-browser-runtime-sources.mjs',
             'src/app/binanceAnalysisLiveCandleBrowserRuntimeSources.ts',
             'tests/binance-analysis-live-candle-browser-runtime-sources.test.ts',
+            'tests/trade-review.test.tsx',
           }
           if changed != expected or removed:
             print('Analysis live candle browser runtime sources scope mismatch', file=sys.stderr)

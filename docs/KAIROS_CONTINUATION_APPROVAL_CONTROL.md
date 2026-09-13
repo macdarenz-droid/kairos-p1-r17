@@ -5,6 +5,12 @@ The user explicitly requested: "enable the workers", "just let them continue eve
 
 Use existing V16 6a9d8b63fbf081918a26452faf51e747 and read-only supervisor 6a9a872c15d08191ac18ed249add1448 on existing supported hourly schedules. No replacements, child tasks, sub-hour rearming or cadence bypass. Shared execution lease 6a9c887ae4e881919758b86977bbc2eb stays a disabled coordination record; acquire and verify ownership before mutations, release only own lease. Supervisor never writes project files or implements.
 
+## Active Gate416 R1 repair — 13 September 2026
+
+Gate416/run34726183322/job103640583096/head79d9af022814e5fe5f9b1450a8f7fcbab8a22707 failed only in Historical closures after every current product, browser, unit and controlled-roadmap stage passed. The inherited saved-trade-review fixture used `2026-09-13T00:00:00.000Z` as its supposedly future “newer” timestamp; the run crossed that instant, so the original record correctly remained inside the recent 500.
+
+Reconstitute R1 from FULL GOLDEN Gate415 plus the exact Gate416 browser-source delta and one deterministic fixture correction: use `9999-12-31T23:59:59.999Z` for those 501 synthetic newer records. Production source remains byte-identical to Gate416. Retain every expectation and canonical verifier. Five consecutive focused executions passed, followed by the full 309-file/1,275-test suite, TypeScript, production build and the dedicated browser-source verifier. Gate415 remains GOLDEN until the repaired exact archive passes every canonical stage and both exact-run artifacts.
+
 ## Current canonical checkpoint and browser-sources slice — 13 September 2026
 
 Gate415/run34723630274/job103633815666/head1e63f7d1ea334ee7c481e0deffec89e1153ca631 is FULL canonical PASS. All36 steps succeeded. Exact-run nonexpired candidate artifact10307351710 and evidence artifact10307675596 were independently downloaded and matched their artifact digests. Nested archive `KAIROS_ANALYSIS_LIVE_CANDLE_BROWSER_SUBSCRIPTION_COMPOSITION_CANDIDATE_2026-09-13.zip`;3646839bytes;SHA256 `30176109b6552494d61517241af7bc568a1ccfd5f3fa199bb3d7a27c02118ec4`;Git blob `8ad0bfa11d4ff9aff7d842bf4ba3984aed85b47b`; exact root/integrity pass. Gate415 is GOLDEN and Gate414 is the rollback.
