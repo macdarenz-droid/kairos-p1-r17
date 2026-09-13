@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — Analysis Selected Live Candle Session Controller
+name: Kairos Controlled Roadmap Gate — Analysis History Live Candle Bootstrap Coordination
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_ANALYSIS_SELECTED_LIVE_CANDLE_SESSION_CONTROLLER_CANDIDATE_2026-09-13.zip'
+      - 'KAIROS_ANALYSIS_HISTORY_LIVE_CANDLE_BOOTSTRAP_COORDINATION_CANDIDATE_2026-09-13.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_ANALYSIS_LIVE_CANDLE_PRODUCTION_BROWSER_SESSION_CANDIDATE_2026-09-13.zip
-  CANDIDATE_ZIP: KAIROS_ANALYSIS_SELECTED_LIVE_CANDLE_SESSION_CONTROLLER_CANDIDATE_2026-09-13.zip
+  BASE_ZIP: KAIROS_ANALYSIS_SELECTED_LIVE_CANDLE_SESSION_CONTROLLER_CANDIDATE_2026-09-13.zip
+  CANDIDATE_ZIP: KAIROS_ANALYSIS_HISTORY_LIVE_CANDLE_BOOTSTRAP_COORDINATION_CANDIDATE_2026-09-13.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 3582549, '4319edcbf5bfe8436ae328d813a1690af2968cc901530d127bb148e2ec9ffa25'),
-            ('CANDIDATE_ZIP', 3587994, '85f61cd7a60df435094f195f45cac50bdf02227a9efa3f8ee3590dbe37a46f3a'),
+            ('BASE_ZIP', 3587994, '85f61cd7a60df435094f195f45cac50bdf02227a9efa3f8ee3590dbe37a46f3a'),
+            ('CANDIDATE_ZIP', 3594704, '20e2eec6b3e1d148936645b22a87282b56705eecebd01ccd97976b15faba93fe'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact Analysis selected live candle session controller scope from Gate418
+      - name: Confirm exact Analysis history-to-live candle bootstrap scope from Gate419
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,17 +79,17 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'docs/KAIROS_ANALYSIS_SELECTED_LIVE_CANDLE_SESSION_CONTROLLER.md',
+            'docs/KAIROS_ANALYSIS_HISTORY_LIVE_CANDLE_BOOTSTRAP_COORDINATION.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
             'package.json',
-            'scripts/verify-analysis-selected-live-candle-session-controller.mjs',
-            'src/app/binanceAnalysisSelectedLiveCandleSessionController.ts',
-            'tests/binance-analysis-selected-live-candle-session-controller.test.ts',
+            'scripts/verify-analysis-history-live-candle-bootstrap-coordination.mjs',
+            'src/app/binanceAnalysisHistoryLiveCandleBootstrapCoordination.ts',
+            'tests/binance-analysis-history-live-candle-bootstrap-coordination.test.ts',
           }
           if changed != expected or removed:
-            print('Analysis selected live candle session controller scope mismatch', file=sys.stderr)
+            print('Analysis history-to-live candle bootstrap scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -268,6 +268,17 @@ jobs:
             tests/binance-analysis-live-candle-production-browser-session.test.ts \
             tests/binance-analysis-live-candle-browser-subscription-composition.test.ts
 
+      - name: Analysis history to selected live candle bootstrap coordination
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          npm run verify:analysis-history-live-candle-bootstrap-coordination
+          npm run verify:analysis-selected-live-candle-session-controller
+          npm run verify:binance-spot-candle-history
+          npx vitest run \
+            tests/binance-analysis-history-live-candle-bootstrap-coordination.test.ts \
+            tests/binance-analysis-selected-live-candle-session-controller.test.ts \
+            tests/binance-spot-candle-history.test.ts
+
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
         run: npm run typecheck
@@ -353,6 +364,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:analysis-history-live-candle-bootstrap-coordination',
             'verify:analysis-selected-live-candle-session-controller',
             'verify:analysis-live-candle-production-browser-session',
             'verify:analysis-live-candle-browser-runtime-sources',
@@ -422,6 +434,7 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_HISTORY_LIVE_CANDLE_BOOTSTRAP_COORDINATION.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_SELECTED_LIVE_CANDLE_SESSION_CONTROLLER.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_LIVE_CANDLE_PRODUCTION_BROWSER_SESSION.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_LIVE_CANDLE_BROWSER_RUNTIME_SOURCES.md
