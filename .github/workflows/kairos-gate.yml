@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — Analysis Saved Trade Overlay Live Candle Composition
+name: Kairos Controlled Roadmap Gate — Analysis Saved Trade Risk Reward Theme Style Source
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_ANALYSIS_SAVED_TRADE_OVERLAY_LIVE_CANDLE_COMPOSITION_CANDIDATE_2026-09-15.zip'
+      - 'KAIROS_ANALYSIS_SAVED_TRADE_RISK_REWARD_THEME_STYLE_SOURCE_CANDIDATE_2026-09-15.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_ANALYSIS_SAVED_TRADE_OVERLAY_REACT_BINDING_CANDIDATE_2026-09-15.zip
-  CANDIDATE_ZIP: KAIROS_ANALYSIS_SAVED_TRADE_OVERLAY_LIVE_CANDLE_COMPOSITION_CANDIDATE_2026-09-15.zip
+  BASE_ZIP: KAIROS_ANALYSIS_SAVED_TRADE_OVERLAY_LIVE_CANDLE_COMPOSITION_CANDIDATE_2026-09-15.zip
+  CANDIDATE_ZIP: KAIROS_ANALYSIS_SAVED_TRADE_RISK_REWARD_THEME_STYLE_SOURCE_CANDIDATE_2026-09-15.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 3814373, 'a55489b03cba007e8d2e3a0cca9af3e90304dbf47f88d843775bacd3a31a3a3d'),
-            ('CANDIDATE_ZIP', 3820808, '1bba92f7cd14c4dc85884431803da70355bb7cf49486a728c267c934f36d5ae1'),
+            ('BASE_ZIP', 3820808, '1bba92f7cd14c4dc85884431803da70355bb7cf49486a728c267c934f36d5ae1'),
+            ('CANDIDATE_ZIP', 3910066, '4144e6d6feddf3a5d4a23f85e4cd05a0b1fc128d11f242b1224498e3e4357ce5'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact Analysis saved trade overlay live-candle composition scope from Gate460
+      - name: Confirm exact Analysis saved trade Risk Reward theme style source scope from Gate461
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,17 +79,17 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'docs/KAIROS_ANALYSIS_SAVED_TRADE_OVERLAY_LIVE_CANDLE_COMPOSITION.md',
+            'docs/KAIROS_ANALYSIS_SAVED_TRADE_RISK_REWARD_THEME_STYLE_SOURCE.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
             'package.json',
-            'scripts/verify-analysis-saved-trade-overlay-live-candle-composition.mjs',
-            'src/app/AnalysisSavedTradeOverlayLiveCandleCanvas.tsx',
-            'tests/analysis-saved-trade-overlay-live-candle-composition.test.tsx',
+            'scripts/verify-analysis-saved-trade-risk-reward-theme-style-source.mjs',
+            'src/app/analysisSavedTradeRiskRewardThemeStyleSource.ts',
+            'tests/analysis-saved-trade-risk-reward-theme-style-source.test.ts',
           }
           if changed != expected or removed:
-            print('Analysis saved trade overlay live-candle composition scope mismatch', file=sys.stderr)
+            print('Analysis saved trade Risk Reward theme style source scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -819,6 +819,18 @@ jobs:
             tests/analysis-live-candle-route-session.test.ts \
             tests/analysis-candle-renderer-session.test.ts
 
+      - name: Analysis saved trade Risk Reward theme style source
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          npm run verify:analysis-saved-trade-risk-reward-theme-style-source
+          npm run verify:p3:theme-engine
+          npm run verify:p19:4-risk-reward-chart-semantic-style-projection
+          npm run verify:analysis-saved-trade-risk-reward-canvas-pane-renderer
+          npx vitest run \
+            tests/analysis-saved-trade-risk-reward-theme-style-source.test.ts \
+            tests/analysis-saved-trade-risk-reward-canvas-pane-renderer.test.ts \
+            tests/analysis-saved-trade-risk-reward-lightweight-charts-v5-primitive.test.ts
+
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
         run: npm run typecheck
@@ -904,6 +916,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:analysis-saved-trade-risk-reward-theme-style-source',
             'verify:analysis-saved-trade-overlay-live-candle-composition',
             'verify:analysis-saved-trade-overlay-react-binding',
             'verify:analysis-saved-trade-overlay-presentation-session',
@@ -1009,6 +1022,7 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_SAVED_TRADE_RISK_REWARD_THEME_STYLE_SOURCE.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_SAVED_TRADE_OVERLAY_LIVE_CANDLE_COMPOSITION.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_SAVED_TRADE_OVERLAY_REACT_BINDING.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_SAVED_TRADE_OVERLAY_PRESENTATION_SESSION.md
