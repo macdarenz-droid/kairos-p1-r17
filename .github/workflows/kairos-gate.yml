@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — Analysis Saved Trade Live Candle Composition
+name: Kairos Controlled Roadmap Gate — Analysis Saved Trade Live Candle Composition R1
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_ANALYSIS_SAVED_TRADE_LIVE_CANDLE_COMPOSITION_CANDIDATE_2026-09-14.zip'
+      - 'KAIROS_ANALYSIS_SAVED_TRADE_LIVE_CANDLE_COMPOSITION_CANDIDATE_2026-09-14-R1.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,7 +13,7 @@ permissions:
 
 env:
   BASE_ZIP: KAIROS_ANALYSIS_SAVED_TRADE_MARKER_REACT_BINDING_CANDIDATE_2026-09-14.zip
-  CANDIDATE_ZIP: KAIROS_ANALYSIS_SAVED_TRADE_LIVE_CANDLE_COMPOSITION_CANDIDATE_2026-09-14.zip
+  CANDIDATE_ZIP: KAIROS_ANALYSIS_SAVED_TRADE_LIVE_CANDLE_COMPOSITION_CANDIDATE_2026-09-14-R1.zip
 
 jobs:
   verify-current-candidate:
@@ -39,7 +39,7 @@ jobs:
 
           for key, size, digest in [
             ('BASE_ZIP', 3788207, '64f00c489404ed6a0e568a77d044fa49f1faf1c52b40a5a154685843ba97579b'),
-            ('CANDIDATE_ZIP', 3715193, 'ce561cdaf76932efdcde18264488c3593459a896d3d3a684bb46d9723ebb3417'),
+            ('CANDIDATE_ZIP', 3715394, '750c8fb0e7e534471914dc3ef61dee8424fc13bae980ccb479b74a1667e65bed'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -84,6 +84,7 @@ jobs:
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
             'package.json',
+            'scripts/verify-analysis-live-candle-canvas-presentation.mjs',
             'scripts/verify-analysis-saved-trade-live-candle-composition.mjs',
             'src/app/AnalysisLiveCandleCanvas.tsx',
             'src/app/AnalysisSavedTradeLiveCandleCanvas.tsx',
