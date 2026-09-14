@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — Analysis Saved Trade Live Candle Composition R1
+name: Kairos Controlled Roadmap Gate — Analysis Saved Trade Workspace Mount
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_ANALYSIS_SAVED_TRADE_LIVE_CANDLE_COMPOSITION_CANDIDATE_2026-09-14-R1.zip'
+      - 'KAIROS_ANALYSIS_SAVED_TRADE_WORKSPACE_MOUNT_CANDIDATE_2026-09-14.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_ANALYSIS_SAVED_TRADE_MARKER_REACT_BINDING_CANDIDATE_2026-09-14.zip
-  CANDIDATE_ZIP: KAIROS_ANALYSIS_SAVED_TRADE_LIVE_CANDLE_COMPOSITION_CANDIDATE_2026-09-14-R1.zip
+  BASE_ZIP: KAIROS_ANALYSIS_SAVED_TRADE_LIVE_CANDLE_COMPOSITION_CANDIDATE_2026-09-14-R1.zip
+  CANDIDATE_ZIP: KAIROS_ANALYSIS_SAVED_TRADE_WORKSPACE_MOUNT_CANDIDATE_2026-09-14.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 3788207, '64f00c489404ed6a0e568a77d044fa49f1faf1c52b40a5a154685843ba97579b'),
-            ('CANDIDATE_ZIP', 3715394, '750c8fb0e7e534471914dc3ef61dee8424fc13bae980ccb479b74a1667e65bed'),
+            ('BASE_ZIP', 3715394, '750c8fb0e7e534471914dc3ef61dee8424fc13bae980ccb479b74a1667e65bed'),
+            ('CANDIDATE_ZIP', 3719555, 'd26fe83b44e2e2a7dc52db13b26ee062086a342c2c2737d01c18aae61489b559'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact Analysis saved trade live candle composition scope from Gate444
+      - name: Confirm exact Analysis saved trade workspace mount scope from Gate445 R1
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,20 +79,20 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'docs/KAIROS_ANALYSIS_SAVED_TRADE_LIVE_CANDLE_COMPOSITION.md',
+            'docs/KAIROS_ANALYSIS_SAVED_TRADE_WORKSPACE_MOUNT.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
             'package.json',
-            'scripts/verify-analysis-live-candle-canvas-presentation.mjs',
-            'scripts/verify-analysis-saved-trade-live-candle-composition.mjs',
-            'src/app/AnalysisLiveCandleCanvas.tsx',
-            'src/app/AnalysisSavedTradeLiveCandleCanvas.tsx',
-            'tests/analysis-live-candle-canvas-presentation.test.tsx',
-            'tests/analysis-saved-trade-live-candle-composition.test.tsx',
+            'scripts/verify-analysis-history-workspace.mjs',
+            'scripts/verify-analysis-live-candle-workspace-mount.mjs',
+            'scripts/verify-analysis-saved-trade-workspace-mount.mjs',
+            'src/app/AnalysisHistoryWorkspace.tsx',
+            'src/app/AnalysisRoute.tsx',
+            'tests/analysis-history-workspace.test.tsx',
           }
           if changed != expected or removed:
-            print('Analysis saved trade live candle composition scope mismatch', file=sys.stderr)
+            print('Analysis saved trade workspace mount scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -533,6 +533,24 @@ jobs:
             tests/analysis-saved-trade-candle-window-projection.test.ts \
             tests/analysis-saved-trade-chart-reference-projection.test.ts
 
+      - name: Analysis saved trade workspace mount
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          npm run verify:analysis-saved-trade-workspace-mount
+          npm run verify:analysis-saved-trade-live-candle-composition
+          npm run verify:analysis-live-candle-workspace-mount
+          npm run verify:analysis-history-workspace
+          npx vitest run \
+            tests/analysis-history-workspace.test.tsx \
+            tests/trade-review.test.tsx \
+            tests/analysis-saved-trade-live-candle-composition.test.tsx \
+            tests/analysis-live-candle-canvas-presentation.test.tsx \
+            tests/analysis-saved-trade-marker-react-binding.test.tsx \
+            tests/analysis-saved-trade-marker-presentation-session.test.ts \
+            tests/analysis-saved-trade-renderer-marker-session.test.ts \
+            tests/analysis-saved-trade-lightweight-charts-v5-marker-binding.test.ts \
+            tests/analysis-saved-trade-execution-marker-projection.test.ts
+
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
         run: npm run typecheck
@@ -618,6 +636,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:analysis-saved-trade-workspace-mount',
             'verify:analysis-saved-trade-live-candle-composition',
             'verify:analysis-saved-trade-marker-react-binding',
             'verify:analysis-saved-trade-marker-presentation-session',
@@ -708,6 +727,7 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_SAVED_TRADE_WORKSPACE_MOUNT.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_SAVED_TRADE_LIVE_CANDLE_COMPOSITION.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_SAVED_TRADE_MARKER_REACT_BINDING.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_SAVED_TRADE_MARKER_PRESENTATION_SESSION.md
