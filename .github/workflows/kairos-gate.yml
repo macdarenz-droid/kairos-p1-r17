@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — Analysis Saved Trade Execution Marker Projection
+name: Kairos Controlled Roadmap Gate — Analysis Saved Trade Lightweight Charts v5 Marker Binding
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_ANALYSIS_SAVED_TRADE_EXECUTION_MARKER_PROJECTION_CANDIDATE_2026-09-14.zip'
+      - 'KAIROS_ANALYSIS_SAVED_TRADE_LIGHTWEIGHT_CHARTS_V5_MARKER_BINDING_CANDIDATE_2026-09-14.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_ANALYSIS_SAVED_TRADE_CANDLE_WINDOW_PROJECTION_CANDIDATE_2026-09-14.zip
-  CANDIDATE_ZIP: KAIROS_ANALYSIS_SAVED_TRADE_EXECUTION_MARKER_PROJECTION_CANDIDATE_2026-09-14.zip
+  BASE_ZIP: KAIROS_ANALYSIS_SAVED_TRADE_EXECUTION_MARKER_PROJECTION_CANDIDATE_2026-09-14.zip
+  CANDIDATE_ZIP: KAIROS_ANALYSIS_SAVED_TRADE_LIGHTWEIGHT_CHARTS_V5_MARKER_BINDING_CANDIDATE_2026-09-14.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 3754185, 'b984ce7028c188ef7fb6e4c31095744b07d9124db546f19352e2a95c10aa7762'),
-            ('CANDIDATE_ZIP', 3760272, '6d44fbd3a5d1774582979c77ee8fba05a35b6a40416a3b9a5e660e2e0b3d1016'),
+            ('BASE_ZIP', 3760272, '6d44fbd3a5d1774582979c77ee8fba05a35b6a40416a3b9a5e660e2e0b3d1016'),
+            ('CANDIDATE_ZIP', 3767498, 'eb969a9f014d7979b0e2854edac2d8096f4c824b536ab090b150ea08c10cbf3d'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact Analysis saved trade execution marker projection scope from Gate439
+      - name: Confirm exact Analysis saved trade Lightweight Charts v5 marker binding scope from Gate440
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,17 +79,18 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'docs/KAIROS_ANALYSIS_SAVED_TRADE_EXECUTION_MARKER_PROJECTION.md',
+            'docs/KAIROS_ANALYSIS_SAVED_TRADE_LIGHTWEIGHT_CHARTS_V5_MARKER_BINDING.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
             'package.json',
-            'scripts/verify-analysis-saved-trade-execution-marker-projection.mjs',
-            'src/app/analysisSavedTradeExecutionMarkerProjection.ts',
-            'tests/analysis-saved-trade-execution-marker-projection.test.ts',
+            'scripts/verify-analysis-saved-trade-lightweight-charts-v5-marker-binding.mjs',
+            'src/app/analysisSavedTradeLightweightChartsV5MarkerBinding.ts',
+            'src/features/chart/chartSeriesProjection.ts',
+            'tests/analysis-saved-trade-lightweight-charts-v5-marker-binding.test.ts',
           }
           if changed != expected or removed:
-            print('Analysis saved trade execution marker projection scope mismatch', file=sys.stderr)
+            print('Analysis saved trade Lightweight Charts v5 marker binding scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -447,6 +448,19 @@ jobs:
             tests/trade-visualizer-display-model.test.ts \
             tests/journal-trade-visualizer-projection.test.ts
 
+      - name: Analysis saved trade Lightweight Charts v5 marker binding
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          npm run verify:analysis-saved-trade-lightweight-charts-v5-marker-binding
+          npm run verify:analysis-saved-trade-execution-marker-projection
+          npm run verify:p17:3-chart-series-projection-boundary
+          npx vitest run \
+            tests/analysis-saved-trade-lightweight-charts-v5-marker-binding.test.ts \
+            tests/analysis-saved-trade-execution-marker-projection.test.ts \
+            tests/analysis-saved-trade-candle-window-projection.test.ts \
+            tests/analysis-saved-trade-chart-reference-projection.test.ts \
+            tests/chart-series-projection.test.ts
+
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
         run: npm run typecheck
@@ -532,6 +546,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:analysis-saved-trade-lightweight-charts-v5-marker-binding',
             'verify:analysis-saved-trade-execution-marker-projection',
             'verify:analysis-saved-trade-candle-window-projection',
             'verify:analysis-saved-trade-chart-reference-projection',
@@ -617,6 +632,7 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_SAVED_TRADE_LIGHTWEIGHT_CHARTS_V5_MARKER_BINDING.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_SAVED_TRADE_EXECUTION_MARKER_PROJECTION.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_SAVED_TRADE_CANDLE_WINDOW_PROJECTION.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_SAVED_TRADE_CHART_REFERENCE_PROJECTION.md
