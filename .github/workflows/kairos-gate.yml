@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — Analysis Saved Trade Risk Reward React Binding
+name: Kairos Controlled Roadmap Gate — Analysis Saved Trade Risk Reward Live Candle Composition
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_ANALYSIS_SAVED_TRADE_RISK_REWARD_REACT_BINDING_CANDIDATE_2026-09-15.zip'
+      - 'KAIROS_ANALYSIS_SAVED_TRADE_RISK_REWARD_LIVE_CANDLE_COMPOSITION_CANDIDATE_2026-09-15.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_ANALYSIS_SAVED_TRADE_RISK_REWARD_PRESENTATION_SESSION_CANDIDATE_2026-09-14.zip
-  CANDIDATE_ZIP: KAIROS_ANALYSIS_SAVED_TRADE_RISK_REWARD_REACT_BINDING_CANDIDATE_2026-09-15.zip
+  BASE_ZIP: KAIROS_ANALYSIS_SAVED_TRADE_RISK_REWARD_REACT_BINDING_CANDIDATE_2026-09-15.zip
+  CANDIDATE_ZIP: KAIROS_ANALYSIS_SAVED_TRADE_RISK_REWARD_LIVE_CANDLE_COMPOSITION_CANDIDATE_2026-09-15.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 3863738, 'dec511fca98c7af7eb0cd6f6e87a3695d4387162ebe7a7979176b9e58ec98f25'),
-            ('CANDIDATE_ZIP', 3869910, '1093a0819c8968f254becc087d2af6f800b6b72d1034e3e2d760a984366ef6c3'),
+            ('BASE_ZIP', 3869910, '1093a0819c8968f254becc087d2af6f800b6b72d1034e3e2d760a984366ef6c3'),
+            ('CANDIDATE_ZIP', 3876281, '65a90db14eb9c470a4a0ed31904b3fe28d591d0f4fffa925f7154e0504586345'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact Analysis saved trade Risk Reward React binding scope from Gate455
+      - name: Confirm exact Analysis saved trade Risk Reward live candle composition scope from Gate456
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,17 +79,17 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'docs/KAIROS_ANALYSIS_SAVED_TRADE_RISK_REWARD_REACT_BINDING.md',
+            'docs/KAIROS_ANALYSIS_SAVED_TRADE_RISK_REWARD_LIVE_CANDLE_COMPOSITION.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
             'package.json',
-            'scripts/verify-analysis-saved-trade-risk-reward-react-binding.mjs',
-            'src/app/useAnalysisSavedTradeRiskRewardPresentationSession.ts',
-            'tests/analysis-saved-trade-risk-reward-react-binding.test.tsx',
+            'scripts/verify-analysis-saved-trade-risk-reward-live-candle-composition.mjs',
+            'src/app/AnalysisSavedTradeRiskRewardLiveCandleCanvas.tsx',
+            'tests/analysis-saved-trade-risk-reward-live-candle-composition.test.tsx',
           }
           if changed != expected or removed:
-            print('Analysis saved trade Risk Reward React binding scope mismatch', file=sys.stderr)
+            print('Analysis saved trade Risk Reward live candle composition scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -734,6 +734,28 @@ jobs:
             tests/analysis-saved-trade-risk-reward-lightweight-charts-v5-series-binding.test.ts \
             tests/analysis-saved-trade-risk-reward-lightweight-charts-v5-primitive.test.ts
 
+      - name: Analysis saved trade Risk Reward live candle composition
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          npm run verify:analysis-saved-trade-risk-reward-live-candle-composition
+          npm run verify:analysis-saved-trade-risk-reward-react-binding
+          npm run verify:analysis-saved-trade-risk-reward-presentation-session
+          npm run verify:analysis-saved-trade-risk-reward-renderer-session
+          npm run verify:analysis-saved-trade-live-candle-composition
+          npm run verify:analysis-live-candle-canvas-presentation
+          npm run verify:p19:7-risk-reward-tool-system-closure
+          npx vitest run \
+            tests/analysis-saved-trade-risk-reward-live-candle-composition.test.tsx \
+            tests/analysis-saved-trade-risk-reward-react-binding.test.tsx \
+            tests/analysis-saved-trade-risk-reward-presentation-session.test.ts \
+            tests/analysis-saved-trade-risk-reward-renderer-session.test.ts \
+            tests/analysis-saved-trade-risk-reward-renderer-projection.test.ts \
+            tests/analysis-saved-trade-risk-reward-reference-projection.test.ts \
+            tests/analysis-saved-trade-chart-reference-projection.test.ts \
+            tests/analysis-saved-trade-marker-react-binding.test.tsx \
+            tests/analysis-saved-trade-risk-reward-lightweight-charts-v5-series-binding.test.ts \
+            tests/analysis-saved-trade-risk-reward-lightweight-charts-v5-primitive.test.ts
+
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
         run: npm run typecheck
@@ -819,6 +841,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:analysis-saved-trade-risk-reward-live-candle-composition',
             'verify:analysis-saved-trade-risk-reward-react-binding',
             'verify:analysis-saved-trade-risk-reward-presentation-session',
             'verify:analysis-saved-trade-risk-reward-renderer-session',
@@ -919,6 +942,7 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_SAVED_TRADE_RISK_REWARD_LIVE_CANDLE_COMPOSITION.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_SAVED_TRADE_RISK_REWARD_REACT_BINDING.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_SAVED_TRADE_RISK_REWARD_PRESENTATION_SESSION.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_SAVED_TRADE_RISK_REWARD_RENDERER_SESSION.md
