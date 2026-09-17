@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — Analysis Saved Analysis Round Trip
+name: Kairos Controlled Roadmap Gate — P21 Chart Workspace Integration Closure
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_ANALYSIS_SAVED_ANALYSIS_ROUND_TRIP_CANDIDATE_2026-09-17.zip'
+      - 'KAIROS_P21_28_CHART_WORKSPACE_INTEGRATION_CLOSURE_CANDIDATE_2026-09-17.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_ANALYSIS_DRAWING_TOOLS_ENDPOINT_EDIT_CANDIDATE_2026-09-17.zip
-  CANDIDATE_ZIP: KAIROS_ANALYSIS_SAVED_ANALYSIS_ROUND_TRIP_CANDIDATE_2026-09-17.zip
+  BASE_ZIP: KAIROS_ANALYSIS_SAVED_ANALYSIS_ROUND_TRIP_CANDIDATE_2026-09-17.zip
+  CANDIDATE_ZIP: KAIROS_P21_28_CHART_WORKSPACE_INTEGRATION_CLOSURE_CANDIDATE_2026-09-17.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 3960462, 'e2e8835edeb0929f0865970df201aefe9e030ad5fbe130c0a498e37217ec4eb4'),
-            ('CANDIDATE_ZIP', 3977825, '4176c773b86879393fe269eb5bdc7919770704598df9c588beff99a11aba5926'),
+            ('BASE_ZIP', 3977825, '4176c773b86879393fe269eb5bdc7919770704598df9c588beff99a11aba5926'),
+            ('CANDIDATE_ZIP', 3986020, '0705244ac35a1c202ba3ff1a2543593e7fcaef5d4430e2aef2432c4581ea6daa'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact Analysis Saved Analysis round trip scope from Gate477
+      - name: Confirm exact P21 closure scope from Gate478
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,26 +79,15 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'docs/KAIROS_ANALYSIS_SAVED_ANALYSIS_ROUND_TRIP.md',
+            'KAIROS_P21_28_CHART_WORKSPACE_INTEGRATION_CLOSURE_REPORT_2026-09-17.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
             'package.json',
-            'scripts/test-analysis-drawing-tools-browser.mjs',
-            'scripts/test-analysis-drawing-tools-edit-browser.mjs',
-            'scripts/test-analysis-saved-analysis-browser.mjs',
-            'scripts/verify-analysis-saved-analysis-round-trip.mjs',
-            'src/app/AnalysisHistoryWorkspace.tsx',
-            'src/app/AnalysisSavedAnalysisControls.tsx',
-            'src/app/analysisDrawingToolsRendererSession.ts',
-            'src/app/analysisHistory.css',
-            'src/app/analysisSavedAnalysisRoundTrip.ts',
-            'src/app/useAnalysisDrawingTools.ts',
-            'tests/analysis-drawing-tools-renderer-session.test.ts',
-            'tests/analysis-saved-analysis-round-trip.test.tsx',
+            'scripts/verify-p21-28-chart-workspace-integration-closure.mjs',
           }
           if changed != expected or removed:
-            print('Analysis Saved Analysis round trip scope mismatch', file=sys.stderr)
+            print('P21 closure scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -1105,6 +1094,19 @@ jobs:
             tests/analysis-history-workspace.test.tsx \
             tests/saved-analysis-save-command.test.ts
 
+      - name: P21 chart workspace integration system closure
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          npm run verify:p21:28-chart-workspace-integration-closure
+          npm run verify:p20:5-saved-analysis-system-closure
+          npm run verify:p19:7-risk-reward-tool-system-closure
+          npm run verify:p18:60-drawing-tools-system-closure
+          npm run verify:analysis-saved-analysis-round-trip
+          npm run verify:analysis-drawing-tools-endpoint-edit
+          npm run verify:analysis-drawing-tools-mount
+          npm run verify:analysis-history-workspace
+          npm run verify:analysis-saved-trade-position-box
+
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
         run: npm run typecheck
@@ -1195,6 +1197,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:p21:28-chart-workspace-integration-closure',
             'verify:analysis-saved-analysis-round-trip',
             'verify:analysis-drawing-tools-endpoint-edit',
             'verify:analysis-drawing-tools-mount',
@@ -1317,6 +1320,7 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/KAIROS_P21_28_CHART_WORKSPACE_INTEGRATION_CLOSURE_REPORT_2026-09-17.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_SAVED_ANALYSIS_ROUND_TRIP.md
             .gate-candidate/kairos_p76/.saved-analysis-evidence/
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_DRAWING_TOOLS_ENDPOINT_EDIT.md
