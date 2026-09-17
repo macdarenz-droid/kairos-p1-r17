@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_JOURNAL_INK_PRESENTATION_CANDIDATE_2026-09-17.zip'
+      - 'KAIROS_JOURNAL_INK_PRESENTATION_CANDIDATE_2026-09-17-R1.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -13,7 +13,7 @@ permissions:
 
 env:
   BASE_ZIP: KAIROS_HOME_DASHBOARD_SWIPE_PAGER_CANDIDATE_2026-09-17.zip
-  CANDIDATE_ZIP: KAIROS_JOURNAL_INK_PRESENTATION_CANDIDATE_2026-09-17.zip
+  CANDIDATE_ZIP: KAIROS_JOURNAL_INK_PRESENTATION_CANDIDATE_2026-09-17-R1.zip
 
 jobs:
   verify-current-candidate:
@@ -39,7 +39,7 @@ jobs:
 
           for key, size, digest in [
             ('BASE_ZIP', 3881540, '5d91d56d56c4a6adb7ae72d8a5e33c98508ecfbabdc4620ede8c7c278892e52d'),
-            ('CANDIDATE_ZIP', 3886163, '7323b946d5ee257ca764804a300d264b9bee51b80f677ecdacbbf6191ddfec6f'),
+            ('CANDIDATE_ZIP', 3886892, '852aeeaa4d6bf7eafc38de252a52e4d07535212b4e3414adc78dbc88c7632c4b'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact Journal Ink presentation scope from Gate469
+      - name: Confirm exact Journal Ink presentation R1 scope from Gate469
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -86,6 +86,7 @@ jobs:
             'package.json',
             'scripts/verify-journal-ink-presentation.mjs',
             'src/app/journalRoute.css',
+            'tests/home-dashboard-swipe-pager.test.tsx',
           }
           if changed != expected or removed:
             print('Journal Ink presentation scope mismatch', file=sys.stderr)
@@ -970,7 +971,8 @@ jobs:
             tests/manual-trade-journal-route.test.tsx \
             tests/journal-history-route.test.tsx \
             tests/journal-visual-pnl-presentation.test.tsx \
-            tests/journal-trade-map-presentation.test.tsx
+            tests/journal-trade-map-presentation.test.tsx \
+            tests/home-dashboard-swipe-pager.test.tsx
 
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
