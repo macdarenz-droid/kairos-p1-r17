@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — Ink Theme Registry
+name: Kairos Controlled Roadmap Gate — App Shell Ink
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_INK_THEME_REGISTRY_CANDIDATE_2026-09-17-R1.zip'
+      - 'KAIROS_APP_SHELL_INK_CANDIDATE_2026-09-17.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_ANALYSIS_SAVED_TRADE_OVERLAY_WORKSPACE_MOUNT_CANDIDATE_2026-09-17.zip
-  CANDIDATE_ZIP: KAIROS_INK_THEME_REGISTRY_CANDIDATE_2026-09-17-R1.zip
+  BASE_ZIP: KAIROS_INK_THEME_REGISTRY_CANDIDATE_2026-09-17-R1.zip
+  CANDIDATE_ZIP: KAIROS_APP_SHELL_INK_CANDIDATE_2026-09-17.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 3841960, '78b0fcab2d276c3a0a8fa1672519097f332911896fdd05e51c83b53f0b050cbc'),
-            ('CANDIDATE_ZIP', 3851451, '3184149a97e85c1da4dbeff50612a3170517399b263ce0564015b7b9f91cee68'),
+            ('BASE_ZIP', 3851451, '3184149a97e85c1da4dbeff50612a3170517399b263ce0564015b7b9f91cee68'),
+            ('CANDIDATE_ZIP', 3859514, 'f7d94f75df181d870601d7c90adf855b71819faa4fdacaa8409e40dd094048e5'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact Ink theme registry scope from Gate465
+      - name: Confirm exact app shell Ink scope from Gate466 R1
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,24 +79,19 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'docs/KAIROS_INK_THEME_REGISTRY.md',
+            'docs/KAIROS_APP_SHELL_INK.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
             'package.json',
-            'scripts/verify-ink-theme-registry.mjs',
-            'scripts/verify-p3-theme-engine.mjs',
-            'scripts/test-analysis-history-browser.mjs',
-            'src/design-system/themes/themeEngine.ts',
-            'src/design-system/tokens/geometry.ts',
-            'src/design-system/tokens/semantic.ts',
-            'src/design-system/tokens.css',
-            'tests/ink-theme.test.ts',
-            'tests/theme-engine.test.ts',
-            'tests/theme-preference.test.tsx',
+            'scripts/verify-app-shell-ink.mjs',
+            'src/app/AppShell.tsx',
+            'src/app/routes.tsx',
+            'src/design-system/shell/navigationShell.css',
+            'tests/app-shell-ink.test.tsx',
           }
           if changed != expected or removed:
-            print('Ink theme registry scope mismatch', file=sys.stderr)
+            print('App shell Ink scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -909,6 +904,21 @@ jobs:
             tests/analysis-saved-trade-risk-reward-theme-style-source.test.ts \
             tests/analysis-candle-renderer-session.test.ts
 
+      - name: App shell Ink presentation
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          npm run verify:app-shell-ink
+          npm run verify:p8:navigation-shell
+          npm run verify:p2:design-system
+          npm run verify:p2:accessibility
+          npm run verify:ink-theme-registry
+          npx vitest run \
+            tests/app-shell-ink.test.tsx \
+            tests/navigation-shell.test.tsx \
+            tests/router.test.tsx \
+            tests/home-dashboard-your-trades.test.tsx \
+            tests/journal-history-route.test.tsx
+
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
         run: npm run typecheck
@@ -994,6 +1004,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:app-shell-ink',
             'verify:ink-theme-registry',
             'verify:analysis-saved-trade-overlay-workspace-mount',
             'verify:analysis-saved-trade-overlay-runtime-input-composition',
@@ -1104,6 +1115,7 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/docs/KAIROS_APP_SHELL_INK.md
             .gate-candidate/kairos_p76/docs/KAIROS_INK_THEME_REGISTRY.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_SAVED_TRADE_OVERLAY_WORKSPACE_MOUNT.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_SAVED_TRADE_OVERLAY_RUNTIME_INPUT_COMPOSITION.md
