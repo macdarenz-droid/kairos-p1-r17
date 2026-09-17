@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — Analysis Drawing Tools Endpoint Edit
+name: Kairos Controlled Roadmap Gate — Analysis Saved Analysis Round Trip
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_ANALYSIS_DRAWING_TOOLS_ENDPOINT_EDIT_CANDIDATE_2026-09-17.zip'
+      - 'KAIROS_ANALYSIS_SAVED_ANALYSIS_ROUND_TRIP_CANDIDATE_2026-09-17.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_ANALYSIS_DRAWING_TOOLS_MOUNT_CANDIDATE_2026-09-17.zip
-  CANDIDATE_ZIP: KAIROS_ANALYSIS_DRAWING_TOOLS_ENDPOINT_EDIT_CANDIDATE_2026-09-17.zip
+  BASE_ZIP: KAIROS_ANALYSIS_DRAWING_TOOLS_ENDPOINT_EDIT_CANDIDATE_2026-09-17.zip
+  CANDIDATE_ZIP: KAIROS_ANALYSIS_SAVED_ANALYSIS_ROUND_TRIP_CANDIDATE_2026-09-17.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 3949456, '1e1b03981e581cf97a30f1b0c5329b1510953787baf4e2009d74b76758aaa566'),
-            ('CANDIDATE_ZIP', 3960462, 'e2e8835edeb0929f0865970df201aefe9e030ad5fbe130c0a498e37217ec4eb4'),
+            ('BASE_ZIP', 3960462, 'e2e8835edeb0929f0865970df201aefe9e030ad5fbe130c0a498e37217ec4eb4'),
+            ('CANDIDATE_ZIP', 3977825, '4176c773b86879393fe269eb5bdc7919770704598df9c588beff99a11aba5926'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact Analysis drawing tools endpoint edit scope from Gate476
+      - name: Confirm exact Analysis Saved Analysis round trip scope from Gate477
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,23 +79,26 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'docs/KAIROS_ANALYSIS_DRAWING_TOOLS_ENDPOINT_EDIT.md',
+            'docs/KAIROS_ANALYSIS_SAVED_ANALYSIS_ROUND_TRIP.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
             'package.json',
+            'scripts/test-analysis-drawing-tools-browser.mjs',
             'scripts/test-analysis-drawing-tools-edit-browser.mjs',
-            'scripts/verify-analysis-drawing-tools-endpoint-edit.mjs',
-            'scripts/verify-analysis-drawing-tools-mount.mjs',
-            'src/app/AnalysisDrawingToolsControls.tsx',
-            'src/app/analysisDrawingToolsComposition.ts',
+            'scripts/test-analysis-saved-analysis-browser.mjs',
+            'scripts/verify-analysis-saved-analysis-round-trip.mjs',
+            'src/app/AnalysisHistoryWorkspace.tsx',
+            'src/app/AnalysisSavedAnalysisControls.tsx',
             'src/app/analysisDrawingToolsRendererSession.ts',
-            'src/app/analysisLiveCandleProductPolicy.ts',
-            'tests/analysis-drawing-tools-mount.test.tsx',
+            'src/app/analysisHistory.css',
+            'src/app/analysisSavedAnalysisRoundTrip.ts',
+            'src/app/useAnalysisDrawingTools.ts',
             'tests/analysis-drawing-tools-renderer-session.test.ts',
+            'tests/analysis-saved-analysis-round-trip.test.tsx',
           }
           if changed != expected or removed:
-            print('Analysis drawing tools endpoint edit scope mismatch', file=sys.stderr)
+            print('Analysis Saved Analysis round trip scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -1086,6 +1089,22 @@ jobs:
             tests/analysis-drawing-tools-mount.test.tsx \
             tests/lightweight-charts-v5-trend-line-edit-click-execution-lifecycle-composition.test.ts
 
+      - name: Analysis Saved Analysis round trip
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          npm run verify:analysis-saved-analysis-round-trip
+          npm run verify:analysis-drawing-tools-endpoint-edit
+          npm run verify:analysis-drawing-tools-mount
+          npm run verify:analysis-drawing-tools-renderer-session
+          npm run verify:analysis-history-workspace
+          npm run verify:p20:5-saved-analysis-system-closure
+          npx vitest run \
+            tests/analysis-saved-analysis-round-trip.test.tsx \
+            tests/analysis-drawing-tools-renderer-session.test.ts \
+            tests/analysis-drawing-tools-mount.test.tsx \
+            tests/analysis-history-workspace.test.tsx \
+            tests/saved-analysis-save-command.test.ts
+
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
         run: npm run typecheck
@@ -1161,6 +1180,7 @@ jobs:
           node scripts/test-analysis-position-box-browser.mjs
           node scripts/test-analysis-drawing-tools-browser.mjs
           node scripts/test-analysis-drawing-tools-edit-browser.mjs
+          node scripts/test-analysis-saved-analysis-browser.mjs
 
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
@@ -1175,6 +1195,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:analysis-saved-analysis-round-trip',
             'verify:analysis-drawing-tools-endpoint-edit',
             'verify:analysis-drawing-tools-mount',
             'verify:analysis-drawing-tools-renderer-session',
@@ -1296,6 +1317,8 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_SAVED_ANALYSIS_ROUND_TRIP.md
+            .gate-candidate/kairos_p76/.saved-analysis-evidence/
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_DRAWING_TOOLS_ENDPOINT_EDIT.md
             .gate-candidate/kairos_p76/.drawing-tools-edit-evidence/
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_DRAWING_TOOLS_MOUNT.md
