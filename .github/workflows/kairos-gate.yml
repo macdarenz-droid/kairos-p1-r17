@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — Analysis Saved Trade Overlay Runtime Input Composition
+name: Kairos Controlled Roadmap Gate — Analysis Saved Trade Overlay Workspace Mount
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_ANALYSIS_SAVED_TRADE_OVERLAY_RUNTIME_INPUT_COMPOSITION_CANDIDATE_2026-09-15.zip'
+      - 'KAIROS_ANALYSIS_SAVED_TRADE_OVERLAY_WORKSPACE_MOUNT_CANDIDATE_2026-09-17.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_ANALYSIS_SAVED_TRADE_RISK_REWARD_SNAPSHOT_EXTENT_PROJECTION_CANDIDATE_2026-09-15.zip
-  CANDIDATE_ZIP: KAIROS_ANALYSIS_SAVED_TRADE_OVERLAY_RUNTIME_INPUT_COMPOSITION_CANDIDATE_2026-09-15.zip
+  BASE_ZIP: KAIROS_ANALYSIS_SAVED_TRADE_OVERLAY_RUNTIME_INPUT_COMPOSITION_CANDIDATE_2026-09-15.zip
+  CANDIDATE_ZIP: KAIROS_ANALYSIS_SAVED_TRADE_OVERLAY_WORKSPACE_MOUNT_CANDIDATE_2026-09-17.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 3915905, 'c9fb84e8a982794c06e5e2366bfb4506cf61b1130ee1c1aabde29f3fb3e881a5'),
-            ('CANDIDATE_ZIP', 3919996, '07ce270b7f4821eda51261e7ded3f53c339dbe5d615430f88d2c205c46de51cd'),
+            ('BASE_ZIP', 3919996, '07ce270b7f4821eda51261e7ded3f53c339dbe5d615430f88d2c205c46de51cd'),
+            ('CANDIDATE_ZIP', 3841960, '78b0fcab2d276c3a0a8fa1672519097f332911896fdd05e51c83b53f0b050cbc'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact Analysis saved trade overlay runtime input composition scope from Gate463
+      - name: Confirm exact Analysis saved trade overlay workspace mount scope from Gate464
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,19 +79,18 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'docs/KAIROS_ANALYSIS_SAVED_TRADE_OVERLAY_RUNTIME_INPUT_COMPOSITION.md',
+            'docs/KAIROS_ANALYSIS_SAVED_TRADE_OVERLAY_WORKSPACE_MOUNT.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
             'package.json',
-            'scripts/verify-analysis-saved-trade-overlay-runtime-input-composition.mjs',
-            'src/app/AnalysisSavedTradeOverlayLiveCandleCanvas.tsx',
-            'src/app/useAnalysisSavedTradeOverlayPresentationSession.ts',
-            'tests/analysis-saved-trade-overlay-live-candle-composition.test.tsx',
-            'tests/analysis-saved-trade-overlay-react-binding.test.tsx',
+            'scripts/verify-analysis-saved-trade-overlay-workspace-mount.mjs',
+            'scripts/verify-analysis-saved-trade-workspace-mount.mjs',
+            'src/app/AnalysisHistoryWorkspace.tsx',
+            'tests/analysis-history-workspace.test.tsx',
           }
           if changed != expected or removed:
-            print('Analysis saved trade overlay runtime input composition scope mismatch', file=sys.stderr)
+            print('Analysis saved trade overlay workspace mount scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -861,6 +860,27 @@ jobs:
             tests/analysis-saved-trade-marker-presentation-session.test.ts \
             tests/analysis-saved-trade-overlay-renderer-session.test.ts
 
+      - name: Analysis saved trade overlay workspace mount
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          npm run verify:analysis-saved-trade-overlay-workspace-mount
+          npm run verify:analysis-saved-trade-workspace-mount
+          npm run verify:analysis-live-candle-workspace-mount
+          npm run verify:analysis-history-workspace
+          npm run verify:analysis-saved-trade-overlay-runtime-input-composition
+          npm run verify:analysis-saved-trade-overlay-live-candle-composition
+          npm run verify:analysis-saved-trade-live-candle-composition
+          npm run verify:analysis-saved-trade-marker-evidence-presentation
+          npx vitest run \
+            tests/analysis-history-workspace.test.tsx \
+            tests/analysis-saved-trade-overlay-live-candle-composition.test.tsx \
+            tests/analysis-saved-trade-overlay-react-binding.test.tsx \
+            tests/analysis-saved-trade-live-candle-composition.test.tsx \
+            tests/analysis-saved-trade-marker-evidence-presentation.test.tsx \
+            tests/analysis-live-candle-canvas-presentation.test.tsx \
+            tests/analysis-live-candle-react-binding.test.tsx \
+            tests/analysis-live-candle-route-session.test.ts
+
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
         run: npm run typecheck
@@ -946,6 +966,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:analysis-saved-trade-overlay-workspace-mount',
             'verify:analysis-saved-trade-overlay-runtime-input-composition',
             'verify:analysis-saved-trade-risk-reward-snapshot-extent-projection',
             'verify:analysis-saved-trade-risk-reward-theme-style-source',
@@ -1054,6 +1075,7 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_SAVED_TRADE_OVERLAY_WORKSPACE_MOUNT.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_SAVED_TRADE_OVERLAY_RUNTIME_INPUT_COMPOSITION.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_SAVED_TRADE_RISK_REWARD_SNAPSHOT_EXTENT_PROJECTION.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_SAVED_TRADE_RISK_REWARD_THEME_STYLE_SOURCE.md
