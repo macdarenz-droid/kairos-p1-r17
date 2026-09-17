@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — Analysis Ink Presentation
+name: Kairos Controlled Roadmap Gate — Risk/Reward Ratio Projection
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_ANALYSIS_INK_PRESENTATION_CANDIDATE_2026-09-17.zip'
+      - 'KAIROS_ANALYSIS_SAVED_TRADE_RISK_REWARD_RATIO_PROJECTION_CANDIDATE_2026-09-17.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_JOURNAL_INK_PRESENTATION_CANDIDATE_2026-09-17-R1.zip
-  CANDIDATE_ZIP: KAIROS_ANALYSIS_INK_PRESENTATION_CANDIDATE_2026-09-17.zip
+  BASE_ZIP: KAIROS_ANALYSIS_INK_PRESENTATION_CANDIDATE_2026-09-17.zip
+  CANDIDATE_ZIP: KAIROS_ANALYSIS_SAVED_TRADE_RISK_REWARD_RATIO_PROJECTION_CANDIDATE_2026-09-17.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 3886892, '852aeeaa4d6bf7eafc38de252a52e4d07535212b4e3414adc78dbc88c7632c4b'),
-            ('CANDIDATE_ZIP', 3892168, '7202cbd0c0a8c4d50ef0a781c7386577bf54f44593ffd2034f59f1a06d4775b3'),
+            ('BASE_ZIP', 3892168, '7202cbd0c0a8c4d50ef0a781c7386577bf54f44593ffd2034f59f1a06d4775b3'),
+            ('CANDIDATE_ZIP', 3898877, 'cc188ee190977d63778c5cbe77ab3bd7b47e33359fc62fae73c44d3e42dca46d'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact Analysis Ink presentation scope from Gate470 R1
+      - name: Confirm exact Risk/Reward ratio projection scope from Gate471
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,17 +79,17 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'docs/KAIROS_ANALYSIS_INK_PRESENTATION.md',
+            'docs/KAIROS_ANALYSIS_SAVED_TRADE_RISK_REWARD_RATIO_PROJECTION.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
             'package.json',
-            'scripts/verify-analysis-ink-presentation.mjs',
-            'src/app/analysisHistory.css',
-            'src/app/tradeReview.css',
+            'scripts/verify-analysis-saved-trade-risk-reward-ratio-projection.mjs',
+            'src/app/analysisSavedTradeRiskRewardRatioProjection.ts',
+            'tests/analysis-saved-trade-risk-reward-ratio-projection.test.ts',
           }
           if changed != expected or removed:
-            print('Analysis Ink presentation scope mismatch', file=sys.stderr)
+            print('Risk/Reward ratio projection scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -989,6 +989,19 @@ jobs:
             tests/analysis-live-candle-status-presentation.test.ts \
             tests/trade-review.test.tsx
 
+      - name: Saved-trade Risk/Reward ratio projection
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          npm run verify:analysis-saved-trade-risk-reward-ratio-projection
+          npm run verify:analysis-saved-trade-risk-reward-snapshot-extent-projection
+          npm run verify:analysis-saved-trade-risk-reward-theme-style-source
+          npm run verify:analysis-saved-trade-overlay-runtime-input-composition
+          npx vitest run \
+            tests/analysis-saved-trade-risk-reward-ratio-projection.test.ts \
+            tests/analysis-saved-trade-risk-reward-reference-projection.test.ts \
+            tests/analysis-saved-trade-risk-reward-snapshot-extent-projection.test.ts \
+            tests/analysis-saved-trade-overlay-live-candle-composition.test.tsx
+
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
         run: npm run typecheck
@@ -1075,6 +1088,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:analysis-saved-trade-risk-reward-ratio-projection',
             'verify:analysis-ink-presentation',
             'verify:journal-ink-presentation',
             'verify:home-dashboard-swipe-pager',
@@ -1190,6 +1204,7 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_SAVED_TRADE_RISK_REWARD_RATIO_PROJECTION.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_INK_PRESENTATION.md
             .gate-candidate/kairos_p76/docs/KAIROS_JOURNAL_INK_PRESENTATION.md
             .gate-candidate/kairos_p76/docs/KAIROS_HOME_DASHBOARD_SWIPE_PAGER.md
