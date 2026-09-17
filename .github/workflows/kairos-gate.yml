@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — Home Swipe Pager
+name: Kairos Controlled Roadmap Gate — Journal Ink Presentation
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_HOME_DASHBOARD_SWIPE_PAGER_CANDIDATE_2026-09-17.zip'
+      - 'KAIROS_JOURNAL_INK_PRESENTATION_CANDIDATE_2026-09-17.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_INK_BUBBLE_PRESENTATION_CANDIDATE_2026-09-17.zip
-  CANDIDATE_ZIP: KAIROS_HOME_DASHBOARD_SWIPE_PAGER_CANDIDATE_2026-09-17.zip
+  BASE_ZIP: KAIROS_HOME_DASHBOARD_SWIPE_PAGER_CANDIDATE_2026-09-17.zip
+  CANDIDATE_ZIP: KAIROS_JOURNAL_INK_PRESENTATION_CANDIDATE_2026-09-17.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 3865083, '2136fd19582a7294d0b74370d29370b5688d87c9974f6a81551251b5b1264ddf'),
-            ('CANDIDATE_ZIP', 3881540, '5d91d56d56c4a6adb7ae72d8a5e33c98508ecfbabdc4620ede8c7c278892e52d'),
+            ('BASE_ZIP', 3881540, '5d91d56d56c4a6adb7ae72d8a5e33c98508ecfbabdc4620ede8c7c278892e52d'),
+            ('CANDIDATE_ZIP', 3886163, '7323b946d5ee257ca764804a300d264b9bee51b80f677ecdacbbf6191ddfec6f'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact Home swipe pager scope from Gate468
+      - name: Confirm exact Journal Ink presentation scope from Gate469
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -82,20 +82,13 @@ jobs:
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
-            'docs/KAIROS_HOME_DASHBOARD_SWIPE_PAGER.md',
+            'docs/KAIROS_JOURNAL_INK_PRESENTATION.md',
             'package.json',
-            'scripts/test-home-dashboard-swipe-browser.mjs',
-            'scripts/verify-home-dashboard-swipe-pager.mjs',
-            'src/app/HomeDashboardSwipePager.tsx',
-            'src/app/HomeRoute.tsx',
-            'src/app/homeDashboardSwipeGesture.ts',
-            'src/app/homeDashboardSwipePager.css',
-            'src/app/homeDashboardYourTrades.css',
-            'tests/home-dashboard-swipe-gesture.test.ts',
-            'tests/home-dashboard-swipe-pager.test.tsx',
+            'scripts/verify-journal-ink-presentation.mjs',
+            'src/app/journalRoute.css',
           }
           if changed != expected or removed:
-            print('Home swipe pager scope mismatch', file=sys.stderr)
+            print('Journal Ink presentation scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -959,6 +952,26 @@ jobs:
             tests/home-dashboard-live-crypto-bubble-home-route-text-runtime-integration-foundation.test.tsx \
             tests/router.test.tsx
 
+      - name: Journal Ink presentation
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          npm run verify:journal-ink-presentation
+          node scripts/verify-journal-theme-tokens.mjs
+          node scripts/verify-p13-14-streak-presentation.mjs
+          node scripts/verify-p13-16-performance-summary-presentation.mjs
+          node scripts/verify-p14-6-journal-trade-map-marker-semantics.mjs
+          node scripts/verify-p14-7-journal-trade-map-execution-time.mjs
+          node scripts/verify-p14-8-journal-trade-map-motion-semantics.mjs
+          node scripts/verify-p10-manual-trade-journal-route.mjs
+          node scripts/verify-p12-journal-history-route-repair.mjs
+          npm run verify:p2:design-system
+          npm run verify:p2:accessibility
+          npx vitest run \
+            tests/manual-trade-journal-route.test.tsx \
+            tests/journal-history-route.test.tsx \
+            tests/journal-visual-pnl-presentation.test.tsx \
+            tests/journal-trade-map-presentation.test.tsx
+
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
         run: npm run typecheck
@@ -1045,6 +1058,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:journal-ink-presentation',
             'verify:home-dashboard-swipe-pager',
             'verify:ink-bubble-presentation',
             'verify:app-shell-ink',
@@ -1158,6 +1172,7 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/docs/KAIROS_JOURNAL_INK_PRESENTATION.md
             .gate-candidate/kairos_p76/docs/KAIROS_HOME_DASHBOARD_SWIPE_PAGER.md
             .gate-candidate/kairos_p76/docs/KAIROS_INK_BUBBLE_PRESENTATION.md
             .gate-candidate/kairos_p76/docs/KAIROS_APP_SHELL_INK.md
