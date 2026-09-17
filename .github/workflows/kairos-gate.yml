@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — P22.3 Time-Assisted Snapshot Preview
+name: Kairos Controlled Roadmap Gate — P22.4 Time-Assisted Estimate Markers
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_ANALYSIS_TIME_ASSISTED_SNAPSHOT_PREVIEW_CANDIDATE_2026-09-17.zip'
+      - 'KAIROS_ANALYSIS_TIME_ASSISTED_ESTIMATE_MARKERS_CANDIDATE_2026-09-17.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P22_2_TIME_ASSISTED_TRADE_SNAPSHOT_COMPOSITION_CANDIDATE_2026-09-17.zip
-  CANDIDATE_ZIP: KAIROS_ANALYSIS_TIME_ASSISTED_SNAPSHOT_PREVIEW_CANDIDATE_2026-09-17.zip
+  BASE_ZIP: KAIROS_ANALYSIS_TIME_ASSISTED_SNAPSHOT_PREVIEW_CANDIDATE_2026-09-17.zip
+  CANDIDATE_ZIP: KAIROS_ANALYSIS_TIME_ASSISTED_ESTIMATE_MARKERS_CANDIDATE_2026-09-17.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 4001835, '2aa51d0e2b9c670eae627effbde18f373d571ca2a890aa92816cc6e2089d6260'),
-            ('CANDIDATE_ZIP', 4015932, '8ed4ea53731edafda0bfb310369547f71552bfe660cb5989f6db5150e34e9e0a'),
+            ('BASE_ZIP', 4015932, '8ed4ea53731edafda0bfb310369547f71552bfe660cb5989f6db5150e34e9e0a'),
+            ('CANDIDATE_ZIP', 4034379, '2c948a64672a154dd2709e6d2a5fe1c4e2b2289a1f02e1ae7ac6a2859110015a'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact P22.3 time-assisted snapshot preview scope from Gate481
+      - name: Confirm exact P22.4 time-assisted estimate markers scope from Gate482
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,21 +79,27 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'docs/KAIROS_ANALYSIS_TIME_ASSISTED_SNAPSHOT_PREVIEW.md',
+            'docs/KAIROS_ANALYSIS_TIME_ASSISTED_ESTIMATE_MARKERS.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
             'package.json',
-            'scripts/test-analysis-time-assisted-snapshot-browser.mjs',
+            'scripts/test-analysis-time-assisted-markers-browser.mjs',
+            'scripts/verify-analysis-drawing-tools-mount.mjs',
+            'scripts/verify-analysis-time-assisted-estimate-markers.mjs',
             'scripts/verify-analysis-time-assisted-snapshot-preview.mjs',
-            'scripts/verify-p22-2-time-assisted-trade-snapshot-composition.mjs',
             'src/app/AnalysisHistoryWorkspace.tsx',
             'src/app/AnalysisTimeAssistedSnapshotControls.tsx',
-            'src/app/analysisHistory.css',
-            'tests/analysis-time-assisted-snapshot-preview.test.tsx',
+            'src/app/analysisDrawingToolsComposition.ts',
+            'src/app/analysisTimeAssistedMarkerBinding.ts',
+            'src/app/analysisTimeAssistedMarkerSession.ts',
+            'src/app/useAnalysisDrawingTools.ts',
+            'src/app/useAnalysisTimeAssistedMarkers.ts',
+            'tests/analysis-time-assisted-marker-session.test.ts',
+            'tests/analysis-time-assisted-markers-mount.test.tsx',
           }
           if changed != expected or removed:
-            print('P22.3 time-assisted snapshot preview scope mismatch', file=sys.stderr)
+            print('P22.4 time-assisted estimate markers scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -1145,6 +1151,20 @@ jobs:
             tests/time-assisted-trade-snapshot.test.ts \
             tests/analysis-history-workspace.test.tsx
 
+      - name: P22.4 time-assisted estimate markers
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          npm run verify:analysis-time-assisted-estimate-markers
+          npm run verify:analysis-time-assisted-snapshot-preview
+          npm run verify:analysis-drawing-tools-mount
+          npm run verify:analysis-saved-trade-overlay-workspace-mount
+          npm run verify:analysis-saved-trade-renderer-marker-session
+          npx vitest run \
+            tests/analysis-time-assisted-marker-session.test.ts \
+            tests/analysis-time-assisted-markers-mount.test.tsx \
+            tests/analysis-drawing-tools-mount.test.tsx \
+            tests/analysis-time-assisted-snapshot-preview.test.tsx
+
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
         run: npm run typecheck
@@ -1222,6 +1242,7 @@ jobs:
           node scripts/test-analysis-drawing-tools-edit-browser.mjs
           node scripts/test-analysis-saved-analysis-browser.mjs
           node scripts/test-analysis-time-assisted-snapshot-browser.mjs
+          node scripts/test-analysis-time-assisted-markers-browser.mjs
 
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
@@ -1236,6 +1257,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:analysis-time-assisted-estimate-markers',
             'verify:analysis-time-assisted-snapshot-preview',
             'verify:p22:2-time-assisted-trade-snapshot-composition',
             'verify:p22:1-estimated-market-reference-foundation',
@@ -1362,6 +1384,8 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_TIME_ASSISTED_ESTIMATE_MARKERS.md
+            .gate-candidate/kairos_p76/.time-assisted-markers-evidence/
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_TIME_ASSISTED_SNAPSHOT_PREVIEW.md
             .gate-candidate/kairos_p76/.time-assisted-evidence/
             .gate-candidate/kairos_p76/KAIROS_P22_2_TIME_ASSISTED_TRADE_SNAPSHOT_COMPOSITION_REPORT_2026-09-17.md
