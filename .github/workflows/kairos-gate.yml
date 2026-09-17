@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — Saved-Trade Position Box
+name: Kairos Controlled Roadmap Gate — Production Drawing-Binding Seam
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_ANALYSIS_SAVED_TRADE_POSITION_BOX_CANDIDATE_2026-09-17.zip'
+      - 'KAIROS_LIGHTWEIGHT_CHARTS_V5_PRODUCTION_DRAWING_BINDING_SEAM_CANDIDATE_2026-09-17.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_ANALYSIS_SAVED_TRADE_RISK_REWARD_RATIO_PROJECTION_CANDIDATE_2026-09-17.zip
-  CANDIDATE_ZIP: KAIROS_ANALYSIS_SAVED_TRADE_POSITION_BOX_CANDIDATE_2026-09-17.zip
+  BASE_ZIP: KAIROS_ANALYSIS_SAVED_TRADE_POSITION_BOX_CANDIDATE_2026-09-17.zip
+  CANDIDATE_ZIP: KAIROS_LIGHTWEIGHT_CHARTS_V5_PRODUCTION_DRAWING_BINDING_SEAM_CANDIDATE_2026-09-17.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 3898877, 'cc188ee190977d63778c5cbe77ab3bd7b47e33359fc62fae73c44d3e42dca46d'),
-            ('CANDIDATE_ZIP', 3913657, '2da5ddccf149ddee5fbe2482ff4e74ab2cf6c68eab528b091a5c722b4b65bfe0'),
+            ('BASE_ZIP', 3913657, '2da5ddccf149ddee5fbe2482ff4e74ab2cf6c68eab528b091a5c722b4b65bfe0'),
+            ('CANDIDATE_ZIP', 3920429, '2f9dc76439f3a6e48860017f03093d2b849af248035f76149c51052236609365'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact saved-trade position box scope from Gate472
+      - name: Confirm exact production drawing-binding seam scope from Gate473
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,22 +79,17 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'docs/KAIROS_ANALYSIS_SAVED_TRADE_POSITION_BOX.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
+            'docs/KAIROS_LIGHTWEIGHT_CHARTS_V5_PRODUCTION_DRAWING_BINDING_SEAM.md',
             'package.json',
-            'scripts/test-analysis-position-box-browser.mjs',
-            'scripts/verify-analysis-saved-trade-position-box.mjs',
-            'src/app/AnalysisLiveCandleCanvas.tsx',
-            'src/app/AnalysisSavedTradeOverlayLiveCandleCanvas.tsx',
-            'src/app/AnalysisSavedTradeRiskRewardEvidencePresentation.tsx',
-            'src/app/analysisHistory.css',
-            'src/app/analysisSavedTradePositionBoxFormatting.ts',
-            'tests/analysis-saved-trade-position-box.test.tsx',
+            'scripts/verify-lightweight-charts-v5-production-drawing-binding-seam.mjs',
+            'src/features/chart/lightweightChartsV5ProductionRenderer.ts',
+            'tests/lightweight-charts-v5-production-drawing-binding-seam.test.ts',
           }
           if changed != expected or removed:
-            print('Saved-trade position box scope mismatch', file=sys.stderr)
+            print('Production drawing-binding seam scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -1030,6 +1025,22 @@ jobs:
             tests/analysis-saved-trade-live-candle-composition.test.tsx \
             tests/analysis-history-workspace.test.tsx
 
+      - name: Production drawing-binding seam
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          npm run verify:lightweight-charts-v5-production-drawing-binding-seam
+          npm run verify:p17:10-lightweight-charts-v5-production-renderer
+          npm run verify:p17:11-responsive-chart-sizing
+          npm run verify:p17:16-chart-engine-system-closure
+          npm run verify:live-candle-production-renderer-binding
+          npm run verify:analysis-saved-trade-renderer-marker-session
+          npm run verify:analysis-history-workspace
+          npx vitest run \
+            tests/lightweight-charts-v5-production-drawing-binding-seam.test.ts \
+            tests/lightweight-charts-v5-production-renderer.test.ts \
+            tests/projected-incremental-candle-renderer.test.ts \
+            tests/analysis-saved-trade-position-box.test.tsx
+
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
         run: npm run typecheck
@@ -1117,6 +1128,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:lightweight-charts-v5-production-drawing-binding-seam',
             'verify:analysis-saved-trade-position-box',
             'verify:analysis-saved-trade-risk-reward-ratio-projection',
             'verify:analysis-ink-presentation',
@@ -1234,6 +1246,7 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/docs/KAIROS_LIGHTWEIGHT_CHARTS_V5_PRODUCTION_DRAWING_BINDING_SEAM.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_SAVED_TRADE_POSITION_BOX.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_SAVED_TRADE_RISK_REWARD_RATIO_PROJECTION.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_INK_PRESENTATION.md
