@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — P22.1 Estimated Market Reference Foundation
+name: Kairos Controlled Roadmap Gate — P22.2 Time-Assisted Trade Snapshot Composition
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P22_1_ESTIMATED_MARKET_REFERENCE_FOUNDATION_CANDIDATE_2026-09-17.zip'
+      - 'KAIROS_P22_2_TIME_ASSISTED_TRADE_SNAPSHOT_COMPOSITION_CANDIDATE_2026-09-17.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P21_28_CHART_WORKSPACE_INTEGRATION_CLOSURE_CANDIDATE_2026-09-17.zip
-  CANDIDATE_ZIP: KAIROS_P22_1_ESTIMATED_MARKET_REFERENCE_FOUNDATION_CANDIDATE_2026-09-17.zip
+  BASE_ZIP: KAIROS_P22_1_ESTIMATED_MARKET_REFERENCE_FOUNDATION_CANDIDATE_2026-09-17.zip
+  CANDIDATE_ZIP: KAIROS_P22_2_TIME_ASSISTED_TRADE_SNAPSHOT_COMPOSITION_CANDIDATE_2026-09-17.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 3986020, '0705244ac35a1c202ba3ff1a2543593e7fcaef5d4430e2aef2432c4581ea6daa'),
-            ('CANDIDATE_ZIP', 3994596, '0565e6c3e84f3a2d982b52310a55f52e5b2b4c6ee53dd30ed5cb1560d5af1848'),
+            ('BASE_ZIP', 3994596, '0565e6c3e84f3a2d982b52310a55f52e5b2b4c6ee53dd30ed5cb1560d5af1848'),
+            ('CANDIDATE_ZIP', 4001835, '2aa51d0e2b9c670eae627effbde18f373d571ca2a890aa92816cc6e2089d6260'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact P22.1 estimated market reference foundation scope from Gate479
+      - name: Confirm exact P22.2 time-assisted trade snapshot composition scope from Gate480
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,18 +79,19 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'KAIROS_P22_1_ESTIMATED_MARKET_REFERENCE_FOUNDATION_REPORT_2026-09-17.md',
+            'KAIROS_P22_2_TIME_ASSISTED_TRADE_SNAPSHOT_COMPOSITION_REPORT_2026-09-17.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
             'package.json',
             'scripts/verify-p22-1-estimated-market-reference-foundation.mjs',
-            'src/application/market-reference/estimatedMarketReference.ts',
+            'scripts/verify-p22-2-time-assisted-trade-snapshot-composition.mjs',
             'src/application/market-reference/index.ts',
-            'tests/estimated-market-reference-foundation.test.ts',
+            'src/application/market-reference/timeAssistedTradeSnapshot.ts',
+            'tests/time-assisted-trade-snapshot.test.ts',
           }
           if changed != expected or removed:
-            print('P22.1 estimated market reference foundation scope mismatch', file=sys.stderr)
+            print('P22.2 time-assisted trade snapshot composition scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -1120,6 +1121,15 @@ jobs:
             tests/estimated-market-reference-foundation.test.ts \
             tests/binance-spot-candle-history.test.ts
 
+      - name: P22.2 time-assisted trade snapshot composition
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          npm run verify:p22:2-time-assisted-trade-snapshot-composition
+          npm run verify:p22:1-estimated-market-reference-foundation
+          npx vitest run \
+            tests/time-assisted-trade-snapshot.test.ts \
+            tests/estimated-market-reference-foundation.test.ts
+
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
         run: npm run typecheck
@@ -1210,6 +1220,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:p22:2-time-assisted-trade-snapshot-composition',
             'verify:p22:1-estimated-market-reference-foundation',
             'verify:p21:28-chart-workspace-integration-closure',
             'verify:analysis-saved-analysis-round-trip',
@@ -1334,6 +1345,7 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/KAIROS_P22_2_TIME_ASSISTED_TRADE_SNAPSHOT_COMPOSITION_REPORT_2026-09-17.md
             .gate-candidate/kairos_p76/KAIROS_P22_1_ESTIMATED_MARKET_REFERENCE_FOUNDATION_REPORT_2026-09-17.md
             .gate-candidate/kairos_p76/KAIROS_P21_28_CHART_WORKSPACE_INTEGRATION_CLOSURE_REPORT_2026-09-17.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_SAVED_ANALYSIS_ROUND_TRIP.md
