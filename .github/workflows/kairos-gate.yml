@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — P23.1 Saved Time-Assisted Snapshot Contract Foundation
+name: Kairos Controlled Roadmap Gate — P23.2 Saved Time-Assisted Snapshot Persistence Foundation
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P23_1_SAVED_TIME_ASSISTED_SNAPSHOT_CONTRACT_FOUNDATION_CANDIDATE_2026-09-18.zip'
+      - 'KAIROS_P23_2_SAVED_TIME_ASSISTED_SNAPSHOT_PERSISTENCE_FOUNDATION_CANDIDATE_2026-09-18.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P22_6_TIME_ASSISTED_TRADE_SNAPSHOT_CLOSURE_CANDIDATE_2026-09-17.zip
-  CANDIDATE_ZIP: KAIROS_P23_1_SAVED_TIME_ASSISTED_SNAPSHOT_CONTRACT_FOUNDATION_CANDIDATE_2026-09-18.zip
+  BASE_ZIP: KAIROS_P23_1_SAVED_TIME_ASSISTED_SNAPSHOT_CONTRACT_FOUNDATION_CANDIDATE_2026-09-18.zip
+  CANDIDATE_ZIP: KAIROS_P23_2_SAVED_TIME_ASSISTED_SNAPSHOT_PERSISTENCE_FOUNDATION_CANDIDATE_2026-09-18.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 4055087, 'd1f17c37a3f559810193437e1e86c2fc5c58c31d42f5d90a7e4820e40cf8a044'),
-            ('CANDIDATE_ZIP', 4061879, '3e49a7af9fd26353ddb76135a9e12789e029a31bad3234280eb7febc009978e9'),
+            ('BASE_ZIP', 4061879, '3e49a7af9fd26353ddb76135a9e12789e029a31bad3234280eb7febc009978e9'),
+            ('CANDIDATE_ZIP', 4072784, 'b8e9aa3c4524d55a1c45ece89133fd656c33bf4fc022948ccadfe5ef0ce01e70'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact P23.1 saved time-assisted snapshot contract scope from Gate485
+      - name: Confirm exact P23.2 saved time-assisted snapshot persistence scope from Gate486
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,18 +79,50 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'KAIROS_P23_1_SAVED_TIME_ASSISTED_SNAPSHOT_CONTRACT_FOUNDATION_REPORT_2026-09-18.md',
+            'KAIROS_P23_2_SAVED_TIME_ASSISTED_SNAPSHOT_PERSISTENCE_FOUNDATION_REPORT_2026-09-18.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
             'package.json',
+            'scripts/verify-p12-journal-history-status-index-backup-regression-repair.mjs',
+            'scripts/verify-p12-journal-history-status-index-verifier-compatibility-repair.mjs',
+            'scripts/verify-p12-journal-history-status-index.mjs',
+            'scripts/verify-p20-2-saved-analysis-persistence-foundation.mjs',
             'scripts/verify-p23-1-saved-time-assisted-snapshot-contract-foundation.mjs',
-            'src/app/savedTimeAssistedSnapshotContract.ts',
-            'src/app/savedTimeAssistedSnapshotIdentity.ts',
-            'tests/saved-time-assisted-snapshot-contract.test.ts',
+            'scripts/verify-p23-2-saved-time-assisted-snapshot-persistence-foundation.mjs',
+            'scripts/verify-p6-backup-envelope.mjs',
+            'scripts/verify-p9-trade-persistence.mjs',
+            'src/data/backup/backupEnvelope.ts',
+            'src/data/backup/backupFormat.ts',
+            'src/data/backup/backupSerialization.ts',
+            'src/data/backup/backupSnapshot.ts',
+            'src/data/backup/backupValidation.ts',
+            'src/data/backup/restorePreflight.ts',
+            'src/data/backup/restoreReplacement.ts',
+            'src/data/backup/restoreVerification.ts',
+            'src/data/database/KairosDatabase.ts',
+            'src/data/database/index.ts',
+            'src/data/database/integrity.ts',
+            'src/data/database/migrations.ts',
+            'src/data/database/schema.ts',
+            'src/data/repositories/SavedTimeAssistedSnapshotRepository.ts',
+            'src/data/repositories/index.ts',
+            'tests/activation-persistence.test.ts',
+            'tests/backup-envelope.test.ts',
+            'tests/backup-snapshot.test.ts',
+            'tests/database-kernel.test.ts',
+            'tests/database-migrations.test.ts',
+            'tests/database-transactions.test.ts',
+            'tests/metadata-repository.test.ts',
+            'tests/restore-preflight.test.ts',
+            'tests/restore-replacement.test.ts',
+            'tests/restore-verification.test.ts',
+            'tests/saved-analysis-persistence.test.ts',
+            'tests/saved-time-assisted-snapshot-persistence.test.ts',
+            'tests/trade-persistence.test.ts',
           }
           if changed != expected or removed:
-            print('P23.1 saved time-assisted snapshot contract scope mismatch', file=sys.stderr)
+            print('P23.2 saved time-assisted snapshot persistence scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -1181,15 +1213,30 @@ jobs:
           npm run verify:analysis-time-assisted-window-navigation
           npm run verify:p21:28-chart-workspace-integration-closure
 
-      - name: P23.1 saved time-assisted snapshot contract foundation
+      - name: P23.2 saved time-assisted snapshot persistence foundation
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p23:2-saved-time-assisted-snapshot-persistence-foundation
           npm run verify:p23:1-saved-time-assisted-snapshot-contract-foundation
-          npm run verify:p22:6-time-assisted-trade-snapshot-closure
-          npm run verify:p20:1-saved-analysis-contract-foundation
+          npm run verify:p20:2-saved-analysis-persistence-foundation
+          npm run verify:p9:trade-persistence
+          npm run verify:p6:backup-envelope
+          npm run verify:p12:journal-history-status-index
           npx vitest run \
+            tests/saved-time-assisted-snapshot-persistence.test.ts \
             tests/saved-time-assisted-snapshot-contract.test.ts \
-            tests/time-assisted-trade-snapshot.test.ts
+            tests/saved-analysis-persistence.test.ts \
+            tests/backup-envelope.test.ts \
+            tests/backup-snapshot.test.ts \
+            tests/database-kernel.test.ts \
+            tests/database-migrations.test.ts \
+            tests/database-transactions.test.ts \
+            tests/metadata-repository.test.ts \
+            tests/restore-preflight.test.ts \
+            tests/restore-replacement.test.ts \
+            tests/restore-verification.test.ts \
+            tests/activation-persistence.test.ts \
+            tests/trade-persistence.test.ts
 
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
@@ -1284,6 +1331,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:p23:2-saved-time-assisted-snapshot-persistence-foundation',
             'verify:p23:1-saved-time-assisted-snapshot-contract-foundation',
             'verify:p22:6-time-assisted-trade-snapshot-closure',
             'verify:analysis-time-assisted-window-navigation',
@@ -1414,6 +1462,7 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/KAIROS_P23_2_SAVED_TIME_ASSISTED_SNAPSHOT_PERSISTENCE_FOUNDATION_REPORT_2026-09-18.md
             .gate-candidate/kairos_p76/KAIROS_P23_1_SAVED_TIME_ASSISTED_SNAPSHOT_CONTRACT_FOUNDATION_REPORT_2026-09-18.md
             .gate-candidate/kairos_p76/KAIROS_P22_6_TIME_ASSISTED_TRADE_SNAPSHOT_CLOSURE_REPORT_2026-09-17.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_TIME_ASSISTED_WINDOW_NAVIGATION.md
