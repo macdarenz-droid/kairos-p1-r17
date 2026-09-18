@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — P23.6 Durable Time-Assisted Snapshot Provenance Closure
+name: Kairos Controlled Roadmap Gate — P24.1 Saved Record Delete Commands
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P23_6_DURABLE_TIME_ASSISTED_SNAPSHOT_PROVENANCE_CLOSURE_CANDIDATE_2026-09-18.zip'
+      - 'KAIROS_P24_1_SAVED_RECORD_DELETE_COMMANDS_CANDIDATE_2026-09-18.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P23_5_SAVED_TIME_ASSISTED_SNAPSHOT_PREVIEW_ROUND_TRIP_CANDIDATE_2026-09-18.zip
-  CANDIDATE_ZIP: KAIROS_P23_6_DURABLE_TIME_ASSISTED_SNAPSHOT_PROVENANCE_CLOSURE_CANDIDATE_2026-09-18.zip
+  BASE_ZIP: KAIROS_P23_6_DURABLE_TIME_ASSISTED_SNAPSHOT_PROVENANCE_CLOSURE_CANDIDATE_2026-09-18.zip
+  CANDIDATE_ZIP: KAIROS_P24_1_SAVED_RECORD_DELETE_COMMANDS_CANDIDATE_2026-09-18.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 4105371, '46cdc8d912b6dc0bf8ce50e4255586814acfe6c1525309f62ea38b2fd6e0113b'),
-            ('CANDIDATE_ZIP', 4110281, 'e91ea96110521a65cdb89ab5723ff2361cc24ccef5c390da1a44b92407f59f2e'),
+            ('BASE_ZIP', 4110281, 'e91ea96110521a65cdb89ab5723ff2361cc24ccef5c390da1a44b92407f59f2e'),
+            ('CANDIDATE_ZIP', 4117874, '001e369bfc65989ea131d0d009a6b540b1e380765e1e9c43418d76dd70d0163a'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact P23.6 closure scope from Gate490
+      - name: Confirm exact P24.1 saved record delete commands scope from Gate491
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,15 +79,20 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'KAIROS_P23_6_DURABLE_TIME_ASSISTED_SNAPSHOT_PROVENANCE_CLOSURE_REPORT_2026-09-18.md',
+            'KAIROS_P24_1_SAVED_RECORD_DELETE_COMMANDS_REPORT_2026-09-18.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
             'package.json',
-            'scripts/verify-p23-6-durable-time-assisted-snapshot-provenance-closure.mjs',
+            'scripts/verify-p24-1-saved-record-delete-commands.mjs',
+            'src/application/saved-analysis/deleteSavedAnalysis.ts',
+            'src/application/saved-analysis/index.ts',
+            'src/application/saved-time-assisted-snapshot/deleteSavedTimeAssistedSnapshot.ts',
+            'src/application/saved-time-assisted-snapshot/index.ts',
+            'tests/saved-record-delete-commands.test.ts',
           }
           if changed != expected or removed:
-            print('P23.6 closure scope mismatch', file=sys.stderr)
+            print('P24.1 saved record delete commands scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -1178,22 +1183,21 @@ jobs:
           npm run verify:analysis-time-assisted-window-navigation
           npm run verify:p21:28-chart-workspace-integration-closure
 
-      - name: P23.6 durable time-assisted snapshot provenance closure
+      - name: P24.1 saved record delete commands
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p24:1-saved-record-delete-commands
           npm run verify:p23:6-durable-time-assisted-snapshot-provenance-closure
-          npm run verify:p23:5-saved-time-assisted-snapshot-preview-round-trip
-          npm run verify:p23:4-saved-time-assisted-snapshot-application-read
+          npm run verify:p20:3-saved-analysis-application-save
+          npm run verify:p20:4-saved-analysis-application-load
           npm run verify:p23:3-saved-time-assisted-snapshot-application-save
-          npm run verify:p23:2-saved-time-assisted-snapshot-persistence-foundation
-          npm run verify:p23:1-saved-time-assisted-snapshot-contract-foundation
-          npm run verify:p22:6-time-assisted-trade-snapshot-closure
+          npm run verify:p23:4-saved-time-assisted-snapshot-application-read
           npx vitest run \
-            tests/saved-time-assisted-snapshot-contract.test.ts \
-            tests/saved-time-assisted-snapshot-persistence.test.ts \
+            tests/saved-record-delete-commands.test.ts \
+            tests/saved-analysis-save-command.test.ts \
+            tests/saved-analysis-load-query.test.ts \
             tests/saved-time-assisted-snapshot-save-command.test.ts \
-            tests/saved-time-assisted-snapshot-load-query.test.ts \
-            tests/analysis-time-assisted-snapshot-saved-round-trip.test.tsx
+            tests/saved-time-assisted-snapshot-load-query.test.ts
 
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
@@ -1289,6 +1293,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:p24:1-saved-record-delete-commands',
             'verify:p23:6-durable-time-assisted-snapshot-provenance-closure',
             'verify:p23:5-saved-time-assisted-snapshot-preview-round-trip',
             'verify:p23:4-saved-time-assisted-snapshot-application-read',
@@ -1424,6 +1429,7 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/KAIROS_P24_1_SAVED_RECORD_DELETE_COMMANDS_REPORT_2026-09-18.md
             .gate-candidate/kairos_p76/KAIROS_P23_6_DURABLE_TIME_ASSISTED_SNAPSHOT_PROVENANCE_CLOSURE_REPORT_2026-09-18.md
             .gate-candidate/kairos_p76/KAIROS_P23_5_SAVED_TIME_ASSISTED_SNAPSHOT_PREVIEW_ROUND_TRIP_REPORT_2026-09-18.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_SAVED_TIME_ASSISTED_SNAPSHOT_ROUND_TRIP.md
