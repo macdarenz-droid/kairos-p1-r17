@@ -39,7 +39,7 @@ jobs:
 
           for key, size, digest in [
             ('BASE_ZIP', 4072784, 'b8e9aa3c4524d55a1c45ece89133fd656c33bf4fc022948ccadfe5ef0ce01e70'),
-            ('CANDIDATE_ZIP', 4079166, 'ea8c71bc41e5e60d1e752477b584e9c33ab9753551521f50bfa58e3344ea6be2'),
+            ('CANDIDATE_ZIP', 4081341, '2763036bdfaf79464a8829d3bf607c59cad5fbb213e3357643d43991e36e5e8c'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
