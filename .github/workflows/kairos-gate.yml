@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — P22.6 Time-Assisted Trade Snapshot Closure
+name: Kairos Controlled Roadmap Gate — P23.1 Saved Time-Assisted Snapshot Contract Foundation
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P22_6_TIME_ASSISTED_TRADE_SNAPSHOT_CLOSURE_CANDIDATE_2026-09-17.zip'
+      - 'KAIROS_P23_1_SAVED_TIME_ASSISTED_SNAPSHOT_CONTRACT_FOUNDATION_CANDIDATE_2026-09-18.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_ANALYSIS_TIME_ASSISTED_WINDOW_NAVIGATION_CANDIDATE_2026-09-17.zip
-  CANDIDATE_ZIP: KAIROS_P22_6_TIME_ASSISTED_TRADE_SNAPSHOT_CLOSURE_CANDIDATE_2026-09-17.zip
+  BASE_ZIP: KAIROS_P22_6_TIME_ASSISTED_TRADE_SNAPSHOT_CLOSURE_CANDIDATE_2026-09-17.zip
+  CANDIDATE_ZIP: KAIROS_P23_1_SAVED_TIME_ASSISTED_SNAPSHOT_CONTRACT_FOUNDATION_CANDIDATE_2026-09-18.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 4050713, '85717810e8966bb39616f489985f43829031598dcbd13846a4ffb8524dcac765'),
-            ('CANDIDATE_ZIP', 4055087, 'd1f17c37a3f559810193437e1e86c2fc5c58c31d42f5d90a7e4820e40cf8a044'),
+            ('BASE_ZIP', 4055087, 'd1f17c37a3f559810193437e1e86c2fc5c58c31d42f5d90a7e4820e40cf8a044'),
+            ('CANDIDATE_ZIP', 4061879, '3e49a7af9fd26353ddb76135a9e12789e029a31bad3234280eb7febc009978e9'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact P22.6 closure scope from Gate484
+      - name: Confirm exact P23.1 saved time-assisted snapshot contract scope from Gate485
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,20 +79,18 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'KAIROS_P22_6_TIME_ASSISTED_TRADE_SNAPSHOT_CLOSURE_REPORT_2026-09-17.md',
+            'KAIROS_P23_1_SAVED_TIME_ASSISTED_SNAPSHOT_CONTRACT_FOUNDATION_REPORT_2026-09-18.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
             'package.json',
-            'scripts/verify-analysis-time-assisted-estimate-markers.mjs',
-            'scripts/verify-analysis-time-assisted-snapshot-preview.mjs',
-            'scripts/verify-analysis-time-assisted-window-navigation.mjs',
-            'scripts/verify-p22-1-estimated-market-reference-foundation.mjs',
-            'scripts/verify-p22-2-time-assisted-trade-snapshot-composition.mjs',
-            'scripts/verify-p22-6-time-assisted-trade-snapshot-closure.mjs',
+            'scripts/verify-p23-1-saved-time-assisted-snapshot-contract-foundation.mjs',
+            'src/app/savedTimeAssistedSnapshotContract.ts',
+            'src/app/savedTimeAssistedSnapshotIdentity.ts',
+            'tests/saved-time-assisted-snapshot-contract.test.ts',
           }
           if changed != expected or removed:
-            print('P22.6 closure scope mismatch', file=sys.stderr)
+            print('P23.1 saved time-assisted snapshot contract scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -1183,6 +1181,16 @@ jobs:
           npm run verify:analysis-time-assisted-window-navigation
           npm run verify:p21:28-chart-workspace-integration-closure
 
+      - name: P23.1 saved time-assisted snapshot contract foundation
+        working-directory: .gate-candidate/kairos_p76
+        run: |
+          npm run verify:p23:1-saved-time-assisted-snapshot-contract-foundation
+          npm run verify:p22:6-time-assisted-trade-snapshot-closure
+          npm run verify:p20:1-saved-analysis-contract-foundation
+          npx vitest run \
+            tests/saved-time-assisted-snapshot-contract.test.ts \
+            tests/time-assisted-trade-snapshot.test.ts
+
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
         run: npm run typecheck
@@ -1276,6 +1284,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:p23:1-saved-time-assisted-snapshot-contract-foundation',
             'verify:p22:6-time-assisted-trade-snapshot-closure',
             'verify:analysis-time-assisted-window-navigation',
             'verify:analysis-time-assisted-estimate-markers',
@@ -1405,6 +1414,7 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/KAIROS_P23_1_SAVED_TIME_ASSISTED_SNAPSHOT_CONTRACT_FOUNDATION_REPORT_2026-09-18.md
             .gate-candidate/kairos_p76/KAIROS_P22_6_TIME_ASSISTED_TRADE_SNAPSHOT_CLOSURE_REPORT_2026-09-17.md
             .gate-candidate/kairos_p76/docs/KAIROS_ANALYSIS_TIME_ASSISTED_WINDOW_NAVIGATION.md
             .gate-candidate/kairos_p76/.time-assisted-window-evidence/
