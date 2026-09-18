@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — P26.3 Goals Route
+name: Kairos Controlled Roadmap Gate — P26.4 Goals Foundation Closure
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P26_3_GOALS_ROUTE_CANDIDATE_2026-09-18.zip'
+      - 'KAIROS_P26_4_GOALS_FOUNDATION_CLOSURE_CANDIDATE_2026-09-18.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P26_2_GOALS_PROGRESS_PROJECTION_CANDIDATE_2026-09-18.zip
-  CANDIDATE_ZIP: KAIROS_P26_3_GOALS_ROUTE_CANDIDATE_2026-09-18.zip
+  BASE_ZIP: KAIROS_P26_3_GOALS_ROUTE_CANDIDATE_2026-09-18.zip
+  CANDIDATE_ZIP: KAIROS_P26_4_GOALS_FOUNDATION_CLOSURE_CANDIDATE_2026-09-18.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 4181299, '474b9ce4b86af8e57b8d5f6edc77167f25a1ce5386782a96e899d76d844a68a8'),
-            ('CANDIDATE_ZIP', 4197234, 'ee6f0c3e2d1a77f985d1a4218a6c000f30c20f9970b445fe83de8fecc7727783'),
+            ('BASE_ZIP', 4197234, 'ee6f0c3e2d1a77f985d1a4218a6c000f30c20f9970b445fe83de8fecc7727783'),
+            ('CANDIDATE_ZIP', 4201218, '3ef734cc7289e8efa04418dac5d9dcd6cbc5fbc2b07c1d6123849473d091b896'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact P26.3 goals route scope from Gate499
+      - name: Confirm exact P26.4 closure scope from Gate500
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,24 +79,15 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'KAIROS_P26_3_GOALS_ROUTE_REPORT_2026-09-18.md',
+            'KAIROS_P26_4_GOALS_FOUNDATION_CLOSURE_REPORT_2026-09-18.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
-            'docs/KAIROS_GOALS_ROUTE.md',
             'package.json',
-            'scripts/test-goals-route-browser.mjs',
-            'scripts/verify-p25-3-saved-record-labels-closure.mjs',
-            'scripts/verify-p26-1-goals-preference-foundation.mjs',
-            'scripts/verify-p26-2-goals-progress-projection.mjs',
-            'scripts/verify-p26-3-goals-route.mjs',
-            'src/app/GoalsRoute.tsx',
-            'src/app/goalsRoute.css',
-            'src/app/routes.tsx',
-            'tests/goals-route.test.tsx',
+            'scripts/verify-p26-4-goals-foundation-closure.mjs',
           }
           if changed != expected or removed:
-            print('P26.3 goals route scope mismatch', file=sys.stderr)
+            print('P26.4 closure scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -1187,19 +1178,17 @@ jobs:
           npm run verify:analysis-time-assisted-window-navigation
           npm run verify:p21:28-chart-workspace-integration-closure
 
-      - name: P26.3 goals route
+      - name: P26.4 goals foundation closure
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p26:4-goals-foundation-closure
           npm run verify:p26:3-goals-route
           npm run verify:p26:2-goals-progress-projection
           npm run verify:p26:1-goals-preference-foundation
-          npm run verify:p13:12-explicit-time-zone-settings
           npx vitest run \
             tests/goals-route.test.tsx \
             tests/goals-progress.test.ts \
-            tests/goals-preference.test.ts \
-            tests/settings-visual-pnl-time-zone.test.tsx \
-            tests/app-shell-ink.test.tsx
+            tests/goals-preference.test.ts
 
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
@@ -1298,6 +1287,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:p26:4-goals-foundation-closure',
             'verify:p26:3-goals-route',
             'verify:p26:2-goals-progress-projection',
             'verify:p26:1-goals-preference-foundation',
@@ -1442,6 +1432,7 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/KAIROS_P26_4_GOALS_FOUNDATION_CLOSURE_REPORT_2026-09-18.md
             .gate-candidate/kairos_p76/KAIROS_P26_3_GOALS_ROUTE_REPORT_2026-09-18.md
             .gate-candidate/kairos_p76/docs/KAIROS_GOALS_ROUTE.md
             .gate-candidate/kairos_p76/.goals-route-evidence/
