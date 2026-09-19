@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — P31.1 Draft Trade Activation Command
+name: Kairos Controlled Roadmap Gate — P31.2 Draft Trade Activation Control
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P31_1_DRAFT_TRADE_ACTIVATION_COMMAND_CANDIDATE_2026-09-18.zip'
+      - 'KAIROS_P31_2_DRAFT_TRADE_ACTIVATION_CONTROL_CANDIDATE_2026-09-18.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P30_3_TRADE_RECORD_LIFECYCLE_CLOSURE_CANDIDATE_2026-09-18.zip
-  CANDIDATE_ZIP: KAIROS_P31_1_DRAFT_TRADE_ACTIVATION_COMMAND_CANDIDATE_2026-09-18.zip
+  BASE_ZIP: KAIROS_P31_1_DRAFT_TRADE_ACTIVATION_COMMAND_CANDIDATE_2026-09-18.zip
+  CANDIDATE_ZIP: KAIROS_P31_2_DRAFT_TRADE_ACTIVATION_CONTROL_CANDIDATE_2026-09-18.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 4335248, 'fc7a869fc174f7e72c16b9171161287f85415ac34f44392d32c754768e857536'),
-            ('CANDIDATE_ZIP', 4343793, '756226bb5e7beae67aa800c73e86b946a6660672667fd0d7ca85de8b28ea8e46'),
+            ('BASE_ZIP', 4343793, '756226bb5e7beae67aa800c73e86b946a6660672667fd0d7ca85de8b28ea8e46'),
+            ('CANDIDATE_ZIP', 4358171, '86666b30e83f705315b56127f161fbb447b95ff6bca251cd85188333c847927e'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact P31.1 draft trade activation command scope from Gate515
+      - name: Confirm exact P31.2 draft trade activation control scope from Gate516
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,19 +79,23 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'KAIROS_P31_1_DRAFT_TRADE_ACTIVATION_COMMAND_REPORT_2026-09-18.md',
+            'KAIROS_P31_2_DRAFT_TRADE_ACTIVATION_CONTROL_REPORT_2026-09-18.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
+            'docs/KAIROS_JOURNAL_DRAFT_ACTIVATION.md',
             'package.json',
-            'scripts/verify-p30-3-trade-record-lifecycle-closure.mjs',
+            'scripts/test-journal-draft-activation-browser.mjs',
             'scripts/verify-p31-1-draft-trade-activation-command.mjs',
-            'src/application/trades/index.ts',
-            'src/application/trades/openDraftTrade.ts',
-            'tests/draft-trade-activation-command.test.ts',
+            'scripts/verify-p31-2-draft-trade-activation-control.mjs',
+            'src/app/JournalDraftTradeActivation.tsx',
+            'src/app/JournalHistoryList.tsx',
+            'src/app/JournalRoute.tsx',
+            'src/app/journalDraftTradeActivation.css',
+            'tests/journal-draft-trade-activation.test.tsx',
           }
           if changed != expected or removed:
-            print('P31.1 draft trade activation command scope mismatch', file=sys.stderr)
+            print('P31.2 draft trade activation control scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -1182,17 +1186,20 @@ jobs:
           npm run verify:analysis-time-assisted-window-navigation
           npm run verify:p21:28-chart-workspace-integration-closure
 
-      - name: P31.1 draft trade activation command
+      - name: P31.2 draft trade activation control
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p31:2-draft-trade-activation-control
           npm run verify:p31:1-draft-trade-activation-command
-          npm run verify:p30:3-trade-record-lifecycle-closure
-          npm run verify:p10:manual-trade-save-command
+          npm run verify:p30:2-trade-delete-controls
+          npm run verify:p12:journal-history-closure
+          npm run verify:p12:journal-history-status-filter-ui
           npx vitest run \
-            tests/draft-trade-activation-command.test.ts \
+            tests/journal-draft-trade-activation.test.tsx \
+            tests/journal-trade-delete-control.test.tsx \
             tests/journal-open-trade-update.test.tsx \
-            tests/manual-trade-save-command.test.ts \
-            tests/trade-record-delete-command.test.ts
+            tests/journal-history-route.test.tsx \
+            tests/manual-trade-journal-route.test.tsx
 
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
@@ -1281,6 +1288,7 @@ jobs:
           node scripts/test-profile-route-browser.mjs
           node scripts/test-practice-route-browser.mjs
           node scripts/test-journal-trade-delete-browser.mjs
+          node scripts/test-journal-draft-activation-browser.mjs
 
       - name: Full unit regression
         working-directory: .gate-candidate/kairos_p76
@@ -1295,6 +1303,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:p31:2-draft-trade-activation-control',
             'verify:p31:1-draft-trade-activation-command',
             'verify:p30:3-trade-record-lifecycle-closure',
             'verify:p30:2-trade-delete-controls',
@@ -1455,6 +1464,9 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/KAIROS_P31_2_DRAFT_TRADE_ACTIVATION_CONTROL_REPORT_2026-09-18.md
+            .gate-candidate/kairos_p76/docs/KAIROS_JOURNAL_DRAFT_ACTIVATION.md
+            .gate-candidate/kairos_p76/.draft-activation-evidence/
             .gate-candidate/kairos_p76/KAIROS_P31_1_DRAFT_TRADE_ACTIVATION_COMMAND_REPORT_2026-09-18.md
             .gate-candidate/kairos_p76/KAIROS_P30_3_TRADE_RECORD_LIFECYCLE_CLOSURE_REPORT_2026-09-18.md
             .gate-candidate/kairos_p76/KAIROS_P30_2_TRADE_DELETE_CONTROLS_REPORT_2026-09-18.md
