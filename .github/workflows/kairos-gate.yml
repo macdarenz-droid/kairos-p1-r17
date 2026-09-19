@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — P27.2 Library Route
+name: Kairos Controlled Roadmap Gate — P27.3 Library Foundation Closure
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P27_2_LIBRARY_ROUTE_CANDIDATE_2026-09-18.zip'
+      - 'KAIROS_P27_3_LIBRARY_FOUNDATION_CLOSURE_CANDIDATE_2026-09-18.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P27_1_SAVED_RECORD_INDEX_CANDIDATE_2026-09-18.zip
-  CANDIDATE_ZIP: KAIROS_P27_2_LIBRARY_ROUTE_CANDIDATE_2026-09-18.zip
+  BASE_ZIP: KAIROS_P27_2_LIBRARY_ROUTE_CANDIDATE_2026-09-18.zip
+  CANDIDATE_ZIP: KAIROS_P27_3_LIBRARY_FOUNDATION_CLOSURE_CANDIDATE_2026-09-18.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 4209409, '472f0664d4fc15edc34ca4f2028c7436f91e971141a47839b4ce5177cdd73611'),
-            ('CANDIDATE_ZIP', 4228330, '07ada5acf98f3d6cfe170c8c4f0350f11c45aa7de7b09259726f23b9b7f2a063'),
+            ('BASE_ZIP', 4228330, '07ada5acf98f3d6cfe170c8c4f0350f11c45aa7de7b09259726f23b9b7f2a063'),
+            ('CANDIDATE_ZIP', 4232511, 'cdaaf22449f7110bcb1780743a355e3cd6f7c40fdbd78c0de815bb5235a9e55d'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact P27.2 library route scope from Gate502
+      - name: Confirm exact P27.3 closure scope from Gate503
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,30 +79,15 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'KAIROS_P27_2_LIBRARY_ROUTE_REPORT_2026-09-18.md',
+            'KAIROS_P27_3_LIBRARY_FOUNDATION_CLOSURE_REPORT_2026-09-18.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
-            'docs/KAIROS_LIBRARY_ROUTE.md',
             'package.json',
-            'scripts/test-library-route-browser.mjs',
-            'scripts/verify-p23-5-saved-time-assisted-snapshot-preview-round-trip.mjs',
-            'scripts/verify-p26-3-goals-route.mjs',
-            'scripts/verify-p26-4-goals-foundation-closure.mjs',
-            'scripts/verify-p27-1-saved-record-index.mjs',
-            'scripts/verify-p27-2-library-route.mjs',
-            'src/app/AnalysisHistoryWorkspace.tsx',
-            'src/app/AnalysisRoute.tsx',
-            'src/app/AnalysisSavedAnalysisControls.tsx',
-            'src/app/AnalysisTimeAssistedSnapshotControls.tsx',
-            'src/app/LibraryRoute.tsx',
-            'src/app/analysisHandoff.ts',
-            'src/app/libraryRoute.css',
-            'src/app/routes.tsx',
-            'tests/library-route.test.tsx',
+            'scripts/verify-p27-3-library-foundation-closure.mjs',
           }
           if changed != expected or removed:
-            print('P27.2 library route scope mismatch', file=sys.stderr)
+            print('P27.3 closure scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -1193,23 +1178,15 @@ jobs:
           npm run verify:analysis-time-assisted-window-navigation
           npm run verify:p21:28-chart-workspace-integration-closure
 
-      - name: P27.2 library route
+      - name: P27.3 library foundation closure
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p27:3-library-foundation-closure
           npm run verify:p27:2-library-route
           npm run verify:p27:1-saved-record-index
-          npm run verify:p26:4-goals-foundation-closure
-          npm run verify:p26:3-goals-route
-          npm run verify:p23:5-saved-time-assisted-snapshot-preview-round-trip
-          npm run verify:p24:2-saved-record-delete-controls
           npx vitest run \
             tests/library-route.test.tsx \
-            tests/saved-record-index.test.ts \
-            tests/analysis-saved-record-label.test.tsx \
-            tests/analysis-saved-record-delete.test.tsx \
-            tests/analysis-time-assisted-snapshot-preview.test.tsx \
-            tests/analysis-saved-analysis-round-trip.test.tsx \
-            tests/app-shell-ink.test.tsx
+            tests/saved-record-index.test.ts
 
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
@@ -1309,6 +1286,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:p27:3-library-foundation-closure',
             'verify:p27:2-library-route',
             'verify:p27:1-saved-record-index',
             'verify:p26:4-goals-foundation-closure',
@@ -1456,6 +1434,7 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/KAIROS_P27_3_LIBRARY_FOUNDATION_CLOSURE_REPORT_2026-09-18.md
             .gate-candidate/kairos_p76/KAIROS_P27_2_LIBRARY_ROUTE_REPORT_2026-09-18.md
             .gate-candidate/kairos_p76/docs/KAIROS_LIBRARY_ROUTE.md
             .gate-candidate/kairos_p76/.library-route-evidence/
