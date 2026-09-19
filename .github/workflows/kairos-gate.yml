@@ -39,7 +39,7 @@ jobs:
 
           for key, size, digest in [
             ('BASE_ZIP', 4372737, '53e08a909069f48c1ec30c8772db41aa7558866cbf0125081a1659245d68d9b1'),
-            ('CANDIDATE_ZIP', 4384940, '84e73932c0540dec139599aaf41befb29afb48fd0dc93ec682bc93e8af807837'),
+            ('CANDIDATE_ZIP', 4385126, '7c35ee4580ead1a88382cdf7277f0fdfdca415599190342c6e758dcefe941320'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -85,6 +85,7 @@ jobs:
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
             'docs/KAIROS_PROFILE_TRADE_IMPORT.md',
             'package.json',
+            'scripts/test-profile-route-browser.mjs',
             'scripts/test-profile-trade-import-browser.mjs',
             'scripts/verify-p32-1-trade-merge-import-command.mjs',
             'scripts/verify-p32-2-profile-import-control.mjs',
