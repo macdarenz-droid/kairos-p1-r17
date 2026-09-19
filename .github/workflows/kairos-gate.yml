@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — P29.3 Practice Route
+name: Kairos Controlled Roadmap Gate — P29.4 Practice Foundation Closure
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P29_3_PRACTICE_ROUTE_CANDIDATE_2026-09-18.zip'
+      - 'KAIROS_P29_4_PRACTICE_FOUNDATION_CLOSURE_CANDIDATE_2026-09-18.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P29_2_REAL_RESULT_ISOLATION_CANDIDATE_2026-09-18.zip
-  CANDIDATE_ZIP: KAIROS_P29_3_PRACTICE_ROUTE_CANDIDATE_2026-09-18.zip
+  BASE_ZIP: KAIROS_P29_3_PRACTICE_ROUTE_CANDIDATE_2026-09-18.zip
+  CANDIDATE_ZIP: KAIROS_P29_4_PRACTICE_FOUNDATION_CLOSURE_CANDIDATE_2026-09-18.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 4290397, '2f6baef3829ef6a2aff92f785adb42913fb5e637f86debb88e6905a4dd832747'),
-            ('CANDIDATE_ZIP', 4305777, '247e9bb788f4d724296b8b31c9773474a51fd5290ca29aa79cc1650842a3b890'),
+            ('BASE_ZIP', 4305777, '247e9bb788f4d724296b8b31c9773474a51fd5290ca29aa79cc1650842a3b890'),
+            ('CANDIDATE_ZIP', 4310211, '0f35b0944921c7bbe7504e5abe6cd1d7e36dfd82912f90669f236d6343efd6a7'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact P29.3 practice route scope from Gate510
+      - name: Confirm exact P29.4 closure scope from Gate511
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,27 +79,17 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'KAIROS_P29_3_PRACTICE_ROUTE_REPORT_2026-09-18.md',
+            'KAIROS_P29_4_PRACTICE_FOUNDATION_CLOSURE_REPORT_2026-09-18.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
-            'docs/KAIROS_PRACTICE_ROUTE.md',
             'package.json',
-            'scripts/test-practice-route-browser.mjs',
-            'scripts/verify-p26-3-goals-route.mjs',
-            'scripts/verify-p27-2-library-route.mjs',
-            'scripts/verify-p28-3-profile-route.mjs',
-            'scripts/verify-p28-4-profile-foundation-closure.mjs',
-            'scripts/verify-p29-1-practice-trade-command.mjs',
             'scripts/verify-p29-2-real-result-isolation.mjs',
             'scripts/verify-p29-3-practice-route.mjs',
-            'src/app/PracticeRoute.tsx',
-            'src/app/practiceRoute.css',
-            'src/app/routes.tsx',
-            'tests/practice-route.test.tsx',
+            'scripts/verify-p29-4-practice-foundation-closure.mjs',
           }
           if changed != expected or removed:
-            print('P29.3 practice route scope mismatch', file=sys.stderr)
+            print('P29.4 closure scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -1190,23 +1180,17 @@ jobs:
           npm run verify:analysis-time-assisted-window-navigation
           npm run verify:p21:28-chart-workspace-integration-closure
 
-      - name: P29.3 practice route
+      - name: P29.4 practice foundation closure
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p29:4-practice-foundation-closure
           npm run verify:p29:3-practice-route
           npm run verify:p29:2-real-result-isolation
           npm run verify:p29:1-practice-trade-command
-          npm run verify:p28:4-profile-foundation-closure
-          npm run verify:p28:3-profile-route
-          npm run verify:p27:2-library-route
-          npm run verify:p26:3-goals-route
-          npm run verify:p10:manual-trade-journal-route
           npx vitest run \
             tests/practice-route.test.tsx \
             tests/journal-history-scope.test.ts \
-            tests/practice-trade-save-command.test.ts \
-            tests/manual-trade-journal-route.test.tsx \
-            tests/app-shell-ink.test.tsx
+            tests/practice-trade-save-command.test.ts
 
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
@@ -1308,6 +1292,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:p29:4-practice-foundation-closure',
             'verify:p29:3-practice-route',
             'verify:p29:2-real-result-isolation',
             'verify:p29:1-practice-trade-command',
@@ -1463,6 +1448,7 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/KAIROS_P29_4_PRACTICE_FOUNDATION_CLOSURE_REPORT_2026-09-18.md
             .gate-candidate/kairos_p76/KAIROS_P29_3_PRACTICE_ROUTE_REPORT_2026-09-18.md
             .gate-candidate/kairos_p76/docs/KAIROS_PRACTICE_ROUTE.md
             .gate-candidate/kairos_p76/.practice-route-evidence/
