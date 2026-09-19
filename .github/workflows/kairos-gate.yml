@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — P33.2 Profile Import Card Extension
+name: Kairos Controlled Roadmap Gate — P33.3 Library Import Closure
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P33_2_PROFILE_IMPORT_CARD_EXTENSION_CANDIDATE_2026-09-18.zip'
+      - 'KAIROS_P33_3_LIBRARY_IMPORT_CLOSURE_CANDIDATE_2026-09-18.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P33_1_SAVED_RECORD_MERGE_IMPORT_COMMAND_CANDIDATE_2026-09-18.zip
-  CANDIDATE_ZIP: KAIROS_P33_2_PROFILE_IMPORT_CARD_EXTENSION_CANDIDATE_2026-09-18.zip
+  BASE_ZIP: KAIROS_P33_2_PROFILE_IMPORT_CARD_EXTENSION_CANDIDATE_2026-09-18.zip
+  CANDIDATE_ZIP: KAIROS_P33_3_LIBRARY_IMPORT_CLOSURE_CANDIDATE_2026-09-18.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 4397895, '7d1633e4f006c744108a520a021e27d0d195e4a61139a72541ccc240303e12b9'),
-            ('CANDIDATE_ZIP', 4407848, '8253d18724fdbd916ab30ec9c72011cbdc88dc63487e836c6b2e3fea68df4789'),
+            ('BASE_ZIP', 4407848, '8253d18724fdbd916ab30ec9c72011cbdc88dc63487e836c6b2e3fea68df4789'),
+            ('CANDIDATE_ZIP', 4412247, '49791588a2d2409bf1df167b08d5653a6d87089d2cd638d9efe414bf7126af98'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact P33.2 profile import card extension scope from Gate522
+      - name: Confirm exact P33.3 closure scope from Gate523
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,22 +79,16 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'KAIROS_P33_2_PROFILE_IMPORT_CARD_EXTENSION_REPORT_2026-09-18.md',
+            'KAIROS_P33_3_LIBRARY_IMPORT_CLOSURE_REPORT_2026-09-18.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
-            'docs/KAIROS_PROFILE_RECORD_IMPORT.md',
             'package.json',
-            'scripts/test-profile-record-import-browser.mjs',
-            'scripts/test-profile-trade-import-browser.mjs',
-            'scripts/verify-p32-2-profile-import-control.mjs',
-            'scripts/verify-p33-1-saved-record-merge-import-command.mjs',
             'scripts/verify-p33-2-profile-import-card-extension.mjs',
-            'src/app/ProfileRoute.tsx',
-            'tests/profile-trade-import.test.tsx',
+            'scripts/verify-p33-3-library-import-closure.mjs',
           }
           if changed != expected or removed:
-            print('P33.2 profile import card extension scope mismatch', file=sys.stderr)
+            print('P33.3 closure scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -1185,17 +1179,15 @@ jobs:
           npm run verify:analysis-time-assisted-window-navigation
           npm run verify:p21:28-chart-workspace-integration-closure
 
-      - name: P33.2 profile import card extension
+      - name: P33.3 library import closure
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p33:3-library-import-closure
           npm run verify:p33:2-profile-import-card-extension
           npm run verify:p33:1-saved-record-merge-import-command
-          npm run verify:p32:2-profile-import-control
-          npm run verify:p28:3-profile-route
           npx vitest run \
             tests/profile-trade-import.test.tsx \
-            tests/saved-record-import-command.test.ts \
-            tests/profile-route.test.tsx
+            tests/saved-record-import-command.test.ts
 
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
@@ -1301,6 +1293,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:p33:3-library-import-closure',
             'verify:p33:2-profile-import-card-extension',
             'verify:p33:1-saved-record-merge-import-command',
             'verify:p32:3-journal-import-closure',
@@ -1468,6 +1461,7 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/KAIROS_P33_3_LIBRARY_IMPORT_CLOSURE_REPORT_2026-09-18.md
             .gate-candidate/kairos_p76/KAIROS_P33_2_PROFILE_IMPORT_CARD_EXTENSION_REPORT_2026-09-18.md
             .gate-candidate/kairos_p76/docs/KAIROS_PROFILE_RECORD_IMPORT.md
             .gate-candidate/kairos_p76/.record-import-evidence/
