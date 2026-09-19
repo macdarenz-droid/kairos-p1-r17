@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — P32.2 Profile Import Control
+name: Kairos Controlled Roadmap Gate — P32.3 Journal Import Closure
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P32_2_PROFILE_IMPORT_CONTROL_CANDIDATE_2026-09-18.zip'
+      - 'KAIROS_P32_3_JOURNAL_IMPORT_CLOSURE_CANDIDATE_2026-09-18.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P32_1_TRADE_MERGE_IMPORT_COMMAND_CANDIDATE_2026-09-18.zip
-  CANDIDATE_ZIP: KAIROS_P32_2_PROFILE_IMPORT_CONTROL_CANDIDATE_2026-09-18.zip
+  BASE_ZIP: KAIROS_P32_2_PROFILE_IMPORT_CONTROL_CANDIDATE_2026-09-18.zip
+  CANDIDATE_ZIP: KAIROS_P32_3_JOURNAL_IMPORT_CLOSURE_CANDIDATE_2026-09-18.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 4372737, '53e08a909069f48c1ec30c8772db41aa7558866cbf0125081a1659245d68d9b1'),
-            ('CANDIDATE_ZIP', 4385126, '7c35ee4580ead1a88382cdf7277f0fdfdca415599190342c6e758dcefe941320'),
+            ('BASE_ZIP', 4385126, '7c35ee4580ead1a88382cdf7277f0fdfdca415599190342c6e758dcefe941320'),
+            ('CANDIDATE_ZIP', 4389264, 'b5a187265a96455894060ccd705f58934e168f22df982ddfb9cdd5d0e9ade725'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact P32.2 profile import control scope from Gate519
+      - name: Confirm exact P32.3 closure scope from Gate520
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,21 +79,16 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'KAIROS_P32_2_PROFILE_IMPORT_CONTROL_REPORT_2026-09-18.md',
+            'KAIROS_P32_3_JOURNAL_IMPORT_CLOSURE_REPORT_2026-09-18.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
-            'docs/KAIROS_PROFILE_TRADE_IMPORT.md',
             'package.json',
-            'scripts/test-profile-route-browser.mjs',
-            'scripts/test-profile-trade-import-browser.mjs',
-            'scripts/verify-p32-1-trade-merge-import-command.mjs',
             'scripts/verify-p32-2-profile-import-control.mjs',
-            'src/app/ProfileRoute.tsx',
-            'tests/profile-trade-import.test.tsx',
+            'scripts/verify-p32-3-journal-import-closure.mjs',
           }
           if changed != expected or removed:
-            print('P32.2 profile import control scope mismatch', file=sys.stderr)
+            print('P32.3 closure scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -1184,18 +1179,15 @@ jobs:
           npm run verify:analysis-time-assisted-window-navigation
           npm run verify:p21:28-chart-workspace-integration-closure
 
-      - name: P32.2 profile import control
+      - name: P32.3 journal import closure
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p32:3-journal-import-closure
           npm run verify:p32:2-profile-import-control
           npm run verify:p32:1-trade-merge-import-command
-          npm run verify:p28:3-profile-route
-          npm run verify:p28:2-backup-restore-command
           npx vitest run \
             tests/profile-trade-import.test.tsx \
-            tests/profile-route.test.tsx \
-            tests/trade-import-command.test.ts \
-            tests/backup-restore-command.test.ts
+            tests/trade-import-command.test.ts
 
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
@@ -1300,6 +1292,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:p32:3-journal-import-closure',
             'verify:p32:2-profile-import-control',
             'verify:p32:1-trade-merge-import-command',
             'verify:p31:3-draft-activation-closure',
@@ -1464,6 +1457,7 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/KAIROS_P32_3_JOURNAL_IMPORT_CLOSURE_REPORT_2026-09-18.md
             .gate-candidate/kairos_p76/KAIROS_P32_2_PROFILE_IMPORT_CONTROL_REPORT_2026-09-18.md
             .gate-candidate/kairos_p76/docs/KAIROS_PROFILE_TRADE_IMPORT.md
             .gate-candidate/kairos_p76/.trade-import-evidence/
