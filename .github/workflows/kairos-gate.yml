@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — P29.1 Practice Trade Command
+name: Kairos Controlled Roadmap Gate — P29.2 Real-Result Isolation
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P29_1_PRACTICE_TRADE_COMMAND_CANDIDATE_2026-09-18.zip'
+      - 'KAIROS_P29_2_REAL_RESULT_ISOLATION_CANDIDATE_2026-09-18.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P28_4_PROFILE_FOUNDATION_CLOSURE_CANDIDATE_2026-09-18.zip
-  CANDIDATE_ZIP: KAIROS_P29_1_PRACTICE_TRADE_COMMAND_CANDIDATE_2026-09-18.zip
+  BASE_ZIP: KAIROS_P29_1_PRACTICE_TRADE_COMMAND_CANDIDATE_2026-09-18.zip
+  CANDIDATE_ZIP: KAIROS_P29_2_REAL_RESULT_ISOLATION_CANDIDATE_2026-09-18.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 4275488, 'ce6fb31e5adf2b920e9a38101e6d581750e470490f45a7acc8a5967955fefd18'),
-            ('CANDIDATE_ZIP', 4283174, 'a150c6388ff3e070550069dad4a3c4d476afafbd4a3dffced5ff45b4dda723a1'),
+            ('BASE_ZIP', 4283174, 'a150c6388ff3e070550069dad4a3c4d476afafbd4a3dffced5ff45b4dda723a1'),
+            ('CANDIDATE_ZIP', 4290397, '2f6baef3829ef6a2aff92f785adb42913fb5e637f86debb88e6905a4dd832747'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact P29.1 practice trade command scope from Gate508
+      - name: Confirm exact P29.2 real-result isolation scope from Gate509
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,18 +79,21 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'KAIROS_P29_1_PRACTICE_TRADE_COMMAND_REPORT_2026-09-18.md',
+            'KAIROS_P29_2_REAL_RESULT_ISOLATION_REPORT_2026-09-18.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
             'package.json',
+            'scripts/verify-p28-4-profile-foundation-closure.mjs',
             'scripts/verify-p29-1-practice-trade-command.mjs',
-            'src/application/practice/index.ts',
-            'src/application/practice/savePracticeTrade.ts',
-            'tests/practice-trade-save-command.test.ts',
+            'scripts/verify-p29-2-real-result-isolation.mjs',
+            'src/application/journal/historyQuery.ts',
+            'src/application/journal/index.ts',
+            'src/data/repositories/TradeRepositories.ts',
+            'tests/journal-history-scope.test.ts',
           }
           if changed != expected or removed:
-            print('P29.1 practice trade command scope mismatch', file=sys.stderr)
+            print('P29.2 real-result isolation scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -1181,16 +1184,23 @@ jobs:
           npm run verify:analysis-time-assisted-window-navigation
           npm run verify:p21:28-chart-workspace-integration-closure
 
-      - name: P29.1 practice trade command
+      - name: P29.2 real-result isolation
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p29:2-real-result-isolation
           npm run verify:p29:1-practice-trade-command
-          npm run verify:p28:4-profile-foundation-closure
-          npm run verify:p10:manual-trade-save-command
+          npm run verify:p12:journal-history-closure
+          npm run verify:p12:journal-history-status-index
+          npm run verify:p12:journal-history-heavy-performance
           npx vitest run \
+            tests/journal-history-scope.test.ts \
             tests/practice-trade-save-command.test.ts \
-            tests/manual-trade-save-command.test.ts \
-            tests/backup-snapshot.test.ts
+            tests/journal-history-query.test.ts \
+            tests/journal-history-performance.test.tsx \
+            tests/journal-visual-pnl-daily-summary-query.test.ts \
+            tests/home-dashboard-your-trades.test.tsx \
+            tests/goals-progress.test.ts \
+            tests/trade-review.test.tsx
 
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
@@ -1291,6 +1301,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:p29:2-real-result-isolation',
             'verify:p29:1-practice-trade-command',
             'verify:p28:4-profile-foundation-closure',
             'verify:p28:3-profile-route',
@@ -1444,6 +1455,7 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/KAIROS_P29_2_REAL_RESULT_ISOLATION_REPORT_2026-09-18.md
             .gate-candidate/kairos_p76/KAIROS_P29_1_PRACTICE_TRADE_COMMAND_REPORT_2026-09-18.md
             .gate-candidate/kairos_p76/KAIROS_P28_4_PROFILE_FOUNDATION_CLOSURE_REPORT_2026-09-18.md
             .gate-candidate/kairos_p76/KAIROS_P28_3_PROFILE_ROUTE_REPORT_2026-09-18.md
