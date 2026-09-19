@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — P28.1 Backup Export Command
+name: Kairos Controlled Roadmap Gate — P28.2 Backup Restore Command
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P28_1_BACKUP_EXPORT_COMMAND_CANDIDATE_2026-09-18.zip'
+      - 'KAIROS_P28_2_BACKUP_RESTORE_COMMAND_CANDIDATE_2026-09-18.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P27_3_LIBRARY_FOUNDATION_CLOSURE_CANDIDATE_2026-09-18.zip
-  CANDIDATE_ZIP: KAIROS_P28_1_BACKUP_EXPORT_COMMAND_CANDIDATE_2026-09-18.zip
+  BASE_ZIP: KAIROS_P28_1_BACKUP_EXPORT_COMMAND_CANDIDATE_2026-09-18.zip
+  CANDIDATE_ZIP: KAIROS_P28_2_BACKUP_RESTORE_COMMAND_CANDIDATE_2026-09-18.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 4232511, 'cdaaf22449f7110bcb1780743a355e3cd6f7c40fdbd78c0de815bb5235a9e55d'),
-            ('CANDIDATE_ZIP', 4242492, '0e10d99cb10f9cb5a4e0d4830d3a23e37f9d93a6f13347b0f5c8f2b7632073fb'),
+            ('BASE_ZIP', 4242492, '0e10d99cb10f9cb5a4e0d4830d3a23e37f9d93a6f13347b0f5c8f2b7632073fb'),
+            ('CANDIDATE_ZIP', 4251615, '92f04bd9d997d6dea3e2fe69536b8d11963e8764c5523f41ddd016ebfc7fc2bd'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact P28.1 backup export command scope from Gate504
+      - name: Confirm exact P28.2 backup restore command scope from Gate505
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,18 +79,18 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'KAIROS_P28_1_BACKUP_EXPORT_COMMAND_REPORT_2026-09-18.md',
+            'KAIROS_P28_2_BACKUP_RESTORE_COMMAND_REPORT_2026-09-18.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
             'package.json',
-            'scripts/verify-p28-1-backup-export-command.mjs',
-            'src/application/backup/exportBackup.ts',
+            'scripts/verify-p28-2-backup-restore-command.mjs',
             'src/application/backup/index.ts',
-            'tests/backup-export-command.test.ts',
+            'src/application/backup/restoreBackup.ts',
+            'tests/backup-restore-command.test.ts',
           }
           if changed != expected or removed:
-            print('P28.1 backup export command scope mismatch', file=sys.stderr)
+            print('P28.2 backup restore command scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -1181,17 +1181,20 @@ jobs:
           npm run verify:analysis-time-assisted-window-navigation
           npm run verify:p21:28-chart-workspace-integration-closure
 
-      - name: P28.1 backup export command
+      - name: P28.2 backup restore command
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p28:2-backup-restore-command
           npm run verify:p28:1-backup-export-command
-          npm run verify:p27:3-library-foundation-closure
-          npm run verify:p6:backup-snapshot
-          npm run verify:p6:backup-envelope
+          npm run verify:p6:restore-preflight
+          npm run verify:p6:restore-replacement
+          npm run verify:p6:restore-verification
           npx vitest run \
+            tests/backup-restore-command.test.ts \
             tests/backup-export-command.test.ts \
-            tests/backup-snapshot.test.ts \
-            tests/backup-envelope.test.ts
+            tests/restore-preflight.test.ts \
+            tests/restore-replacement.test.ts \
+            tests/restore-verification.test.ts
 
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
@@ -1291,6 +1294,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:p28:2-backup-restore-command',
             'verify:p28:1-backup-export-command',
             'verify:p27:3-library-foundation-closure',
             'verify:p27:2-library-route',
@@ -1440,6 +1444,7 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/KAIROS_P28_2_BACKUP_RESTORE_COMMAND_REPORT_2026-09-18.md
             .gate-candidate/kairos_p76/KAIROS_P28_1_BACKUP_EXPORT_COMMAND_REPORT_2026-09-18.md
             .gate-candidate/kairos_p76/KAIROS_P27_3_LIBRARY_FOUNDATION_CLOSURE_REPORT_2026-09-18.md
             .gate-candidate/kairos_p76/KAIROS_P27_2_LIBRARY_ROUTE_REPORT_2026-09-18.md
