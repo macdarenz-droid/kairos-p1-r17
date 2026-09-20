@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — P35.1 Practice Trade Lifecycle Source Option
+name: Kairos Controlled Roadmap Gate — P35.2 Practice Route Lifecycle Controls
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P35_1_PRACTICE_TRADE_LIFECYCLE_SOURCE_OPTION_CANDIDATE_2026-09-18.zip'
+      - 'KAIROS_P35_2_PRACTICE_ROUTE_LIFECYCLE_CONTROLS_CANDIDATE_2026-09-18.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P34_3_PROFILE_DATA_SAFETY_CLOSURE_CANDIDATE_2026-09-18.zip
-  CANDIDATE_ZIP: KAIROS_P35_1_PRACTICE_TRADE_LIFECYCLE_SOURCE_OPTION_CANDIDATE_2026-09-18.zip
+  BASE_ZIP: KAIROS_P35_1_PRACTICE_TRADE_LIFECYCLE_SOURCE_OPTION_CANDIDATE_2026-09-18.zip
+  CANDIDATE_ZIP: KAIROS_P35_2_PRACTICE_ROUTE_LIFECYCLE_CONTROLS_CANDIDATE_2026-09-18.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 4435164, 'be3aa7cba746a31509b81b366f54c374446bb0d4e9e53284e636f43624fdadde'),
-            ('CANDIDATE_ZIP', 4443016, '9dc6e48d48d278119d838bf9c42b6a63df80e1890dd20567f385ba67b4791f53'),
+            ('BASE_ZIP', 4443016, '9dc6e48d48d278119d838bf9c42b6a63df80e1890dd20567f385ba67b4791f53'),
+            ('CANDIDATE_ZIP', 4450597, 'e8971325e8e5e6bf14694f5fd084a5938c97b52b859d780f48aca7f1022b1791'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact P35.1 practice trade lifecycle source option scope from Gate527
+      - name: Confirm exact P35.2 practice route lifecycle controls scope from Gate528
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,20 +79,26 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'KAIROS_P35_1_PRACTICE_TRADE_LIFECYCLE_SOURCE_OPTION_REPORT_2026-09-18.md',
+            'KAIROS_P35_2_PRACTICE_ROUTE_LIFECYCLE_CONTROLS_REPORT_2026-09-18.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
+            'docs/KAIROS_PRACTICE_TRADE_LIFECYCLE.md',
             'package.json',
-            'scripts/verify-p34-3-profile-data-safety-closure.mjs',
+            'scripts/verify-p30-2-trade-delete-controls.mjs',
             'scripts/verify-p31-1-draft-trade-activation-command.mjs',
-            'scripts/verify-p35-1-practice-trade-lifecycle-source-option.mjs',
-            'src/application/trades/openDraftTrade.ts',
-            'src/application/trades/updateOpenManualTrade.ts',
-            'tests/practice-trade-lifecycle-source-option.test.ts',
+            'scripts/verify-p31-2-draft-trade-activation-control.mjs',
+            'scripts/verify-p31-3-draft-activation-closure.mjs',
+            'scripts/verify-p34-3-profile-data-safety-closure.mjs',
+            'scripts/verify-p35-2-practice-route-lifecycle-controls.mjs',
+            'src/app/JournalDraftTradeActivation.tsx',
+            'src/app/JournalHistoryList.tsx',
+            'src/app/JournalOpenTradeUpdate.tsx',
+            'src/app/PracticeRoute.tsx',
+            'tests/journal-draft-trade-activation.test.tsx',
           }
           if changed != expected or removed:
-            print('P35.1 practice trade lifecycle source option scope mismatch', file=sys.stderr)
+            print('P35.2 practice route lifecycle controls scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -1183,17 +1189,27 @@ jobs:
           npm run verify:analysis-time-assisted-window-navigation
           npm run verify:p21:28-chart-workspace-integration-closure
 
-      - name: P35.1 practice trade lifecycle source option
+      - name: P35.2 practice route lifecycle controls
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p35:2-practice-route-lifecycle-controls
           npm run verify:p35:1-practice-trade-lifecycle-source-option
+          npm run verify:p31:2-draft-trade-activation-control
+          npm run verify:p31:1-draft-trade-activation-command
+          npm run verify:p30:2-trade-delete-controls
+          npm run verify:p30:1-trade-record-delete-command
+          npm run verify:p31:3-draft-activation-closure
+          npm run verify:p30:3-trade-record-lifecycle-closure
           npm run verify:p34:3-profile-data-safety-closure
-          npm run verify:p29:1-practice-trade-command
+          npm run verify:p29:3-practice-route
           npx vitest run \
-            tests/practice-trade-lifecycle-source-option.test.ts \
+            tests/journal-draft-trade-activation.test.tsx \
             tests/journal-open-trade-update.test.tsx \
             tests/draft-trade-activation-command.test.ts \
-            tests/practice-trade-save-command.test.ts
+            tests/practice-route.test.tsx \
+            tests/journal-trade-delete-control.test.tsx \
+            tests/manual-trade-journal-route.test.tsx \
+            tests/practice-trade-lifecycle-source-option.test.ts
 
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
@@ -1300,6 +1316,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:p35:2-practice-route-lifecycle-controls',
             'verify:p35:1-practice-trade-lifecycle-source-option',
             'verify:p34:3-profile-data-safety-closure',
             'verify:p34:2-profile-data-safety',
@@ -1472,6 +1489,8 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/KAIROS_P35_2_PRACTICE_ROUTE_LIFECYCLE_CONTROLS_REPORT_2026-09-18.md
+            .gate-candidate/kairos_p76/docs/KAIROS_PRACTICE_TRADE_LIFECYCLE.md
             .gate-candidate/kairos_p76/KAIROS_P35_1_PRACTICE_TRADE_LIFECYCLE_SOURCE_OPTION_REPORT_2026-09-18.md
             .gate-candidate/kairos_p76/KAIROS_P34_3_PROFILE_DATA_SAFETY_CLOSURE_REPORT_2026-09-18.md
             .gate-candidate/kairos_p76/KAIROS_P34_2_PROFILE_DATA_SAFETY_REPORT_2026-09-18.md
