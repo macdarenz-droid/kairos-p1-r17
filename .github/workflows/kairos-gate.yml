@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — P34.2 Profile Data Safety
+name: Kairos Controlled Roadmap Gate — P34.3 Profile Data Safety Closure
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P34_2_PROFILE_DATA_SAFETY_CANDIDATE_2026-09-18.zip'
+      - 'KAIROS_P34_3_PROFILE_DATA_SAFETY_CLOSURE_CANDIDATE_2026-09-18.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P34_1_LAST_BACKUP_RECORD_CANDIDATE_2026-09-18.zip
-  CANDIDATE_ZIP: KAIROS_P34_2_PROFILE_DATA_SAFETY_CANDIDATE_2026-09-18.zip
+  BASE_ZIP: KAIROS_P34_2_PROFILE_DATA_SAFETY_CANDIDATE_2026-09-18.zip
+  CANDIDATE_ZIP: KAIROS_P34_3_PROFILE_DATA_SAFETY_CLOSURE_CANDIDATE_2026-09-18.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 4419170, 'c2ea89ba0535359d17f7f6845cf6d2a1e851c1349f362dde84ef88457ef511cc'),
-            ('CANDIDATE_ZIP', 4430850, '16a5acc265638ab37cfb5e6c6fcc9c393ae5b02db44b46531dde627b4412a3fb'),
+            ('BASE_ZIP', 4430850, '16a5acc265638ab37cfb5e6c6fcc9c393ae5b02db44b46531dde627b4412a3fb'),
+            ('CANDIDATE_ZIP', 4434972, '97cabf77278e72e289310c18871532726582a5e1e73c333a8abab8bb20556012'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact P34.2 profile data safety scope from Gate525
+      - name: Confirm exact P34.3 closure scope from Gate526
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,22 +79,16 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'KAIROS_P34_2_PROFILE_DATA_SAFETY_REPORT_2026-09-18.md',
+            'KAIROS_P34_3_PROFILE_DATA_SAFETY_CLOSURE_REPORT_2026-09-18.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
-            'docs/KAIROS_PROFILE_DATA_SAFETY.md',
             'package.json',
-            'scripts/test-profile-data-safety-browser.mjs',
-            'scripts/verify-p28-3-profile-route.mjs',
-            'scripts/verify-p33-3-library-import-closure.mjs',
-            'scripts/verify-p34-1-last-backup-record.mjs',
             'scripts/verify-p34-2-profile-data-safety.mjs',
-            'src/app/ProfileRoute.tsx',
-            'tests/profile-data-safety.test.tsx',
+            'scripts/verify-p34-3-profile-data-safety-closure.mjs',
           }
           if changed != expected or removed:
-            print('P34.2 profile data safety scope mismatch', file=sys.stderr)
+            print('P34.3 closure scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -1185,17 +1179,14 @@ jobs:
           npm run verify:analysis-time-assisted-window-navigation
           npm run verify:p21:28-chart-workspace-integration-closure
 
-      - name: P34.2 profile data safety
+      - name: P34.3 profile data safety closure
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p34:3-profile-data-safety-closure
           npm run verify:p34:2-profile-data-safety
           npm run verify:p34:1-last-backup-record
-          npm run verify:p28:3-profile-route
-          npm run verify:p33:2-profile-import-card-extension
           npx vitest run \
             tests/profile-data-safety.test.tsx \
-            tests/profile-route.test.tsx \
-            tests/profile-trade-import.test.tsx \
             tests/last-backup-record.test.ts
 
       - name: Production TypeScript compilation
@@ -1303,6 +1294,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:p34:3-profile-data-safety-closure',
             'verify:p34:2-profile-data-safety',
             'verify:p34:1-last-backup-record',
             'verify:p33:3-library-import-closure',
@@ -1473,6 +1465,7 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/KAIROS_P34_3_PROFILE_DATA_SAFETY_CLOSURE_REPORT_2026-09-18.md
             .gate-candidate/kairos_p76/KAIROS_P34_2_PROFILE_DATA_SAFETY_REPORT_2026-09-18.md
             .gate-candidate/kairos_p76/docs/KAIROS_PROFILE_DATA_SAFETY.md
             .gate-candidate/kairos_p76/.data-safety-evidence/
