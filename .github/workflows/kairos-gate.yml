@@ -1,10 +1,10 @@
-name: Kairos Controlled Roadmap Gate — P35.3 Practice Trade Lifecycle Closure
+name: Kairos Controlled Roadmap Gate — P36.1 Trade Discipline Record Foundation
 
 on:
   push:
     branches: [main]
     paths:
-      - 'KAIROS_P35_3_PRACTICE_TRADE_LIFECYCLE_CLOSURE_CANDIDATE_2026-09-20.zip'
+      - 'KAIROS_P36_1_TRADE_DISCIPLINE_RECORD_FOUNDATION_CANDIDATE_2026-09-20.zip'
       - '.github/workflows/kairos-gate.yml'
   workflow_dispatch:
 
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  BASE_ZIP: KAIROS_P35_2_PRACTICE_ROUTE_LIFECYCLE_CONTROLS_CANDIDATE_2026-09-18.zip
-  CANDIDATE_ZIP: KAIROS_P35_3_PRACTICE_TRADE_LIFECYCLE_CLOSURE_CANDIDATE_2026-09-20.zip
+  BASE_ZIP: KAIROS_P35_3_PRACTICE_TRADE_LIFECYCLE_CLOSURE_CANDIDATE_2026-09-20.zip
+  CANDIDATE_ZIP: KAIROS_P36_1_TRADE_DISCIPLINE_RECORD_FOUNDATION_CANDIDATE_2026-09-20.zip
 
 jobs:
   verify-current-candidate:
@@ -38,8 +38,8 @@ jobs:
           import hashlib, os, zipfile
 
           for key, size, digest in [
-            ('BASE_ZIP', 4450863, '0640e75fdb38555bff0550838de18b50cab60519d8ceff306ee533746da77106'),
-            ('CANDIDATE_ZIP', 4460620, '96bc78aea214f234c0bf3ef1b6341c97b2163d0ec04a29ed3af70ece1fea05cc'),
+            ('BASE_ZIP', 4460620, '96bc78aea214f234c0bf3ef1b6341c97b2163d0ec04a29ed3af70ece1fea05cc'),
+            ('CANDIDATE_ZIP', 4479698, '601105a639ada4d8d8edcb7ed5f537b4e23b75de57a5984c41b8f5b6958fd4d6'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -64,7 +64,7 @@ jobs:
           test -f .gate-base/kairos_p76/package.json
           test -f .gate-candidate/kairos_p76/package.json
 
-      - name: Confirm exact P35.3 closure scope from Gate529
+      - name: Confirm exact P36.1 trade discipline record foundation scope from Gate530
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -79,17 +79,71 @@ jobs:
           changed = {p for p in x.keys() | y.keys() if x.get(p) != y.get(p)}
           removed = set(x) - set(y)
           expected = {
-            'KAIROS_P35_3_PRACTICE_TRADE_LIFECYCLE_CLOSURE_REPORT_2026-09-20.md',
+            'KAIROS_P36_1_TRADE_DISCIPLINE_RECORD_FOUNDATION_REPORT_2026-09-20.md',
             'docs/KAIROS_ARCHITECTURE_MAP.md',
             'docs/KAIROS_CHART_WORKSPACE_INTEGRATION_PLAN.md',
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
-            'docs/KAIROS_VISION_ROADMAP_ALIGNMENT.md',
             'package.json',
-            'scripts/verify-p35-2-practice-route-lifecycle-controls.mjs',
+            'scripts/test-profile-route-browser.mjs',
+            'scripts/verify-p12-journal-history-status-index-backup-regression-repair.mjs',
+            'scripts/verify-p12-journal-history-status-index-verifier-compatibility-repair.mjs',
+            'scripts/verify-p12-journal-history-status-index.mjs',
+            'scripts/verify-p20-2-saved-analysis-persistence-foundation.mjs',
+            'scripts/verify-p23-2-saved-time-assisted-snapshot-persistence-foundation.mjs',
+            'scripts/verify-p23-6-durable-time-assisted-snapshot-provenance-closure.mjs',
+            'scripts/verify-p25-1-saved-record-label-foundation.mjs',
+            'scripts/verify-p25-3-saved-record-labels-closure.mjs',
+            'scripts/verify-p27-1-saved-record-index.mjs',
+            'scripts/verify-p28-1-backup-export-command.mjs',
+            'scripts/verify-p28-3-profile-route.mjs',
+            'scripts/verify-p29-2-real-result-isolation.mjs',
+            'scripts/verify-p32-1-trade-merge-import-command.mjs',
+            'scripts/verify-p33-1-saved-record-merge-import-command.mjs',
             'scripts/verify-p35-3-practice-trade-lifecycle-closure.mjs',
+            'scripts/verify-p36-1-trade-discipline-record-foundation.mjs',
+            'scripts/verify-p6-backup-envelope.mjs',
+            'scripts/verify-p9-trade-persistence.mjs',
+            'src/data/backup/backupEnvelope.ts',
+            'src/data/backup/backupFormat.ts',
+            'src/data/backup/backupSerialization.ts',
+            'src/data/backup/backupSnapshot.ts',
+            'src/data/backup/backupValidation.ts',
+            'src/data/backup/restorePreflight.ts',
+            'src/data/backup/restoreReplacement.ts',
+            'src/data/backup/restoreVerification.ts',
+            'src/data/database/KairosDatabase.ts',
+            'src/data/database/index.ts',
+            'src/data/database/integrity.ts',
+            'src/data/database/migrations.ts',
+            'src/data/database/schema.ts',
+            'src/data/repositories/TradeDisciplineRepository.ts',
+            'src/data/repositories/index.ts',
+            'src/domain/discipline/disciplineIdentity.ts',
+            'src/domain/discipline/disciplineTypes.ts',
+            'src/domain/discipline/disciplineValidation.ts',
+            'src/domain/discipline/index.ts',
+            'tests/activation-persistence.test.ts',
+            'tests/backup-envelope.test.ts',
+            'tests/backup-export-command.test.ts',
+            'tests/backup-restore-command.test.ts',
+            'tests/backup-snapshot.test.ts',
+            'tests/database-kernel.test.ts',
+            'tests/database-migrations.test.ts',
+            'tests/database-transactions.test.ts',
+            'tests/metadata-repository.test.ts',
+            'tests/restore-preflight.test.ts',
+            'tests/restore-replacement.test.ts',
+            'tests/restore-verification.test.ts',
+            'tests/saved-analysis-persistence.test.ts',
+            'tests/saved-record-import-command.test.ts',
+            'tests/saved-record-label-foundation.test.ts',
+            'tests/saved-time-assisted-snapshot-persistence.test.ts',
+            'tests/trade-discipline-persistence.test.ts',
+            'tests/trade-import-command.test.ts',
+            'tests/trade-persistence.test.ts',
           }
           if changed != expected or removed:
-            print('P35.3 closure scope mismatch', file=sys.stderr)
+            print('P36.1 trade discipline record foundation scope mismatch', file=sys.stderr)
             print('Unexpected:', sorted(changed - expected), file=sys.stderr)
             print('Missing:', sorted(expected - changed), file=sys.stderr)
             print('Removed:', sorted(removed), file=sys.stderr)
@@ -1180,15 +1234,21 @@ jobs:
           npm run verify:analysis-time-assisted-window-navigation
           npm run verify:p21:28-chart-workspace-integration-closure
 
-      - name: P35.3 practice trade lifecycle closure
+      - name: P36.1 trade discipline record foundation
         working-directory: .gate-candidate/kairos_p76
         run: |
+          npm run verify:p36:1-trade-discipline-record-foundation
           npm run verify:p35:3-practice-trade-lifecycle-closure
-          npm run verify:p35:2-practice-route-lifecycle-controls
-          npm run verify:p35:1-practice-trade-lifecycle-source-option
+          npm run verify:p23:2-saved-time-assisted-snapshot-persistence-foundation
+          npm run verify:p9:trade-persistence
+          npm run verify:p6:backup-envelope
+          npm run verify:p6:restore-verification
           npx vitest run \
-            tests/practice-trade-lifecycle-source-option.test.ts \
-            tests/journal-draft-trade-activation.test.tsx
+            tests/trade-discipline-persistence.test.ts \
+            tests/database-migrations.test.ts \
+            tests/backup-envelope.test.ts \
+            tests/restore-preflight.test.ts \
+            tests/saved-time-assisted-snapshot-persistence.test.ts
 
       - name: Production TypeScript compilation
         working-directory: .gate-candidate/kairos_p76
@@ -1295,6 +1355,7 @@ jobs:
           const p = JSON.parse(readFileSync('package.json'));
           const scripts = Object.keys(p.scripts || {}).filter(x => x.startsWith('verify:')).sort();
           for (const required of [
+            'verify:p36:1-trade-discipline-record-foundation',
             'verify:p35:3-practice-trade-lifecycle-closure',
             'verify:p35:2-practice-route-lifecycle-controls',
             'verify:p35:1-practice-trade-lifecycle-source-option',
@@ -1469,8 +1530,8 @@ jobs:
           name: KAIROS_GATE_EVIDENCE
           include-hidden-files: true
           path: |
+            .gate-candidate/kairos_p76/KAIROS_P36_1_TRADE_DISCIPLINE_RECORD_FOUNDATION_REPORT_2026-09-20.md
             .gate-candidate/kairos_p76/KAIROS_P35_3_PRACTICE_TRADE_LIFECYCLE_CLOSURE_REPORT_2026-09-20.md
-            .gate-candidate/kairos_p76/docs/KAIROS_VISION_ROADMAP_ALIGNMENT.md
             .gate-candidate/kairos_p76/KAIROS_P35_2_PRACTICE_ROUTE_LIFECYCLE_CONTROLS_REPORT_2026-09-18.md
             .gate-candidate/kairos_p76/docs/KAIROS_PRACTICE_TRADE_LIFECYCLE.md
             .gate-candidate/kairos_p76/KAIROS_P35_1_PRACTICE_TRADE_LIFECYCLE_SOURCE_OPTION_REPORT_2026-09-18.md
