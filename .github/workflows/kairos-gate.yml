@@ -39,7 +39,7 @@ jobs:
 
           for key, size, digest in [
             ('BASE_ZIP', 4443016, '9dc6e48d48d278119d838bf9c42b6a63df80e1890dd20567f385ba67b4791f53'),
-            ('CANDIDATE_ZIP', 4450597, 'e8971325e8e5e6bf14694f5fd084a5938c97b52b859d780f48aca7f1022b1791'),
+            ('CANDIDATE_ZIP', 4450863, '0640e75fdb38555bff0550838de18b50cab60519d8ceff306ee533746da77106'),
           ]:
             p = Path(os.environ[key])
             data = p.read_bytes()
@@ -85,11 +85,13 @@ jobs:
             'docs/KAIROS_CONTINUATION_APPROVAL_CONTROL.md',
             'docs/KAIROS_PRACTICE_TRADE_LIFECYCLE.md',
             'package.json',
+            'scripts/verify-p29-3-practice-route.mjs',
             'scripts/verify-p30-2-trade-delete-controls.mjs',
             'scripts/verify-p31-1-draft-trade-activation-command.mjs',
             'scripts/verify-p31-2-draft-trade-activation-control.mjs',
             'scripts/verify-p31-3-draft-activation-closure.mjs',
             'scripts/verify-p34-3-profile-data-safety-closure.mjs',
+            'scripts/verify-p35-1-practice-trade-lifecycle-source-option.mjs',
             'scripts/verify-p35-2-practice-route-lifecycle-controls.mjs',
             'src/app/JournalDraftTradeActivation.tsx',
             'src/app/JournalHistoryList.tsx',
