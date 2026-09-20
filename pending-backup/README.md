@@ -1,23 +1,20 @@
-# Kairos pending-work backup (autonomous gate chain handoff)
+# Kairos gate chain — COMPLETE
 
-This branch is a one-shot backup, not part of the project history. It holds the
-locally-drafted, locally-verified work directories for Kairos gates that had not
-yet been packaged/pushed as candidate zips when this snapshot was taken, so the
-autonomous gate chain can be resumed (by this session or a different assistant)
-even if the drafting session's ephemeral scratchpad is lost.
+The full P17-P35 controlled roadmap gate chain (gates through Gate529, P35.2
+practice route lifecycle controls) is fully landed on `main` as of commit
+6841a01. Every gate's branch run and main-branch run both passed. This backup
+branch is now historical record only; no further gates are queued.
 
-Extract with:
-  tar xzf pending-backup/kairos-pending-control.tar.gz
-  tar xzf pending-backup/kairos-pending-work-A-500-514.tar.gz
-  tar xzf pending-backup/kairos-pending-work-B-515-529.tar.gz
+Three genuine issues were caught and fixed during the final stretch (each
+gate re-packaged, re-pinned and re-shipped once fixed, documented in that
+gate's own commit message on `main`):
+- Gate520 (P32.2): a released browser test's Profile-card-count assertion
+  was stale (3 vs the new legitimate 4 after the Import trades card).
+- Gate527 (P34.3): work527's copy of the Gate526 report had drifted from an
+  older snapshot, spuriously tripping the exact-scope check.
+- Gate529 (P35.2, final gate): the exact-scope check's expected-file list
+  was missing two files this gate's own (already-verified) pin advances
+  legitimately changed, and a report file had the same drift as Gate527.
 
-Each `workN/kairos_p76/` is a full checkout of the repo with phase N's changes
-already applied and locally validated (tsc, vitest, build, verifiers). The
-`gatechain.sh`, `pkgnext.sh`, `reapply-ledger.py`, `closureN.py`, `draftNdocs.py`
-and `workflowN.py` scripts, plus `gatechain-plan-remaining.tsv`, are the control
-scripts that turn each workN directory into a pushed, CI-dispatched, main-landed
-gate. See the session's own explanation of the process for how to drive them.
-
-State as of this snapshot: main is at Gate499 (P26.2). Gate500 (P26.3) is
-packaged, pushed to claude/kairos-trading-journal-hftwax, and mid-CI. Gates
-501-529 are drafted in workNNN/ but not yet packaged or pushed.
+See `pending-backup/kairos-pending-control.tar.gz` for the full control-script
+history and evidence trail if it's ever needed again.
