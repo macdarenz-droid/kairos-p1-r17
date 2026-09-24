@@ -23,6 +23,26 @@ Node 22.16.0 (`app/.nvmrc`).
 
 `.github/workflows/ci.yml` runs on every pull request and on pushes to `main`: install, typecheck, tests, build.
 
+## Add a learning source (PDF)
+
+Learning sources are files, not code. To add one:
+
+1. Put the PDF in `app/public/library/sources/`. Keep its file name: letters, digits, `.`, `_` or `-`, ending in `.pdf`, at most 25 MB.
+2. Get its size and fingerprint: `wc -c < file.pdf` and `sha256sum file.pdf` (on a Mac: `shasum -a 256 file.pdf`).
+3. Copy the sample entry in `app/src/content/library/learningSources.json` and fill in:
+   - a new `id` (lowercase letters, digits, dashes);
+   - `title`, as printed on the file;
+   - `covers`: one plain sentence;
+   - `author`: `null` if unknown;
+   - `origin`: where the file came from;
+   - `rights`: `null` if unknown;
+   - `language`;
+   - `revision`: `number` 1, `fileName`, `bytes`, `sha256`, `pages` (`null` if unknown), and `addedOn` (YYYY-MM-DD).
+4. In `app/`, run `npx vitest run tests/learning-sources-files.test.ts`. It fails if a file and its entry differ in size, start or fingerprint, if a file has no entry, or if an entry has no file.
+5. Commit both. The Library lists the source in the next release. No code changes.
+
+To replace a file: add the new file, raise `revision.number` by 1, and update `fileName`, `bytes`, `sha256`, `pages` and `addedOn`. Copies of the old revision saved on a device are removed the next time the Library opens. Deleting a PDF needs the owner's OK (CLAUDE.md rule 14).
+
 ## Deploy (Cloudflare Pages)
 
 Settings for building from `app/` (the owner sets them once, when the first release merges into `main`):

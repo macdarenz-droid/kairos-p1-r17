@@ -46,7 +46,7 @@ describe('P27.2 Library route and the Analysis handoff', () => {
     const route = () => screen.getByRole('region', { name: 'Library' });
     await waitFor(() => expect(route().getAttribute('data-library-status')).toBe('ready'));
     expect(route().getAttribute('data-library-count')).toBe('3');
-    expect(screen.getByText('2 saved analyses and 1 saved snapshot across 2 markets. Open one to load it in Analysis.')).toBeTruthy();
+    expect(screen.getByText('2 saved analyses and 1 trade estimated from time across 2 markets. Open one to load it in Analysis.')).toBeTruthy();
     const items = () => [...route().querySelectorAll('[data-record-id]')].map(item => item.getAttribute('data-record-id'));
     expect(items()).toEqual(['s-1', a1.savedAnalysisId, a2.savedAnalysisId]);
     expect(screen.getByRole('link', { name: 'Open Morning scalp in Analysis' }).getAttribute('href')).toBe('/analysis?market=binance-spot%3AETHUSDT&open=snapshot%3As-1');
@@ -57,13 +57,13 @@ describe('P27.2 Library route and the Analysis handoff', () => {
     expect(items()).toEqual([a2.savedAnalysisId]);
     fireEvent.change(screen.getByLabelText('Record kind'), { target: { value: 'snapshot' } });
     expect(route().getAttribute('data-library-count')).toBe('0');
-    expect(screen.getByRole('status').textContent).toBe('No saved records match these filters.');
+    expect(screen.getByRole('status').textContent).toBe('No saved charts match these filters.');
   });
 
   it('shows the empty state when nothing is saved', async () => {
     const db = await database();
     render(<MemoryRouter><LibraryRoute db={db} /></MemoryRouter>);
-    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Nothing saved yet. Save an analysis or a snapshot from the Analysis page and it will appear here.'));
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Nothing saved yet. Save an analysis or a trade estimated from time on the Analysis page and it will appear here.'));
   });
 
   it('opens a handed-off Saved Analysis exactly once through the released load path, and ignores a handoff for another kind or an unknown id', async () => {
