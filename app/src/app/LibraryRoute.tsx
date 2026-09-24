@@ -19,7 +19,7 @@ const utcClock = (iso: string): string => iso.replace('T', ' ').replace(/\.\d{3}
 const marketKey = (market: Readonly<{ venue: string; instrument: string }>): string => `${market.venue}:${market.instrument}`;
 
 function facts(entry: SavedRecordIndexEntry): string {
-  if (entry.kind === 'analysis') return `${entry.drawingCount === 1 ? '1 drawing' : `${entry.drawingCount} drawings`}${entry.riskRewardCount > 0 ? ` · ${entry.riskRewardCount === 1 ? '1 risk/reward' : `${entry.riskRewardCount} risk/rewards`}` : ''}`;
+  if (entry.kind === 'analysis') return `${entry.drawingCount === 1 ? '1 drawing' : `${entry.drawingCount} drawings`}${entry.riskRewardCount > 0 ? ` · ${entry.riskRewardCount === 1 ? '1 risk box' : `${entry.riskRewardCount} risk boxes`}` : ''}`;
   return `${entry.side === 'long' ? 'Long' : 'Short'} · opened ${utcClock(entry.openedAtUtc)}${entry.closedAtUtc === null ? ' · still open' : ''} · saved ${utcClock(entry.savedAt)}`;
 }
 
