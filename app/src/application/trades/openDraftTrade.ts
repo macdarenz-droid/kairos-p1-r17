@@ -1,13 +1,10 @@
 import type { KairosDatabase } from '../../data/database/KairosDatabase';
 import { runKairosAtomicWrite } from '../../data/database/transactions';
-import { createTradeDomainId, type TradeExecutionRecord, type TradeFeeRecord, type TradeRecord, type TradeSource } from '../../domain/trades';
+import { createTradeDomainId, type TradeSource } from '../../domain/trades';
+import { tradeRevision, type SavedTradeSnapshot } from './tradeRevision';
 import { prepareManualTrade, type ManualTradeExecutionInput, type ManualTradeFeeInput, type SaveManualTradeDependencies, type SaveManualTradeResult } from './saveManualTrade';
 
-export interface DraftTradeSnapshot {
-  readonly trade: TradeRecord;
-  readonly executions: readonly TradeExecutionRecord[];
-  readonly fees: readonly TradeFeeRecord[];
-}
+export type DraftTradeSnapshot = SavedTradeSnapshot;
 
 export interface OpenDraftTradeInput {
   readonly expected: DraftTradeSnapshot;
@@ -24,16 +21,6 @@ export type OpenDraftTradeResult = SaveManualTradeResult | {
   readonly type: 'update-conflict';
   readonly reason: 'trade-changed' | 'trade-not-draft-manual' | 'identity-conflict';
 };
-
-// The same revision the P10.4 open-trade update uses: header plus children, so
-// a stale form can never be applied twice. Prices stay strings.
-function revision({ trade: t, executions, fees }: DraftTradeSnapshot): string {
-  return JSON.stringify([
-    [t.id, t.symbol, t.marketType, t.side, t.status, t.source, t.openedAt, t.closedAt, t.createdAt, t.updatedAt, t.grossPnlCurrency ?? null],
-    [...executions].sort((a, b) => a.id.localeCompare(b.id)).map(e => [e.id, e.tradeId, e.type, e.price, e.quantity, e.executedAt, e.createdAt]),
-    [...fees].sort((a, b) => a.id.localeCompare(b.id)).map(f => [f.id, f.tradeId, f.executionId, f.amount, f.currency, f.createdAt]),
-  ]);
-}
 
 /**
  * P31.1 draft activation application command.
@@ -84,7 +71,7 @@ export async function openDraftTrade(
       }
       const currentExecutions = await r.tradeExecutions.listByTradeId(trade.id);
       const currentFees = await r.tradeFees.listByTradeId(trade.id);
-      if (revision({ trade: current, executions: currentExecutions, fees: currentFees }) !== revision(input.expected)) {
+      if (tradeRevision({ trade: current, executions: currentExecutions, fees: currentFees }) !== tradeRevision(input.expected)) {
         return { ok: false, type: 'update-conflict', reason: 'trade-changed' };
       }
       for (const e of executions) if (await r.tradeExecutions.get(e.id)) return { ok: false, type: 'update-conflict', reason: 'identity-conflict' };

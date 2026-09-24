@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { appRoutes } from '../src/app/routes';
 
 function renderPath(path: string) {
@@ -9,6 +9,10 @@ function renderPath(path: string) {
   render(<RouterProvider router={router} />);
   return router;
 }
+
+beforeAll(async () => {
+  await Promise.all([import('../src/app/AnalysisRoute'), import('../src/app/JournalRoute')]);
+}, 30_000);
 
 describe('P8.1 navigation shell', () => {
   it('exposes the five primary destinations in one navigation landmark', () => {
@@ -18,9 +22,9 @@ describe('P8.1 navigation shell', () => {
       expect(screen.getByRole('link', { name: label })).toBeInTheDocument();
     }
   });
-  it('marks the current primary destination with aria-current', () => {
+  it('marks the current primary destination with aria-current', async () => {
     renderPath('/analysis');
-    expect(screen.getByRole('link', { name: 'Analysis' })).toHaveAttribute('aria-current', 'page');
+    expect(await screen.findByRole('link', { name: 'Analysis' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('link', { name: 'Home' })).not.toHaveAttribute('aria-current');
   });
   it('navigates without replacing the shared shell', async () => {

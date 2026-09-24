@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, createMemoryRouter } from 'react-router';
 import { AppShell } from '../src/app/AppShell';
 import { RouterProvider } from 'react-router/dom';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { appRoutes } from '../src/app/routes';
 import { ThemeProvider } from '../src/design-system/themes';
 import packageJson from '../package.json' with { type: 'json' };
@@ -17,6 +17,10 @@ function renderPath(path: string) {
   return router;
 }
 
+beforeAll(async () => {
+  await Promise.all([import('../src/app/AnalysisRoute'), import('../src/app/SettingsRoute')]);
+}, 30_000);
+
 describe('Ink app shell presentation', () => {
   it('keeps the five labelled destinations and adds one hidden icon per link', () => {
     renderPath('/');
@@ -28,16 +32,17 @@ describe('Ink app shell presentation', () => {
     }
   });
 
-  it('positions the ink indicator by the active primary destination', () => {
+  it('positions the ink indicator by the active primary destination', async () => {
     renderPath('/analysis');
-    const inner = screen.getByRole('navigation', { name: 'Primary navigation' }).querySelector('.kairos-shell__navigation-inner') as HTMLElement;
+    const inner = (await screen.findByRole('navigation', { name: 'Primary navigation' })).querySelector('.kairos-shell__navigation-inner') as HTMLElement;
     expect(inner.style.getPropertyValue('--kairos-nav-index')).toBe('2');
     expect(inner.querySelector('.kairos-shell__nav-ink')).toHaveAttribute('aria-hidden', 'true');
   });
 
-  it('treats nested and secondary paths as their primary owner or Home', () => {
+  it('treats nested and secondary paths as their primary owner or Home', async () => {
     const inner = () => screen.getByRole('navigation', { name: 'Primary navigation' }).querySelector('.kairos-shell__navigation-inner') as HTMLElement;
     renderPath('/settings');
+    await screen.findByRole('navigation', { name: 'Primary navigation' });
     expect(inner().style.getPropertyValue('--kairos-nav-index')).toBe('0');
   });
 

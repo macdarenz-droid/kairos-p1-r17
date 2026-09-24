@@ -34,6 +34,14 @@ export class SourceScopedTradeRepository {
       .limit(limit)
       .toArray();
   }
+  /** Closed trades with closedAt in [fromClosedAt, toClosedAt), oldest close first, through the [status+closedAt] index. null = no bound. No limit: this path serves period totals. */
+  listClosedByClosedAtRange(fromClosedAt: string | null, toClosedAt: string | null) {
+    return this.db.trades
+      .where('[status+closedAt]')
+      .between(['closed', fromClosedAt ?? ''], ['closed', toClosedAt ?? '\uffff'], true, false)
+      .filter(trade => this.sources.has(trade.source))
+      .toArray();
+  }
 }
 export class TradePlanRepository {
   constructor(private readonly db: KairosDatabase) {}

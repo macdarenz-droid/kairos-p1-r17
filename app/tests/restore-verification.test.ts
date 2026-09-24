@@ -93,7 +93,7 @@ describe('P6.5 post-restore reopen/re-query verification', () => {
     await db.open();
     const prepared = await prepareKairosRestore(db, backup([]));
     await restoreAndVerifyKairosDatabase(db, prepared);
-    expect(db.verno).toBe(6);
+    expect(db.verno).toBe(7);
     expect(db.tables.map((table) => table.name).sort()).toEqual(['metadata', 'savedAnalyses', 'savedTimeAssistedSnapshots', 'tradeDiscipline', 'tradeExecutions', 'tradeFees', 'tradePlans', 'trades'].sort());
     db.close();
   });

@@ -127,7 +127,7 @@ function requiredPositiveDecimal(
   return { ok: true, value: parsed.value };
 }
 
-function isIsoLikeTimestamp(value: string): boolean {
+export function isIsoLikeTimestamp(value: string): boolean {
   return value.trim() !== '' && Number.isFinite(Date.parse(value));
 }
 

@@ -89,7 +89,7 @@ function assertUnique(values: readonly string[], code: KairosRestorePreflightCod
 
 function assertRestoreCompatibility(envelope: KairosBackupEnvelopeV5): void {
   // parseKairosBackup has already migrated supported V1/V2/V3/V4 backups to the current restore model.
-  if (envelope.databaseSchemaVersion !== 6) {
+  if (envelope.databaseSchemaVersion !== 6 && envelope.databaseSchemaVersion !== 7) {
     throw new KairosRestorePreflightError(
       'INCOMPATIBLE_DATABASE_SCHEMA',
       'Backup database schema is not supported by this build.',

@@ -28,7 +28,7 @@ export interface KairosBackupEnvelopeV4 { readonly formatName:typeof KAIROS_BACK
 
 export interface KairosBackupPayloadV5 extends KairosBackupPayloadV4 { readonly tradeDiscipline: readonly TradeDisciplineRecord[]; }
 export interface KairosBackupRecordCountsV5 extends KairosBackupRecordCountsV4 { readonly tradeDiscipline:number; }
-export interface KairosBackupEnvelopeV5 { readonly formatName:typeof KAIROS_BACKUP_FORMAT_NAME; readonly formatVersion:5; readonly appVersion:string; readonly buildId:string; readonly exportedAt:string; readonly databaseSchemaVersion:6; readonly recordCounts:KairosBackupRecordCountsV5; readonly payload:KairosBackupPayloadV5; }
+export interface KairosBackupEnvelopeV5 { readonly formatName:typeof KAIROS_BACKUP_FORMAT_NAME; readonly formatVersion:5; readonly appVersion:string; readonly buildId:string; readonly exportedAt:string; readonly databaseSchemaVersion:6|7; readonly recordCounts:KairosBackupRecordCountsV5; readonly payload:KairosBackupPayloadV5; }
 
 export type KairosBackupEnvelope = KairosBackupEnvelopeV1|KairosBackupEnvelopeV2|KairosBackupEnvelopeV3|KairosBackupEnvelopeV4|KairosBackupEnvelopeV5;
 export type KairosCurrentBackupEnvelope = KairosBackupEnvelopeV5;
