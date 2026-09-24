@@ -1,6 +1,9 @@
 import type { ChartDrawingInteractionState } from './chartDrawingInteractionContract';
 import type { ChartDrawingInteractionSession } from './chartDrawingInteractionPort';
 import type { RendererChartDrawing } from './chartDrawingProjection';
+import type { LightweightChartsV5DrawingClickEvent } from './lightweightChartsV5DrawingClickSubscription';
+import type { LightweightChartsV5TrendLineScreenSegment } from './lightweightChartsV5TrendLineCoordinateProjection';
+import { hitTestLightweightChartsV5TrendLineSegments } from './lightweightChartsV5TrendLineHitTest';
 import {
   projectLightweightChartsV5DrawingSelection,
   type LightweightChartsV5DrawingSelectionMouseEvent,
@@ -42,4 +45,25 @@ export function coordinateLightweightChartsV5DrawingSelectionInteraction(
     type: 'select-drawing',
     drawingId: selection.drawingId,
   });
+}
+
+/**
+ * Selects a drawing by where the tap landed. On phones, lightweight-charts
+ * 5.2.1 does not refresh its hover info on a tap, so `hoveredInfo` can name
+ * the wrong drawing or none; the tap point is the reliable evidence. Returns
+ * null when there is no point or no hit, so the caller can fall back to the
+ * hover selection. Whether the current state accepts selection stays with the
+ * interaction reducer.
+ */
+export function coordinateLightweightChartsV5DrawingPointSelection(
+  interaction: ChartDrawingSelectionInteractionDispatcher,
+  segments: readonly LightweightChartsV5TrendLineScreenSegment[],
+  event: Pick<LightweightChartsV5DrawingClickEvent, 'point'>,
+  tolerancePx: number,
+): ChartDrawingInteractionState | null {
+  const point = event.point;
+  if (point === undefined) return null;
+  const hit = hitTestLightweightChartsV5TrendLineSegments(segments, point.x, point.y, tolerancePx);
+  if (hit === null) return null;
+  return interaction.dispatch({ type: 'select-drawing', drawingId: hit.id });
 }

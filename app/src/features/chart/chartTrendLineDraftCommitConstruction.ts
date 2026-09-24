@@ -1,7 +1,8 @@
 import {
   defineChartDrawing,
+  type ChartDrawing,
   type ChartDrawingId,
-  type ChartTrendLineDrawing,
+  type ChartDrawingKind,
 } from './chartDrawingContract';
 import type { ChartTrendLineDraftAnchors } from './chartTrendLineDraftAnchorCollection';
 
@@ -20,12 +21,14 @@ import type { ChartTrendLineDraftAnchors } from './chartTrendLineDraftAnchorColl
 export function constructChartTrendLineDrawingFromDraft(
   drawingId: ChartDrawingId,
   anchors: ChartTrendLineDraftAnchors,
-): ChartTrendLineDrawing | null {
+  kind: ChartDrawingKind = 'trend-line',
+): ChartDrawing | null {
   if (anchors.length !== 2) return null;
 
+  // A zone is drafted exactly like a trend line: two anchors, opposite corners in placed order.
   return defineChartDrawing({
     id: drawingId,
-    kind: 'trend-line',
+    kind,
     start: anchors[0],
     end: anchors[1],
   });

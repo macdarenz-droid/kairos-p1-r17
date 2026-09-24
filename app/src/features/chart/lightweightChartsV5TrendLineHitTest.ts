@@ -9,7 +9,7 @@ export interface LightweightChartsV5TrendLineEditEndpointHit {
 }
 export interface LightweightChartsV5TrendLineHit {
   readonly id: string;
-  readonly kind: 'trend-line';
+  readonly kind: 'trend-line' | 'zone';
   readonly cursorStyle: 'pointer';
 }
 
@@ -106,11 +106,23 @@ export function hitTestLightweightChartsV5TrendLineSegments(
     throw new Error('chart-drawing-hit-test-invalid-input');
   }
   const toleranceSquared = tolerancePx * tolerancePx;
+  // Lines first (latest on top), then zones: a line crossing a zone wins.
   for (let index = segments.length - 1; index >= 0; index -= 1) {
     const segment = segments[index];
     if (segment.kind !== 'trend-line') continue;
     if (squaredDistanceToSegment(x, y, segment) <= toleranceSquared) {
       return { id: segment.id, kind: 'trend-line', cursorStyle: 'pointer' };
+    }
+  }
+  for (let index = segments.length - 1; index >= 0; index -= 1) {
+    const segment = segments[index];
+    if (segment.kind !== 'zone') continue;
+    const left = Math.min(segment.start.x, segment.end.x) - tolerancePx;
+    const right = Math.max(segment.start.x, segment.end.x) + tolerancePx;
+    const top = Math.min(segment.start.y, segment.end.y) - tolerancePx;
+    const bottom = Math.max(segment.start.y, segment.end.y) + tolerancePx;
+    if (x >= left && x <= right && y >= top && y <= bottom) {
+      return { id: segment.id, kind: 'zone', cursorStyle: 'pointer' };
     }
   }
   return null;

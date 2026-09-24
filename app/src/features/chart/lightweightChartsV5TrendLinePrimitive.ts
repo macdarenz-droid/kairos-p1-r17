@@ -31,7 +31,8 @@ export interface LightweightChartsV5TrendLinePrimitiveHoveredItem {
   readonly externalId: string;
   readonly zOrder: 'normal';
   readonly cursorStyle: 'pointer';
-  readonly hitTestPriority: 1;
+  /** 1 for a line (a stroke), 0 for a zone (a covered region), as lightweight-charts ranks hits. */
+  readonly hitTestPriority: 0 | 1;
   readonly itemType: 'primitive';
 }
 
@@ -123,7 +124,7 @@ export function createLightweightChartsV5TrendLinePrimitive(
         externalId: hit.id,
         zOrder: 'normal',
         cursorStyle: hit.cursorStyle,
-        hitTestPriority: 1,
+        hitTestPriority: hit.kind === 'zone' ? 0 : 1,
         itemType: 'primitive',
       };
     },

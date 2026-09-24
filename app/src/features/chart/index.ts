@@ -262,6 +262,7 @@ export {
   type ChartDrawingSelectionProjection,
 } from './lightweightChartsV5DrawingSelectionProjection';
 export {
+  coordinateLightweightChartsV5DrawingPointSelection,
   coordinateLightweightChartsV5DrawingSelectionInteraction,
   type ChartDrawingSelectionInteractionDispatcher,
 } from './lightweightChartsV5DrawingSelectionInteractionCoordination';

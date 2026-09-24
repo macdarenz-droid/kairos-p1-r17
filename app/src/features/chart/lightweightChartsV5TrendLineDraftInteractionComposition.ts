@@ -9,7 +9,7 @@ import {
 } from './chartTrendLineDraftInteractionCoordination';
 import { createLightweightChartsV5DrawingClickSubscriptionFromBinding } from './lightweightChartsV5DrawingClickBindingComposition';
 import type { LightweightChartsV5DrawingClickSubscription } from './lightweightChartsV5DrawingClickSubscription';
-import { coordinateLightweightChartsV5DrawingSelectionInteraction } from './lightweightChartsV5DrawingSelectionInteractionCoordination';
+import { coordinateLightweightChartsV5DrawingPointSelection, coordinateLightweightChartsV5DrawingSelectionInteraction } from './lightweightChartsV5DrawingSelectionInteractionCoordination';
 import { coordinateLightweightChartsV5TrendLineEditEndpointClick } from './lightweightChartsV5TrendLineEditEndpointClickCoordination';
 import { executeChartTrendLineEditAndRefreshPresentation } from './chartTrendLineEditPresentationCoordination';
 import type { LightweightChartsV5TrendLineScreenSegment } from './lightweightChartsV5TrendLineCoordinateProjection';
@@ -121,16 +121,26 @@ export function createLightweightChartsV5TrendLineDraftInteractionFromBinding(
           routeProjectedAnchorToExistingEdit =
             editExecution !== undefined && draftInteraction.getState().status === 'editing';
 
+          let pointSelection: ReturnType<typeof coordinateLightweightChartsV5DrawingPointSelection> = null;
           if (editEndpointClick !== undefined) {
+            // One snapshot per click, shared by the endpoint check and the point selection.
+            const segments = editEndpointClick.getCurrentSegments();
             coordinateLightweightChartsV5TrendLineEditEndpointClick(
               draftInteraction,
-              editEndpointClick.getCurrentSegments(),
+              segments,
+              event,
+              editEndpointClick.tolerancePx,
+            );
+            // Select by where the finger landed; hover info is the fallback only.
+            pointSelection = coordinateLightweightChartsV5DrawingPointSelection(
+              draftInteraction,
+              segments,
               event,
               editEndpointClick.tolerancePx,
             );
           }
 
-          if (getCurrentRendererDrawings !== undefined) {
+          if (getCurrentRendererDrawings !== undefined && pointSelection === null) {
             coordinateLightweightChartsV5DrawingSelectionInteraction(
               draftInteraction,
               getCurrentRendererDrawings(),

@@ -93,11 +93,12 @@ describe('the chart until zones are drawn', () => {
     expect(constructChartTrendLineEdit(zone, 'end', anchor('2026-09-09T00:00:00.000Z', '63000'))).toEqual({ ...zone, end: anchor('2026-09-09T00:00:00.000Z', '63000') });
   });
 
-  it('draws nothing for a zone segment and never hits one', () => {
-    const context = { save: vi.fn(), restore: vi.fn(), beginPath: vi.fn(), moveTo: vi.fn(), lineTo: vi.fn(), stroke: vi.fn(), strokeStyle: '', lineWidth: 0 };
+  it('the line renderer and hit test never treat a zone as a line', () => {
+    const context = { save: vi.fn(), restore: vi.fn(), beginPath: vi.fn(), moveTo: vi.fn(), lineTo: vi.fn(), stroke: vi.fn(), fillRect: vi.fn(), strokeRect: vi.fn(), strokeStyle: '', fillStyle: '', lineWidth: 0, globalAlpha: 1 };
     const target = { useBitmapCoordinateSpace: (draw: (scope: unknown) => void) => draw({ context, horizontalPixelRatio: 1, verticalPixelRatio: 1 }) };
     createLightweightChartsV5TrendLinePaneRenderer([zoneSegment], { color: '#fff', lineWidth: 1 }).draw(target as never);
     expect(context.stroke).not.toHaveBeenCalled();
-    expect(hitTestLightweightChartsV5TrendLineSegments([zoneSegment], 30, 30, 8)).toBeNull();
+    expect(context.moveTo).not.toHaveBeenCalled();
+    expect(hitTestLightweightChartsV5TrendLineSegments([zoneSegment], 30, 30, 8)?.kind).not.toBe('trend-line');
   });
 });
