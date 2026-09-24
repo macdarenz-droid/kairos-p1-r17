@@ -139,7 +139,7 @@ describe('T-022c risk box tool', () => {
     expect(latest!.getRiskBoxes()).toHaveLength(1);
     act(() => { h.click(T0 + 700, 104, T0 + 700); });
     expect(status()).toBe('selected');
-    expect(screen.getByText('Risk box selected: Long · Reward is 2× the risk. Delete removes it.', { exact: false })).toBeTruthy();
+    expect(screen.getByText(/Risk box selected: Long · Reward is 2× the risk\. Tap a square to move the entry, stop or target, or Delete to remove it\./)).toBeTruthy();
     act(() => { fireEvent.click(button('Delete risk box')); });
     expect(status()).toBe('idle');
     expect(latest!.getRiskBoxes()).toEqual([]);
@@ -179,5 +179,48 @@ describe('T-022c risk box tool', () => {
     const d = (value: string) => value as DecimalString;
     expect(riskBoxLabel({ analysis: { id: 'x', side: 'long', levels: { entry: d('100'), stop: d('100'), target: d('110') } }, extent: { start: '', end: '' } })).toBe('Long');
     expect(riskBoxLabel({ analysis: { id: 'y', side: 'short', levels: { entry: d('100'), stop: d('103'), target: d('95') } }, extent: { start: '', end: '' } })).toBe('Short · Reward is 1.67× the risk');
+  });
+
+  it('moves a box stop, refuses a target past the entry, and cancels (T-022e)', () => {
+    const { h, view } = mount();
+    drawBox(h, 100, 95, 110);
+    const [placed] = latest!.getRiskBoxes();
+    act(() => { h.click(T0 + 700, 104, T0 + 700); });
+    expect(status()).toBe('selected');
+    // Stop square: (T0 + 1500, y = 190).
+    act(() => { h.click(T0 + 1500, 95, T0 + 1500); });
+    expect(status()).toBe('editing');
+    expect(screen.getByText(/Moving the risk box: tap where it should go/)).toBeTruthy();
+    act(() => { h.click(T0 + 2400, 90); });
+    expect(status()).toBe('idle');
+    const [moved] = latest!.getRiskBoxes();
+    expect(moved.analysis).toEqual({ ...placed.analysis, levels: { ...placed.analysis.levels, stop: '90' } });
+    expect(moved.extent).toEqual({ start: placed.extent.start, end: new Date((T0 + 2400) * 1000).toISOString() });
+    // Target square: (T0 + 2400, y = 220); a target below the entry is refused and the edit stays open.
+    act(() => { h.click(T0 + 1200, 104, T0 + 1200); });
+    expect(status()).toBe('selected');
+    act(() => { h.click(T0 + 2400, 110, T0 + 2400); });
+    expect(status()).toBe('editing');
+    act(() => { h.click(T0 + 2400, 99); });
+    expect(status()).toBe('editing');
+    expect(latest!.getRiskBoxes()).toEqual([moved]);
+    act(() => { fireEvent.click(button('Cancel')); });
+    expect(status()).toBe('idle');
+    expect(latest!.getRiskBoxes()).toEqual([moved]);
+    view.unmount();
+  });
+
+  it('refuses moving the entry past the box right edge', () => {
+    const { h, view } = mount();
+    drawBox(h, 100, 95, 110);
+    const boxes = latest!.getRiskBoxes();
+    act(() => { h.click(T0 + 700, 104, T0 + 700); });
+    // Entry square: (T0, y = 200).
+    act(() => { h.click(T0, 100, T0); });
+    expect(status()).toBe('editing');
+    act(() => { h.click(T0 + 3000, 101); });
+    expect(status()).toBe('editing');
+    expect(latest!.getRiskBoxes()).toEqual(boxes);
+    view.unmount();
   });
 });

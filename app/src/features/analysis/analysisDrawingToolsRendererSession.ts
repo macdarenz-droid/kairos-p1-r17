@@ -1,6 +1,7 @@
 import {
   checkUserRiskBoxStop,
   constructUserRiskBox,
+  moveUserRiskBoxHandle,
   projectPlannedRewardToRisk,
   type UserRiskBoxPoint,
 } from '../../application/risk-reward';
@@ -169,10 +170,22 @@ export function createAnalysisDrawingToolsRendererSession(
       let editing = false;
       const tolerancePx = options.endpointEditTolerancePx;
       // The risk box tool's three taps: entry, stop, then target. Every other anchor goes to the P18 path.
-      const interceptAnchor = (anchor: UserRiskBoxPoint, _preClickStatus: ChartDrawingInteractionStatus): boolean => {
+      const interceptAnchor = (anchor: UserRiskBoxPoint, preClickStatus: ChartDrawingInteractionStatus): boolean => {
         const interaction = next.interaction;
         if (interaction === null || active !== next) return false;
         const state = interaction.getState();
+        // Moving a box handle: the P18 edit path only knows the drawing collection, so the box move is taken here.
+        if (preClickStatus === 'editing' && state.status === 'editing') {
+          const box = boxes.get(state.drawingId);
+          if (box === undefined) return false;
+          const moved = moveUserRiskBoxHandle(box, state.endpoint, anchor);
+          if (!moved.ok) return true;
+          boxes.set(box.analysis.id, moved.box);
+          interaction.dispatch({ type: 'reset-interaction' });
+          present(next);
+          notifyRiskBoxes();
+          return true;
+        }
         if (!isRiskBoxDraftState(state)) return false;
         if (state.status === 'tool-selected') {
           boxDraft = { entry: anchor };

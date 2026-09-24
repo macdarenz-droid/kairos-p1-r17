@@ -175,9 +175,23 @@ describe('T-022b risk box hit test', () => {
     expect(hitTestLightweightChartsV5TrendLineSegments([line, boxSegment], 30, 80, 4)?.id).toBe('line');
   });
 
-  it('never returns a box from the endpoint hit test', () => {
-    expect(hitTestLightweightChartsV5TrendLineEditEndpoints([boxSegment], 10, 100, 4)).toBeNull();
-    expect(hitTestLightweightChartsV5TrendLineEditEndpoints([boxSegment], 50, 60, 4)).toBeNull();
+  it('finds a box entry, stop and target squares in the endpoint hit test (T-022e)', () => {
+    expect(hitTestLightweightChartsV5TrendLineEditEndpoints([boxSegment], 10, 100, 4)).toEqual({ id: 'box-1', kind: 'trend-line-edit-endpoint', endpoint: 'start' });
+    expect(hitTestLightweightChartsV5TrendLineEditEndpoints([boxSegment], 50, 118, 4)?.endpoint).toBe('end');
+    expect(hitTestLightweightChartsV5TrendLineEditEndpoints([boxSegment], 50, 61, 4)?.endpoint).toBe('target');
+    expect(hitTestLightweightChartsV5TrendLineEditEndpoints([boxSegment], 30, 80, 4)).toBeNull();
+  });
+
+  it('fails closed on an exact tie between a box stop and target squares', () => {
+    const tight: LightweightChartsV5TrendLineScreenSegment = { ...boxSegment, end: { x: 50, y: 104 }, target: { x: 50, y: 96 } };
+    expect(hitTestLightweightChartsV5TrendLineEditEndpoints([tight], 50, 100, 4)).toBeNull();
+  });
+
+  it('keeps line and zone endpoint hits unchanged', () => {
+    const lineSegment: LightweightChartsV5TrendLineScreenSegment = { id: 'line', kind: 'trend-line', start: { x: 0, y: 0 }, end: { x: 100, y: 100 } };
+    const zoneSegment: LightweightChartsV5TrendLineScreenSegment = { id: 'zone', kind: 'zone', start: { x: 200, y: 0 }, end: { x: 300, y: 50 } };
+    expect(hitTestLightweightChartsV5TrendLineEditEndpoints([lineSegment, zoneSegment], 1, 1, 4)).toEqual({ id: 'line', kind: 'trend-line-edit-endpoint', endpoint: 'start' });
+    expect(hitTestLightweightChartsV5TrendLineEditEndpoints([lineSegment, zoneSegment], 299, 49, 4)).toEqual({ id: 'zone', kind: 'trend-line-edit-endpoint', endpoint: 'end' });
   });
 });
 

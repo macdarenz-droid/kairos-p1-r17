@@ -52,7 +52,8 @@ const riskBoxGuidance = (status: ChartDrawingInteractionState['status'], label: 
     case 'drawing': return 'Risk box: tap your stop a few candles to the right. Below the entry makes a long (buy) box; above makes a short (sell) box.';
     case 'preview': return 'Risk box: tap your target, on the other side of the entry from the stop.';
     case 'committed': return 'Risk box placed. Tap it to select it.';
-    case 'selected': return `Risk box selected: ${label ?? 'risk box'}. Delete removes it.`;
+    case 'selected': return `Risk box selected: ${label ?? 'risk box'}. Tap a square to move the entry, stop or target, or Delete to remove it.`;
+    case 'editing': return 'Moving the risk box: tap where it should go. The stop and target must stay on their own sides of the entry. Cancel keeps the box.';
     default: return null;
   }
 };
