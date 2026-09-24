@@ -8,6 +8,7 @@ import {
   readVisualPnlTimeZonePreference,
   projectVisualPnlDayKey,
   projectVisualPnlMonthGrid,
+  projectVisualPnlResultLine,
   shiftVisualPnlDayKey,
   type VisualPnlDailySummaryProjection,
 } from '../application/visual-pnl';
@@ -15,9 +16,9 @@ import type { KairosDatabase } from '../data/database';
 import { createKairosRepositories } from '../data/repositories';
 import { VisualPnlStreak } from './VisualPnlStreak';
 import { VisualPnlPerformanceSummary } from './VisualPnlPerformanceSummary';
-import { VisualPnlCumulativeProgress } from './VisualPnlCumulativeProgress';
 import { DeviceTimeZoneButton } from '../features/settings/DeviceTimeZoneButton';
 import { ResultsCalendar } from '../features/journal/ResultsCalendar';
+import { ResultsLine } from '../features/journal/ResultsLine';
 import { ResultsDayTrades, type ResultsDayTradesState } from '../features/journal/ResultsDayTrades';
 import { ReviewTradeLink } from './ReviewTradeLink';
 
@@ -112,7 +113,7 @@ export function JournalDailyResults({ db, refreshRevision, now = wallClock }: Jo
         </div>
         <VisualPnlStreak projection={projectVisualPnlDailyStreak(projection.days)} />
         <VisualPnlPerformanceSummary summary={summarizeVisualPnlDailyPerformance(projection.days)} />
-        <VisualPnlCumulativeProgress projection={projectVisualPnlCumulativeRealizedPnl(projectVisualPnlProgressSeries(projection.days))} />
+        <ResultsLine line={projectVisualPnlResultLine(projectVisualPnlCumulativeRealizedPnl(projectVisualPnlProgressSeries(projection.days)))} />
         {grid ? <ResultsCalendar
           grid={grid}
           selectedDayKey={selectedDayKey}

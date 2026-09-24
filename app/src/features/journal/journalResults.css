@@ -31,3 +31,19 @@
 .kairos-results-day-trades__list { display: grid; gap: var(--kairos-space-2); margin: 0; padding: 0; list-style: none; }
 .kairos-results-day-trades__list li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--kairos-space-2) var(--kairos-space-3); color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-sm); }
 .kairos-results-day-trades__list strong { color: var(--kairos-text-primary); }
+.kairos-results-line { display: grid; gap: var(--kairos-space-2); margin-block: var(--kairos-space-3); padding: var(--kairos-space-3); border: 1px solid var(--kairos-border-subtle); border-radius: var(--kairos-radius-lg); background: var(--kairos-surface-raised); }
+.kairos-results-line__heading { display: flex; align-items: end; justify-content: space-between; gap: var(--kairos-space-3); }
+.kairos-results-line__heading h3 { margin: 0; font-size: var(--kairos-font-size-md); }
+.kairos-results-line__heading strong { font-family: var(--kairos-font-mono); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; text-align: end; }
+.kairos-results-line[data-outcome='profit'] .kairos-results-line__heading strong { color: var(--kairos-trade-profit); }
+.kairos-results-line[data-outcome='loss'] .kairos-results-line__heading strong { color: var(--kairos-trade-loss); }
+.kairos-results-line__picture { display: block; width: 100%; height: 160px; }
+.kairos-results-line__zero { stroke: var(--kairos-border-strong); stroke-width: 1; stroke-dasharray: 4 4; }
+.kairos-results-line__path { stroke: var(--kairos-accent-primary); stroke-width: 2; stroke-linejoin: round; }
+.kairos-results-line__ends { display: flex; justify-content: space-between; gap: var(--kairos-space-3); color: var(--kairos-text-muted); font-size: var(--kairos-font-size-xs); }
+.kairos-results-line__numbers summary { cursor: pointer; color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-sm); }
+.kairos-results-line__numbers ol { display: grid; gap: var(--kairos-space-1); margin: var(--kairos-space-2) 0 0; padding: 0; list-style: none; font-size: var(--kairos-font-size-sm); }
+.kairos-results-line__numbers li { display: flex; justify-content: space-between; gap: var(--kairos-space-3); color: var(--kairos-text-secondary); }
+.kairos-results-line__numbers strong { font-family: var(--kairos-font-mono); font-variant-numeric: tabular-nums; color: var(--kairos-text-primary); }
+.kairos-results-line__state { margin: 0; color: var(--kairos-text-muted); font-size: var(--kairos-font-size-sm); }
+@media (max-width: 420px) { .kairos-results-line__picture { height: 120px; } }
