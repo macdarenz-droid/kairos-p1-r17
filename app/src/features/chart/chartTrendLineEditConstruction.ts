@@ -1,0 +1,37 @@
+import {
+  defineChartDrawing,
+  type ChartDrawingAnchor,
+  type ChartTrendLineDrawing,
+} from './chartDrawingContract';
+
+/**
+ * P18.48 provider-neutral trend-line edit construction.
+ *
+ * This pure boundary owns only construction of one identity-preserving edited
+ * trend line from already-authoritative committed drawing truth, an explicit
+ * editable endpoint, and one caller-supplied replacement anchor.
+ *
+ * P18.1 remains the committed drawing shape owner. P18.44 remains the sole
+ * committed collection mutation owner. P18.23/P18.24/P18.38 remain interaction
+ * transition/current-state owners. Provider gesture evidence, collection
+ * replacement, presentation refresh, persistence, undo/redo, UI state, and P19
+ * Risk/Reward semantics are deliberately outside this boundary.
+ */
+export type ChartTrendLineEditEndpoint = 'start' | 'end';
+
+export function constructChartTrendLineEdit(
+  drawing: ChartTrendLineDrawing,
+  endpoint: ChartTrendLineEditEndpoint,
+  anchor: ChartDrawingAnchor,
+): ChartTrendLineDrawing {
+  if (endpoint !== 'start' && endpoint !== 'end') {
+    throw new Error('chart-trend-line-edit-endpoint-unsupported');
+  }
+
+  return defineChartDrawing({
+    id: drawing.id,
+    kind: 'trend-line',
+    start: endpoint === 'start' ? { ...anchor } : { ...drawing.start },
+    end: endpoint === 'end' ? { ...anchor } : { ...drawing.end },
+  });
+}

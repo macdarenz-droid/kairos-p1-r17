@@ -1,0 +1,18 @@
+/* Segmented control with a sliding ink pill; the pager beneath it swipes between the same two views. */
+.kairos-home-switch { position:relative; display:grid; grid-template-columns:1fr 1fr; padding:calc(var(--kairos-space-1) / 2); margin-bottom:var(--kairos-space-3); border-radius:var(--kairos-radius-full); background:var(--kairos-surface-raised); border:1px solid var(--kairos-border-hairline, var(--kairos-border-default)); }
+.kairos-home-switch button, .kairos-your-trades button:not(.kairos-your-trades__bubble) { color:var(--kairos-text-primary); background:var(--kairos-surface-raised); border:1px solid var(--kairos-border-default); border-radius:var(--kairos-radius-md); padding:var(--kairos-space-1) var(--kairos-space-2); min-height:var(--kairos-control-sm); cursor:pointer; }
+.kairos-home-switch__ink { position:absolute; top:calc(var(--kairos-space-1) / 2); bottom:calc(var(--kairos-space-1) / 2); left:calc(var(--kairos-space-1) / 2); width:calc(50% - var(--kairos-space-1) / 2); border-radius:var(--kairos-radius-full); background:var(--kairos-accent-soft); border:1px solid var(--kairos-accent-primary); pointer-events:none; transition:transform var(--kairos-motion-slow) var(--kairos-ease-spring); }
+.kairos-home-switch[data-view="trades"] .kairos-home-switch__ink { transform:translateX(100%); }
+.kairos-home-switch button { position:relative; z-index:1; background:transparent; border-color:transparent; border-radius:var(--kairos-radius-full); color:var(--kairos-text-secondary); font-weight:600; transition:color var(--kairos-motion-normal) var(--kairos-ease-out); }
+.kairos-home-switch button[aria-pressed="true"] { color:var(--kairos-text-primary); background:transparent; border-color:transparent; }
+@media (prefers-reduced-motion: reduce) { .kairos-home-switch__ink, .kairos-home-switch button { transition:none; } }
+.kairos-your-trades button:disabled { color:var(--kairos-text-disabled); cursor:default; }
+.kairos-home-switch button:focus-visible, .kairos-your-trades button:focus-visible { outline:2px solid var(--kairos-state-focus); outline-offset:2px; }
+.kairos-your-trades__heading, .kairos-your-trades__controls { display:flex; justify-content:space-between; align-items:center; gap:var(--kairos-space-2); }
+.kairos-your-trades__caption, .kairos-your-trades__controls { font-size:var(--kairos-font-size-xs); color:var(--kairos-text-secondary); margin:var(--kairos-space-1) 0; }
+.kairos-your-trades a { color:var(--kairos-accent-primary); }
+.kairos-your-trades__bubble { padding:0; border:0; background:transparent; color:var(--kairos-text-primary); font-family:inherit; cursor:pointer; }
+.kairos-your-trades__empty { text-align:center; padding:var(--kairos-space-8) var(--kairos-space-4); color:var(--kairos-text-secondary); }
+.kairos-your-trades__detail { position:absolute; inset:auto var(--kairos-space-2) var(--kairos-space-2); z-index:2; border:1px solid var(--kairos-border-active); border-radius:var(--kairos-radius-lg); background:var(--kairos-surface-modal); padding:var(--kairos-space-3); overflow-wrap:anywhere; }
+.kairos-your-trades__detail p { margin:var(--kairos-space-1) 0; }
+.kairos-your-trades__detail time, .kairos-your-trades__detail small { display:block; font-size:var(--kairos-font-size-xs); color:var(--kairos-text-secondary); margin-bottom:var(--kairos-space-2); }

@@ -1,0 +1,21 @@
+.kairos-open-update { min-width: 0; }
+.kairos-open-update button { min-height: var(--kairos-control-md); padding: var(--kairos-space-2) var(--kairos-space-3); border: 1px solid var(--kairos-border-default); border-radius: var(--kairos-radius-md); background: var(--kairos-surface-input); color: var(--kairos-accent-primary); font: inherit; }
+.kairos-open-update button:disabled { opacity: .6; cursor: wait; }
+.kairos-open-update__trigger { width: 100%; margin-top: var(--kairos-space-3); }
+.kairos-open-update .kairos-trade-form__submit { background: var(--kairos-accent-primary); color: var(--kairos-background-depth); border-color: var(--kairos-accent-primary); }
+.kairos-open-update__panel { border-top: 1px solid var(--kairos-border-subtle); padding-top: var(--kairos-space-4); overflow-wrap: anywhere; }
+.kairos-open-update__panel h3 { margin: 0; font-size: var(--kairos-font-size-lg); }
+.kairos-open-update__panel p { font-size: var(--kairos-font-size-sm); color: var(--kairos-text-secondary); }
+.kairos-open-update__panel form { display: grid; gap: var(--kairos-space-3); }
+.kairos-open-update__recorded { margin-bottom: var(--kairos-space-4); }
+.kairos-open-update__recorded summary { cursor: pointer; min-height: var(--kairos-control-md); display: flex; align-items: center; color: var(--kairos-accent-primary); }
+.kairos-open-update__recorded li { margin-bottom: var(--kairos-space-2); }
+.kairos-open-update__recorded time { font-size: var(--kairos-font-size-xs); color: var(--kairos-text-muted); }
+.kairos-open-update__actions, .kairos-open-update__discard { display: flex; gap: var(--kairos-space-2); flex-wrap: wrap; }
+.kairos-open-update__actions button { flex: 1; }
+.kairos-open-update__discard p { flex-basis: 100%; }
+.kairos-open-update__panel .kairos-open-update__error { color: var(--kairos-state-error); }
+@media (max-width: 360px) {
+  .kairos-open-update .kairos-executions__grid { grid-template-columns: 1fr; }
+  .kairos-open-update .kairos-executions__grid .kairos-field--wide { grid-column: auto; }
+}

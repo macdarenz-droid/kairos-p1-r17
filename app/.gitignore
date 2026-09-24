@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+.vite/
+*.log
+.DS_Store
+
+# Generated verification evidence
+P1_GATE_EVIDENCE.json
