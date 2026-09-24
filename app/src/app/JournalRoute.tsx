@@ -18,6 +18,7 @@ export function JournalRoute({ db = kairosDatabase, now }: JournalRouteProps) {
   const [updateNotice, setUpdateNotice] = useState('');
   const [historyStatus, setHistoryStatus] = useState<TradeStatus | ''>('');
   const [journalRevision, setJournalRevision] = useState(0);
+  const [disciplineRevision, setDisciplineRevision] = useState(0);
   const pages = useJournalHistoryPages(db, 'real', historyStatus);
 
   return (
@@ -33,7 +34,7 @@ export function JournalRoute({ db = kairosDatabase, now }: JournalRouteProps) {
 
       <TradeForm db={db} kind="journal" onSaved={async () => { await pages.refresh(); setJournalRevision(current => current + 1); }} />
 
-      <JournalDailyResults db={db} refreshRevision={journalRevision} now={now} />
+      <JournalDailyResults db={db} refreshRevision={journalRevision} now={now} disciplineRevision={disciplineRevision} />
 
       <JournalHistoryList
         db={db}
@@ -51,6 +52,7 @@ export function JournalRoute({ db = kairosDatabase, now }: JournalRouteProps) {
         onShowOlder={pages.showOlder}
         statusFilter={historyStatus}
         onStatusFilterChange={setHistoryStatus}
+        onDisciplineSaved={() => setDisciplineRevision(value => value + 1)}
       />
     </section>
   );

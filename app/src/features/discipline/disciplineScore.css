@@ -1,0 +1,82 @@
+.kairos-discipline-ring {
+  flex: none;
+  display: block;
+}
+
+.kairos-discipline-ring--large {
+  inline-size: 7.5rem;
+  block-size: 7.5rem;
+}
+
+.kairos-discipline-ring--small {
+  inline-size: 3.5rem;
+  block-size: 3.5rem;
+}
+
+.kairos-discipline-ring__track {
+  stroke: var(--kairos-border-subtle);
+}
+
+.kairos-discipline-ring__value {
+  stroke: var(--kairos-accent-primary);
+}
+
+.kairos-discipline-ring__text {
+  fill: var(--kairos-text-primary);
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.kairos-discipline-score {
+  container-type: inline-size;
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.kairos-discipline-score h3,
+.kairos-discipline-score p {
+  margin: 0;
+}
+
+.kairos-discipline-score__heading p,
+.kairos-discipline-score__notice {
+  color: var(--kairos-text-muted);
+}
+
+.kairos-discipline-score__body {
+  display: grid;
+  justify-items: start;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.kairos-discipline-score__text {
+  display: grid;
+  gap: 0.375rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@container (min-width: 30rem) {
+  .kairos-discipline-score__body {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 1rem;
+  }
+}
+
+.kairos-discipline-bar {
+  display: block;
+  inline-size: 100%;
+  block-size: 0.5rem;
+  border-radius: 999px;
+  background: var(--kairos-border-subtle);
+  overflow: hidden;
+}
+
+.kairos-discipline-bar > span {
+  display: block;
+  block-size: 100%;
+  background: var(--kairos-accent-primary);
+}

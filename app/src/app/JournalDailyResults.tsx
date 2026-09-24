@@ -21,12 +21,17 @@ import { ResultsCalendar } from '../features/journal/ResultsCalendar';
 import { ResultsLine } from '../features/journal/ResultsLine';
 import { ResultsDayTrades, type ResultsDayTradesState } from '../features/journal/ResultsDayTrades';
 import { ReviewTradeLink } from './ReviewTradeLink';
+import { loadDisciplineScore } from '../application/discipline';
+import { DisciplineScorePanel, type DisciplineScorePanelState } from '../features/discipline/DisciplineScorePanel';
+import { monthLabel } from '../features/journal/ResultsCalendar';
 
 interface JournalDailyResultsProps {
   readonly db: KairosDatabase;
   readonly refreshRevision: number;
   /** The current instant as a canonical UTC ISO string; tests inject a fixed one. */
   readonly now?: () => string;
+  /** Bumped after a checklist or review is saved; reloads only the discipline score. */
+  readonly disciplineRevision?: number;
 }
 
 /** A stable default clock, as in GoalsRoute. */
@@ -46,7 +51,7 @@ type JournalDailyResultsState =
  * over every closed trade -> month grid -> ResultsCalendar. It performs no financial arithmetic, FX,
  * day grouping or direct storage access. The device time zone is saved only on an explicit tap.
  */
-export function JournalDailyResults({ db, refreshRevision, now = wallClock }: JournalDailyResultsProps) {
+export function JournalDailyResults({ db, refreshRevision, now = wallClock, disciplineRevision = 0 }: JournalDailyResultsProps) {
   const [state, setState] = useState<JournalDailyResultsState>({ kind: 'loading' });
   const repositories = useMemo(() => createKairosRepositories(db), [db]);
   const [localRevision, setLocalRevision] = useState(0);
@@ -55,6 +60,9 @@ export function JournalDailyResults({ db, refreshRevision, now = wallClock }: Jo
   const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null);
   const [dayTrades, setDayTrades] = useState<ResultsDayTradesState>({ kind: 'loading' });
   const dayRequest = useRef(0);
+  const [discipline, setDiscipline] = useState<DisciplineScorePanelState>({ kind: 'loading' });
+  const disciplineRequest = useRef(0);
+  const readyTimeZone = state.kind === 'ready' ? state.timeZone : null;
 
   useEffect(() => {
     let ignore = false;
@@ -83,6 +91,19 @@ export function JournalDailyResults({ db, refreshRevision, now = wallClock }: Jo
       ignore = true;
     };
   }, [db, repositories, refreshRevision, localRevision]);
+
+  // The score of the month the calendar shows. Only the first load shows "loading"; a reload keeps the last panel.
+  useEffect(() => {
+    if (readyTimeZone === null) return;
+    const instant = now();
+    const today = projectVisualPnlDayKey(instant, readyTimeZone);
+    if (!today.available) return;
+    const request = ++disciplineRequest.current;
+    loadDisciplineScore(db, { now: instant, monthKey: monthKey ?? today.dayKey.slice(0, 7) }).then(result => {
+      if (request !== disciplineRequest.current) return;
+      setDiscipline(result.kind === 'ready' ? { kind: 'ready', score: result.score } : { kind: 'error' });
+    }, () => { if (request === disciplineRequest.current) setDiscipline({ kind: 'error' }); });
+  }, [db, now, monthKey, refreshRevision, disciplineRevision, readyTimeZone]);
 
   function selectDay(timeZone: string, dayKey: string | null): void {
     const request = ++dayRequest.current;
@@ -129,6 +150,7 @@ export function JournalDailyResults({ db, refreshRevision, now = wallClock }: Jo
           renderTradeLink={id => <ReviewTradeLink id={id} className="kairos-results-day-trades__review" />}
           onClose={() => selectDay(timeZone, null)}
         /> : null}
+        <DisciplineScorePanel state={discipline} periodLabel={monthLabel(shownMonth)} />
         {blocked > 0 ? <p className="kairos-pnl-calendar__notice">{blocked === 1 ? '1 closed trade could not be placed on a day.' : `${blocked} closed trades could not be placed on a day.`}</p> : null}
         <p className="kairos-pnl-calendar__notice">Time zone: {timeZone}</p>
       </section>
