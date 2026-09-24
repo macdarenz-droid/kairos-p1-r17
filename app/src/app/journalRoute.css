@@ -1,10 +1,10 @@
 /* Ink amendment (Gate470). Declared first with route-scoped specificity so every released block below keeps its exact contract strings.
    Hairline framing over gradient surfaces, mono tabular numerals for every recorded value, accent-inked primary action, streak tint. */
-.kairos-journal :is(.kairos-trade-form__section, .kairos-history-card, .kairos-pnl-day, .kairos-pnl-streak, .kairos-pnl-performance-summary, .kairos-pnl-progress, .kairos-history__state, .kairos-pnl-calendar__state, .kairos-journal__feedback) { border-color: var(--kairos-border-hairline); background-color: var(--kairos-surface-card); background-image: var(--kairos-surface-gradient); }
-.kairos-journal :is(.kairos-history-card, .kairos-pnl-day, .kairos-pnl-streak, .kairos-pnl-performance-summary, .kairos-pnl-progress) { background-color: var(--kairos-surface-raised); }
+.kairos-journal :is(.kairos-trade-form__section, .kairos-history-card, .kairos-pnl-streak, .kairos-pnl-performance-summary, .kairos-pnl-progress, .kairos-history__state, .kairos-pnl-calendar__state, .kairos-journal__feedback) { border-color: var(--kairos-border-hairline); background-color: var(--kairos-surface-card); background-image: var(--kairos-surface-gradient); }
+.kairos-journal :is(.kairos-history-card, .kairos-pnl-streak, .kairos-pnl-performance-summary, .kairos-pnl-progress) { background-color: var(--kairos-surface-raised); }
 .kairos-journal :is(.kairos-journal__badge, .kairos-trade-map, .kairos-history-card__outcome--unavailable) { border-color: var(--kairos-border-hairline); }
 .kairos-journal .kairos-journal__badge { background: transparent; color: var(--kairos-text-secondary); font-family: var(--kairos-font-mono); font-size: var(--kairos-font-size-xs); letter-spacing: .04em; }
-.kairos-journal :is(.kairos-history-card__topline strong, .kairos-history-card__outcome strong, .kairos-history-card__facts dd, .kairos-pnl-day strong, .kairos-pnl-streak strong, .kairos-pnl-performance-summary strong, .kairos-pnl-progress strong, .kairos-trade-map__levels dd) { font-family: var(--kairos-font-mono); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.kairos-journal :is(.kairos-history-card__topline strong, .kairos-history-card__outcome strong, .kairos-history-card__facts dd, .kairos-pnl-streak strong, .kairos-pnl-performance-summary strong, .kairos-pnl-progress strong, .kairos-trade-map__levels dd) { font-family: var(--kairos-font-mono); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
 .kairos-journal .kairos-history-card__outcome { border-radius: var(--kairos-radius-full); background: transparent; }
 .kairos-journal .kairos-history-card__outcome-mark { font-size: var(--kairos-font-size-xs); }
 .kairos-journal .kairos-history-card__review { border-color: var(--kairos-border-strong); background: transparent; transition: border-color var(--kairos-motion-fast) var(--kairos-ease-out), background-color var(--kairos-motion-fast) var(--kairos-ease-out); }
@@ -92,20 +92,9 @@
 .kairos-pnl-calendar { margin-top:var(--kairos-space-8); border-top:1px solid var(--kairos-border-subtle); padding-top:var(--kairos-space-6); }
 .kairos-pnl-calendar__heading { display:flex; align-items:flex-end; justify-content:space-between; gap:var(--kairos-space-4); margin-bottom:var(--kairos-space-4); }
 .kairos-pnl-calendar__heading h2 { margin:0; }
-.kairos-pnl-calendar__count { color:var(--kairos-text-muted); font-size:var(--kairos-font-size-sm); white-space:nowrap; }
 .kairos-pnl-calendar__state { margin:0; padding:var(--kairos-space-4); border:1px solid var(--kairos-border-subtle); border-radius:var(--kairos-radius-md); color:var(--kairos-text-muted); }
-.kairos-pnl-calendar__grid { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fit,minmax(9rem,1fr)); gap:var(--kairos-space-3); }
-.kairos-pnl-day { min-width:0; display:grid; gap:var(--kairos-space-2); padding:var(--kairos-space-3); border:1px solid var(--kairos-border-subtle); border-radius:var(--kairos-radius-md); background:var(--kairos-surface-raised); color:var(--kairos-text-secondary); }
-.kairos-pnl-day time, .kairos-pnl-day small { color:var(--kairos-text-muted); font-size:var(--kairos-font-size-xs); }
-.kairos-pnl-day strong { overflow-wrap:anywhere; color:currentColor; font-size:var(--kairos-font-size-sm); }
-.kairos-pnl-day__result { display:flex; align-items:center; gap:var(--kairos-space-2); font-size:var(--kairos-font-size-sm); font-weight:var(--kairos-font-weight-semibold); }
-.kairos-pnl-day__mark { width:1rem; text-align:center; }
-.kairos-pnl-day--profit { border-color:var(--kairos-trade-profit); color:var(--kairos-trade-profit); }
-.kairos-pnl-day--loss { border-color:var(--kairos-trade-loss); color:var(--kairos-trade-loss); }
-.kairos-pnl-day--breakeven { border-color:var(--kairos-trade-flat); color:var(--kairos-trade-flat); }
-.kairos-pnl-day--unavailable { color:var(--kairos-text-muted); }
 .kairos-pnl-calendar__notice { margin:var(--kairos-space-3) 0 0; color:var(--kairos-text-muted); font-size:var(--kairos-font-size-sm); }
-@media (max-width:420px) { .kairos-pnl-calendar__grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .kairos-pnl-calendar__heading { align-items:flex-start; } }
+@media (max-width:420px) { .kairos-pnl-calendar__heading { align-items:flex-start; } }
 
 .kairos-pnl-streak {
   display: grid;

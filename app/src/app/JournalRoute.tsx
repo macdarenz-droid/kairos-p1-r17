@@ -10,9 +10,11 @@ import { useJournalHistoryPages } from '../features/journal/useJournalHistoryPag
 
 interface JournalRouteProps {
   readonly db?: KairosDatabase;
+  /** The current instant as a canonical UTC ISO string, for Daily results; tests inject a fixed one. */
+  readonly now?: () => string;
 }
 
-export function JournalRoute({ db = kairosDatabase }: JournalRouteProps) {
+export function JournalRoute({ db = kairosDatabase, now }: JournalRouteProps) {
   const [updateNotice, setUpdateNotice] = useState('');
   const [historyStatus, setHistoryStatus] = useState<TradeStatus | ''>('');
   const [journalRevision, setJournalRevision] = useState(0);
@@ -31,7 +33,7 @@ export function JournalRoute({ db = kairosDatabase }: JournalRouteProps) {
 
       <TradeForm db={db} kind="journal" onSaved={async () => { await pages.refresh(); setJournalRevision(current => current + 1); }} />
 
-      <JournalDailyResults db={db} refreshRevision={journalRevision} />
+      <JournalDailyResults db={db} refreshRevision={journalRevision} now={now} />
 
       <JournalHistoryList
         db={db}
