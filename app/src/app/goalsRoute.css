@@ -2,21 +2,16 @@
 .kairos-goals__heading h1 { margin-top:var(--kairos-space-1); }
 .kairos-goals__eyebrow { margin:0 !important; color:var(--kairos-accent-primary) !important; font-size:var(--kairos-font-size-xs); font-weight:var(--kairos-font-weight-semibold); letter-spacing:.08em; text-transform:uppercase; }
 .kairos-goals__progress { display:grid; gap:var(--kairos-space-3); }
-.kairos-goals-card { display:grid; gap:var(--kairos-space-3); padding:var(--kairos-space-5); border:1px solid var(--kairos-border-subtle); border-radius:var(--kairos-radius-lg); background:var(--kairos-surface-card); }
 .kairos-goals-card h2 { margin:0; font-size:var(--kairos-font-size-md); }
 .kairos-goals-card p { margin:0; color:var(--kairos-text-secondary); }
 .kairos-goals-card strong { font-family:var(--kairos-font-mono); font-variant-numeric:tabular-nums; color:var(--kairos-text-primary); }
 .kairos-goals-card[data-goal-state="reached"] h2, .kairos-goals-card[data-goal-state="within"] h2 { color:var(--kairos-state-success); }
 .kairos-goals-card[data-goal-state="exceeded"] h2 { color:var(--kairos-state-error); }
 .kairos-goals__note, .kairos-goals__unconfigured { margin:0; color:var(--kairos-text-muted); font-size:var(--kairos-font-size-xs); line-height:var(--kairos-line-height-normal); }
-.kairos-goals__form { gap:var(--kairos-space-5); }
-.kairos-goals-field { display:grid; gap:var(--kairos-space-2); color:var(--kairos-text-secondary); font-size:var(--kairos-font-size-sm); min-width:0; }
-.kairos-goals-field input { width:100%; min-width:0; padding:0 var(--kairos-space-3); border:1px solid var(--kairos-border-default); border-radius:var(--kairos-radius-md); background:var(--kairos-surface-input); color:var(--kairos-text-primary); font:inherit; line-height:2.5; }
+.kairos-goals .kairos-goals__form { gap:var(--kairos-space-5); }
 .kairos-goals-field__pair { display:grid; grid-template-columns:2fr 1fr; gap:var(--kairos-space-3); }
 .kairos-goals-card__actions { display:flex; align-items:center; gap:var(--kairos-space-3); flex-wrap:wrap; }
-.kairos-goals-card__actions button { padding:0 var(--kairos-space-5); border:1px solid var(--kairos-accent-primary); border-radius:var(--kairos-radius-md); background:var(--kairos-accent-primary); color:var(--kairos-background-depth); font:inherit; line-height:2.5; }
-.kairos-goals-card__actions button:disabled { opacity:.58; }
 .kairos-goals-card__feedback { margin:0 !important; padding:var(--kairos-space-3); border:1px solid var(--kairos-border-default); border-radius:var(--kairos-radius-md); }
 .kairos-goals-card__feedback--error { border-color:var(--kairos-state-error); color:var(--kairos-state-error) !important; }
 .kairos-goals-card__feedback--success { border-color:var(--kairos-state-success); color:var(--kairos-state-success) !important; }
-@media (max-width:34rem) { .kairos-goals-card { padding:var(--kairos-space-4); } .kairos-goals-field__pair { grid-template-columns:1fr; } .kairos-goals-card__actions, .kairos-goals-card__actions button { width:100%; } }
+@media (max-width:34rem) { .kairos-goals-field__pair { grid-template-columns:1fr; } .kairos-goals-card__actions, .kairos-goals-card__actions .kairos-button { width:100%; } }

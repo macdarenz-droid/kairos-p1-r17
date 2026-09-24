@@ -2,6 +2,7 @@ import { useContext, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { JournalHistoryEntry } from '../../application/journal';
 import { projectTradePicture } from '../../application/trade-visualizer';
 import type { MarketCandle } from '../../services/market-data/MarketCandleHistoryPort';
+import { Sheet } from '../../design-system/primitives';
 import { TradePictureCard } from './TradePictureCard';
 import { TradePictureCandleLoaderContext } from './tradePictureCandleQueue';
 import { saveTradePictureImage, serializeTradePictureSvg, tradePictureFileName, type TradePictureSavePorts } from './tradePictureImage';
@@ -83,15 +84,11 @@ export function TradePicture({ entry, variant, savePorts }: {
     <button type="button" className="kairos-trade-picture-thumb__open" aria-label={`Open the ${model.symbol} trade picture`} onClick={() => setOpen(true)}>
       <TradePictureCard model={model} candlesLoading={loading} compact />
     </button>
-    {open ? <div className="kairos-trade-picture-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId} onKeyDown={event => { if (event.key === 'Escape') setOpen(false); }}>
-      <div className="kairos-trade-picture-dialog__sheet">
-        <h2 id={titleId}>{model.symbol} trade</h2>
-        <TradePictureCard model={model} candlesLoading={loading} svgRef={dialogSvg} />
-        <div className="kairos-trade-picture-panel__actions">
-          <SaveImageButton svg={dialogSvg} symbol={model.symbol} dateIso={dateIso} ports={savePorts} />
-          <button type="button" autoFocus onClick={() => setOpen(false)}>Close</button>
-        </div>
+    <Sheet open={open} title={`${model.symbol} trade`} onClose={() => setOpen(false)}>
+      <TradePictureCard model={model} candlesLoading={loading} svgRef={dialogSvg} />
+      <div className="kairos-trade-picture-panel__actions">
+        <SaveImageButton svg={dialogSvg} symbol={model.symbol} dateIso={dateIso} ports={savePorts} />
       </div>
-    </div> : null}
+    </Sheet>
   </div>;
 }
