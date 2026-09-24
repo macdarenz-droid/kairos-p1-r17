@@ -7,6 +7,7 @@ import { kairosDatabase, type KairosDatabase } from '../data/database';
 import { createKairosRepositories } from '../data/repositories';
 import { DeviceTimeZoneButton } from '../features/settings/DeviceTimeZoneButton';
 import { ThemePicker } from '../features/settings/ThemePicker';
+import { DisciplineListsEditor } from '../features/discipline/DisciplineListsEditor';
 import './settingsRoute.css';
 
 /** Every zone the browser knows, plus UTC and the saved value; empty when the browser cannot list zones. */
@@ -116,7 +117,7 @@ export function SettingsRoute({ db = kairosDatabase }: SettingsRouteProps) {
             list={timeZoneOptions.length > 0 ? 'kairos-time-zone-options' : undefined}
           />
           {timeZoneOptions.length > 0 ? <datalist id="kairos-time-zone-options">{timeZoneOptions.map(zone => <option key={zone} value={zone} />)}</datalist> : null}
-          <small>Use an IANA time zone, for example Australia/Sydney, America/New_York, Europe/London, or UTC.</small>
+          <small>Pick your place from the list, for example Australia/Sydney, America/New_York, Europe/London, or UTC.</small>
         </label>
 
         <div className="kairos-settings-card__actions">
@@ -135,6 +136,7 @@ export function SettingsRoute({ db = kairosDatabase }: SettingsRouteProps) {
       </form>
 
       <ThemePicker />
+      <DisciplineListsEditor db={db} />
     </section>
   );
 }

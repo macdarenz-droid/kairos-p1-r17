@@ -69,3 +69,31 @@
   min-width: 0;
   box-sizing: border-box;
 }
+
+.kairos-discipline-lists fieldset {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.kairos-discipline-lists legend {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.kairos-discipline-lists__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.kairos-discipline-lists__row input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
