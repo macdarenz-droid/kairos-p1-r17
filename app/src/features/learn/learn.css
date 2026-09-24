@@ -47,3 +47,6 @@
 .kairos-learn .kairos-calculator__headline { font-size: var(--kairos-font-size-lg); color: var(--kairos-text-primary); overflow-wrap: anywhere; }
 .kairos-calculator__details { display: grid; gap: var(--kairos-space-2); margin: 0; padding-left: var(--kairos-space-5); color: var(--kairos-text-secondary); overflow-wrap: anywhere; }
 @media (max-width: 34rem) { .kairos-calculator__fields { grid-template-columns: 1fr; } }
+
+/* Doubled class: card and route button rules must not stretch the 24×24 target (WCAG 2.2 minimum). */
+.kairos-glossary-hint.kairos-glossary-hint { display: inline-grid; place-items: center; inline-size: 24px; block-size: 24px; min-inline-size: 24px; min-block-size: 24px; margin-inline-start: var(--kairos-space-1); padding: 0; border: 1px solid var(--kairos-border-default); border-radius: var(--kairos-radius-full); background: transparent; color: var(--kairos-text-secondary); font: inherit; font-size: var(--kairos-font-size-xs); line-height: 1; cursor: help; vertical-align: middle; flex: none; }

@@ -13,6 +13,7 @@ import { JournalTradeDeleteControl } from './JournalTradeDeleteControl';
 import type { KairosDatabase } from '../data/database';
 import { updateTradeExecution } from '../application/trades';
 import { EntriesAndExitsEditor } from '../features/journal/EntriesAndExitsEditor';
+import { GlossaryHint } from '../features/learn/GlossaryHint';
 
 interface JournalHistoryListProps {
   readonly entries: readonly JournalHistoryEntry[];
@@ -141,10 +142,10 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
                 </div>
                 <TradePicture entry={entry} variant="thumbnail" />
                 <dl className="kairos-history-card__facts">
-                  <div><dt>Entries and exits</dt><dd>{entry.executions.length}</dd></div>
-                  <div><dt>Fees</dt><dd>{entry.fees.length}</dd></div>
-                  <div><dt>Result before fees</dt><dd>{money(entry.metrics?.grossPnl, entry.trade.grossPnlCurrency)}</dd></div>
-                  <div><dt>Result after fees</dt><dd>{entry.metrics?.netPnl != null && entry.metrics.netPnlCurrency ? money(entry.metrics.netPnl, entry.metrics.netPnlCurrency) : entry.metrics?.netPnl ?? 'Not available'}</dd></div>
+                  <div><dt><span>Entries and exits</span><GlossaryHint termId="entries-and-exits" label="Entries and exits" /></dt><dd>{entry.executions.length}</dd></div>
+                  <div><dt><span>Fees</span><GlossaryHint termId="fees" label="Fees" /></dt><dd>{entry.fees.length}</dd></div>
+                  <div><dt><span>Result before fees</span><GlossaryHint termId="result-before-fees" label="Result before fees" /></dt><dd>{money(entry.metrics?.grossPnl, entry.trade.grossPnlCurrency)}</dd></div>
+                  <div><dt><span>Result after fees</span><GlossaryHint termId="result-after-fees" label="Result after fees" /></dt><dd>{entry.metrics?.netPnl != null && entry.metrics.netPnlCurrency ? money(entry.metrics.netPnl, entry.metrics.netPnlCurrency) : entry.metrics?.netPnl ?? 'Not available'}</dd></div>
                 </dl>
                 {entry.fees.length > 0 && entry.metrics?.grossPnl != null && entry.metrics.netPnl == null ? <p className="kairos-history-card__notice">
                   {entry.trade.grossPnlCurrency ? 'Result after fees needs fees in the same currency as your recorded prices. Kairos does not convert currencies.' : 'The price currency is not recorded, so fees cannot be taken off yet.'}
