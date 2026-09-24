@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ComponentType } from 'react';
+import { useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import { ANALYSIS_HANDOFF_DEFAULT_INTERVAL, useAnalysisHandoff } from './analysisHandoff';
 import type { JournalHistoryEntry } from '../application/journal';
 import type { LiveMarketUniverseInstrumentMetadataAcquisitionPort } from '../services/market-data/LiveMarketUniverseInstrumentMetadataAcquisitionPort';
@@ -20,6 +20,10 @@ import {
   AnalysisSavedTradeOverlayLiveCandleCanvas,
   type AnalysisSavedTradeOverlayLiveCandleCanvasProps,
 } from './AnalysisSavedTradeOverlayLiveCandleCanvas';
+import { SymbolPicker } from '../features/analysis/SymbolPicker';
+import { normalizeTradeSymbol, pickTradeReviewInterval, tradeReviewIntervalMs, tradeReviewTimes, tradeReviewVisibleRange } from '../features/analysis/tradeReviewInterval';
+import { composeDrawingBindingLifecycles } from './analysisTimeAssistedWindowSession';
+import { useAnalysisTradeFocus } from './useAnalysisTradeFocus';
 import './analysisHistory.css';
 
 type Ports = { readonly metadata: LiveMarketUniverseInstrumentMetadataAcquisitionPort };
@@ -59,11 +63,36 @@ export function AnalysisHistoryWorkspace({
     setSymbol(current => (current === '' ? match.instrument.symbol : current));
     setTimeframe(current => (current === '' ? ANALYSIS_HANDOFF_DEFAULT_INTERVAL : current));
   }, [handoff, metadata]);
+  // "View trade" (?trade=): pre-select the trade's symbol and a timeframe that fits it, once per trade, never over a user's choice.
+  const [tradeSymbolMissing, setTradeSymbolMissing] = useState(false);
+  const tradeApplied = useRef<string | null>(null);
+  const tradeId = entry?.trade.id ?? null;
+  const tradeSymbol = typeof entry?.trade.symbol === 'string' ? entry.trade.symbol : null;
+  const tradeTimes = entry && Array.isArray(entry.executions) ? tradeReviewTimes(entry) : null;
+  const tradeStartMs = tradeTimes?.startMs ?? null, tradeEndMs = tradeTimes?.endMs ?? null;
+  useEffect(() => {
+    if (tradeId === null || tradeSymbol === null || metadata.phase !== 'ready' || tradeApplied.current === tradeId) return;
+    tradeApplied.current = tradeId;
+    const wanted = normalizeTradeSymbol(tradeSymbol);
+    const match = metadata.facts.find(item => item.instrument.symbol === wanted);
+    setTradeSymbolMissing(!match);
+    if (!match) return;
+    setSymbol(current => (current === '' ? match.instrument.symbol : current));
+    if (tradeStartMs !== null) setTimeframe(current => (current === '' ? pickTradeReviewInterval(tradeStartMs, Date.now()) : current));
+  }, [tradeId, tradeSymbol, tradeStartMs, metadata]);
   const fact = metadata.phase === 'ready' ? metadata.facts.find(item => item.instrument.symbol === symbol) : undefined;
   const selected = Boolean(fact && interval);
+  const focusIntervalMs = tradeReviewIntervalMs(interval);
+  // "Now" is read once per trade window so an open trade's window stays stable across re-renders.
+  const tradeWindow = useMemo(() => (
+    tradeId === null || tradeStartMs === null || focusIntervalMs === null ? null : tradeReviewVisibleRange(tradeStartMs, tradeEndMs ?? Date.now(), focusIntervalMs)
+    // revision re-reads "now" on an explicit refresh.
+  ), [tradeId, tradeStartMs, tradeEndMs, focusIntervalMs, revision]);
+  const tradeFocus = useAnalysisTradeFocus(entry && !savedTradePending ? tradeWindow : null);
   const estimateMarkers = useAnalysisTimeAssistedMarkers(fact && interval ? [fact.instrument.venue, fact.instrument.symbol, interval, String(revision)].join('|') : null);
   const estimateWindow = useAnalysisTimeAssistedWindow(fact && interval ? [fact.instrument.venue, fact.instrument.symbol, interval, String(revision)].join('|') : null);
-  const drawingTools = useAnalysisDrawingTools(fact && interval ? { venue: fact.instrument.venue, symbol: fact.instrument.symbol, interval, revision } : null, estimateMarkers.lifecycle, estimateWindow.lifecycle);
+  const chartLifecycle = useMemo(() => composeDrawingBindingLifecycles(estimateWindow.lifecycle, tradeFocus), [estimateWindow.lifecycle, tradeFocus]);
+  const drawingTools = useAnalysisDrawingTools(fact && interval ? { venue: fact.instrument.venue, symbol: fact.instrument.symbol, interval, revision } : null, estimateMarkers.lifecycle, chartLifecycle);
 
   useEffect(() => {
     let active = true;
@@ -88,17 +117,18 @@ export function AnalysisHistoryWorkspace({
   return <section className="kairos-analysis-chart" aria-labelledby="kairos-chart-title">
     <div className="kairos-analysis-chart__heading"><h2 id="kairos-chart-title">Market chart</h2><span>Binance Spot · Historical + live</span></div>
     <div className="kairos-analysis-chart__selection">
-      <label><span>Chart symbol</span><select aria-label="Chart symbol" value={fact ? symbol : ''} onChange={event => setSymbol(event.target.value)} disabled={metadata.phase !== 'ready' || !metadata.facts.length}>
-        <option value="">Choose symbol</option>{metadata.facts.map(item => <option key={item.instrument.symbol} value={item.instrument.symbol}>{item.instrument.symbol} · {item.baseAsset}/{item.quoteAsset}</option>)}
-      </select></label>
+      <SymbolPicker facts={metadata.facts} value={fact ? symbol : ''} onChange={setSymbol} disabled={metadata.phase !== 'ready' || !metadata.facts.length} />
       <label><span>Timeframe</span><select aria-label="Timeframe" value={interval} onChange={event => setTimeframe(event.target.value)}><option value="">Choose timeframe</option>{BINANCE_SPOT_CANDLE_INTERVALS.map(value => <option key={value} value={value}>{value === '1M' ? '1 month' : value}</option>)}</select></label>
     </div>
+    {tradeSymbolMissing && !fact ? <p role="status">This trade's symbol is not on Binance Spot.</p> : null}
     {metadata.phase === 'loading' ? <p role="status">Loading supported symbols…</p> : metadata.phase === 'error' ? <div role="alert"><p>Supported symbols are unavailable. Check your connection.</p><button type="button" onClick={() => setMetadataRevision(value => value + 1)}>Retry symbols</button></div> : !metadata.facts.length ? <p role="status">No supported symbols are available.</p> : !selected ? <div className="kairos-analysis-chart__empty"><p>Choose a symbol and timeframe to explore its candles.</p><p className="kairos-analysis-chart__note">You can use this chart without a saved trade.</p></div> : null}
     {selected ? <>
       <div className="kairos-analysis-chart__heading"><strong>{symbol} · {interval === '1M' ? '1 month' : interval}</strong><button type="button" onClick={() => setRevision(value => value + 1)}>Refresh candles</button></div>
-      <AnalysisDrawingToolsControls state={drawingTools.state} drawingCount={drawingTools.drawingCount} onSelectTrendLine={drawingTools.selectTrendLineTool} onCancel={drawingTools.cancel} onDeleteSelected={drawingTools.deleteSelected} />
-      <AnalysisSavedAnalysisControls ports={savedAnalysis} market={fact && interval ? analysisMarketReference(fact.instrument) : null} drawingCount={drawingTools.drawingCount} getDrawings={drawingTools.getDrawings} onLoad={drawingTools.loadDrawings} />
-      <AnalysisTimeAssistedSnapshotControls instrument={fact ? fact.instrument : null} onSnapshot={estimateMarkers.present} markers={estimateMarkers.presentation} onShowWindow={estimateWindow.show} window={estimateWindow.last} />
+      <div className="kairos-analysis-chart__controls">
+        <AnalysisDrawingToolsControls state={drawingTools.state} drawingCount={drawingTools.drawingCount} onSelectTrendLine={drawingTools.selectTrendLineTool} onCancel={drawingTools.cancel} onDeleteSelected={drawingTools.deleteSelected} />
+        <AnalysisSavedAnalysisControls ports={savedAnalysis} market={fact && interval ? analysisMarketReference(fact.instrument) : null} drawingCount={drawingTools.drawingCount} getDrawings={drawingTools.getDrawings} onLoad={drawingTools.loadDrawings} />
+        <AnalysisTimeAssistedSnapshotControls instrument={fact ? fact.instrument : null} onSnapshot={estimateMarkers.present} markers={estimateMarkers.presentation} onShowWindow={estimateWindow.show} window={estimateWindow.last} />
+      </div>
       {fact && savedTradePending ? <p role="status">Preparing the saved trade chart…</p> : null}
       <AnalysisOverlaySessionFactoryContext.Provider value={drawingTools.overlaySessionFactory}>
       {fact && !savedTradePending && entry ? <SavedTradeLiveCanvas entry={entry} instrument={fact.instrument} interval={interval} quoteAsset={fact.quoteAsset} revision={revision} /> : null}
@@ -106,7 +136,7 @@ export function AnalysisHistoryWorkspace({
       <AnalysisLiveSessionFactoryContext.Provider value={drawingTools.liveSessionFactory}>
       {fact && !savedTradePending && !entry ? <LiveCanvas instrument={fact.instrument} interval={interval} quoteAsset={fact.quoteAsset} revision={revision} /> : null}
       </AnalysisLiveSessionFactoryContext.Provider>
-      <p className="kairos-analysis-chart__note">Latest authoritative page, up to {ANALYSIS_LIVE_CANDLE_HISTORY_LIMIT} candles. Connection and recovery status are shown above the chart.</p>
+      <p className="kairos-analysis-chart__note">Shows the latest {ANALYSIS_LIVE_CANDLE_HISTORY_LIMIT} candles. Connection status is shown above the chart.</p>
     </> : null}
     <p className="kairos-analysis-chart__note">Market reference only. Saved trade prices and results stay separate.</p>
     <a href="https://www.tradingview.com/" target="_blank" rel="noreferrer">Charts powered by TradingView Lightweight Charts™</a>

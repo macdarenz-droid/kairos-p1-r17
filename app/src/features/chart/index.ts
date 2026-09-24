@@ -69,6 +69,8 @@ export type {
   ChartVisibleLogicalRange,
   ChartVisibleLogicalRangeListener,
   ChartVisibleRangePort,
+  ChartVisibleTimeRange,
+  ChartVisibleTimeRangePort,
 } from './chartVisibleRange';
 export type {
   LightweightChartsV5LogicalRange,

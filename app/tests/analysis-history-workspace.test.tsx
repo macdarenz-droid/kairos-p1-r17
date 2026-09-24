@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { AnalysisHistoryWorkspace, ANALYSIS_HISTORY_REQUEST_TIMEOUT_MS } from '../src/app/AnalysisHistoryWorkspace';
 import type { AnalysisLiveCandleCanvasProps } from '../src/app/AnalysisLiveCandleCanvas';
 import type { AnalysisSavedTradeOverlayLiveCandleCanvasProps } from '../src/app/AnalysisSavedTradeOverlayLiveCandleCanvas';
@@ -29,9 +29,15 @@ function savedTradeLiveCanvas() {
   return vi.fn(({ entry, instrument: selected, interval, quoteAsset, revision = 0 }: AnalysisSavedTradeOverlayLiveCandleCanvasProps) =>
     <div data-testid="saved-trade-live-candle-canvas">{entry.trade.id}/{selected.venue}/{selected.symbol}/{interval}/{quoteAsset}/{revision}</div>);
 }
+function pickSymbol(symbol: string) {
+  const picker = screen.getByRole('combobox', { name: 'Chart symbol' });
+  fireEvent.focus(picker);
+  fireEvent.change(picker, { target: { value: symbol } });
+  fireEvent.click(screen.getByRole('option', { name: new RegExp(`^${symbol} ·`) }));
+}
 async function select(symbol = 'ETHUSDT', interval = '5m') {
   await waitFor(() => expect(screen.getByLabelText('Chart symbol')).toBeEnabled());
-  fireEvent.change(screen.getByLabelText('Chart symbol'), { target: { value: symbol } });
+  pickSymbol(symbol);
   fireEvent.change(screen.getByLabelText('Timeframe'), { target: { value: interval } });
 }
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.useRealTimers(); });
@@ -43,7 +49,7 @@ it('requires an explicit exact metadata symbol and timeframe before mounting the
   expect(LiveCanvas).not.toHaveBeenCalled();
   expect(p.history.acquireHistory).not.toHaveBeenCalled();
   expect(screen.queryByRole('option', { name: /^BTCUSD ·/ })).toBeNull();
-  fireEvent.change(screen.getByLabelText('Chart symbol'), { target: { value: 'ETHUSDT' } });
+  pickSymbol('ETHUSDT');
   expect(LiveCanvas).not.toHaveBeenCalled();
   fireEvent.change(screen.getByLabelText('Timeframe'), { target: { value: '1M' } });
   expect(await screen.findByTestId('live-candle-canvas')).toHaveTextContent('binance-spot/ETHUSDT/1M/USDT/0');
@@ -56,8 +62,8 @@ it('excludes halted, foreign and duplicate instrument identities before live sel
   p.metadata.acquireInstrumentMetadata.mockResolvedValue({ ok: true, facts: [...facts, instrument('BTCUSDT'), { ...instrument('HALTED'), tradingEnabled: false }, { ...instrument('OTHER'), instrument: { venue: 'other', symbol: 'OTHER' } }] });
   render(<AnalysisHistoryWorkspace ports={p} LiveCanvas={liveCanvas()} />);
   await waitFor(() => expect(screen.getByLabelText('Chart symbol')).toBeEnabled());
-  const select = screen.getByLabelText('Chart symbol') as HTMLSelectElement;
-  expect([...select.options].map(option => option.value)).toEqual(['', 'ETHUSDT']);
+  fireEvent.focus(screen.getByRole('combobox', { name: 'Chart symbol' }));
+  expect(within(screen.getByRole('listbox', { name: 'Symbols' })).getAllByRole('option').map(option => option.textContent?.split(' · ')[0])).toEqual(['ETHUSDT']);
 });
 
 it('replaces the mounted scope from exact caller metadata and never asks history directly', async () => {
@@ -65,7 +71,7 @@ it('replaces the mounted scope from exact caller metadata and never asks history
   render(<AnalysisHistoryWorkspace ports={p} LiveCanvas={LiveCanvas} />);
   await select();
   expect(await screen.findByTestId('live-candle-canvas')).toHaveTextContent('ETHUSDT/5m/USDT/0');
-  fireEvent.change(screen.getByLabelText('Chart symbol'), { target: { value: 'BTCUSDT' } });
+  pickSymbol('BTCUSDT');
   expect(await screen.findByTestId('live-candle-canvas')).toHaveTextContent('BTCUSDT/5m/USDT/0');
   expect(LiveCanvas).toHaveBeenLastCalledWith(expect.objectContaining({ instrument: facts[0].instrument, interval: '5m', quoteAsset: 'USDT' }), undefined);
   expect(p.history.acquireHistory).not.toHaveBeenCalled();
