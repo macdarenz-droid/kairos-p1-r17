@@ -24,7 +24,7 @@
 .kairos-learn-picture__part--highlight rect { stroke: var(--kairos-text-primary); stroke-width: 2; }
 .kairos-learn-picture__part--highlight text { font-weight: 700; text-decoration: underline; }
 
-.kairos-glossary-term { display: grid; gap: 0.5rem; }
+.kairos-glossary-term { display: grid; gap: var(--kairos-space-2); }
 .kairos-glossary-term:focus { outline: 2px solid var(--kairos-accent-primary); outline-offset: 4px; }
 .kairos-glossary-term.kairos-glossary-term p { margin: 0; }
 .kairos-glossary-term__trading,
@@ -50,3 +50,5 @@
 
 /* Doubled class: card and route button rules must not stretch the 24×24 target (WCAG 2.2 minimum). */
 .kairos-glossary-hint.kairos-glossary-hint { display: inline-grid; place-items: center; inline-size: 24px; block-size: 24px; min-inline-size: 24px; min-block-size: 24px; margin-inline-start: var(--kairos-space-1); padding: 0; border: 1px solid var(--kairos-border-default); border-radius: var(--kairos-radius-full); background: transparent; color: var(--kairos-text-secondary); font: inherit; font-size: var(--kairos-font-size-xs); line-height: 1; cursor: help; vertical-align: middle; flex: none; }
+/* Analysis "Your trade": the route's control rule (0,2,1) would give the "?" the field gradient and a strong border. */
+.kairos-review .kairos-glossary-hint.kairos-glossary-hint { border-color: var(--kairos-border-default); background-image: none; }

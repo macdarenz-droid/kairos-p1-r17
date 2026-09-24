@@ -115,8 +115,12 @@ test('(e) Library: trading words and the calculators', async ({ page }) => {
   await page.getByRole('link', { name: /^Trading words/ }).click();
   await expect(page).toHaveURL(/\/library\/words$/);
   await expect(page.getByRole('heading', { level: 1, name: 'Trading words' })).toBeVisible();
+  const words = page.getByRole('heading', { level: 2 });
+  const before = await words.count();
   await page.getByLabel('Find a word').fill('stop');
   await expect(page.getByRole('heading', { level: 2, name: 'Stop' })).toBeVisible();
+  // The search filters: fewer words than before, never a pinned number.
+  await expect.poll(() => words.count()).toBeLessThan(before);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 
   await page.goto('/library/calculators');

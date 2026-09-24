@@ -9,6 +9,9 @@ import { AnalysisHandoffContext, parseAnalysisHandoff } from './analysisHandoff'
 import { TradePicture } from '../features/journal/TradePicture';
 
 type State = { readonly key: string | null; readonly result: TradeReviewResult | null; readonly error: boolean };
+type TradeEntry = Extract<TradeReviewResult, { kind: 'trade' }>['entry'];
+/** The last trade picture loaded for a selection; a same-trade refresh keeps it mounted so an open hint sheet survives. */
+type Shown = { readonly key: string | null; readonly entry: TradeEntry } | null;
 
 /** Route selection and async read lifecycle only; all saved facts come from P12. */
 export function AnalysisRoute({ load = loadTradeReview }: { readonly load?: (id: string | null) => Promise<TradeReviewResult> }) {
@@ -16,6 +19,8 @@ export function AnalysisRoute({ load = loadTradeReview }: { readonly load?: (id:
   const selectedId = params.get('trade');
   const [revision, setRevision] = useState(0);
   const [state, setState] = useState<State>({ key: selectedId, result: null, error: false });
+  const [shown, setShown] = useState<Shown>(null);
+  const focusedFor = useRef<string | null | undefined>(undefined);
   const heading = useRef<HTMLHeadingElement>(null);
   const refresh = useCallback(() => setRevision(value => value + 1), []);
   const current = state.key === selectedId ? state : null;
@@ -25,9 +30,13 @@ export function AnalysisRoute({ load = loadTradeReview }: { readonly load?: (id:
     let active = true;
     setState({ key: selectedId, result: null, error: false });
     void load(selectedId).then(result => {
-      if (active) setState({ key: selectedId, result, error: false });
+      if (!active) return;
+      setState({ key: selectedId, result, error: false });
+      setShown(result.kind === 'trade' ? { key: selectedId, entry: result.entry } : null);
     }).catch(() => {
-      if (active) setState({ key: selectedId, result: null, error: true });
+      if (!active) return;
+      setState({ key: selectedId, result: null, error: true });
+      setShown(null);
     });
     return () => { active = false; };
   }, [load, selectedId, revision]);
@@ -39,15 +48,21 @@ export function AnalysisRoute({ load = loadTradeReview }: { readonly load?: (id:
     return () => { window.removeEventListener('focus', refresh); document.removeEventListener('visibilitychange', visible); };
   }, [refresh]);
 
-  useEffect(() => { if (!loading) heading.current?.focus(); }, [selectedId, loading]);
+  // The heading takes focus once per selection, after its first load; a refresh of the same trade never moves focus.
+  useEffect(() => {
+    if (loading || focusedFor.current === selectedId) return;
+    focusedFor.current = selectedId;
+    heading.current?.focus();
+  }, [selectedId, loading]);
 
   const result = current?.result;
   const selectedEntry = result?.kind === 'trade' ? result.entry : null;
+  const pictureEntry = selectedEntry ?? (shown !== null && shown.key === selectedId && loading ? shown.entry : null);
   const savedTradePending = selectedId !== null && loading;
   const handoff = parseAnalysisHandoff(params);
   return <section className="kairos-route kairos-review" aria-labelledby="kairos-review-title" aria-busy={loading || undefined}>
     <header className="kairos-review__heading"><div><p className="kairos-review__eyebrow">Charts & trade review</p><h1 id="kairos-review-title" tabIndex={-1} ref={heading}>Analysis</h1></div><button type="button" onClick={refresh} disabled={loading}>Refresh</button></header>
-    {selectedEntry ? <TradePicture key={selectedEntry.trade.id} entry={selectedEntry} variant="full" /> : null}
+    {pictureEntry ? <TradePicture key={pictureEntry.trade.id} entry={pictureEntry} variant="full" /> : null}
     <AnalysisHandoffContext.Provider value={handoff}>
     <AnalysisHistoryWorkspace entry={selectedEntry} savedTradePending={savedTradePending} />
     </AnalysisHandoffContext.Provider>
