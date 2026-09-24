@@ -9,6 +9,7 @@ import {
   type DisciplineItemAnswer,
   type DisciplineListItem,
   type DisciplineListItemId,
+  type DisciplineLists,
   type DisciplineMistakeMark,
   type TradeDisciplineId,
   type TradeDisciplineRecord,
@@ -135,4 +136,23 @@ export async function loadTradeDiscipline(db: KairosDatabase, tradeIds: readonly
   } catch {
     return { ok: false, type: 'storage-error', reason: 'discipline-read-failed' };
   }
+}
+
+export interface TradeDisciplineCardsData {
+  readonly lists: DisciplineLists;
+  /** The saved record of each trade that has one, by trade id. */
+  readonly records: ReadonlyMap<string, TradeDisciplineRecord>;
+}
+
+/**
+ * Everything the trade cards on one page need: the current lists and the
+ * saved records of those trades, in two reads for the whole page. A failed
+ * record read throws, so the host shows its "could not load" state.
+ */
+export async function loadTradeDisciplineCards(db: KairosDatabase, tradeIds: readonly string[]): Promise<TradeDisciplineCardsData> {
+  const lists = await readDisciplineLists(createKairosRepositories(db).metadata);
+  if (tradeIds.length === 0) return Object.freeze({ lists, records: new Map() });
+  const loaded = await loadTradeDiscipline(db, tradeIds as readonly TradeId[]);
+  if (!loaded.ok) throw new Error(loaded.reason);
+  return Object.freeze({ lists, records: loaded.records });
 }
