@@ -108,3 +108,23 @@ test('(d) the Library lists the sample learning source and saves it for offline'
 
   expect(await (await page.request.get('/sw.js')).text()).not.toContain('.pdf');
 });
+
+test('(e) Library: trading words and the calculators', async ({ page }) => {
+  await activate(page);
+  await page.goto('/library');
+  await page.getByRole('link', { name: /^Trading words/ }).click();
+  await expect(page).toHaveURL(/\/library\/words$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Trading words' })).toBeVisible();
+  await page.getByLabel('Find a word').fill('stop');
+  await expect(page.getByRole('heading', { level: 2, name: 'Stop' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+
+  await page.goto('/library/calculators');
+  const calculator = page.getByRole('region', { name: 'How much can I buy?' });
+  await calculator.getByLabel('Money in your account').fill('1000');
+  await calculator.getByLabel("Most you're willing to lose (%)").fill('1');
+  await calculator.getByLabel('Entry price').fill('100');
+  await calculator.getByLabel('Stop price').fill('95');
+  await expect(calculator.getByText('You can buy up to 2')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});

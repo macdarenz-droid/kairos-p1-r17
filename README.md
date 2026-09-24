@@ -43,6 +43,24 @@ Learning sources are files, not code. To add one:
 
 To replace a file: add the new file, raise `revision.number` by 1, and update `fileName`, `bytes`, `sha256`, `pages` and `addedOn`. Copies of the old revision saved on a device are removed the next time the Library opens. Deleting a PDF needs the owner's OK (CLAUDE.md rule 14).
 
+## Add a trading word
+
+Trading words are data, not code. To add or change one:
+
+1. Open `app/src/content/learn/glossary.json` and copy an entry.
+2. Fill in:
+   - `id`: lowercase letters, digits and dashes; never reuse an old id;
+   - `plainWords`: the words Kairos shows on screen (at most 60 characters);
+   - `tradingTerm`: what traders usually call it (at most 80);
+   - `alsoCalled`: other names people search for (up to 6, each at most 40);
+   - `explanation`: one plain sentence (at most 280);
+   - `picture`: `null`, or one of the shapes already used in the file (`risk-box`, `candle`, `result-bars`, `leverage`);
+   - `related`: up to 6 ids of other words.
+3. In `app/`, run `npx vitest run tests/glossary-content.test.ts`. It fails if an entry breaks a rule or links to a word that does not exist.
+4. Commit. The word appears under Library → Trading words in the next release. No code changes.
+
+Screens link to some ids (the test lists them): keep those. To remove a word, also remove every `related` link to it.
+
 ## Deploy (Cloudflare Pages)
 
 Settings for building from `app/` (the owner sets them once, when the first release merges into `main`):
