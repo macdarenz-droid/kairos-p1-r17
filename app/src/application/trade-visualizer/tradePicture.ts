@@ -1,5 +1,4 @@
 import {
-  calculateRMultiple,
   calculateRiskPerformance,
   calculateRiskPriceDistance,
   calculateTradeMetrics,
@@ -19,6 +18,7 @@ import type {
 } from '../../domain/trades';
 import type { MarketCandle } from '../../services/market-data/MarketCandleHistoryPort';
 import { projectTradeVisualizerFacts } from './tradeVisualizerFacts';
+import { projectPlannedRewardToRisk } from '../risk-reward/plannedRewardToRisk';
 
 /** Space above the highest and below the lowest price, as a share of the price span. */
 export const TRADE_PICTURE_PRICE_PADDING = '0.08';
@@ -153,17 +153,11 @@ function box(entryPrice: DecimalString | null, edgePrice: DecimalString | null, 
   });
 }
 
-/** Planned reward ÷ risk, only when stop and target sit on the right sides of the entry. */
+/** Planned reward ÷ risk from the one owner; null when a level is missing or the plan is not valid. */
 function plannedRewardToRisk(side: TradeSide, entry: DecimalString | null, stop: DecimalString | null, target: DecimalString | null): DecimalString | null {
   if (entry === null || stop === null || target === null) return null;
-  const stopSide = compare(stop, entry), targetSide = compare(target, entry);
-  if (stopSide === null || targetSide === null) return null;
-  const ordered = side === 'long' ? stopSide < 0 && targetSide > 0 : stopSide > 0 && targetSide < 0;
-  if (!ordered) return null;
-  const risk = calculateRiskPriceDistance(entry, stop), reward = calculateRiskPriceDistance(target, entry);
-  if (!risk.ok || !reward.ok) return null;
-  const ratio = calculateRMultiple(reward.value, risk.value);
-  return ratio.ok ? ratio.value : null;
+  const planned = projectPlannedRewardToRisk(side, entry, stop, target);
+  return planned.ok ? planned.value.ratio : null;
 }
 
 /** Actual result in R: result after fees ÷ (|entry − stop| × entered size). */
