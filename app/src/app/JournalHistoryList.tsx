@@ -2,6 +2,7 @@ import { JOURNAL_HISTORY_SOURCES, type JournalHistoryEntry, type JournalHistoryS
 import { saveTradeDiscipline } from '../application/discipline';
 import { Button } from '../design-system/primitives';
 import { TradeChecklistControl } from '../features/discipline/TradeChecklistControl';
+import { TradeReviewControl } from '../features/discipline/TradeReviewControl';
 import { useTradeDisciplineCards } from '../features/discipline/useTradeDisciplineCards';
 import type { TradeSource, TradeStatus } from '../domain/trades';
 import { TradePicture } from '../features/journal/TradePicture';
@@ -120,6 +121,11 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
                   ? discipline.state.kind === 'ready'
                     ? <TradeChecklistControl symbol={entry.trade.symbol} tradeId={entry.trade.id} scope={scope} items={discipline.state.lists.checklist} record={discipline.state.records.get(entry.trade.id) ?? null} save={input => saveTradeDiscipline(db, input)} onSaved={discipline.remember} />
                     : discipline.state.kind === 'failed' ? <Button variant="secondary" size="sm" disabled>Before you trade: could not load</Button> : null
+                  : null}
+                {db && entry.trade.status === 'closed' && allowedSources.includes(entry.trade.source)
+                  ? discipline.state.kind === 'ready'
+                    ? <TradeReviewControl symbol={entry.trade.symbol} tradeId={entry.trade.id} scope={scope} reviewItems={discipline.state.lists.review} mistakeItems={discipline.state.lists.mistakes} record={discipline.state.records.get(entry.trade.id) ?? null} save={input => saveTradeDiscipline(db, input)} onSaved={discipline.remember} />
+                    : discipline.state.kind === 'failed' ? <Button variant="secondary" size="sm" disabled>After the trade: could not load</Button> : null
                   : null}
                 {db && onTradeUpdated ? <JournalOpenTradeUpdate entry={entry} db={db} onCommitted={onTradeUpdated} allowedSources={allowedSources} /> : null}
                 {db && onTradeUpdated && allowedSources.includes(entry.trade.source) ? <EntriesAndExitsEditor entry={entry} save={input => updateTradeExecution(db, { ...input, allowedSources })} onSaved={onTradeUpdated} /> : null}

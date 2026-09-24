@@ -79,6 +79,20 @@ describe('P22.2 saveTradeDiscipline and loadTradeDiscipline', () => {
     });
   });
 
+  it('keeps a saved item that was removed from the lists when the trade is saved again', async () => {
+    const db = await database();
+    await seed(db, trade('closed-1', 'closed'));
+    const review = { tradeId: 'closed-1' as TradeId, scope: 'real' as const, half: 'review' as const, answers: [{ itemId: 'followed-plan', answer: 'yes' as const }], mistakeIds: ['revenge-trade'], note: '' };
+    expect((await saveTradeDiscipline(db, review, deps(T1))).ok).toBe(true);
+    const lists = KAIROS_DEFAULT_DISCIPLINE_LISTS;
+    expect((await saveDisciplineLists(db, { ...lists, review: lists.review.slice(1), mistakes: lists.mistakes.filter((item) => item.id !== 'revenge-trade') })).ok).toBe(true);
+    const again = await saveTradeDiscipline(db, review, deps(T2));
+    if (!again.ok) throw new Error(again.reason);
+    expect(again.record.postTradeReview).toEqual([{ itemId: 'followed-plan', label: 'I followed my plan', answer: 'yes' }]);
+    expect(again.record.mistakes).toEqual([{ itemId: 'revenge-trade', label: 'Traded to win back a loss' }]);
+    expect(await saveTradeDiscipline(db, { ...review, mistakeIds: ['never-saved'] }, deps(T2))).toEqual({ ok: false, type: 'validation-error', reason: 'unknown-item' });
+  });
+
   it('allows the checklist only before close and the review only after', async () => {
     const db = await database();
     await seed(db, trade('closed-1', 'closed'), trade('open-1', 'open'), trade('cancelled-1', 'cancelled'));

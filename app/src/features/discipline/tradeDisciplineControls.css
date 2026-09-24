@@ -59,3 +59,13 @@
   width: 1.25rem;
   height: 1.25rem;
 }
+
+.kairos-discipline-control__mark {
+  color: var(--kairos-accent-primary);
+}
+
+.kairos-discipline-sheet textarea {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
