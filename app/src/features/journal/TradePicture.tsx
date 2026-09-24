@@ -3,7 +3,7 @@ import type { JournalHistoryEntry } from '../../application/journal';
 import { projectTradePicture } from '../../application/trade-visualizer';
 import type { MarketCandle } from '../../services/market-data/MarketCandleHistoryPort';
 import { TradePictureCard } from './TradePictureCard';
-import { browserTradePictureCandleLoader, TradePictureCandleLoaderContext } from './tradePictureCandleQueue';
+import { TradePictureCandleLoaderContext } from './tradePictureCandleQueue';
 import { saveTradePictureImage, serializeTradePictureSvg, tradePictureFileName, type TradePictureSavePorts } from './tradePictureImage';
 
 type CandleState = { readonly kind: 'waiting' } | { readonly kind: 'done'; readonly candles: readonly MarketCandle[] | null };
@@ -27,7 +27,7 @@ function useTradePictureCandles(entry: JournalHistoryEntry, target: React.RefObj
     if (!visible) return;
     let active = true;
     setState({ kind: 'waiting' });
-    const load = contextLoader ?? browserTradePictureCandleLoader();
+    const load = contextLoader ?? (async () => null);
     void load(entry.trade, entry.executions).catch(() => null).then(candles => { if (active) setState({ kind: 'done', candles }); });
     return () => { active = false; };
   }, [visible, contextLoader, entry.trade, entry.executions]);

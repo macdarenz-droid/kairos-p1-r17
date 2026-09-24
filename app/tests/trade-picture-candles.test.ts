@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  createTradePictureCandleBrowserDeps,
   loadTradePictureCandles,
   planTradePictureCandleWindow,
   resetTradePictureCandleCache,
 } from '../src/application/trade-visualizer';
 import type { TradeExecutionId, TradeExecutionRecord, TradeId, TradeRecord } from '../src/domain/trades';
 import { resetBinanceSpotExchangeInfoCache } from '../src/services/market-data';
+import { createTradePictureCandleBrowserDeps } from '../src/app/tradePictureCandleBrowserDeps';
 
 const HOUR = 60 * 60_000, DAY = 24 * HOUR;
 const originalFetch = globalThis.fetch;

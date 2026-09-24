@@ -1,10 +1,6 @@
 import type { TradeExecutionRecord, TradeRecord } from '../../domain/trades';
 import type { LiveMarketUniverseInstrumentMetadataAcquisitionPort } from '../../services/market-data/LiveMarketUniverseInstrumentMetadataAcquisitionPort';
 import type { MarketCandle, MarketCandleHistoryPort } from '../../services/market-data/MarketCandleHistoryPort';
-import { createBinanceSpotCandleHistoryPort } from '../../services/market-data/providers/binance/binanceSpotCandleHistoryAcquisition';
-import { connectBinanceSpotCandleHistoryBrowser } from '../../services/market-data/providers/binance/binanceSpotCandleHistoryBrowserConnector';
-import { createBinanceSpotExchangeInfoBrowserInstrumentMetadataAcquisitionPort } from '../../services/market-data/providers/binance/binanceSpotExchangeInfoBrowserInstrumentMetadataAcquisitionBinding';
-import { BINANCE_SPOT_VENUE } from '../../services/market-data/providers/binance/binanceSpotTradeStream';
 
 const MINUTE_MS = 60_000;
 const HOUR_MS = 60 * MINUTE_MS;
@@ -69,19 +65,13 @@ export function tradePictureTimes(trade: TradeRecord, executions: readonly Trade
 }
 
 export interface TradePictureCandleDeps {
+  /** The market venue the history and metadata ports serve (the composition root picks the provider). */
+  readonly venue: string;
   readonly history: MarketCandleHistoryPort;
   /** Known market list; a symbol that is not on it is never requested. */
   readonly metadata: LiveMarketUniverseInstrumentMetadataAcquisitionPort;
   readonly nowMs?: () => number;
   readonly signal?: AbortSignal;
-}
-
-/** Browser dependencies: Binance Spot candle history and the shared market list (T-005 cache). */
-export function createTradePictureCandleBrowserDeps(): TradePictureCandleDeps {
-  return {
-    history: createBinanceSpotCandleHistoryPort(connectBinanceSpotCandleHistoryBrowser, () => new Date().toISOString()),
-    metadata: createBinanceSpotExchangeInfoBrowserInstrumentMetadataAcquisitionPort(),
-  };
 }
 
 // Session-only memory (D15): candles are market reference, never stored in IndexedDB.
@@ -113,11 +103,11 @@ export async function loadTradePictureCandles(
 
     const metadata = await deps.metadata.acquireInstrumentMetadata(deps.signal ? { signal: deps.signal } : undefined);
     if (!metadata.ok) return null;
-    const known = metadata.facts.some(fact => fact.instrument.venue === BINANCE_SPOT_VENUE && fact.instrument.symbol === symbol);
+    const known = metadata.facts.some(fact => fact.instrument.venue === deps.venue && fact.instrument.symbol === symbol);
     if (!known) return null;
 
     const result = await deps.history.acquireHistory({
-      instrument: { venue: BINANCE_SPOT_VENUE, symbol },
+      instrument: { venue: deps.venue, symbol },
       interval: window.interval,
       limit: window.limit,
       startTimeMs: window.startTimeMs,

@@ -1,4 +1,6 @@
 import { NavLink, Outlet, useLocation, useNavigation } from 'react-router';
+import { TradePictureCandleLoaderContext } from '../features/journal/tradePictureCandleQueue';
+import { browserTradePictureCandleLoader } from './tradePictureCandleBrowserDeps';
 import type { CSSProperties, ReactElement } from 'react';
 import { buildInfo } from '../shared/config/buildInfo';
 import { primaryNavigation } from './navigation';
@@ -39,7 +41,7 @@ export function AppShell({ loading = false }: { readonly loading?: boolean }) {
         <div className="kairos-shell__progress" role="progressbar" aria-label="Loading" aria-hidden={loading ? undefined : 'true'} />
       </header>
       <main className="kairos-shell__content" id="kairos-main-content">
-        <Outlet />
+        <TradePictureCandleLoaderContext.Provider value={browserTradePictureCandleLoader()}><Outlet /></TradePictureCandleLoaderContext.Provider>
       </main>
       <nav className="kairos-shell__navigation" aria-label="Primary navigation">
         <div className="kairos-shell__navigation-inner" style={inkStyle}>

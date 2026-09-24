@@ -80,6 +80,9 @@ function violatedRules(from: string, to: string, relative: boolean): string[] {
   }
   if (!isAppLayer(from) && isAppLayer(to)) rules.push('only app imports app');
   if (inside(from, 'shared') && !inside(to, 'shared')) rules.push('shared imports only shared');
+  if ((inside(from, 'application') || inside(from, 'domain') || inside(from, 'data')) && inside(to, 'services/market-data/providers')) {
+    rules.push('application, domain and data never import a market-data provider');
+  }
   return rules;
 }
 

@@ -1,5 +1,4 @@
 import { createContext } from 'react';
-import { createTradePictureCandleBrowserDeps, loadTradePictureCandles } from '../../application/trade-visualizer';
 import type { TradeExecutionRecord, TradeRecord } from '../../domain/trades';
 import type { MarketCandle } from '../../services/market-data/MarketCandleHistoryPort';
 
@@ -25,16 +24,5 @@ export function createLimitedQueue(limit: number): <T>(task: () => Promise<T>) =
   });
 }
 
-let browserLoader: TradePictureCandleLoader | null = null;
-
-/** Real candles through Binance Spot, at most three loads at once for the whole page. */
-export function browserTradePictureCandleLoader(): TradePictureCandleLoader {
-  if (browserLoader) return browserLoader;
-  const queue = createLimitedQueue(TRADE_PICTURE_MAX_PARALLEL_LOADS);
-  const deps = createTradePictureCandleBrowserDeps();
-  browserLoader = (trade, executions) => queue(() => loadTradePictureCandles(trade, executions, deps));
-  return browserLoader;
-}
-
-/** Where trade pictures get their candles; tests and previews supply their own. Null means the browser loader. */
+/** Where trade pictures get their candles. The app shell provides the real loader; without one, pictures show no candles. */
 export const TradePictureCandleLoaderContext = createContext<TradePictureCandleLoader | null>(null);
