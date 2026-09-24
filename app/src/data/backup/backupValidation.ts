@@ -1,9 +1,10 @@
 import { isStoredSavedRecordLabel } from '../../domain/saved-records/savedRecordLabel';
-import { isTradeDisciplineRecordShape } from '../../domain/discipline';
+import { isLegacyTradeDisciplineRecordShape, isTradeDisciplineRecordShape } from '../../domain/discipline';
 import { parsePositiveDecimalString, validateTradeRecord } from '../../domain/trades';
 import {
   KAIROS_BACKUP_FORMAT_NAME,
   KAIROS_BACKUP_FORMAT_VERSION,
+  KAIROS_CHART_ZONE_BACKUP_FORMAT_VERSION,
   KAIROS_LEGACY_BACKUP_FORMAT_VERSION,
   KAIROS_SAVED_ANALYSIS_BACKUP_FORMAT_VERSION,
   KAIROS_SAVED_TIME_ASSISTED_SNAPSHOT_BACKUP_FORMAT_VERSION,
@@ -16,6 +17,7 @@ import {
   type KairosBackupEnvelopeV4,
   type KairosBackupEnvelopeV5,
   type KairosBackupEnvelopeV6,
+  type KairosBackupEnvelopeV7,
 } from './backupFormat';
 
 export type KairosBackupValidationCode =
@@ -132,6 +134,12 @@ function isSavedTimeAssistedSnapshotRecord(value: unknown): boolean {
   return isRecord(value) && isNonEmptyString(value.id) && isRecord(value.market) && (value.side === 'long' || value.side === 'short') && isNonEmptyString(value.openedAt) && isIsoDate(value.openedAtUtc) && (value.closedAt === null || isNonEmptyString(value.closedAt)) && (value.closedAtUtc === null || isIsoDate(value.closedAtUtc)) && typeof value.inputTimeZone === 'string' && isEstimatedMarketReference(value.opening) && (value.closing === null || isEstimatedMarketReference(value.closing)) && (value.durationMs === null || typeof value.durationMs === 'number') && isIsoDate(value.savedAt) && value.isEstimate === true && value.source === 'market-reference' && isStoredSavedRecordLabel(value.label);
 }
 
+/** Formats 5 and 6 carry the L36.1 shape (fixed keys). */
+function isLegacyTradeDisciplineRecord(value: unknown): boolean {
+  return isLegacyTradeDisciplineRecordShape(value);
+}
+
+/** Format 7 carries answers by list item id with their label. */
 function isTradeDisciplineRecord(value: unknown): boolean {
   return isTradeDisciplineRecordShape(value);
 }
@@ -239,7 +247,7 @@ function validateV5(input: Record<string, unknown>): KairosBackupEnvelopeV5 {
   if (input.databaseSchemaVersion !== 6 && input.databaseSchemaVersion !== 7) throw new KairosBackupValidationError('INVALID_HEADER', 'Backup format V5 must describe database schema V6 or V7.');
   if (!isRecord(input.payload)) throw new KairosBackupValidationError('INVALID_PAYLOAD', 'Backup V5 payload is invalid.');
   const payload=input.payload;
-  const validators:Array<[string,(value:unknown)=>boolean]>=[['metadata',isMetadataRecord],['trades',isTradeRecord],['tradePlans',isTradePlanRecord],['tradeExecutions',isTradeExecutionRecord],['tradeFees',isTradeFeeRecord],['savedAnalyses',isSavedAnalysisRecord],['savedTimeAssistedSnapshots',isSavedTimeAssistedSnapshotRecord],['tradeDiscipline',isTradeDisciplineRecord]];
+  const validators:Array<[string,(value:unknown)=>boolean]>=[['metadata',isMetadataRecord],['trades',isTradeRecord],['tradePlans',isTradePlanRecord],['tradeExecutions',isTradeExecutionRecord],['tradeFees',isTradeFeeRecord],['savedAnalyses',isSavedAnalysisRecord],['savedTimeAssistedSnapshots',isSavedTimeAssistedSnapshotRecord],['tradeDiscipline',isLegacyTradeDisciplineRecord]];
   for(const [key,validator] of validators){const records=payload[key];if(!Array.isArray(records)||!records.every(validator))throw new KairosBackupValidationError('INVALID_PAYLOAD',`Backup V5 ${key} payload is invalid.`);}
   if(!isRecord(input.recordCounts))throw new KairosBackupValidationError('INVALID_RECORD_COUNTS','Backup record counts are invalid.');
   const keys=['metadata','trades','tradePlans','tradeExecutions','tradeFees','savedAnalyses','savedTimeAssistedSnapshots','tradeDiscipline'] as const; let total=0;
@@ -252,13 +260,26 @@ function validateV6(input: Record<string, unknown>): KairosBackupEnvelopeV6 {
   if (input.databaseSchemaVersion !== 7) throw new KairosBackupValidationError('INVALID_HEADER', 'Backup format V6 must describe database schema V7.');
   if (!isRecord(input.payload)) throw new KairosBackupValidationError('INVALID_PAYLOAD', 'Backup V6 payload is invalid.');
   const payload=input.payload;
-  const validators:Array<[string,(value:unknown)=>boolean]>=[['metadata',isMetadataRecord],['trades',isTradeRecord],['tradePlans',isTradePlanRecord],['tradeExecutions',isTradeExecutionRecord],['tradeFees',isTradeFeeRecord],['savedAnalyses',isSavedAnalysisRecord],['savedTimeAssistedSnapshots',isSavedTimeAssistedSnapshotRecord],['tradeDiscipline',isTradeDisciplineRecord]];
+  const validators:Array<[string,(value:unknown)=>boolean]>=[['metadata',isMetadataRecord],['trades',isTradeRecord],['tradePlans',isTradePlanRecord],['tradeExecutions',isTradeExecutionRecord],['tradeFees',isTradeFeeRecord],['savedAnalyses',isSavedAnalysisRecord],['savedTimeAssistedSnapshots',isSavedTimeAssistedSnapshotRecord],['tradeDiscipline',isLegacyTradeDisciplineRecord]];
   for(const [key,validator] of validators){const records=payload[key];if(!Array.isArray(records)||!records.every(validator))throw new KairosBackupValidationError('INVALID_PAYLOAD',`Backup V6 ${key} payload is invalid.`);}
   if(!isRecord(input.recordCounts))throw new KairosBackupValidationError('INVALID_RECORD_COUNTS','Backup record counts are invalid.');
   const keys=['metadata','trades','tradePlans','tradeExecutions','tradeFees','savedAnalyses','savedTimeAssistedSnapshots','tradeDiscipline'] as const; let total=0;
   for(const key of keys){const count=(payload[key] as unknown[]).length; total+=count;if(input.recordCounts[key]!==count)throw new KairosBackupValidationError('INVALID_RECORD_COUNTS',`Backup ${key} count does not match the payload.`);}
   if(input.recordCounts.total!==total)throw new KairosBackupValidationError('INVALID_RECORD_COUNTS','Backup total count does not match the payload.');
   return input as unknown as KairosBackupEnvelopeV6;
+}
+
+function validateV7(input: Record<string, unknown>): KairosBackupEnvelopeV7 {
+  if (input.databaseSchemaVersion !== 8) throw new KairosBackupValidationError('INVALID_HEADER', 'Backup format V7 must describe database schema V8.');
+  if (!isRecord(input.payload)) throw new KairosBackupValidationError('INVALID_PAYLOAD', 'Backup V7 payload is invalid.');
+  const payload=input.payload;
+  const validators:Array<[string,(value:unknown)=>boolean]>=[['metadata',isMetadataRecord],['trades',isTradeRecord],['tradePlans',isTradePlanRecord],['tradeExecutions',isTradeExecutionRecord],['tradeFees',isTradeFeeRecord],['savedAnalyses',isSavedAnalysisRecord],['savedTimeAssistedSnapshots',isSavedTimeAssistedSnapshotRecord],['tradeDiscipline',isTradeDisciplineRecord]];
+  for(const [key,validator] of validators){const records=payload[key];if(!Array.isArray(records)||!records.every(validator))throw new KairosBackupValidationError('INVALID_PAYLOAD',`Backup V7 ${key} payload is invalid.`);}
+  if(!isRecord(input.recordCounts))throw new KairosBackupValidationError('INVALID_RECORD_COUNTS','Backup record counts are invalid.');
+  const keys=['metadata','trades','tradePlans','tradeExecutions','tradeFees','savedAnalyses','savedTimeAssistedSnapshots','tradeDiscipline'] as const; let total=0;
+  for(const key of keys){const count=(payload[key] as unknown[]).length; total+=count;if(input.recordCounts[key]!==count)throw new KairosBackupValidationError('INVALID_RECORD_COUNTS',`Backup ${key} count does not match the payload.`);}
+  if(input.recordCounts.total!==total)throw new KairosBackupValidationError('INVALID_RECORD_COUNTS','Backup total count does not match the payload.');
+  return input as unknown as KairosBackupEnvelopeV7;
 }
 
 export function validateKairosBackupEnvelope(input: unknown): KairosBackupEnvelope {
@@ -268,9 +289,9 @@ export function validateKairosBackupEnvelope(input: unknown): KairosBackupEnvelo
   if (input.formatName !== KAIROS_BACKUP_FORMAT_NAME) {
     throw new KairosBackupValidationError('FORMAT_NAME_MISMATCH', 'Backup format name is not Kairos.');
   }
-  if (input.formatVersion !== KAIROS_LEGACY_BACKUP_FORMAT_VERSION && input.formatVersion !== KAIROS_TRADE_BACKUP_FORMAT_VERSION && input.formatVersion !== KAIROS_SAVED_ANALYSIS_BACKUP_FORMAT_VERSION && input.formatVersion !== KAIROS_SAVED_TIME_ASSISTED_SNAPSHOT_BACKUP_FORMAT_VERSION && input.formatVersion !== KAIROS_TRADE_DISCIPLINE_BACKUP_FORMAT_VERSION && input.formatVersion !== KAIROS_BACKUP_FORMAT_VERSION) {
+  if (input.formatVersion !== KAIROS_LEGACY_BACKUP_FORMAT_VERSION && input.formatVersion !== KAIROS_TRADE_BACKUP_FORMAT_VERSION && input.formatVersion !== KAIROS_SAVED_ANALYSIS_BACKUP_FORMAT_VERSION && input.formatVersion !== KAIROS_SAVED_TIME_ASSISTED_SNAPSHOT_BACKUP_FORMAT_VERSION && input.formatVersion !== KAIROS_TRADE_DISCIPLINE_BACKUP_FORMAT_VERSION && input.formatVersion !== KAIROS_CHART_ZONE_BACKUP_FORMAT_VERSION && input.formatVersion !== KAIROS_BACKUP_FORMAT_VERSION) {
     throw new KairosBackupValidationError('UNSUPPORTED_FORMAT_VERSION', 'Backup format version is not supported by this build.');
   }
   validateCommonHeader(input);
-  return input.formatVersion === KAIROS_LEGACY_BACKUP_FORMAT_VERSION ? validateV1(input) : input.formatVersion === KAIROS_TRADE_BACKUP_FORMAT_VERSION ? validateV2(input) : input.formatVersion === KAIROS_SAVED_ANALYSIS_BACKUP_FORMAT_VERSION ? validateV3(input) : input.formatVersion === KAIROS_SAVED_TIME_ASSISTED_SNAPSHOT_BACKUP_FORMAT_VERSION ? validateV4(input) : input.formatVersion === KAIROS_TRADE_DISCIPLINE_BACKUP_FORMAT_VERSION ? validateV5(input) : validateV6(input);
+  return input.formatVersion === KAIROS_LEGACY_BACKUP_FORMAT_VERSION ? validateV1(input) : input.formatVersion === KAIROS_TRADE_BACKUP_FORMAT_VERSION ? validateV2(input) : input.formatVersion === KAIROS_SAVED_ANALYSIS_BACKUP_FORMAT_VERSION ? validateV3(input) : input.formatVersion === KAIROS_SAVED_TIME_ASSISTED_SNAPSHOT_BACKUP_FORMAT_VERSION ? validateV4(input) : input.formatVersion === KAIROS_TRADE_DISCIPLINE_BACKUP_FORMAT_VERSION ? validateV5(input) : input.formatVersion === KAIROS_CHART_ZONE_BACKUP_FORMAT_VERSION ? validateV6(input) : validateV7(input);
 }

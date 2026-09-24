@@ -4,7 +4,7 @@ import type { TradeDisciplineRecord } from '../../domain/discipline';
 import type { TradeExecutionRecord, TradeFeeRecord, TradePlanRecord, TradeRecord } from '../../domain/trades';
 
 export const KAIROS_DATABASE_NAME = 'kairos';
-export const KAIROS_DB_SCHEMA_VERSION = 7 as const;
+export const KAIROS_DB_SCHEMA_VERSION = 8 as const;
 
 /** Immutable released V1 contract. Never edit. */
 export const KAIROS_V1_STORES = Object.freeze({
@@ -46,6 +46,11 @@ export const KAIROS_V7_STORES = Object.freeze({
   trades: '&id,status,symbol,updatedAt,[status+updatedAt],[status+closedAt]',
 });
 
+/** V8 makes tradeId unique: the database keeps one discipline record per trade (D7). Records store answers by list item id with their label (D6). */
+export const KAIROS_V8_STORES = Object.freeze({
+  tradeDiscipline: '&id,&tradeId,updatedAt',
+});
+
 /** Current complete store authority used by transactions/integrity only. */
 export const KAIROS_CURRENT_STORES = Object.freeze({
   ...KAIROS_V2_STORES,
@@ -54,6 +59,7 @@ export const KAIROS_CURRENT_STORES = Object.freeze({
   ...KAIROS_V5_STORES,
   ...KAIROS_V6_STORES,
   ...KAIROS_V7_STORES,
+  ...KAIROS_V8_STORES,
 });
 
 export interface DatabaseMetadataRecord {

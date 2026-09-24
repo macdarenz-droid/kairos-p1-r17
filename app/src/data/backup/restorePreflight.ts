@@ -1,5 +1,6 @@
 import type { KairosDatabase } from '../database/KairosDatabase';
 import { DatabaseIntegrityError } from '../database/integrity';
+import { KAIROS_DB_SCHEMA_VERSION } from '../database/schema';
 import { isKairosDeviceScopedMetadataKey } from '../repositories';
 import { createKairosDatabaseSnapshot } from './backupSnapshot';
 import type { KairosCurrentBackupEnvelope, KairosBackupRecordCountsV5 } from './backupFormat';
@@ -88,10 +89,8 @@ function assertUnique(values: readonly string[], code: KairosRestorePreflightCod
 }
 
 function assertRestoreCompatibility(envelope: KairosCurrentBackupEnvelope): void {
-  // parseKairosBackup has already migrated supported V1–V5 backups to the current restore model.
-  // Read as plain numbers: a V5 envelope (schema 6 or 7) is still accepted if one arrives unmigrated.
-  const { formatVersion, databaseSchemaVersion } = envelope as { readonly formatVersion: number; readonly databaseSchemaVersion: number };
-  const compatible = (formatVersion === 6 && databaseSchemaVersion === 7) || (formatVersion === 5 && (databaseSchemaVersion === 6 || databaseSchemaVersion === 7));
+  // parseKairosBackup has already migrated every supported V1–V6 backup to the current restore model (format 7, schema 8).
+  const compatible = envelope.databaseSchemaVersion === KAIROS_DB_SCHEMA_VERSION;
   if (!compatible) {
     throw new KairosRestorePreflightError(
       'INCOMPATIBLE_DATABASE_SCHEMA',

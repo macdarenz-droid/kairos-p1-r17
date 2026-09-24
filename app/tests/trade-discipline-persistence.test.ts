@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { KAIROS_BACKUP_FORMAT_NAME, KairosRestorePreflightError, createKairosBackupEnvelope, createKairosDatabaseSnapshot, parseKairosBackup, preflightKairosRestore, prepareKairosRestore, replaceKairosDatabaseFromPreparedRestore, restoreAndVerifyKairosDatabase, serializeKairosBackup } from '../src/data/backup';
 import { DatabaseIntegrityError, KAIROS_DB_SCHEMA_VERSION, KAIROS_V5_STORES, KAIROS_V6_STORES, assertKairosDatabaseIntegrity, createKairosDatabase, inspectKairosDatabaseIntegrity, openKairosDatabase, runKairosAtomicWrite } from '../src/data/database';
 import { createKairosRepositories } from '../src/data/repositories';
-import { KAIROS_DISCIPLINE_MISTAKE_TAGS, KAIROS_DISCIPLINE_NOTE_MAX_LENGTH, KAIROS_POST_TRADE_REVIEW_KEYS, KAIROS_PRE_TRADE_CHECKLIST_KEYS, createTradeDisciplineId, isTradeDisciplineRecordShape, validateTradeDisciplineRecord, type TradeDisciplineId, type TradeDisciplineRecord } from '../src/domain/discipline';
+import { KAIROS_DISCIPLINE_MISTAKE_TAGS, KAIROS_DISCIPLINE_NOTE_MAX_LENGTH, KAIROS_POST_TRADE_REVIEW_KEYS, KAIROS_PRE_TRADE_CHECKLIST_KEYS, createTradeDisciplineId, isLegacyTradeDisciplineRecordShape, isTradeDisciplineRecordShape, validateTradeDisciplineRecord, type LegacyTradeDisciplineRecord, type TradeDisciplineId, type TradeDisciplineRecord } from '../src/domain/discipline';
 import type { TradeId, TradeRecord } from '../src/domain/trades';
 
 const names: string[] = [];
@@ -16,14 +16,21 @@ const trade: TradeRecord = { id: tradeId, symbol: 'BTCUSDT', marketType: 'crypto
 const discipline: TradeDisciplineRecord = {
   id: 'discipline-p36-1' as TradeDisciplineId,
   tradeId,
-  preTradeChecklist: [{ key: 'plan-written', answer: 'yes' }, { key: 'risk-defined', answer: 'yes' }, { key: 'stop-placed', answer: 'no' }],
-  postTradeReview: [{ key: 'followed-plan', answer: 'no' }, { key: 'emotions-in-check', answer: 'yes' }],
-  mistakes: ['moved-stop', 'early-exit'],
+  preTradeChecklist: [{ itemId: 'plan-written', label: 'I wrote down my plan', answer: 'yes' }, { itemId: 'risk-defined', label: 'I know how much I can lose', answer: 'yes' }, { itemId: 'stop-placed', label: 'I set my stop', answer: 'no' }],
+  postTradeReview: [{ itemId: 'followed-plan', label: 'I followed my plan', answer: 'no' }, { itemId: 'emotions-in-check', label: 'I stayed calm', answer: 'yes' }],
+  mistakes: [{ itemId: 'moved-stop', label: 'Moved my stop' }, { itemId: 'early-exit', label: 'Closed too early' }],
   note: 'Moved the stop after a wick; exited before the target.',
   checklistCompletedAt: '2026-09-19T07:55:00.000Z',
   reviewedAt: '2026-09-19T10:00:00.000Z',
   createdAt: '2026-09-19T07:55:00.000Z',
   updatedAt: '2026-09-19T10:00:00.000Z',
+};
+
+const legacyDiscipline: LegacyTradeDisciplineRecord = {
+  ...discipline,
+  preTradeChecklist: [{ key: 'plan-written', answer: 'yes' }, { key: 'risk-defined', answer: 'yes' }, { key: 'stop-placed', answer: 'no' }],
+  postTradeReview: [{ key: 'followed-plan', answer: 'no' }, { key: 'emotions-in-check', answer: 'yes' }],
+  mistakes: ['moved-stop', 'early-exit'],
 };
 
 async function seedTrade(db: ReturnType<typeof createKairosDatabase>, record: TradeRecord = trade) {
@@ -39,31 +46,33 @@ describe('P36.1 trade discipline record foundation', () => {
     expect(validateTradeDisciplineRecord(discipline)).toEqual({ ok: true, value: discipline });
     expect(isTradeDisciplineRecordShape({ ...discipline, preTradeChecklist: [], postTradeReview: [], mistakes: [], note: '', checklistCompletedAt: null, reviewedAt: null })).toBe(true);
     for (const broken of [
-      { ...discipline, preTradeChecklist: [{ key: 'plan-written', answer: 'maybe' }] },
-      { ...discipline, preTradeChecklist: [{ key: 'unknown', answer: 'yes' }] },
-      { ...discipline, preTradeChecklist: [{ key: 'plan-written', answer: 'yes' }, { key: 'plan-written', answer: 'no' }] },
-      { ...discipline, postTradeReview: [{ key: 'plan-written', answer: 'yes' }] },
-      { ...discipline, mistakes: ['moved-stop', 'moved-stop'] },
+      { ...discipline, preTradeChecklist: [{ itemId: 'plan-written', label: 'I wrote down my plan', answer: 'maybe' }] },
+      { ...discipline, preTradeChecklist: [{ itemId: 'Not An Id', label: 'I wrote down my plan', answer: 'yes' }] },
+      { ...discipline, preTradeChecklist: [{ itemId: 'plan-written', label: 'I wrote down my plan', answer: 'yes' }, { itemId: 'plan-written', label: 'I wrote down my plan', answer: 'no' }] },
+      { ...discipline, postTradeReview: [{ itemId: 'followed-plan', label: '', answer: 'yes' }] },
+      { ...discipline, mistakes: [{ itemId: 'moved-stop', label: 'Moved my stop' }, { itemId: 'moved-stop', label: 'Moved my stop' }] },
       { ...discipline, mistakes: ['fomo'] },
       { ...discipline, note: 'x'.repeat(KAIROS_DISCIPLINE_NOTE_MAX_LENGTH + 1) },
       { ...discipline, reviewedAt: '2026-09-19 10:00' },
       { ...discipline, updatedAt: '2026-09-19T07:00:00.000Z' },
       { ...discipline, tradeId: '' },
     ]) expect(isTradeDisciplineRecordShape(broken)).toBe(false);
-    expect(validateTradeDisciplineRecord({ ...discipline, mistakes: ['fomo' as never] })).toEqual({ ok: false, reason: 'invalid-discipline-record' });
+    expect(validateTradeDisciplineRecord({ ...discipline, mistakes: [{ itemId: 'fomo', label: '' }] })).toEqual({ ok: false, reason: 'invalid-discipline-record' });
+    expect(isLegacyTradeDisciplineRecordShape(legacyDiscipline) && !isTradeDisciplineRecordShape(legacyDiscipline)).toBe(true);
     const id = createTradeDisciplineId();
     expect(id).not.toBe(createTradeDisciplineId());
     expect(id).not.toBe(tradeId);
   });
 
-  it('appends schema v6 with the one-per-trade discipline store and keeps v5 history intact', async () => {
-    expect(KAIROS_DB_SCHEMA_VERSION).toBe(7);
+  it('appends schema v8 with the one-per-trade discipline store and keeps v5 history intact', async () => {
+    expect(KAIROS_DB_SCHEMA_VERSION).toBe(8);
     expect(KAIROS_V6_STORES).toEqual({ tradeDiscipline: '&id,tradeId,updatedAt' });
     expect(KAIROS_V5_STORES).toEqual({ savedTimeAssistedSnapshots: '&id' });
     const db = createKairosDatabase(dbName('schema'));
-    await expect(openKairosDatabase(db)).resolves.toEqual({ state: 'ready', schemaVersion: 7 });
+    await expect(openKairosDatabase(db)).resolves.toEqual({ state: 'ready', schemaVersion: 8 });
     expect(db.tradeDiscipline.schema.primKey.keyPath).toBe('id');
     expect(db.tradeDiscipline.schema.indexes.map((index) => index.name)).toEqual(['tradeId', 'updatedAt']);
+    expect(db.tradeDiscipline.schema.idxByName.tradeId?.unique).toBe(true);
     expect(db.savedTimeAssistedSnapshots.schema.primKey.keyPath).toBe('id');
     db.close();
   });
@@ -81,17 +90,17 @@ describe('P36.1 trade discipline record foundation', () => {
     await expect(repo.getByTradeId(tradeId)).resolves.toEqual(discipline);
     await expect(repo.getByTradeId('other-trade' as TradeId)).resolves.toBeUndefined();
     await expect(repo.listAll()).resolves.toEqual([discipline]);
-    await expect(assertKairosDatabaseIntegrity(db)).resolves.toMatchObject({ ok: true, schemaVersion: 7, tradeRecordCount: 1, tradeDisciplineRecordCount: 1 });
+    await expect(assertKairosDatabaseIntegrity(db)).resolves.toMatchObject({ ok: true, schemaVersion: 8, tradeRecordCount: 1, tradeDisciplineRecordCount: 1 });
     await repo.delete(discipline.id);
     await expect(repo.get(discipline.id)).resolves.toBeUndefined();
     db.close();
   });
 
-  it('fails integrity closed on a malformed record, an orphan record and two records for one trade', async () => {
+  it('fails integrity closed on a malformed record and an orphan record, and the database refuses two records for one trade', async () => {
     const db = createKairosDatabase(dbName('integrity'));
     await openKairosDatabase(db);
     await seedTrade(db);
-    await db.tradeDiscipline.put({ ...discipline, mistakes: ['fomo' as never] });
+    await db.tradeDiscipline.put({ ...discipline, mistakes: [{ itemId: 'fomo', label: '' }] });
     let report = await inspectKairosDatabaseIntegrity(db);
     expect(report.ok).toBe(false);
     expect(report.checks.find((check) => check.id === 'trade-discipline-record-shape')).toMatchObject({ ok: false });
@@ -101,9 +110,9 @@ describe('P36.1 trade discipline record foundation', () => {
     expect(report.checks.find((check) => check.id === 'trade-discipline-record-shape')).toMatchObject({ ok: true });
     expect(report.checks.find((check) => check.id === 'trade-discipline-reference-integrity')).toMatchObject({ ok: false });
     await db.tradeDiscipline.put(discipline);
-    await db.tradeDiscipline.put({ ...discipline, id: 'second-for-same-trade' as TradeDisciplineId });
+    await expect(db.tradeDiscipline.put({ ...discipline, id: 'second-for-same-trade' as TradeDisciplineId })).rejects.toMatchObject({ name: 'ConstraintError' });
     report = await inspectKairosDatabaseIntegrity(db);
-    expect(report.checks.find((check) => check.id === 'trade-discipline-reference-integrity')).toMatchObject({ ok: false });
+    expect(report.checks.find((check) => check.id === 'trade-discipline-reference-integrity')).toMatchObject({ ok: true });
     expect(report.checks.find((check) => check.id === 'trade-discipline-primary-key')).toMatchObject({ ok: true });
     db.close();
   });
@@ -111,7 +120,7 @@ describe('P36.1 trade discipline record foundation', () => {
   it('round-trips a discipline record through current backup V5 and counts it in the envelope', async () => {
     const envelope = createKairosBackupEnvelope({ metadata: [], trades: [trade], tradeDiscipline: [discipline] });
     const parsed = parseKairosBackup(serializeKairosBackup(envelope));
-    expect(parsed).toMatchObject({ formatVersion: 6, databaseSchemaVersion: 7, recordCounts: { trades: 1, savedTimeAssistedSnapshots: 0, tradeDiscipline: 1, total: 2 } });
+    expect(parsed).toMatchObject({ formatVersion: 7, databaseSchemaVersion: 8, recordCounts: { trades: 1, savedTimeAssistedSnapshots: 0, tradeDiscipline: 1, total: 2 } });
     expect(parsed.payload.tradeDiscipline).toEqual([discipline]);
     const db = createKairosDatabase(dbName('snapshot'));
     await openKairosDatabase(db);
@@ -126,11 +135,11 @@ describe('P36.1 trade discipline record foundation', () => {
   it('migrates a released V4 backup to V5 with an empty discipline store and still accepts V1 through V3', () => {
     const legacyV4 = { formatName: KAIROS_BACKUP_FORMAT_NAME, formatVersion: 4, appVersion: 'old-v4', buildId: 'old-v4', exportedAt: '2026-09-18T08:30:00.000Z', databaseSchemaVersion: 5, recordCounts: { metadata: 0, trades: 1, tradePlans: 0, tradeExecutions: 0, tradeFees: 0, savedAnalyses: 0, savedTimeAssistedSnapshots: 0, total: 1 }, payload: { metadata: [], trades: [trade], tradePlans: [], tradeExecutions: [], tradeFees: [], savedAnalyses: [], savedTimeAssistedSnapshots: [] } };
     const migrated = parseKairosBackup(JSON.stringify(legacyV4));
-    expect(migrated).toMatchObject({ formatVersion: 6, databaseSchemaVersion: 7, recordCounts: { trades: 1, tradeDiscipline: 0, total: 1 } });
+    expect(migrated).toMatchObject({ formatVersion: 7, databaseSchemaVersion: 8, recordCounts: { trades: 1, tradeDiscipline: 0, total: 1 } });
     expect(migrated.payload.tradeDiscipline).toEqual([]);
     expect(migrated.payload.trades).toEqual([trade]);
     const legacyV3 = { ...legacyV4, formatVersion: 3, databaseSchemaVersion: 4, recordCounts: { metadata: 0, trades: 1, tradePlans: 0, tradeExecutions: 0, tradeFees: 0, savedAnalyses: 0, total: 1 }, payload: { metadata: [], trades: [trade], tradePlans: [], tradeExecutions: [], tradeFees: [], savedAnalyses: [] } };
-    expect(parseKairosBackup(JSON.stringify(legacyV3))).toMatchObject({ formatVersion: 6, databaseSchemaVersion: 7, recordCounts: { trades: 1, savedTimeAssistedSnapshots: 0, tradeDiscipline: 0, total: 1 } });
+    expect(parseKairosBackup(JSON.stringify(legacyV3))).toMatchObject({ formatVersion: 7, databaseSchemaVersion: 8, recordCounts: { trades: 1, savedTimeAssistedSnapshots: 0, tradeDiscipline: 0, total: 1 } });
     const legacyV1 = { formatName: KAIROS_BACKUP_FORMAT_NAME, formatVersion: 1, appVersion: 'old', buildId: 'old', exportedAt: '2026-08-31T08:30:00.000Z', databaseSchemaVersion: 1, recordCounts: { metadata: 0, total: 0 }, payload: { metadata: [] } };
     expect(parseKairosBackup(JSON.stringify(legacyV1)).payload.tradeDiscipline).toEqual([]);
   });

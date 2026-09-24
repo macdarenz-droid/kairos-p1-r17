@@ -34,9 +34,9 @@ const trade: TradeRecord = { id: tradeId, symbol: 'BTCUSDT', marketType: 'crypto
 const orphanDiscipline: TradeDisciplineRecord = {
   id: 'discipline-orphan' as TradeDisciplineId,
   tradeId: 'missing-trade' as TradeId,
-  preTradeChecklist: [{ key: 'plan-written', answer: 'yes' }, { key: 'risk-defined', answer: 'yes' }, { key: 'stop-placed', answer: 'no' }],
-  postTradeReview: [{ key: 'followed-plan', answer: 'no' }, { key: 'emotions-in-check', answer: 'yes' }],
-  mistakes: ['moved-stop', 'early-exit'],
+  preTradeChecklist: [{ itemId: 'plan-written', label: 'I wrote down my plan', answer: 'yes' }, { itemId: 'risk-defined', label: 'I know how much I can lose', answer: 'yes' }, { itemId: 'stop-placed', label: 'I set my stop', answer: 'no' }],
+  postTradeReview: [{ itemId: 'followed-plan', label: 'I followed my plan', answer: 'no' }, { itemId: 'emotions-in-check', label: 'I stayed calm', answer: 'yes' }],
+  mistakes: [{ itemId: 'moved-stop', label: 'Moved my stop' }, { itemId: 'early-exit', label: 'Closed too early' }],
   note: 'Moved the stop after a wick; exited before the target.',
   checklistCompletedAt: '2026-09-19T07:55:00.000Z',
   reviewedAt: '2026-09-19T10:00:00.000Z',
