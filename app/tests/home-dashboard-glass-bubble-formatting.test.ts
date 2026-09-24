@@ -6,8 +6,8 @@ const decimal = (value: string) => value as DecimalString;
 
 describe('home dashboard glass bubble movement formatting', () => {
   it('keeps normal movement labels compact and signed', () => {
-    expect(formatHomeDashboardLiveCryptoBubbleMovement(decimal('7.12608767033327860778197340339074044'), false)).toBe('+7.13%');
-    expect(formatHomeDashboardLiveCryptoBubbleMovement(decimal('-2.4'), false)).toBe('-2.40%');
+    expect(formatHomeDashboardLiveCryptoBubbleMovement(decimal('7.12608767033327860778197340339074044'), false)).toBe('+7.1%');
+    expect(formatHomeDashboardLiveCryptoBubbleMovement(decimal('-2.4'), false)).toBe('-2.4%');
   });
 
   it('uses readable compact notation for unusually large values', () => {

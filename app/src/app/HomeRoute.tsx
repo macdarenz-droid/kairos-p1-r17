@@ -7,7 +7,9 @@ import { createHomeDashboardLiveCryptoBubbleDefaultRuntimeProductConfiguration }
 
 export function HomeRoute() {
   const [view,setView] = useState<'market'|'trades'>('market');
-  const configuration = createHomeDashboardLiveCryptoBubbleDefaultRuntimeProductConfiguration();
+  const [configuration] = useState(() => createHomeDashboardLiveCryptoBubbleDefaultRuntimeProductConfiguration());
+  // "Try again" remounts the live runtime with a new key; the configuration stays the same.
+  const [attempt, setAttempt] = useState(0);
 
   return (
     <section
@@ -28,8 +30,10 @@ export function HomeRoute() {
       {view==='market'?<section aria-labelledby="kairos-home-dashboard-heading">
         <h2 id="kairos-home-dashboard-heading">Live Crypto Bubble</h2>
         <HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTextEvidenceRuntime
+          key={attempt}
           configuration={configuration}
           visual
+          onRetry={() => setAttempt(current => current + 1)}
         />
       </section>:<HomeDashboardYourTrades/>}
       </HomeDashboardSwipePager>
