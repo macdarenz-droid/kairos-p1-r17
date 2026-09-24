@@ -8,7 +8,7 @@ import { updateOpenManualTrade } from '../src/application/trades/updateOpenManua
 import { isPriceCurrencyInput, PRICE_CURRENCY_INPUT_ERROR } from '../src/application/trades/priceCurrencyInput';
 import { listJournalHistory } from '../src/application/journal';
 import { JournalRoute } from '../src/app/JournalRoute';
-import { JournalClosedTradeGuidance } from '../src/app/JournalClosedTradeGuidance';
+import { JournalClosedTradeGuidance } from '../src/features/journal/JournalClosedTradeGuidance';
 
 let db: KairosDatabase;
 const openedAt = '2026-09-12T04:00:00.000Z', closedAt = '2026-09-12T05:00:00.000Z';
@@ -59,7 +59,7 @@ it('preserves a legacy amount-like currency through backup/restore and a later a
 it('shows the missing-fill explanation before saving; error focuses and describes the currency field; corrected input saves without invented results', async () => {
   render(<JournalRoute db={db}/>);
   for (const [label, value] of [['Symbol', 'XRPUSD'], ['Market', 'crypto'], ['Direction', 'long'], ['Status', 'closed'], ['Opened', '2026-09-12T14:00'], ['Closed', '2026-09-12T15:00']]) fireEvent.change(screen.getByLabelText(new RegExp('^' + label), { selector: 'input,select' }), { target: { value } });
-  expect(screen.getByRole('note', { name: 'P&L guidance' })).toHaveTextContent('P&L will stay unavailable');
+  expect(screen.getByRole('note', { name: 'Result guidance' })).toHaveTextContent('result stays unavailable');
   const field = screen.getByLabelText('Currency code');
   fireEvent.change(field, { target: { value: '50 USD' } }); fireEvent.click(screen.getByRole('button', { name: 'Save trade' }));
   const alert = await screen.findByRole('alert'); await waitFor(() => expect(alert).toHaveFocus());

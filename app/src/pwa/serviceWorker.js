@@ -1,6 +1,6 @@
+const KAIROS_SERVICE_WORKER = __KAIROS_SERVICE_WORKER_CONFIG__;
 const CACHE_PREFIX = 'kairos-app-shell-';
-const CACHE_VERSION = 'v1';
-const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
+const CACHE_NAME = `${CACHE_PREFIX}${KAIROS_SERVICE_WORKER.cacheVersion}`;
 const APP_SHELL_URL = '/';
 
 function isSameOrigin(url) {
@@ -12,26 +12,15 @@ function isStaticAssetRequest(request, url) {
   return ['script', 'style', 'image', 'font', 'manifest'].includes(request.destination) || url.pathname.startsWith('/assets/');
 }
 
-async function discoverAndCacheAppShell() {
-  const response = await fetch(APP_SHELL_URL, { cache: 'no-cache' });
-  if (!response.ok) throw new Error(`Kairos app shell fetch failed: ${response.status}`);
-
+// The build writes this worker's exact file list, so the cached shell always matches the cached scripts.
+async function precacheAppShell() {
   const cache = await caches.open(CACHE_NAME);
-  await cache.put(APP_SHELL_URL, response.clone());
-
-  const html = await response.text();
-  const discovered = new Set(['/manifest.webmanifest']);
-  const attributePattern = /(?:src|href)=["']([^"']+)["']/g;
-  for (const match of html.matchAll(attributePattern)) {
-    const candidate = new URL(match[1], self.location.origin);
-    if (candidate.origin === self.location.origin) discovered.add(candidate.pathname + candidate.search);
-  }
-
-  await cache.addAll([...discovered]);
+  await cache.addAll(KAIROS_SERVICE_WORKER.precacheUrls);
 }
 
+// No skipWaiting here: a new version waits until the user taps Update.
 self.addEventListener('install', (event) => {
-  event.waitUntil(discoverAndCacheAppShell());
+  event.waitUntil(precacheAppShell());
 });
 
 self.addEventListener('activate', (event) => {
@@ -51,14 +40,9 @@ self.addEventListener('message', (event) => {
 
 async function networkFirstNavigation(request) {
   try {
-    const response = await fetch(request);
-    if (response.ok) {
-      const cache = await caches.open(CACHE_NAME);
-      await cache.put(APP_SHELL_URL, response.clone());
-    }
-    return response;
+    return await fetch(request);
   } catch {
-    const cached = await caches.match(APP_SHELL_URL);
+    const cached = await (await caches.open(CACHE_NAME)).match(APP_SHELL_URL);
     if (cached) return cached;
     throw new Error('Kairos offline shell is unavailable.');
   }
@@ -69,7 +53,9 @@ async function cacheFirstAsset(request) {
   if (cached) return cached;
 
   const response = await fetch(request);
-  if (response.ok) {
+  // A host may answer a missing old script with index.html; never cache that page as a script.
+  const contentType = response.headers.get('content-type') ?? '';
+  if (response.ok && !contentType.includes('text/html')) {
     const cache = await caches.open(CACHE_NAME);
     await cache.put(request, response.clone());
   }

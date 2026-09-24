@@ -10,6 +10,9 @@ type StatusListener = (status: ServiceWorkerStatus) => void;
 const listeners = new Set<StatusListener>();
 let currentStatus: ServiceWorkerStatus = { state: 'idle', hasWaitingUpdate: false };
 let currentRegistration: ServiceWorkerRegistration | null = null;
+/** Set only when this tab asked the waiting worker to take over, so only this tab reloads. */
+let updateRequested = false;
+let reloaded = false;
 
 function publish(status: ServiceWorkerStatus) {
   currentStatus = status;
@@ -37,7 +40,8 @@ function observeInstallingWorker(registration: ServiceWorkerRegistration) {
   });
 }
 
-export async function registerKairosServiceWorker(): Promise<ServiceWorkerRegistration | null> {
+export async function registerKairosServiceWorker(options: { readonly reload?: () => void } = {}): Promise<ServiceWorkerRegistration | null> {
+  const reload = options.reload ?? (() => window.location.reload());
   if (!('serviceWorker' in navigator)) {
     publish({ state: 'unsupported', hasWaitingUpdate: false });
     return null;
@@ -55,6 +59,17 @@ export async function registerKairosServiceWorker(): Promise<ServiceWorkerRegist
     }
 
     registration.addEventListener('updatefound', () => observeInstallingWorker(registration));
+    // An update may have started before the listener above existed.
+    if (registration.installing) observeInstallingWorker(registration);
+
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!updateRequested || reloaded) return;
+      reloaded = true;
+      reload();
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') registration.update().catch(() => undefined);
+    });
     return registration;
   } catch {
     publish({ state: 'error', hasWaitingUpdate: false });
@@ -65,6 +80,7 @@ export async function registerKairosServiceWorker(): Promise<ServiceWorkerRegist
 export function activateWaitingServiceWorker(): boolean {
   const waiting = currentRegistration?.waiting;
   if (!waiting) return false;
+  updateRequested = true;
   waiting.postMessage({ type: 'KAIROS_ACTIVATE_UPDATE' });
   return true;
 }

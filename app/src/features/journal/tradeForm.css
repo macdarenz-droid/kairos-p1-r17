@@ -1,0 +1,4 @@
+@media (max-width: 34rem) { .kairos-trade-form__actions .kairos-button { width: 100%; } }
+.kairos-trade-form__mode { display: flex; flex-wrap: wrap; gap: var(--kairos-space-2); }
+.kairos-trade-form__time { display: flex; align-items: center; gap: var(--kairos-space-2); }
+.kairos-trade-form__time input { flex: 1 1 auto; }

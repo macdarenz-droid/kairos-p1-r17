@@ -5,8 +5,8 @@ import { prepareManualTradeExecutionDetails, type ManualExecutionRow, type Manua
 import { PRICE_CURRENCY_INPUT_ERROR } from '../application/trades/priceCurrencyInput';
 import type { KairosDatabase } from '../data/database';
 import type { TradeSource } from '../domain/trades';
-import { JournalExecutionFields } from './JournalExecutionFields';
-import { JournalPriceCurrencyField } from './JournalPriceCurrencyField';
+import { JournalExecutionFields } from '../features/journal/JournalExecutionFields';
+import { JournalPriceCurrencyField } from '../features/journal/JournalPriceCurrencyField';
 import './journalDraftTradeActivation.css';
 
 interface Props {

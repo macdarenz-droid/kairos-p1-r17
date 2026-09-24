@@ -16,7 +16,7 @@ import './design-system/shell/navigationShell.css';
 
 diagnostics.record({ level: 'info', category: 'app', event: 'bootstrap' });
 applyInitialTheme();
-void registerKairosServiceWorker();
+if (import.meta.env.PROD) void registerKairosServiceWorker();
 void inspectStorageDurability();
 const databaseStartup = openKairosDatabase().then((status) => {
   diagnostics.record({

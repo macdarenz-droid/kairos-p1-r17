@@ -4,6 +4,10 @@ import { browserTradePictureCandleLoader } from './tradePictureCandleBrowserDeps
 import type { CSSProperties, ReactElement } from 'react';
 import { buildInfo } from '../shared/config/buildInfo';
 import { primaryNavigation } from './navigation';
+import { UpdatePrompt, type UpdatePromptPort } from '../features/shell/UpdatePrompt';
+import { activateWaitingServiceWorker, subscribeServiceWorkerStatus } from '../pwa/serviceWorkerRegistration';
+
+const updatePromptPort: UpdatePromptPort = Object.freeze({ subscribe: subscribeServiceWorkerStatus, activate: activateWaitingServiceWorker });
 
 /** Hand-drawn 1.6px line icons; the label remains the accessible name. */
 const navigationIcons: Readonly<Record<string, ReactElement>> = Object.freeze({
@@ -40,6 +44,7 @@ export function AppShell({ loading = false }: { readonly loading?: boolean }) {
         </div>
         <div className="kairos-shell__progress" role="progressbar" aria-label="Loading" aria-hidden={loading ? undefined : 'true'} />
       </header>
+      <UpdatePrompt port={updatePromptPort} />
       <main className="kairos-shell__content" id="kairos-main-content">
         <TradePictureCandleLoaderContext.Provider value={browserTradePictureCandleLoader()}><Outlet /></TradePictureCandleLoaderContext.Provider>
       </main>

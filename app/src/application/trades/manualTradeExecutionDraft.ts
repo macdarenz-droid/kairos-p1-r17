@@ -25,7 +25,7 @@ export function prepareManualTradeExecutionDetails(
   const rows: ManualTradeExecutionInput[] = [];
   for (const [index, row] of executions.entries()) {
     const executedAt = timestamp(row.executedAt);
-    if (!executedAt) return { ok: false, type: 'execution-draft-invalid', field: `executions.${index}.executedAt`, message: `Add a valid date and time for execution ${index + 1}.` };
+    if (!executedAt) return { ok: false, type: 'execution-draft-invalid', field: `executions.${index}.executedAt`, message: `Add a valid date and time for ${row.type} ${index + 1}.` };
     rows.push({ type: row.type, price: row.price, quantity: row.quantity, executedAt });
   }
   return { ok: true, input: {
