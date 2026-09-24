@@ -33,7 +33,7 @@ const timeZoneAccessibleName =
   /Time zone Use an IANA time zone, for example Australia\/Sydney, America\/New_York, Europe\/London, or UTC\./i;
 
 async function readyTimeZoneInput(): Promise<HTMLInputElement> {
-  const input = screen.getByRole('textbox', { name: timeZoneAccessibleName }) as HTMLInputElement;
+  const input = screen.getByRole('combobox', { name: timeZoneAccessibleName }) as HTMLInputElement;
   await waitFor(() => expect(input).toBeEnabled());
   return input;
 }
