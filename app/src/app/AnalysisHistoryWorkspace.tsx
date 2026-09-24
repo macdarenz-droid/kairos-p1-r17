@@ -52,6 +52,9 @@ export function AnalysisHistoryWorkspace({
   const [symbol, setSymbol] = useState('');
   const [interval, setTimeframe] = useState('');
   const [revision, setRevision] = useState(0);
+  // Whether the current symbol / timeframe were filled in automatically. A later automatic pick may replace
+  // an automatic one, never the user's own choice.
+  const autoSymbol = useRef(false), autoInterval = useRef(false);
   const handoff = useAnalysisHandoff();
   const handoffApplied = useRef(false);
   useEffect(() => {
@@ -59,8 +62,8 @@ export function AnalysisHistoryWorkspace({
     handoffApplied.current = true;
     const match = metadata.facts.find(item => item.instrument.venue === handoff.market.venue && item.instrument.symbol === handoff.market.instrument);
     if (!match) return;
-    setSymbol(current => (current === '' ? match.instrument.symbol : current));
-    setTimeframe(current => (current === '' ? ANALYSIS_HANDOFF_DEFAULT_INTERVAL : current));
+    setSymbol(current => (current === '' || autoSymbol.current ? (autoSymbol.current = true, match.instrument.symbol) : current));
+    setTimeframe(current => (current === '' || autoInterval.current ? (autoInterval.current = true, ANALYSIS_HANDOFF_DEFAULT_INTERVAL) : current));
   }, [handoff, metadata]);
   // "View trade" (?trade=): pre-select the trade's symbol and a timeframe that fits it, once per trade, never over a user's choice.
   const [tradeSymbolMissing, setTradeSymbolMissing] = useState(false);
@@ -80,8 +83,8 @@ export function AnalysisHistoryWorkspace({
     const match = metadata.facts.find(item => item.instrument.symbol === wanted);
     setTradeSymbolMissing(!match);
     if (!match) return;
-    setSymbol(current => (current === '' ? match.instrument.symbol : current));
-    if (tradeStartMs !== null) setTimeframe(current => (current === '' ? pickTradeReviewInterval(tradeStartMs, Date.now()) : current));
+    setSymbol(current => (current === '' || autoSymbol.current ? (autoSymbol.current = true, match.instrument.symbol) : current));
+    if (tradeStartMs !== null) setTimeframe(current => (current === '' || autoInterval.current ? (autoInterval.current = true, pickTradeReviewInterval(tradeStartMs, Date.now())) : current));
   }, [tradeId, tradeSymbol, tradeStartMs, metadata]);
   const fact = metadata.phase === 'ready' ? metadata.facts.find(item => item.instrument.symbol === symbol) : undefined;
   const selected = Boolean(fact && interval);
@@ -114,8 +117,8 @@ export function AnalysisHistoryWorkspace({
   return <section className="kairos-analysis-chart" aria-labelledby="kairos-chart-title">
     <div className="kairos-analysis-chart__heading"><h2 id="kairos-chart-title">Market chart</h2><span>Binance Spot · Historical + live</span></div>
     <div className="kairos-analysis-chart__selection">
-      <SymbolPicker facts={metadata.facts} value={fact ? symbol : ''} onChange={setSymbol} disabled={metadata.phase !== 'ready' || !metadata.facts.length} />
-      <label><span>Timeframe</span><select aria-label="Timeframe" value={interval} onChange={event => setTimeframe(event.target.value)}><option value="">Choose timeframe</option>{BINANCE_SPOT_CANDLE_INTERVALS.map(value => <option key={value} value={value}>{value === '1M' ? '1 month' : value}</option>)}</select></label>
+      <SymbolPicker facts={metadata.facts} value={fact ? symbol : ''} onChange={next => { autoSymbol.current = false; setSymbol(next); }} disabled={metadata.phase !== 'ready' || !metadata.facts.length} />
+      <label><span>Timeframe</span><select aria-label="Timeframe" value={interval} onChange={event => { autoInterval.current = false; setTimeframe(event.target.value); }}><option value="">Choose timeframe</option>{BINANCE_SPOT_CANDLE_INTERVALS.map(value => <option key={value} value={value}>{value === '1M' ? '1 month' : value}</option>)}</select></label>
     </div>
     {tradeSymbolMissing && !fact ? <p role="status">This trade's symbol is not on Binance Spot.</p> : null}
     {metadata.phase === 'loading' ? <p role="status">Loading supported symbols…</p> : metadata.phase === 'error' ? <div role="alert"><p>Supported symbols are unavailable. Check your connection.</p><button type="button" onClick={() => setMetadataRevision(value => value + 1)}>Retry symbols</button></div> : !metadata.facts.length ? <p role="status">No supported symbols are available.</p> : !selected ? <div className="kairos-analysis-chart__empty"><p>Choose a symbol and timeframe to explore its candles.</p><p className="kairos-analysis-chart__note">You can use this chart without a saved trade.</p></div> : null}

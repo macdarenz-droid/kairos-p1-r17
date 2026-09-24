@@ -56,6 +56,18 @@ describe('T-007 "View trade" pre-selects the chart', () => {
     expect(await screen.findByTestId('saved-trade-canvas')).toHaveTextContent('BTCUSDT/1h');
   });
 
+  it('a new trade in the same visit replaces an automatic pick, but never the user\'s own', async () => {
+    const p = ports();
+    const ui = render(<AnalysisHistoryWorkspace entry={tradeEntry('ETHUSDT', 2)} ports={p} LiveCanvas={LiveCanvas} SavedTradeLiveCanvas={SavedTradeLiveCanvas} />);
+    expect(await screen.findByTestId('saved-trade-canvas')).toHaveTextContent('ETHUSDT/15m');
+    ui.rerender(<AnalysisHistoryWorkspace entry={tradeEntry('BTCUSDT', 200)} ports={p} LiveCanvas={LiveCanvas} SavedTradeLiveCanvas={SavedTradeLiveCanvas} />);
+    await waitFor(() => expect(screen.getByTestId('saved-trade-canvas')).toHaveTextContent('BTCUSDT/1d'));
+
+    fireEvent.change(screen.getByLabelText('Timeframe'), { target: { value: '1h' } });
+    ui.rerender(<AnalysisHistoryWorkspace entry={tradeEntry('ETHUSDT', 2)} ports={p} LiveCanvas={LiveCanvas} SavedTradeLiveCanvas={SavedTradeLiveCanvas} />);
+    await waitFor(() => expect(screen.getByTestId('saved-trade-canvas')).toHaveTextContent('ETHUSDT/1h'));
+  });
+
   it('says so when the trade symbol is not on Binance Spot, and leaves the picker empty', async () => {
     render(<AnalysisHistoryWorkspace entry={tradeEntry('AAPL', 2)} ports={ports()} LiveCanvas={LiveCanvas} SavedTradeLiveCanvas={SavedTradeLiveCanvas} />);
     expect(await screen.findByText("This trade's symbol is not on Binance Spot.")).toBeTruthy();
