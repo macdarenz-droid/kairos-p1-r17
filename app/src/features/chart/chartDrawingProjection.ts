@@ -10,7 +10,14 @@ export interface RendererTrendLineDrawing {
   readonly end: RendererDrawingAnchor;
 }
 
-export type RendererChartDrawing = RendererTrendLineDrawing;
+export interface RendererZoneDrawing {
+  readonly id: string;
+  readonly kind: 'zone';
+  readonly start: RendererDrawingAnchor;
+  readonly end: RendererDrawingAnchor;
+}
+
+export type RendererChartDrawing = RendererTrendLineDrawing | RendererZoneDrawing;
 
 export function projectChartDrawingAnchor(
   anchor: ChartDrawingAnchor,
@@ -21,12 +28,11 @@ export function projectChartDrawingAnchor(
 export function projectChartDrawing(
   drawing: ChartDrawing,
 ): RendererChartDrawing {
-  return {
-    id: drawing.id,
-    kind: drawing.kind,
-    start: projectChartDrawingAnchor(drawing.start),
-    end: projectChartDrawingAnchor(drawing.end),
-  };
+  const start = projectChartDrawingAnchor(drawing.start);
+  const end = projectChartDrawingAnchor(drawing.end);
+  return drawing.kind === 'zone'
+    ? { id: drawing.id, kind: 'zone', start, end }
+    : { id: drawing.id, kind: 'trend-line', start, end };
 }
 
 /**

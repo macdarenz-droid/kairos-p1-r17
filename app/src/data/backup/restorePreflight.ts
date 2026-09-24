@@ -2,7 +2,7 @@ import type { KairosDatabase } from '../database/KairosDatabase';
 import { DatabaseIntegrityError } from '../database/integrity';
 import { isKairosDeviceScopedMetadataKey } from '../repositories';
 import { createKairosDatabaseSnapshot } from './backupSnapshot';
-import type { KairosBackupEnvelopeV5, KairosBackupRecordCountsV5 } from './backupFormat';
+import type { KairosCurrentBackupEnvelope, KairosBackupRecordCountsV5 } from './backupFormat';
 import { parseKairosBackup, serializeKairosBackup } from './backupSerialization';
 
 export type KairosRestorePreflightCode =
@@ -44,12 +44,12 @@ export interface KairosRestorePreviewV2 {
 }
 
 export interface KairosRecoverySnapshotV2 {
-  readonly envelope: KairosBackupEnvelopeV5;
+  readonly envelope: KairosCurrentBackupEnvelope;
   readonly serialized: string;
 }
 
 export interface KairosPreparedRestoreV2 {
-  readonly incoming: KairosBackupEnvelopeV5;
+  readonly incoming: KairosCurrentBackupEnvelope;
   readonly preview: KairosRestorePreviewV2;
   readonly recovery: KairosRecoverySnapshotV2;
 }
@@ -70,7 +70,7 @@ export interface KairosRawRecoverySnapshot {
 export type KairosRecoveryCopy = KairosRecoverySnapshotV2 | KairosRawRecoverySnapshot;
 
 export interface KairosPreparedRestoreWithRecovery {
-  readonly incoming: KairosBackupEnvelopeV5;
+  readonly incoming: KairosCurrentBackupEnvelope;
   readonly preview: KairosRestorePreviewV2;
   readonly recovery: KairosRecoveryCopy;
 }
@@ -87,9 +87,12 @@ function assertUnique(values: readonly string[], code: KairosRestorePreflightCod
   }
 }
 
-function assertRestoreCompatibility(envelope: KairosBackupEnvelopeV5): void {
-  // parseKairosBackup has already migrated supported V1/V2/V3/V4 backups to the current restore model.
-  if (envelope.databaseSchemaVersion !== 6 && envelope.databaseSchemaVersion !== 7) {
+function assertRestoreCompatibility(envelope: KairosCurrentBackupEnvelope): void {
+  // parseKairosBackup has already migrated supported V1–V5 backups to the current restore model.
+  // Read as plain numbers: a V5 envelope (schema 6 or 7) is still accepted if one arrives unmigrated.
+  const { formatVersion, databaseSchemaVersion } = envelope as { readonly formatVersion: number; readonly databaseSchemaVersion: number };
+  const compatible = (formatVersion === 6 && databaseSchemaVersion === 7) || (formatVersion === 5 && (databaseSchemaVersion === 6 || databaseSchemaVersion === 7));
+  if (!compatible) {
     throw new KairosRestorePreflightError(
       'INCOMPATIBLE_DATABASE_SCHEMA',
       'Backup database schema is not supported by this build.',
@@ -120,7 +123,7 @@ function assertRestoreCompatibility(envelope: KairosBackupEnvelopeV5): void {
   }
 }
 
-function createRestorePreview(envelope: KairosBackupEnvelopeV5): KairosRestorePreviewV2 {
+function createRestorePreview(envelope: KairosCurrentBackupEnvelope): KairosRestorePreviewV2 {
   return Object.freeze({
     formatVersion: envelope.formatVersion,
     databaseSchemaVersion: envelope.databaseSchemaVersion,
@@ -138,7 +141,7 @@ function createRestorePreview(envelope: KairosBackupEnvelopeV5): KairosRestorePr
 }
 
 export function preflightKairosRestore(serializedIncomingBackup: string): {
-  readonly incoming: KairosBackupEnvelopeV5;
+  readonly incoming: KairosCurrentBackupEnvelope;
   readonly preview: KairosRestorePreviewV2;
 } {
   const incoming = parseKairosBackup(serializedIncomingBackup);

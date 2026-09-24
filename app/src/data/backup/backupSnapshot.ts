@@ -8,7 +8,7 @@ import {
   type KairosRepositories,
 } from '../repositories';
 import { createKairosBackupEnvelope } from './backupEnvelope';
-import type { KairosBackupEnvelopeV5 } from './backupFormat';
+import type { KairosCurrentBackupEnvelope } from './backupFormat';
 
 export interface CreateKairosDatabaseSnapshotOptions {
   readonly exportedAt?: Date;
@@ -31,7 +31,7 @@ export interface KairosSnapshotSkippedCounts {
 }
 
 export interface KairosDatabaseSnapshotReport {
-  readonly envelope: KairosBackupEnvelopeV5;
+  readonly envelope: KairosCurrentBackupEnvelope;
   readonly skipped: KairosSnapshotSkippedCounts;
 }
 
@@ -106,6 +106,6 @@ export async function createKairosDatabaseSnapshotWithReport(
 export async function createKairosDatabaseSnapshot(
   db: KairosDatabase,
   options: CreateKairosDatabaseSnapshotOptions = {},
-): Promise<KairosBackupEnvelopeV5> {
+): Promise<KairosCurrentBackupEnvelope> {
   return (await createKairosDatabaseSnapshotWithReport(db, options)).envelope;
 }

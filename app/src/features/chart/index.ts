@@ -102,6 +102,7 @@ export {
   type ChartDrawingKind,
   type ChartDrawingAnchor,
   type ChartTrendLineDrawing,
+  type ChartZoneDrawing,
   type ChartDrawing,
 } from './chartDrawingContract';
 
@@ -140,6 +141,7 @@ export {
   projectChartDrawings,
   type RendererDrawingAnchor,
   type RendererTrendLineDrawing,
+  type RendererZoneDrawing,
   type RendererChartDrawing,
 } from './chartDrawingProjection';
 

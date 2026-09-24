@@ -66,7 +66,7 @@ describe('P25.1 saved record label foundation', () => {
   it('accepts labelled records in backup V4 without a format bump, rejects a malformed stored label, and preserves labels through a verified restore', async () => {
     const envelope = createKairosBackupEnvelope({ metadata: [], savedAnalyses: [labelled, unlabelled], savedTimeAssistedSnapshots: [labelledSnapshot] });
     const parsed = parseKairosBackup(serializeKairosBackup(envelope));
-    expect(parsed).toMatchObject({ formatVersion: 5, databaseSchemaVersion: 7 });
+    expect(parsed).toMatchObject({ formatVersion: 6, databaseSchemaVersion: 7 });
     expect(parsed.payload.savedAnalyses.map(record => record.label)).toEqual(['Breakout plan', undefined]);
     expect(parsed.payload.savedTimeAssistedSnapshots[0]?.label).toBe('Morning scalp');
     expect(() => parseKairosBackup(JSON.stringify({ ...envelope, payload: { ...envelope.payload, savedAnalyses: [{ ...labelled, label: ' padded' }, unlabelled] } }))).toThrowError(expect.objectContaining({ code: 'INVALID_PAYLOAD' }));

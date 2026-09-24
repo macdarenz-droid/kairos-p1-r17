@@ -10,7 +10,7 @@ export interface LightweightChartsV5PriceCoordinateApi {
 
 export interface LightweightChartsV5TrendLineScreenSegment {
   readonly id: string;
-  readonly kind: 'trend-line';
+  readonly kind: RendererChartDrawing['kind'];
   readonly start: { readonly x: number; readonly y: number };
   readonly end: { readonly x: number; readonly y: number };
 }

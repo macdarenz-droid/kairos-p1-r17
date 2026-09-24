@@ -1,7 +1,7 @@
 import {
   defineChartDrawing,
+  type ChartDrawing,
   type ChartDrawingAnchor,
-  type ChartTrendLineDrawing,
 } from './chartDrawingContract';
 
 /**
@@ -20,18 +20,18 @@ import {
 export type ChartTrendLineEditEndpoint = 'start' | 'end';
 
 export function constructChartTrendLineEdit(
-  drawing: ChartTrendLineDrawing,
+  drawing: ChartDrawing,
   endpoint: ChartTrendLineEditEndpoint,
   anchor: ChartDrawingAnchor,
-): ChartTrendLineDrawing {
+): ChartDrawing {
   if (endpoint !== 'start' && endpoint !== 'end') {
     throw new Error('chart-trend-line-edit-endpoint-unsupported');
   }
 
-  return defineChartDrawing({
-    id: drawing.id,
-    kind: 'trend-line',
-    start: endpoint === 'start' ? { ...anchor } : { ...drawing.start },
-    end: endpoint === 'end' ? { ...anchor } : { ...drawing.end },
-  });
+  const start = endpoint === 'start' ? { ...anchor } : { ...drawing.start };
+  const end = endpoint === 'end' ? { ...anchor } : { ...drawing.end };
+  // The kind is kept: a zone's placed corners are edited like a line's ends.
+  return defineChartDrawing(drawing.kind === 'zone'
+    ? { id: drawing.id, kind: 'zone', start, end }
+    : { id: drawing.id, kind: 'trend-line', start, end });
 }

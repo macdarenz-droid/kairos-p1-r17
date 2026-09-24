@@ -108,6 +108,7 @@ export function hitTestLightweightChartsV5TrendLineSegments(
   const toleranceSquared = tolerancePx * tolerancePx;
   for (let index = segments.length - 1; index >= 0; index -= 1) {
     const segment = segments[index];
+    if (segment.kind !== 'trend-line') continue;
     if (squaredDistanceToSegment(x, y, segment) <= toleranceSquared) {
       return { id: segment.id, kind: 'trend-line', cursorStyle: 'pointer' };
     }

@@ -29,7 +29,14 @@ export interface StoredChartTrendLineDrawing {
   readonly end: StoredChartDrawingAnchor;
 }
 
-export type StoredChartDrawing = StoredChartTrendLineDrawing;
+export interface StoredChartZoneDrawing {
+  readonly id: string;
+  readonly kind: 'zone';
+  readonly start: StoredChartDrawingAnchor;
+  readonly end: StoredChartDrawingAnchor;
+}
+
+export type StoredChartDrawing = StoredChartTrendLineDrawing | StoredChartZoneDrawing;
 
 export interface StoredRiskRewardAnalysisLevels {
   readonly entry: DecimalString;

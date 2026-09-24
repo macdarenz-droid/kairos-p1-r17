@@ -36,6 +36,8 @@ export function createLightweightChartsV5TrendLinePaneRenderer(
           context.lineWidth = bitmapLineWidth;
 
           for (const segment of snapshot) {
+            // Zones are drawn from T-021b on; until then only lines are drawn.
+            if (segment.kind !== 'trend-line') continue;
             context.beginPath();
             context.moveTo(
               segment.start.x * horizontalPixelRatio,
