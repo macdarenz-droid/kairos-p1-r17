@@ -98,3 +98,44 @@ describe('P24.6 "How much can I buy?"', () => {
     await waitFor(() => expect(screen.getByRole('region', { name: 'Library' }).getAttribute('data-library-status')).toBe('ready'));
   });
 });
+
+const leverageRegion = () => screen.getByRole('region', { name: 'How big is my trade compared with my money?' });
+const leverageHeadline = () => leverageRegion().querySelector('.kairos-calculator__headline')!;
+const leverageDetails = () => within(leverageRegion()).queryAllByRole('listitem').map((item) => item.textContent);
+function fillLeverage(account: string, trade: string) {
+  render(<MemoryRouter><CalculatorsScreen /></MemoryRouter>);
+  fireEvent.change(within(leverageRegion()).getByRole('textbox', { name: 'Money in your account' }), { target: { value: account } });
+  fireEvent.change(within(leverageRegion()).getByRole('textbox', { name: 'What the trade is worth' }), { target: { value: trade } });
+}
+
+describe('P24.7 the leverage picture', () => {
+  it('shows a trade five times the money', () => {
+    fillLeverage('1000', '5000');
+    expect(leverageHeadline().textContent).toBe('Your trade is 5× your money.');
+    expect(leverageDetails()).toEqual([
+      'When the price moves 1%, your account moves 5%, before fees.',
+      'Above 1×, part of the trade is paid with borrowed money, so losses grow as fast as wins.',
+    ]);
+    const image = within(leverageRegion()).getByRole('img', { name: 'Your money 1000 and your trade 5000: the trade is 5× your money.' });
+    expect([...image.querySelectorAll('[data-steps]')].map((part) => part.getAttribute('data-steps'))).toEqual(['4', '20']);
+    expect(within(calculator()).getByRole('textbox', { name: 'Money in your account' })).not.toBe(within(leverageRegion()).getByRole('textbox', { name: 'Money in your account' }));
+  });
+
+  it('says about when the ratio is rounded, and less than 0.01 when it rounds to nothing', () => {
+    fillLeverage('3000', '1000');
+    expect(leverageHeadline().textContent).toBe('Your trade is about 0.33× your money.');
+    expect(leverageDetails()).toContain('At 1× or less, the trade uses only your own money.');
+    cleanup();
+    fillLeverage('1000', '1');
+    expect(leverageHeadline().textContent).toBe('Your trade is less than 0.01× your money.');
+  });
+
+  it('asks for both boxes and marks a wrong one', () => {
+    render(<MemoryRouter><CalculatorsScreen /></MemoryRouter>);
+    expect(leverageHeadline().textContent).toBe('Fill in both boxes to see the picture.');
+    cleanup();
+    fillLeverage('abc', '');
+    expect(within(leverageRegion()).getByText('Use digits and a dot, like 1000.50.')).toBeTruthy();
+    expect(leverageHeadline().textContent).toBe('Check the boxes marked above.');
+  });
+});

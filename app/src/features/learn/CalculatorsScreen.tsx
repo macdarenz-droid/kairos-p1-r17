@@ -1,5 +1,6 @@
-import { useId, useMemo, useState } from 'react';
+import { useId, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
+import { projectLeveragePicture, type LeverageField } from '../../application/learn/leveragePicture';
 import { projectPositionSizePlan, type PositionSizeField, type PositionSizeProblem, type PositionSizeProblemReason } from '../../application/learn/positionSizePlan';
 import { Field } from '../../design-system/primitives';
 import { LearnPicture } from './LearnPicture';
@@ -68,6 +69,56 @@ function PositionSizeCalculator() {
   );
 }
 
+const LEVERAGE_FIELDS: readonly { readonly field: LeverageField; readonly label: string; readonly hint: string }[] = [
+  { field: 'accountSize', label: 'Money in your account', hint: "In your account's currency." },
+  { field: 'tradeValue', label: 'What the trade is worth', hint: 'The price times how much you buy, for example 5000.' },
+];
+
+function LeverageCalculator() {
+  const titleId = useId();
+  const [input, setInput] = useState<Readonly<Record<LeverageField, string>>>({ accountSize: '', tradeValue: '' });
+  const result = useMemo(() => projectLeveragePicture(input), [input]);
+  const errorOf = (field: LeverageField): string | undefined => {
+    if (result.ok || input[field].trim() === '') return undefined;
+    const problem = result.problems.find((item) => item.field === field);
+    return problem ? FIELD_ERRORS[problem.reason] : undefined;
+  };
+  let headline: ReactNode;
+  let shown: { readonly ratioText: string; readonly percentText: string } | null = null;
+  if (result.ok) {
+    const { ratioShown, ratioIsRounded } = result.picture;
+    const times = (unit: string) => (ratioShown === '0' ? `less than 0.01${unit}` : `${ratioIsRounded ? 'about ' : ''}${ratioShown}${unit}`);
+    shown = { ratioText: times('×'), percentText: times('%') };
+    headline = <>Your trade is <strong>{shown.ratioText}</strong> your money.</>;
+  } else if (result.problems.some((problem) => problem.reason === 'calculation-failed')) headline = 'Kairos could not work this out.';
+  else if (result.problems.every((problem) => problem.reason === 'missing')) headline = 'Fill in both boxes to see the picture.';
+  else headline = 'Check the boxes marked above.';
+
+  return (
+    <section className="kairos-calculator" aria-labelledby={titleId}>
+      <h2 id={titleId}>How big is my trade compared with my money?</h2>
+      <p>Borrowed money (traders call it leverage) lets a trade be bigger than the money in your account. See how much bigger, and what that means when the price moves.</p>
+      <div className="kairos-calculator__fields">
+        {LEVERAGE_FIELDS.map(({ field, label, hint }) => (
+          <Field key={field} label={label} hint={hint} error={errorOf(field)}>
+            {(control) => <input {...control} inputMode="decimal" autoComplete="off" value={input[field]} onChange={(event) => setInput((current) => ({ ...current, [field]: event.target.value }))} />}
+          </Field>
+        ))}
+      </div>
+      <p className="kairos-calculator__headline" aria-live="polite">{headline}</p>
+      {result.ok && shown ? (
+        <>
+          <LearnPicture spec={result.picture.picture} title={`Your money ${result.picture.accountSize} and your trade ${result.picture.tradeValue}: the trade is ${shown.ratioText} your money.`} />
+          <ul className="kairos-calculator__details">
+            <li>When the price moves 1%, your account moves {shown.percentText}, before fees.</li>
+            <li>{result.picture.usesBorrowedMoney ? 'Above 1×, part of the trade is paid with borrowed money, so losses grow as fast as wins.' : 'At 1× or less, the trade uses only your own money.'}</li>
+          </ul>
+        </>
+      ) : null}
+    </section>
+  );
+}
+
 /** Calculators: work out a trade before placing it, as a picture plus the exact numbers. Nothing is saved. */
 export function CalculatorsScreen() {
   return (
@@ -76,6 +127,7 @@ export function CalculatorsScreen() {
       <h1 id="kairos-calculators-title">Calculators</h1>
       <p>Work out a trade before you place it. Nothing you type here is saved.</p>
       <PositionSizeCalculator />
+      <LeverageCalculator />
     </section>
   );
 }
