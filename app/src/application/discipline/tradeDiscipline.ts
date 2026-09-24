@@ -75,29 +75,38 @@ export async function saveTradeDiscipline(
       if (!statusAllowed) return { ok: false, type: 'not-allowed', reason: 'trade-status-not-allowed' };
 
       const lists = await readDisciplineLists(repositories.metadata);
-      const itemsById = (items: readonly DisciplineListItem[]) => new Map(items.map((item) => [item.id, item]));
-      const answerItems = itemsById(input.half === 'checklist' ? lists.checklist : lists.review);
-      const mistakeItems = itemsById(lists.mistakes);
+      const existing = await repositories.tradeDiscipline.getByTradeId(input.tradeId);
+      const saved = existing !== undefined && isTradeDisciplineRecordShape(existing) ? existing : null;
+      // Each label comes from the current list. An id no longer in the list but already saved on this
+      // trade keeps its saved words, so re-saving a sheet never drops an answer the trader gave.
+      const labelsFrom = (items: readonly DisciplineListItem[], savedMarks: readonly { readonly itemId: string; readonly label: string }[]) => {
+        const labels = new Map(savedMarks.map((mark) => [mark.itemId, mark.label]));
+        for (const item of items) labels.set(item.id, item.label);
+        return labels;
+      };
+      const answerLabels = input.half === 'checklist'
+        ? labelsFrom(lists.checklist, saved?.preTradeChecklist ?? [])
+        : labelsFrom(lists.review, saved?.postTradeReview ?? []);
+      const mistakeLabels = labelsFrom(lists.mistakes, saved?.mistakes ?? []);
       const answers: DisciplineItemAnswer[] = [];
       for (const { itemId, answer } of input.answers) {
-        const item = answerItems.get(itemId);
-        if (item === undefined) return { ok: false, type: 'validation-error', reason: 'unknown-item' };
-        answers.push({ itemId, label: item.label, answer });
+        const label = answerLabels.get(itemId);
+        if (label === undefined) return { ok: false, type: 'validation-error', reason: 'unknown-item' };
+        answers.push({ itemId, label, answer });
       }
       const mistakes: DisciplineMistakeMark[] = [];
       for (const itemId of mistakeIds) {
-        const item = mistakeItems.get(itemId);
-        if (item === undefined) return { ok: false, type: 'validation-error', reason: 'unknown-item' };
-        mistakes.push({ itemId, label: item.label });
+        const label = mistakeLabels.get(itemId);
+        if (label === undefined) return { ok: false, type: 'validation-error', reason: 'unknown-item' };
+        mistakes.push({ itemId, label });
       }
 
-      const existing = await repositories.tradeDiscipline.getByTradeId(input.tradeId);
       const empty = (id: TradeDisciplineId): TradeDisciplineRecord => ({
         id, tradeId: input.tradeId, preTradeChecklist: [], postTradeReview: [], mistakes: [], note: '',
         checklistCompletedAt: null, reviewedAt: null, createdAt: at, updatedAt: at,
       });
       // A damaged record is replaced by the trader's new answers; an earlier backup still holds it.
-      const start = existing === undefined ? empty(createId()) : isTradeDisciplineRecordShape(existing) ? existing : empty((existing as Pick<TradeDisciplineRecord, 'id'>).id);
+      const start = existing === undefined ? empty(createId()) : saved ?? empty((existing as Pick<TradeDisciplineRecord, 'id'>).id);
       const updatedAt = at >= start.createdAt ? at : start.createdAt;
       const record: TradeDisciplineRecord = input.half === 'checklist'
         ? { ...start, preTradeChecklist: answers, checklistCompletedAt: at, updatedAt }

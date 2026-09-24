@@ -16,3 +16,14 @@ export function summarizeTradeChecklist(record: TradeDisciplineRecord | null): T
   const ticked = record.preTradeChecklist.filter((answer) => answer.answer === 'yes').length;
   return Object.freeze({ ticked, asked, complete: ticked === asked });
 }
+
+export interface TradeReviewSummary {
+  readonly reviewed: boolean;
+  readonly mistakeCount: number;
+}
+
+/** P22.3 the one owner of one trade's review state: reviewed or not, and how many mistakes were tagged. */
+export function summarizeTradeReview(record: TradeDisciplineRecord | null): TradeReviewSummary {
+  const reviewed = record !== null && record.reviewedAt !== null;
+  return Object.freeze({ reviewed, mistakeCount: reviewed ? record.mistakes.length : 0 });
+}

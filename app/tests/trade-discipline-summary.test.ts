@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
 import { afterEach, describe, expect, it } from 'vitest';
-import { loadTradeDisciplineCards, saveTradeDiscipline, summarizeTradeChecklist } from '../src/application/discipline';
+import { loadTradeDisciplineCards, saveTradeDiscipline, summarizeTradeChecklist, summarizeTradeReview } from '../src/application/discipline';
 import { createKairosDatabase, openKairosDatabase, runKairosAtomicWrite, type KairosDatabase } from '../src/data/database';
 import { KAIROS_DEFAULT_DISCIPLINE_LISTS, type TradeDisciplineId, type TradeDisciplineRecord } from '../src/domain/discipline';
 import type { TradeId, TradeRecord } from '../src/domain/trades';
@@ -25,6 +25,13 @@ describe('P22.3 checklist summary', () => {
     expect(summarizeTradeChecklist(record({ preTradeChecklist: [] }))).toBeNull();
     expect(summarizeTradeChecklist(record())).toEqual({ ticked: 2, asked: 5, complete: false });
     expect(summarizeTradeChecklist(record({ preTradeChecklist: answers(5, 5) }))).toEqual({ ticked: 5, asked: 5, complete: true });
+  });
+
+  it('owns the review state of one trade', () => {
+    expect(summarizeTradeReview(null)).toEqual({ reviewed: false, mistakeCount: 0 });
+    expect(summarizeTradeReview(record())).toEqual({ reviewed: false, mistakeCount: 0 });
+    const mistakes = [{ itemId: 'moved-stop', label: 'Moved my stop' }, { itemId: 'early-exit', label: 'Closed too early' }];
+    expect(summarizeTradeReview(record({ reviewedAt: at, mistakes }))).toEqual({ reviewed: true, mistakeCount: 2 });
   });
 
   it('reads the lists and the saved records of a page in one batch', async () => {
