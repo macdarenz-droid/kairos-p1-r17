@@ -17,7 +17,7 @@ export function JournalPriceCurrencyField({ value, onChange, disabled, recorded,
       <span id={`${id}-label`}>Currency code</span>
       <input id={`${id}-currency`} value={value} onChange={event => onChange(event.target.value)} readOnly={recorded}
         autoCapitalize="characters" autoComplete="off" spellCheck={false} placeholder="USD or USDT" aria-labelledby={`${id}-label`} aria-invalid={Boolean(error) || undefined} aria-describedby={`${id}-hint${error ? ` ${id}-error` : ''}`} />
-      <small id={`${id}-hint`}>{recorded ? 'Recorded with this trade. New fills keep this currency.' : 'Enter only the currency code for your prices, such as USD or USDT. This field does not record a profit amount. Leave blank if unknown. Fees need matching currencies.'}</small>
+      <small id={`${id}-hint`}>{recorded ? 'Recorded with this trade. New entries and exits keep this currency.' : 'Enter only the currency code for your prices, such as USD or USDT. This field does not record a profit amount. Leave blank if unknown. Fees need matching currencies.'}</small>
       {error ? <small id={`${id}-error`}>{error}</small> : null}
     </label>
   </fieldset>;

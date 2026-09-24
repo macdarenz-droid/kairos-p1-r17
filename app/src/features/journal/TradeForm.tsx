@@ -12,9 +12,11 @@ import {
 import { prepareManualTradeExecutionDetails, type ManualExecutionRow, type ManualFeeRow } from '../../application/trades/manualTradeExecutionDraft';
 import { PRICE_CURRENCY_INPUT_ERROR } from '../../application/trades/priceCurrencyInput';
 import type { KairosDatabase } from '../../data/database';
+import { Button, Field } from '../../design-system/primitives';
 import { JournalClosedTradeGuidance } from './JournalClosedTradeGuidance';
 import { JournalExecutionFields } from './JournalExecutionFields';
 import { JournalPriceCurrencyField } from './JournalPriceCurrencyField';
+import './tradeForm.css';
 
 export type TradeFormKind = 'journal' | 'practice';
 
@@ -52,7 +54,7 @@ const TRADE_FORM_TEXT: Record<TradeFormKind, TradeFormText> = {
     legend: 'Trade details',
     hintOpen: 'Open trades need an opened date and time.',
     hintClosed: 'Closed trades need both opened and closed date and time.',
-    hintDraft: 'Draft trades stay unexecuted and do not use opened or closed times.',
+    hintDraft: 'Draft trades have no entries, exits or times yet.',
     hintNone: 'Choose the state that matches the trade right now.',
     openRequiresOpenedAt: 'Add the opened date and time for an open trade.',
     closedRequiresTimes: 'Add both opened and closed date and time for a closed trade.',
@@ -68,7 +70,7 @@ const TRADE_FORM_TEXT: Record<TradeFormKind, TradeFormText> = {
     legend: 'Practice trade details',
     hintOpen: 'Open practice trades need an opened date and time.',
     hintClosed: 'Closed practice trades need both opened and closed date and time.',
-    hintDraft: 'Draft practice trades stay unexecuted and do not use opened or closed times.',
+    hintDraft: 'Draft practice trades have no entries, exits or times yet.',
     hintNone: 'Choose the state that matches the practice trade right now.',
     openRequiresOpenedAt: 'Add the opened date and time for an open practice trade.',
     closedRequiresTimes: 'Add both opened and closed date and time for a closed practice trade.',
@@ -120,7 +122,7 @@ function validationMessage(text: TradeFormText, field: ManualTradeValidationFiel
     if (reason === 'draft-cannot-have-execution-times') return text.draftCannotHaveTimes;
     return text.reviewTrade;
   }
-  if (field.startsWith('executions.')) return field.endsWith('.executedAt') ? 'Add a valid execution date and time.' : 'Enter a positive execution price or quantity.';
+  if (field.startsWith('executions.')) return field.endsWith('.executedAt') ? 'Add a valid date and time for each entry and exit.' : 'Enter a positive price and quantity for each entry and exit.';
   if (field.startsWith('fees.')) return field.endsWith('.currency') ? 'Enter the recorded fee currency.' : 'Enter a positive fee amount, or remove the fee row.';
   if (field.startsWith('plan.')) return 'Enter a positive number or leave this field empty.';
   return 'Review this value and try again.';
@@ -226,53 +228,46 @@ export function TradeForm({ db, kind, onSaved }: TradeFormProps) {
         <fieldset className="kairos-trade-form__section" disabled={isSaving}>
           <legend>{text.legend}</legend>
           <div className="kairos-trade-form__grid">
-            <label className="kairos-field kairos-field--wide" htmlFor={`${idPrefix}-symbol`}>
-              <span>Symbol <strong>Required</strong></span>
-              <input
-                id={`${idPrefix}-symbol`}
+            <Field label="Symbol" id={`${idPrefix}-symbol`} required wide invalid={fieldHasError(feedback, 'symbol')}>
+              {control => <input
+                {...control}
                 name="symbol"
                 value={draft.symbol}
                 onChange={(event) => update('symbol', event.target.value)}
                 autoCapitalize="characters"
                 autoComplete="off"
                 spellCheck={false}
-                aria-invalid={fieldHasError(feedback, 'symbol') || undefined}
                 placeholder="BTCUSD"
-              />
-            </label>
+              />}
+            </Field>
 
-            <label className="kairos-field" htmlFor={`${idPrefix}-market`}>
-              <span>Market <strong>Required</strong></span>
-              <select
-                id={`${idPrefix}-market`}
+            <Field label="Market" id={`${idPrefix}-market`} required invalid={fieldHasError(feedback, 'marketType')}>
+              {control => <select
+                {...control}
                 name="marketType"
                 value={draft.marketType}
                 onChange={(event) => update('marketType', event.target.value as ManualTradeDraft['marketType'])}
-                aria-invalid={fieldHasError(feedback, 'marketType') || undefined}
               >
                 <option value="">Choose market</option>
                 {MARKET_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-              </select>
-            </label>
+              </select>}
+            </Field>
 
-            <label className="kairos-field" htmlFor={`${idPrefix}-side`}>
-              <span>Direction <strong>Required</strong></span>
-              <select
-                id={`${idPrefix}-side`}
+            <Field label="Direction" id={`${idPrefix}-side`} required invalid={fieldHasError(feedback, 'side')}>
+              {control => <select
+                {...control}
                 name="side"
                 value={draft.side}
                 onChange={(event) => update('side', event.target.value as ManualTradeDraft['side'])}
-                aria-invalid={fieldHasError(feedback, 'side') || undefined}
               >
                 <option value="">Choose direction</option>
                 {SIDE_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-              </select>
-            </label>
+              </select>}
+            </Field>
 
-            <label className="kairos-field kairos-field--wide" htmlFor={`${idPrefix}-status`}>
-              <span>Status <strong>Required</strong></span>
-              <select
-                id={`${idPrefix}-status`}
+            <Field label="Status" id={`${idPrefix}-status`} required wide hint={statusHint} invalid={fieldHasError(feedback, 'status') || fieldHasError(feedback, 'trade')}>
+              {control => <select
+                {...control}
                 name="status"
                 value={draft.status}
                 onChange={(event) => {
@@ -285,41 +280,34 @@ export function TradeForm({ db, kind, onSaved }: TradeFormProps) {
                   }));
                   setFeedback(null);
                 }}
-                aria-describedby={`${idPrefix}-status-hint`}
-                aria-invalid={fieldHasError(feedback, 'status') || fieldHasError(feedback, 'trade') || undefined}
               >
                 <option value="">Choose status</option>
                 {STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-              </select>
-              <small id={`${idPrefix}-status-hint`}>{statusHint}</small>
-            </label>
+              </select>}
+            </Field>
 
             {showOpenedAt ? (
-              <label className="kairos-field" htmlFor={`${idPrefix}-opened-at`}>
-                <span>Opened <strong>Required</strong></span>
-                <input
-                  id={`${idPrefix}-opened-at`}
+              <Field label="Opened" id={`${idPrefix}-opened-at`} required invalid={fieldHasError(feedback, 'trade')}>
+                {control => <input
+                  {...control}
                   name="openedAt"
                   type="datetime-local"
                   value={draft.openedAt}
                   onChange={(event) => update('openedAt', event.target.value)}
-                  aria-invalid={fieldHasError(feedback, 'trade') || undefined}
-                />
-              </label>
+                />}
+              </Field>
             ) : null}
 
             {showClosedAt ? (
-              <label className="kairos-field" htmlFor={`${idPrefix}-closed-at`}>
-                <span>Closed <strong>Required</strong></span>
-                <input
-                  id={`${idPrefix}-closed-at`}
+              <Field label="Closed" id={`${idPrefix}-closed-at`} required invalid={fieldHasError(feedback, 'trade')}>
+                {control => <input
+                  {...control}
                   name="closedAt"
                   type="datetime-local"
                   value={draft.closedAt}
                   onChange={(event) => update('closedAt', event.target.value)}
-                  aria-invalid={fieldHasError(feedback, 'trade') || undefined}
-                />
-              </label>
+                />}
+              </Field>
             ) : null}
           </div>
         </fieldset>
@@ -341,31 +329,25 @@ export function TradeForm({ db, kind, onSaved }: TradeFormProps) {
           <legend>Trade plan <span>Optional</span></legend>
           <p className="kairos-trade-form__section-copy">Use the numbers you planned before or during the trade. Your plan stays separate from actual entries and exits.</p>
           <div className="kairos-trade-form__grid">
-            <label className="kairos-field" htmlFor={`${planIdPrefix}-entry`}>
-              <span>Planned entry</span>
-              <input id={`${planIdPrefix}-entry`} inputMode="decimal" value={draft.plan.plannedEntryPrice} onChange={(event) => updatePlan('plannedEntryPrice', event.target.value)} aria-invalid={fieldHasError(feedback, 'plan.plannedEntryPrice') || undefined} />
-            </label>
-            <label className="kairos-field" htmlFor={`${planIdPrefix}-stop`}>
-              <span>Planned stop</span>
-              <input id={`${planIdPrefix}-stop`} inputMode="decimal" value={draft.plan.plannedStopPrice} onChange={(event) => updatePlan('plannedStopPrice', event.target.value)} aria-invalid={fieldHasError(feedback, 'plan.plannedStopPrice') || undefined} />
-            </label>
-            <label className="kairos-field" htmlFor={`${planIdPrefix}-target`}>
-              <span>Planned target</span>
-              <input id={`${planIdPrefix}-target`} inputMode="decimal" value={draft.plan.plannedTargetPrice} onChange={(event) => updatePlan('plannedTargetPrice', event.target.value)} aria-invalid={fieldHasError(feedback, 'plan.plannedTargetPrice') || undefined} />
-            </label>
-            <label className="kairos-field" htmlFor={`${planIdPrefix}-quantity`}>
-              <span>Planned quantity</span>
-              <input id={`${planIdPrefix}-quantity`} inputMode="decimal" value={draft.plan.plannedQuantity} onChange={(event) => updatePlan('plannedQuantity', event.target.value)} aria-invalid={fieldHasError(feedback, 'plan.plannedQuantity') || undefined} />
-            </label>
+            <Field label="Planned entry" id={`${planIdPrefix}-entry`} invalid={fieldHasError(feedback, 'plan.plannedEntryPrice')}>
+              {control => <input {...control} inputMode="decimal" value={draft.plan.plannedEntryPrice} onChange={(event) => updatePlan('plannedEntryPrice', event.target.value)} />}
+            </Field>
+            <Field label="Planned stop" id={`${planIdPrefix}-stop`} invalid={fieldHasError(feedback, 'plan.plannedStopPrice')}>
+              {control => <input {...control} inputMode="decimal" value={draft.plan.plannedStopPrice} onChange={(event) => updatePlan('plannedStopPrice', event.target.value)} />}
+            </Field>
+            <Field label="Planned target" id={`${planIdPrefix}-target`} invalid={fieldHasError(feedback, 'plan.plannedTargetPrice')}>
+              {control => <input {...control} inputMode="decimal" value={draft.plan.plannedTargetPrice} onChange={(event) => updatePlan('plannedTargetPrice', event.target.value)} />}
+            </Field>
+            <Field label="Planned quantity" id={`${planIdPrefix}-quantity`} invalid={fieldHasError(feedback, 'plan.plannedQuantity')}>
+              {control => <input {...control} inputMode="decimal" value={draft.plan.plannedQuantity} onChange={(event) => updatePlan('plannedQuantity', event.target.value)} />}
+            </Field>
           </div>
         </fieldset>
 
         </details>
 
         <div className="kairos-trade-form__actions">
-          <button className="kairos-trade-form__submit" type="submit" disabled={isSaving}>
-            {isSaving ? 'Saving…' : text.submit}
-          </button>
+          <Button type="submit" busy={isSaving}>{isSaving ? 'Saving…' : text.submit}</Button>
         </div>
       </form>
     </>

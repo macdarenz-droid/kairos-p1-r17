@@ -45,7 +45,7 @@ describe('Journal actual execution entry integration', () => {
   it('preserves invalid input and commits no aggregate until the save command validates it', async () => {
     await start(); fill('entry', 1, '100', '0');
     fireEvent.click(screen.getByRole('button', { name: 'Save trade' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('positive execution price or quantity');
+    expect(await screen.findByRole('alert')).toHaveTextContent('positive price and quantity');
     expect(screen.getByLabelText('Entry 1 quantity')).toHaveValue('0');
     expect(screen.getByLabelText('Entry 1 quantity')).toHaveAttribute('aria-invalid', 'true');
     expect(await db.trades.count()).toBe(0); expect(await db.tradeExecutions.count()).toBe(0);

@@ -45,7 +45,7 @@ export function JournalRoute({ db = kairosDatabase }: JournalRouteProps) {
           <p className="kairos-journal__eyebrow">Manual trade</p>
           <h1 id="kairos-journal-title">Journal</h1>
         </div>
-        <span className="kairos-journal__badge">Local-first</span>
+        <span className="kairos-journal__badge">Saved on this device</span>
       </div>
       <p className="kairos-journal__intro">Log the trade facts you know now. Plan numbers are optional and can be left blank.</p>
 

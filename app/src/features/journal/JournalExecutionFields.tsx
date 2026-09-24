@@ -18,7 +18,7 @@ export function JournalExecutionFields({ executions, fees, onExecutionsChange, o
     onFeesChange(fees.map(row => row.key === key ? { ...row, [field]: value } : row));
   return <fieldset className="kairos-trade-form__section kairos-executions" disabled={disabled}>
     <legend>Actual entries &amp; exits <span>Optional</span></legend>
-    <p className="kairos-trade-form__section-copy">Record each fill from your exchange or broker, including partial exits. Each added row needs a price, quantity and time.</p>
+    <p className="kairos-trade-form__section-copy">Record each entry and exit from your exchange or broker, including partial exits. Each row needs a price, quantity and time.</p>
     {executions.map((row, index) => {
       const title = `${row.type === 'entry' ? 'Entry' : 'Exit'} ${index + 1}`;
       return <fieldset className="kairos-executions__row" key={row.key}>

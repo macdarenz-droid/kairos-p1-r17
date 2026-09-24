@@ -42,7 +42,7 @@ export function PracticeRoute({ db = kairosDatabase }: PracticeRouteProps) {
     <section className="kairos-route kairos-journal kairos-practice" aria-labelledby="kairos-practice-title" data-practice-status={isHistoryLoading ? 'loading' : historyError ? 'error' : 'ready'} data-practice-count={history.length}>
       <div className="kairos-journal__heading">
         <div>
-          <p className="kairos-journal__eyebrow">Paper trades</p>
+          <p className="kairos-journal__eyebrow">Practice trades</p>
           <h1 id="kairos-practice-title">Practice</h1>
         </div>
         <span className="kairos-journal__badge kairos-practice__badge">Practice only</span>
