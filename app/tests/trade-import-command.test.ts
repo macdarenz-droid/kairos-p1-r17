@@ -39,10 +39,10 @@ describe('P32.1 trade merge-import command', () => {
     const prepared = await prepareTradeImport(db, backup);
     expect(prepared.ok).toBe(true);
     if (!prepared.ok) throw new Error('unreachable');
-    expect(prepared.import.preview).toEqual({ exportedAt: now(), formatVersion: 7, newTrades: 1, newPracticeTrades: 1, alreadyPresent: 1, plans: 2, executions: 4, fees: 2 });
+    expect(prepared.import.preview).toEqual({ exportedAt: now(), formatVersion: 7, newTrades: 1, newPracticeTrades: 1, alreadyPresent: 1, plans: 2, executions: 4, fees: 2, discipline: 0 });
     expect(await counts(db)).toEqual(before);
     const result = await commitTradeImport(db, prepared.import);
-    expect(result).toEqual({ ok: true, added: { trades: 2, plans: 2, executions: 4, fees: 2 }, skipped: 0 });
+    expect(result).toEqual({ ok: true, added: { trades: 2, plans: 2, executions: 4, fees: 2, discipline: 0 }, skipped: 0 });
     expect(await counts(db)).toEqual({ trades: 3, plans: 3, executions: 6, fees: 3, metadata: 0 });
     expect((await db.trades.toArray()).map(trade => [trade.symbol, trade.source]).sort()).toEqual([['BTCUSDT', 'manual'], ['ETHUSDT', 'import'], ['SOLUSDT', 'paper']]);
     expect((await listJournalHistory(db)).map(entry => entry.trade.symbol).sort()).toEqual(['BTCUSDT', 'ETHUSDT']);
@@ -60,7 +60,7 @@ describe('P32.1 trade merge-import command', () => {
     const eth = prepared.import.trades.find(trade => trade.symbol === 'ETHUSDT')!;
     await db.trades.put({ ...eth, source: 'manual', symbol: 'ETHUSDT-LOCAL' });
     const result = await commitTradeImport(db, prepared.import);
-    expect(result).toEqual({ ok: true, added: { trades: 1, plans: 1, executions: 2, fees: 1 }, skipped: 1 });
+    expect(result).toEqual({ ok: true, added: { trades: 1, plans: 1, executions: 2, fees: 1, discipline: 0 }, skipped: 1 });
     expect((await db.trades.toArray()).filter(trade => trade.symbol === 'BTCUSDT')).toEqual(existing);
     expect((await db.trades.get(eth.id))?.symbol).toBe('ETHUSDT-LOCAL');
     expect((await db.tradeExecutions.toArray()).every(execution => execution.tradeId !== eth.id)).toBe(true);

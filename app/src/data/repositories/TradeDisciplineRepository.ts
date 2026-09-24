@@ -11,6 +11,8 @@ export class TradeDisciplineRepository {
   listByTradeIds(ids: readonly TradeId[]) { return this.db.tradeDiscipline.where('tradeId').anyOf([...ids]).toArray(); }
   put(record: TradeDisciplineRecord) { return this.db.tradeDiscipline.put(structuredClone(record)).then(() => undefined); }
   delete(id: TradeDisciplineId) { return this.db.tradeDiscipline.delete(id); }
+  /** Deletes the trade's discipline record, if any; returns how many were deleted. */
+  deleteByTradeId(tradeId: TradeId) { return this.db.tradeDiscipline.where('tradeId').equals(tradeId).delete(); }
   async replaceAll(records: readonly TradeDisciplineRecord[]) {
     await this.db.tradeDiscipline.clear();
     if (records.length) await this.db.tradeDiscipline.bulkPut(records.map((record) => structuredClone(record)));

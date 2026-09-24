@@ -53,7 +53,7 @@ describe('P28.2 backup restore command', () => {
     const prepared = await prepareBackupRestore(db, incoming());
     if (!prepared.ok) throw new Error('unreachable');
     const result = await commitBackupRestore(db, prepared.restore);
-    expect(result).toEqual({ ok: true, restored: { restoredMetadataRecords: 1, restoredTradeRecords: 0, restoredSavedAnalysisRecords: 1, restoredSavedTimeAssistedSnapshotRecords: 0, reloadedTotalRecords: 2, verifiedAfterReload: true } });
+    expect(result).toEqual({ ok: true, restored: { restoredMetadataRecords: 1, restoredTradeRecords: 0, restoredSavedAnalysisRecords: 1, restoredSavedTimeAssistedSnapshotRecords: 0, restoredTradeDisciplineRecords: 0, reloadedTotalRecords: 2, verifiedAfterReload: true } });
     expect((await db.savedAnalyses.toArray()).map(record => record.id)).toEqual(['a-incoming']);
     expect((await db.metadata.toArray()).map(record => record.key).sort()).toEqual(['device.activation.receipt', 'preferences.goals.v1']);
     const exported = await exportKairosBackup(db, new Date('2026-09-18T16:00:00.000Z'));
