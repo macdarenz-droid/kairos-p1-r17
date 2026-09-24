@@ -75,6 +75,18 @@ describe('P24.5 Trading words page', () => {
     expect(document.activeElement).toBe(card('Stop'));
   });
 
+  it('never moves focus while typing, even when the selected word comes back', () => {
+    mount('/library/words?term=stop');
+    expect(document.activeElement).toBe(card('Stop'));
+    const search = screen.getByRole('searchbox', { name: 'Find a word' });
+    search.focus();
+    fireEvent.change(search, { target: { value: 'fee' } });
+    expect(cards()).not.toContain('stop');
+    fireEvent.change(search, { target: { value: '' } });
+    expect(cards()).toContain('stop');
+    expect(document.activeElement).toBe(search);
+  });
+
   it('says when the linked word is not in the list', () => {
     mount('/library/words?term=nope');
     expect(screen.getByText('That word is not in the list yet.')).toBeTruthy();

@@ -20,8 +20,11 @@ export function GlossaryScreen({ glossary }: { readonly glossary?: Glossary } = 
   const selectedId = params.get('term');
   // A new word from a link clears the search, so a word the search hid still shows and takes focus.
   const [seenId, setSeenId] = useState(selectedId);
+  // Focus moves only when the selection changes (opening on ?term=, or a link); typing never moves it.
+  const [focusId, setFocusId] = useState(selectedId);
   if (seenId !== selectedId) {
     setSeenId(selectedId);
+    setFocusId(selectedId);
     setQuery('');
   }
   const q = query.trim();
@@ -34,7 +37,7 @@ export function GlossaryScreen({ glossary }: { readonly glossary?: Glossary } = 
       <h1 id="kairos-glossary-title">Trading words</h1>
       <p>Kairos shows plain words on screen. Here is what each one means, and what traders usually call it.</p>
       <Field label="Find a word" id="kairos-glossary-search">
-        {(control) => <input {...control} type="search" autoComplete="off" value={query} onChange={(event) => setQuery(event.target.value)} />}
+        {(control) => <input {...control} type="search" autoComplete="off" value={query} onChange={(event) => { setFocusId(null); setQuery(event.target.value); }} />}
       </Field>
       {data.problems.length > 0 ? <p>Some words could not be shown.</p> : null}
       {missing ? <p>That word is not in the list yet.</p> : null}
@@ -44,7 +47,7 @@ export function GlossaryScreen({ glossary }: { readonly glossary?: Glossary } = 
           <ul className="kairos-glossary__list">
             {found.map((term) => (
               <li key={term.id}>
-                <GlossaryTermCard term={term} related={findGlossaryEntry(term.id, data)?.related ?? []} heading="h2" selected={term.id === selectedId} />
+                <GlossaryTermCard term={term} related={findGlossaryEntry(term.id, data)?.related ?? []} heading="h2" selected={term.id === selectedId} focus={term.id === focusId} />
               </li>
             ))}
           </ul>
