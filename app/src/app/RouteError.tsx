@@ -8,5 +8,5 @@ export function RouteError() {
   useEffect(() => {
     diagnostics.record({ level: 'error', category: 'routing', event: 'route_error', context: { message } });
   }, [message]);
-  return <section className="kairos-route" role="alert"><h1>Page unavailable</h1><p>{message}</p></section>;
+  return <section className="kairos-route" role="alert"><h1>Page unavailable</h1><p>{message}</p><button type="button" onClick={() => window.location.reload()}>Reload</button></section>;
 }

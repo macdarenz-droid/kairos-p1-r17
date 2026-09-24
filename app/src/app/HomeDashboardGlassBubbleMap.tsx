@@ -5,7 +5,7 @@ import { glassMovementWeight, layoutGlassViewportCircles } from './homeDashboard
 import { useHomeDashboardGlassMotion } from './useHomeDashboardGlassMotion';
 import { removeGlassBlackMatte } from './homeDashboardGlassMaterial';
 import { formatHomeDashboardLiveCryptoBubbleMovement } from './homeDashboardGlassBubbleFormatting';
-import approvedGlassUrl from '../assets/kairos-glass-approved.png';
+import approvedGlassUrl from '../assets/kairos-glass-approved.webp';
 import './homeDashboardGlassBubbleMap.css';
 
 let materialPromise: Promise<HTMLCanvasElement> | null = null;
