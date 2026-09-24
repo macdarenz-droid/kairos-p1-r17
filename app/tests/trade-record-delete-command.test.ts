@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { defineSavedAnalysis } from '../src/app/savedAnalysisContract';
+import { defineSavedAnalysis } from '../src/domain/saved-records/savedAnalysisContract';
 import { savePracticeTrade } from '../src/application/practice';
 import { deleteTradeRecord, saveManualTrade } from '../src/application/trades';
 import { createKairosDatabase, openKairosDatabase } from '../src/data/database';

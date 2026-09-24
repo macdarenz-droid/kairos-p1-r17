@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAnalysisHandoff } from './analysisHandoff';
-import { SAVED_RECORD_LABEL_MAX_LENGTH } from './savedRecordLabel';
+import { SAVED_RECORD_LABEL_MAX_LENGTH } from '../domain/saved-records/savedRecordLabel';
 import type { ChartDrawing, ChartMarketReference } from '../features/chart';
 import type { AnalysisSavedAnalysisPorts, AnalysisSavedAnalysisSummary } from './analysisSavedAnalysisRoundTrip';
 

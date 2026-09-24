@@ -1,6 +1,6 @@
-import type { SavedTimeAssistedSnapshot, SavedTimeAssistedSnapshotId } from '../../app/savedTimeAssistedSnapshotContract';
-import { createSavedTimeAssistedSnapshotId } from '../../app/savedTimeAssistedSnapshotIdentity';
-import { normalizeSavedRecordLabel } from '../../app/savedRecordLabel';
+import type { SavedTimeAssistedSnapshot, SavedTimeAssistedSnapshotId } from '../../domain/saved-records/savedTimeAssistedSnapshotContract';
+import { createSavedTimeAssistedSnapshotId } from '../../domain/saved-records/savedTimeAssistedSnapshotIdentity';
+import { normalizeSavedRecordLabel } from '../../domain/saved-records/savedRecordLabel';
 import type { KairosDatabase } from '../../data/database/KairosDatabase';
 import { runKairosAtomicWrite } from '../../data/database/transactions';
 import type { TimeAssistedTradeSnapshot } from '../market-reference';

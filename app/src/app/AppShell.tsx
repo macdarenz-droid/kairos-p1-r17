@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useLocation, useNavigation } from 'react-router';
 import type { CSSProperties, ReactElement } from 'react';
-import { buildInfo } from './buildInfo';
+import { buildInfo } from '../shared/config/buildInfo';
 import { primaryNavigation } from './navigation';
 
 /** Hand-drawn 1.6px line icons; the label remains the accessible name. */

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { defineSavedTimeAssistedSnapshot, type SavedTimeAssistedSnapshot } from '../src/app/savedTimeAssistedSnapshotContract';
-import { createSavedTimeAssistedSnapshotId } from '../src/app/savedTimeAssistedSnapshotIdentity';
+import { defineSavedTimeAssistedSnapshot, type SavedTimeAssistedSnapshot } from '../src/domain/saved-records/savedTimeAssistedSnapshotContract';
+import { createSavedTimeAssistedSnapshotId } from '../src/domain/saved-records/savedTimeAssistedSnapshotIdentity';
 import type { DecimalString } from '../src/domain/trades/tradeTypes';
 
 const instrument = { venue: 'binance-spot', symbol: 'ETHUSDT' } as const;

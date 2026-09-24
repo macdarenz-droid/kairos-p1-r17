@@ -7,8 +7,8 @@ import {
 } from '../../data/backup';
 import type { KairosDatabase } from '../../data/database/KairosDatabase';
 import { runKairosAtomicWrite } from '../../data/database/transactions';
-import type { SavedAnalysis } from '../../app/savedAnalysisContract';
-import type { SavedTimeAssistedSnapshot } from '../../app/savedTimeAssistedSnapshotContract';
+import type { SavedAnalysis } from '../../domain/saved-records/savedAnalysisContract';
+import type { SavedTimeAssistedSnapshot } from '../../domain/saved-records/savedTimeAssistedSnapshotContract';
 import { KAIROS_BACKUP_RESTORE_MAX_BYTES } from './restoreBackup';
 
 export interface SavedRecordImportPreview {

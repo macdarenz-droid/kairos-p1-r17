@@ -1,4 +1,4 @@
-import { buildInfo } from '../app/buildInfo';
+import { buildInfo } from '../shared/config/buildInfo';
 
 export type DiagnosticLevel = 'debug' | 'info' | 'warn' | 'error';
 export type DiagnosticCategory =

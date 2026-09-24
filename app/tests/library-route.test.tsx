@@ -9,7 +9,7 @@ import { AnalysisTimeAssistedSnapshotControls } from '../src/app/AnalysisTimeAss
 import { LibraryRoute } from '../src/app/LibraryRoute';
 import { analysisMarketReference, createAnalysisSavedAnalysisPorts } from '../src/app/analysisSavedAnalysisRoundTrip';
 import { createAnalysisSavedTimeAssistedSnapshotPorts } from '../src/app/analysisSavedTimeAssistedSnapshotRoundTrip';
-import { defineSavedTimeAssistedSnapshot } from '../src/app/savedTimeAssistedSnapshotContract';
+import { defineSavedTimeAssistedSnapshot } from '../src/domain/saved-records/savedTimeAssistedSnapshotContract';
 import { createKairosDatabase, openKairosDatabase } from '../src/data/database';
 import { createKairosRepositories } from '../src/data/repositories';
 import type { ChartDrawing } from '../src/features/chart';

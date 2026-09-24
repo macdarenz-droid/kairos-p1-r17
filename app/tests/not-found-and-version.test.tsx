@@ -4,7 +4,7 @@ import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { describe, expect, it, vi } from 'vitest';
 import packageJson from '../package.json' with { type: 'json' };
-import { buildInfo } from '../src/app/buildInfo';
+import { buildInfo } from '../src/shared/config/buildInfo';
 import { appRoutes } from '../src/app/routes';
 
 vi.mock('../src/app/HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTextEvidenceRuntime', () => ({

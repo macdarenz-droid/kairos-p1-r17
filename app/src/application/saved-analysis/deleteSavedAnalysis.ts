@@ -1,4 +1,4 @@
-import type { SavedAnalysisId } from '../../app/savedAnalysisContract';
+import type { SavedAnalysisId } from '../../domain/saved-records/savedAnalysisContract';
 import type { KairosDatabase } from '../../data/database/KairosDatabase';
 import { runKairosAtomicWrite } from '../../data/database/transactions';
 

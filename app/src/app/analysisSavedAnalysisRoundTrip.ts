@@ -4,7 +4,7 @@ import { kairosDatabase, type KairosDatabase } from '../data/database';
 import { createKairosRepositories } from '../data/repositories';
 import type { ChartDrawing, ChartMarketReference } from '../features/chart';
 import type { MarketDataInstrument } from '../services/market-data/marketDataTypes';
-import type { SavedAnalysisId } from './savedAnalysisContract';
+import type { SavedAnalysisId } from '../domain/saved-records/savedAnalysisContract';
 
 export interface AnalysisSavedAnalysisSummary {
   readonly id: SavedAnalysisId;

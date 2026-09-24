@@ -6,7 +6,7 @@ import { AnalysisSavedAnalysisControls } from '../src/app/AnalysisSavedAnalysisC
 import { AnalysisTimeAssistedSnapshotControls } from '../src/app/AnalysisTimeAssistedSnapshotControls';
 import { analysisMarketReference, createAnalysisSavedAnalysisPorts } from '../src/app/analysisSavedAnalysisRoundTrip';
 import { createAnalysisSavedTimeAssistedSnapshotPorts } from '../src/app/analysisSavedTimeAssistedSnapshotRoundTrip';
-import { SAVED_RECORD_LABEL_MAX_LENGTH } from '../src/app/savedRecordLabel';
+import { SAVED_RECORD_LABEL_MAX_LENGTH } from '../src/domain/saved-records/savedRecordLabel';
 import { createKairosDatabase, openKairosDatabase } from '../src/data/database';
 import type { ChartDrawing } from '../src/features/chart';
 import type { MarketCandleHistoryRequest, MarketCandleHistoryResult } from '../src/services/market-data/MarketCandleHistoryPort';

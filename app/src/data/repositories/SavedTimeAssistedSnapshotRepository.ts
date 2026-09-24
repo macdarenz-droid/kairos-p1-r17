@@ -1,4 +1,4 @@
-import type { SavedTimeAssistedSnapshot, SavedTimeAssistedSnapshotId } from '../../app/savedTimeAssistedSnapshotContract';
+import type { SavedTimeAssistedSnapshot, SavedTimeAssistedSnapshotId } from '../../domain/saved-records/savedTimeAssistedSnapshotContract';
 import type { KairosDatabase } from '../database/KairosDatabase';
 
 /** P23.2 raw persistence of the P23.1 contract: stable id store, no application orchestration. */

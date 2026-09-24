@@ -1,4 +1,4 @@
-import { isStoredSavedRecordLabel } from '../../app/savedRecordLabel';
+import { isStoredSavedRecordLabel } from '../../domain/saved-records/savedRecordLabel';
 import { isTradeDisciplineRecordShape } from '../../domain/discipline';
 import { parsePositiveDecimalString, validateTradeRecord } from '../../domain/trades';
 import {

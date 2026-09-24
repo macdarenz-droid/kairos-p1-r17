@@ -1,5 +1,5 @@
 import { type PropsWithChildren, useEffect, useState } from 'react';
-import { buildInfo } from '../../app/buildInfo';
+import { buildInfo } from '../../shared/config/buildInfo';
 import type { DatabaseLifecycleStatus } from '../../data/database';
 import { kairosRepositories } from '../../data/repositories';
 import {

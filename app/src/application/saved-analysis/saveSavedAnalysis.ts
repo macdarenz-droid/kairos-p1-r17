@@ -1,6 +1,6 @@
-import type { SavedAnalysis, SavedAnalysisId } from '../../app/savedAnalysisContract';
-import { createSavedAnalysisId } from '../../app/savedAnalysisIdentity';
-import { normalizeSavedRecordLabel } from '../../app/savedRecordLabel';
+import type { SavedAnalysis, SavedAnalysisId } from '../../domain/saved-records/savedAnalysisContract';
+import { createSavedAnalysisId } from '../../domain/saved-records/savedAnalysisIdentity';
+import { normalizeSavedRecordLabel } from '../../domain/saved-records/savedRecordLabel';
 import type { KairosDatabase } from '../../data/database/KairosDatabase';
 import { runKairosAtomicWrite } from '../../data/database/transactions';
 

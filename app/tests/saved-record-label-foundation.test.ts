@@ -1,9 +1,9 @@
 import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
 import { afterEach, describe, expect, it } from 'vitest';
-import { defineSavedAnalysis, type SavedAnalysis } from '../src/app/savedAnalysisContract';
-import { SAVED_RECORD_LABEL_MAX_LENGTH, isStoredSavedRecordLabel, normalizeSavedRecordLabel } from '../src/app/savedRecordLabel';
-import { defineSavedTimeAssistedSnapshot, type SavedTimeAssistedSnapshot } from '../src/app/savedTimeAssistedSnapshotContract';
+import { defineSavedAnalysis, type SavedAnalysis } from '../src/domain/saved-records/savedAnalysisContract';
+import { SAVED_RECORD_LABEL_MAX_LENGTH, isStoredSavedRecordLabel, normalizeSavedRecordLabel } from '../src/domain/saved-records/savedRecordLabel';
+import { defineSavedTimeAssistedSnapshot, type SavedTimeAssistedSnapshot } from '../src/domain/saved-records/savedTimeAssistedSnapshotContract';
 import type { TimeAssistedTradeSnapshot } from '../src/application/market-reference';
 import { saveSavedAnalysis } from '../src/application/saved-analysis';
 import { saveSavedTimeAssistedSnapshot } from '../src/application/saved-time-assisted-snapshot';

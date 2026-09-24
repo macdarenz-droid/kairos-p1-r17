@@ -1,6 +1,6 @@
-import { APP_VERSION, BUILD_ID } from '../../app/buildInfo';
-import type { SavedAnalysis } from '../../app/savedAnalysisContract';
-import type { SavedTimeAssistedSnapshot } from '../../app/savedTimeAssistedSnapshotContract';
+import { APP_VERSION, BUILD_ID } from '../../shared/config/buildInfo';
+import type { SavedAnalysis } from '../../domain/saved-records/savedAnalysisContract';
+import type { SavedTimeAssistedSnapshot } from '../../domain/saved-records/savedTimeAssistedSnapshotContract';
 import type { TradeDisciplineRecord } from '../../domain/discipline';
 import { KAIROS_DB_SCHEMA_VERSION, type DatabaseMetadataRecord, type DatabaseTradeExecutionRecord, type DatabaseTradeFeeRecord, type DatabaseTradePlanRecord, type DatabaseTradeRecord } from '../database/schema';
 import { KAIROS_BACKUP_FORMAT_NAME, KAIROS_BACKUP_FORMAT_VERSION, type KairosBackupEnvelopeV5, type KairosBackupPayloadV5 } from './backupFormat';

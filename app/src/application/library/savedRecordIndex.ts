@@ -1,5 +1,5 @@
-import type { SavedAnalysis, SavedAnalysisId } from '../../app/savedAnalysisContract';
-import type { SavedTimeAssistedSnapshot, SavedTimeAssistedSnapshotId } from '../../app/savedTimeAssistedSnapshotContract';
+import type { SavedAnalysis, SavedAnalysisId } from '../../domain/saved-records/savedAnalysisContract';
+import type { SavedTimeAssistedSnapshot, SavedTimeAssistedSnapshotId } from '../../domain/saved-records/savedTimeAssistedSnapshotContract';
 import type { KairosDatabase } from '../../data/database';
 import { createKairosRepositories } from '../../data/repositories';
 import type { ChartMarketReference } from '../../features/chart';

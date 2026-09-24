@@ -1,4 +1,4 @@
-import { isStoredSavedRecordLabel } from '../../app/savedRecordLabel';
+import { isStoredSavedRecordLabel } from '../../domain/saved-records/savedRecordLabel';
 import type { KairosDatabase } from './KairosDatabase';
 import { KAIROS_CURRENT_STORES, KAIROS_DB_SCHEMA_VERSION } from './schema';
 import { validateTradeRecord, parsePositiveDecimalString } from '../../domain/trades';

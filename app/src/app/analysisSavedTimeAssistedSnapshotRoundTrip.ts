@@ -3,7 +3,7 @@ import { listSavedTimeAssistedSnapshots, loadSavedTimeAssistedSnapshot, saveSave
 import { deleteSavedTimeAssistedSnapshot, type DeleteSavedTimeAssistedSnapshotResult } from '../application/saved-time-assisted-snapshot';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
 import type { MarketDataInstrument } from '../services/market-data/marketDataTypes';
-import type { SavedTimeAssistedSnapshot, SavedTimeAssistedSnapshotId } from './savedTimeAssistedSnapshotContract';
+import type { SavedTimeAssistedSnapshot, SavedTimeAssistedSnapshotId } from '../domain/saved-records/savedTimeAssistedSnapshotContract';
 
 export interface AnalysisSavedTimeAssistedSnapshotSummary {
   readonly id: SavedTimeAssistedSnapshotId;

@@ -28,7 +28,7 @@ import { kairosDatabase, type KairosDatabase } from '../data/database';
 import { createKairosRepositories } from '../data/repositories';
 import { inspectStorageDurability, requestPersistentStorage, subscribeStorageDurabilityStatus, type StorageDurabilityStatus } from '../pwa/storageDurability';
 import { ActivationReceiptRepository, type StoredActivationReceiptLoadResult } from '../services/activation';
-import { buildInfo } from './buildInfo';
+import { buildInfo } from '../shared/config/buildInfo';
 import './profileRoute.css';
 
 interface ProfileRouteProps {
