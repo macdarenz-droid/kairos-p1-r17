@@ -1,0 +1,44 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm ci:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm test:*)",
+      "Bash(npm i -D -E:*)",
+      "Bash(npm version:*)",
+      "Bash(npx vitest:*)",
+      "Bash(npx playwright test:*)",
+      "Bash(git fetch:*)",
+      "Bash(git merge:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git status:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git mv:*)",
+      "Bash(rg:*)",
+      "mcp__Kairos_CODER__overview",
+      "mcp__Kairos_CODER__fetch",
+      "mcp__Kairos_CODER__read_folder",
+      "mcp__Kairos_CODER__search",
+      "mcp__Kairos_CODER__post_message",
+      "mcp__Kairos_CODER__append_file",
+      "mcp__github__list_pull_requests",
+      "mcp__github__create_pull_request",
+      "mcp__github__pull_request_read",
+      "mcp__github__get_job_logs",
+      "mcp__github__actions_list",
+      "mcp__github__actions_get"
+    ],
+    "deny": [
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git push origin main:*)",
+      "mcp__Kairos_CODER__write_file",
+      "mcp__github__merge_pull_request"
+    ]
+  }
+}
