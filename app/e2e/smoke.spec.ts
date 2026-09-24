@@ -84,3 +84,27 @@ test('(c) log a closed trade, find it in Your Trades and open it in Analysis', a
   await expect(page.getByText('Recorded result')).toBeVisible();
   await expect(page.getByText('150 USDT').first()).toBeVisible();
 });
+
+test('(d) the Library lists the sample learning source and saves it for offline', async ({ page }) => {
+  await activate(page);
+  await page.goto('/library');
+  await expect(page.getByRole('heading', { name: 'Your saved charts' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Learning sources' })).toBeVisible();
+  const card = page.locator('[data-learning-source-id="kairos-library-sample"]');
+  await expect(card.getByRole('heading', { name: 'How the Library works' })).toBeVisible();
+
+  // Headless Chromium downloads PDFs instead of showing them, so the link is checked, not clicked.
+  const link = card.getByRole('link', { name: /^Open PDF/ });
+  await expect(link).toHaveAttribute('target', '_blank');
+  const file = await page.request.get((await link.getAttribute('href'))!);
+  expect(file.status()).toBe(200);
+  expect(file.headers()['content-type']).toContain('application/pdf');
+  expect((await file.body()).subarray(0, 5).toString('latin1')).toBe('%PDF-');
+
+  await card.getByRole('button', { name: /^Save for offline/ }).click();
+  await expect(card.getByText('Saved for offline', { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.locator('[data-learning-source-id="kairos-library-sample"]').getByText('Saved for offline', { exact: true })).toBeVisible();
+
+  expect(await (await page.request.get('/sw.js')).text()).not.toContain('.pdf');
+});
