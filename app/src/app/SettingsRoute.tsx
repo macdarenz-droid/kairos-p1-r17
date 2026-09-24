@@ -6,6 +6,7 @@ import {
 import { kairosDatabase, type KairosDatabase } from '../data/database';
 import { createKairosRepositories } from '../data/repositories';
 import { DeviceTimeZoneButton } from '../features/settings/DeviceTimeZoneButton';
+import { ThemePicker } from '../features/settings/ThemePicker';
 import './settingsRoute.css';
 
 /** Every zone the browser knows, plus UTC and the saved value; empty when the browser cannot list zones. */
@@ -131,6 +132,8 @@ export function SettingsRoute({ db = kairosDatabase }: SettingsRouteProps) {
           </p>
         ) : null}
       </form>
+
+      <ThemePicker />
     </section>
   );
 }

@@ -4,13 +4,13 @@ import { applyTheme, defaultThemeId, resolveTheme, themeIds, themeRegistry } fro
 describe('P3 theme engine active registry', () => {
   it('registers exactly the five approved active themes and makes Ink the default', () => {
     expect(themeIds).toEqual(['ink', 'paper', 'kairos-depth', 'cosmic', 'ocean']);
-    expect(defaultThemeId).toBe('ink');
+    expect(defaultThemeId).toBe('kairos-depth');
     expect(Object.keys(themeRegistry)).toEqual(themeIds);
   });
 
   it('resolves system preference to the certified default until a later preference policy owns it', () => {
-    expect(resolveTheme('system', false)).toBe('ink');
-    expect(resolveTheme('system', true)).toBe('ink');
+    expect(resolveTheme('system', false)).toBe('kairos-depth');
+    expect(resolveTheme('system', true)).toBe('kairos-depth');
     expect(resolveTheme('paper', true)).toBe('paper');
     expect(resolveTheme('cosmic', true)).toBe('cosmic');
     expect(resolveTheme('ocean', false)).toBe('ocean');

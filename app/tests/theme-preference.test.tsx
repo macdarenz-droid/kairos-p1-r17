@@ -42,7 +42,7 @@ describe('P3.4 persistent theme preference', () => {
 
   it('ThemeProvider updates presentation and persists a user selection', () => {
     const { result } = renderHook(() => useTheme(), { wrapper });
-    expect(result.current.themeId).toBe('ink');
+    expect(result.current.themeId).toBe('kairos-depth');
 
     act(() => result.current.setPreference('cosmic'));
 

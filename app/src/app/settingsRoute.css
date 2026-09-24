@@ -14,3 +14,10 @@
 .kairos-settings-card__feedback--error { border-color:var(--kairos-state-error); color:var(--kairos-state-error) !important; }
 .kairos-settings-card__feedback--success { border-color:var(--kairos-state-success); color:var(--kairos-state-success) !important; }
 @media (max-width:34rem) { .kairos-settings-card { padding:var(--kairos-space-4); } .kairos-settings-card__actions, .kairos-settings-card__actions button { width:100%; } }
+.kairos-theme-picker { display:grid; grid-template-columns:repeat(auto-fill, minmax(8.5rem, 1fr)); gap:var(--kairos-space-3); margin:0; padding:0; border:0; min-width:0; }
+.kairos-theme-picker legend { margin-bottom:var(--kairos-space-2); padding:0; color:var(--kairos-text-secondary); font-size:var(--kairos-font-size-sm); }
+.kairos-theme-picker__option { display:flex; align-items:center; gap:var(--kairos-space-2); min-height:var(--kairos-control-md, 2.75rem); padding:var(--kairos-space-2) var(--kairos-space-3); border:1px solid var(--kairos-border-subtle); border-radius:var(--kairos-radius-md); color:var(--kairos-text-primary); cursor:pointer; }
+.kairos-theme-picker__option:has(input:checked) { border-color:var(--kairos-accent-primary); background:var(--kairos-accent-soft); }
+.kairos-theme-picker__option input { accent-color:var(--kairos-accent-primary); }
+.kairos-theme-picker__swatch { position:relative; display:inline-block; width:1.75rem; height:1.75rem; flex:none; border:1px solid; border-radius:var(--kairos-radius-sm); overflow:hidden; }
+.kairos-theme-picker__swatch span { position:absolute; right:.25rem; bottom:.25rem; width:.625rem; height:.625rem; border-radius:var(--kairos-radius-full); }

@@ -3,6 +3,7 @@ import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { SettingsRoute } from '../src/app/SettingsRoute';
+import { ThemeProvider } from '../src/design-system/themes';
 import { createKairosDatabase, openKairosDatabase } from '../src/data/database';
 import { createKairosRepositories } from '../src/data/repositories';
 import { readVisualPnlTimeZonePreference } from '../src/application/visual-pnl';
@@ -41,7 +42,7 @@ async function readyTimeZoneInput(): Promise<HTMLInputElement> {
 describe('P13.12R2 explicit Visual P&L timezone settings accessible-name contract', () => {
   it('starts unconfigured after the preference load completes and never inserts a device timezone', async () => {
     const { db } = await fixture('empty');
-    render(<SettingsRoute db={db} />);
+    render(<ThemeProvider><SettingsRoute db={db} /></ThemeProvider>);
 
     const input = await readyTimeZoneInput();
     expect(await screen.findByText('Not configured')).toBeInTheDocument();
@@ -51,7 +52,7 @@ describe('P13.12R2 explicit Visual P&L timezone settings accessible-name contrac
 
   it('persists an explicitly entered valid timezone through P13.10R1 after loading completes', async () => {
     const { db, repositories } = await fixture('save');
-    render(<SettingsRoute db={db} />);
+    render(<ThemeProvider><SettingsRoute db={db} /></ThemeProvider>);
 
     const input = await readyTimeZoneInput();
     fireEvent.change(input, { target: { value: 'Australia/Sydney' } });
@@ -72,7 +73,7 @@ describe('P13.12R2 explicit Visual P&L timezone settings accessible-name contrac
       updatedAt: '2026-09-02T00:00:00.000Z',
     });
 
-    render(<SettingsRoute db={db} />);
+    render(<ThemeProvider><SettingsRoute db={db} /></ThemeProvider>);
     const input = await readyTimeZoneInput();
     expect(input).toHaveValue('UTC');
 

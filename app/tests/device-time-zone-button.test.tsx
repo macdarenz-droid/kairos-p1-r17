@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GoalsRoute } from '../src/app/GoalsRoute';
 import { JournalDailyResults } from '../src/app/JournalDailyResults';
 import { SettingsRoute } from '../src/app/SettingsRoute';
+import { ThemeProvider } from '../src/design-system/themes';
 import { readVisualPnlTimeZonePreference } from '../src/application/visual-pnl';
 import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
 import { createKairosRepositories } from '../src/data/repositories';
@@ -57,7 +58,7 @@ describe('T-008 time zone in one tap', () => {
 
   it('Settings: offers the button while nothing is saved, and a tap saves and shows it', async () => {
     const db = await database();
-    render(<SettingsRoute db={db} />);
+    render(<ThemeProvider><SettingsRoute db={db} /></ThemeProvider>);
     const button = await deviceButton();
     expect(await saved(db)).toBeNull();
     fireEvent.click(button);
@@ -69,7 +70,7 @@ describe('T-008 time zone in one tap', () => {
 
   it('Settings lists known zones for the time zone field', async () => {
     const db = await database();
-    render(<SettingsRoute db={db} />);
+    render(<ThemeProvider><SettingsRoute db={db} /></ThemeProvider>);
     await deviceButton();
     const input = screen.getByRole('combobox', { name: /Time zone/ });
     const list = document.getElementById(input.getAttribute('list')!)!;
