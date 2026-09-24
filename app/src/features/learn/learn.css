@@ -1,0 +1,32 @@
+.kairos-learn-picture { display: block; width: 100%; max-width: 20rem; height: auto; }
+.kairos-learn-picture text { fill: var(--kairos-text-secondary); font-size: 11px; }
+.kairos-learn-picture line { stroke-width: 1.5; }
+
+.kairos-learn-picture__risk { fill: var(--kairos-trade-risk-zone); }
+.kairos-learn-picture__reward { fill: var(--kairos-trade-reward-zone); }
+.kairos-learn-picture__entry { stroke: var(--kairos-trade-entry); }
+.kairos-learn-picture__stop { stroke: var(--kairos-trade-stop); }
+.kairos-learn-picture__target { stroke: var(--kairos-trade-target); }
+
+.kairos-learn-picture__wick-up { stroke: var(--kairos-chart-wick-up); }
+.kairos-learn-picture__wick-down { stroke: var(--kairos-chart-wick-down); }
+.kairos-learn-picture__body-up { fill: var(--kairos-chart-candle-up); }
+.kairos-learn-picture__body-down { fill: var(--kairos-chart-candle-down); }
+
+.kairos-learn-picture__gain { fill: var(--kairos-trade-profit); }
+.kairos-learn-picture__cost { fill: var(--kairos-trade-loss); }
+
+.kairos-learn-picture__account { fill: var(--kairos-accent-primary); }
+.kairos-learn-picture__trade { fill: var(--kairos-accent-secondary); }
+
+/* A highlighted part is never marked by colour alone. */
+.kairos-learn-picture__part--highlight line { stroke-width: 3; }
+.kairos-learn-picture__part--highlight rect { stroke: var(--kairos-text-primary); stroke-width: 2; }
+.kairos-learn-picture__part--highlight text { font-weight: 700; text-decoration: underline; }
+
+.kairos-glossary-term { display: grid; gap: 0.5rem; }
+.kairos-glossary-term:focus { outline: 2px solid var(--kairos-accent-primary); outline-offset: 4px; }
+.kairos-glossary-term.kairos-glossary-term p { margin: 0; }
+.kairos-glossary-term__trading,
+.kairos-glossary-term__also,
+.kairos-glossary-term__related { color: var(--kairos-text-secondary); }

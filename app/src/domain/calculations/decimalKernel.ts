@@ -56,6 +56,18 @@ export function decimalAbs(value: DecimalString | string): DecimalKernelResult {
   return decimal ? output(decimal.abs()) : { ok: false, reason: 'invalid-decimal' };
 }
 
+/**
+ * Rounds to `places` decimal places: 'down' toward zero, 'half-up' half away from zero.
+ * `places` must be a whole number from 0 to 20; anything else is invalid-decimal.
+ */
+export function decimalRound(value: DecimalString | string, places: number, mode: 'down' | 'half-up'): DecimalKernelResult {
+  if (!Number.isInteger(places) || places < 0 || places > 20) return { ok: false, reason: 'invalid-decimal' };
+  const decimal = read(value);
+  return decimal
+    ? output(decimal.toDecimalPlaces(places, mode === 'down' ? KairosDecimal.ROUND_DOWN : KairosDecimal.ROUND_HALF_UP))
+    : { ok: false, reason: 'invalid-decimal' };
+}
+
 export function decimalSum(values: readonly (DecimalString | string)[]): DecimalKernelResult {
   let total = new KairosDecimal(0);
   for (const value of values) {
