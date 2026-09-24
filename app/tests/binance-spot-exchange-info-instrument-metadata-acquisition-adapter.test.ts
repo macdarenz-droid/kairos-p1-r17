@@ -4,7 +4,7 @@ import { createBinanceSpotExchangeInfoInstrumentMetadataAcquisitionPort } from '
 describe('Binance Spot exchangeInfo instrument metadata acquisition adapter foundation', () => {
   it('implements the provider-neutral metadata acquisition port using the released exchangeInfo round trip', async () => {
     const connect = vi.fn(async (request: { readonly url: string }) => {
-      expect(request.url).toBe('https://data-api.binance.vision/api/v3/exchangeInfo');
+      expect(request.url).toBe('https://data-api.binance.vision/api/v3/exchangeInfo?permissions=SPOT&symbolStatus=TRADING&showPermissionSets=false');
       return JSON.stringify({ symbols: [
         { symbol: 'BTCUSDT', status: 'TRADING', baseAsset: 'BTC', quoteAsset: 'USDT' },
         { symbol: 'ETHUSDT', status: 'TRADING', baseAsset: 'ETH', quoteAsset: 'USDT' },

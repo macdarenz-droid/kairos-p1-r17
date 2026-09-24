@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { resetBinanceSpotExchangeInfoCache } from '../src/services/market-data';
 import {
   startBinanceHomeDashboardLiveMarketRuntime,
 } from '../src/app/binanceHomeDashboardLiveMarketRuntimeBootstrap';
@@ -44,6 +45,10 @@ function createTimer() {
   const timer: HomeDashboardLiveMarketSummaryBrowserTimer = { schedule, cancel };
   return { timer, schedule, cancel };
 }
+
+beforeEach(() => {
+  resetBinanceSpotExchangeInfoCache();
+});
 
 describe('Binance Home Dashboard live-market runtime bootstrap foundation', () => {
   it('uses Gate336 once, reuses the same caller observation source, and starts the released browser lifecycle for the selected scope', async () => {

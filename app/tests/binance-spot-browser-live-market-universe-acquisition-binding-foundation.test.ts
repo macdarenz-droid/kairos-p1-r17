@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { resetBinanceSpotExchangeInfoCache } from '../src/services/market-data';
 import { acquireBinanceSpotBrowserLiveMarketUniverseOnce } from '../src/services/market-data';
 
 const originalFetch = globalThis.fetch;
@@ -17,6 +18,10 @@ const btc24hPayload = JSON.stringify({
 afterEach(() => {
   globalThis.fetch = originalFetch;
   vi.restoreAllMocks();
+});
+
+beforeEach(() => {
+  resetBinanceSpotExchangeInfoCache();
 });
 
 describe('Binance Spot browser Live Market Universe acquisition binding foundation', () => {
@@ -78,16 +83,21 @@ describe('Binance Spot browser Live Market Universe acquisition binding foundati
     expect(readObservedAt).toHaveBeenCalledTimes(1);
   });
 
-  it('forwards the exact caller-owned AbortSignal through both released browser acquisition chains', async () => {
+  it('keeps the caller signal on the baseline request and gives exchangeInfo its own shared signal', async () => {
     const controller = new AbortController();
-    const capturedSignals: Array<AbortSignal | null | undefined> = [];
+    const capturedSignals: Record<string, AbortSignal | null | undefined> = {};
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      capturedSignals.push(init?.signal);
       const url = String(input);
-      if (url.includes('/api/v3/exchangeInfo')) return { text: async () => JSON.stringify({ symbols: [
-        { symbol: 'BTCUSDT', status: 'TRADING', baseAsset: 'BTC', quoteAsset: 'USDT' },
-      ] }) };
-      if (url.includes('/api/v3/ticker/24hr')) return { text: async () => btc24hPayload };
+      if (url.includes('/api/v3/exchangeInfo')) {
+        capturedSignals.exchangeInfo = init?.signal;
+        return { text: async () => JSON.stringify({ symbols: [
+          { symbol: 'BTCUSDT', status: 'TRADING', baseAsset: 'BTC', quoteAsset: 'USDT' },
+        ] }) };
+      }
+      if (url.includes('/api/v3/ticker/24hr')) {
+        capturedSignals.baseline = init?.signal;
+        return { text: async () => btc24hPayload };
+      }
       throw new Error(`unexpected URL: ${url}`);
     });
     globalThis.fetch = fetchMock as unknown as typeof fetch;
@@ -96,7 +106,30 @@ describe('Binance Spot browser Live Market Universe acquisition binding foundati
       excludedStablecoinBaseAssets: new Set(),
       signal: controller.signal,
     })).resolves.toMatchObject({ ok: true });
-    expect(capturedSignals).toEqual([controller.signal, controller.signal]);
+    expect(capturedSignals.baseline).toBe(controller.signal);
+    expect(capturedSignals.exchangeInfo).toBeInstanceOf(AbortSignal);
+    expect(capturedSignals.exchangeInfo).not.toBe(controller.signal);
+  });
+
+  it('the only waiting caller aborting ends its wait and cancels the shared request', async () => {
+    const controller = new AbortController();
+    let exchangeInfoSignal: AbortSignal | null | undefined;
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes('/api/v3/exchangeInfo')) {
+        exchangeInfoSignal = init?.signal;
+        return new Promise(() => undefined);
+      }
+      throw new Error('baseline must not run');
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const pending = acquireBinanceSpotBrowserLiveMarketUniverseOnce(() => observedAt, {
+      excludedStablecoinBaseAssets: new Set(),
+      signal: controller.signal,
+    });
+    controller.abort();
+    await expect(pending).resolves.toMatchObject({ ok: false });
+    expect(exchangeInfoSignal?.aborted).toBe(true);
   });
 
   it('preserves Gate335 metadata acquisition failure and does not call the baseline browser chain', async () => {

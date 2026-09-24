@@ -2,13 +2,15 @@ import { BINANCE_SPOT_VENUE } from './binanceSpotTradeStream';
 import { BINANCE_SPOT_PUBLIC_REST_MARKET_DATA_BASE_URL } from './binanceSpot24hPublicRestBaselineRequest';
 
 export const BINANCE_SPOT_EXCHANGE_INFO_PATH = '/api/v3/exchangeInfo' as const;
+/** Server-side filter: only tradable Spot symbols, without the large permission sets. */
+export const BINANCE_SPOT_EXCHANGE_INFO_QUERY = 'permissions=SPOT&symbolStatus=TRADING&showPermissionSets=false' as const;
 
 export interface BinanceSpotExchangeInfoPublicRestRequestDescriptor {
   readonly venue: typeof BINANCE_SPOT_VENUE;
   readonly method: 'GET';
   readonly baseUrl: typeof BINANCE_SPOT_PUBLIC_REST_MARKET_DATA_BASE_URL;
   readonly path: typeof BINANCE_SPOT_EXCHANGE_INFO_PATH;
-  readonly query: '';
+  readonly query: typeof BINANCE_SPOT_EXCHANGE_INFO_QUERY;
   readonly url: string;
 }
 
@@ -22,7 +24,7 @@ export function describeBinanceSpotExchangeInfoPublicRestRequest(): BinanceSpotE
     method: 'GET',
     baseUrl: BINANCE_SPOT_PUBLIC_REST_MARKET_DATA_BASE_URL,
     path: BINANCE_SPOT_EXCHANGE_INFO_PATH,
-    query: '',
-    url: `${BINANCE_SPOT_PUBLIC_REST_MARKET_DATA_BASE_URL}${BINANCE_SPOT_EXCHANGE_INFO_PATH}`,
+    query: BINANCE_SPOT_EXCHANGE_INFO_QUERY,
+    url: `${BINANCE_SPOT_PUBLIC_REST_MARKET_DATA_BASE_URL}${BINANCE_SPOT_EXCHANGE_INFO_PATH}?${BINANCE_SPOT_EXCHANGE_INFO_QUERY}`,
   };
 }

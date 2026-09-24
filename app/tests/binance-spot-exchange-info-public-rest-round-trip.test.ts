@@ -4,7 +4,7 @@ import { composeBinanceSpotExchangeInfoPublicRestRoundTrip } from '../src/servic
 describe('Binance Spot exchangeInfo public REST round-trip composition foundation', () => {
   it('composes descriptor, exactly one injected execution and released response delivery', async () => {
     const connect = vi.fn(async (request: { readonly url: string }) => {
-      expect(request.url).toBe('https://data-api.binance.vision/api/v3/exchangeInfo');
+      expect(request.url).toBe('https://data-api.binance.vision/api/v3/exchangeInfo?permissions=SPOT&symbolStatus=TRADING&showPermissionSets=false');
       return JSON.stringify({ symbols: [{ symbol: 'BTCUSDT', status: 'TRADING', baseAsset: 'BTC', quoteAsset: 'USDT' }] });
     });
     const result = await composeBinanceSpotExchangeInfoPublicRestRoundTrip(connect);

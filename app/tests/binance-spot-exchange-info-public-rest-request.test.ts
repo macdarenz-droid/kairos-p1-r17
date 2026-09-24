@@ -12,8 +12,8 @@ describe('Binance Spot exchangeInfo public REST request descriptor foundation', 
       method: 'GET',
       baseUrl: 'https://data-api.binance.vision',
       path: '/api/v3/exchangeInfo',
-      query: '',
-      url: 'https://data-api.binance.vision/api/v3/exchangeInfo',
+      query: 'permissions=SPOT&symbolStatus=TRADING&showPermissionSets=false',
+      url: 'https://data-api.binance.vision/api/v3/exchangeInfo?permissions=SPOT&symbolStatus=TRADING&showPermissionSets=false',
     });
   });
 
