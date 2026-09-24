@@ -3,6 +3,9 @@ import type { Brand, TradeId } from '../trades/tradeTypes';
 /** P36.1 discipline record identity: one record per trade, canonical stable id. */
 export type TradeDisciplineId = Brand<string, 'TradeDisciplineId'>;
 
+/** Stable id of one checklist item, review item or mistake tag. Default items use the L36.1 keys; new items get `createDisciplineListItemId()`. */
+export type DisciplineListItemId = string;
+
 /** The pre-trade checklist the vision's Discipline pillar asks before a trade is taken. Fixed vocabulary; the answer is the trader's own. */
 export const KAIROS_PRE_TRADE_CHECKLIST_KEYS = Object.freeze([
   'plan-written',
