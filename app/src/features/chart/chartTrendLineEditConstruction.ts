@@ -17,7 +17,8 @@ import {
  * replacement, presentation refresh, persistence, undo/redo, UI state, and P19
  * Risk/Reward semantics are deliberately outside this boundary.
  */
-export type ChartTrendLineEditEndpoint = 'start' | 'end';
+/** `target` names a risk box's target handle; lines and zones only have `start` and `end`. */
+export type ChartTrendLineEditEndpoint = 'start' | 'end' | 'target';
 
 export function constructChartTrendLineEdit(
   drawing: ChartDrawing,

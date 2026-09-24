@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { defaultThemeId, useTheme, type ThemeId } from '../design-system/themes';
-import type { ChartDrawing, ChartDrawingInteractionState, ChartDrawingKind } from '../features/chart';
+import type { ChartDrawing, ChartDrawingInteractionState, ChartDrawingTool } from '../features/chart';
+import type { SavedRiskRewardAnalysis } from '../domain/saved-records/savedAnalysisContract';
 import { createAnalysisDrawingToolsLiveSessionFactory, createAnalysisDrawingToolsOverlaySessionFactory, createAnalysisDrawingToolsSession } from './analysisDrawingToolsComposition';
-import type { AnalysisDrawingToolsRendererSession } from '../features/analysis/analysisDrawingToolsRendererSession';
+import { riskBoxLabel, type AnalysisDrawingToolsRendererSession } from '../features/analysis/analysisDrawingToolsRendererSession';
 import { composeDrawingBindingLifecycles } from './analysisTimeAssistedWindowSession';
 import type { LightweightChartsV5ProductionCandlestickSeriesLifecycle, LightweightChartsV5ProductionDrawingBindingLifecycle } from '../features/chart/lightweightChartsV5ProductionRenderer';
 
@@ -18,8 +19,11 @@ export interface AnalysisDrawingToolsBinding {
   readonly drawingCount: number;
   /** How many of the drawings are zones. */
   readonly zoneCount: number;
-  /** The kind of the drawing a committed, selected, editing or deleting state names; otherwise null. */
-  readonly selectedKind: ChartDrawingKind | null;
+  /** The kind of the drawing or risk box a committed, selected, editing or deleting state names; otherwise null. */
+  readonly selectedKind: ChartDrawingTool | null;
+  readonly riskBoxCount: number;
+  /** The selected risk box's label; otherwise null. */
+  readonly selectedLabel: string | null;
   /** The Gate474 seam lifecycle the two canvas factories carry; inert without a selection. */
   readonly lifecycle: LightweightChartsV5ProductionDrawingBindingLifecycle;
   /** The session's committed drawings (P18 collection truth), empty without a selection. */
@@ -28,6 +32,11 @@ export interface AnalysisDrawingToolsBinding {
   readonly overlaySessionFactory: ReturnType<typeof createAnalysisDrawingToolsOverlaySessionFactory>;
   selectTrendLineTool(): void;
   selectZoneTool(): void;
+  selectRiskBoxTool(): void;
+  /** The session's risk boxes, empty without a selection. */
+  getRiskBoxes(): readonly SavedRiskRewardAnalysis[];
+  /** Replaces the risk boxes in the current session; no-op without a selection. */
+  loadRiskBoxes(boxes: readonly SavedRiskRewardAnalysis[]): void;
   cancel(): void;
   deleteSelected(): void;
   /** Loads drawings into the current session (for example a Saved Analysis); no-op without a selection. */
@@ -57,6 +66,7 @@ export function useAnalysisDrawingTools(selection: AnalysisDrawingToolsSelection
   const [state, setState] = useState<ChartDrawingInteractionState | null>(null);
   const [drawingCount, setDrawingCount] = useState(0);
   const [zoneCount, setZoneCount] = useState(0);
+  const [riskBoxCount, setRiskBoxCount] = useState(0);
   const latestTheme = useRef(themeId);
   latestTheme.current = themeId;
   const session = useMemo<AnalysisDrawingToolsRendererSession | null>(() => {
@@ -65,10 +75,12 @@ export function useAnalysisDrawingTools(selection: AnalysisDrawingToolsSelection
     return createAnalysisDrawingToolsSession(latestTheme.current, {
       onStateChange: next => setState(next),
       onDrawingsChange: drawings => { setDrawingCount(drawings.length); setZoneCount(drawings.filter(drawing => drawing.kind === 'zone').length); },
+      onRiskBoxesChange: boxes => setRiskBoxCount(boxes.length),
     });
   }, [key]);
   useEffect(() => {
-    if (session === null) { setState(null); setDrawingCount(0); setZoneCount(0); return; }
+    if (session === null) { setState(null); setDrawingCount(0); setZoneCount(0); setRiskBoxCount(0); return; }
+    setRiskBoxCount(session.getRiskBoxes().length);
     setState(session.getState());
     setDrawingCount(session.getDrawings().length); setZoneCount(session.getDrawings().filter(drawing => drawing.kind === 'zone').length);
     return () => { session.destroy(); };
@@ -89,18 +101,25 @@ export function useAnalysisDrawingTools(selection: AnalysisDrawingToolsSelection
   const liveSessionFactory = useMemo(() => createAnalysisDrawingToolsLiveSessionFactory(lifecycle, seriesLifecycle), [lifecycle, seriesLifecycle]);
   const overlaySessionFactory = useMemo(() => createAnalysisDrawingToolsOverlaySessionFactory(lifecycle, seriesLifecycle), [lifecycle, seriesLifecycle]);
   const namedId = state !== null && 'drawingId' in state ? state.drawingId : null;
-  const selectedKind = namedId === null || session === null ? null : session.getDrawings().find(drawing => drawing.id === namedId)?.kind ?? null;
+  const selectedBox = namedId === null || session === null ? undefined : session.getRiskBoxes().find(box => box.analysis.id === namedId);
+  const selectedKind: ChartDrawingTool | null = selectedBox !== undefined ? 'risk-box' : namedId === null || session === null ? null : session.getDrawings().find(drawing => drawing.id === namedId)?.kind ?? null;
+  const selectedLabel = selectedBox === undefined ? null : riskBoxLabel(selectedBox);
   return {
     state,
     drawingCount,
     zoneCount,
     selectedKind,
+    riskBoxCount,
+    selectedLabel,
     lifecycle,
     getDrawings() { return session === null ? [] : session.getDrawings(); },
     liveSessionFactory,
     overlaySessionFactory,
     selectTrendLineTool() { if (session) { session.selectTrendLineTool(); setState(session.getState()); } },
     selectZoneTool() { if (session) { session.selectZoneTool(); setState(session.getState()); } },
+    selectRiskBoxTool() { if (session) { session.selectRiskBoxTool(); setState(session.getState()); } },
+    getRiskBoxes() { return session === null ? [] : session.getRiskBoxes(); },
+    loadRiskBoxes(boxes) { if (session) { session.loadRiskBoxes(boxes); setState(session.getState()); setRiskBoxCount(session.getRiskBoxes().length); } },
     cancel() { if (session) { session.cancel(); setState(session.getState()); } },
     deleteSelected() { if (session) { session.deleteSelected(); setState(session.getState()); } },
     loadDrawings(drawings) { if (session) { session.loadDrawings(drawings); setState(session.getState()); setDrawingCount(session.getDrawings().length); setZoneCount(session.getDrawings().filter(drawing => drawing.kind === 'zone').length); } },

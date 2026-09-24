@@ -70,20 +70,24 @@ export function hitTestLightweightChartsV5TrendLineEditEndpoints(
   const toleranceSquared = tolerancePx * tolerancePx;
   for (let index = segments.length - 1; index >= 0; index -= 1) {
     const segment = segments[index];
-    // Box handles are not editable yet.
-    if (segment.kind === 'risk-box') continue;
-    const startDistance = squaredDistanceToPoint(x, y, segment.start);
-    const endDistance = squaredDistanceToPoint(x, y, segment.end);
-    const startHit = startDistance <= toleranceSquared;
-    const endHit = endDistance <= toleranceSquared;
-
-    if (!startHit && !endHit) continue;
-    if (startHit && endHit && startDistance === endDistance) return null;
+    // A risk box also has its target handle; the nearest handle wins and an exact tie fails closed.
+    const points: { readonly endpoint: ChartTrendLineEditEndpoint; readonly point: { readonly x: number; readonly y: number } }[] = [
+      { endpoint: 'start', point: segment.start },
+      { endpoint: 'end', point: segment.end },
+    ];
+    if (segment.kind === 'risk-box' && segment.target !== undefined) points.push({ endpoint: 'target', point: segment.target });
+    const hits = points
+      .map((candidate) => ({ endpoint: candidate.endpoint, distance: squaredDistanceToPoint(x, y, candidate.point) }))
+      .filter((candidate) => candidate.distance <= toleranceSquared);
+    if (hits.length === 0) continue;
+    const nearest = Math.min(...hits.map((candidate) => candidate.distance));
+    const winners = hits.filter((candidate) => candidate.distance === nearest);
+    if (winners.length > 1) return null;
 
     return {
       id: segment.id,
       kind: 'trend-line-edit-endpoint',
-      endpoint: startHit && (!endHit || startDistance < endDistance) ? 'start' : 'end',
+      endpoint: winners[0].endpoint,
     };
   }
 
