@@ -6,7 +6,7 @@
 .kairos-review__eyebrow { margin: 0 !important; font-size: var(--kairos-font-size-xs); color: var(--kairos-accent-primary) !important; text-transform: uppercase; letter-spacing: .08em; }
 .kairos-review__navigation { display: flex; gap: var(--kairos-space-3); flex-wrap: wrap; }
 .kairos-review a { color: var(--kairos-accent-primary); min-height: var(--kairos-control-md); display: inline-flex; align-items: center; }
-.kairos-review button, .kairos-review select { min-height: var(--kairos-control-md); padding: var(--kairos-space-2) var(--kairos-space-3); color: var(--kairos-text-primary); border: 1px solid var(--kairos-border-default); border-radius: var(--kairos-radius-md); background: var(--kairos-surface-input); font: inherit; }
+.kairos-review button, .kairos-review select, .kairos-review .kairos-symbol-picker input { min-height: var(--kairos-control-md); padding: var(--kairos-space-2) var(--kairos-space-3); color: var(--kairos-text-primary); border: 1px solid var(--kairos-border-default); border-radius: var(--kairos-radius-md); background: var(--kairos-surface-input); font: inherit; }
 .kairos-review button:disabled { color: var(--kairos-text-disabled); }
 .kairos-review__card { margin: 0; min-width: 0; padding: var(--kairos-space-4); border: 1px solid var(--kairos-border-subtle); border-radius: var(--kairos-radius-lg); background: var(--kairos-surface-card); overflow-wrap: anywhere; }
 .kairos-review__topline > span, .kairos-review__note { font-size: var(--kairos-font-size-sm); color: var(--kairos-text-secondary); }
@@ -30,10 +30,10 @@
 /* Ink amendment (Gate471). Appended with route-scoped specificity: hairline cards over the surface gradient, field gradient controls, mono tabular numerals. */
 .kairos-review .kairos-review__card { border-color: var(--kairos-border-hairline); background-color: var(--kairos-surface-card); background-image: var(--kairos-surface-gradient); }
 .kairos-review .kairos-review__record { border-top-color: var(--kairos-border-hairline); }
-.kairos-review :is(button, select) { border-color: var(--kairos-border-strong); background-image: var(--kairos-field-gradient); transition: border-color var(--kairos-motion-fast) var(--kairos-ease-out); }
-.kairos-review :is(button, select):hover { border-color: var(--kairos-text-muted); }
-.kairos-review :is(button, select):focus-visible { border-color: var(--kairos-accent-primary); }
+.kairos-review :is(button, select, .kairos-symbol-picker input) { border-color: var(--kairos-border-strong); background-image: var(--kairos-field-gradient); transition: border-color var(--kairos-motion-fast) var(--kairos-ease-out); }
+.kairos-review :is(button, select, .kairos-symbol-picker input):hover { border-color: var(--kairos-text-muted); }
+.kairos-review :is(button, select, .kairos-symbol-picker input):focus-visible { border-color: var(--kairos-accent-primary); }
 .kairos-review :is(.kairos-review__facts dd, .kairos-review__result strong, .kairos-review__topline strong) { font-family: var(--kairos-font-mono); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
 @media (prefers-reduced-motion: reduce) {
-  .kairos-review :is(button, select) { transition: none; }
+  .kairos-review :is(button, select, .kairos-symbol-picker input) { transition: none; }
 }

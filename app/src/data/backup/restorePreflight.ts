@@ -1,6 +1,8 @@
 import type { KairosDatabase } from '../database/KairosDatabase';
+import { DatabaseIntegrityError } from '../database/integrity';
+import { isKairosDeviceScopedMetadataKey } from '../repositories';
 import { createKairosDatabaseSnapshot } from './backupSnapshot';
-import type { KairosBackupEnvelopeV5 } from './backupFormat';
+import type { KairosBackupEnvelopeV5, KairosBackupRecordCountsV5 } from './backupFormat';
 import { parseKairosBackup, serializeKairosBackup } from './backupSerialization';
 
 export type KairosRestorePreflightCode =
@@ -50,6 +52,31 @@ export interface KairosPreparedRestoreV2 {
   readonly incoming: KairosBackupEnvelopeV5;
   readonly preview: KairosRestorePreviewV2;
   readonly recovery: KairosRecoverySnapshotV2;
+}
+
+export const KAIROS_RAW_RECOVERY_FORMAT = 'kairos-raw-recovery' as const;
+
+/**
+ * A plain copy of every store, made when the current data fails a core check
+ * and so cannot become a normal backup. It may not restore; it keeps the rows.
+ */
+export interface KairosRawRecoverySnapshot {
+  readonly kind: 'raw';
+  readonly exportedAt: string;
+  readonly serialized: string;
+  readonly recordCounts: KairosBackupRecordCountsV5;
+}
+
+export type KairosRecoveryCopy = KairosRecoverySnapshotV2 | KairosRawRecoverySnapshot;
+
+export interface KairosPreparedRestoreWithRecovery {
+  readonly incoming: KairosBackupEnvelopeV5;
+  readonly preview: KairosRestorePreviewV2;
+  readonly recovery: KairosRecoveryCopy;
+}
+
+export function isRawRecoveryCopy(recovery: KairosRecoveryCopy): recovery is KairosRawRecoverySnapshot {
+  return 'kind' in recovery && recovery.kind === 'raw';
 }
 
 function assertUnique(values: readonly string[], code: KairosRestorePreflightCode, label: string): void {
@@ -132,5 +159,50 @@ export async function prepareKairosRestore(
 ): Promise<KairosPreparedRestoreV2> {
   const preflight = preflightKairosRestore(serializedIncomingBackup);
   const recovery = await createKairosRecoverySnapshot(db);
+  return Object.freeze({ incoming: preflight.incoming, preview: preflight.preview, recovery });
+}
+
+/** Reads every store as it is, with no integrity check; device-scoped metadata stays out, as in a backup. */
+export async function createKairosRawRecoverySnapshot(db: KairosDatabase, exportedAt: Date = new Date()): Promise<KairosRawRecoverySnapshot> {
+  const stores: Record<string, unknown[]> = {};
+  for (const table of db.tables) {
+    const rows = await table.toArray();
+    stores[table.name] = table.name === 'metadata'
+      ? rows.filter((row) => !(typeof row === 'object' && row !== null && typeof (row as { key?: unknown }).key === 'string' && isKairosDeviceScopedMetadataKey((row as { key: string }).key)))
+      : rows;
+  }
+  const count = (name: string) => stores[name]?.length ?? 0;
+  const recordCounts: KairosBackupRecordCountsV5 = Object.freeze({
+    metadata: count('metadata'), trades: count('trades'), tradePlans: count('tradePlans'), tradeExecutions: count('tradeExecutions'), tradeFees: count('tradeFees'),
+    savedAnalyses: count('savedAnalyses'), savedTimeAssistedSnapshots: count('savedTimeAssistedSnapshots'), tradeDiscipline: count('tradeDiscipline'),
+    total: Object.values(stores).reduce((sum, rows) => sum + rows.length, 0),
+  });
+  const iso = exportedAt.toISOString();
+  return Object.freeze({
+    kind: 'raw' as const,
+    exportedAt: iso,
+    serialized: JSON.stringify({ format: KAIROS_RAW_RECOVERY_FORMAT, exportedAt: iso, stores }, null, 2),
+    recordCounts,
+  });
+}
+
+/**
+ * Like `prepareKairosRestore`, but never blocked by the current data: when it
+ * fails a core check, the recovery file is a raw copy instead of a backup.
+ * The incoming backup is still fully checked, and the replacement and the
+ * after-restore verification stay strict.
+ */
+export async function prepareKairosRestoreWithRecovery(
+  db: KairosDatabase,
+  serializedIncomingBackup: string,
+): Promise<KairosPreparedRestoreWithRecovery> {
+  const preflight = preflightKairosRestore(serializedIncomingBackup);
+  let recovery: KairosRecoveryCopy;
+  try {
+    recovery = await createKairosRecoverySnapshot(db);
+  } catch (error) {
+    if (!(error instanceof DatabaseIntegrityError)) throw error;
+    recovery = await createKairosRawRecoverySnapshot(db);
+  }
   return Object.freeze({ incoming: preflight.incoming, preview: preflight.preview, recovery });
 }

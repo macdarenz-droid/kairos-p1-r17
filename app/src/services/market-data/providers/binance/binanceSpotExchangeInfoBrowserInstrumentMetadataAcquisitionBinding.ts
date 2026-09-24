@@ -34,7 +34,8 @@ function startSharedRequest(now: () => number): Extract<CacheEntry, { kind: 'in-
     controller,
     waiters: 0,
     promise: port.acquireInstrumentMetadata({ signal: controller.signal }).then((result) => {
-      if (cacheEntry === entry) cacheEntry = result.ok ? { kind: 'stored', facts: result.facts, storedAtMs: now() } : null;
+      // An empty market list is never kept: it would hide every market for hours.
+      if (cacheEntry === entry) cacheEntry = result.ok && result.facts.length > 0 ? { kind: 'stored', facts: result.facts, storedAtMs: now() } : null;
       return result;
     }),
   };
@@ -86,7 +87,9 @@ export function createBinanceSpotExchangeInfoBrowserInstrumentMetadataAcquisitio
       const signal = callerOptions?.signal;
       if (signal?.aborted) return FAILED;
       if (cacheEntry?.kind === 'stored') {
-        if (now() - cacheEntry.storedAtMs <= BINANCE_SPOT_EXCHANGE_INFO_CACHE_TTL_MS) return { ok: true, facts: cacheEntry.facts };
+        // A negative age means the device clock moved back: treat the copy as expired.
+        const ageMs = now() - cacheEntry.storedAtMs;
+        if (ageMs >= 0 && ageMs <= BINANCE_SPOT_EXCHANGE_INFO_CACHE_TTL_MS) return { ok: true, facts: cacheEntry.facts };
         cacheEntry = null;
       }
       if (cacheEntry === null) cacheEntry = startSharedRequest(now);

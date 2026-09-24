@@ -61,6 +61,24 @@ describe('T-005 exchangeInfo is downloaded once per session', () => {
     expect(BINANCE_SPOT_EXCHANGE_INFO_CACHE_TTL_MS).toBe(6 * 60 * 60 * 1000);
   });
 
+  it('treats a stored copy as expired when the device clock moved back', async () => {
+    countingFetch();
+    let nowMs = 10_000_000;
+    const port = createBinanceSpotExchangeInfoBrowserInstrumentMetadataAcquisitionPort({ now: () => nowMs });
+    await port.acquireInstrumentMetadata();
+    nowMs -= 1;
+    await port.acquireInstrumentMetadata();
+    expect(exchangeInfoCalls).toBe(2);
+  });
+
+  it('never stores an empty market list', async () => {
+    countingFetch(async () => ({ text: async () => JSON.stringify({ symbols: [] }) }));
+    const port = createBinanceSpotExchangeInfoBrowserInstrumentMetadataAcquisitionPort();
+    await expect(port.acquireInstrumentMetadata()).resolves.toEqual({ ok: true, facts: [] });
+    await port.acquireInstrumentMetadata();
+    expect(exchangeInfoCalls).toBe(2);
+  });
+
   it('two callers at the same time share one download', async () => {
     countingFetch();
     const port = createBinanceSpotExchangeInfoBrowserInstrumentMetadataAcquisitionPort();

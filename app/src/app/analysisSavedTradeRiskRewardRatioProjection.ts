@@ -1,7 +1,6 @@
-import type { RiskRewardAnalysis } from '../application/risk-reward';
+import { projectPlannedRewardToRisk, type RiskRewardAnalysis } from '../application/risk-reward';
 import { decimalSubtract } from '../domain/calculations/decimalKernel';
 import { calculateRMultiple } from '../domain/calculations/rMultipleCalculator';
-import { calculateRiskPriceDistance } from '../domain/calculations/riskCalculator';
 import type { DecimalString, TradeSide } from '../domain/trades';
 
 export type AnalysisSavedTradeRiskRewardRatioUnavailableReason =
@@ -47,15 +46,6 @@ const unavailable = (reason: AnalysisSavedTradeRiskRewardRatioUnavailableReason)
 /** Sign of a released-kernel decimal: kernel output is normalized, so '-' prefix and '0' are exact. */
 const sign = (value: DecimalString): -1 | 0 | 1 => value === '0' ? 0 : value.startsWith('-') ? -1 : 1;
 
-/** Stop must sit on the loss side of entry and target on the profit side for the saved side; equal levels fail closed. */
-function levelsOrdered(side: TradeSide, levels: RiskRewardAnalysis['levels']): boolean | null {
-  const stopFromEntry = decimalSubtract(levels.stop, levels.entry);
-  const targetFromEntry = decimalSubtract(levels.target, levels.entry);
-  if (!stopFromEntry.ok || !targetFromEntry.ok) return null;
-  const stop = sign(stopFromEntry.value), target = sign(targetFromEntry.value);
-  return side === 'long' ? stop < 0 && target > 0 : stop > 0 && target < 0;
-}
-
 function liveR(side: TradeSide, entry: DecimalString, riskDistance: DecimalString, lastClose: DecimalString | null): AnalysisSavedTradeRiskRewardLiveR {
   if (lastClose === null) return Object.freeze({ kind: 'unavailable', reason: 'last-close-missing' });
   const excursion = side === 'long' ? decimalSubtract(lastClose, entry) : decimalSubtract(entry, lastClose);
@@ -74,21 +64,13 @@ export function projectAnalysisSavedTradeRiskRewardRatio(
   analysis: RiskRewardAnalysis,
   lastClose: DecimalString | null,
 ): AnalysisSavedTradeRiskRewardRatioProjection {
-  const ordered = levelsOrdered(analysis.side, analysis.levels);
-  if (ordered === null) return unavailable('invalid-decimal');
-  if (!ordered) return unavailable('levels-not-ordered');
-  const riskDistance = calculateRiskPriceDistance(analysis.levels.entry, analysis.levels.stop);
-  if (!riskDistance.ok) return unavailable('invalid-decimal');
-  if (riskDistance.value === '0') return unavailable('zero-risk-distance');
-  const rewardDistance = calculateRiskPriceDistance(analysis.levels.target, analysis.levels.entry);
-  if (!rewardDistance.ok) return unavailable('invalid-decimal');
-  const ratio = calculateRMultiple(rewardDistance.value, riskDistance.value);
-  if (!ratio.ok) return unavailable(ratio.reason === 'zero-initial-risk' ? 'zero-risk-distance' : 'invalid-decimal');
+  const planned = projectPlannedRewardToRisk(analysis.side, analysis.levels.entry, analysis.levels.stop, analysis.levels.target);
+  if (!planned.ok) return unavailable(planned.reason);
   return Object.freeze({
     kind: 'ratio-ready',
     side: analysis.side,
     levels: analysis.levels,
-    planned: Object.freeze({ riskDistance: riskDistance.value, rewardDistance: rewardDistance.value, ratio: ratio.value }),
-    live: liveR(analysis.side, analysis.levels.entry, riskDistance.value, lastClose),
+    planned: planned.value,
+    live: liveR(analysis.side, analysis.levels.entry, planned.value.riskDistance, lastClose),
   });
 }

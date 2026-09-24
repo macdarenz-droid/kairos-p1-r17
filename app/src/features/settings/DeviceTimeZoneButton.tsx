@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { writeVisualPnlTimeZonePreference } from '../../application/visual-pnl';
 import type { MetadataRepository } from '../../data/repositories';
+import './deviceTimeZoneButton.css';
 
 /** The device's own IANA time zone, or null when the browser does not report one. */
 export function readDeviceTimeZone(): string | null {

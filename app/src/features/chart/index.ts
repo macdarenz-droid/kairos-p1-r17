@@ -21,6 +21,7 @@ export {
   type RendererPricePoint,
   type RendererCandle,
   type RendererSeriesProjection,
+  projectChartDecimal,
 } from './chartSeriesProjection';
 export {
   type ChartEngineSession,

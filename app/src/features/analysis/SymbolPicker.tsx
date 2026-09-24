@@ -1,26 +1,31 @@
 import { useId, useMemo, useState, type KeyboardEvent } from 'react';
-import type { LiveMarketUniverseInstrumentMetadataFact } from '../../services/market-data/liveMarketUniverseInstrumentMetadataFact';
+/** What the picker needs from a market: its symbol and its two assets. */
+export interface SymbolPickerOption {
+  readonly instrument: { readonly symbol: string };
+  readonly baseAsset: string;
+  readonly quoteAsset: string;
+}
 
 export const SYMBOL_PICKER_MAX_RESULTS = 50;
 
 /** USDT pairs A→Z first, then every other pair A→Z; at most 50, filtered by symbol or base/quote. */
-export function filterSymbolPickerOptions(
-  facts: readonly LiveMarketUniverseInstrumentMetadataFact[],
+export function filterSymbolPickerOptions<T extends SymbolPickerOption>(
+  facts: readonly T[],
   query: string,
-): readonly LiveMarketUniverseInstrumentMetadataFact[] {
+): readonly T[] {
   const needle = query.replace(/[/\-\s]/g, '').toUpperCase();
   const matches = facts.filter(fact => needle === '' || fact.instrument.symbol.toUpperCase().includes(needle) || `${fact.baseAsset}${fact.quoteAsset}`.toUpperCase().includes(needle));
-  const bySymbol = (a: LiveMarketUniverseInstrumentMetadataFact, b: LiveMarketUniverseInstrumentMetadataFact) => a.instrument.symbol.localeCompare(b.instrument.symbol);
+  const bySymbol = (a: T, b: T) => a.instrument.symbol.localeCompare(b.instrument.symbol);
   const usdt = matches.filter(fact => fact.quoteAsset === 'USDT').sort(bySymbol);
   const others = matches.filter(fact => fact.quoteAsset !== 'USDT').sort(bySymbol);
   return [...usdt, ...others].slice(0, SYMBOL_PICKER_MAX_RESULTS);
 }
 
-const optionLabel = (fact: LiveMarketUniverseInstrumentMetadataFact) => `${fact.instrument.symbol} · ${fact.baseAsset}/${fact.quoteAsset}`;
+const optionLabel = (fact: SymbolPickerOption) => `${fact.instrument.symbol} · ${fact.baseAsset}/${fact.quoteAsset}`;
 
 /** Searchable "Chart symbol" combobox: type to filter, arrows to move, Enter or tap to choose. */
 export function SymbolPicker({ facts, value, onChange, disabled = false }: {
-  readonly facts: readonly LiveMarketUniverseInstrumentMetadataFact[];
+  readonly facts: readonly SymbolPickerOption[];
   readonly value: string;
   readonly onChange: (symbol: string) => void;
   readonly disabled?: boolean;
@@ -30,18 +35,21 @@ export function SymbolPicker({ facts, value, onChange, disabled = false }: {
   const [query, setQuery] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
+  // Enter picks only after the user typed or moved with the arrows, never on a list that just opened.
+  const [engaged, setEngaged] = useState(false);
   const options = useMemo(() => filterSymbolPickerOptions(facts, query ?? ''), [facts, query]);
   const activeIndex = Math.min(active, options.length - 1);
-  const choose = (fact: LiveMarketUniverseInstrumentMetadataFact) => {
+  const choose = (fact: SymbolPickerOption) => {
     onChange(fact.instrument.symbol);
     setQuery(null);
     setOpen(false);
+    setEngaged(false);
   };
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'ArrowDown') { event.preventDefault(); setOpen(true); setActive(Math.min(activeIndex + 1, options.length - 1)); }
+    if (event.key === 'ArrowDown') { event.preventDefault(); setOpen(true); setEngaged(true); setActive(Math.min(activeIndex + 1, options.length - 1)); }
     else if (event.key === 'ArrowUp') { event.preventDefault(); setActive(Math.max(activeIndex - 1, 0)); }
-    else if (event.key === 'Enter' && open && activeIndex >= 0) { event.preventDefault(); choose(options[activeIndex]); }
-    else if (event.key === 'Escape') { setOpen(false); setQuery(null); }
+    else if (event.key === 'Enter' && open && engaged && activeIndex >= 0) { event.preventDefault(); choose(options[activeIndex]); }
+    else if (event.key === 'Escape') { setOpen(false); setQuery(null); setEngaged(false); }
   };
   const expanded = open && !disabled;
   return <div className="kairos-symbol-picker">
@@ -59,9 +67,15 @@ export function SymbolPicker({ facts, value, onChange, disabled = false }: {
       placeholder="Search symbol, e.g. BTC"
       disabled={disabled}
       value={query ?? value}
-      onFocus={() => setOpen(true)}
-      onBlur={() => { setOpen(false); setQuery(null); }}
-      onChange={event => { setQuery(event.target.value); setActive(0); setOpen(true); }}
+      onFocus={() => { setOpen(true); setEngaged(false); }}
+      onBlur={() => {
+        // An exactly typed symbol is kept, as if it had been picked from the list.
+        const typed = query === null ? '' : query.replace(/[/\-\s]/g, '').toUpperCase();
+        const exact = typed === '' ? undefined : facts.find(fact => fact.instrument.symbol.toUpperCase() === typed);
+        if (exact && exact.instrument.symbol !== value) onChange(exact.instrument.symbol);
+        setOpen(false); setQuery(null); setEngaged(false);
+      }}
+      onChange={event => { setQuery(event.target.value); setActive(0); setOpen(true); setEngaged(true); }}
       onKeyDown={onKeyDown}
     />
     <ul id={listId} role="listbox" aria-label="Symbols" className="kairos-symbol-picker__list" hidden={!expanded}>

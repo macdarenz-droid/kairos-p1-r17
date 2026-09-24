@@ -2,7 +2,7 @@ import { closeKairosDatabase, openKairosDatabase } from '../database/databaseLif
 import type { KairosDatabase } from '../database/KairosDatabase';
 import { assertKairosDatabaseIntegrity, type DatabaseIntegrityReport } from '../database/integrity';
 import { createKairosRepositories, isKairosDeviceScopedMetadataKey } from '../repositories';
-import type { KairosPreparedRestoreV2, KairosRecoverySnapshotV2 } from './restorePreflight';
+import type { KairosPreparedRestoreWithRecovery, KairosRecoveryCopy } from './restorePreflight';
 import { replaceKairosDatabaseFromPreparedRestore } from './restoreReplacement';
 
 export type KairosRestoreVerificationCode = 'REOPEN_FAILED' | 'REQUERY_MISMATCH';
@@ -11,7 +11,7 @@ export class KairosRestoreVerificationError extends Error {
   constructor(
     public readonly code: KairosRestoreVerificationCode,
     message: string,
-    public readonly recovery: KairosRecoverySnapshotV2,
+    public readonly recovery: KairosRecoveryCopy,
   ) {
     super(message);
     this.name = 'KairosRestoreVerificationError';
@@ -29,7 +29,7 @@ export interface KairosVerifiedRestoreResultV2 {
   readonly reloadedTotalRecords: number;
   readonly verifiedAfterReload: true;
   readonly integrity: DatabaseIntegrityReport;
-  readonly recovery: KairosRecoverySnapshotV2;
+  readonly recovery: KairosRecoveryCopy;
 }
 
 function normalizedJson<T extends object>(records: readonly T[], key: keyof T): string {
@@ -38,7 +38,7 @@ function normalizedJson<T extends object>(records: readonly T[], key: keyof T): 
 
 export async function restoreAndVerifyKairosDatabase(
   db: KairosDatabase,
-  prepared: KairosPreparedRestoreV2,
+  prepared: KairosPreparedRestoreWithRecovery,
 ): Promise<KairosVerifiedRestoreResultV2> {
   const replacement = await replaceKairosDatabaseFromPreparedRestore(db, prepared);
 

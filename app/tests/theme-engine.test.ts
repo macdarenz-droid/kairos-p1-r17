@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { applyTheme, defaultThemeId, resolveTheme, themeIds, themeRegistry } from '../src/design-system/themes';
 
 describe('P3 theme engine active registry', () => {
-  it('registers exactly the five approved active themes and makes Ink the default', () => {
+  it('registers exactly the five approved active themes and makes Kairos Depth the default', () => {
     expect(themeIds).toEqual(['ink', 'paper', 'kairos-depth', 'cosmic', 'ocean']);
     expect(defaultThemeId).toBe('kairos-depth');
     expect(Object.keys(themeRegistry)).toEqual(themeIds);

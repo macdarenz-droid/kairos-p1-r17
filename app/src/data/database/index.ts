@@ -1,7 +1,11 @@
 export {
+  assertKairosCoreIntegrity,
   assertKairosDatabaseIntegrity,
   DatabaseIntegrityError,
   inspectKairosDatabaseIntegrity,
+  isSavedAnalysisRecordShape,
+  isSavedTimeAssistedSnapshotRecordShape,
+  KAIROS_CORE_INTEGRITY_CHECKS,
 } from './integrity';
 export { KairosDatabase } from './KairosDatabase';
 export {
@@ -38,7 +42,7 @@ export type {
 } from './migrations';
 export type { DatabaseMetadataRecord, DatabaseSavedAnalysisRecord, DatabaseSavedTimeAssistedSnapshotRecord, DatabaseTradeDisciplineRecord } from './schema';
 
-export type { DatabaseIntegrityCheck, DatabaseIntegrityCheckId, DatabaseIntegrityReport } from './integrity';
+export type { DatabaseIntegrityCheck, DatabaseIntegrityCheckId, DatabaseIntegrityCheckTier, DatabaseIntegrityReport } from './integrity';
 export { runKairosAtomicWrite } from './transactions';
 export type {
   KairosAtomicWriteWork,

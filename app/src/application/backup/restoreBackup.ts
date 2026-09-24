@@ -2,10 +2,11 @@ import {
   KairosBackupValidationError,
   KairosRestorePreflightError,
   KairosRestoreVerificationError,
-  prepareKairosRestore,
+  isRawRecoveryCopy,
+  prepareKairosRestoreWithRecovery,
   restoreAndVerifyKairosDatabase,
   type KairosBackupValidationCode,
-  type KairosPreparedRestoreV2,
+  type KairosPreparedRestoreWithRecovery,
   type KairosRestorePreflightCode,
   type KairosRestorePreviewV2,
   type KairosRestoreVerificationCode,
@@ -21,7 +22,9 @@ export interface PreparedBackupRestore {
   readonly preview: KairosRestorePreviewV2;
   /** The pre-restore copy of this device's data, already a downloadable file. */
   readonly recoveryFile: KairosBackupFile;
-  readonly prepared: KairosPreparedRestoreV2;
+  /** 'raw' when the current data failed a core check: the recovery file is a plain copy that may not restore. */
+  readonly recoveryKind: 'backup' | 'raw';
+  readonly prepared: KairosPreparedRestoreWithRecovery;
 }
 
 export type PrepareBackupRestoreResult =
@@ -47,7 +50,23 @@ export type CommitBackupRestoreResult =
   | { readonly ok: false; readonly type: 'integrity-error'; readonly reason: 'database-integrity-failed'; readonly failedChecks: readonly string[]; readonly recoveryFile: KairosBackupFile }
   | { readonly ok: false; readonly type: 'storage-error'; readonly reason: 'restore-replacement-failed'; readonly recoveryFile: KairosBackupFile };
 
-function recoveryFileOf(prepared: KairosPreparedRestoreV2): KairosBackupFile {
+/** File name of a raw recovery copy: clearly not a normal backup. */
+export function kairosRawRecoveryFileNameAt(exportedAt: Date): string {
+  return `kairos-raw-recovery-${exportedAt.toISOString().slice(0, 19).replace(/:/g, '-')}Z.json`;
+}
+
+function recoveryFileOf(prepared: KairosPreparedRestoreWithRecovery): KairosBackupFile {
+  if (isRawRecoveryCopy(prepared.recovery)) {
+    const raw = prepared.recovery;
+    return Object.freeze({
+      fileName: kairosRawRecoveryFileNameAt(new Date(raw.exportedAt)),
+      mediaType: KAIROS_BACKUP_FILE_MEDIA_TYPE,
+      contents: raw.serialized,
+      byteLength: new TextEncoder().encode(raw.serialized).byteLength,
+      exportedAt: raw.exportedAt,
+      recordCounts: raw.recordCounts,
+    });
+  }
   const { envelope, serialized } = prepared.recovery;
   return Object.freeze({
     fileName: kairosBackupFileNameAt(new Date(envelope.exportedAt)),
@@ -71,8 +90,9 @@ export async function prepareBackupRestore(db: KairosDatabase, serializedBackup:
   const byteLength = new TextEncoder().encode(serializedBackup).byteLength;
   if (byteLength > KAIROS_BACKUP_RESTORE_MAX_BYTES) return { ok: false, type: 'invalid-input', reason: 'backup-file-too-large', byteLength };
   try {
-    const prepared = await prepareKairosRestore(db, serializedBackup);
-    return { ok: true, restore: Object.freeze({ preview: prepared.preview, recoveryFile: recoveryFileOf(prepared), prepared }) };
+    const prepared = await prepareKairosRestoreWithRecovery(db, serializedBackup);
+    const recoveryKind = isRawRecoveryCopy(prepared.recovery) ? 'raw' as const : 'backup' as const;
+    return { ok: true, restore: Object.freeze({ preview: prepared.preview, recoveryFile: recoveryFileOf(prepared), recoveryKind, prepared }) };
   } catch (error) {
     if (error instanceof KairosBackupValidationError) return { ok: false, type: 'invalid-backup', reason: 'backup-unreadable', code: error.code };
     if (error instanceof KairosRestorePreflightError) return { ok: false, type: 'incompatible-backup', reason: 'restore-preflight-refused', code: error.code };

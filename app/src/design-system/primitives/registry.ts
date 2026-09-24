@@ -13,3 +13,4 @@ export type ButtonVariant = (typeof designPrimitiveRegistry.button.variants)[num
 export type ButtonSize = (typeof designPrimitiveRegistry.button.sizes)[number];
 export type InputVariant = (typeof designPrimitiveRegistry.input.variants)[number];
 export type InputSize = (typeof designPrimitiveRegistry.input.sizes)[number];
+export type CardVariant = (typeof designPrimitiveRegistry.card.variants)[number];

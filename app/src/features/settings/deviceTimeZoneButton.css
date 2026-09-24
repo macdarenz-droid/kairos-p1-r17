@@ -1,0 +1,5 @@
+.kairos-device-time-zone { display: grid; gap: var(--kairos-space-2); justify-items: start; }
+.kairos-device-time-zone button { min-height: var(--kairos-control-md, 2.75rem); padding: 0 var(--kairos-space-5); border: 1px solid var(--kairos-accent-primary); border-radius: var(--kairos-radius-md); background: transparent; color: var(--kairos-accent-primary); font: inherit; font-weight: var(--kairos-font-weight-semibold); cursor: pointer; }
+.kairos-device-time-zone button:disabled { opacity: .58; }
+.kairos-device-time-zone small { color: var(--kairos-state-error); font-size: var(--kairos-font-size-xs); }
+@media (max-width: 34rem) { .kairos-device-time-zone, .kairos-device-time-zone button { width: 100%; } }

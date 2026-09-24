@@ -32,7 +32,7 @@ type Feedback =
  *
  * The user supplies an IANA timezone identifier. Validation and persistence are
  * delegated to the P13.10R1 application contract and MetadataRepository.
- * This route never infers browser/device timezone.
+ * The device time zone is saved only on an explicit tap.
  */
 export function SettingsRoute({ db = kairosDatabase }: SettingsRouteProps) {
   const repositories = useMemo(() => createKairosRepositories(db), [db]);
@@ -41,6 +41,7 @@ export function SettingsRoute({ db = kairosDatabase }: SettingsRouteProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   const timeZoneOptions = useMemo(() => listTimeZoneOptions(savedTimeZone), [savedTimeZone]);
 
   useEffect(() => {
@@ -52,7 +53,7 @@ export function SettingsRoute({ db = kairosDatabase }: SettingsRouteProps) {
         setSavedTimeZone(stored);
         setTimeZone(stored ?? '');
       } catch {
-        if (!ignore) setFeedback({ kind: 'error', message: 'Kairos could not load your daily-results time zone.' });
+        if (!ignore) { setLoadFailed(true); setFeedback({ kind: 'error', message: 'Kairos could not load your daily-results time zone.' }); }
       } finally {
         if (!ignore) setIsLoading(false);
       }
@@ -124,7 +125,7 @@ export function SettingsRoute({ db = kairosDatabase }: SettingsRouteProps) {
           </button>
           <span>{savedTimeZone === null ? 'Not configured' : `Current: ${savedTimeZone}`}</span>
         </div>
-        {!isLoading && savedTimeZone === null ? <DeviceTimeZoneButton metadata={repositories.metadata} onSaved={(zone) => { setSavedTimeZone(zone); setTimeZone(zone); setFeedback({ kind: 'success', message: 'Daily-results time zone saved.' }); }} /> : null}
+        {!isLoading && !loadFailed && savedTimeZone === null ? <DeviceTimeZoneButton metadata={repositories.metadata} onSaved={(zone) => { setSavedTimeZone(zone); setTimeZone(zone); setFeedback({ kind: 'success', message: 'Daily-results time zone saved.' }); }} /> : null}
 
         {feedback ? (
           <p className={`kairos-settings-card__feedback kairos-settings-card__feedback--${feedback.kind}`} role={feedback.kind === 'error' ? 'alert' : 'status'}>

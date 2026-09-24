@@ -57,6 +57,33 @@ describe('SymbolPicker', () => {
     expect(onChange).toHaveBeenCalledWith('ETHUSDT');
   });
 
+  it('picks nothing on Enter in a list that just opened', () => {
+    const onChange = vi.fn();
+    render(<SymbolPicker facts={facts} value="" onChange={onChange} />);
+    const input = screen.getByRole('combobox', { name: 'Chart symbol' });
+    fireEvent.focus(input);
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(onChange).not.toHaveBeenCalled();
+    fireEvent.change(input, { target: { value: 'eth' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(onChange).toHaveBeenCalledWith('ETHUSDT');
+  });
+
+  it('keeps an exactly typed symbol when the field loses focus', () => {
+    const onChange = vi.fn();
+    render(<SymbolPicker facts={facts} value="" onChange={onChange} />);
+    const input = screen.getByRole('combobox', { name: 'Chart symbol' });
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: 'sol/usdt' } });
+    fireEvent.blur(input);
+    expect(onChange).toHaveBeenCalledWith('SOLUSDT');
+    onChange.mockClear();
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: 'SOL' } });
+    fireEvent.blur(input);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it('shows the chosen symbol and says when nothing matches', () => {
     render(<SymbolPicker facts={facts} value="BTCUSDT" onChange={() => undefined} />);
     const input = screen.getByRole('combobox', { name: 'Chart symbol' });

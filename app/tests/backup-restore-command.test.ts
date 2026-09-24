@@ -85,7 +85,8 @@ describe('P28.2 backup restore command', () => {
   it('reports a failed pre-restore integrity check and a storage failure while preparing', async () => {
     const db = await device('integrity');
     await db.metadata.put({ key: 'broken' } as never);
-    expect(await prepareBackupRestore(db, incoming())).toEqual({ ok: false, type: 'integrity-error', reason: 'database-integrity-failed', failedChecks: ['metadata-record-shape'] });
+    // T-030: damaged current data no longer blocks a restore; the recovery file becomes a raw copy.
+    expect(await prepareBackupRestore(db, incoming())).toMatchObject({ ok: true, restore: { recoveryKind: 'raw' } });
     await db.metadata.delete('broken');
     vi.spyOn(db, 'transaction').mockRejectedValue(new Error('quota'));
     expect(await prepareBackupRestore(db, incoming())).toEqual({ ok: false, type: 'storage-error', reason: 'restore-prepare-failed' });

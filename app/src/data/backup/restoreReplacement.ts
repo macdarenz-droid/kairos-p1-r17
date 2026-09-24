@@ -1,7 +1,7 @@
 import type { KairosDatabase } from '../database/KairosDatabase';
 import { assertKairosDatabaseIntegrity, type DatabaseIntegrityReport } from '../database/integrity';
 import { runKairosAtomicWrite } from '../database/transactions';
-import type { KairosPreparedRestoreV2 } from './restorePreflight';
+import type { KairosPreparedRestoreWithRecovery } from './restorePreflight';
 
 export interface KairosRestoreResultV2 {
   readonly restoredMetadataRecords: number;
@@ -17,7 +17,7 @@ export interface KairosRestoreResultV2 {
 
 export async function replaceKairosDatabaseFromPreparedRestore(
   db: KairosDatabase,
-  prepared: KairosPreparedRestoreV2,
+  prepared: Pick<KairosPreparedRestoreWithRecovery, 'incoming'>,
 ): Promise<KairosRestoreResultV2> {
   const incoming = prepared.incoming.payload;
   const metadata = incoming.metadata.map((record) => ({ ...record }));
