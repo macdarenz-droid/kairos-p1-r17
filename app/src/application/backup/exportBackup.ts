@@ -1,4 +1,4 @@
-import { createKairosDatabaseSnapshot, serializeKairosBackup, type KairosBackupRecordCountsV4 } from '../../data/backup';
+import { createKairosDatabaseSnapshotWithReport, serializeKairosBackup, type KairosBackupRecordCountsV4, type KairosSnapshotSkippedCounts } from '../../data/backup';
 import type { KairosDatabase } from '../../data/database/KairosDatabase';
 import { DatabaseIntegrityError } from '../../data/database/integrity';
 
@@ -17,7 +17,7 @@ export interface KairosBackupFile {
 }
 
 export type ExportKairosBackupResult =
-  | { readonly ok: true; readonly file: KairosBackupFile }
+  | { readonly ok: true; readonly file: KairosBackupFile; /** Damaged extra records left out of this backup; they are still on the device. */ readonly skipped: KairosSnapshotSkippedCounts }
   | { readonly ok: false; readonly type: 'invalid-input'; readonly reason: 'export-moment-invalid' }
   | { readonly ok: false; readonly type: 'integrity-error'; readonly reason: 'database-integrity-failed'; readonly failedChecks: readonly string[] }
   | { readonly ok: false; readonly type: 'storage-error'; readonly reason: 'backup-export-failed' };
@@ -40,7 +40,7 @@ export function kairosBackupFileNameAt(exportedAt: Date): string {
 export async function exportKairosBackup(db: KairosDatabase, exportedAt: Date): Promise<ExportKairosBackupResult> {
   if (!(exportedAt instanceof Date) || Number.isNaN(exportedAt.getTime())) return { ok: false, type: 'invalid-input', reason: 'export-moment-invalid' };
   try {
-    const envelope = await createKairosDatabaseSnapshot(db, { exportedAt });
+    const { envelope, skipped } = await createKairosDatabaseSnapshotWithReport(db, { exportedAt });
     const contents = serializeKairosBackup(envelope);
     const file: KairosBackupFile = Object.freeze({
       fileName: kairosBackupFileNameAt(exportedAt),
@@ -50,7 +50,7 @@ export async function exportKairosBackup(db: KairosDatabase, exportedAt: Date): 
       exportedAt: envelope.exportedAt,
       recordCounts: envelope.recordCounts,
     });
-    return { ok: true, file };
+    return { ok: true, file, skipped };
   } catch (error) {
     if (error instanceof DatabaseIntegrityError) {
       return { ok: false, type: 'integrity-error', reason: 'database-integrity-failed', failedChecks: error.report.checks.filter(check => !check.ok).map(check => check.id) };

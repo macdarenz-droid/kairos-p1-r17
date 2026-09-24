@@ -55,7 +55,7 @@ type LastBackupState = Readonly<{ kind: 'loading' }> | Readonly<{ kind: 'ready';
 type PersistState = Readonly<{ kind: 'idle' }> | Readonly<{ kind: 'requesting' }> | Readonly<{ kind: 'declined' }>;
 
 type ActivationState = Readonly<{ kind: 'loading' }> | Readonly<{ kind: 'error' }> | Readonly<{ kind: 'ready'; stored: StoredActivationReceiptLoadResult }>;
-type ExportState = Readonly<{ kind: 'idle' }> | Readonly<{ kind: 'busy' }> | Readonly<{ kind: 'done'; file: KairosBackupFile }> | Readonly<{ kind: 'error'; message: string }>;
+type ExportState = Readonly<{ kind: 'idle' }> | Readonly<{ kind: 'busy' }> | Readonly<{ kind: 'done'; file: KairosBackupFile; skippedCount: number }> | Readonly<{ kind: 'error'; message: string }>;
 type RestoreState =
   | Readonly<{ kind: 'idle' }>
   | Readonly<{ kind: 'reading' }>
@@ -200,7 +200,7 @@ export function ProfileRoute({ db = kairosDatabase, now = wallClock, downloads, 
     const result = await exportKairosBackup(db, new Date(now()));
     if (!result.ok) { setExportState({ kind: 'error', message: exportFailureText(result) }); return; }
     if (!download(result.file)) { setExportState({ kind: 'error', message: 'Your browser did not accept the download. Nothing was changed.' }); return; }
-    setExportState({ kind: 'done', file: result.file });
+    setExportState({ kind: 'done', file: result.file, skippedCount: result.skipped.savedAnalyses + result.skipped.savedTimeAssistedSnapshots + result.skipped.tradeDiscipline });
     const recorded = await recordLastBackup(metadata, result.file);
     if (recorded.ok) setLastBackup({ kind: 'ready', record: recorded.record });
   }
@@ -283,6 +283,7 @@ export function ProfileRoute({ db = kairosDatabase, now = wallClock, downloads, 
       <p>Downloads one JSON file with your journal, saved analyses, saved snapshots and preferences. Your data is not changed.</p>
       <div className="kairos-profile-card__actions"><button type="button" onClick={() => { void handleExport(); }} disabled={exportState.kind === 'busy' || restoreBusy}>{exportState.kind === 'busy' ? 'Preparing…' : 'Download backup'}</button></div>
       {exportState.kind === 'done' ? <p className="kairos-profile-card__feedback kairos-profile-card__feedback--success" role="status">Backup downloaded: <code>{exportState.file.fileName}</code> · {plural(exportState.file.recordCounts.total, 'record')} · {kilobytes(exportState.file.byteLength)}.</p> : null}
+      {exportState.kind === 'done' && exportState.skippedCount > 0 ? <p className="kairos-profile-card__feedback kairos-profile-card__feedback--error" role="status">Backup saved. {plural(exportState.skippedCount, 'saved item')} {exportState.skippedCount === 1 ? 'was' : 'were'} damaged and left out; {exportState.skippedCount === 1 ? 'it is' : 'they are'} still on this device.</p> : null}
       {exportState.kind === 'error' ? <p className="kairos-profile-card__feedback kairos-profile-card__feedback--error" role="alert">{exportState.message}</p> : null}
     </article>
 
@@ -312,6 +313,7 @@ export function ProfileRoute({ db = kairosDatabase, now = wallClock, downloads, 
       {preview && (restoreState.kind === 'preview' || restoreState.kind === 'committing') ? <div className="kairos-profile-preview" data-profile-preview-records={preview.totalRecords}>
         <p><strong>{restoreState.fileName}</strong> was exported {moment(preview.exportedAt)} and holds {plural(preview.totalRecords, 'record')}: {plural(preview.tradeRecords, 'trade')}, {plural(preview.savedAnalysisRecords, 'saved analysis', 'saved analyses')}, {plural(preview.savedTimeAssistedSnapshotRecords, 'saved snapshot')}, {plural(preview.metadataRecords, 'preference')}.</p>
         <p className="kairos-profile-preview__warning" role="status">Restoring replaces everything on this device with this backup. Your current data is offered as a download first.</p>
+        {restoreState.restore.recoveryKind === 'raw' ? <p className="kairos-profile-card__feedback kairos-profile-card__feedback--error" role="alert">Your current data has a problem. Download the raw copy first; it may not restore.</p> : null}
         <div className="kairos-profile-card__actions">
           <button type="button" className="kairos-profile-button--secondary" onClick={() => { download(restoreState.restore.recoveryFile); }} disabled={restoreBusy}>Download current data first</button>
           <button type="button" className="kairos-profile-button--danger" onClick={() => { void handleCommit(); }} disabled={restoreBusy}>{restoreState.kind === 'committing' ? 'Restoring…' : 'Replace my data'}</button>
