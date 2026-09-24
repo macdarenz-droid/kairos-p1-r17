@@ -38,7 +38,7 @@ const ratioDetail = (reason: 'invalid-decimal' | 'zero-risk-distance' | 'levels-
 const percentOfEntry = (distance: DecimalString, entry: DecimalString): string | null => {
   const percent = calculatePercentage(distance, entry);
   if (!percent.ok) return null;
-  const formatted = formatHomeDashboardLiveCryptoBubbleMovement(percent.value, false);
+  const formatted = formatHomeDashboardLiveCryptoBubbleMovement(percent.value, false, { fractionDigits: 2 });
   return formatted === 'Unavailable' ? null : formatted.replace(/^[+-]/, '');
 };
 

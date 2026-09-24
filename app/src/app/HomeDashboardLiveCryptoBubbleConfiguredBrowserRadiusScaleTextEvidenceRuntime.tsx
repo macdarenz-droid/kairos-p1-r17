@@ -6,6 +6,8 @@ import { useHomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleViewModel }
 export interface HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTextEvidenceRuntimeProps {
   readonly visual?: boolean;
   readonly configuration: HomeDashboardLiveCryptoBubbleRuntimeProductConfiguration;
+  /** Passed to the visual map's "Try again". */
+  readonly onRetry?: () => void;
 }
 
 /**
@@ -18,13 +20,14 @@ export interface HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTextEv
 export function HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTextEvidenceRuntime({
   configuration,
   visual = false,
+  onRetry,
 }: HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTextEvidenceRuntimeProps) {
   const model = useHomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleViewModel(configuration);
 
   const evidence = <HomeDashboardLiveCryptoBubbleRadiusScaleTextEvidence model={model} />;
   return visual ? (
     <>
-      <HomeDashboardGlassBubbleMap model={model} />
+      <HomeDashboardGlassBubbleMap model={model} onRetry={onRetry} />
       <details hidden><summary>Market data details</summary>{evidence}</details>
     </>
   ) : evidence;

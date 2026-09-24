@@ -1,6 +1,14 @@
 import type { DecimalString } from '../domain/trades';
 
 const standardMovementFormatter = new Intl.NumberFormat('en-US', {
+  maximumFractionDigits: 1,
+  minimumFractionDigits: 1,
+  signDisplay: 'always',
+  useGrouping: false,
+});
+
+/** Analysis evidence keeps two digits; only the bubble label is shortened to one. */
+const preciseMovementFormatter = new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 2,
   minimumFractionDigits: 2,
   signDisplay: 'always',
@@ -27,6 +35,7 @@ const smallMovementFormatter = new Intl.NumberFormat('en-US', {
 export function formatHomeDashboardLiveCryptoBubbleMovement(
   value: DecimalString | null,
   unavailable: boolean,
+  options: { readonly fractionDigits?: 1 | 2 } = {},
 ): string {
   if (unavailable || value === null) return 'Unavailable';
 
@@ -36,5 +45,5 @@ export function formatHomeDashboardLiveCryptoBubbleMovement(
   const magnitude = Math.abs(numeric);
   if (magnitude >= 1000) return `${compactMovementFormatter.format(numeric)}%`;
   if (magnitude > 0 && magnitude < 0.01) return `${smallMovementFormatter.format(numeric)}%`;
-  return `${standardMovementFormatter.format(numeric)}%`;
+  return `${(options.fractionDigits === 2 ? preciseMovementFormatter : standardMovementFormatter).format(numeric)}%`;
 }

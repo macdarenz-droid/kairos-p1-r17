@@ -41,7 +41,7 @@ describe('glass map truth and controls', () => {
   it('shows readable movement and freshness without acquiring or mutating facts', () => {
     vi.spyOn(HTMLElement.prototype,'clientWidth','get').mockReturnValue(366);
     const model=glassTestModel();const before=JSON.stringify(model);const {container}=render(<HomeDashboardGlassBubbleMap model={model}/>);
-    expect(container.querySelectorAll('.kairos-glass-bubble')).toHaveLength(8);expect(screen.getAllByText('+2.14%')).toHaveLength(4);expect(screen.getAllByText('-1.32%')).toHaveLength(4);expect(JSON.stringify(model)).toBe(before);
+    expect(container.querySelectorAll('.kairos-glass-bubble')).toHaveLength(8);expect(screen.getAllByText('+2.1%')).toHaveLength(4);expect(screen.getAllByText('-1.3%')).toHaveLength(4);expect(JSON.stringify(model)).toBe(before);
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
     expect(container.querySelector('section')).toHaveAttribute('data-motion','running');
     expect(container.querySelector('small')).not.toBeVisible();
@@ -54,12 +54,12 @@ describe('glass map truth and controls', () => {
     Object.assign(p[0].areaWeightEntry.presentationEntry,{freshnessState:'stale'});
     Object.assign(p[1].areaWeightEntry.presentationEntry,{freshnessState:'expired'});
     const {container}=render(<HomeDashboardGlassBubbleMap model={model}/>);
-    expect(screen.getByText('stale')).toBeInTheDocument();expect(screen.getByText('expired')).toBeInTheDocument();expect(screen.queryByText('-1.32%')).not.toBeInTheDocument();expect(screen.getByText('Unavailable')).toBeInTheDocument();expect(container.querySelector('[data-freshness="stale"]')).toBeInTheDocument();
+    expect(screen.getByText('stale')).toBeInTheDocument();expect(screen.getByText('expired')).toBeInTheDocument();expect(screen.queryByText('-1.3%')).not.toBeInTheDocument();expect(screen.getByText('Unavailable')).toBeInTheDocument();expect(container.querySelector('[data-freshness="stale"]')).toBeInTheDocument();
   });
   it('keeps missing geometry missing, including collapsed containers and failed projections', () => {
     vi.spyOn(HTMLElement.prototype,'clientWidth','get').mockReturnValue(0);
     const model=glassTestModel();const {container,rerender}=render(<HomeDashboardGlassBubbleMap model={model}/>);expect(container.querySelectorAll('.kairos-glass-bubble')).toHaveLength(0);
-    rerender(<HomeDashboardGlassBubbleMap model={{...model,radiusScaleProjection:null}}/>);expect(screen.getByText('Waiting for market data.')).toBeInTheDocument();
+    rerender(<HomeDashboardGlassBubbleMap model={{...model,radiusScaleProjection:null}}/>);expect(screen.getByText('Loading live prices…')).toBeInTheDocument();
   });
 });
 
@@ -83,7 +83,7 @@ describe('market refresh identity continuity', () => {
     expect(find('BTC').querySelector('canvas')).toBe(canvas);
     expect(find('BTC').style.getPropertyValue('--glass-duration')).toBe(duration);
     expect(find('BTC').style.getPropertyValue('--glass-delay')).toBe(delay);
-    expect(find('BTC')).toHaveTextContent('4.25%');
+    expect(find('BTC')).toHaveTextContent('+4.3%');
     expect([...container.querySelectorAll('.kairos-glass-bubble strong')].map(n => n.textContent)).toEqual(['BTC', 'ETH', 'SOL']);
     expect(JSON.stringify(next)).toBe(snapshot);
     const grownWidth = parseFloat(find('BTC').style.width);

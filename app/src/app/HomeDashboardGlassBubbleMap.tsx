@@ -74,6 +74,30 @@ function hoverTiming(identity: string) {
 
 export interface HomeDashboardGlassBubbleMapProps {
   readonly model: HomeDashboardLiveCryptoBubbleReactRadiusScaleViewModel;
+  /** "Try again": the host remounts the live runtime. */
+  readonly onRetry?: () => void;
+}
+
+/** A start that has not produced data by now is treated as unavailable. */
+export const HOME_LIVE_MARKET_START_TIMEOUT_MS = 10_000;
+
+export type HomeLiveMarketLoadState = 'data' | 'loading' | 'unavailable';
+
+/** Data always wins; without data, a failed start, an offline device or a start past the time limit is unavailable. */
+export function deriveHomeLiveMarketLoadState(input: {
+  readonly hasData: boolean;
+  readonly status: HomeDashboardLiveCryptoBubbleReactRadiusScaleViewModel['runtimeState']['status'];
+  readonly online: boolean;
+  readonly startTimedOut: boolean;
+}): HomeLiveMarketLoadState {
+  if (input.hasData) return 'data';
+  if (input.status === 'acquisition-failed' || input.status === 'bootstrap-error' || !input.online) return 'unavailable';
+  if (input.status === 'starting' && input.startTimedOut) return 'unavailable';
+  return 'loading';
+}
+
+function readOnline(): boolean {
+  return typeof navigator === 'undefined' || navigator.onLine !== false;
 }
 
 /** HomeRoute presentation amendment: one released model, no acquisition hook.
@@ -81,7 +105,7 @@ export interface HomeDashboardGlassBubbleMapProps {
  * Labels consume authoritative decimal strings and upstream semantic/freshness
  * states; only the constrained visual text is formatted here.
  */
-export function HomeDashboardGlassBubbleMap({ model }: HomeDashboardGlassBubbleMapProps) {
+export function HomeDashboardGlassBubbleMap({ model, onRetry }: HomeDashboardGlassBubbleMapProps) {
   const container = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   const [height, setHeight] = useState(0);
@@ -109,7 +133,17 @@ export function HomeDashboardGlassBubbleMap({ model }: HomeDashboardGlassBubbleM
     document.addEventListener('visibilitychange', visibility);
     return () => document.removeEventListener('visibilitychange', visibility);
   }, []);
+  const [online, setOnline] = useState(readOnline);
+  const [startTimedOut, setStartTimedOut] = useState(false);
+  useEffect(() => {
+    const update = () => setOnline(readOnline());
+    window.addEventListener('online', update);
+    window.addEventListener('offline', update);
+    const timeout = window.setTimeout(() => setStartTimedOut(true), HOME_LIVE_MARKET_START_TIMEOUT_MS);
+    return () => { window.removeEventListener('online', update); window.removeEventListener('offline', update); window.clearTimeout(timeout); };
+  }, []);
   const source = model.radiusScaleProjection;
+  const loadState = deriveHomeLiveMarketLoadState({ hasData: source !== null, status: model.runtimeState.status, online, startTimedOut });
   const projection = source && width >= 140 ? projectHomeDashboardLiveCryptoBubblePixelRadii(source, {
     minimumRadiusCssPixels: 48,
     maximumRadiusCssPixels: Math.max(48, Math.min(155, width * 0.225)),
@@ -148,7 +182,9 @@ export function HomeDashboardGlassBubbleMap({ model }: HomeDashboardGlassBubbleM
         <span>24h · size by % move</span>
       </div>
       {model.runtimeState.lastError !== null ? <p role="status">Market update failed. Showing the last available observations with their freshness labels.</p> : null}
-      {source === null ? <p role="status">Waiting for market data.</p> : !source.ok ? <p role="status">Bubble data unavailable.</p> : source.entries.length === 0 ? <p role="status">No eligible markets available.</p> : null}
+      {loadState === 'unavailable' ? <div role="alert" className="kairos-glass-unavailable"><p>Live prices are unavailable. Check your connection.</p><button type="button" onClick={onRetry}>Try again</button></div>
+        : loadState === 'loading' ? <p role="status">Loading live prices…</p>
+        : source === null ? null : !source.ok ? <p role="status">Bubble data unavailable.</p> : source.entries.length === 0 ? <p role="status">No eligible markets available.</p> : null}
       <div ref={container} className="kairos-glass-field" style={{ height: layout.height }}>
         {renderedEntries.map(entry => {
           const p = entry.radiusScaleEntry.areaWeightEntry.presentationEntry;
@@ -164,7 +200,8 @@ export function HomeDashboardGlassBubbleMap({ model }: HomeDashboardGlassBubbleM
           const style = {
             left: circle.x - circle.radius, top: circle.y - circle.radius,
             width: circle.radius * 2, height: circle.radius * 2,
-            '--glass-label-size': `${Math.min(18, Math.max(11, circle.radius * 0.23))}px`,
+            // Small bubbles get a lower floor so the % label fits inside the circle.
+            '--glass-label-size': `${Math.min(18, Math.max(circle.radius < 60 ? 9 : 11, circle.radius * 0.23))}px`,
             '--glass-icon-size': `${Math.min(38, Math.max(14, circle.radius * 0.5))}px`,
             '--glass-duration': timing.duration, '--glass-delay': timing.delay,
           } as CSSProperties;
