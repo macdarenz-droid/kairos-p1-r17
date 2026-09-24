@@ -1,4 +1,4 @@
-import type { ChartDrawingId, ChartTrendLineDrawing } from './chartDrawingContract';
+import type { ChartDrawing, ChartDrawingId } from './chartDrawingContract';
 import type { ChartTrendLineDraftInteractionSession } from './chartTrendLineDraftInteractionCoordination';
 import { constructChartTrendLineDrawingFromDraft } from './chartTrendLineDraftCommitConstruction';
 
@@ -21,11 +21,11 @@ import { constructChartTrendLineDrawingFromDraft } from './chartTrendLineDraftCo
 export function commitChartTrendLineDraft(
   session: ChartTrendLineDraftInteractionSession,
   drawingId: ChartDrawingId,
-): ChartTrendLineDrawing | null {
+): ChartDrawing | null {
   const state = session.getState();
-  if (state.status !== 'preview' || state.tool !== 'trend-line') return null;
+  if (state.status !== 'preview' || (state.tool !== 'trend-line' && state.tool !== 'zone')) return null;
 
-  const drawing = constructChartTrendLineDrawingFromDraft(drawingId, session.getAnchors());
+  const drawing = constructChartTrendLineDrawingFromDraft(drawingId, session.getAnchors(), state.tool);
   if (drawing === null) return null;
 
   const next = session.dispatch({ type: 'commit-drawing', drawingId });

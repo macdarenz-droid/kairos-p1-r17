@@ -97,9 +97,9 @@ describe('schema v7: the close-time index', () => {
 describe('backup format V5 across schema v6 and v7', () => {
   it('restores a V5 backup whose header says schema 6 into the v7 database', async () => {
     const { db } = await openCurrent(newName('restore-v6'));
-    const envelope = { ...createKairosBackupEnvelope({ metadata: [{ key: 'journal.note', value: 'kept', updatedAt: at }], trades: [trade('closed-a', 'closed', 'manual', at)], exportedAt: new Date(at) }), databaseSchemaVersion: 6 };
+    const envelope = { ...createKairosBackupEnvelope({ metadata: [{ key: 'journal.note', value: 'kept', updatedAt: at }], trades: [trade('closed-a', 'closed', 'manual', at)], exportedAt: new Date(at) }), formatVersion: 5, databaseSchemaVersion: 6 };
     const text = JSON.stringify(envelope);
-    expect(parseKairosBackup(text).databaseSchemaVersion).toBe(6);
+    expect(parseKairosBackup(text)).toMatchObject({ formatVersion: 6, databaseSchemaVersion: 7 });
     const prepared = await prepareKairosRestore(db, text);
     const result = await replaceKairosDatabaseFromPreparedRestore(db, prepared);
     expect(result.integrity.ok).toBe(true);

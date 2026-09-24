@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { AnalysisDrawingToolsControls } from '../src/app/AnalysisDrawingToolsControls';
+import { AnalysisDrawingToolsControls } from '../src/features/analysis/AnalysisDrawingToolsControls';
 import { createAnalysisDrawingToolsLiveSessionFactory, createAnalysisDrawingToolsOverlaySessionFactory, createAnalysisDrawingToolsSession, resolveAnalysisDrawingToolsStyle } from '../src/app/analysisDrawingToolsComposition';
 import { AnalysisLiveSessionFactoryContext, AnalysisOverlaySessionFactoryContext } from '../src/app/analysisDrawingToolsContext';
 import { AnalysisLiveCandleCanvas } from '../src/app/AnalysisLiveCandleCanvas';
@@ -133,7 +133,7 @@ describe('Drawing tools hook and controls', () => {
     act(() => { fireEvent.click(button('Delete line')); });
     expect(group().getAttribute('data-drawing-count')).toBe('0');
     expect(latest!.getDrawings()).toHaveLength(0);
-    expect(button('Delete line').disabled).toBe(true);
+    expect(button('Delete').disabled).toBe(true);
     act(() => { latest!.lifecycle.detach(h.handle); });
     expect(group().getAttribute('data-drawing-status')).toBe('unavailable');
     expect(h.clickHandlers.size).toBe(0);

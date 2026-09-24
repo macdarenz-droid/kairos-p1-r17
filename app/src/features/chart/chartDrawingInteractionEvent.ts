@@ -1,4 +1,5 @@
-import type { ChartDrawingId, ChartDrawingKind } from './chartDrawingContract';
+import type { ChartDrawingId } from './chartDrawingContract';
+import type { ChartDrawingTool } from './chartDrawingInteractionContract';
 import type { ChartTrendLineEditEndpoint } from './chartTrendLineEditConstruction';
 
 /**
@@ -11,7 +12,7 @@ import type { ChartTrendLineEditEndpoint } from './chartTrendLineEditConstructio
  * intent so accepted editing state can preserve the exact endpoint authority.
  */
 export type ChartDrawingInteractionEvent =
-  | { readonly type: 'select-tool'; readonly tool: ChartDrawingKind }
+  | { readonly type: 'select-tool'; readonly tool: ChartDrawingTool }
   | { readonly type: 'start-drawing' }
   | { readonly type: 'preview-drawing' }
   | { readonly type: 'commit-drawing'; readonly drawingId: ChartDrawingId }

@@ -9,6 +9,8 @@ import type { SavedAnalysisId } from '../domain/saved-records/savedAnalysisContr
 export interface AnalysisSavedAnalysisSummary {
   readonly id: SavedAnalysisId;
   readonly drawingCount: number;
+  /** How many of the drawings are zones; present only when above 0. */
+  readonly zoneCount?: number;
   /** P25 optional user-given label, present only when the record carries one. */
   readonly label?: string;
 }
@@ -42,7 +44,10 @@ export function createAnalysisSavedAnalysisPorts(db: KairosDatabase = kairosData
     },
     async list(market) {
       const records = await createKairosRepositories(db).savedAnalyses.listAll();
-      return records.filter(record => sameMarket(record.market, market)).map(record => Object.freeze({ id: record.id, drawingCount: record.drawings.length, ...(record.label === undefined ? {} : { label: record.label }) }));
+      return records.filter(record => sameMarket(record.market, market)).map((record) => {
+        const zoneCount = record.drawings.filter(drawing => drawing.kind === 'zone').length;
+        return Object.freeze({ id: record.id, drawingCount: record.drawings.length, ...(zoneCount > 0 ? { zoneCount } : {}), ...(record.label === undefined ? {} : { label: record.label }) });
+      });
     },
     load(savedAnalysisId) {
       return loadSavedAnalysis(db, savedAnalysisId);

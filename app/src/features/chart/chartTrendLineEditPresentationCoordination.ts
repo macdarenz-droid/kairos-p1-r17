@@ -1,5 +1,5 @@
 import type { ChartDrawingCollectionSession } from './chartDrawingCollection';
-import type { ChartDrawingAnchor, ChartTrendLineDrawing } from './chartDrawingContract';
+import type { ChartDrawing, ChartDrawingAnchor } from './chartDrawingContract';
 import type { ChartDrawingInteractionSession } from './chartDrawingInteractionPort';
 import type { ChartDrawingPresentationDrawingRefreshSession } from './chartDrawingPresentationPort';
 import { refreshChartDrawingPresentationFromCollection } from './chartDrawingCollectionPresentationCoordination';
@@ -32,7 +32,7 @@ export function executeChartTrendLineEditAndRefreshPresentation(
   collection: ChartDrawingCollectionSession,
   presentation: ChartDrawingPresentationDrawingRefreshSession,
   anchor: ChartDrawingAnchor,
-): ChartTrendLineDrawing | null {
+): ChartDrawing | null {
   const edited = executeChartTrendLineEdit(interaction, collection, anchor);
   if (edited === null) return null;
 

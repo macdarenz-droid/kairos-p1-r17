@@ -2,8 +2,8 @@ import { getChartTheme, type ThemeId } from '../design-system/themes';
 import { createLightweightChartsV5ProductionRendererFactory, type LightweightChartsV5ProductionCandlestickSeriesLifecycle, type LightweightChartsV5ProductionDrawingBindingLifecycle } from '../features/chart/lightweightChartsV5ProductionRenderer';
 import { composeCandlestickSeriesLifecycles } from './analysisTimeAssistedMarkerSession';
 import { createAnalysisCandleRendererSession } from './analysisCandleRendererSession';
-import { createAnalysisDrawingToolsRendererSession, type AnalysisDrawingToolsRendererSession, type AnalysisDrawingToolsRendererSessionOptions } from './analysisDrawingToolsRendererSession';
-import { ANALYSIS_DRAWING_ENDPOINT_EDIT_TOLERANCE_PX, ANALYSIS_DRAWING_TREND_LINE_WIDTH } from './analysisLiveCandleProductPolicy';
+import { createAnalysisDrawingToolsRendererSession, type AnalysisDrawingToolsRendererSession, type AnalysisDrawingToolsRendererSessionOptions } from '../features/analysis/analysisDrawingToolsRendererSession';
+import { ANALYSIS_DRAWING_ENDPOINT_EDIT_TOLERANCE_PX, ANALYSIS_DRAWING_TREND_LINE_WIDTH, ANALYSIS_DRAWING_ZONE_FILL_OPACITY } from './analysisLiveCandleProductPolicy';
 import { createAnalysisLiveCandleRouteSession } from './analysisLiveCandleRouteSession';
 import { createAnalysisSavedTradeOverlayPresentationSession, type AnalysisSavedTradeOverlayPresentationSession } from './analysisSavedTradeOverlayPresentationSession';
 import { createAnalysisSavedTradeOverlayRendererSession } from './analysisSavedTradeOverlayRendererSession';
@@ -18,7 +18,7 @@ export function createAnalysisDrawingToolsSession(
   themeId: ThemeId,
   listeners: Pick<AnalysisDrawingToolsRendererSessionOptions, 'onStateChange' | 'onDrawingsChange'> = {},
 ): AnalysisDrawingToolsRendererSession {
-  return createAnalysisDrawingToolsRendererSession({ style: resolveAnalysisDrawingToolsStyle(themeId), endpointEditTolerancePx: ANALYSIS_DRAWING_ENDPOINT_EDIT_TOLERANCE_PX, ...listeners });
+  return createAnalysisDrawingToolsRendererSession({ style: { ...resolveAnalysisDrawingToolsStyle(themeId), zoneColor: getChartTheme(themeId).drawingSecondary, zoneFillOpacity: ANALYSIS_DRAWING_ZONE_FILL_OPACITY }, endpointEditTolerancePx: ANALYSIS_DRAWING_ENDPOINT_EDIT_TOLERANCE_PX, ...listeners });
 }
 
 /**

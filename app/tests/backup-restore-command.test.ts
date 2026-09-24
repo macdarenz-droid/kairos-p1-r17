@@ -36,7 +36,7 @@ describe('P28.2 backup restore command', () => {
     const result = await prepareBackupRestore(db, incoming());
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('unreachable');
-    expect(result.restore.preview).toMatchObject({ formatVersion: 5, databaseSchemaVersion: 7, exportedAt: '2026-09-17T08:00:00.000Z', metadataRecords: 1, savedAnalysisRecords: 1, totalRecords: 2 });
+    expect(result.restore.preview).toMatchObject({ formatVersion: 6, databaseSchemaVersion: 7, exportedAt: '2026-09-17T08:00:00.000Z', metadataRecords: 1, savedAnalysisRecords: 1, totalRecords: 2 });
     expect(result.restore.recoveryFile.fileName).toMatch(/^kairos-backup-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z\.json$/);
     expect(result.restore.recoveryFile.mediaType).toBe('application/json');
     expect(result.restore.recoveryFile.recordCounts).toMatchObject({ metadata: 1, savedAnalyses: 1, total: 2 });

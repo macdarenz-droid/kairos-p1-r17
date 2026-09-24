@@ -1,5 +1,7 @@
+import type { DecimalString } from '../../domain/trades';
 import type { ChartDrawing, ChartDrawingAnchor } from './chartDrawingContract';
-import { projectChartPricePoint, type RendererPricePoint } from './chartSeriesProjection';
+import type { ChartTimestamp } from './chartRenderContract';
+import { projectChartDecimal, projectChartPricePoint, projectChartTimestamp, type RendererPricePoint } from './chartSeriesProjection';
 
 export type RendererDrawingAnchor = RendererPricePoint;
 
@@ -10,7 +12,55 @@ export interface RendererTrendLineDrawing {
   readonly end: RendererDrawingAnchor;
 }
 
-export type RendererChartDrawing = RendererTrendLineDrawing;
+export interface RendererZoneDrawing {
+  readonly id: string;
+  readonly kind: 'zone';
+  readonly start: RendererDrawingAnchor;
+  readonly end: RendererDrawingAnchor;
+}
+
+/**
+ * A user risk/reward box, presentation only: it is never a saved ChartDrawing.
+ * `start` is the entry at the left time, `end` the stop at the right time.
+ */
+export interface RendererRiskBoxDrawing {
+  readonly id: string;
+  readonly kind: 'risk-box';
+  readonly start: RendererDrawingAnchor;
+  readonly end: RendererDrawingAnchor;
+  readonly target: number;
+  readonly label: string;
+}
+
+export type RendererChartDrawing = RendererTrendLineDrawing | RendererZoneDrawing | RendererRiskBoxDrawing;
+
+export interface ChartRiskBoxDrawingInput {
+  readonly id: string;
+  readonly entry: DecimalString;
+  readonly stop: DecimalString;
+  readonly target: DecimalString;
+  readonly start: ChartTimestamp;
+  readonly end: ChartTimestamp;
+  readonly label: string;
+}
+
+/** Projects a user box for drawing; a value that does not parse gives null, so a damaged box is skipped. */
+export function projectChartRiskBoxDrawing(input: ChartRiskBoxDrawingInput): RendererRiskBoxDrawing | null {
+  try {
+    const startTime = projectChartTimestamp(input.start);
+    const endTime = projectChartTimestamp(input.end);
+    return {
+      id: input.id,
+      kind: 'risk-box',
+      start: { time: startTime, value: projectChartDecimal(input.entry) },
+      end: { time: endTime, value: projectChartDecimal(input.stop) },
+      target: projectChartDecimal(input.target),
+      label: input.label,
+    };
+  } catch {
+    return null;
+  }
+}
 
 export function projectChartDrawingAnchor(
   anchor: ChartDrawingAnchor,
@@ -21,12 +71,11 @@ export function projectChartDrawingAnchor(
 export function projectChartDrawing(
   drawing: ChartDrawing,
 ): RendererChartDrawing {
-  return {
-    id: drawing.id,
-    kind: drawing.kind,
-    start: projectChartDrawingAnchor(drawing.start),
-    end: projectChartDrawingAnchor(drawing.end),
-  };
+  const start = projectChartDrawingAnchor(drawing.start);
+  const end = projectChartDrawingAnchor(drawing.end);
+  return drawing.kind === 'zone'
+    ? { id: drawing.id, kind: 'zone', start, end }
+    : { id: drawing.id, kind: 'trend-line', start, end };
 }
 
 /**

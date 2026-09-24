@@ -4,7 +4,8 @@ import type { TradeDisciplineRecord } from '../../domain/discipline';
 import type { DatabaseMetadataRecord, DatabaseTradeExecutionRecord, DatabaseTradeFeeRecord, DatabaseTradePlanRecord, DatabaseTradeRecord } from '../database/schema';
 
 export const KAIROS_BACKUP_FORMAT_NAME = 'kairos-full-backup' as const;
-export const KAIROS_BACKUP_FORMAT_VERSION = 5 as const;
+export const KAIROS_BACKUP_FORMAT_VERSION = 6 as const;
+export const KAIROS_TRADE_DISCIPLINE_BACKUP_FORMAT_VERSION = 5 as const;
 export const KAIROS_SAVED_TIME_ASSISTED_SNAPSHOT_BACKUP_FORMAT_VERSION = 4 as const;
 export const KAIROS_SAVED_ANALYSIS_BACKUP_FORMAT_VERSION = 3 as const;
 export const KAIROS_LEGACY_BACKUP_FORMAT_VERSION = 1 as const;
@@ -30,5 +31,8 @@ export interface KairosBackupPayloadV5 extends KairosBackupPayloadV4 { readonly 
 export interface KairosBackupRecordCountsV5 extends KairosBackupRecordCountsV4 { readonly tradeDiscipline:number; }
 export interface KairosBackupEnvelopeV5 { readonly formatName:typeof KAIROS_BACKUP_FORMAT_NAME; readonly formatVersion:5; readonly appVersion:string; readonly buildId:string; readonly exportedAt:string; readonly databaseSchemaVersion:6|7; readonly recordCounts:KairosBackupRecordCountsV5; readonly payload:KairosBackupPayloadV5; }
 
-export type KairosBackupEnvelope = KairosBackupEnvelopeV1|KairosBackupEnvelopeV2|KairosBackupEnvelopeV3|KairosBackupEnvelopeV4|KairosBackupEnvelopeV5;
-export type KairosCurrentBackupEnvelope = KairosBackupEnvelopeV5;
+/** V6 keeps the V5 payload; saved analyses may now hold zone drawings. It describes schema 7. */
+export interface KairosBackupEnvelopeV6 { readonly formatName:typeof KAIROS_BACKUP_FORMAT_NAME; readonly formatVersion:6; readonly appVersion:string; readonly buildId:string; readonly exportedAt:string; readonly databaseSchemaVersion:7; readonly recordCounts:KairosBackupRecordCountsV5; readonly payload:KairosBackupPayloadV5; }
+
+export type KairosBackupEnvelope = KairosBackupEnvelopeV1|KairosBackupEnvelopeV2|KairosBackupEnvelopeV3|KairosBackupEnvelopeV4|KairosBackupEnvelopeV5|KairosBackupEnvelopeV6;
+export type KairosCurrentBackupEnvelope = KairosBackupEnvelopeV6;

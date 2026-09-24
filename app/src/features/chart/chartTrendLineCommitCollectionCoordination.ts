@@ -1,4 +1,4 @@
-import type { ChartTrendLineDrawing } from './chartDrawingContract';
+import type { ChartDrawing } from './chartDrawingContract';
 import type { ChartDrawingCollectionSession } from './chartDrawingCollection';
 import { createChartDrawingId } from './chartDrawingIdentity';
 import { commitChartTrendLineDraft } from './chartTrendLineDraftCommitCoordination';
@@ -23,9 +23,9 @@ import type { ChartTrendLineDraftInteractionSession } from './chartTrendLineDraf
 export function commitChartTrendLineDraftToCollection(
   session: ChartTrendLineDraftInteractionSession,
   collection: ChartDrawingCollectionSession,
-): ChartTrendLineDrawing | null {
+): ChartDrawing | null {
   const state = session.getState();
-  if (state.status !== 'preview' || state.tool !== 'trend-line') return null;
+  if (state.status !== 'preview' || (state.tool !== 'trend-line' && state.tool !== 'zone')) return null;
 
   const drawingId = createChartDrawingId();
   if (collection.getDrawing(drawingId) !== null) return null;

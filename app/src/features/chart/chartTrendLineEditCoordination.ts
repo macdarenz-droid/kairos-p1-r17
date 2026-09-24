@@ -1,4 +1,4 @@
-import type { ChartDrawingAnchor, ChartTrendLineDrawing } from './chartDrawingContract';
+import type { ChartDrawing, ChartDrawingAnchor } from './chartDrawingContract';
 import type { ChartDrawingCollectionSession } from './chartDrawingCollection';
 import type { ChartDrawingInteractionSession } from './chartDrawingInteractionPort';
 import { constructChartTrendLineEdit } from './chartTrendLineEditConstruction';
@@ -22,7 +22,7 @@ export function executeChartTrendLineEdit(
   interaction: ChartDrawingInteractionSession,
   collection: ChartDrawingCollectionSession,
   anchor: ChartDrawingAnchor,
-): ChartTrendLineDrawing | null {
+): ChartDrawing | null {
   const state = interaction.getState();
   if (state.status !== 'editing') return null;
 

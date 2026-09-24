@@ -39,7 +39,7 @@ describe('P32.1 trade merge-import command', () => {
     const prepared = await prepareTradeImport(db, backup);
     expect(prepared.ok).toBe(true);
     if (!prepared.ok) throw new Error('unreachable');
-    expect(prepared.import.preview).toEqual({ exportedAt: now(), formatVersion: 5, newTrades: 1, newPracticeTrades: 1, alreadyPresent: 1, plans: 2, executions: 4, fees: 2 });
+    expect(prepared.import.preview).toEqual({ exportedAt: now(), formatVersion: 6, newTrades: 1, newPracticeTrades: 1, alreadyPresent: 1, plans: 2, executions: 4, fees: 2 });
     expect(await counts(db)).toEqual(before);
     const result = await commitTradeImport(db, prepared.import);
     expect(result).toEqual({ ok: true, added: { trades: 2, plans: 2, executions: 4, fees: 2 }, skipped: 0 });

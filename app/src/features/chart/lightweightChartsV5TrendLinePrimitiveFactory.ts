@@ -21,6 +21,8 @@ export function createLightweightChartsV5TrendLinePrimitiveFactory(
   const styleSnapshot: LightweightChartsV5TrendLineStrokeStyle = {
     color: style.color,
     lineWidth: style.lineWidth,
+    ...(style.zoneColor !== undefined ? { zoneColor: style.zoneColor } : {}),
+    ...(style.zoneFillOpacity !== undefined ? { zoneFillOpacity: style.zoneFillOpacity } : {}),
   };
 
   return {

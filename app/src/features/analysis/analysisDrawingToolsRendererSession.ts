@@ -17,11 +17,11 @@ import {
   type LightweightChartsV5PriceCoordinateApi,
   type LightweightChartsV5TimeCoordinateApi,
   type LightweightChartsV5TrendLineStrokeStyle,
-} from '../features/chart';
-import type { ChartEngineSeriesHandle } from '../features/chart/chartEngineDriver';
-import type { ChartDrawingPresentationDrawingRefreshSession } from '../features/chart/chartDrawingPresentationPort';
-import type { LightweightChartsV5DriverBinding } from '../features/chart/lightweightChartsV5ModuleAdapter';
-import type { LightweightChartsV5ProductionDrawingBindingLifecycle } from '../features/chart/lightweightChartsV5ProductionRenderer';
+} from '../chart';
+import type { ChartEngineSeriesHandle } from '../chart/chartEngineDriver';
+import type { ChartDrawingPresentationDrawingRefreshSession } from '../chart/chartDrawingPresentationPort';
+import type { LightweightChartsV5DriverBinding } from '../chart/lightweightChartsV5ModuleAdapter';
+import type { LightweightChartsV5ProductionDrawingBindingLifecycle } from '../chart/lightweightChartsV5ProductionRenderer';
 
 export interface AnalysisDrawingToolsRendererSessionOptions {
   /** Caller-resolved stroke style from the active chart theme; this session owns no theme lookup. */
@@ -44,6 +44,7 @@ export interface AnalysisDrawingToolsRendererSession {
   getDrawings(): readonly ChartDrawing[];
   /** Enters trend-line drawing from idle (resetting a finished interaction first); false while no series is bound. */
   selectTrendLineTool(): boolean;
+  selectZoneTool(): boolean;
   cancel(): boolean;
   /** Deletes the currently selected drawing through the released deletion coordinators; null when nothing is selected. */
   deleteSelected(): ChartDrawing | null;
@@ -162,6 +163,12 @@ export function createAnalysisDrawingToolsRendererSession(
       if (!interaction) return false;
       if (interaction.getState().status !== 'idle') interaction.dispatch({ type: 'reset-interaction' });
       return interaction.dispatch({ type: 'select-tool', tool: 'trend-line' }).status === 'tool-selected';
+    },
+    selectZoneTool() {
+      const interaction = active?.interaction;
+      if (!interaction) return false;
+      if (interaction.getState().status !== 'idle') interaction.dispatch({ type: 'reset-interaction' });
+      return interaction.dispatch({ type: 'select-tool', tool: 'zone' }).status === 'tool-selected';
     },
     cancel() {
       const interaction = active?.interaction;

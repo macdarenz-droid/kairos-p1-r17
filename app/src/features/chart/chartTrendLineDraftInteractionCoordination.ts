@@ -93,7 +93,7 @@ export function createChartTrendLineDraftInteractionPort(): ChartTrendLineDraftI
 
           if (
             state.status === 'tool-selected' &&
-            state.tool === 'trend-line' &&
+            (state.tool === 'trend-line' || state.tool === 'zone') &&
             anchors.length === 0
           ) {
             draft.appendAnchor(anchor);
@@ -102,7 +102,7 @@ export function createChartTrendLineDraftInteractionPort(): ChartTrendLineDraftI
 
           if (
             state.status === 'drawing' &&
-            state.tool === 'trend-line' &&
+            (state.tool === 'trend-line' || state.tool === 'zone') &&
             anchors.length === 1
           ) {
             draft.appendAnchor(anchor);
