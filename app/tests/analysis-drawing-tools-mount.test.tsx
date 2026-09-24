@@ -133,7 +133,7 @@ describe('Drawing tools hook and controls', () => {
     act(() => { fireEvent.click(button('Delete line')); });
     expect(group().getAttribute('data-drawing-count')).toBe('0');
     expect(latest!.getDrawings()).toHaveLength(0);
-    expect(button('Delete line').disabled).toBe(true);
+    expect(button('Delete').disabled).toBe(true);
     act(() => { latest!.lifecycle.detach(h.handle); });
     expect(group().getAttribute('data-drawing-status')).toBe('unavailable');
     expect(h.clickHandlers.size).toBe(0);

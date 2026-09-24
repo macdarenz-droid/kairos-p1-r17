@@ -125,7 +125,7 @@ export function AnalysisHistoryWorkspace({
     {selected ? <>
       <div className="kairos-analysis-chart__heading"><strong>{symbol} · {interval === '1M' ? '1 month' : interval}</strong><button type="button" onClick={() => setRevision(value => value + 1)}>Refresh candles</button></div>
       <div className="kairos-analysis-chart__controls">
-        <AnalysisDrawingToolsControls state={drawingTools.state} drawingCount={drawingTools.drawingCount} onSelectTrendLine={drawingTools.selectTrendLineTool} onCancel={drawingTools.cancel} onDeleteSelected={drawingTools.deleteSelected} />
+        <AnalysisDrawingToolsControls state={drawingTools.state} drawingCount={drawingTools.drawingCount} onSelectTrendLine={drawingTools.selectTrendLineTool} onCancel={drawingTools.cancel} onDeleteSelected={drawingTools.deleteSelected} onSelectZone={drawingTools.selectZoneTool} zoneCount={drawingTools.zoneCount} selectedKind={drawingTools.selectedKind} />
         <AnalysisSavedAnalysisControls ports={savedAnalysis} market={fact && interval ? analysisMarketReference(fact.instrument) : null} drawingCount={drawingTools.drawingCount} getDrawings={drawingTools.getDrawings} onLoad={drawingTools.loadDrawings} />
         <AnalysisTimeAssistedSnapshotControls instrument={fact ? fact.instrument : null} onSnapshot={estimateMarkers.present} markers={estimateMarkers.presentation} onShowWindow={estimateWindow.show} window={estimateWindow.last} />
       </div>
