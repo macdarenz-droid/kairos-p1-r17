@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { ReviewTradeLink } from './ReviewTradeLink';
 import { loadHomeYourTrades, YOUR_TRADES_HISTORY_LIMIT, type HomeYourTrade } from '../application/dashboard/homeDashboardYourTradesQuery';
@@ -8,7 +8,7 @@ import { useHomeDashboardGlassMotion } from './useHomeDashboardGlassMotion';
 import { projectYourTradeBubbleSizes } from './homeDashboardYourTradesSizing';
 import './homeDashboardYourTrades.css';
 
-export function HomeDashboardYourTrades({load=loadHomeYourTrades}:{readonly load?:()=>Promise<readonly HomeYourTrade[]>}) {
+export function HomeDashboardYourTrades({load=loadHomeYourTrades,glance}:{readonly load?:()=>Promise<readonly HomeYourTrade[]>;readonly glance?:ReactNode}) {
   const [trades,setTrades]=useState<readonly HomeYourTrade[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(false);
   const [page,setPage]=useState(0),[selected,setSelected]=useState<string|null>(null),[revision,setRevision]=useState(0);
   const field=useRef<HTMLDivElement>(null),[bounds,setBounds]=useState({width:0,height:320}),[hidden,setHidden]=useState(false);
@@ -40,6 +40,7 @@ export function HomeDashboardYourTrades({load=loadHomeYourTrades}:{readonly load
   const positions=new Map(layout.circles.map(c=>[c.key,c])),detail=trades.find(t=>t.id===selected);
   return <section className="kairos-your-trades kairos-glass-map" aria-label="Your Trades" data-motion={hidden?'paused':'running'}>
     <div className="kairos-your-trades__heading"><h2>Your Trades</h2><Link to="/journal">Log trade</Link></div>
+    {glance}
     <p className="kairos-your-trades__caption">One bubble per trade · Bigger profits, smaller losses · Color shows result</p>
     <p className="kairos-your-trades__caption">Profit sizes compare the same recorded currency. Missing results stay neutral.</p>
     <div className="kairos-your-trades__controls"><span>{trades.length} saved · Latest {YOUR_TRADES_HISTORY_LIMIT}</span><button type="button" onClick={refresh} disabled={loading}>Refresh</button></div>
