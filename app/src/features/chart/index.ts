@@ -111,6 +111,7 @@ export {
   defineChartDrawingInteractionState,
   type ChartDrawingInteractionStatus,
   type ChartDrawingInteractionState,
+  type ChartDrawingTool,
 } from './chartDrawingInteractionContract';
 export {
   defineChartDrawingInteractionEvent,
@@ -139,6 +140,9 @@ export {
   projectChartDrawingAnchor,
   projectChartDrawing,
   projectChartDrawings,
+  projectChartRiskBoxDrawing,
+  type ChartRiskBoxDrawingInput,
+  type RendererRiskBoxDrawing,
   type RendererDrawingAnchor,
   type RendererTrendLineDrawing,
   type RendererZoneDrawing,
@@ -169,6 +173,12 @@ export {
   createLightweightChartsV5TrendLinePaneRenderer,
   type LightweightChartsV5TrendLineStrokeStyle,
 } from './lightweightChartsV5TrendLinePaneRenderer';
+export {
+  paintLightweightChartsV5RiskRewardBox,
+  type LightweightChartsV5RiskRewardBoxGeometry,
+  type LightweightChartsV5RiskRewardBoxColors,
+  type LightweightChartsV5RiskRewardBoxPaintContext,
+} from './lightweightChartsV5RiskRewardBoxPaint';
 export {
   createLightweightChartsV5TrendLinePrimitive,
   type LightweightChartsV5TrendLinePrimitiveChartApi,
@@ -234,6 +244,7 @@ export {
   createLightweightChartsV5TrendLineDraftInteractionFromBinding,
   type LightweightChartsV5TrendLineEditEndpointClickLifecycleOptions,
   type LightweightChartsV5TrendLineEditClickExecutionLifecycleOptions,
+  type LightweightChartsV5DrawingAnchorInterceptor,
 } from './lightweightChartsV5TrendLineDraftInteractionComposition';
 export { constructChartTrendLineDrawingFromDraft } from './chartTrendLineDraftCommitConstruction';
 export {

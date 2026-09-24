@@ -13,6 +13,9 @@ import type { ChartTrendLineEditEndpoint } from './chartTrendLineEditConstructio
  * shape with one authoritative P18.48 trend-line endpoint so later mutation
  * coordination cannot accept an arbitrary execution-time endpoint.
  */
+/** The tool words: the saved drawing kinds plus the presentation-only risk box. */
+export type ChartDrawingTool = ChartDrawingKind | 'risk-box';
+
 export type ChartDrawingInteractionStatus =
   | 'idle'
   | 'tool-selected'
@@ -26,9 +29,9 @@ export type ChartDrawingInteractionStatus =
 
 export type ChartDrawingInteractionState =
   | { readonly status: 'idle' }
-  | { readonly status: 'tool-selected'; readonly tool: ChartDrawingKind }
-  | { readonly status: 'drawing'; readonly tool: ChartDrawingKind }
-  | { readonly status: 'preview'; readonly tool: ChartDrawingKind }
+  | { readonly status: 'tool-selected'; readonly tool: ChartDrawingTool }
+  | { readonly status: 'drawing'; readonly tool: ChartDrawingTool }
+  | { readonly status: 'preview'; readonly tool: ChartDrawingTool }
   | { readonly status: 'committed'; readonly drawingId: ChartDrawingId }
   | { readonly status: 'selected'; readonly drawingId: ChartDrawingId }
   | { readonly status: 'cancelled' }

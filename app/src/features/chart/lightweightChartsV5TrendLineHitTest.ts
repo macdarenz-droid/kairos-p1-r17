@@ -9,7 +9,7 @@ export interface LightweightChartsV5TrendLineEditEndpointHit {
 }
 export interface LightweightChartsV5TrendLineHit {
   readonly id: string;
-  readonly kind: 'trend-line' | 'zone';
+  readonly kind: 'trend-line' | 'zone' | 'risk-box';
   readonly cursorStyle: 'pointer';
 }
 
@@ -70,6 +70,8 @@ export function hitTestLightweightChartsV5TrendLineEditEndpoints(
   const toleranceSquared = tolerancePx * tolerancePx;
   for (let index = segments.length - 1; index >= 0; index -= 1) {
     const segment = segments[index];
+    // Box handles are not editable yet.
+    if (segment.kind === 'risk-box') continue;
     const startDistance = squaredDistanceToPoint(x, y, segment.start);
     const endDistance = squaredDistanceToPoint(x, y, segment.end);
     const startHit = startDistance <= toleranceSquared;
@@ -106,7 +108,7 @@ export function hitTestLightweightChartsV5TrendLineSegments(
     throw new Error('chart-drawing-hit-test-invalid-input');
   }
   const toleranceSquared = tolerancePx * tolerancePx;
-  // Lines first (latest on top), then zones: a line crossing a zone wins.
+  // Lines first (latest on top), then zones and boxes: a line crossing a zone or box wins.
   for (let index = segments.length - 1; index >= 0; index -= 1) {
     const segment = segments[index];
     if (segment.kind !== 'trend-line') continue;
@@ -116,13 +118,16 @@ export function hitTestLightweightChartsV5TrendLineSegments(
   }
   for (let index = segments.length - 1; index >= 0; index -= 1) {
     const segment = segments[index];
-    if (segment.kind !== 'zone') continue;
+    if (segment.kind === 'trend-line') continue;
+    const ys = segment.kind === 'risk-box' && segment.target !== undefined
+      ? [segment.start.y, segment.end.y, segment.target.y]
+      : [segment.start.y, segment.end.y];
     const left = Math.min(segment.start.x, segment.end.x) - tolerancePx;
     const right = Math.max(segment.start.x, segment.end.x) + tolerancePx;
-    const top = Math.min(segment.start.y, segment.end.y) - tolerancePx;
-    const bottom = Math.max(segment.start.y, segment.end.y) + tolerancePx;
+    const top = Math.min(...ys) - tolerancePx;
+    const bottom = Math.max(...ys) + tolerancePx;
     if (x >= left && x <= right && y >= top && y <= bottom) {
-      return { id: segment.id, kind: 'zone', cursorStyle: 'pointer' };
+      return { id: segment.id, kind: segment.kind, cursorStyle: 'pointer' };
     }
   }
   return null;

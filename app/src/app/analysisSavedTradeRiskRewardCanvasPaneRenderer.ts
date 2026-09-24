@@ -1,4 +1,5 @@
 import type { IPrimitivePaneRenderer } from 'lightweight-charts';
+import { paintLightweightChartsV5RiskRewardBox } from '../features/chart/lightweightChartsV5RiskRewardBoxPaint';
 import type {
   AnalysisSavedTradeRiskRewardCoordinateProjection,
   AnalysisSavedTradeRiskRewardScreenObject,
@@ -120,49 +121,20 @@ function createPaneRenderer(
   screen: AnalysisSavedTradeRiskRewardScreenObject,
   style: ResolvedCanvasStyle,
 ): IPrimitivePaneRenderer {
-  const snapshot = {
-    levels: [
-      { ...screen.levels.entry, start: { ...screen.levels.entry.start }, end: { ...screen.levels.entry.end }, color: style.entry },
-      { ...screen.levels.stop, start: { ...screen.levels.stop.start }, end: { ...screen.levels.stop.end }, color: style.stop },
-      { ...screen.levels.target, start: { ...screen.levels.target.start }, end: { ...screen.levels.target.end }, color: style.target },
-    ],
-    zones: [
-      { ...screen.zones.risk, color: style.risk },
-      { ...screen.zones.reward, color: style.reward },
-    ],
-  };
+  // hasExactScreenEvidence guarantees the zones and levels share one extent and edges.
+  const geometry = Object.freeze({
+    startX: screen.levels.entry.start.x,
+    endX: screen.levels.entry.end.x,
+    entryY: screen.levels.entry.start.y,
+    stopY: screen.levels.stop.start.y,
+    targetY: screen.levels.target.start.y,
+  });
+  const colors = Object.freeze({ entry: style.entry, stop: style.stop, target: style.target, risk: style.risk, reward: style.reward });
 
   return Object.freeze({
     draw(target: Parameters<IPrimitivePaneRenderer['draw']>[0]): void {
       target.useBitmapCoordinateSpace((scope) => {
-        const { context, horizontalPixelRatio, verticalPixelRatio } = scope;
-        const bitmapLineWidth = Math.max(1, Math.round(style.lineWidth * horizontalPixelRatio));
-
-        context.save();
-        try {
-          context.globalAlpha = style.zoneOpacity;
-          for (const zone of snapshot.zones) {
-            context.fillStyle = zone.color;
-            context.fillRect(
-              zone.startX * horizontalPixelRatio,
-              zone.fromY * verticalPixelRatio,
-              (zone.endX - zone.startX) * horizontalPixelRatio,
-              (zone.toY - zone.fromY) * verticalPixelRatio,
-            );
-          }
-
-          context.globalAlpha = 1;
-          context.lineWidth = bitmapLineWidth;
-          for (const level of snapshot.levels) {
-            context.strokeStyle = level.color;
-            context.beginPath();
-            context.moveTo(level.start.x * horizontalPixelRatio, level.start.y * verticalPixelRatio);
-            context.lineTo(level.end.x * horizontalPixelRatio, level.end.y * verticalPixelRatio);
-            context.stroke();
-          }
-        } finally {
-          context.restore();
-        }
+        paintLightweightChartsV5RiskRewardBox(scope.context, scope.horizontalPixelRatio, scope.verticalPixelRatio, geometry, colors, style.lineWidth, style.zoneOpacity);
       });
     },
   });

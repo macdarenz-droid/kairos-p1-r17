@@ -1,4 +1,6 @@
 import type { ChartEngineSeriesHandle } from './chartEngineDriver';
+import type { ChartDrawingAnchor } from './chartDrawingContract';
+import type { ChartDrawingInteractionStatus } from './chartDrawingInteractionContract';
 import type { ChartDrawingInteractionStateListener } from './chartDrawingInteractionPort';
 import type { ChartDrawingCollectionSession } from './chartDrawingCollection';
 import type { ChartDrawingPresentationDrawingRefreshSession } from './chartDrawingPresentationPort';
@@ -19,6 +21,16 @@ export interface LightweightChartsV5TrendLineEditEndpointClickLifecycleOptions {
   readonly getCurrentSegments: () => readonly LightweightChartsV5TrendLineScreenSegment[];
   readonly tolerancePx: number;
 }
+
+/**
+ * Lets a caller take a projected click anchor for its own tool (the three-tap
+ * risk box). `preClickStatus` is the interaction status before this click's raw
+ * provider evidence was coordinated. Returning true consumes the anchor.
+ */
+export type LightweightChartsV5DrawingAnchorInterceptor = (
+  anchor: ChartDrawingAnchor,
+  preClickStatus: ChartDrawingInteractionStatus,
+) => boolean;
 
 export interface LightweightChartsV5TrendLineEditClickExecutionLifecycleOptions {
   readonly collection: ChartDrawingCollectionSession;
@@ -50,6 +62,10 @@ export interface LightweightChartsV5TrendLineEditClickExecutionLifecycleOptions 
  * to P18.51R3. This prevents the endpoint-initiation click itself from immediately executing
  * a zero-movement edit. All non-edit anchors continue through the unchanged P18.29 path.
  *
+ * An optional `interceptAnchor` sees every non-null projected anchor first, with the
+ * status recorded before that click; when it returns true the anchor reaches neither
+ * edit execution nor the two-anchor draft.
+ *
  * Provider subscription setup failure destroys the just-created neutral session
  * before rethrowing. destroy() detaches provider click delivery before destroying
  * the neutral session and is idempotent through the composed owners.
@@ -67,13 +83,17 @@ export function createLightweightChartsV5TrendLineDraftInteractionFromBinding(
   getCurrentRendererDrawings?: () => readonly RendererChartDrawing[],
   editEndpointClick?: LightweightChartsV5TrendLineEditEndpointClickLifecycleOptions,
   editExecution?: LightweightChartsV5TrendLineEditClickExecutionLifecycleOptions,
+  interceptAnchor?: LightweightChartsV5DrawingAnchorInterceptor,
 ): ChartTrendLineDraftInteractionSession {
   const draftInteraction = createChartTrendLineDraftInteractionPort().create(onStateChange);
   let routeProjectedAnchorToExistingEdit = false;
+  let preClickStatus: ChartDrawingInteractionStatus = draftInteraction.getState().status;
 
   const acceptProjectedAnchor = (anchor: Parameters<ChartTrendLineDraftInteractionSession['acceptAnchor']>[0]): void => {
     const shouldExecuteEdit = routeProjectedAnchorToExistingEdit;
     routeProjectedAnchorToExistingEdit = false;
+
+    if (interceptAnchor !== undefined && anchor !== null && interceptAnchor(anchor, preClickStatus)) return;
 
     if (shouldExecuteEdit && editExecution !== undefined) {
       if (anchor === null) return;
@@ -96,9 +116,10 @@ export function createLightweightChartsV5TrendLineDraftInteractionFromBinding(
         binding,
         handle,
         acceptProjectedAnchor,
-        editEndpointClick === undefined && editExecution === undefined
+        editEndpointClick === undefined && editExecution === undefined && interceptAnchor === undefined
           ? undefined
           : (event) => {
+              preClickStatus = draftInteraction.getState().status;
               routeProjectedAnchorToExistingEdit =
                 editExecution !== undefined && draftInteraction.getState().status === 'editing';
 
@@ -118,6 +139,7 @@ export function createLightweightChartsV5TrendLineDraftInteractionFromBinding(
         handle,
         acceptProjectedAnchor,
         (event) => {
+          preClickStatus = draftInteraction.getState().status;
           routeProjectedAnchorToExistingEdit =
             editExecution !== undefined && draftInteraction.getState().status === 'editing';
 

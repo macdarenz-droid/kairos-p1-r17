@@ -13,6 +13,10 @@ export interface LightweightChartsV5TrendLineScreenSegment {
   readonly kind: RendererChartDrawing['kind'];
   readonly start: { readonly x: number; readonly y: number };
   readonly end: { readonly x: number; readonly y: number };
+  /** Risk boxes only: the target level at the right edge. */
+  readonly target?: { readonly x: number; readonly y: number };
+  /** Risk boxes only: the box's label. */
+  readonly label?: string;
 }
 
 /**
@@ -37,6 +41,20 @@ export function projectLightweightChartsV5TrendLineSegments(
     const endY = series.priceToCoordinate(drawing.end.value);
 
     if (startX === null || startY === null || endX === null || endY === null) {
+      continue;
+    }
+
+    if (drawing.kind === 'risk-box') {
+      const targetY = series.priceToCoordinate(drawing.target);
+      if (targetY === null) continue;
+      segments.push({
+        id: drawing.id,
+        kind: 'risk-box',
+        start: { x: startX, y: startY },
+        end: { x: endX, y: endY },
+        target: { x: endX, y: targetY },
+        label: drawing.label,
+      });
       continue;
     }
 

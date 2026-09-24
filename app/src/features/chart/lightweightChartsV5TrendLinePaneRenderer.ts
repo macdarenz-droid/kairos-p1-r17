@@ -1,5 +1,9 @@
 import type { IPrimitivePaneRenderer } from 'lightweight-charts';
 import type { LightweightChartsV5TrendLineScreenSegment } from './lightweightChartsV5TrendLineCoordinateProjection';
+import {
+  paintLightweightChartsV5RiskRewardBox,
+  type LightweightChartsV5RiskRewardBoxColors,
+} from './lightweightChartsV5RiskRewardBoxPaint';
 
 export interface LightweightChartsV5TrendLineStrokeStyle {
   readonly color: string;
@@ -8,10 +12,14 @@ export interface LightweightChartsV5TrendLineStrokeStyle {
   readonly zoneColor?: string;
   /** Zone fill opacity from 0 to 1; defaults to 0.15. */
   readonly zoneFillOpacity?: number;
+  /** Risk box colours; without them risk boxes are not drawn. */
+  readonly riskBox?: LightweightChartsV5RiskRewardBoxColors;
 }
 
 const DEFAULT_ZONE_FILL_OPACITY = 0.15;
 const ZONE_HANDLE_SIZE_CSS_PX = 6;
+const RISK_BOX_LABEL_FONT_CSS_PX = 12;
+const RISK_BOX_LABEL_OFFSET_CSS_PX = 4;
 
 /**
  * P18.6 provider pane-rendering invariant:
@@ -29,6 +37,7 @@ export function createLightweightChartsV5TrendLinePaneRenderer(
     ...segment,
     start: { ...segment.start },
     end: { ...segment.end },
+    ...(segment.target === undefined ? {} : { target: { ...segment.target } }),
   }));
 
   return {
@@ -39,7 +48,44 @@ export function createLightweightChartsV5TrendLinePaneRenderer(
 
         context.save();
         try {
-          // Zones first, so lines stay on top. Fill APIs are touched only when a zone exists.
+          // Risk boxes first, under zones and lines. Text APIs are touched only when a box exists.
+          const boxes = style.riskBox === undefined ? [] : snapshot.filter((segment) => segment.kind === 'risk-box');
+          if (style.riskBox !== undefined && boxes.length > 0) {
+            const colors = style.riskBox;
+            const handleWidth = ZONE_HANDLE_SIZE_CSS_PX * horizontalPixelRatio;
+            const handleHeight = ZONE_HANDLE_SIZE_CSS_PX * verticalPixelRatio;
+            for (const box of boxes) {
+              if (box.target === undefined) continue;
+              paintLightweightChartsV5RiskRewardBox(
+                context,
+                horizontalPixelRatio,
+                verticalPixelRatio,
+                { startX: box.start.x, endX: box.end.x, entryY: box.start.y, stopY: box.end.y, targetY: box.target.y },
+                colors,
+                style.lineWidth,
+                1,
+              );
+              context.fillStyle = colors.entry;
+              if (box.label !== undefined && box.label !== '') {
+                context.font = `${Math.round(RISK_BOX_LABEL_FONT_CSS_PX * verticalPixelRatio)}px sans-serif`;
+                context.fillText(
+                  box.label,
+                  (box.start.x + RISK_BOX_LABEL_OFFSET_CSS_PX) * horizontalPixelRatio,
+                  (box.start.y - RISK_BOX_LABEL_OFFSET_CSS_PX) * verticalPixelRatio,
+                );
+              }
+              for (const handle of [box.start, box.end, box.target]) {
+                context.fillRect(
+                  handle.x * horizontalPixelRatio - handleWidth / 2,
+                  handle.y * verticalPixelRatio - handleHeight / 2,
+                  handleWidth,
+                  handleHeight,
+                );
+              }
+            }
+          }
+
+          // Zones next, so lines stay on top. Fill APIs are touched only when a zone exists.
           const zones = snapshot.filter((segment) => segment.kind === 'zone');
           if (zones.length > 0) {
             const zoneColor = style.zoneColor ?? style.color;
