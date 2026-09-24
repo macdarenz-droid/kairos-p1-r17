@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router';
 import { JournalRoute } from '../src/app/JournalRoute';
 import { PracticeRoute } from '../src/app/PracticeRoute';
-import { defineSavedAnalysis } from '../src/app/savedAnalysisContract';
+import { defineSavedAnalysis } from '../src/domain/saved-records/savedAnalysisContract';
 import { savePracticeTrade } from '../src/application/practice';
 import { saveManualTrade } from '../src/application/trades';
 import { createKairosDatabase, openKairosDatabase } from '../src/data/database';

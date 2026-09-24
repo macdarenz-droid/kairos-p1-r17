@@ -1,4 +1,5 @@
 import { createContext } from 'react';
+import type { ChartVisibleTimeRange } from '../features/chart';
 import type { AnalysisLiveCandleReactBindingOptions } from './useAnalysisLiveCandleRouteSession';
 import type { AnalysisSavedTradeOverlayReactBindingOptions } from './useAnalysisSavedTradeOverlayPresentationSession';
 
@@ -16,3 +17,10 @@ export const AnalysisOverlaySessionFactoryContext = createContext<AnalysisSavedT
  * React binding; it never constructs the route session itself.
  */
 export const AnalysisLiveSessionFactoryContext = createContext<AnalysisLiveCandleReactBindingOptions['createSession'] | null>(null);
+
+/**
+ * Optional first view for the saved-trade chart: the trade's time window.
+ * The overlay canvas passes it to the renderer session, which shows it instead
+ * of the latest candles when it overlaps them. Null means the latest candles.
+ */
+export const AnalysisTradeWindowContext = createContext<ChartVisibleTimeRange | null>(null);

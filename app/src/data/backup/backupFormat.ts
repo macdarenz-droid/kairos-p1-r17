@@ -1,5 +1,5 @@
-import type { SavedAnalysis } from '../../app/savedAnalysisContract';
-import type { SavedTimeAssistedSnapshot } from '../../app/savedTimeAssistedSnapshotContract';
+import type { SavedAnalysis } from '../../domain/saved-records/savedAnalysisContract';
+import type { SavedTimeAssistedSnapshot } from '../../domain/saved-records/savedTimeAssistedSnapshotContract';
 import type { TradeDisciplineRecord } from '../../domain/discipline';
 import type { DatabaseMetadataRecord, DatabaseTradeExecutionRecord, DatabaseTradeFeeRecord, DatabaseTradePlanRecord, DatabaseTradeRecord } from '../database/schema';
 

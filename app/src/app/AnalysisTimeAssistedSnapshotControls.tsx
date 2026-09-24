@@ -4,7 +4,7 @@ import type { MarketCandleHistoryPort } from '../services/market-data/MarketCand
 import type { MarketDataInstrument } from '../services/market-data/marketDataTypes';
 import { analysisHistoryPorts } from './analysisHistoryPorts';
 import { useAnalysisHandoff } from './analysisHandoff';
-import { SAVED_RECORD_LABEL_MAX_LENGTH } from './savedRecordLabel';
+import { SAVED_RECORD_LABEL_MAX_LENGTH } from '../domain/saved-records/savedRecordLabel';
 import { analysisSavedTimeAssistedSnapshotPorts, savedTimeAssistedSnapshotToSnapshot, type AnalysisSavedTimeAssistedSnapshotPorts, type AnalysisSavedTimeAssistedSnapshotSummary } from './analysisSavedTimeAssistedSnapshotRoundTrip';
 import type { AnalysisTimeAssistedMarkerSessionPresentation } from './analysisTimeAssistedMarkerSession';
 import type { AnalysisTimeAssistedWindowRange, AnalysisTimeAssistedWindowResult } from './analysisTimeAssistedWindowSession';

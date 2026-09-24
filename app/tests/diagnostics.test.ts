@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildInfo } from '../src/app/buildInfo';
+import { buildInfo } from '../src/shared/config/buildInfo';
 import { describeThrownValue, DiagnosticsService } from '../src/diagnostics/DiagnosticsService';
 
 describe('describeThrownValue', () => {

@@ -14,6 +14,7 @@ import { VisualPnlCalendar } from './VisualPnlCalendar';
 import { VisualPnlStreak } from './VisualPnlStreak';
 import { VisualPnlPerformanceSummary } from './VisualPnlPerformanceSummary';
 import { VisualPnlCumulativeProgress } from './VisualPnlCumulativeProgress';
+import { DeviceTimeZoneButton } from '../features/settings/DeviceTimeZoneButton';
 
 interface JournalDailyResultsProps {
   readonly db: KairosDatabase;
@@ -37,6 +38,7 @@ type JournalDailyResultsState =
 export function JournalDailyResults({ db, refreshRevision }: JournalDailyResultsProps) {
   const [state, setState] = useState<JournalDailyResultsState>({ kind: 'loading' });
   const repositories = useMemo(() => createKairosRepositories(db), [db]);
+  const [localRevision, setLocalRevision] = useState(0);
 
   useEffect(() => {
     let ignore = false;
@@ -64,7 +66,7 @@ export function JournalDailyResults({ db, refreshRevision }: JournalDailyResults
     return () => {
       ignore = true;
     };
-  }, [db, repositories, refreshRevision]);
+  }, [db, repositories, refreshRevision, localRevision]);
 
   if (state.kind === 'ready') {
     return (
@@ -93,6 +95,7 @@ export function JournalDailyResults({ db, refreshRevision }: JournalDailyResults
             ? 'Choose a time zone in Settings to view daily results.'
             : 'Kairos could not load daily results. Your stored trades were not changed.'}
       </p>
+      {state.kind === 'unconfigured' ? <DeviceTimeZoneButton metadata={repositories.metadata} onSaved={() => setLocalRevision(value => value + 1)} /> : null}
     </section>
   );
 }

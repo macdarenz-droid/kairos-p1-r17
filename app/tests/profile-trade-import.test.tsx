@@ -4,7 +4,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router';
 import { ProfileRoute } from '../src/app/ProfileRoute';
-import { defineSavedAnalysis } from '../src/app/savedAnalysisContract';
+import { defineSavedAnalysis } from '../src/domain/saved-records/savedAnalysisContract';
 import { exportKairosBackup, type BackupDownloadPorts } from '../src/application/backup';
 import { listJournalHistory } from '../src/application/journal';
 import { saveManualTrade } from '../src/application/trades';

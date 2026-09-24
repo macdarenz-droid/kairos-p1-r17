@@ -1,4 +1,4 @@
-import type { SavedTimeAssistedSnapshot, SavedTimeAssistedSnapshotId } from '../../app/savedTimeAssistedSnapshotContract';
+import type { SavedTimeAssistedSnapshot, SavedTimeAssistedSnapshotId } from '../../domain/saved-records/savedTimeAssistedSnapshotContract';
 import type { KairosDatabase } from '../../data/database/KairosDatabase';
 import { createKairosRepositories } from '../../data/repositories';
 

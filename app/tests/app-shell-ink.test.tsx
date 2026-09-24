@@ -4,6 +4,7 @@ import { AppShell } from '../src/app/AppShell';
 import { RouterProvider } from 'react-router/dom';
 import { describe, expect, it, vi } from 'vitest';
 import { appRoutes } from '../src/app/routes';
+import { ThemeProvider } from '../src/design-system/themes';
 import packageJson from '../package.json' with { type: 'json' };
 
 vi.mock('../src/app/HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTextEvidenceRuntime', () => ({
@@ -12,7 +13,7 @@ vi.mock('../src/app/HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTex
 
 function renderPath(path: string) {
   const router = createMemoryRouter(appRoutes, { initialEntries: [path] });
-  render(<RouterProvider router={router} />);
+  render(<ThemeProvider><RouterProvider router={router} /></ThemeProvider>);
   return router;
 }
 

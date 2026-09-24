@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { loadGoalsProgress, writeGoalsPreference, type GoalsPreference, type GoalsPreferenceInvalidReason, type GoalsProgressProjection, type GoalsProgressQueryResult } from '../application/goals';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
 import { createKairosRepositories } from '../data/repositories';
+import { DeviceTimeZoneButton } from '../features/settings/DeviceTimeZoneButton';
 import './goalsRoute.css';
 
 interface GoalsRouteProps {
@@ -111,6 +112,7 @@ export function GoalsRoute({ db = kairosDatabase, now = wallClock }: GoalsRouteP
     {state.kind === 'loading' ? <p className="kairos-goals__note">Loading your goals…</p> : null}
     {state.kind === 'error' ? <p role="alert">Kairos could not load your goals.</p> : null}
     {state.kind === 'ready' && state.result.kind === 'time-zone-unconfigured' ? <p className="kairos-goals__unconfigured" role="status">Goals follow your daily-results calendar. <Link to="/settings">Set your time zone in Settings</Link> first.</p> : null}
+    {state.kind === 'ready' && state.result.kind === 'time-zone-unconfigured' ? <DeviceTimeZoneButton metadata={repositories.metadata} onSaved={() => { void load(() => false); }} /> : null}
     {state.kind === 'ready' && state.result.kind === 'ready' ? <Progress progress={state.result.progress} /> : null}
     <form className="kairos-goals-card kairos-goals__form" onSubmit={handleSubmit} noValidate>
       <div><h2>Your targets</h2><p>Leave a field blank to keep no target. Targets are yours to change any time; they never alter your journal.</p></div>

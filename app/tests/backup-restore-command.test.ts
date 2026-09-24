@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { defineSavedAnalysis } from '../src/app/savedAnalysisContract';
+import { defineSavedAnalysis } from '../src/domain/saved-records/savedAnalysisContract';
 import { commitBackupRestore, exportKairosBackup, KAIROS_BACKUP_RESTORE_MAX_BYTES, prepareBackupRestore } from '../src/application/backup';
 import { createKairosBackupEnvelope, serializeKairosBackup } from '../src/data/backup';
 import { createKairosDatabase } from '../src/data/database';

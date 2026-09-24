@@ -5,7 +5,18 @@ import {
 } from '../application/visual-pnl';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
 import { createKairosRepositories } from '../data/repositories';
+import { DeviceTimeZoneButton } from '../features/settings/DeviceTimeZoneButton';
+import { ThemePicker } from '../features/settings/ThemePicker';
 import './settingsRoute.css';
+
+/** Every zone the browser knows, plus UTC and the saved value; empty when the browser cannot list zones. */
+function listTimeZoneOptions(saved: string | null): readonly string[] {
+  const supportedValuesOf = (Intl as { supportedValuesOf?: (key: 'timeZone') => string[] }).supportedValuesOf;
+  if (typeof supportedValuesOf !== 'function') return [];
+  let zones: string[];
+  try { zones = supportedValuesOf('timeZone'); } catch { return []; }
+  return [...new Set([...zones, 'UTC', ...(saved === null ? [] : [saved])])];
+}
 
 interface SettingsRouteProps {
   readonly db?: KairosDatabase;
@@ -30,6 +41,7 @@ export function SettingsRoute({ db = kairosDatabase }: SettingsRouteProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
+  const timeZoneOptions = useMemo(() => listTimeZoneOptions(savedTimeZone), [savedTimeZone]);
 
   useEffect(() => {
     let ignore = false;
@@ -86,7 +98,7 @@ export function SettingsRoute({ db = kairosDatabase }: SettingsRouteProps) {
       <form className="kairos-settings-card" onSubmit={handleSubmit} noValidate>
         <div>
           <h2>Daily results time zone</h2>
-          <p>Choose which calendar day Kairos should use when grouping closed trades. Kairos will not guess this setting from your device.</p>
+          <p>Choose which calendar day Kairos should use when grouping closed trades. Kairos never changes this by itself.</p>
         </div>
 
         <label className="kairos-settings-field" htmlFor="kairos-daily-results-time-zone">
@@ -100,7 +112,9 @@ export function SettingsRoute({ db = kairosDatabase }: SettingsRouteProps) {
             autoComplete="off"
             spellCheck={false}
             disabled={isLoading || isSaving}
+            list={timeZoneOptions.length > 0 ? 'kairos-time-zone-options' : undefined}
           />
+          {timeZoneOptions.length > 0 ? <datalist id="kairos-time-zone-options">{timeZoneOptions.map(zone => <option key={zone} value={zone} />)}</datalist> : null}
           <small>Use an IANA time zone, for example Australia/Sydney, America/New_York, Europe/London, or UTC.</small>
         </label>
 
@@ -110,6 +124,7 @@ export function SettingsRoute({ db = kairosDatabase }: SettingsRouteProps) {
           </button>
           <span>{savedTimeZone === null ? 'Not configured' : `Current: ${savedTimeZone}`}</span>
         </div>
+        {!isLoading && savedTimeZone === null ? <DeviceTimeZoneButton metadata={repositories.metadata} onSaved={(zone) => { setSavedTimeZone(zone); setTimeZone(zone); setFeedback({ kind: 'success', message: 'Daily-results time zone saved.' }); }} /> : null}
 
         {feedback ? (
           <p className={`kairos-settings-card__feedback kairos-settings-card__feedback--${feedback.kind}`} role={feedback.kind === 'error' ? 'alert' : 'status'}>
@@ -117,6 +132,8 @@ export function SettingsRoute({ db = kairosDatabase }: SettingsRouteProps) {
           </p>
         ) : null}
       </form>
+
+      <ThemePicker />
     </section>
   );
 }

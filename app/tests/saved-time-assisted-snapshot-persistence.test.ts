@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
 import { afterEach, describe, expect, it } from 'vitest';
-import { defineSavedTimeAssistedSnapshot, type SavedTimeAssistedSnapshot } from '../src/app/savedTimeAssistedSnapshotContract';
+import { defineSavedTimeAssistedSnapshot, type SavedTimeAssistedSnapshot } from '../src/domain/saved-records/savedTimeAssistedSnapshotContract';
 import { KAIROS_BACKUP_FORMAT_NAME, KairosRestorePreflightError, createKairosBackupEnvelope, createKairosDatabaseSnapshot, parseKairosBackup, preflightKairosRestore, prepareKairosRestore, replaceKairosDatabaseFromPreparedRestore, restoreAndVerifyKairosDatabase, serializeKairosBackup } from '../src/data/backup';
 import { DatabaseIntegrityError, KAIROS_DB_SCHEMA_VERSION, KAIROS_V5_STORES, assertKairosDatabaseIntegrity, createKairosDatabase, inspectKairosDatabaseIntegrity, openKairosDatabase } from '../src/data/database';
 import { createKairosRepositories } from '../src/data/repositories';

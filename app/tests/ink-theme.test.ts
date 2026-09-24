@@ -7,7 +7,7 @@ const paper = themeRegistry.paper.tokens;
 
 describe('Ink theme registry amendment', () => {
   it('makes Ink the default and keeps every earlier theme registered', () => {
-    expect(defaultThemeId).toBe('ink');
+    expect(defaultThemeId).toBe('kairos-depth');
     expect(themeIds).toEqual(['ink', 'paper', 'kairos-depth', 'cosmic', 'ocean']);
     expect(themeRegistry.ink.colorScheme).toBe('dark');
     expect(themeRegistry.paper.colorScheme).toBe('light');

@@ -1,8 +1,8 @@
 import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
 import { afterEach, describe, expect, it } from 'vitest';
-import { defineSavedAnalysis } from '../src/app/savedAnalysisContract';
-import { defineSavedTimeAssistedSnapshot } from '../src/app/savedTimeAssistedSnapshotContract';
+import { defineSavedAnalysis } from '../src/domain/saved-records/savedAnalysisContract';
+import { defineSavedTimeAssistedSnapshot } from '../src/domain/saved-records/savedTimeAssistedSnapshotContract';
 import { buildSavedRecordIndex, filterSavedRecordIndex, listSavedRecordIndex } from '../src/application/library';
 import { createKairosDatabase, openKairosDatabase } from '../src/data/database';
 import { createKairosRepositories } from '../src/data/repositories';

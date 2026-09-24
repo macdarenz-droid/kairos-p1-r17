@@ -96,3 +96,17 @@
 .kairos-review .kairos-position-box__row[data-role="risk"] dd { color: var(--kairos-trade-loss); }
 .kairos-review .kairos-position-box__levels { padding-top: var(--kairos-space-2); border-top: 1px solid var(--kairos-border-hairline); }
 .kairos-review .kairos-position-box--unavailable strong, .kairos-review .kairos-position-box--pending p { color: var(--kairos-text-secondary); }
+
+/* T-007: searchable symbol picker, and the chart before its tools on phones. */
+.kairos-analysis-chart__controls { display: grid; gap: var(--kairos-space-3); min-width: 0; }
+.kairos-symbol-picker { position: relative; display: grid; gap: var(--kairos-space-2); color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-sm); min-width: 0; }
+.kairos-symbol-picker input { width: 100%; min-width: 0; }
+.kairos-symbol-picker__list { position: absolute; z-index: 5; top: 100%; left: 0; right: 0; max-height: 18rem; overflow: auto; margin: var(--kairos-space-1) 0 0; padding: var(--kairos-space-1); list-style: none; border: 1px solid var(--kairos-border-strong); border-radius: var(--kairos-radius-md); background: var(--kairos-surface-raised); box-shadow: var(--kairos-shadow-md, 0 8px 24px rgb(0 0 0 / 0.25)); }
+.kairos-symbol-picker__list[hidden] { display: none; }
+.kairos-symbol-picker__option { padding: var(--kairos-space-2); border-radius: var(--kairos-radius-sm); color: var(--kairos-text-primary); font-family: var(--kairos-font-mono); cursor: pointer; }
+.kairos-symbol-picker__option[aria-selected="true"], .kairos-symbol-picker__option:hover { background: var(--kairos-accent-soft); }
+.kairos-symbol-picker__empty { margin: 0; color: var(--kairos-text-secondary); }
+@media (max-width: 600px) {
+  .kairos-analysis-chart__controls { order: 1; }
+  .kairos-analysis-chart > .kairos-analysis-chart__note, .kairos-analysis-chart > a { order: 2; }
+}

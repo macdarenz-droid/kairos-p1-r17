@@ -1,5 +1,4 @@
-import type { EstimatedMarketReference, TimeAssistedTradeSide } from '../application/market-reference';
-import type { ChartMarketReference } from '../features/chart';
+import type { StoredChartMarketReference, StoredEstimatedMarketReference, StoredTimeAssistedTradeSide } from './storedShapes';
 
 export type SavedTimeAssistedSnapshotId = string;
 
@@ -16,8 +15,8 @@ export type SavedTimeAssistedSnapshotId = string;
  */
 export interface SavedTimeAssistedSnapshot {
   readonly id: SavedTimeAssistedSnapshotId;
-  readonly market: ChartMarketReference;
-  readonly side: TimeAssistedTradeSide;
+  readonly market: StoredChartMarketReference;
+  readonly side: StoredTimeAssistedTradeSide;
   /** The opening instant exactly as entered, and its UTC normalisation. */
   readonly openedAt: string;
   readonly openedAtUtc: string;
@@ -26,8 +25,8 @@ export interface SavedTimeAssistedSnapshot {
   readonly closedAtUtc: string | null;
   /** The IANA time zone the instants were entered in (device time zone at save time). */
   readonly inputTimeZone: string;
-  readonly opening: EstimatedMarketReference;
-  readonly closing: EstimatedMarketReference | null;
+  readonly opening: StoredEstimatedMarketReference;
+  readonly closing: StoredEstimatedMarketReference | null;
   readonly durationMs: number | null;
   readonly savedAt: string;
   readonly isEstimate: true;

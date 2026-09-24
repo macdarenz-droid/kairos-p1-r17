@@ -1,26 +1,30 @@
 export const themeIds = ['ink', 'paper', 'kairos-depth', 'cosmic', 'ocean'] as const;
 export type ThemeId = (typeof themeIds)[number];
 export type ThemePreference = ThemeId | 'system';
-export const defaultThemeId: ThemeId = 'ink';
+/** Kairos Depth in the vision colours is the default look (DECISIONS D5); a saved choice still wins. */
+export const defaultThemeId: ThemeId = 'kairos-depth';
 
 export type ThemeDefinition = Readonly<{
   id: ThemeId;
+  /** Plain name shown in the theme picker. */
+  label: string;
   colorScheme: 'dark' | 'light';
   tokens: Readonly<Record<string, string>>;
 }>;
 
 type ThemeTokenMap = Readonly<Record<string, string>>;
 
+// Vision colours (D5): Depth Black base, Navy Layer raised surface, Cyan primary, Violet secondary.
 const kairosDepthTokens: ThemeTokenMap = {
   // Stable instrument identity, independent of price direction and active theme.
   '--kairos-bubble-identity-btc': '#ffc65c', '--kairos-bubble-identity-eth': '#9be7ff',
   // Approved V5 decorative rim palette; cosmic and ocean inherit the same glass artwork identity.
   '--kairos-bubble-smoke-1': '#5adfff85', '--kairos-bubble-smoke-2': '#9366e94d', '--kairos-bubble-smoke-3': '#46dfff6b', '--kairos-bubble-smoke-4': '#b879ff66',
-  '--kairos-background-base': '#070b12', '--kairos-background-depth': '#03060b', '--kairos-background-overlay': 'rgba(0,0,0,.72)',
-  '--kairos-surface-card': '#0d1420', '--kairos-surface-raised': '#121c2a', '--kairos-surface-input': '#09111b', '--kairos-surface-modal': '#101927',
+  '--kairos-background-base': '#0b0d14', '--kairos-background-depth': '#03060b', '--kairos-background-overlay': 'rgba(0,0,0,.72)',
+  '--kairos-surface-card': '#0d1420', '--kairos-surface-raised': '#131a2e', '--kairos-surface-input': '#09111b', '--kairos-surface-modal': '#101927',
   '--kairos-border-default': '#26384a', '--kairos-border-subtle': '#182838', '--kairos-border-active': '#59dcff',
   '--kairos-text-primary': '#f2f8fb', '--kairos-text-secondary': '#b5c7d1', '--kairos-text-muted': '#7f96a3', '--kairos-text-disabled': '#526572',
-  '--kairos-accent-primary': '#59dcff', '--kairos-accent-secondary': '#8b7cff', '--kairos-accent-soft': '#102b38', '--kairos-accent-glow': 'rgba(89,220,255,.30)',
+  '--kairos-accent-primary': '#35d6ff', '--kairos-accent-secondary': '#9b6bff', '--kairos-accent-soft': '#102b38', '--kairos-accent-glow': 'rgba(89,220,255,.30)',
   '--kairos-trade-profit': '#45d7a7', '--kairos-trade-loss': '#ff6f87', '--kairos-trade-flat': '#9aaab4', '--kairos-trade-long': '#45d7a7', '--kairos-trade-short': '#ff6f87', '--kairos-trade-entry': '#63b7ff', '--kairos-trade-stop': '#ff6f87', '--kairos-trade-target': '#45d7a7', '--kairos-trade-risk-zone': 'rgba(255,111,135,.18)', '--kairos-trade-reward-zone': 'rgba(69,215,167,.18)',
   '--kairos-chart-background': '#080e17', '--kairos-chart-grid': '#172635', '--kairos-chart-axis': '#849aa7', '--kairos-chart-crosshair': '#b0c2cc', '--kairos-chart-candle-up': '#45d7a7', '--kairos-chart-candle-down': '#ff6f87', '--kairos-chart-wick-up': '#45d7a7', '--kairos-chart-wick-down': '#ff6f87', '--kairos-chart-volume-up': 'rgba(69,215,167,.42)', '--kairos-chart-volume-down': 'rgba(255,111,135,.42)', '--kairos-chart-drawing-primary': '#59dcff', '--kairos-chart-drawing-secondary': '#8b7cff', '--kairos-chart-support': '#45d7a7', '--kairos-chart-resistance': '#ff6f87',
   '--kairos-state-success': '#45d7a7', '--kairos-state-warning': '#f4c65b', '--kairos-state-error': '#ff6f87', '--kairos-state-info': '#63b7ff', '--kairos-state-focus': '#d5f6ff', '--kairos-state-hover': 'rgba(255,255,255,.07)', '--kairos-state-pressed': 'rgba(255,255,255,.12)', '--kairos-state-disabled': '#526572',
@@ -99,11 +103,11 @@ const paperTokens: ThemeTokenMap = {
 };
 
 export const themeRegistry: Readonly<Record<ThemeId, ThemeDefinition>> = Object.freeze({
-  ink: Object.freeze({ id: 'ink', colorScheme: 'dark', tokens: Object.freeze(inkTokens) }),
-  paper: Object.freeze({ id: 'paper', colorScheme: 'light', tokens: Object.freeze(paperTokens) }),
-  'kairos-depth': Object.freeze({ id: 'kairos-depth', colorScheme: 'dark', tokens: Object.freeze(kairosDepthTokens) }),
-  cosmic: Object.freeze({ id: 'cosmic', colorScheme: 'dark', tokens: Object.freeze(cosmicTokens) }),
-  ocean: Object.freeze({ id: 'ocean', colorScheme: 'dark', tokens: Object.freeze(oceanTokens) }),
+  ink: Object.freeze({ id: 'ink', label: 'Ink', colorScheme: 'dark', tokens: Object.freeze(inkTokens) }),
+  paper: Object.freeze({ id: 'paper', label: 'Paper', colorScheme: 'light', tokens: Object.freeze(paperTokens) }),
+  'kairos-depth': Object.freeze({ id: 'kairos-depth', label: 'Kairos Depth', colorScheme: 'dark', tokens: Object.freeze(kairosDepthTokens) }),
+  cosmic: Object.freeze({ id: 'cosmic', label: 'Cosmic', colorScheme: 'dark', tokens: Object.freeze(cosmicTokens) }),
+  ocean: Object.freeze({ id: 'ocean', label: 'Ocean', colorScheme: 'dark', tokens: Object.freeze(oceanTokens) }),
 });
 
 export function resolveTheme(preference: ThemePreference, _systemDark: boolean): ThemeId {

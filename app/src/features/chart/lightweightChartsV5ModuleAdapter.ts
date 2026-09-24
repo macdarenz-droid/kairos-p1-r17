@@ -33,6 +33,8 @@ export type LightweightChartsV5LogicalRangeChangeHandler = (
 export interface LightweightChartsV5TimeScaleApi {
   fitContent?(): void;
   setVisibleLogicalRange?(range: LightweightChartsV5LogicalRange): void;
+  /** Times are UTC seconds, as the series data uses. */
+  setVisibleRange?(range: { readonly from: number; readonly to: number }): void;
   getVisibleLogicalRange(): LightweightChartsV5LogicalRange | null;
   subscribeVisibleLogicalRangeChange(
     handler: LightweightChartsV5LogicalRangeChangeHandler,
