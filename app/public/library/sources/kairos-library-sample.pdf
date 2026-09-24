@@ -1,0 +1,53 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+5 0 obj
+<< /Length 548 >>
+stream
+BT
+/F1 20 Tf
+72 760 Td
+(Kairos Library sample) Tj
+/F1 12 Tf
+0 -36 Td
+(This short file shows how a learning source works in Kairos.) Tj
+0 -18 Td
+(A learning source is a file you read, like a guide or a glossary.) Tj
+0 -18 Td
+(It is not a lesson. Lessons come later and can point to a page here.) Tj
+0 -18 Td
+(Before Kairos keeps a file for offline reading, it checks that the) Tj
+0 -18 Td
+(file has the same size and the same fingerprint as the Library's record.) Tj
+0 -18 Td
+(Written for Kairos in September 2026. Free to share with the app.) Tj
+ET
+endstream
+endobj
+6 0 obj
+<< /Title (Kairos Library sample) /Author (Kairos) /Creator (Kairos) >>
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000000311 00000 n 
+0000000910 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R /Info 6 0 R >>
+startxref
+997
+%%EOF
