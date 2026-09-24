@@ -39,3 +39,11 @@
 .kairos-glossary__list .kairos-glossary-term { padding: var(--kairos-space-4); border: 1px solid var(--kairos-border-subtle); border-radius: var(--kairos-radius-lg); background: var(--kairos-surface-card); overflow-wrap: anywhere; }
 .kairos-glossary__list .kairos-glossary-term h2 { margin: 0; font-size: var(--kairos-font-size-lg); }
 .kairos-glossary-term[data-selected="true"] { outline: 2px solid var(--kairos-accent-primary); outline-offset: 2px; }
+
+.kairos-calculator { display: grid; gap: var(--kairos-space-3); padding: var(--kairos-space-4); border: 1px solid var(--kairos-border-subtle); border-radius: var(--kairos-radius-lg); background: var(--kairos-surface-card); min-width: 0; }
+.kairos-calculator h2 { margin: 0; font-size: var(--kairos-font-size-lg); }
+.kairos-calculator__fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: var(--kairos-space-3); }
+.kairos-calculator__fields input { min-width: 0; width: 100%; }
+.kairos-learn .kairos-calculator__headline { font-size: var(--kairos-font-size-lg); color: var(--kairos-text-primary); overflow-wrap: anywhere; }
+.kairos-calculator__details { display: grid; gap: var(--kairos-space-2); margin: 0; padding-left: var(--kairos-space-5); color: var(--kairos-text-secondary); overflow-wrap: anywhere; }
+@media (max-width: 34rem) { .kairos-calculator__fields { grid-template-columns: 1fr; } }

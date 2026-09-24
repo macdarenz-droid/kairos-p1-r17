@@ -34,6 +34,9 @@ function Part({ part, highlight, children, ...rest }: { readonly part: string; r
   );
 }
 
+/** A long box label (an exact amount) is squeezed to stay inside its box, which is 146 units wide from the label's start. */
+const fitInBox = (text: string) => (text.length > 24 ? { textLength: 146, lengthAdjust: 'spacingAndGlyphs' as const } : {});
+
 function RiskBox({ spec, labels }: { readonly spec: Extract<LearnPictureSpec, { kind: 'risk-box' }>; readonly labels: Readonly<Partial<Record<LearnRiskBoxPart, string>>> }) {
   const long = spec.side === 'long';
   const entryY = 60;
@@ -44,7 +47,7 @@ function RiskBox({ spec, labels }: { readonly spec: Extract<LearnPictureSpec, { 
   const zone = (part: 'risk' | 'reward', edgeY: number) => (
     <Part part={part} highlight={is(part)}>
       <rect className={`kairos-learn-picture__${part}`} x={12} y={Math.min(entryY, edgeY)} width={158} height={Math.abs(edgeY - entryY)} />
-      <text x={18} y={(entryY + edgeY) / 2} dominantBaseline="middle">{label(part)}</text>
+      <text x={18} y={(entryY + edgeY) / 2} dominantBaseline="middle" {...fitInBox(label(part))}>{label(part)}</text>
     </Part>
   );
   const line = (part: 'entry' | 'stop' | 'target', y: number) => (
