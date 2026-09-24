@@ -1,4 +1,4 @@
-import type { ChartDrawingInteractionState, ChartDrawingKind } from '../chart';
+import type { ChartDrawingInteractionState, ChartDrawingTool } from '../chart';
 
 export interface AnalysisDrawingToolsControlsProps {
   readonly state: ChartDrawingInteractionState | null;
@@ -11,7 +11,12 @@ export interface AnalysisDrawingToolsControlsProps {
   /** How many of `drawingCount` are zones. */
   readonly zoneCount?: number;
   /** The kind of the drawing the current state names, if any. */
-  readonly selectedKind?: ChartDrawingKind | null;
+  readonly selectedKind?: ChartDrawingTool | null;
+  /** Shows the "Risk box" button when given. */
+  readonly onSelectRiskBox?: () => void;
+  readonly riskBoxCount?: number;
+  /** The selected risk box's label, if a box is selected. */
+  readonly selectedLabel?: string | null;
 }
 
 const trendLineGuidance = (state: ChartDrawingInteractionState | null): string => {
@@ -41,37 +46,51 @@ const zoneGuidance = (status: ChartDrawingInteractionState['status']): string | 
   }
 };
 
-function guidance(state: ChartDrawingInteractionState | null, selectedKind: ChartDrawingKind | null): string {
+const riskBoxGuidance = (status: ChartDrawingInteractionState['status'], label: string | null): string | null => {
+  switch (status) {
+    case 'tool-selected': return 'Risk box: tap your entry price on the chart.';
+    case 'drawing': return 'Risk box: tap your stop a few candles to the right. Below the entry makes a long (buy) box; above makes a short (sell) box.';
+    case 'preview': return 'Risk box: tap your target, on the other side of the entry from the stop.';
+    case 'committed': return 'Risk box placed. Tap it to select it.';
+    case 'selected': return `Risk box selected: ${label ?? 'risk box'}. Delete removes it.`;
+    default: return null;
+  }
+};
+
+function guidance(state: ChartDrawingInteractionState | null, selectedKind: ChartDrawingTool | null, selectedLabel: string | null): string {
   if (state !== null) {
     const kind = 'tool' in state ? state.tool : selectedKind;
     if (kind === 'zone') return zoneGuidance(state.status) ?? trendLineGuidance(state);
+    if (kind === 'risk-box') return riskBoxGuidance(state.status, selectedLabel) ?? trendLineGuidance(state);
   }
   return trendLineGuidance(state);
 }
 
-function countSentence(drawingCount: number, zoneCount: number): string {
+function countSentence(drawingCount: number, zoneCount: number, riskBoxCount: number): string {
   const lines = drawingCount - zoneCount;
   const parts = [
     lines > 0 ? (lines === 1 ? '1 line' : `${lines} lines`) : null,
     zoneCount > 0 ? (zoneCount === 1 ? '1 zone' : `${zoneCount} zones`) : null,
   ].filter(Boolean);
-  return `${parts.length === 0 ? '0 lines' : parts.join(' · ')} on this chart.`;
+  const boxes = riskBoxCount > 0 ? (riskBoxCount === 1 ? ' · 1 risk box' : ` · ${riskBoxCount} risk boxes`) : '';
+  return `${parts.length === 0 ? '0 lines' : parts.join(' · ')}${boxes} on this chart.`;
 }
 
 /** Toolbar for the released P18 drawing session: no drawing truth, only commands and the exact interaction status. */
-export function AnalysisDrawingToolsControls({ state, drawingCount, onSelectTrendLine, onCancel, onDeleteSelected, onSelectZone, zoneCount = 0, selectedKind = null }: AnalysisDrawingToolsControlsProps) {
+export function AnalysisDrawingToolsControls({ state, drawingCount, onSelectTrendLine, onCancel, onDeleteSelected, onSelectZone, zoneCount = 0, selectedKind = null, onSelectRiskBox, riskBoxCount = 0, selectedLabel = null }: AnalysisDrawingToolsControlsProps) {
   const drafting = state?.status === 'tool-selected' || state?.status === 'drawing' || state?.status === 'preview';
   const draftTool = drafting && state !== null && 'tool' in state ? state.tool : null;
   const selected = state?.status === 'selected';
   const editing = state?.status === 'editing';
   // A state that names a drawing without a known kind keeps the released "Delete line" wording.
   const namesDrawing = state !== null && 'drawingId' in state;
-  const deleteLabel = selectedKind === 'zone' ? 'Delete zone' : selectedKind === 'trend-line' || namesDrawing ? 'Delete line' : 'Delete';
-  return <div className="kairos-analysis-chart__drawing-tools" role="group" aria-label="Drawing tools" data-drawing-status={state?.status ?? 'unavailable'} data-drawing-count={drawingCount} data-zone-count={zoneCount}>
+  const deleteLabel = selectedKind === 'risk-box' ? 'Delete risk box' : selectedKind === 'zone' ? 'Delete zone' : selectedKind === 'trend-line' || namesDrawing ? 'Delete line' : 'Delete';
+  return <div className="kairos-analysis-chart__drawing-tools" role="group" aria-label="Drawing tools" data-drawing-status={state?.status ?? 'unavailable'} data-drawing-count={drawingCount} data-zone-count={zoneCount} data-risk-box-count={riskBoxCount}>
     <button type="button" aria-pressed={draftTool === 'trend-line'} disabled={state === null} onClick={onSelectTrendLine}>Trend line</button>
     {onSelectZone ? <button type="button" aria-pressed={draftTool === 'zone'} disabled={state === null} onClick={onSelectZone}>Zone</button> : null}
+    {onSelectRiskBox ? <button type="button" aria-pressed={draftTool === 'risk-box'} disabled={state === null} onClick={onSelectRiskBox}>Risk box</button> : null}
     <button type="button" disabled={!drafting && !selected && !editing} onClick={onCancel}>Cancel</button>
     <button type="button" disabled={!selected} onClick={onDeleteSelected}>{deleteLabel}</button>
-    <span className="kairos-analysis-chart__note" aria-live="polite" data-drawing-guidance="true">{guidance(state, selectedKind)} {countSentence(drawingCount, zoneCount)}</span>
+    <span className="kairos-analysis-chart__note" aria-live="polite" data-drawing-guidance="true">{guidance(state, selectedKind, selectedLabel)} {countSentence(drawingCount, zoneCount, riskBoxCount)}</span>
   </div>;
 }

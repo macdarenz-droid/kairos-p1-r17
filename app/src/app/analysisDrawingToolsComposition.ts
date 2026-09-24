@@ -7,6 +7,20 @@ import { ANALYSIS_DRAWING_ENDPOINT_EDIT_TOLERANCE_PX, ANALYSIS_DRAWING_TREND_LIN
 import { createAnalysisLiveCandleRouteSession } from './analysisLiveCandleRouteSession';
 import { createAnalysisSavedTradeOverlayPresentationSession, type AnalysisSavedTradeOverlayPresentationSession } from './analysisSavedTradeOverlayPresentationSession';
 import { createAnalysisSavedTradeOverlayRendererSession } from './analysisSavedTradeOverlayRendererSession';
+import { createAnalysisSavedTradeRiskRewardThemeStyleSource } from './analysisSavedTradeRiskRewardThemeStyleSource';
+import { semanticTokens } from '../design-system/tokens/semantic';
+
+/** Risk box colours from the saved-trade token resolver, so both kinds of box share the theme; null when any token is missing. */
+export function resolveAnalysisRiskBoxColors(themeId: ThemeId): AnalysisDrawingToolsRendererSessionOptions['style']['riskBox'] | null {
+  const source = createAnalysisSavedTradeRiskRewardThemeStyleSource(themeId);
+  const entry = source.resolveToken(semanticTokens.trade.entry);
+  const stop = source.resolveToken(semanticTokens.trade.stop);
+  const target = source.resolveToken(semanticTokens.trade.target);
+  const risk = source.resolveToken(semanticTokens.trade.riskZone);
+  const reward = source.resolveToken(semanticTokens.trade.rewardZone);
+  if (entry === null || stop === null || target === null || risk === null || reward === null) return null;
+  return Object.freeze({ entry, stop, target, risk, reward });
+}
 
 /** Stroke style for the Analysis trend-line tool: the active chart theme's drawing token and the product width. */
 export function resolveAnalysisDrawingToolsStyle(themeId: ThemeId): AnalysisDrawingToolsRendererSessionOptions['style'] {
@@ -16,9 +30,10 @@ export function resolveAnalysisDrawingToolsStyle(themeId: ThemeId): AnalysisDraw
 /** One drawing-tools session for one Analysis selection; the caller owns its lifetime. */
 export function createAnalysisDrawingToolsSession(
   themeId: ThemeId,
-  listeners: Pick<AnalysisDrawingToolsRendererSessionOptions, 'onStateChange' | 'onDrawingsChange'> = {},
+  listeners: Pick<AnalysisDrawingToolsRendererSessionOptions, 'onStateChange' | 'onDrawingsChange' | 'onRiskBoxesChange'> = {},
 ): AnalysisDrawingToolsRendererSession {
-  return createAnalysisDrawingToolsRendererSession({ style: { ...resolveAnalysisDrawingToolsStyle(themeId), zoneColor: getChartTheme(themeId).drawingSecondary, zoneFillOpacity: ANALYSIS_DRAWING_ZONE_FILL_OPACITY }, endpointEditTolerancePx: ANALYSIS_DRAWING_ENDPOINT_EDIT_TOLERANCE_PX, ...listeners });
+  const riskBox = resolveAnalysisRiskBoxColors(themeId);
+  return createAnalysisDrawingToolsRendererSession({ style: { ...resolveAnalysisDrawingToolsStyle(themeId), zoneColor: getChartTheme(themeId).drawingSecondary, zoneFillOpacity: ANALYSIS_DRAWING_ZONE_FILL_OPACITY, ...(riskBox === null ? {} : { riskBox }) }, endpointEditTolerancePx: ANALYSIS_DRAWING_ENDPOINT_EDIT_TOLERANCE_PX, ...listeners });
 }
 
 /**

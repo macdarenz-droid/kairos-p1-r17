@@ -23,6 +23,7 @@ export function createLightweightChartsV5TrendLinePrimitiveFactory(
     lineWidth: style.lineWidth,
     ...(style.zoneColor !== undefined ? { zoneColor: style.zoneColor } : {}),
     ...(style.zoneFillOpacity !== undefined ? { zoneFillOpacity: style.zoneFillOpacity } : {}),
+    ...(style.riskBox !== undefined ? { riskBox: { ...style.riskBox } } : {}),
   };
 
   return {
