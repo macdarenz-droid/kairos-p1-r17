@@ -1,6 +1,7 @@
 import type { JournalHistoryEntry } from '../application/journal';
 import { projectJournalTradeVisualizer } from '../application/trade-visualizer';
 import { JournalTradeMapGraphic } from './JournalTradeMapGraphic';
+import { reviewTimestamp } from './TradeReviewDetails';
 
 interface JournalTradeMapProps {
   readonly entry: JournalHistoryEntry;
@@ -44,12 +45,12 @@ export function JournalTradeMap({ entry }: JournalTradeMapProps) {
               <span>{level.price}</span>
               {level.kind === 'executed-entry' && level.executedAt !== null ? (
                 <small className="kairos-trade-map__execution-time">
-                  Quantity {level.quantity} · Executed <time dateTime={level.executedAt}>{level.executedAt}</time>
+                  Quantity {level.quantity} · Executed <time dateTime={level.executedAt}>{reviewTimestamp(level.executedAt)}</time>
                 </small>
               ) : null}
               {level.kind === 'executed-exit' && level.executedAt !== null ? (
                 <small className="kairos-trade-map__execution-time">
-                  Quantity {level.quantity} · Executed <time dateTime={level.executedAt}>{level.executedAt}</time>
+                  Quantity {level.quantity} · Executed <time dateTime={level.executedAt}>{reviewTimestamp(level.executedAt)}</time>
                 </small>
               ) : null}
             </dd>

@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { JournalTradeMap } from '../src/app/JournalTradeMap';
+import { reviewTimestamp } from '../src/app/TradeReviewDetails';
 import type { JournalHistoryEntry } from '../src/application/journal';
 import {
   createTradeDomainId,
@@ -64,7 +65,7 @@ describe('P14.8 Journal Trade Map motion semantics', () => {
     expect(container.querySelector('.kairos-trade-map__graphic [data-level-kind="executed-exit"]')).not.toBeNull();
     expect(container.querySelector('.kairos-trade-map__levels [data-level-kind="executed-exit"]')).not.toBeNull();
     expect(screen.getByText('149.75')).toBeInTheDocument();
-    expect(screen.getByText('2026-09-03T01:00:00Z')).toHaveAttribute('datetime', '2026-09-03T01:00:00Z');
+    expect(screen.getByText(reviewTimestamp('2026-09-03T01:00:00Z'))).toHaveAttribute('datetime', '2026-09-03T01:00:00Z');
     expect(screen.getByText('Visual guide · Not to scale')).toBeInTheDocument();
   });
 });

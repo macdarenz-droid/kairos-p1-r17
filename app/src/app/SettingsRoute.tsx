@@ -5,6 +5,7 @@ import {
 } from '../application/visual-pnl';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
 import { createKairosRepositories } from '../data/repositories';
+import './settingsRoute.css';
 
 interface SettingsRouteProps {
   readonly db?: KairosDatabase;

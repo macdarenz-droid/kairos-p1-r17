@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { resetBinanceSpotExchangeInfoCache } from '../src/services/market-data';
 import { createBinanceSpotExchangeInfoBrowserInstrumentMetadataAcquisitionPort } from '../src/services/market-data';
 
 const originalFetch = globalThis.fetch;
@@ -10,6 +11,10 @@ const payload = JSON.stringify({ symbols: [
 afterEach(() => {
   globalThis.fetch = originalFetch;
   vi.restoreAllMocks();
+});
+
+beforeEach(() => {
+  resetBinanceSpotExchangeInfoCache();
 });
 
 describe('Binance Spot exchangeInfo browser instrument metadata acquisition binding foundation', () => {
@@ -27,18 +32,28 @@ describe('Binance Spot exchangeInfo browser instrument metadata acquisition bind
     if (result.ok) expect(result.facts).toHaveLength(2);
   });
 
-  it('preserves exact caller-owned cancellation through the composed chain', async () => {
+  it('ends only the aborting caller\'s wait and never hands the caller signal to the shared request', async () => {
     const controller = new AbortController();
     let capturedSignal: AbortSignal | null | undefined;
-    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+    let release: (value: { text: () => Promise<string> }) => void = () => undefined;
+    const fetchMock = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
       capturedSignal = init?.signal;
-      return { text: async () => JSON.stringify({ symbols: [] }) };
+      return new Promise((resolve) => { release = resolve; });
     });
     globalThis.fetch = fetchMock as unknown as typeof fetch;
     const port = createBinanceSpotExchangeInfoBrowserInstrumentMetadataAcquisitionPort();
 
-    await expect(port.acquireInstrumentMetadata({ signal: controller.signal })).resolves.toEqual({ ok: true, facts: [] });
-    expect(capturedSignal).toBe(controller.signal);
+    const aborting = port.acquireInstrumentMetadata({ signal: controller.signal });
+    const waiting = port.acquireInstrumentMetadata();
+    controller.abort();
+
+    await expect(aborting).resolves.toEqual({ ok: false, reason: 'acquisition-failed' });
+    expect(capturedSignal).not.toBe(controller.signal);
+    expect(capturedSignal?.aborted).toBe(false);
+    release({ text: async () => payload });
+    const result = await waiting;
+    expect(result.ok).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('preserves the released acquisition-failed mapping for native browser rejection', async () => {

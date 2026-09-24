@@ -2,6 +2,7 @@ import '@testing-library/jest-dom/vitest';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { JournalTradeMap } from '../src/app/JournalTradeMap';
+import { reviewTimestamp } from '../src/app/TradeReviewDetails';
 import { createTradeDomainId, parseDecimalString, type TradeExecutionId, type TradeId, type TradePlanId } from '../src/domain/trades';
 import type { JournalHistoryEntry } from '../src/application/journal';
 
@@ -33,6 +34,6 @@ describe('P14.4 Journal Trade Map presentation', () => {
     expect(screen.getByText('Long · Closed')).toBeInTheDocument();
     const exitValue = screen.getByText('118.625');
     expect(exitValue).toBeInTheDocument();
-    expect(exitValue.parentElement).toHaveTextContent(/^118\.625Quantity 1 · Executed 2026-09-02T02:00:00\.000Z$/);
+    expect(exitValue.parentElement?.textContent).toBe(`118.625Quantity 1 · Executed ${reviewTimestamp('2026-09-02T02:00:00.000Z')}`);
   });
 });

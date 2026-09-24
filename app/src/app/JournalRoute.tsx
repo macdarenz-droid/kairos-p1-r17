@@ -7,7 +7,7 @@ import {
   type ManualTradeDraftRequiredField,
   type ManualTradeValidationField,
 } from '../application/trades';
-import { listJournalHistory, type JournalHistoryEntry } from '../application/journal';
+import { JOURNAL_HISTORY_SOURCES, listJournalHistory, type JournalHistoryEntry } from '../application/journal';
 import { JournalHistoryList } from './JournalHistoryList';
 import { JournalDailyResults } from './JournalDailyResults';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
@@ -348,6 +348,7 @@ export function JournalRoute({ db = kairosDatabase }: JournalRouteProps) {
 
       <JournalHistoryList
         db={db}
+        allowedSources={JOURNAL_HISTORY_SOURCES.real}
         updateNotice={updateNotice}
         onTradeUpdated={async () => { await refreshHistory(); setJournalRevision(current => current + 1); setUpdateNotice('Trade updated. Your saved details are below.'); }}
         onTradeDeleted={async notice => { await refreshHistory(); setJournalRevision(current => current + 1); setUpdateNotice(notice); }}

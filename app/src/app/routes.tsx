@@ -6,11 +6,11 @@ import { AnalysisRoute } from './AnalysisRoute';
 import { GoalsRoute } from './GoalsRoute';
 import { HomeRoute } from './HomeRoute';
 import { MoreRoute } from './MoreRoute';
-import { PlaceholderRoute } from './PlaceholderRoute';
 import { PracticeRoute } from './PracticeRoute';
 import { ProfileRoute } from './ProfileRoute';
 import { RouteError } from './RouteError';
 import { SettingsRoute } from './SettingsRoute';
+import { NotFoundRoute } from '../features/shell/NotFoundRoute';
 
 export const appRoutes = [
   {
@@ -27,7 +27,7 @@ export const appRoutes = [
       { path: 'goals', element: <GoalsRoute /> },
       { path: 'settings', element: <SettingsRoute /> },
       { path: 'profile', element: <ProfileRoute /> },
-      { path: '*', element: <PlaceholderRoute title="Page not found" /> },
+      { path: '*', element: <NotFoundRoute /> },
     ],
   },
 ] satisfies RouteObject[];

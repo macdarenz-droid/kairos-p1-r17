@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { resetBinanceSpotExchangeInfoCache } from '../src/services/market-data';
 import {
   connectBinanceSpotExchangeInfoBrowserPublicRestRequest,
   describeBinanceSpotExchangeInfoPublicRestRequest,
@@ -6,6 +7,10 @@ import {
 
 const originalFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = originalFetch; vi.restoreAllMocks(); });
+
+beforeEach(() => {
+  resetBinanceSpotExchangeInfoCache();
+});
 
 describe('Binance Spot exchangeInfo browser public REST connector foundation', () => {
   it('fetches exactly once and returns response text unchanged', async () => {
