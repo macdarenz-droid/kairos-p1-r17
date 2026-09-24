@@ -33,7 +33,7 @@ type JournalDailyResultsState =
  * This boundary coordinates established P13 owners only:
  * MetadataRepository -> explicit timezone preference -> bounded Journal daily
  * query -> VisualPnlCalendar. It performs no financial arithmetic, FX,
- * day grouping, timezone inference, or direct storage access.
+ * day grouping or direct storage access. The device time zone is saved only on an explicit tap.
  */
 export function JournalDailyResults({ db, refreshRevision }: JournalDailyResultsProps) {
   const [state, setState] = useState<JournalDailyResultsState>({ kind: 'loading' });

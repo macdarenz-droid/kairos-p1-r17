@@ -68,6 +68,14 @@ describe('T-008 time zone in one tap', () => {
     expect(screen.queryByRole('button', { name: /this device/ })).toBeNull();
   });
 
+  it('Settings hides the button when the first load failed', async () => {
+    const db = await database();
+    vi.spyOn(db.metadata, 'get').mockRejectedValue(new Error('storage'));
+    render(<ThemeProvider><SettingsRoute db={db} /></ThemeProvider>);
+    expect(await screen.findByText('Kairos could not load your daily-results time zone.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /this device/ })).toBeNull();
+  });
+
   it('Settings lists known zones for the time zone field', async () => {
     const db = await database();
     render(<ThemeProvider><SettingsRoute db={db} /></ThemeProvider>);
