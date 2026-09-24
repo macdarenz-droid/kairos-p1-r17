@@ -65,3 +65,27 @@ export function decimalSum(values: readonly (DecimalString | string)[]): Decimal
   }
   return output(total);
 }
+
+/** Orders two decimal strings exactly; null when either is not a decimal string. */
+export function decimalCompare(left: DecimalString | string, right: DecimalString | string): -1 | 0 | 1 | null {
+  const a = read(left);
+  const b = read(right);
+  if (!a || !b) return null;
+  const order = a.comparedTo(b);
+  return order < 0 ? -1 : order > 0 ? 1 : 0;
+}
+
+/**
+ * For drawing only. The result is a count of steps, never money.
+ * Computes value / max × steps exactly, rounds half up to a whole step and
+ * clamps it to 0…steps. Null for an invalid input, max <= 0, or steps that
+ * are not a positive safe integer.
+ */
+export function decimalScaleToSteps(value: DecimalString | string, max: DecimalString | string, steps: number): number | null {
+  if (!Number.isSafeInteger(steps) || steps <= 0) return null;
+  const a = read(value);
+  const b = read(max);
+  if (!a || !b || b.lte(0)) return null;
+  const scaled = a.times(steps).dividedBy(b).toDecimalPlaces(0, KairosDecimal.ROUND_HALF_UP).toNumber();
+  return Math.min(steps, Math.max(0, scaled));
+}

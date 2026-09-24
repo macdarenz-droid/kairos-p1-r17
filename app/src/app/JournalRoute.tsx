@@ -1,42 +1,24 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { JOURNAL_HISTORY_SOURCES, listJournalHistory, type JournalHistoryEntry } from '../application/journal';
+import { useState } from 'react';
+import { JOURNAL_HISTORY_SOURCES } from '../application/journal';
 import { JournalHistoryList } from './JournalHistoryList';
 import { JournalDailyResults } from './JournalDailyResults';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
 import type { TradeStatus } from '../domain/trades';
 import './journalRoute.css';
 import { TradeForm } from '../features/journal/TradeForm';
+import { useJournalHistoryPages } from '../features/journal/useJournalHistoryPages';
 
 interface JournalRouteProps {
   readonly db?: KairosDatabase;
+  /** The current instant as a canonical UTC ISO string, for Daily results; tests inject a fixed one. */
+  readonly now?: () => string;
 }
 
-export function JournalRoute({ db = kairosDatabase }: JournalRouteProps) {
-  const [history, setHistory] = useState<readonly JournalHistoryEntry[]>([]);
-  const [isHistoryLoading, setIsHistoryLoading] = useState(true);
-  const [historyError, setHistoryError] = useState<string | null>(null);
+export function JournalRoute({ db = kairosDatabase, now }: JournalRouteProps) {
   const [updateNotice, setUpdateNotice] = useState('');
   const [historyStatus, setHistoryStatus] = useState<TradeStatus | ''>('');
   const [journalRevision, setJournalRevision] = useState(0);
-  const historyRequestSequence = useRef(0);
-
-  const refreshHistory = useCallback(async (): Promise<void> => {
-    const requestSequence = ++historyRequestSequence.current;
-    setIsHistoryLoading(true);
-    setHistoryError(null);
-    try {
-      const entries = await listJournalHistory(db, historyStatus === '' ? {} : { status: historyStatus });
-      if (requestSequence !== historyRequestSequence.current) return;
-      setHistory(entries);
-    } catch {
-      if (requestSequence !== historyRequestSequence.current) return;
-      setHistoryError('Kairos could not load your saved trade history. Your stored trades were not changed.');
-    } finally {
-      if (requestSequence === historyRequestSequence.current) setIsHistoryLoading(false);
-    }
-  }, [db, historyStatus]);
-
-  useEffect(() => { void refreshHistory(); }, [refreshHistory]);
+  const pages = useJournalHistoryPages(db, 'real', historyStatus);
 
   return (
     <section className="kairos-route kairos-journal" aria-labelledby="kairos-journal-title">
@@ -49,20 +31,24 @@ export function JournalRoute({ db = kairosDatabase }: JournalRouteProps) {
       </div>
       <p className="kairos-journal__intro">Log the trade facts you know now. Plan numbers are optional and can be left blank.</p>
 
-      <TradeForm db={db} kind="journal" onSaved={async () => { await refreshHistory(); setJournalRevision(current => current + 1); }} />
+      <TradeForm db={db} kind="journal" onSaved={async () => { await pages.refresh(); setJournalRevision(current => current + 1); }} />
 
-      <JournalDailyResults db={db} refreshRevision={journalRevision} />
+      <JournalDailyResults db={db} refreshRevision={journalRevision} now={now} />
 
       <JournalHistoryList
         db={db}
         allowedSources={JOURNAL_HISTORY_SOURCES.real}
         updateNotice={updateNotice}
-        onTradeUpdated={async () => { await refreshHistory(); setJournalRevision(current => current + 1); setUpdateNotice('Trade updated. Your saved details are below.'); }}
-        onTradeDeleted={async notice => { await refreshHistory(); setJournalRevision(current => current + 1); setUpdateNotice(notice); }}
-        onTradeOpened={async notice => { await refreshHistory(); setJournalRevision(current => current + 1); setUpdateNotice(notice); }}
-        entries={history}
-        isLoading={isHistoryLoading}
-        errorMessage={historyError}
+        onTradeUpdated={async () => { await pages.refresh(); setJournalRevision(current => current + 1); setUpdateNotice('Trade updated. Your saved details are below.'); }}
+        onTradeDeleted={async notice => { await pages.refresh(); setJournalRevision(current => current + 1); setUpdateNotice(notice); }}
+        onTradeOpened={async notice => { await pages.refresh(); setJournalRevision(current => current + 1); setUpdateNotice(notice); }}
+        entries={pages.entries}
+        isLoading={pages.isLoading}
+        errorMessage={pages.failed ? 'Kairos could not load your saved trade history. Your stored trades were not changed.' : null}
+        hasOlder={pages.hasOlder}
+        isLoadingOlder={pages.isLoadingOlder}
+        olderFailed={pages.olderFailed}
+        onShowOlder={pages.showOlder}
         statusFilter={historyStatus}
         onStatusFilterChange={setHistoryStatus}
       />

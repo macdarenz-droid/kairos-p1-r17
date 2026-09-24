@@ -54,10 +54,10 @@ function Progress({ progress }: { readonly progress: GoalsProgressProjection }) 
     <Card as="article" className="kairos-goals-card" data-goal="monthly-result" data-goal-state={monthlyResult.kind === 'unset' ? 'unset' : monthlyResult.kind === 'unavailable' ? 'unavailable' : monthlyResult.reached ? 'reached' : 'progress'}>
       <h2>Result this month</h2>
       {monthlyResult.kind === 'unset' ? <p>No result target set.</p>
-        : monthlyResult.kind === 'unavailable' ? <p>Target {monthlyResult.target} {monthlyResult.currency} · {monthlyResult.reason === 'no-comparable-days' ? `no closed trade this month has a comparable ${monthlyResult.currency} result yet` : 'the month total could not be added'}{monthlyResult.incompleteDays > 0 ? ` (${monthlyResult.incompleteDays} ${monthlyResult.incompleteDays === 1 ? 'day' : 'days'} not comparable)` : ''}.</p>
-        : <p><strong>{monthlyResult.current}</strong> of {monthlyResult.target} {monthlyResult.currency} · {monthlyResult.reached ? 'target reached' : `${monthlyResult.remaining} to go`}{monthlyResult.incompleteDays > 0 ? ` (${monthlyResult.incompleteDays} ${monthlyResult.incompleteDays === 1 ? 'day' : 'days'} not comparable)` : ''}</p>}
+        : monthlyResult.kind === 'unavailable' ? <p>Target {monthlyResult.target} {monthlyResult.currency} · {monthlyResult.reason === 'no-comparable-days' ? `no closed trade this month has a result in ${monthlyResult.currency} yet` : 'the month total could not be added'}{monthlyResult.incompleteDays > 0 ? ` (${monthlyResult.incompleteDays} ${monthlyResult.incompleteDays === 1 ? 'day' : 'days'} in another currency or without a result)` : ''}.</p>
+        : <p><strong>{monthlyResult.current}</strong> of {monthlyResult.target} {monthlyResult.currency} · {monthlyResult.reached ? 'target reached' : `${monthlyResult.remaining} to go`}{monthlyResult.incompleteDays > 0 ? ` (${monthlyResult.incompleteDays} ${monthlyResult.incompleteDays === 1 ? 'day' : 'days'} in another currency or without a result)` : ''}</p>}
     </Card>
-    <p className="kairos-goals__note">Counted from your journal in {progress.timeZone} for {progress.monthKey}; the most recent {progress.consideredEntries} trades were considered. Results are your saved results after fees, never estimates.</p>
+    <p className="kairos-goals__note">Counted from all your trades this month ({progress.monthKey}, time zone {progress.timeZone}). Results are your recorded results after fees, never estimates.</p>
   </div>;
 }
 

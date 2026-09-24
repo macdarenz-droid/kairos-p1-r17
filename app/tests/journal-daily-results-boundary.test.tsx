@@ -73,11 +73,12 @@ describe('P13.11R1 Journal daily-results child boundary', () => {
     );
     await putClosedTrade(repositories, '2026-09-02T14:30:00.000Z');
 
-    render(<JournalRoute db={db} />);
+    render(<JournalRoute db={db} now={() => '2026-09-10T00:00:00.000Z'} />);
 
-    expect(await screen.findByText('03/09/2026')).toBeInTheDocument();
+    const sydneyDay = (await screen.findByText('Time zone: Australia/Sydney')).closest('section')!.querySelector('[data-day-key="2026-09-03"]') as HTMLElement;
     expect(screen.getByText('Time zone: Australia/Sydney')).toBeInTheDocument();
-    expect(screen.getByText('Result unavailable')).toBeInTheDocument();
+    expect(sydneyDay).toHaveAttribute('data-day-result', 'unavailable');
+    expect(sydneyDay.querySelector('button')?.getAttribute('aria-label')).toContain('Result unavailable');
     db.close();
   });
 
@@ -90,10 +91,10 @@ describe('P13.11R1 Journal daily-results child boundary', () => {
     );
     await putClosedTrade(repositories, '2026-09-02T14:30:00.000Z');
 
-    render(<JournalRoute db={db} />);
+    render(<JournalRoute db={db} now={() => '2026-09-10T00:00:00.000Z'} />);
 
-    expect(await screen.findByText('02/09/2026')).toBeInTheDocument();
-    expect(screen.queryByText('03/09/2026')).not.toBeInTheDocument();
+    expect((await screen.findByText('Time zone: UTC')).closest('section')!.querySelector('[data-day-key="2026-09-02"]')).toHaveAttribute('data-day-result', 'unavailable');
+    expect(document.querySelector('[data-day-key="2026-09-03"]')).toHaveAttribute('data-day-result', 'no-trades');
     expect(screen.getByText('Time zone: UTC')).toBeInTheDocument();
     db.close();
   });
