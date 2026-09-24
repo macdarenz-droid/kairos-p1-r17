@@ -9,7 +9,7 @@ import {
 } from './AnalysisLiveCandleCanvas';
 import { AnalysisSavedTradeMarkerEvidencePresentation } from './AnalysisSavedTradeMarkerEvidencePresentation';
 import { AnalysisSavedTradeRiskRewardEvidencePresentation } from './AnalysisSavedTradeRiskRewardEvidencePresentation';
-import { AnalysisOverlaySessionFactoryContext } from './analysisDrawingToolsContext';
+import { AnalysisOverlaySessionFactoryContext, AnalysisTradeWindowContext } from './analysisDrawingToolsContext';
 import {
   createAnalysisCandleRendererSession,
   type AnalysisCandleRendererSessionInput,
@@ -76,6 +76,7 @@ export function AnalysisSavedTradeOverlayLiveCandleCanvas({
 }: AnalysisSavedTradeOverlayLiveCandleCanvasProps) {
   const { themeId } = useTheme();
   const contextOverlaySession = useContext(AnalysisOverlaySessionFactoryContext);
+  const initialWindow = useContext(AnalysisTradeWindowContext);
   const overlaySession = createOverlaySession ?? contextOverlaySession ?? undefined;
   const key = selectionKey(instrument, interval, revision);
   const [scopedSnapshot, setScopedSnapshot] = useState<ScopedSnapshot>({ key, snapshot: null });
@@ -123,10 +124,10 @@ export function AnalysisSavedTradeOverlayLiveCandleCanvas({
     if (rendererFactory === null) return null;
     return () => createLiveSession({
       createRendererSession(input: AnalysisCandleRendererSessionInput) {
-        return createRendererSession({ ...input, factory: rendererFactory });
+        return createRendererSession({ ...input, factory: rendererFactory, ...(initialWindow === null ? {} : { initialWindow }) });
       },
     });
-  }, [createLiveSession, createRendererSession, overlay.rendererFactory]);
+  }, [createLiveSession, createRendererSession, overlay.rendererFactory, initialWindow]);
 
   const evidence = <AnalysisSavedTradeMarkerEvidencePresentation
     presentation={overlay.presentation?.markers ?? null}

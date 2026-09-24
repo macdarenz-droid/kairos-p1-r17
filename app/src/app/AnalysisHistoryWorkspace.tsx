@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
+import { useEffect, useRef, useState, type ComponentType } from 'react';
 import { ANALYSIS_HANDOFF_DEFAULT_INTERVAL, useAnalysisHandoff } from './analysisHandoff';
 import type { JournalHistoryEntry } from '../application/journal';
 import type { LiveMarketUniverseInstrumentMetadataAcquisitionPort } from '../services/market-data/LiveMarketUniverseInstrumentMetadataAcquisitionPort';
@@ -8,7 +8,7 @@ import { BINANCE_SPOT_VENUE } from '../services/market-data/providers/binance/bi
 import { analysisHistoryPorts } from './analysisHistoryPorts';
 import { ANALYSIS_LIVE_CANDLE_HISTORY_LIMIT } from './analysisLiveCandleProductPolicy';
 import { AnalysisDrawingToolsControls } from './AnalysisDrawingToolsControls';
-import { AnalysisLiveSessionFactoryContext, AnalysisOverlaySessionFactoryContext } from './analysisDrawingToolsContext';
+import { AnalysisLiveSessionFactoryContext, AnalysisOverlaySessionFactoryContext, AnalysisTradeWindowContext } from './analysisDrawingToolsContext';
 import { useAnalysisDrawingTools } from './useAnalysisDrawingTools';
 import { AnalysisSavedAnalysisControls } from './AnalysisSavedAnalysisControls';
 import { AnalysisTimeAssistedSnapshotControls } from './AnalysisTimeAssistedSnapshotControls';
@@ -21,9 +21,8 @@ import {
   type AnalysisSavedTradeOverlayLiveCandleCanvasProps,
 } from './AnalysisSavedTradeOverlayLiveCandleCanvas';
 import { SymbolPicker } from '../features/analysis/SymbolPicker';
-import { normalizeTradeSymbol, pickTradeReviewInterval, tradeReviewIntervalMs, tradeReviewTimes, tradeReviewVisibleRange } from '../features/analysis/tradeReviewInterval';
-import { composeDrawingBindingLifecycles } from './analysisTimeAssistedWindowSession';
-import { useAnalysisTradeFocus } from './useAnalysisTradeFocus';
+import { normalizeTradeSymbol, pickTradeReviewInterval, tradeReviewTimes } from '../features/analysis/tradeReviewInterval';
+import { useAnalysisTradeFocus } from '../features/analysis/useAnalysisTradeFocus';
 import './analysisHistory.css';
 
 type Ports = { readonly metadata: LiveMarketUniverseInstrumentMetadataAcquisitionPort };
@@ -71,6 +70,10 @@ export function AnalysisHistoryWorkspace({
   const tradeTimes = entry && Array.isArray(entry.executions) ? tradeReviewTimes(entry) : null;
   const tradeStartMs = tradeTimes?.startMs ?? null, tradeEndMs = tradeTimes?.endMs ?? null;
   useEffect(() => {
+    // "Choose another trade" clears the entry: its "not on Binance Spot" note goes with it.
+    if (tradeId === null) setTradeSymbolMissing(false);
+  }, [tradeId]);
+  useEffect(() => {
     if (tradeId === null || tradeSymbol === null || metadata.phase !== 'ready' || tradeApplied.current === tradeId) return;
     tradeApplied.current = tradeId;
     const wanted = normalizeTradeSymbol(tradeSymbol);
@@ -82,17 +85,11 @@ export function AnalysisHistoryWorkspace({
   }, [tradeId, tradeSymbol, tradeStartMs, metadata]);
   const fact = metadata.phase === 'ready' ? metadata.facts.find(item => item.instrument.symbol === symbol) : undefined;
   const selected = Boolean(fact && interval);
-  const focusIntervalMs = tradeReviewIntervalMs(interval);
-  // "Now" is read once per trade window so an open trade's window stays stable across re-renders.
-  const tradeWindow = useMemo(() => (
-    tradeId === null || tradeStartMs === null || focusIntervalMs === null ? null : tradeReviewVisibleRange(tradeStartMs, tradeEndMs ?? Date.now(), focusIntervalMs)
-    // revision re-reads "now" on an explicit refresh.
-  ), [tradeId, tradeStartMs, tradeEndMs, focusIntervalMs, revision]);
-  const tradeFocus = useAnalysisTradeFocus(entry && !savedTradePending ? tradeWindow : null);
+  // The saved-trade chart opens on the trade's time window (the renderer session applies it after the first render).
+  const tradeWindow = useAnalysisTradeFocus(savedTradePending ? null : entry, interval, revision);
   const estimateMarkers = useAnalysisTimeAssistedMarkers(fact && interval ? [fact.instrument.venue, fact.instrument.symbol, interval, String(revision)].join('|') : null);
   const estimateWindow = useAnalysisTimeAssistedWindow(fact && interval ? [fact.instrument.venue, fact.instrument.symbol, interval, String(revision)].join('|') : null);
-  const chartLifecycle = useMemo(() => composeDrawingBindingLifecycles(estimateWindow.lifecycle, tradeFocus), [estimateWindow.lifecycle, tradeFocus]);
-  const drawingTools = useAnalysisDrawingTools(fact && interval ? { venue: fact.instrument.venue, symbol: fact.instrument.symbol, interval, revision } : null, estimateMarkers.lifecycle, chartLifecycle);
+  const drawingTools = useAnalysisDrawingTools(fact && interval ? { venue: fact.instrument.venue, symbol: fact.instrument.symbol, interval, revision } : null, estimateMarkers.lifecycle, estimateWindow.lifecycle);
 
   useEffect(() => {
     let active = true;
@@ -131,7 +128,9 @@ export function AnalysisHistoryWorkspace({
       </div>
       {fact && savedTradePending ? <p role="status">Preparing the saved trade chart…</p> : null}
       <AnalysisOverlaySessionFactoryContext.Provider value={drawingTools.overlaySessionFactory}>
+      <AnalysisTradeWindowContext.Provider value={tradeWindow}>
       {fact && !savedTradePending && entry ? <SavedTradeLiveCanvas entry={entry} instrument={fact.instrument} interval={interval} quoteAsset={fact.quoteAsset} revision={revision} /> : null}
+      </AnalysisTradeWindowContext.Provider>
       </AnalysisOverlaySessionFactoryContext.Provider>
       <AnalysisLiveSessionFactoryContext.Provider value={drawingTools.liveSessionFactory}>
       {fact && !savedTradePending && !entry ? <LiveCanvas instrument={fact.instrument} interval={interval} quoteAsset={fact.quoteAsset} revision={revision} /> : null}

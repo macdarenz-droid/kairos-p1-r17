@@ -6,12 +6,16 @@ import type { ChartTheme } from '../../design-system/themes/chartThemeAdapter';
 import type { ChartRendererLifecycle } from './chartRendererLifecycle';
 import type { ChartCandle } from './chartRenderContract';
 import type { LightweightChartsV5ChartApi, LightweightChartsV5SeriesApi, LightweightChartsV5SeriesOptions } from './lightweightChartsV5ModuleAdapter';
+import type { ChartVisibleTimeRange } from './chartVisibleRange';
+import { createLightweightChartsV5VisibleRangePort } from './lightweightChartsV5VisibleRange';
 
 export interface PresentedChartRenderer extends ChartRendererLifecycle {
   updateLatestCandle(candle: ChartCandle): void;
   setTheme(theme: ChartTheme): void;
   resetView(): void;
   showRecent(count: number): void;
+  /** Moves the view to a time window through the visible-range port; false when nothing is drawn yet or the chart cannot. */
+  showTimeRange?(range: ChartVisibleTimeRange): boolean;
   zoom(factor: number): void;
   pan(fraction: number): void;
 }
@@ -193,6 +197,10 @@ export function createLightweightChartsV5ProductionRendererFactory(
       showRecent(count) {
         if (destroyed || !Number.isFinite(count) || count <= 0 || !seriesLength) return;
         chart.timeScale().setVisibleLogicalRange?.({ from: Math.max(0, seriesLength - count), to: seriesLength + 2 });
+      },
+      showTimeRange(range) {
+        if (destroyed || !seriesLength) return false;
+        return createLightweightChartsV5VisibleRangePort(chart).setVisibleTimeRange(range);
       },
       zoom(factor) {
         if (destroyed || !Number.isFinite(factor) || factor <= 0) return;
