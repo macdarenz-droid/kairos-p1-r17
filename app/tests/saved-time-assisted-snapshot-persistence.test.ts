@@ -32,10 +32,10 @@ const snapshot = defineSavedTimeAssistedSnapshot({
 
 describe('P23.2 saved time-assisted snapshot persistence foundation', () => {
   it('appends schema v5 with the stable-id snapshot store and keeps v4 history intact', async () => {
-    expect(KAIROS_DB_SCHEMA_VERSION).toBe(6); // P36.1 pin advanced at Gate531: schema v6 appends the trade discipline store; the v5 store below is unchanged.
+    expect(KAIROS_DB_SCHEMA_VERSION).toBe(7); // P36.1 pin advanced at Gate531: schema v6 appends the trade discipline store; the v5 store below is unchanged.
     expect(KAIROS_V5_STORES).toEqual({ savedTimeAssistedSnapshots: '&id' });
     const db = createKairosDatabase(dbName('schema'));
-    await expect(openKairosDatabase(db)).resolves.toEqual({ state: 'ready', schemaVersion: 6 });
+    await expect(openKairosDatabase(db)).resolves.toEqual({ state: 'ready', schemaVersion: 7 });
     expect(db.savedTimeAssistedSnapshots.schema.primKey.keyPath).toBe('id');
     expect(db.savedAnalyses.schema.primKey.keyPath).toBe('id');
     db.close();
@@ -51,7 +51,7 @@ describe('P23.2 saved time-assisted snapshot persistence foundation', () => {
     expect(loaded).not.toBe(snapshot);
     expect(JSON.stringify(loaded)).not.toMatch(/"price"|"pnl"|"result"|executionId|tradeId/);
     await expect(repo.listAll()).resolves.toEqual([snapshot]);
-    await expect(assertKairosDatabaseIntegrity(db)).resolves.toMatchObject({ ok: true, schemaVersion: 6, savedTimeAssistedSnapshotRecordCount: 1 });
+    await expect(assertKairosDatabaseIntegrity(db)).resolves.toMatchObject({ ok: true, schemaVersion: 7, savedTimeAssistedSnapshotRecordCount: 1 });
     await repo.delete(snapshot.id);
     await expect(repo.get(snapshot.id)).resolves.toBeUndefined();
     db.close();
@@ -71,7 +71,7 @@ describe('P23.2 saved time-assisted snapshot persistence foundation', () => {
   it('round-trips a saved snapshot through current backup V5 and counts it in the envelope', async () => {
     const envelope = createKairosBackupEnvelope({ metadata: [], savedTimeAssistedSnapshots: [snapshot] });
     const parsed = parseKairosBackup(serializeKairosBackup(envelope));
-    expect(parsed).toMatchObject({ formatVersion: 5, databaseSchemaVersion: 6, recordCounts: { savedAnalyses: 0, savedTimeAssistedSnapshots: 1, total: 1 } });
+    expect(parsed).toMatchObject({ formatVersion: 5, databaseSchemaVersion: 7, recordCounts: { savedAnalyses: 0, savedTimeAssistedSnapshots: 1, total: 1 } });
     expect(parsed.payload.savedTimeAssistedSnapshots).toEqual([snapshot]);
     const db = createKairosDatabase(dbName('snapshot'));
     await openKairosDatabase(db);

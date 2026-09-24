@@ -57,11 +57,11 @@ describe('P36.1 trade discipline record foundation', () => {
   });
 
   it('appends schema v6 with the one-per-trade discipline store and keeps v5 history intact', async () => {
-    expect(KAIROS_DB_SCHEMA_VERSION).toBe(6);
+    expect(KAIROS_DB_SCHEMA_VERSION).toBe(7);
     expect(KAIROS_V6_STORES).toEqual({ tradeDiscipline: '&id,tradeId,updatedAt' });
     expect(KAIROS_V5_STORES).toEqual({ savedTimeAssistedSnapshots: '&id' });
     const db = createKairosDatabase(dbName('schema'));
-    await expect(openKairosDatabase(db)).resolves.toEqual({ state: 'ready', schemaVersion: 6 });
+    await expect(openKairosDatabase(db)).resolves.toEqual({ state: 'ready', schemaVersion: 7 });
     expect(db.tradeDiscipline.schema.primKey.keyPath).toBe('id');
     expect(db.tradeDiscipline.schema.indexes.map((index) => index.name)).toEqual(['tradeId', 'updatedAt']);
     expect(db.savedTimeAssistedSnapshots.schema.primKey.keyPath).toBe('id');
@@ -81,7 +81,7 @@ describe('P36.1 trade discipline record foundation', () => {
     await expect(repo.getByTradeId(tradeId)).resolves.toEqual(discipline);
     await expect(repo.getByTradeId('other-trade' as TradeId)).resolves.toBeUndefined();
     await expect(repo.listAll()).resolves.toEqual([discipline]);
-    await expect(assertKairosDatabaseIntegrity(db)).resolves.toMatchObject({ ok: true, schemaVersion: 6, tradeRecordCount: 1, tradeDisciplineRecordCount: 1 });
+    await expect(assertKairosDatabaseIntegrity(db)).resolves.toMatchObject({ ok: true, schemaVersion: 7, tradeRecordCount: 1, tradeDisciplineRecordCount: 1 });
     await repo.delete(discipline.id);
     await expect(repo.get(discipline.id)).resolves.toBeUndefined();
     db.close();
@@ -111,7 +111,7 @@ describe('P36.1 trade discipline record foundation', () => {
   it('round-trips a discipline record through current backup V5 and counts it in the envelope', async () => {
     const envelope = createKairosBackupEnvelope({ metadata: [], trades: [trade], tradeDiscipline: [discipline] });
     const parsed = parseKairosBackup(serializeKairosBackup(envelope));
-    expect(parsed).toMatchObject({ formatVersion: 5, databaseSchemaVersion: 6, recordCounts: { trades: 1, savedTimeAssistedSnapshots: 0, tradeDiscipline: 1, total: 2 } });
+    expect(parsed).toMatchObject({ formatVersion: 5, databaseSchemaVersion: 7, recordCounts: { trades: 1, savedTimeAssistedSnapshots: 0, tradeDiscipline: 1, total: 2 } });
     expect(parsed.payload.tradeDiscipline).toEqual([discipline]);
     const db = createKairosDatabase(dbName('snapshot'));
     await openKairosDatabase(db);

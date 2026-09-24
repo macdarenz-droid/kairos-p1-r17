@@ -46,7 +46,7 @@ describe('P28.1 backup export command', () => {
     expect(Object.isFrozen(file)).toBe(true);
     const parsed = parseKairosBackup(file.contents);
     expect(parsed.formatVersion).toBe(5);
-    expect(parsed.databaseSchemaVersion).toBe(6);
+    expect(parsed.databaseSchemaVersion).toBe(7);
     expect(parsed.payload.metadata.map(record => record.key)).toEqual(['preferences.goals.v1']);
     expect(parsed.payload.savedAnalyses[0]).toMatchObject({ id: 'a-1', label: 'Alpha plan' });
     expect({ metadata: await db.metadata.count(), analyses: await db.savedAnalyses.count() }).toEqual(before);

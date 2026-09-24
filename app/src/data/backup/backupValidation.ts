@@ -234,7 +234,7 @@ function validateV4(input: Record<string, unknown>): KairosBackupEnvelopeV4 {
 }
 
 function validateV5(input: Record<string, unknown>): KairosBackupEnvelopeV5 {
-  if (input.databaseSchemaVersion !== 6) throw new KairosBackupValidationError('INVALID_HEADER', 'Backup format V5 must describe database schema V6.');
+  if (input.databaseSchemaVersion !== 6 && input.databaseSchemaVersion !== 7) throw new KairosBackupValidationError('INVALID_HEADER', 'Backup format V5 must describe database schema V6 or V7.');
   if (!isRecord(input.payload)) throw new KairosBackupValidationError('INVALID_PAYLOAD', 'Backup V5 payload is invalid.');
   const payload=input.payload;
   const validators:Array<[string,(value:unknown)=>boolean]>=[['metadata',isMetadataRecord],['trades',isTradeRecord],['tradePlans',isTradePlanRecord],['tradeExecutions',isTradeExecutionRecord],['tradeFees',isTradeFeeRecord],['savedAnalyses',isSavedAnalysisRecord],['savedTimeAssistedSnapshots',isSavedTimeAssistedSnapshotRecord],['tradeDiscipline',isTradeDisciplineRecord]];

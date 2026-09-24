@@ -9,6 +9,7 @@ import {
   KAIROS_V4_STORES,
   KAIROS_V5_STORES,
   KAIROS_V6_STORES,
+  KAIROS_V7_STORES,
   createKairosDatabase,
   openKairosDatabase,
   registerKairosMigrations,
@@ -37,15 +38,16 @@ afterEach(async () => {
 });
 
 describe('P5.3 migration harness', () => {
-  it('keeps immutable history and appends the current v6 schema', () => {
-    expect(KAIROS_DB_SCHEMA_VERSION).toBe(6);
-    expect(KAIROS_DATABASE_MIGRATIONS).toHaveLength(6);
+  it('keeps immutable history and appends the current v7 schema', () => {
+    expect(KAIROS_DB_SCHEMA_VERSION).toBe(7);
+    expect(KAIROS_DATABASE_MIGRATIONS).toHaveLength(7);
     expect(KAIROS_DATABASE_MIGRATIONS[0]).toEqual({ version: 1, stores: KAIROS_V1_STORES });
     expect(KAIROS_DATABASE_MIGRATIONS[1]?.version).toBe(2);
     expect(KAIROS_DATABASE_MIGRATIONS[2]).toEqual({ version: 3, stores: KAIROS_V3_STORES });
     expect(KAIROS_DATABASE_MIGRATIONS[3]).toEqual({ version: 4, stores: KAIROS_V4_STORES });
     expect(KAIROS_DATABASE_MIGRATIONS[4]).toEqual({ version: 5, stores: KAIROS_V5_STORES });
     expect(KAIROS_DATABASE_MIGRATIONS[5]).toEqual({ version: 6, stores: KAIROS_V6_STORES });
+    expect(KAIROS_DATABASE_MIGRATIONS[6]).toEqual({ version: 7, stores: KAIROS_V7_STORES });
     expect(Object.isFrozen(KAIROS_DATABASE_MIGRATIONS)).toBe(true);
     expect(Object.isFrozen(KAIROS_DATABASE_MIGRATIONS[0])).toBe(true);
     expect(() => validateKairosMigrationSequence(KAIROS_DATABASE_MIGRATIONS)).not.toThrow();
@@ -67,14 +69,15 @@ describe('P5.3 migration harness', () => {
     expect(() => validateKairosMigrationSequence(mismatched, 3)).toThrow(/contiguous and append-only/);
   });
 
-  it('opens the live production schema at v6 with indexed journal status ordering', async () => {
+  it('opens the live production schema at v7 with indexed journal status ordering', async () => {
     const db = createKairosDatabase(makeDatabaseName('production-schema'));
     const status = await openKairosDatabase(db);
 
-    expect(status).toEqual({ state: 'ready', schemaVersion: 6 });
-    expect(db.verno).toBe(6);
+    expect(status).toEqual({ state: 'ready', schemaVersion: 7 });
+    expect(db.verno).toBe(7);
     expect(db.tables.map((table) => table.name)).toEqual(['metadata', 'trades', 'tradePlans', 'tradeExecutions', 'tradeFees', 'savedAnalyses', 'savedTimeAssistedSnapshots', 'tradeDiscipline']);
     expect(db.trades.schema.indexes.map((index) => index.name)).toContain('[status+updatedAt]');
+    expect(db.trades.schema.indexes.map((index) => index.name)).toContain('[status+closedAt]');
     db.close();
   });
 

@@ -1,6 +1,6 @@
 import type Dexie from 'dexie';
 import type { Transaction } from 'dexie';
-import { KAIROS_DB_SCHEMA_VERSION, KAIROS_V1_STORES, KAIROS_V2_STORES, KAIROS_V3_STORES, KAIROS_V4_STORES, KAIROS_V5_STORES, KAIROS_V6_STORES } from './schema';
+import { KAIROS_DB_SCHEMA_VERSION, KAIROS_V1_STORES, KAIROS_V2_STORES, KAIROS_V3_STORES, KAIROS_V4_STORES, KAIROS_V5_STORES, KAIROS_V6_STORES, KAIROS_V7_STORES } from './schema';
 
 export type KairosStoreSchema = Readonly<Record<string, string | null>>;
 export type KairosMigrationUpgrade = (transaction: Transaction) => void | PromiseLike<unknown>;
@@ -12,8 +12,9 @@ const KAIROS_V3_MIGRATION: KairosMigrationDefinition = Object.freeze({ version: 
 const KAIROS_V4_MIGRATION: KairosMigrationDefinition = Object.freeze({ version: 4, stores: KAIROS_V4_STORES });
 const KAIROS_V5_MIGRATION: KairosMigrationDefinition = Object.freeze({ version: 5, stores: KAIROS_V5_STORES });
 const KAIROS_V6_MIGRATION: KairosMigrationDefinition = Object.freeze({ version: 6, stores: KAIROS_V6_STORES });
+const KAIROS_V7_MIGRATION: KairosMigrationDefinition = Object.freeze({ version: 7, stores: KAIROS_V7_STORES });
 
-export const KAIROS_DATABASE_MIGRATIONS: readonly KairosMigrationDefinition[] = Object.freeze([KAIROS_V1_MIGRATION, KAIROS_V2_MIGRATION, KAIROS_V3_MIGRATION, KAIROS_V4_MIGRATION, KAIROS_V5_MIGRATION, KAIROS_V6_MIGRATION]);
+export const KAIROS_DATABASE_MIGRATIONS: readonly KairosMigrationDefinition[] = Object.freeze([KAIROS_V1_MIGRATION, KAIROS_V2_MIGRATION, KAIROS_V3_MIGRATION, KAIROS_V4_MIGRATION, KAIROS_V5_MIGRATION, KAIROS_V6_MIGRATION, KAIROS_V7_MIGRATION]);
 
 export function validateKairosMigrationSequence(migrations: readonly KairosMigrationDefinition[], expectedCurrentVersion: number = KAIROS_DB_SCHEMA_VERSION): void {
   if (migrations.length === 0) throw new Error('Kairos database migration registry must contain schema version 1.');

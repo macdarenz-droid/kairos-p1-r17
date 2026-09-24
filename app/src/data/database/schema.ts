@@ -4,7 +4,7 @@ import type { TradeDisciplineRecord } from '../../domain/discipline';
 import type { TradeExecutionRecord, TradeFeeRecord, TradePlanRecord, TradeRecord } from '../../domain/trades';
 
 export const KAIROS_DATABASE_NAME = 'kairos';
-export const KAIROS_DB_SCHEMA_VERSION = 6 as const;
+export const KAIROS_DB_SCHEMA_VERSION = 7 as const;
 
 /** Immutable released V1 contract. Never edit. */
 export const KAIROS_V1_STORES = Object.freeze({
@@ -41,6 +41,11 @@ export const KAIROS_V6_STORES = Object.freeze({
   tradeDiscipline: '&id,tradeId,updatedAt',
 });
 
+/** V7 adds an indexed close-time path for period totals without changing stored trade records. */
+export const KAIROS_V7_STORES = Object.freeze({
+  trades: '&id,status,symbol,updatedAt,[status+updatedAt],[status+closedAt]',
+});
+
 /** Current complete store authority used by transactions/integrity only. */
 export const KAIROS_CURRENT_STORES = Object.freeze({
   ...KAIROS_V2_STORES,
@@ -48,6 +53,7 @@ export const KAIROS_CURRENT_STORES = Object.freeze({
   ...KAIROS_V4_STORES,
   ...KAIROS_V5_STORES,
   ...KAIROS_V6_STORES,
+  ...KAIROS_V7_STORES,
 });
 
 export interface DatabaseMetadataRecord {
