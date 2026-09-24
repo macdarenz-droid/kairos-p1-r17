@@ -60,6 +60,14 @@ describe('T-027c trade picture card', () => {
     expect(container.querySelector('[data-box]')).toBeNull();
   });
 
+  it('decides up or down exactly: a candle 1e-19 lower at the close is drawn as down', () => {
+    const tiny = { openTime: '2026-09-20T09:00:00.000Z', closeTime: '2026-09-20T09:59:59.999Z', open: dec('0.1000000000000000002'), high: dec('0.1000000000000000003'), low: dec('0.1000000000000000001'), close: dec('0.1000000000000000001') };
+    const { container } = render(<TradePictureCard model={projectTradePicture({ ...input, candles: [tiny] })} />);
+    const candle = container.querySelector('.kairos-trade-picture__candles g')!;
+    expect(candle.getAttribute('data-direction')).toBe('down');
+    expect(candle).toHaveClass('kairos-trade-picture__candle--down');
+  });
+
   it('is one image whose label names the market, direction, result and R', () => {
     const model = projectTradePicture(input);
     render(<TradePictureCard model={model} />);
