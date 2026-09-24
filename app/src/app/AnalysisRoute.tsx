@@ -6,6 +6,7 @@ import { TradeReviewDetails, reviewTimestamp } from './TradeReviewDetails';
 import './tradeReview.css';
 import { AnalysisHistoryWorkspace } from './AnalysisHistoryWorkspace';
 import { AnalysisHandoffContext, parseAnalysisHandoff } from './analysisHandoff';
+import { TradePicture } from '../features/journal/TradePicture';
 
 type State = { readonly key: string | null; readonly result: TradeReviewResult | null; readonly error: boolean };
 
@@ -46,6 +47,7 @@ export function AnalysisRoute({ load = loadTradeReview }: { readonly load?: (id:
   const handoff = parseAnalysisHandoff(params);
   return <section className="kairos-route kairos-review" aria-labelledby="kairos-review-title" aria-busy={loading || undefined}>
     <header className="kairos-review__heading"><div><p className="kairos-review__eyebrow">Charts & trade review</p><h1 id="kairos-review-title" tabIndex={-1} ref={heading}>Analysis</h1></div><button type="button" onClick={refresh} disabled={loading}>Refresh</button></header>
+    {selectedEntry ? <TradePicture key={selectedEntry.trade.id} entry={selectedEntry} variant="full" /> : null}
     <AnalysisHandoffContext.Provider value={handoff}>
     <AnalysisHistoryWorkspace entry={selectedEntry} savedTradePending={savedTradePending} />
     </AnalysisHandoffContext.Provider>

@@ -1,6 +1,6 @@
 import type { JournalHistoryEntry } from '../application/journal';
 import type { TradeSource, TradeStatus } from '../domain/trades';
-import { JournalTradeMap } from './JournalTradeMap';
+import { TradePicture } from '../features/journal/TradePicture';
 import { ReviewTradeLink } from './ReviewTradeLink';
 import { JournalOpenTradeUpdate } from './JournalOpenTradeUpdate';
 import { JournalDraftTradeActivation } from './JournalDraftTradeActivation';
@@ -110,17 +110,17 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
                   <span>{entry.visualPnl.label}</span>
                   <strong>{visualPnlAmount(entry)}</strong>
                 </div>
-                <JournalTradeMap entry={entry} />
+                <TradePicture entry={entry} variant="thumbnail" />
                 <dl className="kairos-history-card__facts">
-                  <div><dt>Executions</dt><dd>{entry.executions.length}</dd></div>
+                  <div><dt>Entries and exits</dt><dd>{entry.executions.length}</dd></div>
                   <div><dt>Fees</dt><dd>{entry.fees.length}</dd></div>
-                  <div><dt>Gross P&amp;L</dt><dd>{money(entry.metrics?.grossPnl, entry.trade.grossPnlCurrency)}</dd></div>
-                  <div><dt>Net P&amp;L</dt><dd>{entry.metrics?.netPnl != null && entry.metrics.netPnlCurrency ? money(entry.metrics.netPnl, entry.metrics.netPnlCurrency) : entry.metrics?.netPnl ?? 'Not available'}</dd></div>
+                  <div><dt>Result before fees</dt><dd>{money(entry.metrics?.grossPnl, entry.trade.grossPnlCurrency)}</dd></div>
+                  <div><dt>Result after fees</dt><dd>{entry.metrics?.netPnl != null && entry.metrics.netPnlCurrency ? money(entry.metrics.netPnl, entry.metrics.netPnlCurrency) : entry.metrics?.netPnl ?? 'Not available'}</dd></div>
                 </dl>
                 {entry.fees.length > 0 && entry.metrics?.grossPnl != null && entry.metrics.netPnl == null ? <p className="kairos-history-card__notice">
-                  {entry.trade.grossPnlCurrency ? 'Net P&L needs fees in the same currency as your recorded prices. Currency conversion is not applied.' : 'P&L currency is not recorded, so fees cannot yet be deducted.'}
+                  {entry.trade.grossPnlCurrency ? 'Result after fees needs fees in the same currency as your recorded prices. Kairos does not convert currencies.' : 'The price currency is not recorded, so fees cannot be taken off yet.'}
                 </p> : null}
-                {entry.metricsError ? <p className="kairos-history-card__notice">Some performance values are unavailable for this trade.</p> : null}
+                {entry.metricsError ? <p className="kairos-history-card__notice">Some results are not available for this trade.</p> : null}
               </li>
             );
           })}

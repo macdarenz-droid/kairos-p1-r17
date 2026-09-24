@@ -20,8 +20,18 @@
 .kairos-trade-picture__marker--entry { fill: var(--kairos-trade-entry); }
 .kairos-trade-picture__marker--exit { fill: var(--kairos-text-primary); }
 .kairos-trade-picture__note { margin: 0; color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-xs); }
-.kairos-trade-picture__info { display: grid; gap: var(--kairos-space-1); margin: 0; align-content: start; font-size: var(--kairos-font-size-xs); }
-.kairos-trade-picture__info div { display: flex; justify-content: space-between; gap: var(--kairos-space-2); border-bottom: 1px solid var(--kairos-border-subtle); padding-bottom: var(--kairos-space-1); }
+.kairos-trade-picture__info { display: grid; gap: var(--kairos-space-2); align-content: start; font-size: var(--kairos-font-size-xs); min-width: 0; }
+.kairos-trade-picture__info dl { display: grid; gap: var(--kairos-space-1); margin: 0; }
+.kairos-trade-picture__title { margin: 0; font-weight: 600; font-size: var(--kairos-font-size-sm); }
+.kairos-trade-picture__info dl div { display: flex; justify-content: space-between; gap: var(--kairos-space-2); border-bottom: 1px solid var(--kairos-border-subtle); padding-bottom: var(--kairos-space-1); }
 .kairos-trade-picture__info dt { color: var(--kairos-text-secondary); }
 .kairos-trade-picture__info dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 @media (max-width: 480px) { .kairos-trade-picture { grid-template-columns: minmax(0, 1fr); } }
+.kairos-trade-picture-thumb__open { display: block; width: 100%; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: zoom-in; }
+.kairos-trade-picture-thumb .kairos-trade-picture { grid-template-columns: minmax(0, 1fr); }
+.kairos-trade-picture-dialog { position: fixed; inset: 0; z-index: 50; display: grid; align-items: end; justify-items: center; padding: var(--kairos-space-3); background: var(--kairos-background-overlay); }
+.kairos-trade-picture-dialog__sheet { width: min(720px, 100%); max-height: 92vh; overflow: auto; display: grid; gap: var(--kairos-space-3); padding: var(--kairos-space-4); border-radius: var(--kairos-radius-lg) var(--kairos-radius-lg) 0 0; background: var(--kairos-surface-modal); }
+.kairos-trade-picture-dialog__sheet h2, .kairos-trade-picture-panel h2 { margin: 0; font-size: var(--kairos-font-size-md); }
+.kairos-trade-picture-panel { display: grid; gap: var(--kairos-space-3); }
+.kairos-trade-picture-panel__actions { display: flex; flex-wrap: wrap; gap: var(--kairos-space-2); align-items: center; }
+@media (min-width: 720px) { .kairos-trade-picture-dialog { align-items: center; } .kairos-trade-picture-dialog__sheet { border-radius: var(--kairos-radius-lg); } }

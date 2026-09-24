@@ -1,3 +1,4 @@
+import type { Ref } from 'react';
 import type { TradePictureBox, TradePictureModel } from '../../application/trade-visualizer';
 import './tradePictureCard.css';
 
@@ -38,14 +39,17 @@ function Box({ box, scale, kind }: { readonly box: TradePictureBox; readonly sca
   </g>;
 }
 
-function Level({ price, scale, kind }: { readonly price: string | null; readonly scale: Scale; readonly kind: 'entry' | 'stop' | 'target' }) {
+function Level({ price, scale, kind, labelled }: { readonly price: string | null; readonly scale: Scale; readonly kind: 'entry' | 'stop' | 'target'; readonly labelled: boolean }) {
   if (price === null) return null;
   const y = scale.y(price);
   return <g className={`kairos-trade-picture__level kairos-trade-picture__level--${kind}`} data-level={kind}>
     <line x1={PAD.left} x2={TRADE_PICTURE_WIDTH - PAD.right} y1={y} y2={y} />
-    <text x={TRADE_PICTURE_WIDTH - PAD.right + 4} y={y + 4}>{price}</text>
+    {labelled ? <text x={TRADE_PICTURE_WIDTH - PAD.right + 4} y={y + 4}>{price}</text> : null}
   </g>;
 }
+
+/** Market, direction and status make up the panel's title line instead of their own rows. */
+const TITLE_ROWS: ReadonlySet<string> = new Set(['market', 'direction', 'status']);
 
 function rowText(model: TradePictureModel, key: string): string | null {
   return model.info.find(row => row.key === key)?.text ?? null;
@@ -77,7 +81,15 @@ function displayValue(model: TradePictureModel, key: string): string {
  * planned levels and every fill, beside a plain-word info panel. It draws the
  * T-027a model only; every number shown comes from that model.
  */
-export function TradePictureCard({ model }: { readonly model: TradePictureModel }) {
+export function TradePictureCard({ model, candlesLoading = false, svgRef, compact = false }: {
+  readonly model: TradePictureModel;
+  /** Candles are still on their way: say so instead of the connection note. */
+  readonly candlesLoading?: boolean;
+  /** The drawn SVG, for "Save image". */
+  readonly svgRef?: Ref<SVGSVGElement>;
+  /** Thumbnail: the picture only, without price labels or the info panel. */
+  readonly compact?: boolean;
+}) {
   const scale = makeScale(model);
   const noCandles = model.candles.length === 0;
   const noPlan = model.riskBox === null || model.rewardBox === null;
@@ -88,7 +100,7 @@ export function TradePictureCard({ model }: { readonly model: TradePictureModel 
 
   return <figure className="kairos-trade-picture" role="img" aria-label={describeTradePicture(model)} data-trade-picture={model.symbol}>
     <div className="kairos-trade-picture__chart">
-      <svg viewBox={`0 0 ${TRADE_PICTURE_WIDTH} ${TRADE_PICTURE_HEIGHT}`} preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">
+      <svg ref={svgRef} viewBox={`0 0 ${TRADE_PICTURE_WIDTH} ${TRADE_PICTURE_HEIGHT}`} preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">
         <rect className="kairos-trade-picture__background" x="0" y="0" width={TRADE_PICTURE_WIDTH} height={TRADE_PICTURE_HEIGHT} rx="8" />
         {scale ? <>
           {model.riskBox ? <Box box={model.riskBox} scale={scale} kind="risk" /> : null}
@@ -104,9 +116,9 @@ export function TradePictureCard({ model }: { readonly model: TradePictureModel 
               </g>;
             })}
           </g>
-          <Level price={planned('planned-entry')} scale={scale} kind="entry" />
-          <Level price={planned('stop')} scale={scale} kind="stop" />
-          <Level price={planned('target')} scale={scale} kind="target" />
+          <Level price={planned('planned-entry')} scale={scale} kind="entry" labelled={!compact} />
+          <Level price={planned('stop')} scale={scale} kind="stop" labelled={!compact} />
+          <Level price={planned('target')} scale={scale} kind="target" labelled={!compact} />
           {model.markers.map((marker, index) => {
             const x = scale.x(marker.at), y = scale.y(marker.price);
             return marker.kind === 'entry'
@@ -115,14 +127,17 @@ export function TradePictureCard({ model }: { readonly model: TradePictureModel 
           })}
         </> : null}
       </svg>
-      {noCandles ? <p className="kairos-trade-picture__note">Candles need a connection.</p> : null}
+      {noCandles ? <p className="kairos-trade-picture__note">{candlesLoading ? 'Loading candles…' : 'Candles need a connection.'}</p> : null}
       {noPlan ? <p className="kairos-trade-picture__note">Add a stop and target to see your risk box.</p> : null}
     </div>
-    <dl className="kairos-trade-picture__info">
-      {model.info.map(row => <div key={row.key} data-info={row.key}>
-        <dt>{row.label}</dt>
-        <dd>{displayValue(model, row.key)}</dd>
-      </div>)}
-    </dl>
+    {compact ? null : <div className="kairos-trade-picture__info">
+      <p className="kairos-trade-picture__title">{[rowText(model, 'market'), rowText(model, 'direction'), rowText(model, 'status')].filter(Boolean).join(' · ')}</p>
+      <dl>
+        {model.info.filter(row => !TITLE_ROWS.has(row.key)).map(row => <div key={row.key} data-info={row.key}>
+          <dt>{row.label}</dt>
+          <dd>{displayValue(model, row.key)}</dd>
+        </div>)}
+      </dl>
+    </div>}
   </figure>;
 }
