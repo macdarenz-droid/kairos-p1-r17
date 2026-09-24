@@ -55,7 +55,18 @@ describe('T-009 Kairos Depth in the vision colours', () => {
   it('keeps primary and secondary text at 4.5:1 or more against the background', () => {
     expect(contrast(depth['--kairos-text-primary'], depth['--kairos-background-base'])).toBeGreaterThanOrEqual(4.5);
     expect(contrast(depth['--kairos-text-secondary'], depth['--kairos-background-base'])).toBeGreaterThanOrEqual(4.5);
+    // Cards sit on the raised surface; their text must stay readable too.
+    expect(contrast(depth['--kairos-text-primary'], depth['--kairos-surface-card'])).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(depth['--kairos-text-secondary'], depth['--kairos-surface-card'])).toBeGreaterThanOrEqual(4.5);
     expect(contrast('#ffffff', '#000000')).toBeCloseTo(21, 5);
+  });
+
+  it('paints the page and fields with the vision colours, with no old accent left', () => {
+    expect(depth['--kairos-background-gradient']).toContain('#0b0d14');
+    expect(depth['--kairos-background-gradient']).toContain('#131a2e');
+    expect(depth['--kairos-field-gradient']).toContain('#0b0d14');
+    const all = JSON.stringify(depth).toLowerCase();
+    for (const old of ['#070b12', '#59dcff', '#8b7cff', '89,220,255']) expect(all).not.toContain(old);
   });
 
   it('gives every theme a plain label', () => {
