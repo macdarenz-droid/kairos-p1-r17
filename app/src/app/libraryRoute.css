@@ -1,6 +1,7 @@
 .kairos-library { display:grid; gap:var(--kairos-space-5); }
 .kairos-library__heading h1 { margin-top:var(--kairos-space-1); }
-.kairos-library__eyebrow { margin:0 !important; color:var(--kairos-accent-primary) !important; font-size:var(--kairos-font-size-xs); font-weight:var(--kairos-font-weight-semibold); letter-spacing:.08em; text-transform:uppercase; }
+.kairos-library__section { display:grid; gap:var(--kairos-space-4); }
+.kairos-library__section h2 { margin:0; font-size:var(--kairos-font-size-lg); }
 .kairos-library__note, .kairos-library__empty { margin:0; color:var(--kairos-text-muted); font-size:var(--kairos-font-size-sm); line-height:var(--kairos-line-height-normal); }
 .kairos-library__filters { display:flex; flex-wrap:wrap; gap:var(--kairos-space-3); }
 .kairos-library__filters label { display:grid; gap:var(--kairos-space-2); flex:1 1 auto; min-width:0; color:var(--kairos-text-secondary); font-size:var(--kairos-font-size-sm); }
