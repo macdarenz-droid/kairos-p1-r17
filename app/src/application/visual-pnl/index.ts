@@ -16,3 +16,6 @@ export * from './progressSeries';
 export * from './cumulativeRealizedPnl';
 
 export * from './dayKeyCalendar';
+
+export * from './monthGrid';
+export * from './resultLine';

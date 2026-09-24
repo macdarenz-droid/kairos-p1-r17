@@ -21,3 +21,28 @@ export function shiftVisualPnlDayKey(dayKey: string, days: number): string {
   const [year, month, day] = dayKey.split('-').map(Number);
   return dayKeyFromUtc(new Date(Date.UTC(year, month - 1, day + days)));
 }
+
+const MONTH_KEY_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+/** True for `YYYY-MM` with a month from 01 to 12. */
+export function isVisualPnlMonthKey(value: string): boolean {
+  return MONTH_KEY_PATTERN.test(value);
+}
+
+/** The calendar month `months` after (or before, when negative) `monthKey`. */
+export function shiftVisualPnlMonthKey(monthKey: string, months: number): string {
+  const [year, month] = monthKey.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1 + months, 1)).toISOString().slice(0, 7);
+}
+
+/** How many calendar days `monthKey` has. */
+export function visualPnlDaysInMonth(monthKey: string): number {
+  const [year, month] = monthKey.split('-').map(Number);
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+/** Weekday of a calendar day with Monday 0 … Sunday 6. */
+export function visualPnlMondayFirstWeekday(dayKey: string): number {
+  const [year, month, day] = dayKey.split('-').map(Number);
+  return (new Date(Date.UTC(year, month - 1, day)).getUTCDay() + 6) % 7;
+}
