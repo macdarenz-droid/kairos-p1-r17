@@ -8,6 +8,7 @@ export class TradeDisciplineRepository {
   get(id: TradeDisciplineId) { return this.db.tradeDiscipline.get(id); }
   getByTradeId(tradeId: TradeId) { return this.db.tradeDiscipline.where('tradeId').equals(tradeId).first(); }
   listAll() { return this.db.tradeDiscipline.toArray(); }
+  listByTradeIds(ids: readonly TradeId[]) { return this.db.tradeDiscipline.where('tradeId').anyOf([...ids]).toArray(); }
   put(record: TradeDisciplineRecord) { return this.db.tradeDiscipline.put(structuredClone(record)).then(() => undefined); }
   delete(id: TradeDisciplineId) { return this.db.tradeDiscipline.delete(id); }
   async replaceAll(records: readonly TradeDisciplineRecord[]) {
