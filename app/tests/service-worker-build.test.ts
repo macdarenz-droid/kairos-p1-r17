@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from 'vitest';
 import template from '../src/pwa/serviceWorker.js?raw';
-import { buildKairosServiceWorker, listKairosPublicPrecacheFiles, type KairosServiceWorkerBuildFile } from '../src/pwa/serviceWorkerBuild';
+import { KAIROS_LEARNING_SOURCES_CACHE, KAIROS_LEARNING_SOURCES_PATH, buildKairosServiceWorker, listKairosPublicPrecacheFiles, type KairosServiceWorkerBuildFile } from '../src/pwa/serviceWorkerBuild';
 
 const files = (icon = new Uint8Array([1, 2, 3])): KairosServiceWorkerBuildFile[] => [
   { fileName: 'index.html', content: '<!doctype html><script src="/assets/index-a1.js"></script>' },
@@ -48,7 +48,7 @@ function runWorker() {
   const listeners = new Map<string, Listener>();
   const stores = new Map<string, Map<string, Response>>();
   const store = (name: string) => { if (!stores.has(name)) stores.set(name, new Map()); return stores.get(name)!; };
-  const keyOf = (request: string | { url: string }) => new URL(typeof request === 'string' ? request : request.url, 'https://kairos.test').pathname;
+  const keyOf = (request: string | { url: string }) => { const url = new URL(typeof request === 'string' ? request : request.url, 'https://kairos.test'); return url.pathname + url.search; };
   const cacheFor = (name: string) => ({
     addAll: vi.fn(async (urls: string[]) => { for (const url of urls) store(name).set(url, new Response(`cached ${url}`)); }),
     match: vi.fn(async (request: string | { url: string }) => store(name).get(keyOf(request))?.clone()),
@@ -123,5 +123,49 @@ describe('service worker behaviour', () => {
     const response = await worker.dispatch('fetch', { request: request('https://kairos.test/assets/x.js', { destination: 'script' }) });
     await response;
     expect(worker.store(worker.cacheName).has('/assets/x.js')).toBe(false);
+  });
+
+  it('never precaches a learning source', () => {
+    expect(() => buildKairosServiceWorker(template, { buildId: 'x', files: [...files(), { fileName: 'assets/guide-a1.pdf', content: '%PDF-' }] }))
+      .toThrow('Learning sources are never precached: assets/guide-a1.pdf');
+    expect(() => buildKairosServiceWorker(template, { buildId: 'x', files: [...files(), { fileName: 'library/sources/a.txt', content: 'x' }] })).toThrow();
+  });
+
+  it('serves a saved learning source offline, even as a page load', async () => {
+    const worker = runWorker();
+    expect(KAIROS_LEARNING_SOURCES_PATH).toBe('/library/sources/');
+    worker.store(KAIROS_LEARNING_SOURCES_CACHE).set('/library/sources/a.pdf?rev=aaaaaaaaaaaaaaaa', new Response('%PDF-saved'));
+    worker.fakeFetch.mockRejectedValue(new TypeError('offline'));
+    const response = await worker.dispatch('fetch', { request: request('https://kairos.test/library/sources/a.pdf?rev=aaaaaaaaaaaaaaaa', { mode: 'navigate' }) });
+    expect(await (await response!).text()).toBe('%PDF-saved');
+  });
+
+  it('says a source is not saved when it is offline, for a missing file or another revision', async () => {
+    for (const saved of [false, true]) {
+      const worker = runWorker();
+      if (saved) worker.store(KAIROS_LEARNING_SOURCES_CACHE).set('/library/sources/a.pdf?rev=aaaaaaaaaaaaaaaa', new Response('%PDF-saved'));
+      worker.fakeFetch.mockRejectedValue(new TypeError('offline'));
+      const url = `https://kairos.test/library/sources/a.pdf?rev=${saved ? 'bbbbbbbbbbbbbbbb' : 'aaaaaaaaaaaaaaaa'}`;
+      const answer = await (await worker.dispatch('fetch', { request: request(url, { mode: 'navigate' }) }))!;
+      expect(answer.status).toBe(503);
+      expect(answer.headers.get('content-type')).toContain('text/plain');
+    }
+  });
+
+  it('passes an unsaved source through online without storing it', async () => {
+    const worker = runWorker();
+    worker.fakeFetch.mockResolvedValue(new Response('%PDF-net'));
+    const response = await worker.dispatch('fetch', { request: request('https://kairos.test/library/sources/a.pdf?rev=aaaaaaaaaaaaaaaa', { mode: 'navigate' }) });
+    expect(await (await response!).text()).toBe('%PDF-net');
+    for (const entries of worker.stores.values()) expect([...entries.keys()].some(key => key.startsWith('/library/'))).toBe(false);
+  });
+
+  it('keeps saved learning sources through an update and leaves a POST alone', async () => {
+    const worker = runWorker();
+    worker.store(KAIROS_LEARNING_SOURCES_CACHE).set('/library/sources/a.pdf?rev=aaaaaaaaaaaaaaaa', new Response('%PDF-saved'));
+    worker.store('kairos-app-shell-old');
+    await worker.dispatch('activate');
+    expect(worker.stores.has(KAIROS_LEARNING_SOURCES_CACHE)).toBe(true);
+    expect(await worker.dispatch('fetch', { request: request('https://kairos.test/library/sources/a.pdf', { method: 'POST' }) })).toBeNull();
   });
 });

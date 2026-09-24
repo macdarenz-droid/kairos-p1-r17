@@ -38,6 +38,22 @@ self.addEventListener('message', (event) => {
   }
 });
 
+function isLearningSourceRequest(request, url) {
+  return isSameOrigin(url) && request.method === 'GET' && url.pathname.startsWith(KAIROS_SERVICE_WORKER.learningSourcesPath);
+}
+
+// The page is the only writer of the learning-sources cache; the worker only reads it. The query names the
+// revision, so only the exact saved revision matches.
+async function savedLearningSource(request) {
+  const saved = await (await caches.open(KAIROS_SERVICE_WORKER.learningSourcesCache)).match(request.url);
+  if (saved) return saved;
+  try {
+    return await fetch(request);
+  } catch {
+    return new Response('This learning source is not saved on this device yet. Connect to the internet to open it, or save it for offline in the Kairos Library.', { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } });
+  }
+}
+
 async function networkFirstNavigation(request) {
   try {
     return await fetch(request);
@@ -65,6 +81,12 @@ async function cacheFirstAsset(request) {
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   const url = new URL(request.url);
+
+  // Before navigations: an offline page load would otherwise answer a PDF with the app shell.
+  if (isLearningSourceRequest(request, url)) {
+    event.respondWith(savedLearningSource(request));
+    return;
+  }
 
   if (request.mode === 'navigate' && isSameOrigin(url)) {
     event.respondWith(networkFirstNavigation(request));
