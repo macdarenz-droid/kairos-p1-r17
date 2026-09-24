@@ -6,6 +6,8 @@ import { JournalOpenTradeUpdate } from './JournalOpenTradeUpdate';
 import { JournalDraftTradeActivation } from './JournalDraftTradeActivation';
 import { JournalTradeDeleteControl } from './JournalTradeDeleteControl';
 import type { KairosDatabase } from '../data/database';
+import { updateTradeExecution } from '../application/trades';
+import { EntriesAndExitsEditor } from '../features/journal/EntriesAndExitsEditor';
 
 interface JournalHistoryListProps {
   readonly entries: readonly JournalHistoryEntry[];
@@ -103,6 +105,7 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
                 <time dateTime={timestamp}>{formatTimestamp(timestamp)}</time>
                 <ReviewTradeLink id={entry.trade.id} className="kairos-history-card__review" />
                 {db && onTradeUpdated ? <JournalOpenTradeUpdate entry={entry} db={db} onCommitted={onTradeUpdated} allowedSources={allowedSources} /> : null}
+                {db && onTradeUpdated && allowedSources.includes(entry.trade.source) ? <EntriesAndExitsEditor entry={entry} save={input => updateTradeExecution(db, { ...input, allowedSources })} onSaved={onTradeUpdated} /> : null}
                 {db && onTradeOpened ? <JournalDraftTradeActivation entry={entry} db={db} onOpened={onTradeOpened} allowedSources={allowedSources} /> : null}
                 {db && onTradeDeleted ? <JournalTradeDeleteControl entry={entry} db={db} onDeleted={onTradeDeleted} /> : null}
                 <div className={`kairos-history-card__outcome kairos-history-card__outcome--${entry.visualPnl.outcome}`} data-outcome={entry.visualPnl.outcome}>

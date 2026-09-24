@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes } from 'react';
+import type { ButtonHTMLAttributes, Ref } from 'react';
 import type { ButtonSize, ButtonVariant } from './registry';
 import './primitives.css';
 
@@ -7,6 +7,8 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   readonly size?: ButtonSize;
   /** Work in progress: the button is disabled and announced as busy. */
   readonly busy?: boolean;
+  /** React 19 passes `ref` as a prop; it reaches the button element. */
+  readonly ref?: Ref<HTMLButtonElement>;
 }
 
 /** The shared button. It never submits a form unless the caller asks for `type="submit"`. */
