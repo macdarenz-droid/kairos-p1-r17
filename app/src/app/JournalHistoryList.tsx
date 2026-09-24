@@ -34,6 +34,8 @@ interface JournalHistoryListProps {
   readonly isLoadingOlder?: boolean;
   readonly olderFailed?: boolean;
   readonly onShowOlder?: () => void;
+  /** Called after a checklist or review is saved on a card. */
+  readonly onDisciplineSaved?: () => void;
 }
 
 function statusLabel(status: JournalHistoryEntry['trade']['status']): string {
@@ -63,9 +65,10 @@ function formatTimestamp(value: string): string {
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 }
 
-export function JournalHistoryList({ entries, isLoading, errorMessage, statusFilter, onStatusFilterChange, db, onTradeUpdated, updateNotice, onTradeDeleted, onTradeOpened, allowedSources = ['manual'], hasOlder = false, isLoadingOlder = false, olderFailed = false, onShowOlder }: JournalHistoryListProps) {
+export function JournalHistoryList({ entries, isLoading, errorMessage, statusFilter, onStatusFilterChange, db, onTradeUpdated, updateNotice, onTradeDeleted, onTradeOpened, allowedSources = ['manual'], hasOlder = false, isLoadingOlder = false, olderFailed = false, onShowOlder, onDisciplineSaved }: JournalHistoryListProps) {
   const discipline = useTradeDisciplineCards(db, entries.map(entry => entry.trade.id));
   // Journal passes the real sources, Practice the paper one; the discipline writer needs the page's scope.
+  const disciplineSaved = (record: Parameters<typeof discipline.remember>[0]) => { discipline.remember(record); onDisciplineSaved?.(); };
   const scope: JournalHistoryScope = allowedSources.some(source => (JOURNAL_HISTORY_SOURCES.practice as readonly TradeSource[]).includes(source)) ? 'practice' : 'real';
   return (
     <section className="kairos-history" aria-labelledby="kairos-history-title" aria-busy={isLoading || undefined}>
@@ -119,12 +122,12 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
                 <ReviewTradeLink id={entry.trade.id} className="kairos-history-card__review" />
                 {db && (entry.trade.status === 'draft' || entry.trade.status === 'open') && allowedSources.includes(entry.trade.source)
                   ? discipline.state.kind === 'ready'
-                    ? <TradeChecklistControl symbol={entry.trade.symbol} tradeId={entry.trade.id} scope={scope} items={discipline.state.lists.checklist} record={discipline.state.records.get(entry.trade.id) ?? null} save={input => saveTradeDiscipline(db, input)} onSaved={discipline.remember} />
+                    ? <TradeChecklistControl symbol={entry.trade.symbol} tradeId={entry.trade.id} scope={scope} items={discipline.state.lists.checklist} record={discipline.state.records.get(entry.trade.id) ?? null} save={input => saveTradeDiscipline(db, input)} onSaved={disciplineSaved} />
                     : discipline.state.kind === 'failed' ? <Button variant="secondary" size="sm" disabled>Before you trade: could not load</Button> : null
                   : null}
                 {db && entry.trade.status === 'closed' && allowedSources.includes(entry.trade.source)
                   ? discipline.state.kind === 'ready'
-                    ? <TradeReviewControl symbol={entry.trade.symbol} tradeId={entry.trade.id} scope={scope} reviewItems={discipline.state.lists.review} mistakeItems={discipline.state.lists.mistakes} record={discipline.state.records.get(entry.trade.id) ?? null} save={input => saveTradeDiscipline(db, input)} onSaved={discipline.remember} />
+                    ? <TradeReviewControl symbol={entry.trade.symbol} tradeId={entry.trade.id} scope={scope} reviewItems={discipline.state.lists.review} mistakeItems={discipline.state.lists.mistakes} record={discipline.state.records.get(entry.trade.id) ?? null} save={input => saveTradeDiscipline(db, input)} onSaved={disciplineSaved} />
                     : discipline.state.kind === 'failed' ? <Button variant="secondary" size="sm" disabled>After the trade: could not load</Button> : null
                   : null}
                 {db && onTradeUpdated ? <JournalOpenTradeUpdate entry={entry} db={db} onCommitted={onTradeUpdated} allowedSources={allowedSources} /> : null}
