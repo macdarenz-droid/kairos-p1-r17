@@ -28,7 +28,7 @@ describe('P30.1 trade record delete command', () => {
     if (!keep.ok || !gone.ok) throw new Error('fixture');
     expect(await counts(db)).toEqual({ trades: 2, plans: 2, executions: 4, fees: 2, analyses: 1 });
     const result = await deleteTradeRecord(db, gone.tradeId);
-    expect(result).toEqual({ ok: true, tradeId: gone.tradeId, source: 'paper', removed: { plans: 1, executions: 2, fees: 1 } });
+    expect(result).toEqual({ ok: true, tradeId: gone.tradeId, source: 'paper', removed: { plans: 1, executions: 2, fees: 1, discipline: 0 } });
     expect(await counts(db)).toEqual({ trades: 1, plans: 1, executions: 2, fees: 1, analyses: 1 });
     expect((await db.trades.toArray()).map(trade => trade.id)).toEqual([keep.tradeId]);
     expect((await db.tradePlans.toArray()).every(plan => plan.tradeId === keep.tradeId)).toBe(true);

@@ -36,7 +36,7 @@ describe('P28.2 backup restore command', () => {
     const result = await prepareBackupRestore(db, incoming());
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('unreachable');
-    expect(result.restore.preview).toMatchObject({ formatVersion: 6, databaseSchemaVersion: 7, exportedAt: '2026-09-17T08:00:00.000Z', metadataRecords: 1, savedAnalysisRecords: 1, totalRecords: 2 });
+    expect(result.restore.preview).toMatchObject({ formatVersion: 7, databaseSchemaVersion: 8, exportedAt: '2026-09-17T08:00:00.000Z', metadataRecords: 1, savedAnalysisRecords: 1, totalRecords: 2 });
     expect(result.restore.recoveryFile.fileName).toMatch(/^kairos-backup-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z\.json$/);
     expect(result.restore.recoveryFile.mediaType).toBe('application/json');
     expect(result.restore.recoveryFile.recordCounts).toMatchObject({ metadata: 1, savedAnalyses: 1, total: 2 });
@@ -53,7 +53,7 @@ describe('P28.2 backup restore command', () => {
     const prepared = await prepareBackupRestore(db, incoming());
     if (!prepared.ok) throw new Error('unreachable');
     const result = await commitBackupRestore(db, prepared.restore);
-    expect(result).toEqual({ ok: true, restored: { restoredMetadataRecords: 1, restoredTradeRecords: 0, restoredSavedAnalysisRecords: 1, restoredSavedTimeAssistedSnapshotRecords: 0, reloadedTotalRecords: 2, verifiedAfterReload: true } });
+    expect(result).toEqual({ ok: true, restored: { restoredMetadataRecords: 1, restoredTradeRecords: 0, restoredSavedAnalysisRecords: 1, restoredSavedTimeAssistedSnapshotRecords: 0, restoredTradeDisciplineRecords: 0, reloadedTotalRecords: 2, verifiedAfterReload: true } });
     expect((await db.savedAnalyses.toArray()).map(record => record.id)).toEqual(['a-incoming']);
     expect((await db.metadata.toArray()).map(record => record.key).sort()).toEqual(['device.activation.receipt', 'preferences.goals.v1']);
     const exported = await exportKairosBackup(db, new Date('2026-09-18T16:00:00.000Z'));

@@ -40,6 +40,7 @@ export interface CommittedBackupRestore {
   readonly restoredTradeRecords: number;
   readonly restoredSavedAnalysisRecords: number;
   readonly restoredSavedTimeAssistedSnapshotRecords: number;
+  readonly restoredTradeDisciplineRecords: number;
   readonly reloadedTotalRecords: number;
   readonly verifiedAfterReload: true;
 }
@@ -117,6 +118,7 @@ export async function commitBackupRestore(db: KairosDatabase, restore: PreparedB
         restoredTradeRecords: verified.restoredTradeRecords,
         restoredSavedAnalysisRecords: verified.restoredSavedAnalysisRecords,
         restoredSavedTimeAssistedSnapshotRecords: verified.restoredSavedTimeAssistedSnapshotRecords,
+        restoredTradeDisciplineRecords: verified.restoredTradeDisciplineRecords,
         reloadedTotalRecords: verified.reloadedTotalRecords,
         verifiedAfterReload: verified.verifiedAfterReload,
       }),

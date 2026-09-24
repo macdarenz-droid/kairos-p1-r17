@@ -1,4 +1,8 @@
-import type { JournalHistoryEntry } from '../application/journal';
+import { JOURNAL_HISTORY_SOURCES, type JournalHistoryEntry, type JournalHistoryScope } from '../application/journal';
+import { saveTradeDiscipline } from '../application/discipline';
+import { Button } from '../design-system/primitives';
+import { TradeChecklistControl } from '../features/discipline/TradeChecklistControl';
+import { useTradeDisciplineCards } from '../features/discipline/useTradeDisciplineCards';
 import type { TradeSource, TradeStatus } from '../domain/trades';
 import { TradePicture } from '../features/journal/TradePicture';
 import { ReviewTradeLink } from './ReviewTradeLink';
@@ -59,6 +63,9 @@ function formatTimestamp(value: string): string {
 }
 
 export function JournalHistoryList({ entries, isLoading, errorMessage, statusFilter, onStatusFilterChange, db, onTradeUpdated, updateNotice, onTradeDeleted, onTradeOpened, allowedSources = ['manual'], hasOlder = false, isLoadingOlder = false, olderFailed = false, onShowOlder }: JournalHistoryListProps) {
+  const discipline = useTradeDisciplineCards(db, entries.map(entry => entry.trade.id));
+  // Journal passes the real sources, Practice the paper one; the discipline writer needs the page's scope.
+  const scope: JournalHistoryScope = allowedSources.some(source => (JOURNAL_HISTORY_SOURCES.practice as readonly TradeSource[]).includes(source)) ? 'practice' : 'real';
   return (
     <section className="kairos-history" aria-labelledby="kairos-history-title" aria-busy={isLoading || undefined}>
       <div className="kairos-history__heading">
@@ -109,6 +116,11 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
                 </div>
                 <time dateTime={timestamp}>{formatTimestamp(timestamp)}</time>
                 <ReviewTradeLink id={entry.trade.id} className="kairos-history-card__review" />
+                {db && (entry.trade.status === 'draft' || entry.trade.status === 'open') && allowedSources.includes(entry.trade.source)
+                  ? discipline.state.kind === 'ready'
+                    ? <TradeChecklistControl symbol={entry.trade.symbol} tradeId={entry.trade.id} scope={scope} items={discipline.state.lists.checklist} record={discipline.state.records.get(entry.trade.id) ?? null} save={input => saveTradeDiscipline(db, input)} onSaved={discipline.remember} />
+                    : discipline.state.kind === 'failed' ? <Button variant="secondary" size="sm" disabled>Before you trade: could not load</Button> : null
+                  : null}
                 {db && onTradeUpdated ? <JournalOpenTradeUpdate entry={entry} db={db} onCommitted={onTradeUpdated} allowedSources={allowedSources} /> : null}
                 {db && onTradeUpdated && allowedSources.includes(entry.trade.source) ? <EntriesAndExitsEditor entry={entry} save={input => updateTradeExecution(db, { ...input, allowedSources })} onSaved={onTradeUpdated} /> : null}
                 {db && onTradeOpened ? <JournalDraftTradeActivation entry={entry} db={db} onOpened={onTradeOpened} allowedSources={allowedSources} /> : null}

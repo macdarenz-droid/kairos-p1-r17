@@ -4,8 +4,10 @@ import {
   KAIROS_DISCIPLINE_NOTE_MAX_LENGTH,
   KAIROS_POST_TRADE_REVIEW_KEYS,
   KAIROS_PRE_TRADE_CHECKLIST_KEYS,
+  type LegacyTradeDisciplineRecord,
   type TradeDisciplineRecord,
 } from './disciplineTypes';
+import { KAIROS_DEFAULT_DISCIPLINE_LISTS, isDisciplineLabel, isDisciplineListItemId, type DisciplineListItem } from './disciplineLists';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -38,13 +40,59 @@ function isMistakeList(value: unknown): boolean {
   return true;
 }
 
+function isItemAnswerList(value: unknown): boolean {
+  if (!Array.isArray(value)) return false;
+  const seen = new Set<string>();
+  for (const entry of value) {
+    if (!isRecord(entry) || !isDisciplineListItemId(entry.itemId) || !isDisciplineLabel(entry.label) || (entry.answer !== 'yes' && entry.answer !== 'no')) return false;
+    if (seen.has(entry.itemId)) return false;
+    seen.add(entry.itemId);
+  }
+  return true;
+}
+function isMistakeMarkList(value: unknown): boolean {
+  if (!Array.isArray(value)) return false;
+  const seen = new Set<string>();
+  for (const entry of value) {
+    if (!isRecord(entry) || !isDisciplineListItemId(entry.itemId) || !isDisciplineLabel(entry.label) || seen.has(entry.itemId)) return false;
+    seen.add(entry.itemId);
+  }
+  return true;
+}
+function hasRecordFields(value: Record<string, unknown>): boolean {
+  return (
+    isNonEmptyString(value.id) &&
+    isNonEmptyString(value.tradeId) &&
+    typeof value.note === 'string' &&
+    value.note.length <= KAIROS_DISCIPLINE_NOTE_MAX_LENGTH &&
+    (value.checklistCompletedAt === null || isIsoMoment(value.checklistCompletedAt)) &&
+    (value.reviewedAt === null || isIsoMoment(value.reviewedAt)) &&
+    isIsoMoment(value.createdAt) &&
+    isIsoMoment(value.updatedAt) &&
+    value.updatedAt >= value.createdAt
+  );
+}
+
 /**
- * Structural acceptance of a stored discipline record: shared by the P36.1
- * integrity check and the backup V5 validation so a record is accepted or
- * refused by exactly one rule. Trade existence is a store-level reference
- * check, not a record-shape check.
+ * Structural acceptance of a stored discipline record: shared by the
+ * integrity check, export and backup format 7 validation, so a record is
+ * accepted or refused by exactly one rule. Items are not compared with the
+ * current lists: they may have been renamed or removed since. The legacy check
+ * below is used only for formats 5–6 and the v8 upgrade. Trade existence is a
+ * store-level reference check, not a record-shape check.
  */
 export function isTradeDisciplineRecordShape(value: unknown): value is TradeDisciplineRecord {
+  if (!isRecord(value)) return false;
+  return (
+    isItemAnswerList(value.preTradeChecklist) &&
+    isItemAnswerList(value.postTradeReview) &&
+    isMistakeMarkList(value.mistakes) &&
+    hasRecordFields(value)
+  );
+}
+
+/** The L36.1 shape (fixed keys), accepted only in format 5–6 backups and v6/v7 databases. */
+export function isLegacyTradeDisciplineRecordShape(value: unknown): value is LegacyTradeDisciplineRecord {
   if (!isRecord(value)) return false;
   return (
     isNonEmptyString(value.id) &&
@@ -60,6 +108,29 @@ export function isTradeDisciplineRecordShape(value: unknown): value is TradeDisc
     isIsoMoment(value.updatedAt) &&
     value.updatedAt >= value.createdAt
   );
+}
+
+const defaultLabel = (list: readonly DisciplineListItem[], id: string): string => {
+  const item = list.find((candidate) => candidate.id === id);
+  if (item === undefined) throw new Error('discipline-legacy-key-unknown');
+  return item.label;
+};
+
+/** Converts an L36.1 record with the default labels; every other field and the order are kept. */
+export function upgradeLegacyTradeDisciplineRecord(record: LegacyTradeDisciplineRecord): TradeDisciplineRecord {
+  const lists = KAIROS_DEFAULT_DISCIPLINE_LISTS;
+  return {
+    id: record.id,
+    tradeId: record.tradeId,
+    preTradeChecklist: record.preTradeChecklist.map(({ key, answer }) => ({ itemId: key, label: defaultLabel(lists.checklist, key), answer })),
+    postTradeReview: record.postTradeReview.map(({ key, answer }) => ({ itemId: key, label: defaultLabel(lists.review, key), answer })),
+    mistakes: record.mistakes.map((tag) => ({ itemId: tag, label: defaultLabel(lists.mistakes, tag) })),
+    note: record.note,
+    checklistCompletedAt: record.checklistCompletedAt,
+    reviewedAt: record.reviewedAt,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
+  };
 }
 
 export function validateTradeDisciplineRecord(record: TradeDisciplineRecord): DomainValidationResult<TradeDisciplineRecord> {
