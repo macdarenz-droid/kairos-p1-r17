@@ -59,7 +59,5 @@ export function tradeReviewTimes(entry: JournalHistoryEntry): { readonly startMs
   return { startMs, endMs };
 }
 
-/** Journal symbols may be typed as "BTC/USDT" or "btc-usdt"; Binance Spot symbols have no separators. */
-export function normalizeTradeSymbol(symbol: string): string {
-  return symbol.replace(/[/\-\s]/g, '').toUpperCase();
-}
+/** One owner for trade → market symbol normalisation (the trade picture uses it too). */
+export { normalizeTradeSymbol } from '../../application/trade-visualizer/tradePictureCandles';
