@@ -11,6 +11,7 @@ import {
 } from '../../application/trades';
 import { prepareManualTradeExecutionDetails, type ManualExecutionRow, type ManualFeeRow } from '../../application/trades/manualTradeExecutionDraft';
 import { PRICE_CURRENCY_INPUT_ERROR } from '../../application/trades/priceCurrencyInput';
+import { createEmptyQuickTradeLogDraft, quickTradeLogFieldFor, quickTradeLogRows, type QuickTradeLogDraft, type QuickTradeLogField } from '../../application/trades/quickTradeLog';
 import type { KairosDatabase } from '../../data/database';
 import { Button, Field } from '../../design-system/primitives';
 import { JournalClosedTradeGuidance } from './JournalClosedTradeGuidance';
@@ -25,7 +26,47 @@ interface TradeFormProps {
   readonly kind: TradeFormKind;
   /** Called once after a successful save, when the form is already reset and the success banner shows. */
   readonly onSaved: () => Promise<void>;
+  /** The device clock for the "Now" buttons; tests inject a fixed one. */
+  readonly now?: () => Date;
 }
+
+type TradeFormMode = 'quick' | 'full';
+
+/** The chosen mode is remembered on this device; Journal and Practice share it. */
+export const TRADE_FORM_MODE_STORAGE_KEY = 'kairos.trade-form.mode.v1';
+
+function readTradeFormMode(): TradeFormMode {
+  try {
+    return window.localStorage.getItem(TRADE_FORM_MODE_STORAGE_KEY) === 'quick' ? 'quick' : 'full';
+  } catch {
+    return 'full';
+  }
+}
+
+function writeTradeFormMode(mode: TradeFormMode): void {
+  try {
+    window.localStorage.setItem(TRADE_FORM_MODE_STORAGE_KEY, mode);
+  } catch {
+    // Not remembering the choice is fine; the form still works.
+  }
+}
+
+const QUICK_MESSAGES: Readonly<Record<QuickTradeLogField, string>> = {
+  entryPrice: 'Enter the entry price as a number above 0, such as 64000.5.',
+  exitPrice: 'Enter the exit price as a number above 0, such as 64250.',
+  quantity: 'Enter the quantity as a number above 0, such as 0.5.',
+  openedAt: 'Add when you opened the trade.',
+  closedAt: 'Add when you closed the trade.',
+};
+
+const pad = (value: number): string => String(value).padStart(2, '0');
+
+/** The device's local time in the `datetime-local` input format. */
+function localDateTimeValue(date: Date): string {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+const wallClock = (): Date => new Date();
 
 type Feedback =
   | { readonly kind: 'error'; readonly field?: string; readonly message: string }
@@ -133,7 +174,7 @@ function fieldHasError(feedback: Feedback, field: string): boolean {
 }
 
 /** The one trade form for Journal (real trades) and Practice (paper trades); only the save command and wording differ. */
-export function TradeForm({ db, kind, onSaved }: TradeFormProps) {
+export function TradeForm({ db, kind, onSaved, now = wallClock }: TradeFormProps) {
   const text = TRADE_FORM_TEXT[kind];
   const { idPrefix, planIdPrefix } = text;
   const [draft, setDraft] = useState<ManualTradeDraft>(() => createEmptyManualTradeDraft());
@@ -142,11 +183,16 @@ export function TradeForm({ db, kind, onSaved }: TradeFormProps) {
   const feedbackRef = useRef<HTMLDivElement>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [mode, setMode] = useState<TradeFormMode>(readTradeFormMode);
+  const [quick, setQuick] = useState<QuickTradeLogDraft>(createEmptyQuickTradeLogDraft);
+  const isQuick = mode === 'quick';
 
   useEffect(() => { if (feedback?.kind === 'error') feedbackRef.current?.focus(); }, [feedback]);
 
-  const showOpenedAt = draft.status === 'open' || draft.status === 'closed';
-  const showClosedAt = draft.status === 'closed';
+  const showOpenedAt = isQuick || draft.status === 'open' || draft.status === 'closed';
+  const showClosedAt = isQuick || draft.status === 'closed';
+  const errorField = feedback?.kind === 'error' ? feedback.field : undefined;
+  const quickInvalid = (field: QuickTradeLogField): boolean => isQuick && quickTradeLogFieldFor(errorField) === field;
   const statusHint = useMemo(() => {
     if (draft.status === 'open') return text.hintOpen;
     if (draft.status === 'closed') return text.hintClosed;
@@ -167,18 +213,38 @@ export function TradeForm({ db, kind, onSaved }: TradeFormProps) {
     setFeedback(null);
   }
 
+  function updateQuick(field: keyof QuickTradeLogDraft, value: string): void {
+    setQuick((current) => ({ ...current, [field]: value }));
+    setFeedback(null);
+  }
+
+  function chooseMode(next: TradeFormMode): void {
+    setMode(next);
+    writeTradeFormMode(next);
+    setFeedback(null);
+  }
+
+  /** In quick log, errors about the entry or exit row name the quick field instead. */
+  function quickMessage(field: string | undefined): string | null {
+    if (!isQuick) return null;
+    const quickField = quickTradeLogFieldFor(field);
+    return quickField ? QUICK_MESSAGES[quickField] : null;
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     if (isSaving) return;
     setFeedback(null);
 
-    const base = prepareManualTradeSubmission(draft);
-    const prepared = base.ok ? prepareManualTradeExecutionDetails(base.input, executions, fees) : base;
+    const base = prepareManualTradeSubmission(isQuick ? { ...draft, status: 'closed' } : draft);
+    const prepared = !base.ok ? base : isQuick
+      ? prepareManualTradeExecutionDetails(base.input, quickTradeLogRows(quick, draft.openedAt, draft.closedAt), [])
+      : prepareManualTradeExecutionDetails(base.input, executions, fees);
     if (!prepared.ok) {
       setFeedback({
         kind: 'error',
         field: prepared.field,
-        message: prepared.type === 'execution-draft-invalid' ? prepared.message : requiredSelectionMessage(prepared.field),
+        message: quickMessage(prepared.field) ?? (prepared.type === 'execution-draft-invalid' ? prepared.message : requiredSelectionMessage(prepared.field)),
       });
       return;
     }
@@ -192,7 +258,7 @@ export function TradeForm({ db, kind, onSaved }: TradeFormProps) {
         setFeedback({
           kind: 'error',
           field: result.field,
-          message: validationMessage(text, result.field, result.reason),
+          message: quickMessage(result.field) ?? validationMessage(text, result.field, result.reason),
         });
         return;
       }
@@ -205,6 +271,7 @@ export function TradeForm({ db, kind, onSaved }: TradeFormProps) {
       setDraft(createEmptyManualTradeDraft());
       setExecutions([]);
       setFees([]);
+      setQuick(createEmptyQuickTradeLogDraft());
       setFeedback({ kind: 'success', message: text.saved });
     });
     await onSaved();
@@ -225,6 +292,11 @@ export function TradeForm({ db, kind, onSaved }: TradeFormProps) {
       ) : null}
 
       <form className="kairos-trade-form" onSubmit={handleSubmit} noValidate>
+        <div className="kairos-trade-form__mode" role="group" aria-label="How to log this trade">
+          <Button variant="secondary" size="sm" aria-pressed={isQuick} onClick={() => chooseMode('quick')}>Quick log</Button>
+          <Button variant="secondary" size="sm" aria-pressed={!isQuick} onClick={() => chooseMode('full')}>All details</Button>
+        </div>
+        {isQuick ? <p className="kairos-trade-form__section-copy">Quick log saves a closed trade with one entry and one exit of the same quantity, and no fees. For partial exits or fees, choose All details.</p> : null}
         <fieldset className="kairos-trade-form__section" disabled={isSaving}>
           <legend>{text.legend}</legend>
           <div className="kairos-trade-form__grid">
@@ -265,7 +337,18 @@ export function TradeForm({ db, kind, onSaved }: TradeFormProps) {
               </select>}
             </Field>
 
-            <Field label="Status" id={`${idPrefix}-status`} required wide hint={statusHint} invalid={fieldHasError(feedback, 'status') || fieldHasError(feedback, 'trade')}>
+            {isQuick ? <>
+              <Field label="Entry price" id={`${idPrefix}-entry-price`} required invalid={quickInvalid('entryPrice')}>
+                {control => <input {...control} name="entryPrice" inputMode="decimal" autoComplete="off" value={quick.entryPrice} onChange={(event) => updateQuick('entryPrice', event.target.value)} />}
+              </Field>
+              <Field label="Exit price" id={`${idPrefix}-exit-price`} required invalid={quickInvalid('exitPrice')}>
+                {control => <input {...control} name="exitPrice" inputMode="decimal" autoComplete="off" value={quick.exitPrice} onChange={(event) => updateQuick('exitPrice', event.target.value)} />}
+              </Field>
+              <Field label="Quantity" id={`${idPrefix}-quantity`} required invalid={quickInvalid('quantity')}>
+                {control => <input {...control} name="quantity" inputMode="decimal" autoComplete="off" value={quick.quantity} onChange={(event) => updateQuick('quantity', event.target.value)} />}
+              </Field>
+            </> : (
+              <Field label="Status" id={`${idPrefix}-status`} required wide hint={statusHint} invalid={fieldHasError(feedback, 'status') || fieldHasError(feedback, 'trade')}>
               {control => <select
                 {...control}
                 name="status"
@@ -285,43 +368,52 @@ export function TradeForm({ db, kind, onSaved }: TradeFormProps) {
                 {STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>}
             </Field>
+            )}
 
             {showOpenedAt ? (
-              <Field label="Opened" id={`${idPrefix}-opened-at`} required invalid={fieldHasError(feedback, 'trade')}>
-                {control => <input
-                  {...control}
-                  name="openedAt"
-                  type="datetime-local"
-                  value={draft.openedAt}
-                  onChange={(event) => update('openedAt', event.target.value)}
-                />}
+              <Field label="Opened" id={`${idPrefix}-opened-at`} required invalid={fieldHasError(feedback, 'trade') || quickInvalid('openedAt')}>
+                {control => <div className="kairos-trade-form__time">
+                  <input
+                    {...control}
+                    name="openedAt"
+                    type="datetime-local"
+                    value={draft.openedAt}
+                    onChange={(event) => update('openedAt', event.target.value)}
+                  />
+                  {isQuick ? <Button variant="ghost" size="sm" aria-label="Set opened time to now" onClick={() => update('openedAt', localDateTimeValue(now()))}>Now</Button> : null}
+                </div>}
               </Field>
             ) : null}
 
             {showClosedAt ? (
-              <Field label="Closed" id={`${idPrefix}-closed-at`} required invalid={fieldHasError(feedback, 'trade')}>
-                {control => <input
-                  {...control}
-                  name="closedAt"
-                  type="datetime-local"
-                  value={draft.closedAt}
-                  onChange={(event) => update('closedAt', event.target.value)}
-                />}
+              <Field label="Closed" id={`${idPrefix}-closed-at`} required invalid={fieldHasError(feedback, 'trade') || quickInvalid('closedAt')}>
+                {control => <div className="kairos-trade-form__time">
+                  <input
+                    {...control}
+                    name="closedAt"
+                    type="datetime-local"
+                    value={draft.closedAt}
+                    onChange={(event) => update('closedAt', event.target.value)}
+                  />
+                  {isQuick ? <Button variant="ghost" size="sm" aria-label="Set closed time to now" onClick={() => update('closedAt', localDateTimeValue(now()))}>Now</Button> : null}
+                </div>}
               </Field>
             ) : null}
           </div>
         </fieldset>
 
         <JournalPriceCurrencyField value={draft.priceCurrency ?? ''} onChange={value => update('priceCurrency', value)} disabled={isSaving} error={fieldHasError(feedback, 'grossPnlCurrency') ? PRICE_CURRENCY_INPUT_ERROR : undefined} />
-        <JournalExecutionFields
-          executions={executions} fees={fees}
-          onExecutionsChange={rows => { setExecutions(rows); setFeedback(null); }}
-          onFeesChange={rows => { setFees(rows); setFeedback(null); }}
-          canAddExecution={draft.status === 'open' || draft.status === 'closed'} disabled={isSaving}
-          errorField={feedback?.kind === 'error' ? feedback.field : undefined}
-        />
+        {isQuick ? null : <>
+          <JournalExecutionFields
+            executions={executions} fees={fees}
+            onExecutionsChange={rows => { setExecutions(rows); setFeedback(null); }}
+            onFeesChange={rows => { setFees(rows); setFeedback(null); }}
+            canAddExecution={draft.status === 'open' || draft.status === 'closed'} disabled={isSaving}
+            errorField={errorField}
+          />
 
-        <JournalClosedTradeGuidance status={draft.status} types={executions.map(row => row.type)} />
+          <JournalClosedTradeGuidance status={draft.status} types={executions.map(row => row.type)} />
+        </>}
 
         <details className="kairos-trade-form__optional" open={feedback?.kind === 'error' && feedback.field?.startsWith('plan.') || undefined}>
           <summary>Trade plan · Optional</summary>
