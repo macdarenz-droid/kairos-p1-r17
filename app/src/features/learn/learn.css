@@ -30,3 +30,12 @@
 .kairos-glossary-term__trading,
 .kairos-glossary-term__also,
 .kairos-glossary-term__related { color: var(--kairos-text-secondary); }
+
+.kairos-learn { display: grid; gap: var(--kairos-space-4); }
+.kairos-learn.kairos-learn p { margin: 0; }
+.kairos-learn__back { color: var(--kairos-accent-primary); }
+.kairos-learn__count { color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-sm); }
+.kairos-glossary__list { display: grid; gap: var(--kairos-space-3); margin: 0; padding: 0; list-style: none; }
+.kairos-glossary__list .kairos-glossary-term { padding: var(--kairos-space-4); border: 1px solid var(--kairos-border-subtle); border-radius: var(--kairos-radius-lg); background: var(--kairos-surface-card); overflow-wrap: anywhere; }
+.kairos-glossary__list .kairos-glossary-term h2 { margin: 0; font-size: var(--kairos-font-size-lg); }
+.kairos-glossary-term[data-selected="true"] { outline: 2px solid var(--kairos-accent-primary); outline-offset: 2px; }

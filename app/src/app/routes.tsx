@@ -22,6 +22,7 @@ export const appRoutes = [
       { path: 'journal', lazy: async () => ({ Component: (await import('./JournalRoute')).JournalRoute }) },
       { path: 'analysis', lazy: async () => ({ Component: (await import('./AnalysisRoute')).AnalysisRoute }) },
       { path: 'library', lazy: async () => ({ Component: (await import('./LibraryRoute')).LibraryRoute }) },
+      { path: 'library/words', lazy: async () => ({ Component: (await import('../features/learn/GlossaryScreen')).GlossaryScreen }) },
       { path: 'more', element: <MoreRoute /> },
       { path: 'practice', lazy: async () => ({ Component: (await import('./PracticeRoute')).PracticeRoute }) },
       { path: 'goals', lazy: async () => ({ Component: (await import('./GoalsRoute')).GoalsRoute }) },
