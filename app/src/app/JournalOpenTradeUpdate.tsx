@@ -4,10 +4,10 @@ import type { TradeSource } from '../domain/trades';
 import type { JournalHistoryEntry } from '../application/journal';
 import { updateOpenManualTrade } from '../application/trades/updateOpenManualTrade';
 import { prepareManualTradeExecutionDetails, type ManualExecutionRow, type ManualFeeRow } from '../application/trades/manualTradeExecutionDraft';
-import { JournalPriceCurrencyField } from './JournalPriceCurrencyField';
-import { JournalClosedTradeGuidance } from './JournalClosedTradeGuidance';
+import { JournalPriceCurrencyField } from '../features/journal/JournalPriceCurrencyField';
+import { JournalClosedTradeGuidance } from '../features/journal/JournalClosedTradeGuidance';
 import { PRICE_CURRENCY_INPUT_ERROR } from '../application/trades/priceCurrencyInput';
-import { JournalExecutionFields } from './JournalExecutionFields';
+import { JournalExecutionFields } from '../features/journal/JournalExecutionFields';
 import './journalOpenTradeUpdate.css';
 
 interface Props {

@@ -1,4 +1,4 @@
-import type { ManualExecutionRow, ManualFeeRow } from '../application/trades/manualTradeExecutionDraft';
+import type { ManualExecutionRow, ManualFeeRow } from '../../application/trades/manualTradeExecutionDraft';
 import './journalExecutionFields.css';
 
 interface Props {

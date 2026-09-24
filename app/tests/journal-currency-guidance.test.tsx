@@ -8,7 +8,7 @@ import { updateOpenManualTrade } from '../src/application/trades/updateOpenManua
 import { isPriceCurrencyInput, PRICE_CURRENCY_INPUT_ERROR } from '../src/application/trades/priceCurrencyInput';
 import { listJournalHistory } from '../src/application/journal';
 import { JournalRoute } from '../src/app/JournalRoute';
-import { JournalClosedTradeGuidance } from '../src/app/JournalClosedTradeGuidance';
+import { JournalClosedTradeGuidance } from '../src/features/journal/JournalClosedTradeGuidance';
 
 let db: KairosDatabase;
 const openedAt = '2026-09-12T04:00:00.000Z', closedAt = '2026-09-12T05:00:00.000Z';
