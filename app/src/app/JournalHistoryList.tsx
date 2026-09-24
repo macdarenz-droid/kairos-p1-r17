@@ -24,6 +24,11 @@ interface JournalHistoryListProps {
   readonly onTradeOpened?: (notice: string) => Promise<void>;
   /** P35.2: which trade sources the update and activation controls may touch. Defaults to `['manual']`, so the Journal is unchanged; the Practice route names `['paper']`. */
   readonly allowedSources?: readonly TradeSource[];
+  /** P12.A1 paging: another page of older trades can be loaded. */
+  readonly hasOlder?: boolean;
+  readonly isLoadingOlder?: boolean;
+  readonly olderFailed?: boolean;
+  readonly onShowOlder?: () => void;
 }
 
 function statusLabel(status: JournalHistoryEntry['trade']['status']): string {
@@ -53,7 +58,7 @@ function formatTimestamp(value: string): string {
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 }
 
-export function JournalHistoryList({ entries, isLoading, errorMessage, statusFilter, onStatusFilterChange, db, onTradeUpdated, updateNotice, onTradeDeleted, onTradeOpened, allowedSources = ['manual'] }: JournalHistoryListProps) {
+export function JournalHistoryList({ entries, isLoading, errorMessage, statusFilter, onStatusFilterChange, db, onTradeUpdated, updateNotice, onTradeDeleted, onTradeOpened, allowedSources = ['manual'], hasOlder = false, isLoadingOlder = false, olderFailed = false, onShowOlder }: JournalHistoryListProps) {
   return (
     <section className="kairos-history" aria-labelledby="kairos-history-title" aria-busy={isLoading || undefined}>
       <div className="kairos-history__heading">
@@ -129,6 +134,12 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
           })}
         </ol>
       ) : null}
+      {!isLoading && !errorMessage && entries.length > 0 && hasOlder && onShowOlder ? (
+        <button type="button" className="kairos-history__older" onClick={onShowOlder} disabled={isLoadingOlder}>
+          {isLoadingOlder ? 'Loading older trades…' : 'Show older trades'}
+        </button>
+      ) : null}
+      {olderFailed ? <p className="kairos-history__state kairos-history__state--error" role="alert">Kairos could not load older trades. Your stored trades were not changed.</p> : null}
     </section>
   );
 }

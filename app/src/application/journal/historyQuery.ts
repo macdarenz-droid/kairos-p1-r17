@@ -129,6 +129,27 @@ export async function listJournalOpenTrades(
   });
 }
 
+export const JOURNAL_HISTORY_PAGE_SIZE = DEFAULT_JOURNAL_HISTORY_LIMIT;
+export interface JournalHistoryCursor { readonly updatedAt: string; readonly id: TradeId; }
+export interface JournalHistoryPage { readonly entries: readonly JournalHistoryEntry[]; readonly nextCursor: JournalHistoryCursor | null; }
+
+/** One page of the history list, newest edit first, strictly before `before`; `nextCursor` is null on the last page. */
+export async function listJournalHistoryPage(
+  db: KairosDatabase,
+  options: { readonly scope?: JournalHistoryScope; readonly status?: TradeStatus; readonly before?: JournalHistoryCursor | null } = {},
+): Promise<JournalHistoryPage> {
+  const repositories = createKairosRepositories(db);
+  return db.transaction('r', ['trades', 'tradePlans', 'tradeExecutions', 'tradeFees'], async () => {
+    const rows = await repositories.trades
+      .scopedBySource(JOURNAL_HISTORY_SOURCES[options.scope ?? DEFAULT_JOURNAL_HISTORY_SCOPE])
+      .listPageByUpdatedAt(options.status ?? null, options.before ?? null, JOURNAL_HISTORY_PAGE_SIZE + 1);
+    const kept = rows.slice(0, JOURNAL_HISTORY_PAGE_SIZE);
+    const last = kept[kept.length - 1];
+    const nextCursor = rows.length > JOURNAL_HISTORY_PAGE_SIZE && last ? Object.freeze({ updatedAt: last.updatedAt, id: last.id }) : null;
+    return Object.freeze({ entries: await hydrateJournalHistoryEntries(repositories, kept), nextCursor });
+  });
+}
+
 /** A consistent read of one saved identity; never scan or fall back to a recent trade. */
 export async function getJournalHistoryEntry(
   db: KairosDatabase, id: string,

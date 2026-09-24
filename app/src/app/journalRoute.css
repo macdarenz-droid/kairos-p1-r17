@@ -65,6 +65,8 @@
 .kairos-history__filter { width:min(100%, 15rem); }
 .kairos-history__state { margin:0; padding:var(--kairos-space-4); border:1px solid var(--kairos-border-subtle); border-radius:var(--kairos-radius-md); color:var(--kairos-text-muted); }
 .kairos-history__state--error { color:var(--kairos-state-error); }
+.kairos-history__older { width:100%; min-block-size:var(--kairos-control-md); margin-top:var(--kairos-space-3); border:1px solid var(--kairos-border-default); border-radius:var(--kairos-radius-md); background:transparent; color:var(--kairos-text-secondary); font:inherit; }
+.kairos-history__older:disabled { opacity:.58; }
 .kairos-history__list { list-style:none; margin:0; padding:0; display:grid; gap:var(--kairos-space-3); }
 .kairos-history-card { padding:var(--kairos-space-4); border:1px solid var(--kairos-border-subtle); border-radius:var(--kairos-radius-lg); background:var(--kairos-surface-raised); }
 .kairos-history-card__topline { display:flex; flex-wrap:wrap; align-items:center; gap:var(--kairos-space-2); }

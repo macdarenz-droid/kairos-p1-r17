@@ -34,6 +34,20 @@ export class SourceScopedTradeRepository {
       .limit(limit)
       .toArray();
   }
+  /**
+   * One page, newest edit first, strictly older than the cursor (updatedAt, then id). IndexedDB orders
+   * equal index keys by primary key and reverse() walks ids high to low, so "older" within the same
+   * updatedAt means a smaller id. No new index is needed.
+   */
+  listPageByUpdatedAt(status: TradeStatus | null, before: { readonly updatedAt: string; readonly id: TradeId } | null, limit: number) {
+    const start = status === null
+      ? before === null ? this.db.trades.orderBy('updatedAt') : this.db.trades.where('updatedAt').belowOrEqual(before.updatedAt)
+      : this.db.trades.where('[status+updatedAt]').between([status, ''], [status, before?.updatedAt ?? '\uffff'], true, true);
+    const isOlder = (trade: DatabaseTradeRecord) => before === null
+      || trade.updatedAt < before.updatedAt
+      || (trade.updatedAt === before.updatedAt && trade.id < before.id);
+    return start.reverse().filter(trade => this.sources.has(trade.source) && isOlder(trade)).limit(limit).toArray();
+  }
   /** Every trade of one status in scope, newest edit first, through the [status+updatedAt] index. No limit. */
   listAllByStatus(status: TradeStatus) {
     return this.db.trades
