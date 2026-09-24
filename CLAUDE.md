@@ -22,12 +22,12 @@ Relay `docs/architecture/ARCHITECTURE.md` has the layers, owners and target fold
 ## Commands (run inside `app/`)
 - `npm ci`
 - `npm run typecheck`
-- `npx vitest run --reporter=dot --silent <test files>`
-- `npm test -- --reporter=dot --silent` (full suite, about 3 min)
+- `npx vitest run --reporter=dot --silent=true <test files>`
+- `npm test -- --reporter=dot --silent=true` (full suite, about 3 min)
 - `npm run build 2>&1 | tail -20`
 - `npm run dev`
 
-When a test fails, re-run only the failing file without `--reporter=dot --silent`.
+When a test fails, re-run only the failing file without `--reporter=dot --silent=true`.
 
 ## Golden rules
 1. Work only on the current task in `tasks/TASKS.md`, in roadmap order. Never choose the next feature because the code makes it easy.
