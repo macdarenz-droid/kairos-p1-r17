@@ -4,6 +4,7 @@ import { AppShell } from '../src/app/AppShell';
 import { RouterProvider } from 'react-router/dom';
 import { describe, expect, it, vi } from 'vitest';
 import { appRoutes } from '../src/app/routes';
+import packageJson from '../package.json' with { type: 'json' };
 
 vi.mock('../src/app/HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTextEvidenceRuntime', () => ({
   HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTextEvidenceRuntime: () => null,
@@ -41,7 +42,7 @@ describe('Ink app shell presentation', () => {
 
   it('shows the mono build identity with a live pulse and an idle route loader', () => {
     renderPath('/');
-    expect(screen.getByText(/0\.1\.0/)).toHaveClass('kairos-shell__version');
+    expect(screen.getByText(packageJson.version)).toHaveClass('kairos-shell__version');
     expect(document.querySelector('.kairos-shell__pulse')).toHaveAttribute('aria-hidden', 'true');
     const loader = document.querySelector('.kairos-shell__progress');
     expect(loader).toHaveAttribute('role', 'progressbar');

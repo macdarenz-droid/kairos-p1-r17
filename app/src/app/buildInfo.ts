@@ -1,7 +1,7 @@
 import { KAIROS_BACKUP_FORMAT_VERSION } from '../data/backup/backupFormat';
 import { KAIROS_DB_SCHEMA_VERSION } from '../data/database/schema';
 
-export const APP_VERSION = '0.1.0-p10.3r2';
+export const APP_VERSION = __KAIROS_APP_VERSION__;
 export const BUILD_ID = import.meta.env.VITE_BUILD_ID?.trim() || 'dev-local';
 
 export const buildInfo = Object.freeze({

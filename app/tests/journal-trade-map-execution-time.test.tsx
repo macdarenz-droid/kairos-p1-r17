@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { JournalTradeMap } from '../src/app/JournalTradeMap';
+import { reviewTimestamp } from '../src/app/TradeReviewDetails';
 import type { JournalHistoryEntry } from '../src/application/journal';
 import {
   createTradeDomainId,
@@ -75,9 +76,9 @@ describe('P14.7 Journal Trade Map actual-exit execution time', () => {
     const exitRows = container.querySelectorAll('.kairos-trade-map__levels [data-level-kind="executed-exit"]');
     expect(exitRows).toHaveLength(2);
     expect(within(exitRows[0] as HTMLElement).getByText('148.50')).toBeInTheDocument();
-    expect(within(exitRows[0] as HTMLElement).getByText('2026-09-01T01:30:00Z')).toHaveAttribute('datetime', '2026-09-01T01:30:00Z');
+    expect(within(exitRows[0] as HTMLElement).getByText(reviewTimestamp('2026-09-01T01:30:00Z'))).toHaveAttribute('datetime', '2026-09-01T01:30:00Z');
     expect(within(exitRows[1] as HTMLElement).getByText('149.75')).toBeInTheDocument();
-    expect(within(exitRows[1] as HTMLElement).getByText('2026-09-01T02:00:00Z')).toHaveAttribute('datetime', '2026-09-01T02:00:00Z');
+    expect(within(exitRows[1] as HTMLElement).getByText(reviewTimestamp('2026-09-01T02:00:00Z'))).toHaveAttribute('datetime', '2026-09-01T02:00:00Z');
 
     const plannedRows = container.querySelectorAll('.kairos-trade-map__levels [data-level-kind^="planned-"]');
     plannedRows.forEach((row) => expect(row.querySelector('time')).toBeNull());

@@ -2,6 +2,7 @@ import '@testing-library/jest-dom/vitest';
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { JournalTradeMap } from '../src/app/JournalTradeMap';
+import { reviewTimestamp } from '../src/app/TradeReviewDetails';
 import type { JournalHistoryEntry } from '../src/application/journal';
 import { createTradeDomainId, parseDecimalString, type TradeExecutionId, type TradeId } from '../src/domain/trades';
 
@@ -29,7 +30,7 @@ describe('P14.10 Journal Trade Map actual-entry truth', () => {
     expect(within(entries[0] as HTMLElement).getByText('Actual entry 1')).toBeInTheDocument();
     expect(entries[0]).toHaveTextContent('0.00000120');
     expect(entries[0]).toHaveTextContent('Quantity 0.5');
-    expect(within(entries[0] as HTMLElement).getByText('2026-09-13T00:01:00.000Z')).toHaveAttribute('datetime', '2026-09-13T00:01:00.000Z');
+    expect(within(entries[0] as HTMLElement).getByText(reviewTimestamp('2026-09-13T00:01:00.000Z'))).toHaveAttribute('datetime', '2026-09-13T00:01:00.000Z');
     expect(within(entries[1] as HTMLElement).getByText('Actual entry 2')).toBeInTheDocument();
     expect(entries[1]).toHaveTextContent('Quantity 0.75');
     expect(container.querySelectorAll('[data-level-kind="executed-entry"] [data-marker-shape="cross"]')).toHaveLength(2);
