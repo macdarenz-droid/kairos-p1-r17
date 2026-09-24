@@ -14,3 +14,5 @@ export * from './dailyPerformanceSummary';
 export * from './progressSeries';
 
 export * from './cumulativeRealizedPnl';
+
+export * from './dayKeyCalendar';

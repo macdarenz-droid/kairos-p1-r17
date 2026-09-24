@@ -41,7 +41,7 @@ export type GoalsProgressProjection =
       timeZone: string;
       todayKey: string;
       monthKey: string;
-      /** How many history entries the projection could see (the P12 bound). */
+      /** How many trades were read: every closed trade since the month began, plus every open trade. */
       consideredEntries: number;
       tradesPerMonth: GoalsTradesPerMonthProgress;
       maxTradesPerDay: GoalsMaxTradesPerDayProgress;

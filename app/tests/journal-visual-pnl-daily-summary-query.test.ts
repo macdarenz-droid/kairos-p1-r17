@@ -34,7 +34,7 @@ afterEach(async () => {
   names.clear();
 });
 
-describe('P13.8 bounded Journal daily Visual P&L query', () => {
+describe('P13.8 Journal daily Visual P&L query', () => {
   it('uses the closed-trade Journal History path and explicit caller timezone', async () => {
     const db = createKairosDatabase(dbName());
     await openKairosDatabase(db);
@@ -97,60 +97,19 @@ describe('P13.8 bounded Journal daily Visual P&L query', () => {
     db.close();
   });
 
-  it('preserves the existing bounded query contract before hydration and grouping', async () => {
+  it('reads every closed trade, not only the newest 100', async () => {
     const db = createKairosDatabase(dbName());
     await openKairosDatabase(db);
-    const repos = createKairosRepositories(db);
-
-    for (const [index, closedAt] of [
-      ['OLD', '2026-09-01T01:00:00.000Z'],
-      ['MID', '2026-09-02T01:00:00.000Z'],
-      ['NEW', '2026-09-03T01:00:00.000Z'],
-    ] as const) {
-      const tradeId = createTradeDomainId<TradeId>();
-      await repos.trades.put({
-        id: tradeId,
-        symbol: index,
-        marketType: 'stock',
-        side: 'long',
-        status: 'closed',
-        source: 'manual',
-        openedAt: '2026-09-01T00:00:00.000Z',
-        closedAt,
-        createdAt: '2026-09-01T00:00:00.000Z',
-        updatedAt: closedAt,
-      });
-      await repos.tradeExecutions.put({
-        id: createTradeDomainId<TradeExecutionId>(),
-        tradeId,
-        type: 'entry',
-        price: dec('100'),
-        quantity: dec('1'),
-        executedAt: '2026-09-01T00:00:00.000Z',
-        createdAt: '2026-09-01T00:00:00.000Z',
-      });
-      await repos.tradeExecutions.put({
-        id: createTradeDomainId<TradeExecutionId>(),
-        tradeId,
-        type: 'exit',
-        price: dec('101'),
-        quantity: dec('1'),
-        executedAt: closedAt,
-        createdAt: closedAt,
-      });
-    }
-
-    const summary = await listJournalVisualPnlDailySummary(db, 'UTC', { limit: 2 });
-    expect(summary.days.map((day) => day.dayKey)).toEqual(['2026-09-02', '2026-09-03']);
-    expect(summary.days.reduce((count, day) => count + day.summary.tradeCount, 0)).toBe(2);
-    db.close();
-  });
-
-  it('reuses Journal History limit validation instead of opening an unbounded path', async () => {
-    const db = createKairosDatabase(dbName());
-    await openKairosDatabase(db);
-    await expect(listJournalVisualPnlDailySummary(db, 'UTC', { limit: 0 })).rejects.toBeInstanceOf(RangeError);
-    await expect(listJournalVisualPnlDailySummary(db, 'UTC', { limit: 501 })).rejects.toBeInstanceOf(RangeError);
+    const trades = Array.from({ length: 150 }, (_, index) => {
+      const closedAt = new Date(Date.UTC(2026, 6, 1, 12) + index * 3_600_000).toISOString();
+      return {
+        id: createTradeDomainId<TradeId>(), symbol: `T${index}`, marketType: 'stock' as const, side: 'long' as const, status: 'closed' as const,
+        source: 'manual' as const, openedAt: '2026-07-01T00:00:00.000Z', closedAt, createdAt: '2026-07-01T00:00:00.000Z', updatedAt: closedAt,
+      };
+    });
+    await db.trades.bulkPut(trades);
+    const summary = await listJournalVisualPnlDailySummary(db, 'UTC');
+    expect(summary.days.reduce((count, day) => count + day.summary.tradeCount, 0)).toBe(150);
     db.close();
   });
 

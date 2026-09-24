@@ -1,3 +1,5 @@
-export { DEFAULT_JOURNAL_HISTORY_SCOPE, JOURNAL_HISTORY_SOURCES, getJournalHistoryEntry, listJournalHistory, type JournalHistoryEntry, type JournalHistoryQueryOptions, type JournalHistoryScope } from './historyQuery';
+export { DEFAULT_JOURNAL_HISTORY_SCOPE, JOURNAL_HISTORY_SOURCES, getJournalHistoryEntry, hydrateJournalHistoryEntries, listJournalHistory, listJournalOpenTrades, type JournalHistoryEntry, type JournalHistoryQueryOptions, type JournalHistoryScope } from './historyQuery';
 
-export { listJournalVisualPnlDailySummary, type JournalVisualPnlDailySummaryQueryOptions } from './visualPnlDailySummaryQuery';
+export { listJournalVisualPnlDailySummary } from './visualPnlDailySummaryQuery';
+
+export { listJournalClosedTradesInPeriod, type JournalClosedTradePeriodOptions, type JournalClosedTradePeriodResult } from './closedTradePeriodQuery';
