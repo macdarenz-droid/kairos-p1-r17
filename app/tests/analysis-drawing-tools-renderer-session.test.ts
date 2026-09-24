@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createAnalysisDrawingToolsRendererSession } from '../src/app/analysisDrawingToolsRendererSession';
+import { createAnalysisDrawingToolsRendererSession } from '../src/features/analysis/analysisDrawingToolsRendererSession';
 import { createLightweightChartsV5DriverBinding, type LightweightChartsV5Module } from '../src/features/chart';
 import type { ChartDrawingInteractionState } from '../src/features/chart';
 import type { DecimalString } from '../src/domain/trades/tradeTypes';

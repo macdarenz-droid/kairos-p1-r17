@@ -17,11 +17,11 @@ import {
   type LightweightChartsV5PriceCoordinateApi,
   type LightweightChartsV5TimeCoordinateApi,
   type LightweightChartsV5TrendLineStrokeStyle,
-} from '../features/chart';
-import type { ChartEngineSeriesHandle } from '../features/chart/chartEngineDriver';
-import type { ChartDrawingPresentationDrawingRefreshSession } from '../features/chart/chartDrawingPresentationPort';
-import type { LightweightChartsV5DriverBinding } from '../features/chart/lightweightChartsV5ModuleAdapter';
-import type { LightweightChartsV5ProductionDrawingBindingLifecycle } from '../features/chart/lightweightChartsV5ProductionRenderer';
+} from '../chart';
+import type { ChartEngineSeriesHandle } from '../chart/chartEngineDriver';
+import type { ChartDrawingPresentationDrawingRefreshSession } from '../chart/chartDrawingPresentationPort';
+import type { LightweightChartsV5DriverBinding } from '../chart/lightweightChartsV5ModuleAdapter';
+import type { LightweightChartsV5ProductionDrawingBindingLifecycle } from '../chart/lightweightChartsV5ProductionRenderer';
 
 export interface AnalysisDrawingToolsRendererSessionOptions {
   /** Caller-resolved stroke style from the active chart theme; this session owns no theme lookup. */

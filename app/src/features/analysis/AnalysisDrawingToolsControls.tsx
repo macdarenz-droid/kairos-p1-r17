@@ -1,4 +1,4 @@
-import type { ChartDrawingInteractionState } from '../features/chart';
+import type { ChartDrawingInteractionState } from '../chart';
 
 export interface AnalysisDrawingToolsControlsProps {
   readonly state: ChartDrawingInteractionState | null;

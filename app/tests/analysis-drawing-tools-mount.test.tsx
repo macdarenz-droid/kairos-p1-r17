@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { AnalysisDrawingToolsControls } from '../src/app/AnalysisDrawingToolsControls';
+import { AnalysisDrawingToolsControls } from '../src/features/analysis/AnalysisDrawingToolsControls';
 import { createAnalysisDrawingToolsLiveSessionFactory, createAnalysisDrawingToolsOverlaySessionFactory, createAnalysisDrawingToolsSession, resolveAnalysisDrawingToolsStyle } from '../src/app/analysisDrawingToolsComposition';
 import { AnalysisLiveSessionFactoryContext, AnalysisOverlaySessionFactoryContext } from '../src/app/analysisDrawingToolsContext';
 import { AnalysisLiveCandleCanvas } from '../src/app/AnalysisLiveCandleCanvas';

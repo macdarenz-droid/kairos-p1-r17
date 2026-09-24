@@ -7,7 +7,7 @@ import { BINANCE_SPOT_CANDLE_INTERVALS } from '../services/market-data/providers
 import { BINANCE_SPOT_VENUE } from '../services/market-data/providers/binance/binanceSpotTradeStream';
 import { analysisHistoryPorts } from './analysisHistoryPorts';
 import { ANALYSIS_LIVE_CANDLE_HISTORY_LIMIT } from './analysisLiveCandleProductPolicy';
-import { AnalysisDrawingToolsControls } from './AnalysisDrawingToolsControls';
+import { AnalysisDrawingToolsControls } from '../features/analysis/AnalysisDrawingToolsControls';
 import { AnalysisLiveSessionFactoryContext, AnalysisOverlaySessionFactoryContext, AnalysisTradeWindowContext } from './analysisDrawingToolsContext';
 import { useAnalysisDrawingTools } from './useAnalysisDrawingTools';
 import { AnalysisSavedAnalysisControls } from './AnalysisSavedAnalysisControls';

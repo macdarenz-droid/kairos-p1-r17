@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { defaultThemeId, useTheme, type ThemeId } from '../design-system/themes';
 import type { ChartDrawing, ChartDrawingInteractionState } from '../features/chart';
 import { createAnalysisDrawingToolsLiveSessionFactory, createAnalysisDrawingToolsOverlaySessionFactory, createAnalysisDrawingToolsSession } from './analysisDrawingToolsComposition';
-import type { AnalysisDrawingToolsRendererSession } from './analysisDrawingToolsRendererSession';
+import type { AnalysisDrawingToolsRendererSession } from '../features/analysis/analysisDrawingToolsRendererSession';
 import { composeDrawingBindingLifecycles } from './analysisTimeAssistedWindowSession';
 import type { LightweightChartsV5ProductionCandlestickSeriesLifecycle, LightweightChartsV5ProductionDrawingBindingLifecycle } from '../features/chart/lightweightChartsV5ProductionRenderer';
 
