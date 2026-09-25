@@ -18,6 +18,8 @@ import type {
   TradeSide,
 } from '../../domain/trades';
 import type { MarketCandle } from '../../services/market-data/MarketCandleHistoryPort';
+import { parseForexPair, projectForexPips, projectForexPipValue, projectForexSize } from '../markets/forexPair';
+import { tradePictureHasCandleSource } from './tradePictureCandles';
 import { projectTradeVisualizerFacts } from './tradeVisualizerFacts';
 import { projectPlannedRewardToRisk } from '../risk-reward/plannedRewardToRisk';
 
@@ -25,6 +27,8 @@ import { projectPlannedRewardToRisk } from '../risk-reward/plannedRewardToRisk';
 export const TRADE_PICTURE_PRICE_PADDING = '0.08';
 /** The planned reward and the actual result are shown to this many places, half up. */
 export const TRADE_PICTURE_RATIO_PLACES = 2;
+/** Pips are shown to this many places (tenths of a pip), half up; the row's value keeps the exact owner value. */
+export const TRADE_PICTURE_PIP_PLACES = 1;
 
 export interface TradePictureInput {
   readonly trade: TradeRecord;
@@ -69,7 +73,7 @@ export interface TradePictureMarker {
 
 export type TradePictureInfoKey =
   | 'market' | 'direction' | 'opened' | 'closed' | 'planned-entry' | 'stop' | 'target' | 'average-exit'
-  | 'size' | 'result' | 'planned-reward' | 'actual-r' | 'duration' | 'status';
+  | 'size' | 'result' | 'planned-reward' | 'actual-r' | 'duration' | 'status' | 'pips' | 'pip-value';
 
 export interface TradePictureInfoRow {
   readonly key: TradePictureInfoKey;
@@ -99,6 +103,8 @@ export interface TradePictureModel {
   /** The trade's candles, the plan's entry, stop and target, and every entry and exit, plus TRADE_PICTURE_PRICE_PADDING; all candles when none of these exist. Candles before or after the trade may go past it: the card cuts them at the edge. */
   readonly priceRange: Readonly<{ low: DecimalString; high: DecimalString }> | null;
   readonly candles: readonly TradePictureCandle[];
+  /** False when Kairos has no candle source for the trade's market (forex, P31): the card then says candles are crypto-only for now, never that they need a connection. */
+  readonly marketHasCandles: boolean;
   readonly riskBox: TradePictureBox | null;
   readonly rewardBox: TradePictureBox | null;
   readonly markers: readonly TradePictureMarker[];
@@ -279,9 +285,20 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
   const durationMs = startMs !== null && endMs !== null && (trade.status === 'closed' || trade.status === 'open') ? Math.max(0, endMs - startMs) : null;
   const size = metrics !== null && metrics.totalEnteredQuantity !== '0' ? metrics.totalEnteredQuantity : plannedQuantity;
   const currency = metrics?.netPnlCurrency ?? null;
+  // P31: a forex trade's size is units of its base currency; lots and pips come from the one pair owner (D96, D98).
+  const forex = trade.marketType === 'forex';
+  const parsedPair = forex ? parseForexPair(trade.symbol) : null;
+  const pair = parsedPair !== null && parsedPair.ok ? parsedPair.pair : null;
+  const lots = pair !== null && size !== null ? projectForexSize(pair, size)?.lots ?? null : null;
+  const pips = pair !== null && metrics !== null && metrics.state === 'realized' && metrics.averageEntryPrice !== null && metrics.averageExitPrice !== null
+    ? projectForexPips(pair, trade.side, metrics.averageEntryPrice, metrics.averageExitPrice) : null;
+  const pipsShown = pips === null ? null : decimalRound(pips, TRADE_PICTURE_PIP_PLACES, 'half-up');
+  const pipsText = pipsShown !== null && pipsShown.ok ? `${signed(pipsShown.value)} ${pipsShown.value === '1' || pipsShown.value === '-1' ? 'pip' : 'pips'}` : null;
+  const pipValue = pair !== null && size !== null ? projectForexPipValue(pair, size) : null;
+  const unitWord = (value: string) => (value === '1' ? 'unit' : 'units');
 
   const info: TradePictureInfoRow[] = [
-    row('market', 'Market', trade.symbol, null, value => value),
+    row('market', 'Market', trade.symbol, null, value => (pair?.quoteKnown ? pair.label : value)),
     row('direction', 'Direction', trade.side === 'long' ? 'Long' : 'Short', null, value => value),
     row('opened', 'Opened', trade.openedAt, null, value => value),
     row('closed', 'Closed', trade.closedAt, null, value => value),
@@ -289,8 +306,16 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
     row('stop', 'Stop', stop, null, value => value),
     row('target', 'Target', target, null, value => value),
     row('average-exit', 'Average exit', metrics?.averageExitPrice ?? null, null, value => value),
-    row('size', 'Size', size, null, value => value),
+    forex
+      ? row('size', 'Size', size, 'units', value => (lots === null
+        ? `${value} ${unitWord(value)}`
+        : `${value} ${unitWord(value)} (${lots} ${lots === '1' ? 'lot' : 'lots'})`))
+      : row('size', 'Size', size, null, value => value),
     row('result', 'Result after fees', metrics?.netPnl ?? null, currency, value => (currency ? `${value} ${currency}` : value)),
+    ...(forex ? [
+      row('pips', 'Pips won or lost', pipsText === null ? null : pips, 'pips', () => pipsText ?? ''),
+      row('pip-value', 'Value of 1 pip', pipValue, pair?.quote ?? null, value => (pair ? `${value} ${pair.quote}` : value)),
+    ] : []),
     row('planned-reward', 'Planned reward', rewardText === null ? null : reward, null, () => rewardText ?? ''),
     row('actual-r', 'Actual result', realizedText === null ? null : realized, null, () => realizedText ?? ''),
     row('duration', 'How long it lasted', durationMs === null ? null : String(durationMs), 'ms', value => durationText(Number(value))),
@@ -298,7 +323,7 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
   ];
 
   const missing: TradePictureMissing[] = [];
-  if (candles === null || candles.length === 0) missing.push({ part: 'candles', message: 'No candles, so only your plan and fills are shown.' });
+  if (candles === null || candles.length === 0) missing.push({ part: 'candles', message: forex ? 'No forex candles yet, so only your plan, entries and exits are shown.' : 'No candles, so only your plan and fills are shown.' });
   if (startAt === null) missing.push({ part: 'start-time', message: 'No start time, so no risk or reward box.' });
   if (entry === null) missing.push({ part: 'planned-entry', message: 'No planned entry, so no risk or reward box.' });
   if (stop === null) missing.push({ part: 'stop', message: 'No stop, so no risk box.' });
@@ -313,6 +338,7 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
     timeRange,
     priceRange: priceRange === null ? null : Object.freeze(priceRange),
     candles: Object.freeze(pictureCandles),
+    marketHasCandles: tradePictureHasCandleSource(trade.marketType),
     riskBox,
     rewardBox,
     markers: Object.freeze(markers),

@@ -1,6 +1,6 @@
 import { useContext, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { JournalHistoryEntry } from '../../application/journal';
-import { projectTradePicture } from '../../application/trade-visualizer';
+import { projectTradePicture, tradePictureHasCandleSource } from '../../application/trade-visualizer';
 import type { MarketCandle } from '../../services/market-data/MarketCandleHistoryPort';
 import { Sheet } from '../../design-system/primitives';
 import { TradePictureCard } from './TradePictureCard';
@@ -14,6 +14,7 @@ function useTradePictureCandles(entry: JournalHistoryEntry, target: React.RefObj
   const contextLoader = useContext(TradePictureCandleLoaderContext);
   const [visible, setVisible] = useState(eager);
   const [state, setState] = useState<CandleState>({ kind: 'waiting' });
+  const hasSource = tradePictureHasCandleSource(entry.trade.marketType);
   useEffect(() => {
     if (visible) return;
     const element = target.current;
@@ -25,13 +26,14 @@ function useTradePictureCandles(entry: JournalHistoryEntry, target: React.RefObj
     return () => observer.disconnect();
   }, [visible, target]);
   useEffect(() => {
+    if (!hasSource) { setState({ kind: 'done', candles: null }); return; }
     if (!visible) return;
     let active = true;
     setState({ kind: 'waiting' });
     const load = contextLoader ?? (async () => null);
     void load(entry.trade, entry.executions).catch(() => null).then(candles => { if (active) setState({ kind: 'done', candles }); });
     return () => { active = false; };
-  }, [visible, contextLoader, entry.trade, entry.executions]);
+  }, [hasSource, visible, contextLoader, entry.trade, entry.executions]);
   return state;
 }
 

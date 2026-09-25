@@ -1,4 +1,4 @@
-import type { TradeExecutionRecord, TradeRecord } from '../../domain/trades';
+import type { MarketType, TradeExecutionRecord, TradeRecord } from '../../domain/trades';
 import type { LiveMarketUniverseInstrumentMetadataAcquisitionPort } from '../../services/market-data/LiveMarketUniverseInstrumentMetadataAcquisitionPort';
 import type { MarketCandle, MarketCandleHistoryPort } from '../../services/market-data/MarketCandleHistoryPort';
 
@@ -32,6 +32,14 @@ export const TRADE_PICTURE_MIN_PADDING_CANDLES = 3;
 /** Journal symbols may be typed as "BTC/USDT" or "btc-usdt"; Binance Spot symbols have no separators. */
 export function normalizeTradeSymbol(symbol: string): string {
   return symbol.replace(/[/\-\s]/g, '').toUpperCase();
+}
+
+/**
+ * P31: whether the trade picture asks the candle source for this market. Forex has none yet:
+ * no keyless browser source gives clean forex candles (D99). Every other market asks as before, by symbol.
+ */
+export function tradePictureHasCandleSource(marketType: MarketType): boolean {
+  return marketType !== 'forex';
 }
 
 export interface TradePictureCandleWindow {
@@ -98,7 +106,7 @@ export function resetTradePictureCandleCache(): void {
 
 /**
  * Candles around one trade for its picture, or null when there are none to
- * show (offline, unknown symbol, error, no start time). It never throws.
+ * show (offline, unknown symbol, error, no start time, or a market with no candle source). It never throws.
  */
 export async function loadTradePictureCandles(
   trade: TradeRecord,
@@ -106,6 +114,7 @@ export async function loadTradePictureCandles(
   deps: TradePictureCandleDeps,
 ): Promise<readonly MarketCandle[] | null> {
   try {
+    if (!tradePictureHasCandleSource(trade.marketType)) return null;
     const nowMs = (deps.nowMs ?? Date.now)();
     const times = tradePictureTimes(trade, executions, nowMs);
     if (times.startMs === null) return null;
