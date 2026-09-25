@@ -43,12 +43,14 @@ describe('T-043b logging a forex trade', () => {
     expect(gold.ok && gold.input.grossPnlCurrency).toBe('USD');
     for (const symbol of ['SILVER', 'USDTRY']) {
       const unknown = prepareManualTradeSubmission(forexDraft({ symbol }));
-      expect(unknown.ok && 'grossPnlCurrency' in unknown.input).toBe(false);
+      expect(unknown.ok).toBe(true);
+      if (unknown.ok) expect(unknown.input).not.toHaveProperty('grossPnlCurrency');
     }
     const typed = prepareManualTradeSubmission(forexDraft({ symbol: 'SILVER', priceCurrency: 'USD' }));
     expect(typed.ok && typed.input.grossPnlCurrency).toBe('USD');
     const crypto = prepareManualTradeSubmission(forexDraft({ marketType: 'crypto', symbol: 'BTCUSDT' }));
-    expect(crypto.ok && 'grossPnlCurrency' in crypto.input).toBe(false);
+    expect(crypto.ok).toBe(true);
+    if (crypto.ok) expect(crypto.input).not.toHaveProperty('grossPnlCurrency');
     expect(prepareManualTradeSubmission(forexDraft({ marketType: '', symbol: 'EURUSD' }))).toMatchObject({ ok: false, type: 'draft-incomplete', field: 'marketType' });
   });
 

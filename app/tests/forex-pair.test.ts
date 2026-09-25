@@ -39,6 +39,7 @@ describe('T-043a currency pairs', () => {
     const result = parseForexPair('EURUSD');
     expect(Object.isFrozen(result) && result.ok && Object.isFrozen(result.pair)).toBe(true);
     expect(Object.isFrozen(parseForexPair('EUR'))).toBe(true);
+    expect(Object.isFrozen(parseForexPair('EUREUR'))).toBe(true);
   });
 
   it('gives lots for a size in units', () => {
