@@ -169,6 +169,7 @@ describe('T-045g the rates you still need', () => {
     fireEvent.change(change, { target: { value: '0.0055' } });
     fireEvent.click(within(saved).getByRole('button', { name: 'Change rate for JPY to EUR, 18 September 2026' }));
     expect(await within(saved).findByRole('status')).toHaveTextContent('Saved your rate: 1 JPY = 0.0055 EUR for 18 September 2026.');
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Your saved rates' })).toHaveFocus());
     expect(within(region).queryByText(/1 JPY = 180\.94 EUR/)).toBeNull();
     const rows = (await db.exchangeRates.toArray()).filter(row => row.source === 'typed' && row.from === 'JPY');
     expect(rows).toHaveLength(1);

@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import '@testing-library/jest-dom/vitest';
 import Dexie from 'dexie';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { AnalysisHistoryWorkspace } from '../src/app/AnalysisHistoryWorkspace';
@@ -90,7 +90,7 @@ describe('T-043d crypto only for now, in plain words', () => {
       fireEvent.change(screen.getByLabelText(/^Start from/), { target: { value: '2024-03-01T12:00' } });
       fireEvent.click(screen.getByRole('button', { name: 'Start replay' }));
       expect(await screen.findByText(message)).toBeInTheDocument();
-      expect(screen.getByLabelText(/^Market/)).toHaveFocus();
+      await waitFor(() => expect(screen.getByLabelText(/^Market/)).toHaveFocus());
       expect(fake.requests).toHaveLength(0);
       cleanup();
     }

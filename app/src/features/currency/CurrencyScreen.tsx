@@ -87,7 +87,9 @@ export function CurrencyScreen({ db, rates, now = wallClock }: CurrencyScreenPro
   const [changedLine, setChangedLine] = useState<string | null>(null);
   const formFilled = useRef(false);
   const focusMissingAfterLoad = useRef(false);
+  const focusSavedAfterLoad = useRef(false);
   const missingHeading = useRef<HTMLHeadingElement>(null);
+  const savedHeading = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => { formFilled.current = false; }, [db]);
   useEffect(() => {
@@ -107,9 +109,9 @@ export function CurrencyScreen({ db, rates, now = wallClock }: CurrencyScreenPro
     return () => { ignore = true; };
   }, [db, reload]);
   useEffect(() => {
-    if (state.kind !== 'ready' || !focusMissingAfterLoad.current) return;
-    focusMissingAfterLoad.current = false;
-    missingHeading.current?.focus();
+    if (state.kind !== 'ready') return;
+    if (focusMissingAfterLoad.current) { focusMissingAfterLoad.current = false; missingHeading.current?.focus(); }
+    if (focusSavedAfterLoad.current) { focusSavedAfterLoad.current = false; savedHeading.current?.focus(); }
   }, [state]);
 
   const reloadThenFocusMissing = () => { focusMissingAfterLoad.current = true; setReload(count => count + 1); };
@@ -148,6 +150,7 @@ export function CurrencyScreen({ db, rates, now = wallClock }: CurrencyScreenPro
   const onChangedSaved = (record: ExchangeRateRecord) => {
     setMissingLine(null);
     setChangedLine(describeTypedRateSaved(record));
+    focusSavedAfterLoad.current = true;
     setReload(count => count + 1);
   };
 
@@ -209,7 +212,7 @@ export function CurrencyScreen({ db, rates, now = wallClock }: CurrencyScreenPro
       </Card>
       {state.home !== null ? missingCard(state.home.currency, state.missing) : null}
       <Card as="section" className="kairos-currency-card" aria-labelledby={ratesId}>
-        <h2 id={ratesId}>Your saved rates</h2>
+        <h2 id={ratesId} ref={savedHeading} tabIndex={-1}>Your saved rates</h2>
         {changedLine !== null ? <p role="status">{changedLine}</p> : null}
         {state.rates.length === 0 ? <p>No exchange rates saved yet.</p> : <>
           <ul className="kairos-currency-rates">
