@@ -3,6 +3,7 @@ import { kairosDatabase, type KairosDatabase } from '../data/database';
 import type { TradeStatus } from '../domain/trades';
 import { TradeForm } from '../features/journal/TradeForm';
 import { useJournalHistoryPages } from '../features/journal/useJournalHistoryPages';
+import { PracticeMoneyCard } from '../features/practice/PracticeMoneyCard';
 import { JournalDailyResults } from './JournalDailyResults';
 import { JournalHistoryList } from './JournalHistoryList';
 import './journalRoute.css';
@@ -32,7 +33,9 @@ export function PracticeRoute({ db = kairosDatabase, now }: PracticeRouteProps) 
         </div>
         <span className="kairos-journal__badge kairos-practice__badge">Practice only</span>
       </div>
-      <p className="kairos-journal__intro">Rehearse a trade with the same facts you would log for real. Practice trades are kept apart: they never count in your journal history, daily results, goals or Home.</p>
+      <p className="kairos-journal__intro">Practise with pretend money before real money is at risk. Practice trades stay apart: they never count in your Journal results, goals, discipline score or Home.</p>
+
+      <PracticeMoneyCard db={db} refreshRevision={practiceRevision} />
 
       <TradeForm db={db} kind="practice" onSaved={async () => { setListNotice(''); await pages.refresh(); changed(); }} />
 
