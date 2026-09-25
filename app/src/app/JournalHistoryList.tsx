@@ -37,6 +37,8 @@ interface JournalHistoryListProps {
   readonly onShowOlder?: () => void;
   /** Called after a checklist or review is saved on a card. */
   readonly onDisciplineSaved?: () => void;
+  /** P27: which sources get the "Before you trade" and "After the trade" controls. Defaults to `allowedSources`. Practice adds `'replay'`, whose entries and exits come from past candles and stay read-only. */
+  readonly disciplineSources?: readonly TradeSource[];
 }
 
 function statusLabel(status: JournalHistoryEntry['trade']['status']): string {
@@ -66,7 +68,7 @@ function formatTimestamp(value: string): string {
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 }
 
-export function JournalHistoryList({ entries, isLoading, errorMessage, statusFilter, onStatusFilterChange, db, onTradeUpdated, updateNotice, onTradeDeleted, onTradeOpened, allowedSources = ['manual'], hasOlder = false, isLoadingOlder = false, olderFailed = false, onShowOlder, onDisciplineSaved }: JournalHistoryListProps) {
+export function JournalHistoryList({ entries, isLoading, errorMessage, statusFilter, onStatusFilterChange, db, onTradeUpdated, updateNotice, onTradeDeleted, onTradeOpened, allowedSources = ['manual'], hasOlder = false, isLoadingOlder = false, olderFailed = false, onShowOlder, onDisciplineSaved, disciplineSources = allowedSources }: JournalHistoryListProps) {
   const discipline = useTradeDisciplineCards(db, entries.map(entry => entry.trade.id));
   // Journal passes the real sources, Practice the paper one; the discipline writer needs the page's scope.
   const disciplineSaved = (record: Parameters<typeof discipline.remember>[0]) => { discipline.remember(record); onDisciplineSaved?.(); };
@@ -118,15 +120,16 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
                   <strong>{entry.trade.symbol}</strong>
                   <span>{sideLabel(entry.trade.side)}</span>
                   <span>{statusLabel(entry.trade.status)}</span>
+                  {entry.trade.source === 'replay' ? <span className="kairos-history-card__source">From replay</span> : null}
                 </div>
                 <time dateTime={timestamp}>{formatTimestamp(timestamp)}</time>
                 <ReviewTradeLink id={entry.trade.id} className="kairos-history-card__review" />
-                {db && (entry.trade.status === 'draft' || entry.trade.status === 'open') && allowedSources.includes(entry.trade.source)
+                {db && (entry.trade.status === 'draft' || entry.trade.status === 'open') && disciplineSources.includes(entry.trade.source)
                   ? discipline.state.kind === 'ready'
                     ? <TradeChecklistControl symbol={entry.trade.symbol} tradeId={entry.trade.id} scope={scope} items={discipline.state.lists.checklist} record={discipline.state.records.get(entry.trade.id) ?? null} save={input => saveTradeDiscipline(db, input)} onSaved={disciplineSaved} />
                     : discipline.state.kind === 'failed' ? <Button variant="secondary" size="sm" disabled>Before you trade: could not load</Button> : null
                   : null}
-                {db && entry.trade.status === 'closed' && allowedSources.includes(entry.trade.source)
+                {db && entry.trade.status === 'closed' && disciplineSources.includes(entry.trade.source)
                   ? discipline.state.kind === 'ready'
                     ? <TradeReviewControl symbol={entry.trade.symbol} tradeId={entry.trade.id} scope={scope} reviewItems={discipline.state.lists.review} mistakeItems={discipline.state.lists.mistakes} record={discipline.state.records.get(entry.trade.id) ?? null} save={input => saveTradeDiscipline(db, input)} onSaved={disciplineSaved} />
                     : discipline.state.kind === 'failed' ? <Button variant="secondary" size="sm" disabled>After the trade: could not load</Button> : null

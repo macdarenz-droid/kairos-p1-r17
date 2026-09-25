@@ -51,7 +51,7 @@
         { "id": "try-it", "title": "Try it", "blocks": [
           { "kind": "try", "text": "Work out a trade of your own, with your own numbers.", "tool": "calculators" } ] }
       ] },
-    { "id": "read-your-trade-picture", "revision": 1, "title": "Read your trade picture",
+    { "id": "read-your-trade-picture", "revision": 2, "title": "Read your trade picture",
       "summary": "What the boxes, the candles and the result on your trade picture mean.",
       "level": 1, "minutes": 4,
       "steps": [
@@ -80,7 +80,8 @@
             "choices": [ { "text": "You won twice what you planned to lose", "right": true }, { "text": "You doubled all the money in your account", "right": false }, { "text": "You lost twice what you planned to lose", "right": false } ],
             "explanation": "× what you risked compares your result with the loss you planned at your stop, not with all the money in your account." } ] },
         { "id": "try-it", "title": "Try it", "blocks": [
-          { "kind": "try", "text": "Open the Journal and tap the small picture on a trade card to see your own trade.", "tool": "journal" } ] }
+          { "kind": "try", "text": "Open the Journal and tap the small picture on a trade card to see your own trade.", "tool": "journal" },
+          { "kind": "try", "text": "Or replay a past market: place a practice trade and watch its picture grow, one candle at a time.", "tool": "replay" } ] }
       ] }
   ]
 }

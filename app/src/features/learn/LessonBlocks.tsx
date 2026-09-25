@@ -13,6 +13,7 @@ const LESSON_TOOL_LINKS: Readonly<Record<LessonTool, { readonly href: string; re
   calculators: { href: '/library/calculators', label: 'Open the calculators' },
   journal: { href: '/journal', label: 'Open the Journal' },
   practice: { href: '/practice', label: 'Open Practice' },
+  replay: { href: '/practice/replay', label: 'Open Replay' },
 };
 
 /** Keeps one broken block to one plain line; the rest of the step still shows. */
