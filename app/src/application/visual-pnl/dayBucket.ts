@@ -88,3 +88,25 @@ export function projectVisualPnlDayKey(
     basis: 'closed-at' as const,
   });
 }
+
+/**
+ * P30: the hour (0–23, 24-hour clock) an instant falls in, in `timeZone`.
+ * Like the day key, it never falls back to the device time zone; null for a
+ * missing or non-canonical instant or an invalid time zone.
+ */
+export function projectVisualPnlHourOfDay(instant: string | null, timeZone: string): number | null {
+  if (instant === null) return null;
+  const at = canonicalInstant(instant);
+  if (at === null) return null;
+  let parts: Intl.DateTimeFormatPart[];
+  try {
+    // hourCycle h23: with hour12 false some engines write midnight as "24".
+    parts = new Intl.DateTimeFormat('en', { numberingSystem: 'latn', timeZone, hour: '2-digit', hourCycle: 'h23' }).formatToParts(at);
+  } catch {
+    return null;
+  }
+  const value = parts.find((part) => part.type === 'hour')?.value;
+  if (value === undefined || !/^\d{1,2}$/.test(value)) return null;
+  const hour = Number.parseInt(value, 10);
+  return hour >= 0 && hour <= 23 ? hour : null;
+}
