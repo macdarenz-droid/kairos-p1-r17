@@ -1,0 +1,8 @@
+.kairos-strategy-editor { display:grid; gap:var(--kairos-space-4); min-width:0; }
+.kairos-strategy-editor fieldset { display:grid; gap:0.25rem; margin:0; padding:0; border:0; min-width:0; }
+.kairos-strategy-editor legend { font-weight:600; margin-bottom:0.25rem; }
+.kairos-strategy-editor input[type="text"] { inline-size:100%; }
+.kairos-strategy-editor__bars { display:grid; grid-template-columns:auto minmax(0,1fr); align-items:center; gap:var(--kairos-space-1) var(--kairos-space-2); max-inline-size:16rem; }
+.kairos-strategy-editor [data-bar="risk"] > span { background:var(--kairos-trade-stop); }
+.kairos-strategy-editor [data-bar="reward"] > span { background:var(--kairos-trade-target); }
+.kairos-strategy-editor__actions { display:flex; flex-wrap:wrap; gap:var(--kairos-space-3); }

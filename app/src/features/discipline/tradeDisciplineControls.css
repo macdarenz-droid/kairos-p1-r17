@@ -97,3 +97,6 @@
   min-width: 0;
   box-sizing: border-box;
 }
+
+.kairos-strategy-bar { display:block; block-size:.5rem; background:var(--kairos-surface-input); border-radius:var(--kairos-radius-full); overflow:hidden; }
+.kairos-strategy-bar > span { display:block; block-size:100%; border-radius:inherit; }
