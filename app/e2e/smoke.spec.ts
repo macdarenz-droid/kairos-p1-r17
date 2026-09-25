@@ -36,7 +36,7 @@ test('(b) every route renders inside the phone width without page errors', async
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
   await activate(page);
-  for (const path of ['/', '/journal', '/analysis', '/library', '/more', '/practice', '/goals', '/strategies', '/settings', '/profile', '/does-not-exist']) {
+  for (const path of ['/', '/journal', '/analysis', '/library', '/more', '/practice', '/goals', '/strategies', '/coach', '/practice/coach', '/settings', '/profile', '/does-not-exist']) {
     await page.goto(path);
     await expect(page.locator('.kairos-shell'), path).toBeVisible();
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
@@ -308,5 +308,49 @@ test('(i) Strategies: your rules, checked on a trade before and after saving', a
   await strategy.click();
   dialog = page.getByRole('dialog', { name: 'Strategy: BTCUSDT' });
   await expect(dialog.getByRole('checkbox', { name: 'I wait for a candle to close above the line' })).toBeChecked();
+  expect(errors).toEqual([]);
+});
+
+test('(j) Coach: a trade that broke its plan, on its card, in the Journal and on the coach page', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  await activate(page);
+  await page.goto('/journal');
+  await page.getByRole('button', { name: 'Use Asia/Manila (this device)' }).click();
+  const coach = page.getByRole('region', { name: 'Your coach' });
+  await expect(coach).toContainText('Nothing to point out this month.');
+
+  await page.getByRole('button', { name: 'Quick log' }).click();
+  await page.getByLabel(/^Symbol/).fill('BTCUSDT');
+  await page.getByLabel(/^Market/).selectOption('crypto');
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Entry price/).fill('100');
+  await page.getByLabel(/^Exit price/).fill('90');
+  await page.getByLabel(/^Quantity/).fill('3');
+  await page.getByRole('button', { name: 'Set opened time to now' }).click();
+  await page.getByRole('button', { name: 'Set closed time to now' }).click();
+  await page.getByLabel('Currency code').fill('USDT');
+  await page.getByText('Trade plan · Optional').click();
+  await page.getByLabel('Planned entry').fill('100');
+  await page.getByLabel('Planned stop').fill('95');
+  await page.getByLabel('Planned quantity').fill('1');
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+
+  const card = page.locator('.kairos-history-card').filter({ hasText: 'BTCUSDT' });
+  await expect(card).toContainText('Your stop was 95, and you closed at 90 on average, beyond it.');
+  await expect(card).toContainText('You planned a size of 1 and traded 3.');
+  await expect(coach).toContainText('3 notes');
+  await expect(coach).toContainText('1 trade this month closed beyond its stop.');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+
+  await coach.getByRole('link', { name: 'See all your coach notes' }).click();
+  await expect(page).toHaveURL(/\/coach$/);
+  await expect(page.getByRole('heading', { name: 'Your coach', level: 1 })).toBeVisible();
+  for (const title of ['1 trade this month closed beyond its stop.', '1 trade this month was bigger than you planned.', 'You reviewed 0 of your 1 closed trade this month.']) {
+    await expect(page.getByRole('heading', { name: title, level: 2 })).toBeVisible();
+  }
+  await expect(page.getByRole('link', { name: 'View trade' }).first()).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   expect(errors).toEqual([]);
 });
