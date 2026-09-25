@@ -2,3 +2,9 @@
 .kairos-trade-form__mode { display: flex; flex-wrap: wrap; gap: var(--kairos-space-2); }
 .kairos-trade-form__time { display: flex; align-items: center; gap: var(--kairos-space-2); }
 .kairos-trade-form__time input { flex: 1 1 auto; }
+.kairos-trade-form__strategy-note { display:grid; gap:var(--kairos-space-2); margin-top:var(--kairos-space-3); }
+.kairos-trade-form__strategy-note p { margin:0 !important; }
+.kairos-trade-form__strategy-marks { letter-spacing:.2em; font-variant-numeric:tabular-nums; }
+.kairos-trade-form__strategy-note [data-verdict="kept"] { color:var(--kairos-state-success); }
+.kairos-trade-form__strategy-note [data-verdict="broken"] { color:var(--kairos-state-error); }
+.kairos-trade-form__strategy-note [data-verdict="unknown"] { color:var(--kairos-text-muted); }

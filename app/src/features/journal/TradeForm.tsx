@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
+import { saveTradeDiscipline } from '../../application/discipline';
 import { savePracticeTrade } from '../../application/practice';
 import {
   createEmptyManualTradeDraft,
@@ -13,10 +14,12 @@ import { prepareManualTradeExecutionDetails, type ManualExecutionRow, type Manua
 import { PRICE_CURRENCY_INPUT_ERROR } from '../../application/trades/priceCurrencyInput';
 import { createEmptyQuickTradeLogDraft, quickTradeLogFieldFor, quickTradeLogRows, type QuickTradeLogDraft, type QuickTradeLogField } from '../../application/trades/quickTradeLog';
 import type { KairosDatabase } from '../../data/database';
+import type { StrategyId } from '../../domain/discipline';
 import { Button, Field } from '../../design-system/primitives';
 import { JournalClosedTradeGuidance } from './JournalClosedTradeGuidance';
 import { JournalExecutionFields } from './JournalExecutionFields';
 import { JournalPriceCurrencyField } from './JournalPriceCurrencyField';
+import { TradeStrategyField } from './TradeStrategyField';
 import './tradeForm.css';
 
 export type TradeFormKind = 'journal' | 'practice';
@@ -186,6 +189,7 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft }: 
   const feedbackRef = useRef<HTMLDivElement>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [strategyId, setStrategyId] = useState<StrategyId | ''>('');
   const [mode, setMode] = useState<TradeFormMode>(readTradeFormMode);
   const [quick, setQuick] = useState<QuickTradeLogDraft>(createEmptyQuickTradeLogDraft);
   const isQuick = mode === 'quick';
@@ -254,9 +258,9 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft }: 
 
     setIsSaving(true);
     const result = kind === 'practice' ? await savePracticeTrade(db, prepared.input) : await saveManualTrade(db, prepared.input);
-    setIsSaving(false);
 
     if (!result.ok) {
+      setIsSaving(false);
       if (result.type === 'validation-error') {
         setFeedback({
           kind: 'error',
@@ -269,6 +273,14 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft }: 
       return;
     }
 
+    // The form stays busy until the strategy link is written too (two atomic writes, D76); the trade is saved either way.
+    let saved = text.saved;
+    if (strategyId !== '') {
+      const linked = await saveTradeDiscipline(db, { tradeId: result.tradeId, scope: kind === 'practice' ? 'practice' : 'real', half: 'strategy', strategyId, answers: [] }).catch(() => null);
+      if (!linked?.ok) saved = `${text.saved} Its strategy was not saved: choose it again on the trade card.`;
+    }
+    setIsSaving(false);
+
     // Commit the reset and the success banner before the page refreshes its lists.
     flushSync(() => {
       setDraft(createEmptyManualTradeDraft());
@@ -276,7 +288,8 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft }: 
       setExecutions([]);
       setFees([]);
       setQuick(createEmptyQuickTradeLogDraft());
-      setFeedback({ kind: 'success', message: text.saved });
+      setStrategyId('');
+      setFeedback({ kind: 'success', message: saved });
     });
     await onSaved();
   }
@@ -442,8 +455,10 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft }: 
 
         </details>
 
+        <TradeStrategyField db={db} idPrefix={idPrefix} value={strategyId} onChange={value => { setStrategyId(value); setFeedback(null); }} draft={draft} status={isQuick ? 'closed' : draft.status} disabled={isSaving} />
+
         <div className="kairos-trade-form__actions">
-          <Button type="submit" busy={isSaving}>{isSaving ? 'Saving…' : text.submit}</Button>
+          <Button type="submit" busy={isSaving} aria-describedby={strategyId ? `${idPrefix}-strategy-note` : undefined}>{isSaving ? 'Saving…' : text.submit}</Button>
         </div>
       </form>
     </>
