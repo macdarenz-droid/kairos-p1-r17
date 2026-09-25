@@ -21,6 +21,7 @@ import { ResultsDayTrades, type ResultsDayTradesState } from '../features/journa
 import { ReviewTradeLink } from './ReviewTradeLink';
 import { loadDisciplineScore } from '../application/discipline';
 import { DisciplineScorePanel, type DisciplineScorePanelState } from '../features/discipline/DisciplineScorePanel';
+import { CoachCard } from '../features/discipline/CoachCard';
 import { monthLabel } from '../features/journal/ResultsCalendar';
 
 interface JournalDailyResultsProps {
@@ -174,6 +175,7 @@ export function JournalDailyResults({ db, refreshRevision, now = wallClock, disc
           onClose={() => selectDay(timeZone, null)}
         /> : null}
         <DisciplineScorePanel title={text.disciplineTitle} state={discipline} periodLabel={monthLabel(shownMonth)} />
+        <CoachCard db={db} scope={scope} now={now} refreshRevision={refreshRevision} disciplineRevision={disciplineRevision} />
         {blocked > 0 ? <p className="kairos-pnl-calendar__notice">{blocked === 1 ? '1 closed trade could not be placed on a day.' : `${blocked} closed trades could not be placed on a day.`}</p> : null}
         <p className="kairos-pnl-calendar__notice">Time zone: {timeZone}</p>
       </section>

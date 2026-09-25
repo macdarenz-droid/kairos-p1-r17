@@ -5,6 +5,8 @@ import { TradeChecklistControl } from '../features/discipline/TradeChecklistCont
 import { TradeReviewControl } from '../features/discipline/TradeReviewControl';
 import { TradeStrategyControl } from '../features/discipline/TradeStrategyControl';
 import { checkSavedTradeStrategy } from '../application/discipline/strategyCheck';
+import { projectTradePlanVsExecution } from '../application/trades/planVsExecution';
+import { describeTradePlanVsExecution } from '../application/coach/coachWords';
 import { useTradeDisciplineCards } from '../features/discipline/useTradeDisciplineCards';
 import type { TradeSource, TradeStatus } from '../domain/trades';
 import { TradePicture } from '../features/journal/TradePicture';
@@ -116,6 +118,7 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
         <ol className="kairos-history__list">
           {entries.map((entry, index) => {
             const timestamp = entry.trade.closedAt ?? entry.trade.openedAt ?? entry.trade.updatedAt;
+            const coach = entry.trade.status === 'closed' ? describeTradePlanVsExecution(projectTradePlanVsExecution(entry.trade, entry.plans, entry.metrics)) : [];
             return (
               <li className="kairos-history-card" key={entry.trade.id}>
                 <div className="kairos-history-card__topline">
@@ -157,6 +160,7 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
                   <div><dt><span>Result before fees</span>{index === 0 ? <GlossaryHint termId="result-before-fees" label="Result before fees" /> : null}</dt><dd>{money(entry.metrics?.grossPnl, entry.trade.grossPnlCurrency)}</dd></div>
                   <div><dt><span>Result after fees</span>{index === 0 ? <GlossaryHint termId="result-after-fees" label="Result after fees" /> : null}</dt><dd>{entry.metrics?.netPnl != null && entry.metrics.netPnlCurrency ? money(entry.metrics.netPnl, entry.metrics.netPnlCurrency) : entry.metrics?.netPnl ?? 'Not available'}</dd></div>
                 </dl>
+                {coach.length > 0 ? <p className="kairos-history-card__coach"><span>Your coach</span>{coach.map(line => <span key={line}>{line}</span>)}</p> : null}
                 {entry.fees.length > 0 && entry.metrics?.grossPnl != null && entry.metrics.netPnl == null ? <p className="kairos-history-card__notice">
                   {entry.trade.grossPnlCurrency ? 'Result after fees needs fees in the same currency as your recorded prices. Kairos does not convert currencies.' : 'The price currency is not recorded, so fees cannot be taken off yet.'}
                 </p> : null}

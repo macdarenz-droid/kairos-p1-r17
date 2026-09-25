@@ -87,6 +87,8 @@
 .kairos-history-card__facts dt { display:flex; align-items:center; gap:var(--kairos-space-1); color:var(--kairos-text-muted); font-size:var(--kairos-font-size-xs); }
 .kairos-history-card__facts dd { margin:var(--kairos-space-1) 0 0; overflow-wrap:anywhere; }
 .kairos-history-card__notice { margin:var(--kairos-space-3) 0 0; color:var(--kairos-text-muted); font-size:var(--kairos-font-size-sm); }
+.kairos-history-card__coach { display:grid; gap:var(--kairos-space-1); margin:var(--kairos-space-3) 0 0; color:var(--kairos-text-secondary); font-size:var(--kairos-font-size-sm); line-height:var(--kairos-line-height-normal); overflow-wrap:anywhere; }
+.kairos-history-card__coach > span:first-child { color:var(--kairos-text-primary); font-weight:var(--kairos-font-weight-semibold); }
 @media (max-width: 420px) { .kairos-history-card__facts { grid-template-columns:1fr; } .kairos-history__heading { align-items:flex-start; } .kairos-history__controls { justify-content:stretch; } .kairos-history__filter { width:100%; } }
 
 .kairos-pnl-calendar { margin-top:var(--kairos-space-8); border-top:1px solid var(--kairos-border-subtle); padding-top:var(--kairos-space-6); }
