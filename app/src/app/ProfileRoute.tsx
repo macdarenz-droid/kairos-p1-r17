@@ -200,7 +200,7 @@ export function ProfileRoute({ db = kairosDatabase, now = wallClock, downloads, 
     const result = await exportKairosBackup(db, new Date(now()));
     if (!result.ok) { setExportState({ kind: 'error', message: exportFailureText(result) }); return; }
     if (!download(result.file)) { setExportState({ kind: 'error', message: 'Your browser did not accept the download. Nothing was changed.' }); return; }
-    setExportState({ kind: 'done', file: result.file, skippedCount: result.skipped.savedAnalyses + result.skipped.savedTimeAssistedSnapshots + result.skipped.tradeDiscipline });
+    setExportState({ kind: 'done', file: result.file, skippedCount: result.skipped.savedAnalyses + result.skipped.savedTimeAssistedSnapshots + result.skipped.tradeDiscipline + result.skipped.exchangeRates });
     const recorded = await recordLastBackup(metadata, result.file);
     if (recorded.ok) setLastBackup({ kind: 'ready', record: recorded.record });
   }

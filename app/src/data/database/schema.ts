@@ -2,9 +2,10 @@ import type { SavedAnalysis } from '../../domain/saved-records/savedAnalysisCont
 import type { SavedTimeAssistedSnapshot } from '../../domain/saved-records/savedTimeAssistedSnapshotContract';
 import type { TradeDisciplineRecord } from '../../domain/discipline';
 import type { TradeExecutionRecord, TradeFeeRecord, TradePlanRecord, TradeRecord } from '../../domain/trades';
+import type { ExchangeRateRecord } from '../../domain/calculations/currencyConversion';
 
 export const KAIROS_DATABASE_NAME = 'kairos';
-export const KAIROS_DB_SCHEMA_VERSION = 9 as const;
+export const KAIROS_DB_SCHEMA_VERSION = 10 as const;
 
 /** Immutable released V1 contract. Never edit. */
 export const KAIROS_V1_STORES = Object.freeze({
@@ -54,6 +55,9 @@ export const KAIROS_V8_STORES = Object.freeze({
 /** V9 changes no store or index: a discipline record may now carry the strategy its trade follows (P28, optional field, nothing to convert). */
 export const KAIROS_V9_STORES = Object.freeze({});
 
+/** V10 appends the P33 exchange rate store: one rate per source, pair and UTC day (D114). Nothing to convert. */
+export const KAIROS_V10_STORES = Object.freeze({ exchangeRates: '&id,day' });
+
 /** Current complete store authority used by transactions/integrity only. */
 export const KAIROS_CURRENT_STORES = Object.freeze({
   ...KAIROS_V2_STORES,
@@ -64,6 +68,7 @@ export const KAIROS_CURRENT_STORES = Object.freeze({
   ...KAIROS_V7_STORES,
   ...KAIROS_V8_STORES,
   ...KAIROS_V9_STORES,
+  ...KAIROS_V10_STORES,
 });
 
 export interface DatabaseMetadataRecord {
@@ -76,6 +81,7 @@ export type DatabaseTradeRecord = TradeRecord;
 export type DatabaseTradePlanRecord = TradePlanRecord;
 export type DatabaseTradeExecutionRecord = TradeExecutionRecord;
 export type DatabaseTradeFeeRecord = TradeFeeRecord;
+export type DatabaseExchangeRateRecord = ExchangeRateRecord;
 
 export type DatabaseSavedAnalysisRecord = SavedAnalysis;
 export type DatabaseSavedTimeAssistedSnapshotRecord = SavedTimeAssistedSnapshot;

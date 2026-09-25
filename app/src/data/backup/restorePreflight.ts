@@ -17,6 +17,7 @@ export type KairosRestorePreflightCode =
   | 'DUPLICATE_SAVED_TIME_ASSISTED_SNAPSHOT_ID'
   | 'DUPLICATE_TRADE_DISCIPLINE_ID'
   | 'DUPLICATE_TRADE_DISCIPLINE_TRADE_ID'
+  | 'DUPLICATE_EXCHANGE_RATE_ID'
   | 'INVALID_TRADE_REFERENCE';
 
 export class KairosRestorePreflightError extends Error {
@@ -89,7 +90,7 @@ function assertUnique(values: readonly string[], code: KairosRestorePreflightCod
 }
 
 function assertRestoreCompatibility(envelope: KairosCurrentBackupEnvelope): void {
-  // parseKairosBackup has already migrated every supported V1–V7 backup to the current restore model (format 8, schema 9).
+  // parseKairosBackup has already migrated every supported V1–V8 backup to the current restore model (format 9, schema 10).
   const compatible = envelope.databaseSchemaVersion === KAIROS_DB_SCHEMA_VERSION;
   if (!compatible) {
     throw new KairosRestorePreflightError(
@@ -107,6 +108,7 @@ function assertRestoreCompatibility(envelope: KairosCurrentBackupEnvelope): void
   assertUnique(envelope.payload.savedTimeAssistedSnapshots.map((record) => record.id), 'DUPLICATE_SAVED_TIME_ASSISTED_SNAPSHOT_ID', 'saved time-assisted snapshot id');
   assertUnique(envelope.payload.tradeDiscipline.map((record) => record.id), 'DUPLICATE_TRADE_DISCIPLINE_ID', 'trade discipline id');
   assertUnique(envelope.payload.tradeDiscipline.map((record) => record.tradeId), 'DUPLICATE_TRADE_DISCIPLINE_TRADE_ID', 'trade discipline trade id');
+  assertUnique(envelope.payload.exchangeRates.map((record) => record.id), 'DUPLICATE_EXCHANGE_RATE_ID', 'exchange rate id');
 
   const tradeIds = new Set(envelope.payload.trades.map((record) => record.id));
   const executionIds = new Set(envelope.payload.tradeExecutions.map((record) => record.id));

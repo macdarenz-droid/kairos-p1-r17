@@ -12,6 +12,7 @@ export interface KairosRestoreResultV2 {
   readonly restoredSavedAnalysisRecords: number;
   readonly restoredSavedTimeAssistedSnapshotRecords: number;
   readonly restoredTradeDisciplineRecords: number;
+  readonly restoredExchangeRateRecords: number;
   readonly integrity: DatabaseIntegrityReport;
 }
 
@@ -28,10 +29,11 @@ export async function replaceKairosDatabaseFromPreparedRestore(
   const savedAnalyses = incoming.savedAnalyses.map((record) => structuredClone(record));
   const savedTimeAssistedSnapshots = incoming.savedTimeAssistedSnapshots.map((record) => structuredClone(record));
   const tradeDiscipline = incoming.tradeDiscipline.map((record) => structuredClone(record));
+  const exchangeRates = incoming.exchangeRates.map((record) => ({ ...record }));
 
   await runKairosAtomicWrite(
     db,
-    ['metadata', 'trades', 'tradePlans', 'tradeExecutions', 'tradeFees', 'savedAnalyses', 'savedTimeAssistedSnapshots', 'tradeDiscipline'],
+    ['metadata', 'trades', 'tradePlans', 'tradeExecutions', 'tradeFees', 'savedAnalyses', 'savedTimeAssistedSnapshots', 'tradeDiscipline', 'exchangeRates'],
     async ({ repositories }) => {
       // Parent first on write; all stores are still covered by one atomic transaction.
       await repositories.metadata.replaceAll(metadata);
@@ -42,6 +44,7 @@ export async function replaceKairosDatabaseFromPreparedRestore(
       await repositories.savedAnalyses.replaceAll(savedAnalyses);
       await repositories.savedTimeAssistedSnapshots.replaceAll(savedTimeAssistedSnapshots);
       await repositories.tradeDiscipline.replaceAll(tradeDiscipline);
+      await repositories.exchangeRates.replaceAll(exchangeRates);
     },
   );
 
@@ -55,6 +58,7 @@ export async function replaceKairosDatabaseFromPreparedRestore(
     restoredSavedAnalysisRecords: savedAnalyses.length,
     restoredSavedTimeAssistedSnapshotRecords: savedTimeAssistedSnapshots.length,
     restoredTradeDisciplineRecords: tradeDiscipline.length,
+    restoredExchangeRateRecords: exchangeRates.length,
     integrity,
   });
 }

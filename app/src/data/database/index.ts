@@ -32,6 +32,7 @@ export {
   KAIROS_V7_STORES,
   KAIROS_V8_STORES,
   KAIROS_V9_STORES,
+  KAIROS_V10_STORES,
   KAIROS_CURRENT_STORES,
 } from './schema';
 export type {
@@ -43,7 +44,7 @@ export type {
   KairosMigrationUpgrade,
   KairosStoreSchema,
 } from './migrations';
-export type { DatabaseMetadataRecord, DatabaseSavedAnalysisRecord, DatabaseSavedTimeAssistedSnapshotRecord, DatabaseTradeDisciplineRecord } from './schema';
+export type { DatabaseExchangeRateRecord, DatabaseMetadataRecord, DatabaseSavedAnalysisRecord, DatabaseSavedTimeAssistedSnapshotRecord, DatabaseTradeDisciplineRecord } from './schema';
 
 export type { DatabaseIntegrityCheck, DatabaseIntegrityCheckId, DatabaseIntegrityCheckTier, DatabaseIntegrityReport } from './integrity';
 export { runKairosAtomicWrite } from './transactions';

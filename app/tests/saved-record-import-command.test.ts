@@ -40,7 +40,7 @@ describe('P33.1 saved-record merge-import command', () => {
     const prepared = await prepareSavedRecordImport(db, backup);
     expect(prepared.ok).toBe(true);
     if (!prepared.ok) throw new Error('unreachable');
-    expect(prepared.import.preview).toEqual({ exportedAt: now(), formatVersion: 8, newAnalyses: 1, newSnapshots: 1, analysesPresent: 1, snapshotsPresent: 0 });
+    expect(prepared.import.preview).toEqual({ exportedAt: now(), formatVersion: 9, newAnalyses: 1, newSnapshots: 1, analysesPresent: 1, snapshotsPresent: 0 });
     expect(await db.savedAnalyses.count()).toBe(1);
     expect(await db.trades.count()).toBe(0);
     const result = await commitSavedRecordImport(db, prepared.import);

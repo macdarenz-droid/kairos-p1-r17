@@ -77,8 +77,8 @@ describe('P5.2 metadata repository foundation', () => {
     const db = createKairosDatabase(makeDatabaseName('schema'));
     await openKairosDatabase(db);
 
-    expect(db.verno).toBe(9);
-    expect(db.tables.map((table) => table.name).sort()).toEqual(['metadata', 'savedAnalyses', 'savedTimeAssistedSnapshots', 'tradeDiscipline', 'tradeExecutions', 'tradeFees', 'tradePlans', 'trades'].sort());
+    expect(db.verno).toBe(10);
+    expect(db.tables.map((table) => table.name).sort()).toEqual(['exchangeRates', 'metadata', 'savedAnalyses', 'savedTimeAssistedSnapshots', 'tradeDiscipline', 'tradeExecutions', 'tradeFees', 'tradePlans', 'trades'].sort());
     db.close();
   });
 });

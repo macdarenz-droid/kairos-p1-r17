@@ -1,10 +1,12 @@
 import type { SavedAnalysis } from '../../domain/saved-records/savedAnalysisContract';
 import type { SavedTimeAssistedSnapshot } from '../../domain/saved-records/savedTimeAssistedSnapshotContract';
 import type { LegacyTradeDisciplineRecord, TradeDisciplineRecord } from '../../domain/discipline';
+import type { ExchangeRateRecord } from '../../domain/calculations/currencyConversion';
 import type { DatabaseMetadataRecord, DatabaseTradeExecutionRecord, DatabaseTradeFeeRecord, DatabaseTradePlanRecord, DatabaseTradeRecord } from '../database/schema';
 
 export const KAIROS_BACKUP_FORMAT_NAME = 'kairos-full-backup' as const;
-export const KAIROS_BACKUP_FORMAT_VERSION = 8 as const;
+export const KAIROS_BACKUP_FORMAT_VERSION = 9 as const;
+export const KAIROS_STRATEGY_MARK_BACKUP_FORMAT_VERSION = 8 as const;
 export const KAIROS_DISCIPLINE_ITEMS_BACKUP_FORMAT_VERSION = 7 as const;
 export const KAIROS_CHART_ZONE_BACKUP_FORMAT_VERSION = 6 as const;
 export const KAIROS_TRADE_DISCIPLINE_BACKUP_FORMAT_VERSION = 5 as const;
@@ -43,5 +45,10 @@ export interface KairosBackupEnvelopeV7 { readonly formatName:typeof KAIROS_BACK
 /** V8 keeps the V7 payload; a discipline record may now carry the strategy its trade follows (P28). It describes schema 9. */
 export interface KairosBackupEnvelopeV8 { readonly formatName:typeof KAIROS_BACKUP_FORMAT_NAME; readonly formatVersion:8; readonly appVersion:string; readonly buildId:string; readonly exportedAt:string; readonly databaseSchemaVersion:9; readonly recordCounts:KairosBackupRecordCountsV5; readonly payload:KairosBackupPayloadV7; }
 
-export type KairosBackupEnvelope = KairosBackupEnvelopeV1|KairosBackupEnvelopeV2|KairosBackupEnvelopeV3|KairosBackupEnvelopeV4|KairosBackupEnvelopeV5|KairosBackupEnvelopeV6|KairosBackupEnvelopeV7|KairosBackupEnvelopeV8;
-export type KairosCurrentBackupEnvelope = KairosBackupEnvelopeV8;
+/** V9 adds the P33 exchange rates (D114). It describes schema 10. */
+export interface KairosBackupPayloadV9 extends KairosBackupPayloadV7 { readonly exchangeRates: readonly ExchangeRateRecord[]; }
+export interface KairosBackupRecordCountsV9 extends KairosBackupRecordCountsV5 { readonly exchangeRates:number; }
+export interface KairosBackupEnvelopeV9 { readonly formatName:typeof KAIROS_BACKUP_FORMAT_NAME; readonly formatVersion:9; readonly appVersion:string; readonly buildId:string; readonly exportedAt:string; readonly databaseSchemaVersion:10; readonly recordCounts:KairosBackupRecordCountsV9; readonly payload:KairosBackupPayloadV9; }
+
+export type KairosBackupEnvelope = KairosBackupEnvelopeV1|KairosBackupEnvelopeV2|KairosBackupEnvelopeV3|KairosBackupEnvelopeV4|KairosBackupEnvelopeV5|KairosBackupEnvelopeV6|KairosBackupEnvelopeV7|KairosBackupEnvelopeV8|KairosBackupEnvelopeV9;
+export type KairosCurrentBackupEnvelope = KairosBackupEnvelopeV9;
