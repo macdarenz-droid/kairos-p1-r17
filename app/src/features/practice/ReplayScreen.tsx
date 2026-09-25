@@ -133,7 +133,7 @@ export function ReplayScreen({ db, market, playStepMs = REPLAY_PLAY_STEP_MS }: {
         <p className="kairos-replay__now" aria-live={playing ? 'off' : 'polite'}>Now in the replay: <time dateTime={view.replayTime}>{time}</time>. Price: <strong>{view.last.close}{quote}</strong></p>
         <div className="kairos-replay__controls" role="group" aria-label="Replay controls">
           <Button onClick={next} disabled={playing || candlesLeft === 0}>Next candle</Button>
-          <Button variant="secondary" onClick={() => setPlaying(value => !value)} disabled={candlesLeft === 0}>{playing ? 'Pause' : 'Play'}</Button>
+          <Button variant="secondary" onClick={() => setPlaying(value => !value)} disabled={candlesLeft === 0}>{playing && candlesLeft > 0 ? 'Pause' : 'Play'}</Button>
           <span>{candlesLeft === 0 ? 'No candles left' : candlesLeft === 1 ? '1 candle left' : `${candlesLeft} candles left`}</span>
           <Button variant="ghost" onClick={again}>Choose another moment</Button>
         </div>
