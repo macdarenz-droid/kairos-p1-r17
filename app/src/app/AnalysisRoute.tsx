@@ -10,8 +10,8 @@ import { TradePicture } from '../features/journal/TradePicture';
 
 type State = { readonly key: string | null; readonly result: TradeReviewResult | null; readonly error: boolean };
 type TradeEntry = Extract<TradeReviewResult, { kind: 'trade' }>['entry'];
-/** The last trade picture loaded for a selection; a same-trade refresh keeps it mounted so an open hint sheet survives. */
-type Shown = { readonly key: string | null; readonly entry: TradeEntry } | null;
+/** The last trade picture loaded for one selection (its counter n); a refresh of that selection keeps it mounted so an open hint sheet survives. */
+type Shown = { readonly n: number; readonly entry: TradeEntry } | null;
 
 /** Route selection and async read lifecycle only; all saved facts come from P12. */
 export function AnalysisRoute({ load = loadTradeReview }: { readonly load?: (id: string | null) => Promise<TradeReviewResult> }) {
@@ -19,8 +19,12 @@ export function AnalysisRoute({ load = loadTradeReview }: { readonly load?: (id:
   const selectedId = params.get('trade');
   const [revision, setRevision] = useState(0);
   const [state, setState] = useState<State>({ key: selectedId, result: null, error: false });
+  // Changes on every selectedId change, so A → another → A is a new selection even for the same trade id.
+  const [selection, setSelection] = useState({ id: selectedId, n: 0 });
+  if (selection.id !== selectedId) setSelection({ id: selectedId, n: selection.n + 1 });
+  const selectionN = selection.id === selectedId ? selection.n : selection.n + 1;
   const [shown, setShown] = useState<Shown>(null);
-  const focusedFor = useRef<string | null | undefined>(undefined);
+  const focusedFor = useRef<number | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const refresh = useCallback(() => setRevision(value => value + 1), []);
   const current = state.key === selectedId ? state : null;
@@ -32,14 +36,14 @@ export function AnalysisRoute({ load = loadTradeReview }: { readonly load?: (id:
     void load(selectedId).then(result => {
       if (!active) return;
       setState({ key: selectedId, result, error: false });
-      setShown(result.kind === 'trade' ? { key: selectedId, entry: result.entry } : null);
+      setShown(result.kind === 'trade' ? { n: selectionN, entry: result.entry } : null);
     }).catch(() => {
       if (!active) return;
       setState({ key: selectedId, result: null, error: true });
       setShown(null);
     });
     return () => { active = false; };
-  }, [load, selectedId, revision]);
+  }, [load, selectedId, selectionN, revision]);
 
   useEffect(() => {
     const visible = () => { if (!document.hidden) refresh(); };
@@ -48,16 +52,19 @@ export function AnalysisRoute({ load = loadTradeReview }: { readonly load?: (id:
     return () => { window.removeEventListener('focus', refresh); document.removeEventListener('visibilitychange', visible); };
   }, [refresh]);
 
-  // The heading takes focus once per selection, after its first load; a refresh of the same trade never moves focus.
+  // The heading takes focus once per selection after its first load, and again whenever focus was lost to the page
+  // (a removed "Try again"). A refresh never takes focus from an open sheet.
   useEffect(() => {
-    if (loading || focusedFor.current === selectedId) return;
-    focusedFor.current = selectedId;
+    if (loading) return;
+    const lost = document.activeElement === null || document.activeElement === document.body;
+    if (focusedFor.current === selectionN && !lost) return;
+    focusedFor.current = selectionN;
     heading.current?.focus();
-  }, [selectedId, loading]);
+  }, [selectionN, loading]);
 
   const result = current?.result;
   const selectedEntry = result?.kind === 'trade' ? result.entry : null;
-  const pictureEntry = selectedEntry ?? (shown !== null && shown.key === selectedId && loading ? shown.entry : null);
+  const pictureEntry = selectedEntry ?? (shown !== null && shown.n === selectionN && loading ? shown.entry : null);
   const savedTradePending = selectedId !== null && loading;
   const handoff = parseAnalysisHandoff(params);
   return <section className="kairos-route kairos-review" aria-labelledby="kairos-review-title" aria-busy={loading || undefined}>
