@@ -31,7 +31,7 @@ const now = () => '2026-09-20T12:00:00.000Z';
 const savedAt = '2026-09-20T08:00:00.000Z';
 const rate = (source: 'ecb' | 'typed', from: string, to: string, value: string, day: string, rateDay = day): ExchangeRateRecord =>
   ({ id: exchangeRateId(source, from, to, day), source, from, to, day, rateDay, rate: value as DecimalString, savedAt });
-const renderScreen = (db: KairosDatabase) => render(<CurrencyScreen db={db} now={now} />);
+const renderScreen = (db: KairosDatabase) => render(<CurrencyScreen db={db} now={now} rates={{ acquireRates: vi.fn() }} />);
 const select = () => screen.findByRole('combobox', { name: 'Show my totals in' });
 const JARGON = /\b(fills?|executions?|unexecuted|FX)\b|P&L/i;
 
