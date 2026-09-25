@@ -135,8 +135,9 @@ export interface TradeStrategyMark {
  * Answers are stored by list item id with the label as it was written, so they
  * stay readable after an item is renamed or removed. `checklistCompletedAt`
  * and `reviewedAt` are the moments the trader last answered each half, or
- * null when that half has not been answered. Never journal truth: nothing
- * about fills, sizing or outcomes lives here.
+ * null when that half has not been answered. It may name the strategy the
+ * trade follows (P28, schema v9), with that strategy's rules copied. Never
+ * journal truth: nothing about fills, sizing or outcomes lives here.
  */
 export interface TradeDisciplineRecord {
   readonly id: TradeDisciplineId;
@@ -149,4 +150,6 @@ export interface TradeDisciplineRecord {
   readonly reviewedAt: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
+  /** P28: the strategy this trade follows, as it was when chosen (rules copied), and the trader's ticks on its written rules. Absent: no strategy. Written only by saveTradeDiscipline. */
+  readonly strategy?: TradeStrategyMark;
 }

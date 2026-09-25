@@ -77,7 +77,7 @@ function hasRecordFields(value: Record<string, unknown>): boolean {
 
 /**
  * Structural acceptance of a stored discipline record: shared by the
- * integrity check, export and backup format 7 validation, so a record is
+ * integrity check, export and backup formats 7 and 8 validation, so a record is
  * accepted or refused by exactly one rule. Items are not compared with the
  * current lists: they may have been renamed or removed since. The legacy check
  * below is used only for formats 5–6 and the v8 upgrade. Trade existence is a
@@ -89,7 +89,8 @@ export function isTradeDisciplineRecordShape(value: unknown): value is TradeDisc
     isItemAnswerList(value.preTradeChecklist) &&
     isItemAnswerList(value.postTradeReview) &&
     isMistakeMarkList(value.mistakes) &&
-    hasRecordFields(value)
+    hasRecordFields(value) &&
+    (value.strategy === undefined || isTradeStrategyMark(value.strategy))
   );
 }
 
