@@ -86,21 +86,21 @@ describe('T-038a the careful rule', () => {
 
   it('on the entry candle only the stop counts', () => {
     const past = series(['100', '105', '97.5', '99']);
-    expect(outcome(past, 6, place(past))).toMatchObject({ kind: 'open' });
+    expect(outcome(past, 6, place(past))).toEqual({ kind: 'open', entry: fill('98', past[5]!, false, false) });
     const stopped = series(['100', '101', '94', '95']);
     expect(outcome(stopped, 6, place(stopped))).toEqual({ kind: 'closed', reason: 'stop', entry: fill('98', stopped[5]!, false, false), exit: fill('95', stopped[5]!, false, false) });
   });
 
   it('a candle that reaches both counts the stop', () => {
     const candles = series(['100', '101', '97.5', '99'], ['99', '105', '94', '100']);
-    expect(outcome(candles, 7, place(candles))).toMatchObject({ kind: 'closed', reason: 'stop', exit: fill('95', candles[6]!, false, false) });
+    expect(outcome(candles, 7, place(candles))).toEqual({ kind: 'closed', reason: 'stop', entry: fill('98', candles[5]!, false, false), exit: fill('95', candles[6]!, false, false) });
   });
 
   it('a price that jumps past a level fills at the opening price', () => {
     const down = series(['100', '101', '97.5', '99'], ['93', '94', '92', '93']);
-    expect(outcome(down, 7, place(down))).toMatchObject({ kind: 'closed', reason: 'stop', exit: fill('93', down[6]!, true, true) });
+    expect(outcome(down, 7, place(down))).toEqual({ kind: 'closed', reason: 'stop', entry: fill('98', down[5]!, false, false), exit: fill('93', down[6]!, true, true) });
     const up = series(['100', '101', '97.5', '99'], ['106', '107', '105', '106']);
-    expect(outcome(up, 7, place(up))).toMatchObject({ kind: 'closed', reason: 'target', exit: fill('106', up[6]!, true, true) });
+    expect(outcome(up, 7, place(up))).toEqual({ kind: 'closed', reason: 'target', entry: fill('98', up[5]!, false, false), exit: fill('106', up[6]!, true, true) });
     const gap = series(['103', '104', '102.5', '103.5']);
     expect(outcome(gap, 6, place(gap, { side: 'long', entryPrice: '102', stopPrice: '99', targetPrice: '110', quantity: '1' }))).toEqual({ kind: 'open', entry: fill('103', gap[5]!, true, true) });
   });
@@ -116,7 +116,7 @@ describe('T-038a the careful rule', () => {
     const stopped = series(['100', '106', '99', '104']);
     expect(outcome(stopped, 6, place(stopped, SHORT))).toEqual({ kind: 'closed', reason: 'stop', entry: fill('100', stopped[5]!, true, false), exit: fill('105', stopped[5]!, false, false) });
     const won = series(['100', '101', '89', '90']);
-    expect(outcome(won, 6, place(won, SHORT))).toMatchObject({ kind: 'closed', reason: 'target', exit: fill('90', won[5]!, false, false) });
+    expect(outcome(won, 6, place(won, SHORT))).toEqual({ kind: 'closed', reason: 'target', entry: fill('100', won[5]!, true, false), exit: fill('90', won[5]!, false, false) });
     const touch = series(['100', '102.5', '99.5', '101']);
     expect(outcome(touch, 6, place(touch, { side: 'short', entryPrice: '102', stopPrice: '104', targetPrice: '95', quantity: '1' }))).toEqual({ kind: 'open', entry: fill('102', touch[5]!, false, false) });
   });
