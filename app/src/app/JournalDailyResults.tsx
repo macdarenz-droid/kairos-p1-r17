@@ -2,13 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { listJournalClosedTradesInPeriod, listJournalVisualPnlDailySummary, type JournalHistoryScope } from '../application/journal';
 import {
   projectVisualPnlDailyStreak,
-  projectVisualPnlProgressSeries,
-  projectVisualPnlCumulativeRealizedPnl,
   summarizeVisualPnlDailyPerformance,
   readVisualPnlTimeZonePreference,
   projectVisualPnlDayKey,
   projectVisualPnlMonthGrid,
-  projectVisualPnlResultLine,
+  projectVisualPnlResultCandles,
   shiftVisualPnlDayKey,
   type VisualPnlDailySummaryProjection,
 } from '../application/visual-pnl';
@@ -18,7 +16,7 @@ import { VisualPnlStreak } from './VisualPnlStreak';
 import { VisualPnlPerformanceSummary } from './VisualPnlPerformanceSummary';
 import { DeviceTimeZoneButton } from '../features/settings/DeviceTimeZoneButton';
 import { ResultsCalendar } from '../features/journal/ResultsCalendar';
-import { ResultsLine } from '../features/journal/ResultsLine';
+import { ResultsCandles } from '../features/journal/ResultsCandles';
 import { ResultsDayTrades, type ResultsDayTradesState } from '../features/journal/ResultsDayTrades';
 import { ReviewTradeLink } from './ReviewTradeLink';
 import { loadDisciplineScore } from '../application/discipline';
@@ -39,7 +37,7 @@ interface JournalDailyResultsProps {
 interface ResultsText {
   readonly eyebrow: string;
   readonly title: string;
-  readonly lineEyebrow: string;
+  readonly totalEyebrow: string;
   readonly disciplineTitle: string;
   readonly loading: string;
   readonly unconfigured: string;
@@ -48,11 +46,11 @@ interface ResultsText {
 
 const RESULTS_TEXT: Readonly<Record<JournalHistoryScope, ResultsText>> = {
   real: {
-    eyebrow: 'Your results', title: 'Daily results', lineEyebrow: 'Your results over time', disciplineTitle: 'Your discipline',
+    eyebrow: 'Your results', title: 'Daily results', totalEyebrow: 'Your results over time', disciplineTitle: 'Your discipline',
     loading: 'Loading daily results…', unconfigured: 'Choose a time zone in Settings to view daily results.', error: 'Kairos could not load daily results. Your stored trades were not changed.',
   },
   practice: {
-    eyebrow: 'Practice trades only', title: 'Your practice results', lineEyebrow: 'Your practice results over time', disciplineTitle: 'Your practice discipline',
+    eyebrow: 'Practice trades only', title: 'Your practice results', totalEyebrow: 'Your practice results over time', disciplineTitle: 'Your practice discipline',
     loading: 'Loading your practice results…', unconfigured: 'Choose a time zone in Settings to see your practice results.', error: 'Kairos could not load your practice results. Your stored trades were not changed.',
   },
 };
@@ -159,7 +157,7 @@ export function JournalDailyResults({ db, refreshRevision, now = wallClock, disc
         </div>
         <VisualPnlStreak projection={projectVisualPnlDailyStreak(projection.days)} />
         <VisualPnlPerformanceSummary summary={summarizeVisualPnlDailyPerformance(projection.days)} />
-        <ResultsLine eyebrow={text.lineEyebrow} line={projectVisualPnlResultLine(projectVisualPnlCumulativeRealizedPnl(projectVisualPnlProgressSeries(projection.days)))} />
+        <ResultsCandles eyebrow={text.totalEyebrow} projection={projectVisualPnlResultCandles(projection.days)} />
         {grid ? <ResultsCalendar
           grid={grid}
           selectedDayKey={selectedDayKey}

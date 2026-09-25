@@ -7,6 +7,7 @@ import {
   summarizeVisualPnlAggregation,
   type VisualPnlAggregationSummary,
 } from './aggregationSummary';
+import type { VisualPnlOutcomeProjection } from './outcomeProjection';
 
 export type VisualPnlDailySummaryBlockReason =
   | VisualPnlDayKeyBlockReason
@@ -18,13 +19,18 @@ export interface VisualPnlDailySummary {
   readonly summary: VisualPnlAggregationSummary;
 }
 
+/** A day of the daily summary with the result of each of its closed trades, in the order the caller listed them. */
+export interface VisualPnlDailySummaryDay extends VisualPnlDailySummary {
+  readonly tradeResults: readonly VisualPnlOutcomeProjection[];
+}
+
 export interface VisualPnlDailySummaryBlockedTrade {
   readonly tradeId: string;
   readonly reason: VisualPnlDailySummaryBlockReason;
 }
 
 export interface VisualPnlDailySummaryProjection {
-  readonly days: readonly VisualPnlDailySummary[];
+  readonly days: readonly VisualPnlDailySummaryDay[];
   readonly blockedTrades: readonly VisualPnlDailySummaryBlockedTrade[];
 }
 
@@ -40,6 +46,8 @@ interface DayAccumulator {
  *
  * This function performs no financial arithmetic and does not choose a time
  * zone. Non-closed or unassignable trades remain explicit blocked evidence.
+ * Each day also keeps its trades' results in the order given; for
+ * `listJournalVisualPnlDailySummary` that is oldest close first.
  */
 export function summarizeVisualPnlByDay(
   entries: readonly JournalHistoryEntry[],
@@ -70,13 +78,15 @@ export function summarizeVisualPnlByDay(
 
   const days = [...buckets.values()]
     .sort((left, right) => left.dayKey.localeCompare(right.dayKey))
-    .map((bucket) =>
-      Object.freeze({
+    .map((bucket) => {
+      const results = Object.freeze([...bucket.projections]);
+      return Object.freeze({
         dayKey: bucket.dayKey,
         timeZone,
-        summary: summarizeVisualPnlAggregation(Object.freeze([...bucket.projections])),
-      }),
-    );
+        summary: summarizeVisualPnlAggregation(results),
+        tradeResults: results,
+      });
+    });
 
   return Object.freeze({
     days: Object.freeze(days),
