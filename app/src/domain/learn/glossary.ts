@@ -71,12 +71,13 @@ function parseEntry(entry: unknown): EntryResult {
   const explanation = text(entry.explanation, limits.explanation);
   if (explanation === null) return refuse('explanation');
   if (!Array.isArray(entry.alsoCalled) || entry.alsoCalled.length > KAIROS_GLOSSARY_LIST_LIMITS.alsoCalled) return refuse('alsoCalled');
-  const alsoCalled = entry.alsoCalled.map((name: unknown) => text(name, limits.alsoCalled));
+  // Array.from visits holes as undefined, so a sparse list is refused like one holding undefined.
+  const alsoCalled = Array.from(entry.alsoCalled as unknown[], (name) => text(name, limits.alsoCalled));
   if (alsoCalled.some((name) => name === null)) return refuse('alsoCalled');
   const picture = entry.picture === null ? null : parseLearnPictureSpec(entry.picture);
   if (picture === null && entry.picture !== null) return refuse('picture');
-  const related: unknown = entry.related;
-  if (!Array.isArray(related) || related.length > KAIROS_GLOSSARY_LIST_LIMITS.related) return refuse('related');
+  if (!Array.isArray(entry.related) || entry.related.length > KAIROS_GLOSSARY_LIST_LIMITS.related) return refuse('related');
+  const related: unknown[] = Array.from(entry.related as unknown[]);
   if (!related.every(isId) || new Set(related).size !== related.length || related.includes(entry.id)) return refuse('related');
   return {
     ok: true,
@@ -104,7 +105,10 @@ export function parseGlossary(value: unknown): Glossary {
   const problems: GlossaryProblem[] = [];
   const ids = new Set<string>();
   const plainWords = new Set<string>();
-  value.terms.forEach((entry: unknown, index: number) => {
+  // A plain index walk: a hole in `terms` is read as undefined and refused, never skipped.
+  const entries: readonly unknown[] = value.terms;
+  for (let index = 0; index < entries.length; index += 1) {
+    const entry = entries[index];
     const id = isPlainObject(entry) && typeof entry.id === 'string' ? entry.id : null;
     const parsed = parseEntry(entry);
     let problem: { field: string | null; reason: GlossaryProblemReason } | null = parsed.ok ? null : parsed;
@@ -112,12 +116,12 @@ export function parseGlossary(value: unknown): Glossary {
     else if (parsed.ok && plainWords.has(normalise(parsed.term.plainWords))) problem = { field: 'plainWords', reason: 'duplicate-plain-words' };
     if (problem !== null || !parsed.ok) {
       problems.push(Object.freeze({ index, id, field: problem!.field, reason: problem!.reason }));
-      return;
+      continue;
     }
     ids.add(parsed.term.id);
     plainWords.add(normalise(parsed.term.plainWords));
     kept.push({ index, term: parsed.term });
-  });
+  }
 
   const terms = kept.map(({ index, term }) => {
     const related = term.related.filter((relatedId) => {

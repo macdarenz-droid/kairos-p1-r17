@@ -1,7 +1,8 @@
 import type { Ref } from 'react';
-import type { TradePictureBox, TradePictureModel } from '../../application/trade-visualizer';
+import type { TradePictureBox, TradePictureInfoKey, TradePictureModel } from '../../application/trade-visualizer';
 import { decimalSubtract } from '../../domain/calculations';
 import { projectChartDecimal } from '../chart';
+import { GlossaryHint } from '../learn/GlossaryHint';
 import './tradePictureCard.css';
 
 /** Drawing area of the picture, in SVG units; the card scales it to its width. */
@@ -11,6 +12,11 @@ const PAD = { left: 6, right: 58, top: 10, bottom: 18 } as const;
 
 // Pixel geometry only: prices go through the chart module's one decimal → drawing
 // conversion. The exact decimal values stay in the model and are shown as text, unrounded.
+/** Trading words that explain an info row; tapping the "?" loads the glossary. */
+const INFO_GLOSSARY_TERMS: Readonly<Partial<Record<TradePictureInfoKey, string>>> = {
+  result: 'result-after-fees', 'planned-reward': 'reward-to-risk', 'actual-r': 'times-what-you-risked', stop: 'stop', target: 'target', size: 'position-size',
+};
+
 const toMs = (iso: string) => Date.parse(iso);
 
 interface Scale {
@@ -118,8 +124,9 @@ export function TradePictureCard({ model, candlesLoading = false, svgRef, compac
     : 0;
   const planned = (key: 'planned-entry' | 'stop' | 'target') => model.info.find(row => row.key === key)?.value ?? null;
 
-  return <figure className="kairos-trade-picture" role="img" aria-label={describeTradePicture(model)} data-trade-picture={model.symbol}>
-    <div className="kairos-trade-picture__chart">
+  // The image role sits on the chart only: children of role="img" are hidden from screen readers, and the info panel holds buttons.
+  return <figure className="kairos-trade-picture" data-trade-picture={model.symbol}>
+    <div className="kairos-trade-picture__chart" role="img" aria-label={describeTradePicture(model)}>
       <svg ref={svgRef} viewBox={`0 0 ${TRADE_PICTURE_WIDTH} ${TRADE_PICTURE_HEIGHT}`} preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">
         <rect className="kairos-trade-picture__background" x="0" y="0" width={TRADE_PICTURE_WIDTH} height={TRADE_PICTURE_HEIGHT} rx="8" />
         {scale ? <>
@@ -155,7 +162,7 @@ export function TradePictureCard({ model, candlesLoading = false, svgRef, compac
       <p className="kairos-trade-picture__title">{[rowText(model, 'market'), rowText(model, 'direction'), rowText(model, 'status')].filter(Boolean).join(' · ')}</p>
       <dl>
         {model.info.filter(row => !TITLE_ROWS.has(row.key)).map(row => <div key={row.key} data-info={row.key}>
-          <dt>{row.label}</dt>
+          <dt><span>{row.label}</span>{INFO_GLOSSARY_TERMS[row.key] ? <GlossaryHint termId={INFO_GLOSSARY_TERMS[row.key]!} label={row.label} /> : null}</dt>
           <dd>{displayValue(model, row.key)}</dd>
         </div>)}
       </dl>

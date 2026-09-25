@@ -32,3 +32,4 @@
 .kairos-trade-picture-panel h2 { margin: 0; font-size: var(--kairos-font-size-md); }
 .kairos-trade-picture-panel { display: grid; gap: var(--kairos-space-3); }
 .kairos-trade-picture-panel__actions { display: flex; flex-wrap: wrap; gap: var(--kairos-space-2); align-items: center; }
+.kairos-trade-picture__info dt { display:flex; align-items:center; gap:var(--kairos-space-1); }

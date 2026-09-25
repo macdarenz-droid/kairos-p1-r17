@@ -103,6 +103,7 @@ export function JournalDailyResults({ db, refreshRevision, now = wallClock, disc
       if (request !== disciplineRequest.current) return;
       setDiscipline(result.kind === 'ready' ? { kind: 'ready', score: result.score } : { kind: 'error' });
     }, () => { if (request === disciplineRequest.current) setDiscipline({ kind: 'error' }); });
+    return () => { disciplineRequest.current += 1; };
   }, [db, now, monthKey, refreshRevision, disciplineRevision, readyTimeZone]);
 
   function selectDay(timeZone: string, dayKey: string | null): void {

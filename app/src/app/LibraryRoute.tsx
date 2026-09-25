@@ -46,6 +46,13 @@ export function LibraryRoute({ db = kairosDatabase, learningSourceDevice }: Libr
 
   return <section className="kairos-route kairos-library" aria-labelledby="kairos-library-title" data-library-status={state.kind} data-library-count={state.kind === 'ready' ? entries.length : undefined}>
     <div className="kairos-library__heading"><div><h1 id="kairos-library-title">Library</h1></div></div>
+    <section className="kairos-library__section" aria-labelledby="kairos-library-learn-title">
+      <h2 id="kairos-library-learn-title">Learn the basics</h2>
+      <ul className="kairos-library__learn">
+        <li><Link className="kairos-library__learn-link" to="/library/words"><strong>Trading words</strong><span>What the words on screen mean, and what traders call them.</span></Link></li>
+        <li><Link className="kairos-library__learn-link" to="/library/calculators"><strong>Calculators</strong><span>How much you can buy for your risk, and what leverage does.</span></Link></li>
+      </ul>
+    </section>
     <section className="kairos-library__section" aria-labelledby="kairos-library-saved-title">
     <h2 id="kairos-library-saved-title">Your saved charts</h2>
     {state.kind === 'loading' ? <p className="kairos-library__note">Loading your saved charts…</p> : null}

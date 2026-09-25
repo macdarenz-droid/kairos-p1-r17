@@ -96,7 +96,7 @@ describe('P24.4 GlossaryTermCard', () => {
   });
 
   it('marks and focuses the selected word', () => {
-    render(<GlossaryTermCard term={stop} related={[]} heading="h2" selected />);
+    render(<GlossaryTermCard term={stop} related={[]} heading="h2" selected focus />);
     const card = screen.getByRole('article', { name: 'Stop' });
     expect(card.getAttribute('data-selected')).toBe('true');
     expect(document.activeElement).toBe(card);

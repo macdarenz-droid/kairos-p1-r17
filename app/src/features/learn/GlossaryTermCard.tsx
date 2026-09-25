@@ -17,17 +17,19 @@ export function GlossaryWordLink({ termId, children }: { readonly termId: string
 }
 
 /** One trading word: its plain words, what traders call it, one sentence, a picture and related words. */
-export function GlossaryTermCard({ term, related, heading, selected = false }: {
+export function GlossaryTermCard({ term, related, heading, selected = false, focus = false }: {
   readonly term: GlossaryTerm;
   readonly related: readonly GlossaryTerm[];
   readonly heading: 'h2' | 'h3' | null;
   readonly selected?: boolean;
+  /** Only this turning true moves focus to the card; `selected` alone never does. */
+  readonly focus?: boolean;
 }) {
   const headingId = useId();
   const ref = useRef<HTMLElement>(null);
   useEffect(() => {
-    if (selected) ref.current?.focus();
-  }, [selected]);
+    if (focus) ref.current?.focus();
+  }, [focus]);
   const Heading = heading;
   return (
     <article

@@ -97,6 +97,17 @@ describe('P24.1 parseGlossary', () => {
     expect(notObject.terms.map((kept) => kept.id)).toEqual(['last']);
   });
 
+  it('refuses holes in the lists like undefined, never skipping them', () => {
+    const holeInTerms = parseGlossary({ version: 1, terms: [term('first'), , term('last')] });
+    expect(holeInTerms.problems).toEqual([{ index: 1, id: null, field: null, reason: 'invalid-field' }]);
+    expect(holeInTerms.terms.map((kept) => kept.id)).toEqual(['first', 'last']);
+    const holeInAlsoCalled = parseGlossary(glossary(term('first'), term('bad', { alsoCalled: [, 'x'] })));
+    expect(holeInAlsoCalled.problems).toEqual([{ index: 1, id: 'bad', field: 'alsoCalled', reason: 'invalid-field' }]);
+    const holeInRelated = parseGlossary(glossary(term('first'), term('bad', { related: [, 'first'] })));
+    expect(holeInRelated.problems).toEqual([{ index: 1, id: 'bad', field: 'related', reason: 'invalid-field' }]);
+    expect(holeInRelated.terms.map((kept) => kept.id)).toEqual(['first']);
+  });
+
   it('keeps a word that links to a missing word, without that link', () => {
     const result = parseGlossary(glossary(term('first'), term('second', { related: ['first', 'missing'] })));
     expect(result.terms.map((kept) => kept.id)).toEqual(['first', 'second']);
