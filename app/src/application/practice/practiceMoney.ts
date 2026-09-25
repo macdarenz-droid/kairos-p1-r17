@@ -1,12 +1,13 @@
 /**
  * P26 practice money: a pretend amount the trader chooses, stored as one metadata preference (no schema change; it travels in every full backup like the goals). What it is now = the start + the result after fees of every closed practice trade, added up by the P13 aggregation owner.
- * Shown only when every closed practice trade has a result in the money's own currency. Kairos never converts currencies and never counts a missing result as zero. Real trades, goals, Home and the discipline score never use it.
+ * Shown only when every closed practice trade has a result in the money's own currency; when the money's currency is the trader's home currency (P33), results in other currencies count after conversion by the currency owner; a missing rate is never read as 1. A missing result never counts as zero. Real trades, goals, Home and the discipline score never use it.
  */
 
 import { runKairosAtomicWrite, type KairosDatabase } from '../../data/database';
 import { createKairosRepositories, type MetadataRepository } from '../../data/repositories';
 import { decimalAdd, decimalCompare, decimalScaleToSteps } from '../../domain/calculations/decimalKernel';
 import { parsePositiveDecimalString, type DecimalString } from '../../domain/trades';
+import { loadResultsInHomeCurrency } from '../currency/resultsInHomeCurrency';
 import { listJournalClosedTradesInPeriod } from '../journal/closedTradePeriodQuery';
 import { isPriceCurrencyInput } from '../trades/priceCurrencyInput';
 import { summarizeVisualPnlAggregation, type VisualPnlAggregationSummary } from '../visual-pnl';
@@ -115,5 +116,7 @@ export async function loadPracticeMoney(db: KairosDatabase): Promise<PracticeMon
   // All time: no day is worked out, so the time zone is not used.
   const period = await listJournalClosedTradesInPeriod(db, { timeZone: 'UTC', fromDayKey: null, toDayKey: null, scope: 'practice' });
   if (!period.ok) throw new Error(`Practice money could not read your practice trades: ${period.reason}.`);
-  return projectPracticeMoney(money, summarizeVisualPnlAggregation(period.entries.map((entry) => entry.visualPnl)));
+  const inHome = await loadResultsInHomeCurrency(db, period.entries);
+  const counted = inHome.homeCurrency === money.currency ? inHome.entries : period.entries;
+  return projectPracticeMoney(money, summarizeVisualPnlAggregation(counted.map((entry) => entry.visualPnl)));
 }

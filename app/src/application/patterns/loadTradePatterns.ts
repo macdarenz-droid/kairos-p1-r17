@@ -6,6 +6,7 @@ import type { KairosDatabase } from '../../data/database';
 import { createKairosRepositories } from '../../data/repositories';
 import type { TradeDisciplineRecord } from '../../domain/discipline';
 import { loadTradeDiscipline } from '../discipline/tradeDiscipline';
+import { loadResultsInHomeCurrency, summarizeResultsInHomeCurrency, type ResultsInHomeCurrencySummary } from '../currency/resultsInHomeCurrency';
 import { listJournalClosedTradesInPeriod } from '../journal/closedTradePeriodQuery';
 import type { JournalHistoryScope } from '../journal/historyQuery';
 import { projectVisualPnlDayKey, readVisualPnlTimeZonePreference, shiftVisualPnlDayKey } from '../visual-pnl';
@@ -16,7 +17,7 @@ export const TRADE_PATTERN_PERIOD_DAYS = 90;
 export type TradePatternsQueryResult =
   | Readonly<{ kind: 'time-zone-unconfigured' }>
   | Readonly<{ kind: 'unavailable'; reason: 'invalid-now' }>
-  | Readonly<{ kind: 'ready'; timeZone: string; firstDayKey: string; lastDayKey: string; projection: TradePatternsProjection }>;
+  | Readonly<{ kind: 'ready'; timeZone: string; firstDayKey: string; lastDayKey: string; projection: TradePatternsProjection; inHomeCurrency: ResultsInHomeCurrencySummary }>;
 
 export async function loadTradePatterns(db: KairosDatabase, options: { readonly now: string; readonly scope?: JournalHistoryScope }): Promise<TradePatternsQueryResult> {
   const timeZone = await readVisualPnlTimeZonePreference(createKairosRepositories(db).metadata);
@@ -34,5 +35,6 @@ export async function loadTradePatterns(db: KairosDatabase, options: { readonly 
     if (!loaded.ok) throw new Error(`Your patterns could not read your strategies: ${loaded.reason}.`);
     records = loaded.records;
   }
-  return Object.freeze({ kind: 'ready' as const, timeZone, firstDayKey, lastDayKey, projection: projectTradePatterns({ entries: closed.entries, timeZone, records }) });
+  const inHome = await loadResultsInHomeCurrency(db, closed.entries);
+  return Object.freeze({ kind: 'ready' as const, timeZone, firstDayKey, lastDayKey, projection: projectTradePatterns({ entries: inHome.entries, timeZone, records }), inHomeCurrency: summarizeResultsInHomeCurrency(inHome) });
 }
