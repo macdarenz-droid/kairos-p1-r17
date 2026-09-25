@@ -42,6 +42,7 @@ export function PracticeRoute({ db = kairosDatabase, now }: PracticeRouteProps) 
       <PracticeMoneyCard db={db} refreshRevision={practiceRevision} />
 
       <p className="kairos-practice__calculator-link">Not sure how much to buy? <Link to="/library/calculators">Work it out in the calculators</Link>.</p>
+      <p className="kairos-practice__replay-link">Practise on real past prices: <Link to="/practice/replay">Replay the past, one candle at a time</Link>.</p>
       {planStart ? <p className="kairos-practice__plan-note">From the calculator: {planStart.side === 'long' ? 'buy' : 'sell'} up to {planStart.quantity}, entry {planStart.entryPrice}, stop {planStart.stopPrice}. It is filled in under Trade plan. Add the symbol, the market and the rest, then save.</p> : null}
 
       <TradeForm db={db} kind="practice" initialDraft={planStart ? practicePlanDraft(planStart) : undefined} onSaved={async () => { if (planStart) setSearchParams(new URLSearchParams(), { replace: true }); setListNotice(''); await pages.refresh(); changed(); }} />

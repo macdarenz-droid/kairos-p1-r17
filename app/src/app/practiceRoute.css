@@ -1,4 +1,4 @@
 .kairos-practice .kairos-journal__eyebrow { color:var(--kairos-state-warning) !important; }
 .kairos-practice .kairos-practice__badge { border-color:var(--kairos-state-warning); color:var(--kairos-state-warning); }
 .kairos-practice .kairos-practice__plan-note { padding:var(--kairos-space-3); border-inline-start:4px solid var(--kairos-accent-primary); color:var(--kairos-text-primary); }
-.kairos-practice__calculator-link a, .kairos-practice__plan-note a { color:var(--kairos-accent-primary); font-weight:var(--kairos-font-weight-semibold); }
+.kairos-practice__calculator-link a, .kairos-practice__plan-note a, .kairos-practice__replay-link a { color:var(--kairos-accent-primary); font-weight:var(--kairos-font-weight-semibold); }

@@ -56,6 +56,12 @@ export function decimalAbs(value: DecimalString | string): DecimalKernelResult {
   return decimal ? output(decimal.abs()) : { ok: false, reason: 'invalid-decimal' };
 }
 
+/** The same number in its shortest exact form ('100.50000000' → '100.5'); invalid-decimal when it is not a decimal. */
+export function decimalNormalize(value: DecimalString | string): DecimalKernelResult {
+  const decimal = read(value);
+  return decimal ? output(decimal) : { ok: false, reason: 'invalid-decimal' };
+}
+
 /**
  * Rounds to `places` decimal places: 'down' toward zero, 'half-up' half away from zero.
  * `places` must be a whole number from 0 to 20; anything else is invalid-decimal.

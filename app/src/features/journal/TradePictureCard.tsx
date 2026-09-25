@@ -144,7 +144,7 @@ function displayValue(model: TradePictureModel, key: string): string {
  * T-027a model only; every number shown comes from that model.
  * Box labels sit at the far edge and are drawn last; every edge a candle runs past gets an arrow (T-039d).
  */
-export function TradePictureCard({ model, candlesLoading = false, svgRef, compact = false }: {
+export function TradePictureCard({ model, candlesLoading = false, svgRef, compact = false, label, notes = true }: {
   readonly model: TradePictureModel;
   /** Candles are still on their way: say so instead of the connection note. */
   readonly candlesLoading?: boolean;
@@ -152,6 +152,10 @@ export function TradePictureCard({ model, candlesLoading = false, svgRef, compac
   readonly svgRef?: Ref<SVGSVGElement>;
   /** Thumbnail: the picture only, without price labels or the info panel. */
   readonly compact?: boolean;
+  /** Replaces the screen-reader sentence (the replay describes its own chart). */
+  readonly label?: string;
+  /** Shows the notes under the drawing; the replay says what is happening itself. */
+  readonly notes?: boolean;
 }) {
   const pad = compact ? COMPACT_PAD : PAD;
   const clipId = `kairos-trade-picture-clip${useId()}`;
@@ -164,7 +168,7 @@ export function TradePictureCard({ model, candlesLoading = false, svgRef, compac
 
   // The image role sits on the chart only: children of role="img" are hidden from screen readers, and the info panel holds buttons.
   return <figure className="kairos-trade-picture" data-trade-picture={model.symbol}>
-    <div className="kairos-trade-picture__chart" role="img" aria-label={describeTradePicture(model)}>
+    <div className="kairos-trade-picture__chart" role="img" aria-label={label ?? describeTradePicture(model)}>
       <svg ref={svgRef} viewBox={`0 0 ${TRADE_PICTURE_WIDTH} ${TRADE_PICTURE_HEIGHT}`} preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">
         <defs><clipPath id={clipId}><rect x="0" y={pad.top} width={TRADE_PICTURE_WIDTH} height={plotHeight} /></clipPath></defs>
         <rect className="kairos-trade-picture__background" x="0" y="0" width={TRADE_PICTURE_WIDTH} height={TRADE_PICTURE_HEIGHT} rx="8" />
@@ -202,8 +206,8 @@ export function TradePictureCard({ model, candlesLoading = false, svgRef, compac
           {model.rewardBox ? <BoxLabel box={model.rewardBox} scale={scale} kind="reward" /> : null}
         </> : null}
       </svg>
-      {noCandles ? <p className="kairos-trade-picture__note">{candlesLoading ? 'Loading candles…' : 'Candles need a connection.'}</p> : null}
-      {noPlan ? <p className="kairos-trade-picture__note">Add a stop and target to see your risk box.</p> : null}
+      {notes && noCandles ? <p className="kairos-trade-picture__note">{candlesLoading ? 'Loading candles…' : 'Candles need a connection.'}</p> : null}
+      {notes && noPlan ? <p className="kairos-trade-picture__note">Add a stop and target to see your risk box.</p> : null}
     </div>
     {compact ? null : <div className="kairos-trade-picture__info">
       <p className="kairos-trade-picture__title">{[rowText(model, 'market'), rowText(model, 'direction'), rowText(model, 'status')].filter(Boolean).join(' · ')}</p>
