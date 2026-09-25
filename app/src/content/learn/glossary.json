@@ -60,6 +60,9 @@
       "picture": null, "related": ["share"] },
     { "id": "share", "plainWords": "Share", "tradingTerm": "Share (stock)", "alsoCalled": ["shares", "stock", "fractional share", "part of a share"],
       "explanation": "A small piece of a company that you can buy and sell. A stock's price is the price of one share, and Quantity is the number of shares you trade. Many brokers also sell parts of a share, such as 0.5 of a share.",
-      "picture": null, "related": ["ticker", "position-size"] }
+      "picture": null, "related": ["ticker", "position-size"] },
+    { "id": "exchange-rate", "plainWords": "Exchange rate", "tradingTerm": "Foreign exchange rate (FX rate)", "alsoCalled": ["FX rate", "conversion rate", "currency rate"],
+      "explanation": "How much of one currency one unit of another is worth on a given day, such as 1 EUR = 1.146 USD. Kairos uses it only to show your totals in your own currency; each trade keeps the currency you recorded.",
+      "picture": null, "related": ["result-after-fees"] }
   ]
 }

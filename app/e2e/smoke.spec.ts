@@ -36,7 +36,7 @@ test('(b) every route renders inside the phone width without page errors', async
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
   await activate(page);
-  for (const path of ['/', '/journal', '/analysis', '/library', '/more', '/practice', '/goals', '/strategies', '/coach', '/practice/coach', '/patterns', '/practice/patterns', '/settings', '/profile', '/does-not-exist']) {
+  for (const path of ['/', '/journal', '/analysis', '/library', '/more', '/practice', '/goals', '/strategies', '/coach', '/practice/coach', '/patterns', '/practice/patterns', '/currency', '/settings', '/profile', '/does-not-exist']) {
     await page.goto(path);
     await expect(page.locator('.kairos-shell'), path).toBeVisible();
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
@@ -471,7 +471,7 @@ test('(m) Stocks: an AAPL trade in shares, its picture without crypto candles, A
   await page.getByRole('button', { name: 'Set opened time to now' }).click();
   await page.getByRole('button', { name: 'Set closed time to now' }).click();
   await page.getByLabel('Currency code').fill('USD');
-  await expect(page.getByText('Your prices and your result are in USD. Kairos never converts them.')).toBeVisible();
+  await expect(page.getByText('Your prices and your result are in USD. Kairos never changes them; only your totals can show them in your home currency.')).toBeVisible();
   await page.getByRole('button', { name: 'Save trade' }).click();
   await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
 
@@ -500,5 +500,95 @@ test('(m) Stocks: an AAPL trade in shares, its picture without crypto candles, A
   await page.goto('/practice');
   await page.getByRole('link', { name: 'Replay the past, one candle at a time' }).click();
   await expect(page.getByLabel(/^Market/)).toHaveAccessibleDescription('Replay has crypto markets from Binance only for now, such as BTCUSDT.');
+  expect(errors).toEqual([]);
+});
+
+test('(n) Currency: totals in your currency, with the bank\'s rates and a rate you type', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  await activate(page);
+  const bankRequests: string[] = [];
+  let bankOnline = true;
+  const BANK_RATES: Record<string, string> = { GBP: '0.8588', USD: '1.146' };
+  await page.route(url => url.hostname === 'data-api.ecb.europa.eu', async route => {
+    const url = new URL(route.request().url());
+    bankRequests.push(`${url.pathname}${url.search}`);
+    if (!bankOnline) return route.abort('internetdisconnected');
+    const currencies = url.pathname.split('/')[4].split('.')[1].split('+');
+    const start = url.searchParams.get('startPeriod')!, end = url.searchParams.get('endPeriod')!;
+    const lines = ['KEY,FREQ,CURRENCY,CURRENCY_DENOM,EXR_TYPE,EXR_SUFFIX,TIME_PERIOD,OBS_VALUE'];
+    for (let time = Date.parse(`${start}T00:00:00Z`); new Date(time).toISOString().slice(0, 10) <= end; time += 86_400_000) {
+      const day = new Date(time).toISOString().slice(0, 10);
+      for (const currency of currencies) if (BANK_RATES[currency]) lines.push(`EXR.D.${currency}.EUR.SP00.A,D,${currency},EUR,SP00,A,${day},${BANK_RATES[currency]}`);
+    }
+    return route.fulfill({ status: 200, contentType: 'text/csv', headers: { 'access-control-allow-origin': '*' }, body: lines.join('\n') });
+  });
+
+  await page.goto('/journal');
+  await page.getByRole('button', { name: 'Use Asia/Manila (this device)' }).click();
+  const quickLog = async (symbol: string, side: 'long' | 'short', entry: string, exit: string, quantity: string, currency: string) => {
+    await page.getByRole('button', { name: 'Quick log' }).click();
+    await page.getByLabel(/^Market/).selectOption('stock');
+    await page.getByLabel(/^Symbol/).fill(symbol);
+    await page.getByLabel(/^Direction/).selectOption(side);
+    await page.getByLabel(/^Entry price/).fill(entry);
+    await page.getByLabel(/^Exit price/).fill(exit);
+    await page.getByLabel(/^Quantity/).fill(quantity);
+    await page.getByRole('button', { name: 'Set opened time to now' }).click();
+    await page.getByRole('button', { name: 'Set closed time to now' }).click();
+    await page.getByLabel('Currency code').fill(currency);
+    await page.getByRole('button', { name: 'Save trade' }).click();
+    await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+  };
+  await quickLog('vod.l', 'long', '70', '75', '1000', 'GBX');
+  await quickLog('aapl', 'long', '187.5', '190', '10', 'USD');
+
+  await page.goto('/more');
+  await page.getByRole('link', { name: 'Currency', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Your currency' })).toBeVisible();
+  await page.getByLabel('Show my totals in').selectOption('EUR');
+  await page.getByRole('button', { name: 'Save my currency' }).click();
+  await expect(page.getByText('Saved. Your totals are shown in EUR (Euro).')).toBeVisible();
+  const needed = page.getByRole('region', { name: 'Rates you still need' });
+  await expect(needed).toContainText('GBP to EUR');
+  await expect(needed).toContainText('USD to EUR');
+  await needed.getByRole('button', { name: 'Get rates from the European Central Bank' }).click();
+  await expect(page.getByText('Saved 2 rates from the European Central Bank.')).toBeVisible();
+  await expect(needed).toContainText('No rates missing: every trade with a result and a currency counts in EUR.');
+  expect(bankRequests).toHaveLength(1);
+  expect(bankRequests[0]).toContain('/service/data/EXR/D.GBP+USD.EUR.SP00.A');
+  const saved = page.getByRole('region', { name: 'Your saved rates' });
+  await expect(saved).toContainText('1 EUR = 0.8588 GBP');
+  await expect(saved).toContainText('1 EUR = 1.146 USD');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+
+  await page.goto('/journal');
+  const results = page.getByRole('region', { name: 'Daily results' });
+  await expect(results).toContainText('Totals in EUR. 2 trades in other currencies were converted to EUR.');
+  const today = page.locator('td[data-day-today] button');
+  await expect(today).toHaveAttribute('aria-label', /Profit, 80\.04 EUR, today, 2 trades/);
+  await today.click();
+  const dayTrades = page.locator('.kairos-results-day-trades');
+  await expect(dayTrades).toContainText('In EUR: 58.22');
+  await expect(dayTrades).toContainText('In EUR: 21.82');
+
+  bankOnline = false;
+  await quickLog('7203.t', 'short', '2500', '2487.5', '100', 'JPY');
+  await expect(results).toContainText('Totals in EUR. 1 trade still needs an exchange rate');
+  await results.getByRole('link', { name: 'Add the missing rates' }).click();
+  await expect(page).toHaveURL(/\/currency$/);
+  await expect(needed).toContainText('JPY to EUR');
+  await needed.getByRole('button', { name: 'Get rates from the European Central Bank' }).click();
+  await expect(needed.getByRole('alert')).toHaveText('Exchange rates are unavailable right now. Check your connection, then try again.');
+  await expect(needed.getByRole('button', { name: 'Try again' })).toBeVisible();
+  await page.getByLabel(/^1 JPY in EUR on /).fill('0.0055');
+  await page.getByRole('button', { name: /^Save rate for JPY to EUR/ }).click();
+  await expect(page.getByText(/^Saved your rate: 1 JPY = 0\.0055 EUR/)).toBeVisible();
+  await expect(needed).toContainText('No rates missing');
+
+  await page.goto('/journal');
+  await expect(results).toContainText('Totals in EUR. 3 trades in other currencies were converted to EUR.');
+  await expect(today).toHaveAttribute('aria-label', /86\.92 EUR, today, 3 trades/);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   expect(errors).toEqual([]);
 });

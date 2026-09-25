@@ -17,7 +17,7 @@ export function ForexTradeNote({ symbol }: { readonly symbol: string }) {
     const { pair } = parsed;
     body = <>
       {pair.quoteKnown
-        ? <p>{pair.label}: the price is how many {pair.quote} one {pair.base} costs. Your prices and your result are in {pair.quote}, and Kairos never converts them, so the price currency is saved as {pair.quote}.</p>
+        ? <p>{pair.label}: the price is how many {pair.quote} one {pair.base} costs. Your prices and your result are in {pair.quote}, and Kairos never changes them, so the price currency is saved as {pair.quote}. Only your totals can show them in your home currency.</p>
         : <p>Kairos does not know which currency {pair.symbol}&apos;s price is in, so it saves the currency code you type.</p>}
       {pair.standard
         ? <p>Sizes are in units of {pair.base}, not lots: 1 lot is 100,000 units, a mini lot 10,000 and a micro lot 1,000. <GlossaryHint termId="lot" label="Lot" /></p>

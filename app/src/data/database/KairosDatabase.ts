@@ -2,6 +2,7 @@ import Dexie, { type EntityTable } from 'dexie';
 import { registerKairosMigrations } from './migrations';
 import {
   KAIROS_DATABASE_NAME,
+  type DatabaseExchangeRateRecord,
   type DatabaseMetadataRecord,
   type DatabaseSavedAnalysisRecord,
   type DatabaseSavedTimeAssistedSnapshotRecord,
@@ -21,6 +22,7 @@ export class KairosDatabase extends Dexie {
   readonly savedAnalyses!: EntityTable<DatabaseSavedAnalysisRecord, 'id'>;
   readonly savedTimeAssistedSnapshots!: EntityTable<DatabaseSavedTimeAssistedSnapshotRecord, 'id'>;
   readonly tradeDiscipline!: EntityTable<DatabaseTradeDisciplineRecord, 'id'>;
+  readonly exchangeRates!: EntityTable<DatabaseExchangeRateRecord, 'id'>;
 
   constructor(name = KAIROS_DATABASE_NAME) {
     super(name);

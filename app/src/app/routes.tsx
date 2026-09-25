@@ -57,6 +57,11 @@ export const appRoutes = [
         const { PatternsScreen } = await import('../features/patterns/PatternsScreen');
         return { Component: function PatternsRoute() { return <PatternsScreen db={kairosDatabase} scope="real" />; } };
       } },
+      { path: 'currency', lazy: async () => {
+        const [{ CurrencyScreen }, { createEcbReferenceRatesPort }] = await Promise.all([import('../features/currency/CurrencyScreen'), import('../services/exchange-rates/ecbReferenceRates')]);
+        const rates = createEcbReferenceRatesPort();
+        return { Component: function CurrencyRoute() { return <CurrencyScreen db={kairosDatabase} rates={rates} />; } };
+      } },
       { path: 'settings', lazy: async () => ({ Component: (await import('./SettingsRoute')).SettingsRoute }) },
       { path: 'profile', lazy: async () => ({ Component: (await import('./ProfileRoute')).ProfileRoute }) },
       { path: '*', element: <NotFoundRoute /> },

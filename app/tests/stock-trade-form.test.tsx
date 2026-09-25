@@ -95,7 +95,7 @@ describe('T-044b logging a stock trade', () => {
     expect(note().textContent).toContain(STOCK_TICKER_MESSAGES['not-a-ticker']);
     expect(note().textContent).toContain("Kairos never guesses a stock's currency from its ticker");
     type('Currency code', 'gbx');
-    expect(within(note()).getByText('Your prices and your result are in GBX. Kairos never converts them.')).toBeTruthy();
+    expect(within(note()).getByText('Your prices and your result are in GBX. Kairos never changes them; only your totals can show them in your home currency.')).toBeTruthy();
     type('Currency code', 'GBp');
     expect(note().textContent).toContain('GBp means pence');
     for (const market of ['crypto', 'forex']) {

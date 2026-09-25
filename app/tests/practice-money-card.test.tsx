@@ -87,7 +87,7 @@ describe('P26.3 Your practice money', () => {
     await savePracticeMoney(db, { startAmount: '1000', currency: 'EUR' }, { now });
     expect((await saveLossTrade(db)).ok).toBe(true);
     render(<PracticeMoneyCard db={db} refreshRevision={0} />);
-    expect(await within(card()).findByText('Your closed practice trades are in USDT, not EUR, and Kairos does not convert currencies. Change your practice money to USDT to see it.')).toBeTruthy();
+    expect(await within(card()).findByText('Your closed practice trades are in USDT, not EUR. To count them, choose EUR on the Currency page and add any missing exchange rates, or change your practice money to USDT.')).toBeTruthy();
     expect(within(card()).queryByRole('img', { name: /^Practice money:/ })).toBeNull();
     expect(card().querySelector('.kairos-practice-money__now')).toBeNull();
   });

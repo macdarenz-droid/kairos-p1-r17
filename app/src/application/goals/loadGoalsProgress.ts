@@ -1,5 +1,6 @@
 import type { KairosDatabase } from '../../data/database';
 import { createKairosRepositories } from '../../data/repositories';
+import { loadResultsInHomeCurrency, summarizeResultsInHomeCurrency, type ResultsInHomeCurrencySummary } from '../currency/resultsInHomeCurrency';
 import { listJournalClosedTradesInPeriod } from '../journal/closedTradePeriodQuery';
 import { listJournalOpenTrades } from '../journal/historyQuery';
 import { projectVisualPnlDayKey, readVisualPnlTimeZonePreference } from '../visual-pnl';
@@ -8,7 +9,7 @@ import { projectGoalsProgress, type GoalsProgressProjection } from './goalsProgr
 
 export type GoalsProgressQueryResult =
   | Readonly<{ kind: 'time-zone-unconfigured'; preference: GoalsPreference }>
-  | Readonly<{ kind: 'ready'; preference: GoalsPreference; timeZone: string; progress: GoalsProgressProjection }>;
+  | Readonly<{ kind: 'ready'; preference: GoalsPreference; timeZone: string; progress: GoalsProgressProjection; inHomeCurrency: ResultsInHomeCurrencySummary | null }>;
 
 /**
  * P26.2 read-only composition: explicit P13.10R1 time-zone preference, the
@@ -25,13 +26,17 @@ export async function loadGoalsProgress(db: KairosDatabase, now: string): Promis
   const today = projectVisualPnlDayKey(now, timeZone);
   if (!today.available) {
     // The projection reports invalid-now or invalid-time-zone itself.
-    return Object.freeze({ kind: 'ready' as const, preference, timeZone, progress: projectGoalsProgress({ preference, entries: [], timeZone, now }) });
+    return Object.freeze({ kind: 'ready' as const, preference, timeZone, progress: projectGoalsProgress({ preference, entries: [], timeZone, now }), inHomeCurrency: null });
   }
   const [closed, open] = await Promise.all([
     listJournalClosedTradesInPeriod(db, { timeZone, fromDayKey: `${today.dayKey.slice(0, 7)}-01`, toDayKey: null }),
     listJournalOpenTrades(db),
   ]);
   if (!closed.ok) throw new Error(`Goals could not read this month's trades: ${closed.reason}.`);
-  const entries = [...closed.entries, ...open];
-  return Object.freeze({ kind: 'ready' as const, preference, timeZone, progress: projectGoalsProgress({ preference, entries, timeZone, now }) });
+  // P33: a monthly result goal set in the home currency counts results converted into it (D116); any other goal counts its own currency, as before.
+  const target = preference.monthlyResultTarget;
+  const inHome = target === null ? null : await loadResultsInHomeCurrency(db, closed.entries);
+  const counted = target !== null && inHome !== null && inHome.homeCurrency === target.currency ? inHome : null;
+  const entries = [...(counted ? counted.entries : closed.entries), ...open];
+  return Object.freeze({ kind: 'ready' as const, preference, timeZone, progress: projectGoalsProgress({ preference, entries, timeZone, now }), inHomeCurrency: counted ? summarizeResultsInHomeCurrency(counted) : null });
 }

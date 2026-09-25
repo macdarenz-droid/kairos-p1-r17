@@ -32,7 +32,7 @@ export function TradeReviewDetails({ entry }: { readonly entry: JournalHistoryEn
       <dl className="kairos-review__facts"><div><dt>Result before fees</dt><dd>{amount(metrics?.grossPnl, trade.grossPnlCurrency)}</dd></div><div><dt>Result after fees</dt><dd>{amount(metrics?.netPnl, metrics?.netPnlCurrency)}</dd></div></dl>
       {executions.length === 0 ? <p className="kairos-review__note">No entries or exits are recorded. Planned prices alone do not make a result.</p> : null}
       {entry.metricsError ? <p className="kairos-review__note">Some results are not available for this trade.</p> : null}
-      {fees.length > 0 && metrics?.grossPnl != null && metrics.netPnl == null ? <p className="kairos-review__note">Result after fees needs a recorded price currency and fees in that same currency. Kairos does not convert currencies.</p> : null}
+      {fees.length > 0 && metrics?.grossPnl != null && metrics.netPnl == null ? <p className="kairos-review__note">Result after fees needs a recorded price currency and fees in that same currency, or in pounds (GBP) for prices in pence (GBX). Kairos does not convert a trade's fees with exchange rates.</p> : null}
     </section>
     <section className="kairos-review__card" aria-label="Saved plan">
       <h2>Saved plan</h2><p className="kairos-review__note">Your planned levels are separate from actual entries and exits.</p>

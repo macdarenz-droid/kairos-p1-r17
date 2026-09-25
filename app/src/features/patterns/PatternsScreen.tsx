@@ -1,5 +1,6 @@
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { Link, useInRouterContext } from 'react-router';
+import { describeTotalsInHomeCurrency } from '../../application/currency/currencyWords';
 import type { JournalHistoryScope } from '../../application/journal';
 import { loadTradePatterns, TRADE_PATTERN_PERIOD_DAYS, type TradePatternsQueryResult } from '../../application/patterns/loadTradePatterns';
 import { describePatternGroupLabel, describePatternLeftOut, describePatternSummary, describeTradePattern } from '../../application/patterns/patternWords';
@@ -77,10 +78,12 @@ export function PatternsScreen({ db, scope, now = wallClock }: PatternsScreenPro
   const practice = scope === 'practice';
   const result = state.kind === 'ready' ? state.result : null;
   const projection = result?.kind === 'ready' ? result.projection : null;
+  const homeWords = result?.kind === 'ready' ? describeTotalsInHomeCurrency(result.inHomeCurrency) : null;
   return <section className="kairos-route kairos-patterns" aria-labelledby="kairos-patterns-title">
     <p className="kairos-patterns__eyebrow">{practice ? 'Practice' : 'Your results'}</p>
     <h1 id="kairos-patterns-title" tabIndex={-1}>{practice ? 'Your practice patterns' : 'Your patterns'}</h1>
     <p>{practice ? INTRO.practice : INTRO.real}</p>
+    {homeWords ? <p className="kairos-patterns__currency">{homeWords.text} <PatternsLink to="/currency">{homeWords.link}</PatternsLink></p> : null}
     {state.kind === 'loading' ? <p>Loading your patterns…</p> : null}
     {state.kind === 'failed' || result?.kind === 'unavailable' ? <p>Kairos could not load your patterns. Your trades are not affected.</p> : null}
     {result?.kind === 'time-zone-unconfigured' ? <p>Your patterns sort your trades by day and hour in your time zone, so they need your time zone first. <PatternsLink to="/settings">Open Settings</PatternsLink></p> : null}

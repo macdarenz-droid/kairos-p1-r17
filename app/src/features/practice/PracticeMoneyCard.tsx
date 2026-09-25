@@ -4,6 +4,7 @@ import {
   type PracticeMoneyInvalidReason, type PracticeMoneyUnavailableReason, type PracticeMoneyView,
 } from '../../application/practice/practiceMoney';
 import type { KairosDatabase } from '../../data/database';
+import { isEcbReferenceCurrency } from '../../domain/calculations/currencyConversion';
 import { Button, Card, Field } from '../../design-system/primitives';
 import './practice.css';
 
@@ -15,13 +16,15 @@ const FIELD_ERRORS: Readonly<Record<PracticeMoneyInvalidReason, string>> = {
 function unavailableLine(reason: PracticeMoneyUnavailableReason, currency: string, resultCurrency: string | null): string {
   switch (reason) {
     case 'other-currency':
-      return `Your closed practice trades are in ${resultCurrency}, not ${currency}, and Kairos does not convert currencies. Change your practice money to ${resultCurrency} to see it.`;
+      return isEcbReferenceCurrency(currency)
+        ? `Your closed practice trades are in ${resultCurrency}, not ${currency}. To count them, choose ${currency} on the Currency page and add any missing exchange rates, or change your practice money to ${resultCurrency}.`
+        : `Your closed practice trades are in ${resultCurrency}, not ${currency}. Change your practice money to ${resultCurrency} to see it.`;
     case 'missing-currency':
       return `A closed practice trade has no price currency, and a closed trade can't get one later, so Kairos can't add up your practice money. To count it, delete that trade in your trade history and save it again with the currency code ${currency}.`;
     case 'trade-without-result':
-      return 'A closed practice trade has no result Kairos can count: it has no entries and exits, or its fees are not in the same currency as its prices, and Kairos does not convert currencies. Fix it in your trade history, or delete it and save it again, to see your practice money.';
+      return 'A closed practice trade has no result Kairos can count: it has no entries and exits, or its fees are in another currency than its prices. Fix it in your trade history, or delete it and save it again, to see your practice money.';
     case 'mixed-currencies':
-      return "Your closed practice trades use more than one currency, and Kairos does not convert currencies, so it can't add up your practice money.";
+      return "Your closed practice trades use more than one currency, so Kairos can't add up your practice money. It can when your practice money is in your currency from the Currency page and every exchange rate is there.";
     case 'calculation-failed':
       return 'Kairos could not work out your practice money. Your stored trades were not changed.';
   }

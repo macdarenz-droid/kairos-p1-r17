@@ -32,7 +32,7 @@ afterEach(async () => {
 
 describe('P5.1 database kernel', () => {
   it('declares current schema v5 with immutable v1 metadata history', () => {
-    expect(KAIROS_DB_SCHEMA_VERSION).toBe(9);
+    expect(KAIROS_DB_SCHEMA_VERSION).toBe(10);
     expect(KAIROS_V1_STORES).toEqual({ metadata: '&key' });
     expect(Object.isFrozen(KAIROS_V1_STORES)).toBe(true);
   });
@@ -41,9 +41,9 @@ describe('P5.1 database kernel', () => {
     const db = createKairosDatabase(makeDatabaseName('open'));
     const status = await openKairosDatabase(db);
 
-    expect(status).toEqual({ state: 'ready', schemaVersion: 9 });
+    expect(status).toEqual({ state: 'ready', schemaVersion: 10 });
     expect(db.isOpen()).toBe(true);
-    expect(db.tables.map((table) => table.name).sort()).toEqual(['metadata', 'savedAnalyses', 'savedTimeAssistedSnapshots', 'tradeDiscipline', 'tradeExecutions', 'tradeFees', 'tradePlans', 'trades'].sort());
+    expect(db.tables.map((table) => table.name).sort()).toEqual(['exchangeRates', 'metadata', 'savedAnalyses', 'savedTimeAssistedSnapshots', 'tradeDiscipline', 'tradeExecutions', 'tradeFees', 'tradePlans', 'trades'].sort());
 
     closeKairosDatabase(db);
   });

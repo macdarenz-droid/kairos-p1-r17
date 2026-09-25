@@ -1,6 +1,8 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { loadGoalsProgress, writeGoalsPreference, type GoalsPreference, type GoalsPreferenceInvalidReason, type GoalsProgressProjection, type GoalsProgressQueryResult } from '../application/goals';
+import { describeTotalsInHomeCurrency } from '../application/currency/currencyWords';
+import type { ResultsInHomeCurrencySummary } from '../application/currency/resultsInHomeCurrency';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
 import { createKairosRepositories } from '../data/repositories';
 import { Button, Card, Field } from '../design-system/primitives';
@@ -39,9 +41,10 @@ const fields = (preference: GoalsPreference) => ({
   monthlyResultTargetCurrency: preference.monthlyResultTarget === null ? '' : preference.monthlyResultTarget.currency,
 });
 
-function Progress({ progress }: { readonly progress: GoalsProgressProjection }) {
+function Progress({ progress, inHomeCurrency }: { readonly progress: GoalsProgressProjection; readonly inHomeCurrency: ResultsInHomeCurrencySummary | null }) {
   if (progress.kind !== 'ready') return <p role="alert" data-goals-progress="unavailable">{progress.reason === 'invalid-time-zone' ? 'Your daily-results time zone is not valid. Fix it in Settings.' : 'The current time could not be read.'}</p>;
   const { tradesPerMonth, maxTradesPerDay, monthlyResult } = progress;
+  const homeWords = describeTotalsInHomeCurrency(inHomeCurrency);
   return <div className="kairos-goals__progress" data-goals-progress="ready" data-goals-month={progress.monthKey} data-goals-today={progress.todayKey}>
     <Card as="article" className="kairos-goals-card" data-goal="trades-per-month" data-goal-state={tradesPerMonth.kind === 'unset' ? 'unset' : tradesPerMonth.reached ? 'reached' : 'progress'}>
       <h2>Closed trades this month</h2>
@@ -58,6 +61,7 @@ function Progress({ progress }: { readonly progress: GoalsProgressProjection }) 
         : <p><strong>{monthlyResult.current}</strong> of {monthlyResult.target} {monthlyResult.currency} · {monthlyResult.reached ? 'target reached' : `${monthlyResult.remaining} to go`}{monthlyResult.incompleteDays > 0 ? ` (${monthlyResult.incompleteDays} ${monthlyResult.incompleteDays === 1 ? 'day' : 'days'} in another currency or without a result)` : ''}</p>}
     </Card>
     <p className="kairos-goals__note">Counted from all your trades this month ({progress.monthKey}, time zone {progress.timeZone}). Results are your recorded results after fees, never estimates.</p>
+    {homeWords ? <p className="kairos-goals__note">{homeWords.text} <Link to="/currency">{homeWords.link}</Link></p> : null}
   </div>;
 }
 
@@ -114,7 +118,7 @@ export function GoalsRoute({ db = kairosDatabase, now = wallClock }: GoalsRouteP
     {state.kind === 'error' ? <p role="alert">Kairos could not load your goals.</p> : null}
     {state.kind === 'ready' && state.result.kind === 'time-zone-unconfigured' ? <p className="kairos-goals__unconfigured" role="status">Goals follow your daily-results calendar. <Link to="/settings">Set your time zone in Settings</Link> first.</p> : null}
     {state.kind === 'ready' && state.result.kind === 'time-zone-unconfigured' ? <DeviceTimeZoneButton metadata={repositories.metadata} onSaved={() => { void load(() => false); }} /> : null}
-    {state.kind === 'ready' && state.result.kind === 'ready' ? <Progress progress={state.result.progress} /> : null}
+    {state.kind === 'ready' && state.result.kind === 'ready' ? <Progress progress={state.result.progress} inHomeCurrency={state.result.inHomeCurrency} /> : null}
     <Card as="form" className="kairos-goals-card kairos-goals__form" onSubmit={handleSubmit} noValidate>
       <div><h2>Your targets</h2><p>Leave a field blank to keep no target. Targets are yours to change any time; they never alter your journal.</p></div>
       <Field label="Closed trades per month" id="kairos-goals-trades-per-month">{control => <input {...control} inputMode="numeric" value={form.tradesPerMonthTarget} onChange={field('tradesPerMonthTarget')} placeholder="20" autoComplete="off" disabled={busy} />}</Field>

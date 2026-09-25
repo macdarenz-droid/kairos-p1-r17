@@ -1,5 +1,6 @@
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { Link, useInRouterContext } from 'react-router';
+import { describeTotalsInHomeCurrency } from '../../application/currency/currencyWords';
 import { loadDisciplineScore, type DisciplineScoreQueryResult } from '../../application/discipline';
 import { loadGoalsProgress, type GoalsProgressQueryResult } from '../../application/goals';
 import type { KairosDatabase } from '../../data/database';
@@ -37,7 +38,8 @@ function GoalsLines({ result }: { readonly result: GoalsProgressQueryResult }) {
   if (monthlyResult.kind === 'progress') lines.push(`Result this month: ${monthlyResult.current} of ${monthlyResult.target} ${monthlyResult.currency}${monthlyResult.reached ? ' · target reached' : ''}`);
   if (monthlyResult.kind === 'unavailable') lines.push('Result this month: not available yet');
   if (lines.length === 0) return <p>No goals set yet.</p>;
-  return <>{lines.map(line => <p key={line}>{line}</p>)}</>;
+  const homeWords = describeTotalsInHomeCurrency(result.inHomeCurrency);
+  return <>{lines.map(line => <p key={line}>{line}</p>)}{homeWords ? <p>{homeWords.text} <CardLink to="/currency">{homeWords.link}</CardLink></p> : null}</>;
 }
 
 /** Home "Your Trades": this month's discipline ring and the goals the user set, each from its own owner. */

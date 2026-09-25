@@ -126,6 +126,7 @@ describe('P7.2 activation receipt persistence', () => {
       tradePlans: 0,
       tradeExecutions: 0,
       tradeFees: 0,
+      exchangeRates: 0,
       total: 1,
     });
     expect(await db.metadata.count()).toBe(2);
