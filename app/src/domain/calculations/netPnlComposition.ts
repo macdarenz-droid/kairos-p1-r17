@@ -1,4 +1,5 @@
 import type { DecimalString } from '../trades';
+import { convertPenceAndPounds } from './currencyConversion';
 import { calculateNetPnl } from './netPnlCalculator';
 import { assessNetPnlCurrencyCompatibility } from './netPnlCurrencyPolicy';
 
@@ -8,7 +9,7 @@ export type NetPnlCompositionResult =
       readonly available: true;
       readonly netPnl: DecimalString;
       readonly currency: string | null;
-      readonly basis: 'zero-fees' | 'same-currency';
+      readonly basis: 'zero-fees' | 'same-currency' | 'pence-and-pounds';
     }
   | {
       readonly ok: true;
@@ -53,7 +54,12 @@ export function calculateComparableNetPnl(
     };
   }
 
-  const netPnl = calculateNetPnl(grossPnl, totalFees);
+  // P33: fees in pounds on a trade in pence (or the reverse) are the same money, converted exactly (D111).
+  const fees = compatibility.basis === 'pence-and-pounds' && grossPnlCurrency !== null && totalFeesCurrency !== null
+    ? convertPenceAndPounds(totalFees, totalFeesCurrency, grossPnlCurrency)
+    : { ok: true as const, value: totalFees };
+  if (fees === null || !fees.ok) return { ok: false, reason: 'invalid-decimal' };
+  const netPnl = calculateNetPnl(grossPnl, fees.value);
   if (!netPnl.ok) {
     return { ok: false, reason: 'invalid-decimal' };
   }
