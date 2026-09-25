@@ -51,6 +51,9 @@ export function ReplayTradePanel({ db, replay, cursor, view, order, onPlace, onC
   const heading = useRef<HTMLHeadingElement>(null);
   const tradesLink = useRef<HTMLAnchorElement>(null);
   const pendingFocus = useRef<'heading' | 'link' | InputName | null>(null);
+  // A save that finishes after its trade was removed must not mark the next trade as saved.
+  const currentOrder = useRef(order);
+  currentOrder.current = order;
 
   // Focus moves once the new content is on screen.
   useEffect(() => {
@@ -83,10 +86,12 @@ export function ReplayTradePanel({ db, replay, cursor, view, order, onPlace, onC
 
   const save = async () => {
     if (order === null) return;
+    const forOrder = order;
     setSaving(true);
     setSaveFailed(false);
     const result = await saveReplayTrade(db, replay, cursor, order).catch(() => null);
     setSaving(false);
+    if (currentOrder.current !== forOrder) return;
     if (result?.ok) {
       pendingFocus.current = 'link';
       setSaved(true);
@@ -98,7 +103,7 @@ export function ReplayTradePanel({ db, replay, cursor, view, order, onPlace, onC
   const clear = () => {
     setSaved(false);
     setSaveFailed(false);
-    pendingFocus.current = 'side';
+    pendingFocus.current = view.candlesLeft === 0 ? 'heading' : 'side';
     onClear();
   };
 
@@ -159,6 +164,6 @@ export function ReplayTradePanel({ db, replay, cursor, view, order, onPlace, onC
       <Link to="/practice" ref={tradesLink}>See your practice trades</Link>
     </> : null}
     {!closed && view.candlesLeft === 0 ? <p>No candles are left and your trade did not reach its stop or target, so it can't be saved. Remove it, or choose another moment.</p> : null}
-    <Button variant="secondary" onClick={clear}>{saved ? 'Place another trade' : 'Remove this trade'}</Button>
+    <Button variant="secondary" disabled={saving} onClick={clear}>{saved ? 'Place another trade' : 'Remove this trade'}</Button>
   </section>;
 }

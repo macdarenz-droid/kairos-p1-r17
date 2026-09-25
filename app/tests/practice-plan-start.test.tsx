@@ -84,7 +84,7 @@ describe('P26.4 the Practice page with a plan', () => {
     expect(trade).toMatchObject({ source: 'paper', side: 'long' });
     expect(await db.tradePlans.where('tradeId').equals(trade.id).first()).toMatchObject({ plannedStopPrice: '95', plannedQuantity: '2' });
     await waitFor(() => expect(router.state.location.search).toBe(''));
-    expect(screen.queryByText(/^From the calculator:/)).toBeNull();
+    await waitFor(() => expect(screen.queryByText(/^From the calculator:/)).toBeNull());
     expect(input(/^Planned stop/).value).toBe('');
   });
 

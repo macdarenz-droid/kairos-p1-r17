@@ -118,6 +118,25 @@ describe('T-038e a practice trade on the replay', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Play' }));
     expect(await screen.findByText("No candles are left and your trade did not reach its stop or target, so it can't be saved. Remove it, or choose another moment.")).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Save to my practice trades' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Remove this trade' }));
+    expect(screen.getByText('No candles are left for a new trade. Choose another moment.')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Your practice trade' })).toHaveFocus());
+  });
+
+  it('Remove waits for the save', async () => {
+    const db = await database();
+    await started(undefined, db);
+    placeTrade('long', '100', '95', '110', '2');
+    for (let i = 0; i < 10; i += 1) nextCandle();
+    let release!: () => void;
+    const held = new Promise<void>(resolve => { release = resolve; });
+    const realTransaction = db.transaction.bind(db) as (...args: unknown[]) => unknown;
+    vi.spyOn(db, 'transaction').mockImplementation((async (...args: unknown[]) => { await held; return realTransaction(...args); }) as never);
+    fireEvent.click(screen.getByRole('button', { name: 'Save to my practice trades' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save to my practice trades' })).toHaveAttribute('aria-busy', 'true'));
+    expect(screen.getByRole('button', { name: 'Remove this trade' })).toBeDisabled();
+    release();
+    expect(await screen.findByText('Saved with your practice trades. It never counts in your Journal.')).toBeInTheDocument();
   });
 
   it('says when saving fails, and keeps the button', async () => {
