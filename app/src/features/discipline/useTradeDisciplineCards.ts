@@ -32,6 +32,8 @@ export function useTradeDisciplineCards(db: KairosDatabase | undefined, tradeIds
       data => { if (current === request.current) setState(Object.freeze({ kind: 'ready', lists: data.lists, records: data.records, strategies: data.strategies })); },
       () => { if (current === request.current) setState(FAILED); },
     );
+    // A load that finishes after unmount or a newer request is dropped.
+    return () => { request.current += 1; };
   }, [db, idsKey]);
 
   const remember = useCallback((record: TradeDisciplineRecord) => {
