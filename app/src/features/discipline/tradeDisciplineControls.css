@@ -5,6 +5,12 @@
   gap: 0.25rem 0.5rem;
   max-width: 100%;
   text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.kairos-discipline-control > span {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .kairos-discipline-control__state {
@@ -16,6 +22,8 @@
   gap: 0.125rem;
   letter-spacing: 0;
 }
+
+.kairos-strategy-marks { letter-spacing:.2em; }
 
 .kairos-discipline-dots [data-ticked="true"] {
   color: var(--kairos-accent-primary);
@@ -100,3 +108,12 @@
 
 .kairos-strategy-bar { display:block; block-size:.5rem; background:var(--kairos-surface-input); border-radius:var(--kairos-radius-full); overflow:hidden; }
 .kairos-strategy-bar > span { display:block; block-size:100%; border-radius:inherit; }
+
+.kairos-strategy-result[data-verdict="kept"], .kairos-strategy-marks [data-verdict="kept"] { color:var(--kairos-state-success); }
+.kairos-strategy-result[data-verdict="broken"], .kairos-strategy-marks [data-verdict="broken"] { color:var(--kairos-state-error); }
+.kairos-strategy-result[data-verdict="unknown"], .kairos-strategy-marks [data-verdict="unknown"] { color:var(--kairos-text-muted); }
+.kairos-strategy-rule { display:grid; gap:var(--kairos-space-2); }
+.kairos-strategy-rule > p { margin:0; }
+.kairos-strategy-bars { display:grid; grid-template-columns:auto minmax(0,1fr); align-items:center; gap:var(--kairos-space-1) var(--kairos-space-2); max-inline-size:16rem; }
+.kairos-strategy-bars [data-bar="trade"] > span { background:var(--kairos-accent-primary); }
+.kairos-strategy-bars [data-bar="rule"] > span { background:var(--kairos-text-secondary); }

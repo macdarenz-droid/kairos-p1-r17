@@ -15,6 +15,7 @@ export const primaryNavigation = Object.freeze([
 export const moreNavigation = Object.freeze([
   { label: 'Practice', to: '/practice' },
   { label: 'Goals', to: '/goals' },
+  { label: 'Strategies', to: '/strategies' },
   { label: 'Settings', to: '/settings' },
   { label: 'Profile', to: '/profile' },
 ] satisfies readonly KairosNavigationItem[]);

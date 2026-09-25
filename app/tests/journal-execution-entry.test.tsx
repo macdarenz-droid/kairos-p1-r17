@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { JournalRoute } from '../src/app/JournalRoute';
 import { createKairosDatabase, type KairosDatabase } from '../src/data/database';
 import { loadHomeYourTrades } from '../src/application/dashboard/homeDashboardYourTradesQuery';
@@ -22,7 +22,7 @@ function fill(type: 'entry' | 'exit', index: number, price: string, quantity: st
   fireEvent.change(screen.getByLabelText(`${title} quantity`), { target: { value: quantity } });
   fireEvent.change(screen.getByLabelText(`${title} date and time`), { target: { value: `2026-09-12T${type === 'entry' ? '10' : '11'}:00` } });
 }
-async function save() { fireEvent.click(screen.getByRole('button', { name: 'Save trade' })); await screen.findByText('Trade saved to your journal.'); }
+async function save() { fireEvent.click(screen.getByRole('button', { name: 'Save trade' })); await screen.findByText('Trade saved to your journal.'); await waitFor(() => expect(screen.getAllByRole('listitem').some(item => within(item).queryByText('BTCUSDT') !== null)).toBe(true)); }
 
 describe('Journal actual execution entry integration', () => {
   it.each([['long', '40', 'Profit'], ['short', '-40', 'Loss']])('saves %s executions through the real form and exposes exact released results after reopening storage', async (side, amount, resultLabel) => {

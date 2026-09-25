@@ -36,6 +36,10 @@ export const appRoutes = [
         return { Component: function PracticeReplayRoute() { return <ReplayScreen db={kairosDatabase} market={market} />; } };
       } },
       { path: 'goals', lazy: async () => ({ Component: (await import('./GoalsRoute')).GoalsRoute }) },
+      { path: 'strategies', lazy: async () => {
+        const { StrategiesScreen } = await import('../features/discipline/StrategiesScreen');
+        return { Component: function StrategiesRoute() { return <StrategiesScreen db={kairosDatabase} />; } };
+      } },
       { path: 'settings', lazy: async () => ({ Component: (await import('./SettingsRoute')).SettingsRoute }) },
       { path: 'profile', lazy: async () => ({ Component: (await import('./ProfileRoute')).ProfileRoute }) },
       { path: '*', element: <NotFoundRoute /> },

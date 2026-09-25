@@ -11,6 +11,7 @@ import {
   type DisciplineListItemId,
   type DisciplineLists,
   type DisciplineMistakeMark,
+  type Strategy,
   type StrategyId,
   type TradeDisciplineId,
   type TradeDisciplineRecord,
@@ -203,17 +204,21 @@ export interface TradeDisciplineCardsData {
   readonly lists: DisciplineLists;
   /** The saved record of each trade that has one, by trade id. */
   readonly records: ReadonlyMap<string, TradeDisciplineRecord>;
+  /** The trader's current strategies (P28). */
+  readonly strategies: readonly Strategy[];
 }
 
 /**
- * Everything the trade cards on one page need: the current lists and the
- * saved records of those trades, in two reads for the whole page. A failed
+ * Everything the trade cards on one page need: the current lists, the
+ * strategies and the saved records of those trades, in three reads for the whole page. A failed
  * record read throws, so the host shows its "could not load" state.
  */
 export async function loadTradeDisciplineCards(db: KairosDatabase, tradeIds: readonly string[]): Promise<TradeDisciplineCardsData> {
-  const lists = await readDisciplineLists(createKairosRepositories(db).metadata);
-  if (tradeIds.length === 0) return Object.freeze({ lists, records: new Map() });
+  const repositories = createKairosRepositories(db);
+  const lists = await readDisciplineLists(repositories.metadata);
+  const strategies = await readStrategies(repositories.metadata);
+  if (tradeIds.length === 0) return Object.freeze({ lists, records: new Map(), strategies });
   const loaded = await loadTradeDiscipline(db, tradeIds as readonly TradeId[]);
   if (!loaded.ok) throw new Error(loaded.reason);
-  return Object.freeze({ lists, records: loaded.records });
+  return Object.freeze({ lists, records: loaded.records, strategies });
 }

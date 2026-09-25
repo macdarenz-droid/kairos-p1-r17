@@ -1,4 +1,4 @@
-.kairos-strategy-editor { display:grid; gap:var(--kairos-space-4); min-width:0; }
+.kairos-strategy-editor { display:grid; gap:var(--kairos-space-4); min-width:0; overflow-wrap:anywhere; }
 .kairos-strategy-editor fieldset { display:grid; gap:0.25rem; margin:0; padding:0; border:0; min-width:0; }
 .kairos-strategy-editor legend { font-weight:600; margin-bottom:0.25rem; }
 .kairos-strategy-editor input[type="text"] { inline-size:100%; }
@@ -6,3 +6,9 @@
 .kairos-strategy-editor [data-bar="risk"] > span { background:var(--kairos-trade-stop); }
 .kairos-strategy-editor [data-bar="reward"] > span { background:var(--kairos-trade-target); }
 .kairos-strategy-editor__actions { display:flex; flex-wrap:wrap; gap:var(--kairos-space-3); }
+.kairos-strategies { display:grid; gap:var(--kairos-space-5); min-width:0; overflow-wrap:anywhere; }
+.kairos-strategies .kairos-strategies__eyebrow { margin:0; color:var(--kairos-accent-primary); font-size:var(--kairos-font-size-xs); font-weight:var(--kairos-font-weight-semibold); letter-spacing:.08em; text-transform:uppercase; }
+.kairos-strategies__list { display:grid; gap:var(--kairos-space-4); margin:0; padding:0; list-style:none; }
+.kairos-strategies__list > li { min-width:0; }
+.kairos-strategies__rules { margin:0; padding-inline-start:var(--kairos-space-5); }
+.kairos-strategies h2 { margin:0; font-size:var(--kairos-font-size-lg); }

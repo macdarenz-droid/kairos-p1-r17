@@ -36,7 +36,7 @@ test('(b) every route renders inside the phone width without page errors', async
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
   await activate(page);
-  for (const path of ['/', '/journal', '/analysis', '/library', '/more', '/practice', '/goals', '/settings', '/profile', '/does-not-exist']) {
+  for (const path of ['/', '/journal', '/analysis', '/library', '/more', '/practice', '/goals', '/strategies', '/settings', '/profile', '/does-not-exist']) {
     await page.goto(path);
     await expect(page.locator('.kairos-shell'), path).toBeVisible();
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
@@ -254,5 +254,59 @@ test('(h) Replay: a practice trade on past prices, judged candle by candle', asy
 
   await page.goto('/journal');
   await expect(page.getByText('No saved trades yet. Your first saved trade will appear here.')).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('(i) Strategies: your rules, checked on a trade before and after saving', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  await activate(page);
+  await page.goto('/more');
+  await page.getByRole('link', { name: 'Strategies' }).click();
+  await expect(page).toHaveURL(/\/strategies$/);
+  await expect(page.getByRole('heading', { name: 'Your strategies' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Write your own' }).click();
+  await page.getByLabel(/^Name/).fill('Breakout');
+  await page.getByRole('checkbox', { name: 'Most I risk on one trade' }).check();
+  await page.getByLabel(/^Amount/).fill('50');
+  await page.getByLabel(/^Currency/).fill('USDT');
+  await page.getByRole('checkbox', { name: 'Plan a stop before every trade' }).check();
+  await page.getByRole('button', { name: 'Add a rule' }).click();
+  await page.getByLabel(/^Rule 1/).fill('I wait for a candle to close above the line');
+  await page.getByRole('button', { name: 'Save strategy' }).click();
+  await expect(page.getByText('Strategy saved.')).toBeVisible();
+  await expect(page.getByText('Risk at most 50 USDT on one trade')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+
+  await page.goto('/journal');
+  await page.getByLabel(/^Symbol/).fill('BTCUSDT');
+  await page.getByLabel(/^Market/).selectOption('crypto');
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Status/).selectOption('draft');
+  await page.getByLabel('Currency code').fill('USDT');
+  await page.getByText('Trade plan · Optional').click();
+  await page.getByLabel('Planned entry').fill('100');
+  await page.getByLabel('Planned stop').fill('90');
+  await page.getByLabel('Planned quantity').fill('10');
+  await page.getByLabel(/^Strategy/).selectOption({ label: 'Breakout' });
+  await expect(page.getByText('This trade breaks 1 of your 3 Breakout rules.')).toBeVisible();
+  await expect(page.getByText('Risk: 100 USDT is more than your most, 50 USDT.')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+  const strategy = page.getByRole('button', { name: 'Strategy Breakout: breaks 1 of 3 rules' });
+  await expect(strategy).toBeVisible();
+
+  await strategy.click();
+  let dialog = page.getByRole('dialog', { name: 'Strategy: BTCUSDT' });
+  await dialog.getByRole('checkbox', { name: 'I wait for a candle to close above the line' }).check();
+  await dialog.getByRole('button', { name: 'Save strategy' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(strategy).toBeVisible();
+
+  await strategy.click();
+  dialog = page.getByRole('dialog', { name: 'Strategy: BTCUSDT' });
+  await expect(dialog.getByRole('checkbox', { name: 'I wait for a candle to close above the line' })).toBeChecked();
   expect(errors).toEqual([]);
 });
