@@ -39,8 +39,8 @@ const savedWithLine = { id: 'analysis-line' as SavedAnalysisId, market, drawings
 
 describe('zones in saved analyses and backups', () => {
   it('keeps the current versions: backup format 6 describing schema 7', () => {
-    expect(KAIROS_BACKUP_FORMAT_VERSION).toBe(7);
-    expect(KAIROS_DB_SCHEMA_VERSION).toBe(8);
+    expect(KAIROS_BACKUP_FORMAT_VERSION).toBe(8);
+    expect(KAIROS_DB_SCHEMA_VERSION).toBe(9);
   });
 
   it('saves and loads a zone with a trend line, byte-equal', async () => {
@@ -60,7 +60,7 @@ describe('zones in saved analyses and backups', () => {
     const exported = await exportKairosBackup(db, new Date('2026-09-20T00:00:00.000Z'));
     if (!exported.ok) throw new Error(exported.type);
     const parsed = parseKairosBackup(exported.file.contents);
-    expect(parsed).toMatchObject({ formatVersion: 7, databaseSchemaVersion: 8 });
+    expect(parsed).toMatchObject({ formatVersion: 8, databaseSchemaVersion: 9 });
     expect(parsed.payload.savedAnalyses[0].drawings).toEqual([zone]);
   });
 
@@ -69,7 +69,7 @@ describe('zones in saved analyses and backups', () => {
     const v5 = { ...current, formatVersion: 5, databaseSchemaVersion: 7, recordCounts: { ...current.recordCounts, tradeDiscipline: 1, total: current.recordCounts.total + 1 }, payload: { ...current.payload, tradeDiscipline: [discipline] } };
     const text = JSON.stringify(v5);
     const parsed = parseKairosBackup(text);
-    expect(parsed).toMatchObject({ formatVersion: 7, databaseSchemaVersion: 8, recordCounts: { trades: 1, savedAnalyses: 1, tradeDiscipline: 1, total: 3 } });
+    expect(parsed).toMatchObject({ formatVersion: 8, databaseSchemaVersion: 9, recordCounts: { trades: 1, savedAnalyses: 1, tradeDiscipline: 1, total: 3 } });
     expect(parsed.payload.tradeDiscipline).toEqual([upgradeLegacyTradeDisciplineRecord(discipline)]);
 
     const db = await database('restore');
@@ -82,7 +82,7 @@ describe('zones in saved analyses and backups', () => {
   });
 
   it('refuses a format from the future', () => {
-    const future = { ...createKairosBackupEnvelope({ metadata: [] }), formatVersion: 8 };
+    const future = { ...createKairosBackupEnvelope({ metadata: [] }), formatVersion: 9 };
     expect(() => parseKairosBackup(JSON.stringify(future))).toThrow(expect.objectContaining({ code: 'UNSUPPORTED_FORMAT_VERSION' }));
   });
 });

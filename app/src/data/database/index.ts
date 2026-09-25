@@ -31,6 +31,7 @@ export {
   KAIROS_V6_STORES,
   KAIROS_V7_STORES,
   KAIROS_V8_STORES,
+  KAIROS_V9_STORES,
   KAIROS_CURRENT_STORES,
 } from './schema';
 export type {

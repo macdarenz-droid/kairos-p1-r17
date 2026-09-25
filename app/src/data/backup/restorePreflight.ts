@@ -89,7 +89,7 @@ function assertUnique(values: readonly string[], code: KairosRestorePreflightCod
 }
 
 function assertRestoreCompatibility(envelope: KairosCurrentBackupEnvelope): void {
-  // parseKairosBackup has already migrated every supported V1–V6 backup to the current restore model (format 7, schema 8).
+  // parseKairosBackup has already migrated every supported V1–V7 backup to the current restore model (format 8, schema 9).
   const compatible = envelope.databaseSchemaVersion === KAIROS_DB_SCHEMA_VERSION;
   if (!compatible) {
     throw new KairosRestorePreflightError(
