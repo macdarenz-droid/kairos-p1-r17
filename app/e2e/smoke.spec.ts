@@ -202,3 +202,57 @@ test('(g) Practice: pretend money, a plan from the calculator, and a practice tr
   await page.goto('/journal');
   await expect(page.getByText('No saved trades yet. Your first saved trade will appear here.')).toBeVisible();
 });
+
+test('(h) Replay: a practice trade on past prices, judged candle by candle', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  await activate(page);
+  const replayStart = Date.parse('2024-03-01T04:00:00.000Z'); // 12:00 in Asia/Manila, the project's time zone (playwright.config.ts)
+  const cors = { 'Access-Control-Allow-Origin': '*' };
+  await page.route(url => url.hostname === 'data-api.binance.vision', async route => {
+    const url = new URL(route.request().url());
+    if (url.pathname === '/api/v3/exchangeInfo') return route.fulfill({ headers: cors, contentType: 'application/json', body: JSON.stringify({ symbols: [{ symbol: 'BTCUSDT', status: 'TRADING', baseAsset: 'BTC', quoteAsset: 'USDT' }] }) });
+    if (url.pathname !== '/api/v3/klines' || url.searchParams.get('interval') !== '1h') return route.abort();
+    const hour = 3_600_000, from = Number(url.searchParams.get('startTime')), to = Number(url.searchParams.get('endTime')), limit = Number(url.searchParams.get('limit'));
+    const rows: unknown[] = [];
+    for (let openMs = from; openMs <= to && rows.length < limit; openMs += hour) {
+      const k = (openMs - replayStart) / hour;
+      const [open, high, low, close] = k < 0 ? [100, 101, 99, 100] : [100 + k, 101.5 + k, 99.5 + k, 101 + k];
+      rows.push([openMs, String(open), String(high), String(low), String(close), '1', openMs + hour - 1, '1', 1, '1', '1', '0']);
+    }
+    return route.fulfill({ headers: cors, contentType: 'application/json', body: JSON.stringify(rows) });
+  });
+
+  await page.goto('/practice');
+  await page.getByRole('link', { name: 'Replay the past, one candle at a time' }).click();
+  await expect(page).toHaveURL(/\/practice\/replay$/);
+  await page.getByLabel(/^Market/).fill('BTCUSDT');
+  await page.getByLabel(/^Start from/).fill('2024-03-01T12:00');
+  await page.getByRole('button', { name: 'Start replay' }).click();
+  await expect(page.locator('.kairos-replay__now strong')).toHaveText('100 USDT');
+  await expect(page.getByText('240 candles left')).toBeVisible();
+
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Entry price/).fill('100');
+  await page.getByLabel(/^Stop price/).fill('95');
+  await page.getByLabel(/^Target price/).fill('110');
+  await page.getByLabel(/^Quantity/).fill('2');
+  await page.getByRole('button', { name: 'Place trade' }).click();
+  await expect(page.getByText('Waiting for the price to reach your entry.')).toBeVisible();
+  await page.getByRole('button', { name: 'Next candle' }).click();
+  await expect(page.getByText('Your entry was reached: in at 100 USDT.')).toBeVisible();
+  for (let i = 0; i < 9; i += 1) await page.getByRole('button', { name: 'Next candle' }).click();
+  await expect(page.getByText('Your target was reached: out at 110 USDT.')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+
+  await page.getByRole('button', { name: 'Save to my practice trades' }).click();
+  await expect(page.getByText('Saved with your practice trades. It never counts in your Journal.')).toBeVisible();
+  await page.getByRole('link', { name: 'See your practice trades' }).click();
+  const card = page.locator('.kairos-history-card').filter({ hasText: 'From replay' });
+  await expect(card).toContainText('BTCUSDT');
+  await expect(card.locator('[data-outcome="profit"]')).toContainText('20 USDT');
+
+  await page.goto('/journal');
+  await expect(page.getByText('No saved trades yet. Your first saved trade will appear here.')).toBeVisible();
+  expect(errors).toEqual([]);
+});

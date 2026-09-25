@@ -78,7 +78,7 @@ Lessons are data, not code. To add or change one:
    - `words`: 1 to 4 trading word ids; each gets a "?" that explains it;
    - `size-example`: `accountSize`, `riskPercent`, `entryPrice` and `stopPrice` as plain numbers like `"1000"`; Kairos works out the answer and draws it;
    - `check`: a `question` (at most 120), 2 to 4 `choices` (each a `text` of at most 60; exactly one has `"right": true`) and an `explanation` (at most 200) shown after the answer; one check per step at most;
-   - `try`: a `text` (at most 140) and a `tool`: `calculators`, `journal` or `practice`.
+   - `try`: a `text` (at most 140) and a `tool`: `calculators`, `journal`, `practice` or `replay`.
 4. In `app/`, run `npx vitest run tests/lesson-content.test.ts`. It fails if a lesson breaks a rule, names a word that does not exist, or has a size example Kairos cannot work out.
 5. Commit. The lesson appears under Library → Lessons in the next release. No code changes.
 
