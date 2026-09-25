@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { listJournalClosedTradesInPeriod, listJournalVisualPnlDailySummary } from '../application/journal';
+import { listJournalClosedTradesInPeriod, listJournalVisualPnlDailySummary, type JournalHistoryScope } from '../application/journal';
 import {
   projectVisualPnlDailyStreak,
   projectVisualPnlProgressSeries,
@@ -32,7 +32,30 @@ interface JournalDailyResultsProps {
   readonly now?: () => string;
   /** Bumped after a checklist or review is saved; reloads only the discipline score. */
   readonly disciplineRevision?: number;
+  /** Which trades the pictures cover: the Journal's real trades (the default) or practice trades, never both. */
+  readonly scope?: JournalHistoryScope;
 }
+
+interface ResultsText {
+  readonly eyebrow: string;
+  readonly title: string;
+  readonly lineEyebrow: string;
+  readonly disciplineTitle: string;
+  readonly loading: string;
+  readonly unconfigured: string;
+  readonly error: string;
+}
+
+const RESULTS_TEXT: Readonly<Record<JournalHistoryScope, ResultsText>> = {
+  real: {
+    eyebrow: 'Your results', title: 'Daily results', lineEyebrow: 'Your results over time', disciplineTitle: 'Your discipline',
+    loading: 'Loading daily results…', unconfigured: 'Choose a time zone in Settings to view daily results.', error: 'Kairos could not load daily results. Your stored trades were not changed.',
+  },
+  practice: {
+    eyebrow: 'Practice trades only', title: 'Your practice results', lineEyebrow: 'Your practice results over time', disciplineTitle: 'Your practice discipline',
+    loading: 'Loading your practice results…', unconfigured: 'Choose a time zone in Settings to see your practice results.', error: 'Kairos could not load your practice results. Your stored trades were not changed.',
+  },
+};
 
 /** A stable default clock, as in GoalsRoute. */
 const wallClock = (): string => new Date().toISOString();
@@ -48,10 +71,11 @@ type JournalDailyResultsState =
  *
  * This boundary coordinates established P13 owners only:
  * MetadataRepository -> explicit timezone preference -> Journal daily query
- * over every closed trade -> month grid -> ResultsCalendar. It performs no financial arithmetic, FX,
+ * over every closed trade of one scope (real by default) -> month grid -> ResultsCalendar. It performs no financial arithmetic, FX,
  * day grouping or direct storage access. The device time zone is saved only on an explicit tap.
  */
-export function JournalDailyResults({ db, refreshRevision, now = wallClock, disciplineRevision = 0 }: JournalDailyResultsProps) {
+export function JournalDailyResults({ db, refreshRevision, now = wallClock, disciplineRevision = 0, scope = 'real' }: JournalDailyResultsProps) {
+  const text = RESULTS_TEXT[scope];
   const [state, setState] = useState<JournalDailyResultsState>({ kind: 'loading' });
   const repositories = useMemo(() => createKairosRepositories(db), [db]);
   const [localRevision, setLocalRevision] = useState(0);
@@ -78,7 +102,7 @@ export function JournalDailyResults({ db, refreshRevision, now = wallClock, disc
           return;
         }
 
-        const projection = await listJournalVisualPnlDailySummary(db, timeZone);
+        const projection = await listJournalVisualPnlDailySummary(db, timeZone, { scope });
         if (ignore) return;
         setState({ kind: 'ready', timeZone, projection });
       } catch {
@@ -90,7 +114,7 @@ export function JournalDailyResults({ db, refreshRevision, now = wallClock, disc
     return () => {
       ignore = true;
     };
-  }, [db, repositories, refreshRevision, localRevision]);
+  }, [db, repositories, refreshRevision, localRevision, scope]);
 
   // The score of the month the calendar shows. Only the first load shows "loading"; a reload keeps the last panel.
   useEffect(() => {
@@ -99,19 +123,19 @@ export function JournalDailyResults({ db, refreshRevision, now = wallClock, disc
     const today = projectVisualPnlDayKey(instant, readyTimeZone);
     if (!today.available) return;
     const request = ++disciplineRequest.current;
-    loadDisciplineScore(db, { now: instant, monthKey: monthKey ?? today.dayKey.slice(0, 7) }).then(result => {
+    loadDisciplineScore(db, { now: instant, monthKey: monthKey ?? today.dayKey.slice(0, 7), scope }).then(result => {
       if (request !== disciplineRequest.current) return;
       setDiscipline(result.kind === 'ready' ? { kind: 'ready', score: result.score } : { kind: 'error' });
     }, () => { if (request === disciplineRequest.current) setDiscipline({ kind: 'error' }); });
     return () => { disciplineRequest.current += 1; };
-  }, [db, now, monthKey, refreshRevision, disciplineRevision, readyTimeZone]);
+  }, [db, now, monthKey, refreshRevision, disciplineRevision, readyTimeZone, scope]);
 
   function selectDay(timeZone: string, dayKey: string | null): void {
     const request = ++dayRequest.current;
     setSelectedDayKey(dayKey);
     if (dayKey === null) return;
     setDayTrades({ kind: 'loading' });
-    listJournalClosedTradesInPeriod(db, { timeZone, fromDayKey: dayKey, toDayKey: shiftVisualPnlDayKey(dayKey, 1) }).then(result => {
+    listJournalClosedTradesInPeriod(db, { timeZone, fromDayKey: dayKey, toDayKey: shiftVisualPnlDayKey(dayKey, 1), scope }).then(result => {
       if (request !== dayRequest.current) return;
       setDayTrades(result.ok ? { kind: 'ready', entries: result.entries } : { kind: 'error' });
     }, () => { if (request === dayRequest.current) setDayTrades({ kind: 'error' }); });
@@ -129,13 +153,13 @@ export function JournalDailyResults({ db, refreshRevision, now = wallClock, disc
       <section className="kairos-pnl-calendar" aria-labelledby="kairos-pnl-calendar-title" data-visual-pnl-time-zone={timeZone}>
         <div className="kairos-pnl-calendar__heading">
           <div>
-            <p className="kairos-journal__eyebrow">Your results</p>
-            <h2 id="kairos-pnl-calendar-title">Daily results</h2>
+            <p className="kairos-journal__eyebrow">{text.eyebrow}</p>
+            <h2 id="kairos-pnl-calendar-title">{text.title}</h2>
           </div>
         </div>
         <VisualPnlStreak projection={projectVisualPnlDailyStreak(projection.days)} />
         <VisualPnlPerformanceSummary summary={summarizeVisualPnlDailyPerformance(projection.days)} />
-        <ResultsLine line={projectVisualPnlResultLine(projectVisualPnlCumulativeRealizedPnl(projectVisualPnlProgressSeries(projection.days)))} />
+        <ResultsLine eyebrow={text.lineEyebrow} line={projectVisualPnlResultLine(projectVisualPnlCumulativeRealizedPnl(projectVisualPnlProgressSeries(projection.days)))} />
         {grid ? <ResultsCalendar
           grid={grid}
           selectedDayKey={selectedDayKey}
@@ -151,7 +175,7 @@ export function JournalDailyResults({ db, refreshRevision, now = wallClock, disc
           renderTradeLink={id => <ReviewTradeLink id={id} className="kairos-results-day-trades__review" />}
           onClose={() => selectDay(timeZone, null)}
         /> : null}
-        <DisciplineScorePanel state={discipline} periodLabel={monthLabel(shownMonth)} />
+        <DisciplineScorePanel title={text.disciplineTitle} state={discipline} periodLabel={monthLabel(shownMonth)} />
         {blocked > 0 ? <p className="kairos-pnl-calendar__notice">{blocked === 1 ? '1 closed trade could not be placed on a day.' : `${blocked} closed trades could not be placed on a day.`}</p> : null}
         <p className="kairos-pnl-calendar__notice">Time zone: {timeZone}</p>
       </section>
@@ -162,16 +186,12 @@ export function JournalDailyResults({ db, refreshRevision, now = wallClock, disc
     <section className="kairos-pnl-calendar" aria-labelledby="kairos-pnl-calendar-title">
       <div className="kairos-pnl-calendar__heading">
         <div>
-          <p className="kairos-journal__eyebrow">Your results</p>
-          <h2 id="kairos-pnl-calendar-title">Daily results</h2>
+          <p className="kairos-journal__eyebrow">{text.eyebrow}</p>
+          <h2 id="kairos-pnl-calendar-title">{text.title}</h2>
         </div>
       </div>
       <p className="kairos-pnl-calendar__state">
-        {state.kind === 'loading'
-          ? 'Loading daily results…'
-          : state.kind === 'unconfigured'
-            ? 'Choose a time zone in Settings to view daily results.'
-            : 'Kairos could not load daily results. Your stored trades were not changed.'}
+        {state.kind === 'loading' ? text.loading : state.kind === 'unconfigured' ? text.unconfigured : text.error}
       </p>
       {state.kind === 'unconfigured' ? <DeviceTimeZoneButton metadata={repositories.metadata} onSaved={() => setLocalRevision(value => value + 1)} /> : null}
     </section>

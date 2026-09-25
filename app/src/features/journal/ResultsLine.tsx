@@ -14,9 +14,9 @@ function unavailableMessage(reason: Unavailable): string {
 const MARKS = { profit: '▲', loss: '▼', breakeven: '—' } as const;
 
 /** The total result so far as a line from zero, day by day, with the exact numbers one tap away. Presentational only. */
-export function ResultsLine({ line }: { readonly line: VisualPnlResultLineProjection }) {
+export function ResultsLine({ line, eyebrow = 'Your results over time' }: { readonly line: VisualPnlResultLineProjection; readonly eyebrow?: string }) {
   const heading = <div>
-    <p className="kairos-journal__eyebrow">Your results over time</p>
+    <p className="kairos-journal__eyebrow">{eyebrow}</p>
     <h3 id="kairos-results-line-title">Total result so far</h3>
   </div>;
   if (!line.available) {

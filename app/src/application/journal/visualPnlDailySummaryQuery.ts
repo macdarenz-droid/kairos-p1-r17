@@ -4,10 +4,11 @@ import {
   type VisualPnlDailySummaryProjection,
 } from '../visual-pnl';
 import { listJournalClosedTradesInPeriod } from './closedTradePeriodQuery';
+import type { JournalHistoryScope } from './historyQuery';
 
 /**
  * Journal-facing consumer contract for daily Visual P&L over every closed
- * real trade.
+ * trade of one scope (real unless the caller asks for practice).
  *
  * Database selection is owned by the all-time closed-trade period query;
  * all calendar-day and monetary composition stays with P13.6/P13.7.
@@ -17,8 +18,9 @@ import { listJournalClosedTradesInPeriod } from './closedTradePeriodQuery';
 export async function listJournalVisualPnlDailySummary(
   db: KairosDatabase,
   timeZone: string,
+  options: { readonly scope?: JournalHistoryScope } = {},
 ): Promise<VisualPnlDailySummaryProjection> {
-  const period = await listJournalClosedTradesInPeriod(db, { timeZone, fromDayKey: null, toDayKey: null });
+  const period = await listJournalClosedTradesInPeriod(db, { timeZone, fromDayKey: null, toDayKey: null, scope: options.scope });
   // The all-time period never refuses: it has no day keys to check.
   return summarizeVisualPnlByDay(period.ok ? period.entries : [], timeZone);
 }
