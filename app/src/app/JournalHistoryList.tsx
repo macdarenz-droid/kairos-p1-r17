@@ -162,7 +162,7 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
                 </dl>
                 {coach.length > 0 ? <p className="kairos-history-card__coach"><span>Your coach</span>{coach.map(line => <span key={line}>{line}</span>)}</p> : null}
                 {entry.fees.length > 0 && entry.metrics?.grossPnl != null && entry.metrics.netPnl == null ? <p className="kairos-history-card__notice">
-                  {entry.trade.grossPnlCurrency ? 'Result after fees needs fees in the same currency as your recorded prices. Kairos does not convert currencies.' : 'The price currency is not recorded, so fees cannot be taken off yet.'}
+                  {entry.trade.grossPnlCurrency ? 'Result after fees needs fees in the same currency as your recorded prices, or in pounds (GBP) for prices in pence (GBX). Kairos does not convert a trade\'s fees with exchange rates.' : 'The price currency is not recorded, so fees cannot be taken off yet.'}
                 </p> : null}
                 {entry.metricsError ? <p className="kairos-history-card__notice">Some results are not available for this trade.</p> : null}
               </li>

@@ -1,8 +1,8 @@
 // P33: the currency engine's words. Every number and every rate comes from its owner; these functions only put them in plain words.
 // Days read '18 September 2026', in English on every device, as ResultsCalendar's dayLabel does (ResultsCalendar.tsx:18-21).
-import type { EcbReferenceCurrency, ExchangeRateRecord } from '../../domain/calculations/currencyConversion';
+import type { CurrencyConversionStep, EcbReferenceCurrency, ExchangeRateRecord } from '../../domain/calculations/currencyConversion';
 import type { FetchEcbRatesResult } from './ecbRates';
-import type { MissingExchangeRate } from './resultsInHomeCurrency';
+import type { MissingExchangeRate, ResultsInHomeCurrencySummary, TradeResultInHomeCurrency } from './resultsInHomeCurrency';
 
 export const CURRENCY_NAMES: Readonly<Record<EcbReferenceCurrency, string>> = Object.freeze({
   AUD: 'Australian dollar', BRL: 'Brazilian real', CAD: 'Canadian dollar', CHF: 'Swiss franc', CNY: 'Chinese yuan renminbi',
@@ -72,4 +72,46 @@ export function describeEcbFetchResult(result: FetchEcbRatesResult): Readonly<{ 
     lines.push(`No European Central Bank rate for ${currencyDayLabel(day)} yet. The bank sets one rate each working day at 14:15 Frankfurt time, and none at weekends or on its holidays: try again after its next working day.`);
   }
   return Object.freeze({ tone: 'success' as const, lines: Object.freeze(lines) });
+}
+
+/** One step of a conversion: "100 GBX (pence) = 1 GBP", the coin rule, the trader's rate or the bank's rates (the `from` leg first). */
+export function describeConversionStep(step: CurrencyConversionStep): string {
+  switch (step.kind) {
+    case 'pence': return '100 GBX (pence) = 1 GBP';
+    case 'stablecoin': return `1 ${step.from} counted as 1 USD, your choice`;
+    case 'typed-rate': return `your rate for ${currencyDayLabel(step.day)}: 1 ${step.from} = ${step.rate} ${step.to}`;
+    case 'ecb-rate': {
+      const legs = [step.eurFrom === null ? null : `1 EUR = ${step.eurFrom} ${step.from}`, step.eurTo === null ? null : `1 EUR = ${step.eurTo} ${step.to}`].filter((leg): leg is string => leg !== null);
+      const head = `European Central Bank ${legs.length > 1 ? 'rates' : 'rate'} of ${currencyDayLabel(step.rateDay)}: ${legs.join(' and ')}`;
+      return step.rateDay === step.day ? head : `${head}, its last before ${currencyDayLabel(step.day)}`;
+    }
+  }
+}
+
+/** A calendar day's trade in the home currency with the rates that made it, or the rate it still needs; null otherwise. */
+export function describeTradeInHomeCurrency(result: TradeResultInHomeCurrency | undefined): string | null {
+  if (result?.kind === 'converted') return `In ${result.currency}: ${result.amount} (${result.steps.map(describeConversionStep).join('; ')})`;
+  if (result?.kind === 'missing-rate') return `Needs the ${result.from} to ${result.to} rate of ${currencyDayLabel(result.day)} to count in ${result.to}.`;
+  return null;
+}
+
+/** The note on a total: which currency, how many trades were converted, how many still need a rate; null without a home currency. */
+export function describeTotalsInHomeCurrency(summary: ResultsInHomeCurrencySummary | null): Readonly<{ text: string; link: string }> | null {
+  if (summary === null || summary.homeCurrency === null) return null;
+  const home = summary.homeCurrency;
+  const missing = summary.tradesMissingRate;
+  if (missing > 0) {
+    const text = missing === 1
+      ? `Totals in ${home}. 1 trade still needs an exchange rate, so totals that include it can't be shown in ${home} yet.`
+      : `Totals in ${home}. ${missing} trades still need an exchange rate, so totals that include them can't be shown in ${home} yet.`;
+    return Object.freeze({ text, link: 'Add the missing rates' });
+  }
+  const converted = summary.convertedTrades;
+  if (converted > 0) {
+    const text = converted === 1
+      ? `Totals in ${home}. 1 trade in another currency was converted to ${home}.`
+      : `Totals in ${home}. ${converted} trades in other currencies were converted to ${home}.`;
+    return Object.freeze({ text, link: 'See your rates' });
+  }
+  return Object.freeze({ text: `Totals in ${home}.`, link: 'Change your currency' });
 }

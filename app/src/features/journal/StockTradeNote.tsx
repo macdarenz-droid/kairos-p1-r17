@@ -23,7 +23,7 @@ export function StockTradeNote({ symbol, priceCurrency }: { readonly symbol: str
     {typed === 'GBp'
       ? <p>GBp means pence. Kairos saves currency codes in capital letters, so GBp would be saved as GBP, which means pounds (100 times more). Type GBX for prices in pence.</p>
       : currency !== '' && isPriceCurrencyInput(currency)
-      ? <p>{`Your prices and your result are in ${currency}. Kairos never converts them.`}</p>
+      ? <p>{`Your prices and your result are in ${currency}. Kairos never changes them; only your totals can show them in your home currency.`}</p>
       : <p>Kairos never guesses a stock&apos;s currency from its ticker: type its code in Currency code below, such as USD, EUR or JPY. For prices in pence, type GBX, not GBP (GBP means pounds), even when your broker shows GBp. Without it, fees cannot be taken off your result.</p>}
   </div>;
 }

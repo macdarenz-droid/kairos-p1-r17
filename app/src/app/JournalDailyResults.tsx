@@ -1,5 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { listJournalClosedTradesInPeriod, listJournalVisualPnlDailySummary, type JournalHistoryScope } from '../application/journal';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Link, useInRouterContext } from 'react-router';
+import { listJournalClosedTradesInPeriod, listJournalVisualPnlDailySummary, type JournalHistoryScope, type JournalVisualPnlDailySummary } from '../application/journal';
+import { loadResultsInHomeCurrency } from '../application/currency/resultsInHomeCurrency';
+import { describeTotalsInHomeCurrency } from '../application/currency/currencyWords';
 import {
   projectVisualPnlDailyStreak,
   summarizeVisualPnlDailyPerformance,
@@ -8,7 +11,6 @@ import {
   projectVisualPnlMonthGrid,
   projectVisualPnlResultCandles,
   shiftVisualPnlDayKey,
-  type VisualPnlDailySummaryProjection,
 } from '../application/visual-pnl';
 import type { KairosDatabase } from '../data/database';
 import { createKairosRepositories } from '../data/repositories';
@@ -56,13 +58,18 @@ const RESULTS_TEXT: Readonly<Record<JournalHistoryScope, ResultsText>> = {
   },
 };
 
+/** SPA navigation inside the app, a plain link outside a router (JournalRoute renders outside one in tests). */
+function ResultsLink({ to, children }: { readonly to: string; readonly children: ReactNode }) {
+  return useInRouterContext() ? <Link to={to}>{children}</Link> : <a href={to}>{children}</a>;
+}
+
 /** A stable default clock, as in GoalsRoute. */
 const wallClock = (): string => new Date().toISOString();
 
 type JournalDailyResultsState =
   | Readonly<{ kind: 'loading' }>
   | Readonly<{ kind: 'unconfigured' }>
-  | Readonly<{ kind: 'ready'; timeZone: string; projection: VisualPnlDailySummaryProjection }>
+  | Readonly<{ kind: 'ready'; timeZone: string; projection: JournalVisualPnlDailySummary }>
   | Readonly<{ kind: 'error' }>;
 
 /**
@@ -134,10 +141,13 @@ export function JournalDailyResults({ db, refreshRevision, now = wallClock, disc
     setSelectedDayKey(dayKey);
     if (dayKey === null) return;
     setDayTrades({ kind: 'loading' });
-    listJournalClosedTradesInPeriod(db, { timeZone, fromDayKey: dayKey, toDayKey: shiftVisualPnlDayKey(dayKey, 1), scope }).then(result => {
+    listJournalClosedTradesInPeriod(db, { timeZone, fromDayKey: dayKey, toDayKey: shiftVisualPnlDayKey(dayKey, 1), scope }).then(async result => {
       if (request !== dayRequest.current) return;
-      setDayTrades(result.ok ? { kind: 'ready', entries: result.entries } : { kind: 'error' });
-    }, () => { if (request === dayRequest.current) setDayTrades({ kind: 'error' }); });
+      if (!result.ok) { setDayTrades({ kind: 'error' }); return; }
+      const inHome = await loadResultsInHomeCurrency(db, result.entries);
+      if (request !== dayRequest.current) return;
+      setDayTrades({ kind: 'ready', entries: result.entries, conversions: inHome.homeCurrency === null ? null : inHome.byTrade });
+    }).catch(() => { if (request === dayRequest.current) setDayTrades({ kind: 'error' }); });
   }
 
   const today = state.kind === 'ready' ? projectVisualPnlDayKey(now(), state.timeZone) : null;
@@ -148,6 +158,7 @@ export function JournalDailyResults({ db, refreshRevision, now = wallClock, disc
     const grid = projectVisualPnlMonthGrid({ monthKey: shownMonth, days: projection.days, todayKey: today.dayKey });
     const changeMonth = (next: string) => { setMonthKey(next); selectDay(timeZone, null); };
     const blocked = projection.blockedTrades.length;
+    const homeWords = describeTotalsInHomeCurrency(projection.inHomeCurrency);
     return (
       <section className="kairos-pnl-calendar" aria-labelledby="kairos-pnl-calendar-title" data-visual-pnl-time-zone={timeZone}>
         <div className="kairos-pnl-calendar__heading">
@@ -156,6 +167,7 @@ export function JournalDailyResults({ db, refreshRevision, now = wallClock, disc
             <h2 id="kairos-pnl-calendar-title">{text.title}</h2>
           </div>
         </div>
+        {homeWords ? <p className="kairos-pnl-calendar__notice" data-home-currency={projection.inHomeCurrency.homeCurrency}>{homeWords.text} <ResultsLink to="/currency">{homeWords.link}</ResultsLink></p> : null}
         <VisualPnlStreak projection={projectVisualPnlDailyStreak(projection.days)} />
         <VisualPnlPerformanceSummary summary={summarizeVisualPnlDailyPerformance(projection.days)} />
         <ResultsCandles eyebrow={text.totalEyebrow} projection={projectVisualPnlResultCandles(projection.days)} />

@@ -1,11 +1,13 @@
 import type { ReactNode } from 'react';
 import type { JournalHistoryEntry } from '../../application/journal';
+import { describeTradeInHomeCurrency } from '../../application/currency/currencyWords';
+import type { TradeResultInHomeCurrency } from '../../application/currency/resultsInHomeCurrency';
 import { dayLabel } from './ResultsCalendar';
 
 export type ResultsDayTradesState =
   | { readonly kind: 'loading' }
   | { readonly kind: 'error' }
-  | { readonly kind: 'ready'; readonly entries: readonly JournalHistoryEntry[] };
+  | { readonly kind: 'ready'; readonly entries: readonly JournalHistoryEntry[]; readonly conversions?: Readonly<Record<string, TradeResultInHomeCurrency>> | null };
 
 interface ResultsDayTradesProps {
   readonly dayKey: string;
@@ -25,6 +27,13 @@ function outcomeMark(outcome: JournalHistoryEntry['visualPnl']['outcome']): stri
   return outcome === 'profit' ? '▲' : outcome === 'loss' ? '▼' : outcome === 'breakeven' ? '—' : '·';
 }
 
+/** Some trade of the day was converted to the home currency, or still needs a rate. */
+function hasHomeLines(state: Extract<ResultsDayTradesState, { kind: 'ready' }>): boolean {
+  const conversions = state.conversions;
+  if (!conversions) return false;
+  return state.entries.some(entry => { const kind = conversions[entry.trade.id]?.kind; return kind === 'converted' || kind === 'missing-rate'; });
+}
+
 /** The closed trades of one calendar day, under the month calendar. */
 export function ResultsDayTrades({ dayKey, timeZone, state, renderTradeLink, onClose }: ResultsDayTradesProps) {
   const time = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit', timeZone });
@@ -35,14 +44,16 @@ export function ResultsDayTrades({ dayKey, timeZone, state, renderTradeLink, onC
     </div>
     {state.kind === 'loading' ? <p className="kairos-pnl-calendar__notice">Loading this day's trades…</p> : null}
     {state.kind === 'error' ? <p className="kairos-pnl-calendar__notice" role="alert">Kairos could not load this day's trades. Your stored trades were not changed.</p> : null}
+    {state.kind === 'ready' && hasHomeLines(state) ? <p className="kairos-pnl-calendar__notice">Each result uses the exchange rate of the day it closed by the UTC clock, which can be a day before or after this calendar day.</p> : null}
     {state.kind === 'ready' ? <ul className="kairos-results-day-trades__list">
-      {state.entries.map(entry => <li key={entry.trade.id} data-outcome={entry.visualPnl.outcome}>
+      {state.entries.map(entry => { const line = state.conversions ? describeTradeInHomeCurrency(state.conversions[entry.trade.id]) : null; return <li key={entry.trade.id} data-outcome={entry.visualPnl.outcome}>
         <strong>{entry.trade.symbol}</strong>
         <span>{entry.trade.side === 'long' ? 'Long' : 'Short'}</span>
         <span><span aria-hidden="true">{outcomeMark(entry.visualPnl.outcome)}</span> {entry.visualPnl.label} {amount(entry)}</span>
+        {line ? <small className="kairos-results-day-trades__converted">{line}</small> : null}
         {entry.trade.closedAt ? <time dateTime={entry.trade.closedAt}>{time.format(new Date(entry.trade.closedAt))}</time> : null}
         {renderTradeLink(entry.trade.id)}
-      </li>)}
+      </li>; })}
     </ul> : null}
   </div>;
 }

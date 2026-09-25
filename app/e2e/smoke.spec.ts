@@ -471,7 +471,7 @@ test('(m) Stocks: an AAPL trade in shares, its picture without crypto candles, A
   await page.getByRole('button', { name: 'Set opened time to now' }).click();
   await page.getByRole('button', { name: 'Set closed time to now' }).click();
   await page.getByLabel('Currency code').fill('USD');
-  await expect(page.getByText('Your prices and your result are in USD. Kairos never converts them.')).toBeVisible();
+  await expect(page.getByText('Your prices and your result are in USD. Kairos never changes them; only your totals can show them in your home currency.')).toBeVisible();
   await page.getByRole('button', { name: 'Save trade' }).click();
   await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
 
