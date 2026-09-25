@@ -34,7 +34,7 @@ const FIXED_LABELS: Readonly<Record<string, string>> = Object.freeze({
 export function describePatternGroupLabel(_kind: TradePatternKind, group: TradePatternGroup): string {
   const { key } = group;
   if (key.startsWith('strategy:')) return group.name ?? 'A strategy';
-  const fixed = FIXED_LABELS[key];
+  const fixed = Object.hasOwn(FIXED_LABELS, key) ? FIXED_LABELS[key] : undefined;
   if (fixed !== undefined) return fixed;
   const weekday = /^weekday:(\d)$/.exec(key);
   if (weekday) return WEEKDAYS[Number.parseInt(weekday[1]!, 10)] ?? key;

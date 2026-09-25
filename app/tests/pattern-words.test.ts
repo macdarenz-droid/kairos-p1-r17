@@ -42,6 +42,8 @@ describe('T-042d the patterns\' plain words', () => {
     expect(describePatternGroupLabel('after-result', group('after-loss'))).toBe('After a loss');
     expect(describePatternGroupLabel('strategy', group('strategy:abc', 'Breakout 2'))).toBe('Breakout 2');
     expect(describePatternGroupLabel('strategy', group('no-strategy'))).toBe('No strategy named');
+    expect(describePatternGroupLabel('direction', group('constructor'))).toBe('constructor');
+    expect(describePatternGroupLabel('direction', group('toString'))).toBe('toString');
   });
 
   it('says how a group went, or that there are not enough trades yet', () => {
