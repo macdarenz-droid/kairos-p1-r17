@@ -1,5 +1,6 @@
 import type { MarketType, TradeSide, TradeStatus } from '../../domain/trades';
 import { parseForexPair, type ForexPair, type ForexPairProblem } from '../markets/forexPair';
+import { parseStockTicker, type StockTickerProblem } from '../markets/stockTicker';
 import type { SaveManualTradeInput } from './saveManualTrade';
 
 export type ManualTradeDraftMarketType = MarketType | '';
@@ -38,7 +39,8 @@ export type PrepareManualTradeSubmissionResult =
       readonly reason: 'selection-required';
     }
   | { readonly ok: false; readonly type: 'forex-pair'; readonly field: 'symbol'; readonly reason: ForexPairProblem }
-  | { readonly ok: false; readonly type: 'forex-price-currency'; readonly field: 'grossPnlCurrency'; readonly reason: 'not-the-quote-currency'; readonly pair: ForexPair };
+  | { readonly ok: false; readonly type: 'forex-price-currency'; readonly field: 'grossPnlCurrency'; readonly reason: 'not-the-quote-currency'; readonly pair: ForexPair }
+  | { readonly ok: false; readonly type: 'stock-ticker'; readonly field: 'symbol'; readonly reason: StockTickerProblem };
 
 export function createEmptyManualTradeDraft(): ManualTradeDraft {
   return {
@@ -91,6 +93,11 @@ export function prepareManualTradeSubmission(
       }
       priceCurrency = parsed.pair.quote;
     }
+  }
+  // P32: a new stock trade's symbol must be a ticker (D103). Its price currency is the trader's to type: never filled in, never refused (D104).
+  if (draft.marketType === 'stock') {
+    const ticker = parseStockTicker(draft.symbol);
+    if (!ticker.ok) return { ok: false, type: 'stock-ticker', field: 'symbol', reason: ticker.reason };
   }
 
   const input: SaveManualTradeInput = {

@@ -54,6 +54,12 @@
       "picture": null, "related": ["lot", "position-size"] },
     { "id": "lot", "plainWords": "Lot", "tradingTerm": "Lot (standard lot)", "alsoCalled": ["lots", "standard lot", "mini lot", "micro lot"],
       "explanation": "A set amount of a pair's first currency: 1 lot is 100,000 units, a mini lot 10,000 and a micro lot 1,000. Kairos saves your size in units, so 0.1 lots is saved as 10,000.",
-      "picture": null, "related": ["pip", "position-size"] }
+      "picture": null, "related": ["pip", "position-size"] },
+    { "id": "ticker", "plainWords": "Ticker", "tradingTerm": "Ticker symbol", "alsoCalled": ["ticker symbol", "stock symbol", "stock code"],
+      "explanation": "The short code of a company's shares on a stock exchange, such as AAPL for Apple. Some end with a dot and a code for the exchange, such as 7203.T in Tokyo or VOD.L in London. Kairos saves the ticker in capital letters and never guesses its currency from it.",
+      "picture": null, "related": ["share"] },
+    { "id": "share", "plainWords": "Share", "tradingTerm": "Share (stock)", "alsoCalled": ["shares", "stock", "fractional share", "part of a share"],
+      "explanation": "A small piece of a company that you can buy and sell. A stock's price is the price of one share, and Quantity is the number of shares you trade. Many brokers also sell parts of a share, such as 0.5 of a share.",
+      "picture": null, "related": ["ticker", "position-size"] }
   ]
 }

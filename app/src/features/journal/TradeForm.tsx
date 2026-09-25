@@ -20,6 +20,7 @@ import { Button, Field } from '../../design-system/primitives';
 import { JournalClosedTradeGuidance } from './JournalClosedTradeGuidance';
 import { JournalExecutionFields } from './JournalExecutionFields';
 import { ForexTradeNote, forexQuantityHint } from './ForexTradeNote';
+import { StockTradeNote, STOCK_QUANTITY_HINT, STOCK_TICKER_MESSAGES } from './StockTradeNote';
 import { JournalPriceCurrencyField } from './JournalPriceCurrencyField';
 import { TradeStrategyField } from './TradeStrategyField';
 import './tradeForm.css';
@@ -261,6 +262,7 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft }: 
         field: prepared.field,
         message: quickMessage(prepared.field) ?? (prepared.type === 'execution-draft-invalid' ? prepared.message
           : prepared.type === 'forex-pair' || prepared.type === 'forex-price-currency' ? forexMessage(prepared)
+          : prepared.type === 'stock-ticker' ? STOCK_TICKER_MESSAGES[prepared.reason]
           : requiredSelectionMessage(prepared.field)),
       });
       return;
@@ -371,7 +373,7 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft }: 
               <Field label="Exit price" id={`${idPrefix}-exit-price`} required invalid={quickInvalid('exitPrice')}>
                 {control => <input {...control} name="exitPrice" inputMode="decimal" autoComplete="off" value={quick.exitPrice} onChange={(event) => updateQuick('exitPrice', event.target.value)} />}
               </Field>
-              <Field label="Quantity" id={`${idPrefix}-quantity`} required invalid={quickInvalid('quantity')} hint={draft.marketType === 'forex' ? forexQuantityHint(draft.symbol, quick.quantity) ?? undefined : undefined}>
+              <Field label="Quantity" id={`${idPrefix}-quantity`} required invalid={quickInvalid('quantity')} hint={draft.marketType === 'forex' ? forexQuantityHint(draft.symbol, quick.quantity) ?? undefined : draft.marketType === 'stock' ? STOCK_QUANTITY_HINT : undefined}>
                 {control => <input {...control} name="quantity" inputMode="decimal" autoComplete="off" value={quick.quantity} onChange={(event) => updateQuick('quantity', event.target.value)} />}
               </Field>
             </> : (
@@ -428,6 +430,7 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft }: 
             ) : null}
           </div>
           {draft.marketType === 'forex' ? <ForexTradeNote symbol={draft.symbol} /> : null}
+          {draft.marketType === 'stock' ? <StockTradeNote symbol={draft.symbol} priceCurrency={draft.priceCurrency ?? ''} /> : null}
         </fieldset>
 
         <JournalPriceCurrencyField value={draft.priceCurrency ?? ''} onChange={value => update('priceCurrency', value)} disabled={isSaving} error={feedback?.kind === 'error' && feedback.field === 'grossPnlCurrency' ? feedback.message : undefined} />
