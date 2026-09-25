@@ -7,10 +7,10 @@
  */
 
 import { runKairosAtomicWrite, type KairosDatabase } from '../../data/database';
-import { ECB_RATE_MAX_AGE_DAYS, exchangeRateId, isEcbReferenceCurrency, type ExchangeRateRecord } from '../../domain/calculations/currencyConversion';
+import { ECB_RATE_MAX_AGE_DAYS, exchangeRateId, isEcbReferenceCurrency, isExchangeRateRecordShape, type ExchangeRateRecord } from '../../domain/calculations/currencyConversion';
 import type { EcbReferenceRate, EcbReferenceRateRequest, EcbReferenceRatesPort } from '../../services/exchange-rates/ecbReferenceRates';
 import { projectVisualPnlDayKey } from '../visual-pnl/dayBucket';
-import { shiftVisualPnlDayKey } from '../visual-pnl/dayKeyCalendar';
+import { isVisualPnlDayKey, shiftVisualPnlDayKey } from '../visual-pnl/dayKeyCalendar';
 
 export type { EcbReferenceRatesPort } from '../../services/exchange-rates/ecbReferenceRates';
 
@@ -26,14 +26,14 @@ export function ecbCanProvideRate(from: string, to: string): boolean {
   return from !== to && isEcbReferenceCurrency(from) && isEcbReferenceCurrency(to);
 }
 
-/** The bank rows behind missing pairs: one per currency (never EUR) and day, sorted by day, then currency. */
+/** The bank rows behind missing pairs: one per currency (never EUR) and real calendar day, sorted by day, then currency. */
 export function ecbRateNeeds(missing: readonly MissingPair[]): readonly EcbRateNeed[] {
   const keys = new Map<string, EcbRateNeed>();
   const add = (currency: string, day: string) => {
     if (currency !== 'EUR') keys.set(`${day}:${currency}`, Object.freeze({ currency, day }));
   };
   for (const pair of missing) {
-    if (!ecbCanProvideRate(pair.from, pair.to)) continue;
+    if (!ecbCanProvideRate(pair.from, pair.to) || !isVisualPnlDayKey(pair.day)) continue;
     add(pair.from, pair.day);
     add(pair.to, pair.day);
   }
@@ -88,7 +88,7 @@ export async function fetchMissingEcbRates(
   } catch {
     return Object.freeze({ ok: false as const, reason: 'unavailable' as const });
   }
-  const records = selectEcbRates(needs, published, options.now);
+  const records = selectEcbRates(needs, published, options.now).filter(isExchangeRateRecordShape);
   if (records.length > 0) {
     try {
       await runKairosAtomicWrite(db, ['exchangeRates'], async ({ repositories }) => {

@@ -173,4 +173,14 @@ describe('T-045d fetching the missing rates', () => {
     vi.spyOn(db.exchangeRates, 'put').mockRejectedValue(new Error('disk full'));
     expect(await fetchMissingEcbRates(db, port, [{ from: 'GBP', to: 'USD', day: '2026-09-18' }], { now: savedAt })).toEqual({ ok: false, reason: 'storage-error' });
   });
+
+  it('skips a day that is not a real calendar day, without asking or writing', async () => {
+    for (const day of ['2026-02-30', 'abc']) {
+      const db = await current(`bad-day-${day}`);
+      const { port, acquireRates } = fixturePort();
+      expect(await fetchMissingEcbRates(db, port, [{ from: 'GBP', to: 'EUR', day }], { now: savedAt })).toEqual({ ok: false, reason: 'nothing-to-fetch' });
+      expect(acquireRates).not.toHaveBeenCalled();
+      expect(await db.exchangeRates.count()).toBe(0);
+    }
+  });
 });
