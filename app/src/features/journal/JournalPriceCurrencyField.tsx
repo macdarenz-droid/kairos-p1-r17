@@ -8,7 +8,7 @@ interface Props {
   readonly error?: string;
 }
 
-/** Presentation only: the user supplies the unit; never derive it from a symbol or fee. */
+/** Presentation only: the user supplies the unit; it is never derived from a symbol or fee, except a forex pair's quote currency (P31, prepareManualTradeSubmission). */
 export function JournalPriceCurrencyField({ value, onChange, disabled, recorded, error }: Props) {
   const id = useId();
   return <fieldset className="kairos-trade-form__section" disabled={disabled}>

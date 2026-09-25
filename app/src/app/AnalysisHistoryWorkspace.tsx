@@ -70,6 +70,7 @@ export function AnalysisHistoryWorkspace({
   const tradeApplied = useRef<string | null>(null);
   const tradeId = entry?.trade.id ?? null;
   const tradeSymbol = typeof entry?.trade.symbol === 'string' ? entry.trade.symbol : null;
+  const tradeIsForex = entry?.trade.marketType === 'forex';
   const tradeTimes = entry && Array.isArray(entry.executions) ? tradeReviewTimes(entry) : null;
   const tradeStartMs = tradeTimes?.startMs ?? null, tradeEndMs = tradeTimes?.endMs ?? null;
   useEffect(() => {
@@ -79,13 +80,14 @@ export function AnalysisHistoryWorkspace({
   useEffect(() => {
     if (tradeId === null || tradeSymbol === null || metadata.phase !== 'ready' || tradeApplied.current === tradeId) return;
     tradeApplied.current = tradeId;
+    if (tradeIsForex) { setTradeSymbolMissing(false); return; }
     const wanted = normalizeTradeSymbol(tradeSymbol);
     const match = metadata.facts.find(item => item.instrument.symbol === wanted);
     setTradeSymbolMissing(!match);
     if (!match) return;
     setSymbol(current => (current === '' || autoSymbol.current ? (autoSymbol.current = true, match.instrument.symbol) : current));
     if (tradeStartMs !== null) setTimeframe(current => (current === '' || autoInterval.current ? (autoInterval.current = true, pickTradeReviewInterval(tradeStartMs, Date.now())) : current));
-  }, [tradeId, tradeSymbol, tradeStartMs, metadata]);
+  }, [tradeId, tradeSymbol, tradeIsForex, tradeStartMs, metadata]);
   const fact = metadata.phase === 'ready' ? metadata.facts.find(item => item.instrument.symbol === symbol) : undefined;
   const selected = Boolean(fact && interval);
   // The saved-trade chart opens on the trade's time window (the renderer session applies it after the first render).
@@ -120,7 +122,8 @@ export function AnalysisHistoryWorkspace({
       <SymbolPicker facts={metadata.facts} value={fact ? symbol : ''} onChange={next => { autoSymbol.current = false; setSymbol(next); }} disabled={metadata.phase !== 'ready' || !metadata.facts.length} />
       <label><span>Timeframe</span><select aria-label="Timeframe" value={interval} onChange={event => { autoInterval.current = false; setTimeframe(event.target.value); }}><option value="">Choose timeframe</option>{BINANCE_SPOT_CANDLE_INTERVALS.map(value => <option key={value} value={value}>{value === '1M' ? '1 month' : value}</option>)}</select></label>
     </div>
-    {tradeSymbolMissing && !fact ? <p role="status">This trade's symbol is not on Binance Spot.</p> : null}
+    {tradeIsForex && !fact ? <p role="status">The market chart has crypto markets from Binance only for now. Your forex trade is drawn in its picture above, with your plan, entries and exits.</p>
+      : tradeSymbolMissing && !fact ? <p role="status">This trade's symbol is not on Binance Spot.</p> : null}
     {metadata.phase === 'loading' ? <p role="status">Loading supported symbols…</p> : metadata.phase === 'error' ? <div role="alert"><p>Supported symbols are unavailable. Check your connection.</p><button type="button" onClick={() => setMetadataRevision(value => value + 1)}>Retry symbols</button></div> : !metadata.facts.length ? <p role="status">No supported symbols are available.</p> : !selected ? <div className="kairos-analysis-chart__empty"><p>Choose a symbol and timeframe to explore its candles.</p><p className="kairos-analysis-chart__note">You can use this chart without a saved trade.</p></div> : null}
     {selected ? <>
       <div className="kairos-analysis-chart__heading"><strong>{symbol} · {interval === '1M' ? '1 month' : interval}</strong><button type="button" onClick={() => setRevision(value => value + 1)}>Refresh candles</button></div>

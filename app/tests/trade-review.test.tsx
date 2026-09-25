@@ -43,7 +43,7 @@ it('shows exact plan, ordered actual executions, separate fees and the existing 
   const id = await start(); route(tradeReviewHref(id));
   await screen.findByRole('region', { name: 'Trade overview' });
   expect(within(screen.getByRole('region', { name: 'Saved plan' })).getByText('90')).toBeVisible();
-  const executions = within(screen.getByRole('region', { name: 'Actual executions' }));
+  const executions = within(screen.getByRole('region', { name: 'Your entries and exits' }));
   expect(executions.getByText('100')).toBeVisible(); expect(executions.getByText('120')).toBeVisible();
   expect(executions.getAllByRole('listitem')).toHaveLength(2);
   expect(within(screen.getByRole('region', { name: 'Recorded fees' })).getByText('0.3 USDT')).toBeVisible();
@@ -53,17 +53,17 @@ it('shows exact plan, ordered actual executions, separate fees and the existing 
 });
 it('keeps unknown currency and zero-execution results explicit instead of using plan prices', async () => {
   const id = await start({ grossPnlCurrency: undefined, executions: [], fees: [] }); route(tradeReviewHref(id));
-  await screen.findByText('No executions recorded.');
-  expect(screen.getByText('No actual executions are recorded. Planned prices alone do not establish a result.')).toBeVisible();
+  await screen.findByText('No entries or exits recorded.');
+  expect(screen.getByText('No entries or exits are recorded. Planned prices alone do not make a result.')).toBeVisible();
   expect(within(screen.getByRole('region', { name: 'Recorded result' })).getAllByText('Not available').length).toBeGreaterThan(0);
   expect(screen.getByText('No fees recorded.')).toBeVisible();
 });
 it('keeps fees attached to the correct execution and does not invent a missing association', async () => {
   const id = await start(); const entry = (await getJournalHistoryEntry(db, id))!;
   const ui = render(<TradeReviewDetails entry={{ ...entry, fees: [{ ...entry.fees[0], executionId: entry.executions[1].id }] }} />);
-  expect(screen.getByText('Execution 2 · Exit')).toBeVisible();
+  expect(screen.getByText('For exit 2')).toBeVisible();
   ui.rerender(<TradeReviewDetails entry={{ ...entry, fees: [{ ...entry.fees[0], executionId: 'missing' as typeof entry.executions[0]['id'] }] }} />);
-  expect(screen.getByText('Linked execution unavailable')).toBeVisible();
+  expect(screen.getByText('Its entry or exit is not available')).toBeVisible();
 });
 it('encodes a saved identity in a standalone link without confusing symbols or query characters', () => {
   const id = 'saved/id?#two trades'; render(<ReviewTradeLink id={id} />);

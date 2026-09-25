@@ -1,4 +1,5 @@
 import type { MarketType, TradeSide, TradeStatus } from '../../domain/trades';
+import { parseForexPair, type ForexPair, type ForexPairProblem } from '../markets/forexPair';
 import type { SaveManualTradeInput } from './saveManualTrade';
 
 export type ManualTradeDraftMarketType = MarketType | '';
@@ -35,7 +36,9 @@ export type PrepareManualTradeSubmissionResult =
       readonly type: 'draft-incomplete';
       readonly field: ManualTradeDraftRequiredField;
       readonly reason: 'selection-required';
-    };
+    }
+  | { readonly ok: false; readonly type: 'forex-pair'; readonly field: 'symbol'; readonly reason: ForexPairProblem }
+  | { readonly ok: false; readonly type: 'forex-price-currency'; readonly field: 'grossPnlCurrency'; readonly reason: 'not-the-quote-currency'; readonly pair: ForexPair };
 
 export function createEmptyManualTradeDraft(): ManualTradeDraft {
   return {
@@ -76,8 +79,22 @@ export function prepareManualTradeSubmission(
     return { ok: false, type: 'draft-incomplete', field: 'status', reason: 'selection-required' };
   }
 
+  // P31: a forex symbol must be a currency pair, and — only when its quote is a currency Kairos knows — its prices and result are in the pair's quote currency (D97).
+  let priceCurrency = draft.priceCurrency;
+  if (draft.marketType === 'forex') {
+    const parsed = parseForexPair(draft.symbol);
+    if (!parsed.ok) return { ok: false, type: 'forex-pair', field: 'symbol', reason: parsed.reason };
+    if (parsed.pair.quoteKnown) {
+      const typed = draft.priceCurrency?.trim().toUpperCase() ?? '';
+      if (typed !== '' && typed !== parsed.pair.quote) {
+        return { ok: false, type: 'forex-price-currency', field: 'grossPnlCurrency', reason: 'not-the-quote-currency', pair: parsed.pair };
+      }
+      priceCurrency = parsed.pair.quote;
+    }
+  }
+
   const input: SaveManualTradeInput = {
-    ...(draft.priceCurrency?.trim() ? { grossPnlCurrency: draft.priceCurrency } : {}),
+    ...(priceCurrency?.trim() ? { grossPnlCurrency: priceCurrency } : {}),
     symbol: draft.symbol,
     marketType: draft.marketType,
     side: draft.side,

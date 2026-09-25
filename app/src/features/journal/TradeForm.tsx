@@ -9,6 +9,7 @@ import {
   type ManualTradeDraft,
   type ManualTradeDraftRequiredField,
   type ManualTradeValidationField,
+  type PrepareManualTradeSubmissionResult,
 } from '../../application/trades';
 import { prepareManualTradeExecutionDetails, type ManualExecutionRow, type ManualFeeRow } from '../../application/trades/manualTradeExecutionDraft';
 import { PRICE_CURRENCY_INPUT_ERROR } from '../../application/trades/priceCurrencyInput';
@@ -18,6 +19,7 @@ import type { StrategyId } from '../../domain/discipline';
 import { Button, Field } from '../../design-system/primitives';
 import { JournalClosedTradeGuidance } from './JournalClosedTradeGuidance';
 import { JournalExecutionFields } from './JournalExecutionFields';
+import { ForexTradeNote, forexQuantityHint } from './ForexTradeNote';
 import { JournalPriceCurrencyField } from './JournalPriceCurrencyField';
 import { TradeStrategyField } from './TradeStrategyField';
 import './tradeForm.css';
@@ -151,6 +153,12 @@ const STATUS_OPTIONS = [
   ['cancelled', 'Cancelled'],
 ] as const;
 
+/** P31: plain words for a forex pair problem found before saving. */
+function forexMessage(problem: Extract<PrepareManualTradeSubmissionResult, { type: 'forex-pair' | 'forex-price-currency' }>): string {
+  if (problem.type === 'forex-price-currency') return `Prices of ${problem.pair.label} are in ${problem.pair.quote}. Enter ${problem.pair.quote} as the currency code, or leave it empty.`;
+  return problem.reason === 'same-currency' ? 'A currency pair has two different currencies, such as EURUSD.' : 'Type the currency pair as 6 letters, such as EURUSD or EUR/USD.';
+}
+
 function requiredSelectionMessage(field: ManualTradeDraftRequiredField): string {
   if (field === 'marketType') return 'Choose a market.';
   if (field === 'side') return 'Choose long or short.';
@@ -251,7 +259,9 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft }: 
       setFeedback({
         kind: 'error',
         field: prepared.field,
-        message: quickMessage(prepared.field) ?? (prepared.type === 'execution-draft-invalid' ? prepared.message : requiredSelectionMessage(prepared.field)),
+        message: quickMessage(prepared.field) ?? (prepared.type === 'execution-draft-invalid' ? prepared.message
+          : prepared.type === 'forex-pair' || prepared.type === 'forex-price-currency' ? forexMessage(prepared)
+          : requiredSelectionMessage(prepared.field)),
       });
       return;
     }
@@ -361,7 +371,7 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft }: 
               <Field label="Exit price" id={`${idPrefix}-exit-price`} required invalid={quickInvalid('exitPrice')}>
                 {control => <input {...control} name="exitPrice" inputMode="decimal" autoComplete="off" value={quick.exitPrice} onChange={(event) => updateQuick('exitPrice', event.target.value)} />}
               </Field>
-              <Field label="Quantity" id={`${idPrefix}-quantity`} required invalid={quickInvalid('quantity')}>
+              <Field label="Quantity" id={`${idPrefix}-quantity`} required invalid={quickInvalid('quantity')} hint={draft.marketType === 'forex' ? forexQuantityHint(draft.symbol, quick.quantity) ?? undefined : undefined}>
                 {control => <input {...control} name="quantity" inputMode="decimal" autoComplete="off" value={quick.quantity} onChange={(event) => updateQuick('quantity', event.target.value)} />}
               </Field>
             </> : (
@@ -417,9 +427,10 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft }: 
               </Field>
             ) : null}
           </div>
+          {draft.marketType === 'forex' ? <ForexTradeNote symbol={draft.symbol} /> : null}
         </fieldset>
 
-        <JournalPriceCurrencyField value={draft.priceCurrency ?? ''} onChange={value => update('priceCurrency', value)} disabled={isSaving} error={fieldHasError(feedback, 'grossPnlCurrency') ? PRICE_CURRENCY_INPUT_ERROR : undefined} />
+        <JournalPriceCurrencyField value={draft.priceCurrency ?? ''} onChange={value => update('priceCurrency', value)} disabled={isSaving} error={feedback?.kind === 'error' && feedback.field === 'grossPnlCurrency' ? feedback.message : undefined} />
         {isQuick ? null : <>
           <JournalExecutionFields
             executions={executions} fees={fees}

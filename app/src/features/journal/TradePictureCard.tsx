@@ -31,7 +31,7 @@ export function tradePictureCandleBodyWidth(count: number, plotWidth: number): n
 // The price range is the trade's (T-039b); candles past it are cut at the plot edge.
 /** Trading words that explain an info row; tapping the "?" loads the glossary. */
 const INFO_GLOSSARY_TERMS: Readonly<Partial<Record<TradePictureInfoKey, string>>> = {
-  result: 'result-after-fees', 'planned-reward': 'reward-to-risk', 'actual-r': 'times-what-you-risked', stop: 'stop', target: 'target', size: 'position-size',
+  result: 'result-after-fees', 'planned-reward': 'reward-to-risk', 'actual-r': 'times-what-you-risked', stop: 'stop', target: 'target', size: 'position-size', pips: 'pip', 'pip-value': 'pip',
 };
 
 const toMs = (iso: string) => Date.parse(iso);
@@ -206,7 +206,7 @@ export function TradePictureCard({ model, candlesLoading = false, svgRef, compac
           {model.rewardBox ? <BoxLabel box={model.rewardBox} scale={scale} kind="reward" /> : null}
         </> : null}
       </svg>
-      {notes && noCandles ? <p className="kairos-trade-picture__note">{candlesLoading ? 'Loading candles…' : 'Candles need a connection.'}</p> : null}
+      {notes && noCandles ? <p className="kairos-trade-picture__note">{!model.marketHasCandles ? 'Candles are shown for crypto trades only for now.' : candlesLoading ? 'Loading candles…' : 'Candles need a connection.'}</p> : null}
       {notes && noPlan ? <p className="kairos-trade-picture__note">Add a stop and target to see your risk box.</p> : null}
     </div>
     {compact ? null : <div className="kairos-trade-picture__info">
