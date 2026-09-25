@@ -28,7 +28,11 @@ describe('T-044a stock tickers', () => {
   });
 
   it('refuses anything that is not a ticker', () => {
-    for (const typed of ['', '   ']) expect(parseStockTicker(typed)).toEqual({ ok: false, reason: 'ticker-required' });
+    for (const typed of ['', '   ']) {
+      const result = parseStockTicker(typed);
+      expect(result).toEqual({ ok: false, reason: 'ticker-required' });
+      expect(Object.isFrozen(result)).toBe(true);
+    }
     for (const typed of ['NASDAQ:AAPL', 'AAPL US', '$AAPL', 'AAPL!', 'EUR/USD', 'BRK/B', '.AAPL', 'AAPL.', 'BRK..B', 'BRK.-B', '-AB', 'ÄPPL', 'A'.repeat(21)]) {
       const result = parseStockTicker(typed);
       expect(result).toEqual({ ok: false, reason: 'not-a-ticker' });

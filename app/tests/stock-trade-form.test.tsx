@@ -137,7 +137,9 @@ describe('T-044b logging a stock trade', () => {
     type('Currency code', 'usd');
     fireEvent.click(saveButton('practice'));
     await screen.findByRole('status');
-    expect((await db.trades.toArray())[0]).toMatchObject({ source: 'paper', marketType: 'stock', grossPnlCurrency: 'USD' });
+    const trades = await db.trades.toArray();
+    expect(trades).toHaveLength(1);
+    expect(trades[0]).toMatchObject({ source: 'paper', marketType: 'stock', grossPnlCurrency: 'USD' });
   });
 
   it('uses plain words, and adds "Ticker" and "Share" to the trading words', () => {
