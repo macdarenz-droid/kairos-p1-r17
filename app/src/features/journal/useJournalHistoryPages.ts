@@ -63,7 +63,7 @@ export function useJournalHistoryPages(db: KairosDatabase, scope: JournalHistory
     }
   }, [db, scope, status]);
 
-  useEffect(() => { void load(0); }, [load]);
+  useEffect(() => { void load(0); return () => { sequence.current += 1; }; }, [load]);
 
   const showOlder = useCallback(() => {
     if (cursor === null) return;

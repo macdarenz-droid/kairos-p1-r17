@@ -58,7 +58,7 @@ describe('P26.4 the calculator link', () => {
     fill('1000', '1', '100', '95');
     expect(within(calculator()).getByRole('link', { name: 'Try it as a practice trade' }).getAttribute('href')).toBe(`/practice?${LONG}`);
     fill('100', '1', '100', '97');
-    expect(within(calculator()).getByRole('link', { name: 'Try it as a practice trade' }).getAttribute('href')).toContain('quantity=0.33333333');
+    expect(within(calculator()).getByRole('link', { name: 'Try it as a practice trade' }).getAttribute('href')).toBe('/practice?side=long&entry=100&stop=97&quantity=0.33333333');
   });
 });
 

@@ -72,6 +72,7 @@ export function PracticeMoneyCard({ db, refreshRevision }: { readonly db: Kairos
     event.preventDefault();
     setSaving(true);
     setSaveFailed(false);
+    setFieldError(null);
     const result = await savePracticeMoney(db, { startAmount: amount, currency });
     setSaving(false);
     if (result.ok) {

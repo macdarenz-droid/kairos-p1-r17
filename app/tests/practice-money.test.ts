@@ -58,7 +58,7 @@ describe('P26.2 practice money storage', () => {
     expect(await savePracticeMoney(db, { startAmount: '1000', currency: 'usdt' }, { now })).toEqual({ ok: true, money: money('1000', 'USDT') });
     const records = await db.metadata.toArray();
     expect(records).toHaveLength(1);
-    expect(records[0]).toMatchObject({ key: practiceMoneyMetadataKey, updatedAt: now() });
+    expect(records[0]).toMatchObject({ key: 'preferences.practice-money.v1', updatedAt: now() });
     expect(JSON.parse(records[0].value)).toEqual({ version: 1, startAmount: '1000', currency: 'USDT' });
     expect(await readPracticeMoney(createKairosRepositories(db).metadata)).toEqual(money('1000', 'USDT'));
     expect((await inspectKairosDatabaseIntegrity(db)).ok).toBe(true);
