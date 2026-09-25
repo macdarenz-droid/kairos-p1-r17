@@ -27,7 +27,7 @@ export function tradePictureCandleBodyWidth(count: number, plotWidth: number): n
 }
 
 // Pixel geometry only: prices go through the chart module's one decimal → drawing
-// conversion. The exact decimal values stay in the model and are shown as text, unrounded.
+// conversion. The exact decimal values stay in the model and are shown as text, unrounded, except the two ratios, which the model rounds for reading.
 /** Trading words that explain an info row; tapping the "?" loads the glossary. */
 const INFO_GLOSSARY_TERMS: Readonly<Partial<Record<TradePictureInfoKey, string>>> = {
   result: 'result-after-fees', 'planned-reward': 'reward-to-risk', 'actual-r': 'times-what-you-risked', stop: 'stop', target: 'target', size: 'position-size',

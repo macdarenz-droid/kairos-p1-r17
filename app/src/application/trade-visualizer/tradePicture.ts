@@ -5,6 +5,7 @@ import {
   decimalAbs,
   decimalAdd,
   decimalMultiply,
+  decimalRound,
   decimalSubtract,
   type TradeMetrics,
 } from '../../domain/calculations';
@@ -22,6 +23,8 @@ import { projectPlannedRewardToRisk } from '../risk-reward/plannedRewardToRisk';
 
 /** Space above the highest and below the lowest price, as a share of the price span. */
 export const TRADE_PICTURE_PRICE_PADDING = '0.08';
+/** The planned reward and the actual result are shown to this many places, half up. */
+export const TRADE_PICTURE_RATIO_PLACES = 2;
 
 export interface TradePictureInput {
   readonly trade: TradeRecord;
@@ -74,7 +77,7 @@ export interface TradePictureInfoRow {
   readonly value: string | null;
   /** Unit of `value` when it has one (currency, "ms"). */
   readonly unit: string | null;
-  /** Plain-word sentence for this row, or null when the value is unknown. */
+  /** Plain-word sentence for this row, or null when the value is unknown. The two ratios are rounded here to TRADE_PICTURE_RATIO_PLACES; `value` keeps the exact owner value. */
   readonly text: string | null;
 }
 
@@ -181,6 +184,18 @@ function durationText(durationMs: number): string {
   return restHours === 0 ? `${days} days` : `${days} days ${restHours} h`;
 }
 
+/** A ratio rounded for reading; null when unknown or when the kernel refuses it. */
+function shownRatio(value: DecimalString | null): DecimalString | null {
+  if (value === null) return null;
+  const rounded = decimalRound(value, TRADE_PICTURE_RATIO_PLACES, 'half-up');
+  return rounded.ok ? rounded.value : null;
+}
+
+/** "+1.95", "-0.11", and "0" for a rounded zero (never "+0"). */
+function signed(value: DecimalString): string {
+  return value.startsWith('-') || value === '0' ? value : `+${value}`;
+}
+
 const STATUS_WORDS: Readonly<Record<TradeRecord['status'], string>> = { draft: 'Planned', open: 'Open', closed: 'Closed', cancelled: 'Cancelled' };
 
 function row(key: TradePictureInfoKey, label: string, value: string | null, unit: string | null, text: (value: string) => string): TradePictureInfoRow {
@@ -251,6 +266,9 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
 
   const reward = plannedRewardToRisk(trade.side, entry, stop, target);
   const realized = actualR(metrics, entry, stop);
+  const rewardShown = shownRatio(reward), realizedShown = shownRatio(realized);
+  const rewardText = rewardShown === null ? null : `Reward is ${rewardShown}× the risk`;
+  const realizedText = realizedShown === null ? null : `${signed(realizedShown)}× what you risked`;
   const durationMs = startMs !== null && endMs !== null && (trade.status === 'closed' || trade.status === 'open') ? Math.max(0, endMs - startMs) : null;
   const size = metrics !== null && metrics.totalEnteredQuantity !== '0' ? metrics.totalEnteredQuantity : plannedQuantity;
   const currency = metrics?.netPnlCurrency ?? null;
@@ -265,8 +283,8 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
     row('average-exit', 'Average exit', metrics?.averageExitPrice ?? null, null, value => value),
     row('size', 'Size', size, null, value => value),
     row('result', 'Result after fees', metrics?.netPnl ?? null, currency, value => (currency ? `${value} ${currency}` : value)),
-    row('planned-reward', 'Planned reward', reward, null, value => `Reward is ${value}× the risk`),
-    row('actual-r', 'Actual result', realized, null, value => `${value.startsWith('-') ? '' : '+'}${value}× what you risked`),
+    row('planned-reward', 'Planned reward', rewardText === null ? null : reward, null, () => rewardText ?? ''),
+    row('actual-r', 'Actual result', realizedText === null ? null : realized, null, () => realizedText ?? ''),
     row('duration', 'How long it lasted', durationMs === null ? null : String(durationMs), 'ms', value => durationText(Number(value))),
     row('status', 'Status', STATUS_WORDS[trade.status], null, value => value),
   ];
@@ -278,7 +296,7 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
   if (stop === null) missing.push({ part: 'stop', message: 'No stop, so no risk box.' });
   if (target === null) missing.push({ part: 'target', message: 'No target, so no reward box.' });
   if (metrics?.netPnl == null) missing.push({ part: 'result', message: 'No result after fees yet.' });
-  if (realized === null) missing.push({ part: 'actual-r', message: 'No result in R: it needs a result, a planned entry and a stop.' });
+  if (realizedText === null) missing.push({ part: 'actual-r', message: 'No result in R: it needs a result, a planned entry and a stop.' });
 
   return Object.freeze({
     symbol: trade.symbol,
