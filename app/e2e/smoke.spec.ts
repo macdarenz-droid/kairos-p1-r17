@@ -446,3 +446,59 @@ test('(l) Forex: a EUR/USD trade in units, its picture without crypto candles, a
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   expect(errors).toEqual([]);
 });
+
+test('(m) Stocks: an AAPL trade in shares, its picture without crypto candles, Analysis and Replay', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  await activate(page);
+  await page.goto('/journal');
+  const marketRequests: string[] = [];
+  page.on('request', request => {
+    const url = new URL(request.url());
+    if (url.hostname === 'data-api.binance.vision' && (url.pathname === '/api/v3/klines' || url.pathname === '/api/v3/exchangeInfo')) marketRequests.push(url.pathname);
+  });
+
+  await page.getByRole('button', { name: 'Quick log' }).click();
+  await page.getByLabel(/^Market/).selectOption('stock');
+  await page.getByLabel(/^Symbol/).fill('aapl');
+  await expect(page.getByText(/AAPL: every price is the price of one share/)).toBeVisible();
+  await expect(page.getByText(/Kairos never guesses a stock's currency from its ticker/)).toBeVisible();
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Entry price/).fill('187.5');
+  await page.getByLabel(/^Exit price/).fill('190');
+  await page.getByLabel(/^Quantity/).fill('10');
+  await expect(page.getByLabel(/^Quantity/)).toHaveAccessibleDescription('Number of shares, such as 10. Parts of a share, such as 0.5, are fine.');
+  await page.getByRole('button', { name: 'Set opened time to now' }).click();
+  await page.getByRole('button', { name: 'Set closed time to now' }).click();
+  await page.getByLabel('Currency code').fill('USD');
+  await expect(page.getByText('Your prices and your result are in USD. Kairos never converts them.')).toBeVisible();
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+
+  const card = page.locator('.kairos-history-card').filter({ hasText: 'AAPL' });
+  await expect(card.locator('[data-outcome="profit"]')).toContainText('25 USD');
+  await expect(card).toContainText('Candles are shown for crypto trades only for now.');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+
+  await page.getByRole('button', { name: 'Open the AAPL trade picture' }).click();
+  const dialog = page.getByRole('dialog', { name: 'AAPL trade' });
+  await expect(dialog.locator('.kairos-trade-picture__title')).toHaveText('AAPL · Long · Closed');
+  await expect(dialog.locator('[data-info="size"] dd')).toHaveText('10 shares');
+  await expect(dialog.locator('[data-info="per-share"] dd')).toHaveText('+2.5 USD before fees');
+  expect(marketRequests).toEqual([]);
+  await dialog.getByRole('button', { name: 'Close' }).click();
+
+  await card.getByRole('link', { name: 'View trade' }).click();
+  await expect(page).toHaveURL(/\/analysis\?trade=/);
+  await expect(page.getByRole('heading', { name: 'Your trade' })).toBeVisible();
+  await expect(page.getByText(/The market chart has crypto markets from Binance only for now\. Your stock trade is drawn in its picture above/)).toBeVisible();
+  const result = page.getByRole('region', { name: 'Recorded result' });
+  await expect(result).toContainText('Result before fees');
+  await expect(result).toContainText('25 USD');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+
+  await page.goto('/practice');
+  await page.getByRole('link', { name: 'Replay the past, one candle at a time' }).click();
+  await expect(page.getByLabel(/^Market/)).toHaveAccessibleDescription('Replay has crypto markets from Binance only for now, such as BTCUSDT.');
+  expect(errors).toEqual([]);
+});

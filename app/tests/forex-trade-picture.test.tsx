@@ -120,7 +120,8 @@ describe('T-043c the forex trade picture', () => {
     expect(value(model, 'size')).toMatchObject({ unit: null, text: '2' });
     expect(model.marketHasCandles).toBe(true);
     expect(tradePictureHasCandleSource('forex')).toBe(false);
-    for (const market of ['crypto', 'stock', 'futures', 'options', 'other'] as MarketType[]) expect(tradePictureHasCandleSource(market)).toBe(true);
+    expect(tradePictureHasCandleSource('stock')).toBe(false);
+    for (const market of ['crypto', 'futures', 'options', 'other'] as MarketType[]) expect(tradePictureHasCandleSource(market)).toBe(true);
   });
 
   it('never asks the network for a forex trade', async () => {

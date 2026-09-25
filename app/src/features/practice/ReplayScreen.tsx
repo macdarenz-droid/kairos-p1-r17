@@ -150,7 +150,7 @@ export function ReplayScreen({ db, market, playStepMs = REPLAY_PLAY_STEP_MS }: {
     })() : <>
       <Card as="form" className="kairos-replay__setup" aria-labelledby={setupTitleId} noValidate onSubmit={submit}>
         <h2 id={setupTitleId} tabIndex={-1}>Choose a market and a moment</h2>
-        <Field label="Market" id={marketId} required hint="A Binance market, for example BTCUSDT." error={errorFor('market')}>
+        <Field label="Market" id={marketId} required hint="Replay has crypto markets from Binance only for now, such as BTCUSDT." error={errorFor('market')}>
           {control => <input {...control} value={form.market} autoCapitalize="characters" autoComplete="off" spellCheck={false} onChange={event => setForm(value => ({ ...value, market: event.target.value }))} />}
         </Field>
         <Field label="Candle size" id={sizeId} required hint="How much time each candle covers." error={errorFor('candleSize')}>

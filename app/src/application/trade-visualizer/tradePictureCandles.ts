@@ -35,11 +35,11 @@ export function normalizeTradeSymbol(symbol: string): string {
 }
 
 /**
- * P31: whether the trade picture asks the candle source for this market. Forex has none yet:
- * no keyless browser source gives clean forex candles (D99). Every other market asks as before, by symbol.
+ * P31/P32: whether Kairos has a candle source for this market, for the trade picture and the Analysis market chart.
+ * Forex and stocks have none yet: no keyless browser source gives clean candles for them (D99, D106). Every other market asks as before, by symbol.
  */
 export function tradePictureHasCandleSource(marketType: MarketType): boolean {
-  return marketType !== 'forex';
+  return marketType !== 'forex' && marketType !== 'stock';
 }
 
 export interface TradePictureCandleWindow {

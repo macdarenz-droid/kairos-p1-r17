@@ -31,7 +31,7 @@ export function tradePictureCandleBodyWidth(count: number, plotWidth: number): n
 // The price range is the trade's (T-039b); candles past it are cut at the plot edge.
 /** Trading words that explain an info row; tapping the "?" loads the glossary. */
 const INFO_GLOSSARY_TERMS: Readonly<Partial<Record<TradePictureInfoKey, string>>> = {
-  result: 'result-after-fees', 'planned-reward': 'reward-to-risk', 'actual-r': 'times-what-you-risked', stop: 'stop', target: 'target', size: 'position-size', pips: 'pip', 'pip-value': 'pip',
+  result: 'result-after-fees', 'planned-reward': 'reward-to-risk', 'actual-r': 'times-what-you-risked', stop: 'stop', target: 'target', size: 'position-size', pips: 'pip', 'pip-value': 'pip', 'per-share': 'share',
 };
 
 const toMs = (iso: string) => Date.parse(iso);
