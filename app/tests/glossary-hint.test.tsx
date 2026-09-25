@@ -107,4 +107,23 @@ describe('P24.8 "What does this mean?" on the trade card', () => {
     expect(screen.queryByRole('dialog', { name: 'Stop' })).toBeNull();
     expect(screen.getByRole('dialog', { name: 'BTCUSDT trade' })).toBeInTheDocument();
   });
+
+  it('explains the card words once per list: only the first card has the hints', async () => {
+    const name = `kairos-glossary-hint-${crypto.randomUUID()}`; names.push(name);
+    const db: KairosDatabase = createKairosDatabase(name); await openKairosDatabase(db);
+    for (const [symbol, at, end] of [['BTCUSDT', '2026-09-20T09:00:00.000Z', '2026-09-20T10:00:00.000Z'], ['ETHUSDT', '2026-09-21T09:00:00.000Z', '2026-09-21T10:00:00.000Z']] as const) {
+      const saved = await saveManualTrade(db, {
+        symbol, marketType: 'crypto', side: 'long', status: 'closed', openedAt: at, closedAt: end, grossPnlCurrency: 'USDT',
+        executions: [{ type: 'entry', price: '100', quantity: '1', executedAt: at }, { type: 'exit', price: '110', quantity: '1', executedAt: end }],
+      });
+      if (!saved.ok) throw new Error('fixture');
+    }
+    const offline: TradePictureCandleLoader = async () => null;
+    const { container } = render(<TradePictureCandleLoaderContext.Provider value={offline}><MemoryRouter><JournalRoute db={db} /></MemoryRouter></TradePictureCandleLoaderContext.Provider>);
+    await waitFor(() => expect(container.querySelectorAll('.kairos-history-card')).toHaveLength(2));
+    const [first, second] = [...container.querySelectorAll<HTMLElement>('.kairos-history-card')];
+    for (const label of CARD_HINTS) expect(within(first!).getByRole('button', { name: hintName(label) })).toBeInTheDocument();
+    for (const label of CARD_HINTS) expect(within(second!).queryByRole('button', { name: hintName(label) })).toBeNull();
+    expect(within(second!).getByText('Result after fees')).toBeInTheDocument();
+  });
 });

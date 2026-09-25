@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { projectPlannedRewardToRisk } from '../src/application/risk-reward';
 import { projectTradePicture, type TradePictureInput } from '../src/application/trade-visualizer';
 import { calculateRMultiple, calculateRiskPerformance, calculateTradeMetrics } from '../src/domain/calculations';
 import {
@@ -167,5 +168,43 @@ describe('T-039b trade picture price range is the trade', () => {
     const model = projectTradePicture({ trade: trade({ status: 'open', closedAt: null }), plans: plan(null, null, null), executions: [], fees: [], candles: [before], now });
     expect(model.priceRange).toEqual({ low: '94.2', high: '105.8' });
     expect(model.candles.map(candle => candle.beyond)).toEqual([null]);
+  });
+});
+
+describe('T-039c the picture\'s ratios read to 2 places', () => {
+  const ownerInput: TradePictureInput = {
+    trade: trade(),
+    plans: plan('85854.34', '85300', '86900', '0.1'),
+    executions: [fill('e1', 'entry', '85854.34', '0.1', opened), fill('x1', 'exit', '85792.01', '0.1', closed)],
+    fees: [],
+    candles: null,
+    now,
+  };
+
+  it('the owner\'s trade: rounded text, exact values', () => {
+    const model = projectTradePicture(ownerInput);
+    const planned = projectPlannedRewardToRisk('long', dec('85854.34'), dec('85300'), dec('86900'));
+    const realized = calculateRiskPerformance(dec('-6.233'), dec('554.34'), dec('0.1'));
+    if (!planned.ok || !realized.ok) throw new Error('fixture owners');
+    expect(value(model, 'planned-reward')).toMatchObject({ value: planned.value.ratio, text: 'Reward is 1.89× the risk' });
+    expect(planned.value.ratio.startsWith('1.886315')).toBe(true);
+    expect(value(model, 'actual-r')).toMatchObject({ value: realized.realizedR, text: '-0.11× what you risked' });
+  });
+
+  it('rounds half up, away from zero', () => {
+    expect(value(projectTradePicture({ ...longInput, plans: plan('100', '90', '130.25') }), 'planned-reward')?.text).toBe('Reward is 3.03× the risk');
+    const loss = projectTradePicture({ ...longInput, executions: [fill('e1', 'entry', '100', '2', opened), fill('x1', 'exit', '98.75', '2', closed)], fees: [] });
+    expect(value(loss, 'actual-r')?.text).toBe('-0.13× what you risked');
+  });
+
+  it('a result that rounds to zero reads 0×, never +0×', () => {
+    const flat = projectTradePicture({ ...longInput, executions: [fill('e1', 'entry', '100', '2', opened), fill('x1', 'exit', '99.96', '2', closed)], fees: [] });
+    expect(value(flat, 'actual-r')?.text).toBe('0× what you risked');
+  });
+
+  it('adds no padding zeros', () => {
+    const model = projectTradePicture(longInput);
+    expect(value(model, 'planned-reward')?.text).toBe('Reward is 3× the risk');
+    expect(value(model, 'actual-r')?.text).toBe('+1.95× what you risked');
   });
 });

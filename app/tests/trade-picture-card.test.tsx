@@ -142,3 +142,22 @@ describe('T-039b trade picture at card size', () => {
     expect(candleGroups(container)[0]!.querySelector('rect')!.getAttribute('height')).toBe('2');
   });
 });
+
+describe('T-039c rounded ratios in the picture', () => {
+  it('the image name reads the owner\'s result to 2 places', () => {
+    const owner: TradePictureInput = {
+      ...input,
+      plans: [{ ...plan('85300', '86900')[0]!, plannedEntryPrice: dec('85854.34'), plannedQuantity: dec('0.1') }],
+      executions: [
+        { id: 'e1' as TradeExecutionId, tradeId, type: 'entry', price: dec('85854.34'), quantity: dec('0.1'), executedAt: opened, createdAt: opened },
+        { id: 'x1' as TradeExecutionId, tradeId, type: 'exit', price: dec('85792.01'), quantity: dec('0.1'), executedAt: closed, createdAt: closed },
+      ],
+      fees: [],
+      candles: null,
+    };
+    render(<TradePictureCard model={projectTradePicture(owner)} />);
+    const label = screen.getByRole('img').getAttribute('aria-label')!;
+    expect(label).toContain('-0.11× what you risked');
+    expect(label).not.toContain('0.1124');
+  });
+});
