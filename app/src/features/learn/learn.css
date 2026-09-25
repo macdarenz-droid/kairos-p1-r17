@@ -76,3 +76,15 @@
 .kairos-lessons__link > span { color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-sm); }
 .kairos-lessons__link > .kairos-lessons__facts { font-size: var(--kairos-font-size-xs); }
 .kairos-lessons__picture .kairos-learn-picture { max-width: 10rem; }
+
+.kairos-learn .kairos-lesson__progress { color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-sm); }
+.kairos-lesson__dots { display: flex; flex-wrap: wrap; gap: var(--kairos-space-2); margin: 0; padding: 0; list-style: none; }
+.kairos-lesson__dots li { inline-size: 10px; block-size: 10px; border: 2px solid var(--kairos-border-default); border-radius: var(--kairos-radius-full); }
+.kairos-lesson__dots li[data-state="done"] { background: var(--kairos-accent-primary); border-color: var(--kairos-accent-primary); }
+/* The current step is shown by its width, not by colour alone. */
+.kairos-lesson__dots li[data-state="current"] { inline-size: 28px; background: var(--kairos-accent-primary); border-color: var(--kairos-accent-primary); }
+.kairos-lesson__step { display: grid; gap: var(--kairos-space-4); overflow-wrap: anywhere; }
+.kairos-lesson__step h2 { margin: 0; font-size: var(--kairos-font-size-xl); }
+.kairos-lesson__nav { display: flex; gap: var(--kairos-space-3); }
+.kairos-lesson__nav .kairos-button { flex: 1 1 0; }
+.kairos-lesson__next-lesson { display: grid; gap: var(--kairos-space-1); padding: var(--kairos-space-4); border: 1px solid var(--kairos-border-subtle); border-radius: var(--kairos-radius-lg); background: var(--kairos-surface-card); color: var(--kairos-text-primary); font-weight: var(--kairos-font-weight-semibold); text-decoration: none; overflow-wrap: anywhere; }
