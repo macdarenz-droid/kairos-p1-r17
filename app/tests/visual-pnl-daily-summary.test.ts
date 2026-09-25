@@ -38,6 +38,7 @@ describe('P13.7 Visual P&L daily summary composition', () => {
       dayKey: '2026-09-03',
       timeZone: 'Australia/Sydney',
       summary: { available: true, currency: 'USD', total: '7.15', outcome: 'profit', tradeCount: 2 },
+      tradeResults: [visual('profit', '10.25', 'USD'), visual('loss', '-3.1', 'USD')],
     });
     expect(result.blockedTrades).toEqual([]);
   });

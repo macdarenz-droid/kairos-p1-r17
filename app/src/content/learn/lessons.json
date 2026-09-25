@@ -1,7 +1,7 @@
 {
   "version": 1,
   "lessons": [
-    { "id": "set-your-stop-first", "revision": 1, "title": "Set your stop first",
+    { "id": "set-your-stop-first", "revision": 2, "title": "Set your stop first",
       "summary": "Where your stop goes, and why you choose it before you buy or sell.",
       "level": 1, "minutes": 3,
       "steps": [
@@ -26,7 +26,8 @@
             "choices": [ { "text": "Below 100", "right": true }, { "text": "Above 100", "right": false }, { "text": "Exactly at 100", "right": false } ],
             "explanation": "On a buy you lose when the price falls, so the stop sits below your entry. A stop at 100 leaves no room: the smallest dip would close the trade." } ] },
         { "id": "try-it", "title": "Try it", "blocks": [
-          { "kind": "try", "text": "When you log your next trade, open Trade plan and fill in Planned stop before you save.", "tool": "journal" } ] }
+          { "kind": "try", "text": "When you log your next trade, open Trade plan and fill in Planned stop before you save.", "tool": "journal" },
+          { "kind": "try", "text": "Or practise it first with pretend money: save a practice trade with a Planned stop.", "tool": "practice" } ] }
       ] },
     { "id": "how-much-to-buy", "revision": 1, "title": "How much to buy for your risk",
       "summary": "Choose the most you are willing to lose, then let your stop decide how much you can buy.",

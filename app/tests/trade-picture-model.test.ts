@@ -135,3 +135,37 @@ describe('T-027a trade picture model', () => {
     expect(value(model, 'status')?.value).toBe('Planned');
   });
 });
+
+describe('T-039b trade picture price range is the trade', () => {
+  const later: MarketCandle[] = [
+    { openTime: '2026-09-20T14:00:00.000Z', closeTime: '2026-09-20T14:59:59.999Z', open: dec('121'), high: dec('122'), low: dec('40'), close: dec('45') },
+    { openTime: '2026-09-20T15:00:00.000Z', closeTime: '2026-09-20T15:59:59.999Z', open: dec('45'), high: dec('50'), low: dec('38'), close: dec('41') },
+  ];
+  const earlier: MarketCandle = { openTime: '2026-09-20T07:00:00.000Z', closeTime: '2026-09-20T07:59:59.999Z', open: dec('150'), high: dec('200'), low: dec('150'), close: dec('190') };
+
+  it('candles before and after the trade do not stretch the range, and are marked beyond it', () => {
+    const model = projectTradePicture({ ...longInput, candles: [earlier, ...candles, ...later] });
+    expect(model.priceRange).toEqual({ low: '86.8', high: '133.2' });
+    expect(model.candles).toHaveLength(5);
+    expect(model.candles.map(candle => [candle.time, candle.beyond])).toEqual([
+      ['2026-09-20T07:00:00.000Z', 'above'],
+      ['2026-09-20T08:00:00.000Z', null],
+      ['2026-09-20T10:00:00.000Z', null],
+      ['2026-09-20T14:00:00.000Z', null],
+      ['2026-09-20T15:00:00.000Z', 'below'],
+    ]);
+    expect(model.timeRange).toEqual({ from: '2026-09-20T07:00:00.000Z', to: '2026-09-20T15:59:59.999Z' });
+  });
+
+  it('a candle during the trade does stretch it', () => {
+    const model = projectTradePicture({ ...longInput, candles: [candles[0]!, { ...candles[1]!, low: dec('80') }] });
+    expect(model.priceRange).toEqual({ low: '76', high: '134' });
+  });
+
+  it('falls back to all candles when there is no plan, no fill and no candle in the trade', () => {
+    const before: MarketCandle = { openTime: '2026-09-20T07:00:00.000Z', closeTime: '2026-09-20T07:59:59.999Z', open: dec('98'), high: dec('105'), low: dec('95'), close: dec('104') };
+    const model = projectTradePicture({ trade: trade({ status: 'open', closedAt: null }), plans: plan(null, null, null), executions: [], fees: [], candles: [before], now });
+    expect(model.priceRange).toEqual({ low: '94.2', high: '105.8' });
+    expect(model.candles.map(candle => candle.beyond)).toEqual([null]);
+  });
+});

@@ -155,3 +155,50 @@ test('(f) Library: a lesson from start to finish', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 2, name: 'Lesson finished' })).toBeVisible();
   await expect(progress).toHaveText(`All ${steps} steps done`);
 });
+
+test('(g) Practice: pretend money, a plan from the calculator, and a practice trade', async ({ page }) => {
+  await activate(page);
+  await page.goto('/practice');
+  const money = page.getByRole('region', { name: 'Your practice money' });
+  await money.getByLabel(/^Starting amount/).fill('1000');
+  await money.getByLabel(/^Money currency/).fill('usdt');
+  await money.getByRole('button', { name: 'Start practising' }).click();
+  const moneyNow = money.locator('.kairos-practice-money__now strong');
+  await expect(moneyNow).toHaveText('1000 USDT');
+
+  await page.goto('/library/calculators');
+  const calculator = page.getByRole('region', { name: 'How much can I buy?' });
+  await calculator.getByLabel('Money in your account').fill('1000');
+  await calculator.getByLabel("Most you're willing to lose (%)").fill('1');
+  await calculator.getByLabel('Entry price').fill('100');
+  await calculator.getByLabel('Stop price').fill('95');
+  await calculator.getByRole('link', { name: 'Try it as a practice trade' }).click();
+
+  await expect(page).toHaveURL(/\/practice\?side=long&entry=100&stop=95&quantity=2$/);
+  await expect(page.getByLabel(/^Direction/)).toHaveValue('long');
+  await expect(page.getByLabel('Planned stop')).toHaveValue('95');
+  await expect(page.getByLabel('Planned quantity')).toHaveValue('2');
+  await page.getByLabel(/^Symbol/).fill('BTCUSDT');
+  await page.getByLabel(/^Market/).selectOption('crypto');
+  await page.getByLabel(/^Status/).selectOption('closed');
+  await page.locator('#kairos-practice-opened-at').fill('2026-09-20T09:00');
+  await page.locator('#kairos-practice-closed-at').fill('2026-09-20T10:00');
+  await page.getByLabel('Currency code').fill('USDT');
+  await page.getByRole('button', { name: 'Add entry' }).click();
+  await page.getByLabel('Entry 1 price').fill('100');
+  await page.getByLabel('Entry 1 quantity').fill('2');
+  await page.getByLabel('Entry 1 date and time').fill('2026-09-20T09:00');
+  await page.getByRole('button', { name: 'Add exit' }).click();
+  await page.getByLabel('Exit 2 price').fill('110');
+  await page.getByLabel('Exit 2 quantity').fill('2');
+  await page.getByLabel('Exit 2 date and time').fill('2026-09-20T10:00');
+  await page.getByRole('button', { name: 'Save practice trade' }).click();
+
+  await expect(page.locator('.kairos-journal__feedback--success')).toHaveText('Practice trade saved. It stays out of your journal results.');
+  await expect(page).toHaveURL(/\/practice$/);
+  await expect(moneyNow).toHaveText('1020 USDT');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+
+  await page.goto('/journal');
+  await expect(page.getByText('No saved trades yet. Your first saved trade will appear here.')).toBeVisible();
+});

@@ -28,6 +28,8 @@ interface TradeFormProps {
   readonly onSaved: () => Promise<void>;
   /** The device clock for the "Now" buttons; tests inject a fixed one. */
   readonly now?: () => Date;
+  /** The draft the form opens with, read once when it mounts (Practice passes a plan from the calculator); later changes are ignored. */
+  readonly initialDraft?: ManualTradeDraft;
 }
 
 type TradeFormMode = 'quick' | 'full';
@@ -174,10 +176,11 @@ function fieldHasError(feedback: Feedback, field: string): boolean {
 }
 
 /** The one trade form for Journal (real trades) and Practice (paper trades); only the save command and wording differ. */
-export function TradeForm({ db, kind, onSaved, now = wallClock }: TradeFormProps) {
+export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft }: TradeFormProps) {
   const text = TRADE_FORM_TEXT[kind];
   const { idPrefix, planIdPrefix } = text;
-  const [draft, setDraft] = useState<ManualTradeDraft>(() => createEmptyManualTradeDraft());
+  const [draft, setDraft] = useState<ManualTradeDraft>(() => initialDraft ?? createEmptyManualTradeDraft());
+  const [planShown, setPlanShown] = useState(() => initialDraft !== undefined && Object.values(initialDraft.plan).some(value => value.trim() !== ''));
   const [executions, setExecutions] = useState<readonly ManualExecutionRow[]>([]);
   const [fees, setFees] = useState<readonly ManualFeeRow[]>([]);
   const feedbackRef = useRef<HTMLDivElement>(null);
@@ -269,6 +272,7 @@ export function TradeForm({ db, kind, onSaved, now = wallClock }: TradeFormProps
     // Commit the reset and the success banner before the page refreshes its lists.
     flushSync(() => {
       setDraft(createEmptyManualTradeDraft());
+      setPlanShown(false);
       setExecutions([]);
       setFees([]);
       setQuick(createEmptyQuickTradeLogDraft());
@@ -415,7 +419,7 @@ export function TradeForm({ db, kind, onSaved, now = wallClock }: TradeFormProps
           <JournalClosedTradeGuidance status={draft.status} types={executions.map(row => row.type)} />
         </>}
 
-        <details className="kairos-trade-form__optional" open={feedback?.kind === 'error' && feedback.field?.startsWith('plan.') || undefined}>
+        <details className="kairos-trade-form__optional" open={(feedback?.kind === 'error' && feedback.field?.startsWith('plan.')) || planShown || undefined}>
           <summary>Trade plan · Optional</summary>
         <fieldset className="kairos-trade-form__section" disabled={isSaving}>
           <legend>Trade plan <span>Optional</span></legend>

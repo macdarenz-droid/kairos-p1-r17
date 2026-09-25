@@ -18,4 +18,4 @@ export * from './cumulativeRealizedPnl';
 export * from './dayKeyCalendar';
 
 export * from './monthGrid';
-export * from './resultLine';
+export * from './resultCandles';
