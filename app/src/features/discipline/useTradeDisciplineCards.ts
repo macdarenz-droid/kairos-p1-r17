@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { loadTradeDisciplineCards } from '../../application/discipline';
 import type { KairosDatabase } from '../../data/database';
-import type { DisciplineLists, TradeDisciplineRecord } from '../../domain/discipline';
+import type { DisciplineLists, Strategy, TradeDisciplineRecord } from '../../domain/discipline';
 
 export type TradeDisciplineCardsState =
   | Readonly<{ kind: 'off' }>
   | Readonly<{ kind: 'loading' }>
   | Readonly<{ kind: 'failed' }>
-  | Readonly<{ kind: 'ready'; lists: DisciplineLists; records: ReadonlyMap<string, TradeDisciplineRecord> }>;
+  | Readonly<{ kind: 'ready'; lists: DisciplineLists; records: ReadonlyMap<string, TradeDisciplineRecord>; strategies: readonly Strategy[] }>;
 
 const OFF: TradeDisciplineCardsState = Object.freeze({ kind: 'off' });
 const LOADING: TradeDisciplineCardsState = Object.freeze({ kind: 'loading' });
@@ -29,7 +29,7 @@ export function useTradeDisciplineCards(db: KairosDatabase | undefined, tradeIds
     setState(previous => (previous.kind === 'ready' ? previous : LOADING));
     const ids = idsKey === '' ? [] : idsKey.split('\n');
     loadTradeDisciplineCards(db, ids).then(
-      data => { if (current === request.current) setState(Object.freeze({ kind: 'ready', lists: data.lists, records: data.records })); },
+      data => { if (current === request.current) setState(Object.freeze({ kind: 'ready', lists: data.lists, records: data.records, strategies: data.strategies })); },
       () => { if (current === request.current) setState(FAILED); },
     );
   }, [db, idsKey]);
@@ -39,7 +39,7 @@ export function useTradeDisciplineCards(db: KairosDatabase | undefined, tradeIds
       if (previous.kind !== 'ready') return previous;
       const records = new Map(previous.records);
       records.set(record.tradeId, record);
-      return Object.freeze({ kind: 'ready', lists: previous.lists, records });
+      return Object.freeze({ kind: 'ready', lists: previous.lists, records, strategies: previous.strategies });
     });
   }, []);
 
