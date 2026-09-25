@@ -36,7 +36,7 @@ test('(b) every route renders inside the phone width without page errors', async
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
   await activate(page);
-  for (const path of ['/', '/journal', '/analysis', '/library', '/more', '/practice', '/goals', '/strategies', '/coach', '/practice/coach', '/settings', '/profile', '/does-not-exist']) {
+  for (const path of ['/', '/journal', '/analysis', '/library', '/more', '/practice', '/goals', '/strategies', '/coach', '/practice/coach', '/patterns', '/practice/patterns', '/settings', '/profile', '/does-not-exist']) {
     await page.goto(path);
     await expect(page.locator('.kairos-shell'), path).toBeVisible();
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
@@ -351,6 +351,48 @@ test('(j) Coach: a trade that broke its plan, on its card, in the Journal and on
     await expect(page.getByRole('heading', { name: title, level: 2 })).toBeVisible();
   }
   await expect(page.getByRole('link', { name: 'View trade' }).first()).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  expect(errors).toEqual([]);
+});
+
+test('(k) Patterns: a closed trade, then your patterns and your practice patterns', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  await activate(page);
+  await page.goto('/journal');
+  await page.getByRole('button', { name: 'Use Asia/Manila (this device)' }).click();
+
+  await page.getByRole('button', { name: 'Quick log' }).click();
+  await page.getByLabel(/^Symbol/).fill('ETHUSDT');
+  await page.getByLabel(/^Market/).selectOption('crypto');
+  await page.getByLabel(/^Direction/).selectOption('short');
+  await page.getByLabel(/^Entry price/).fill('100');
+  await page.getByLabel(/^Exit price/).fill('90');
+  await page.getByLabel(/^Quantity/).fill('1');
+  await page.getByRole('button', { name: 'Set opened time to now' }).click();
+  await page.getByRole('button', { name: 'Set closed time to now' }).click();
+  await page.getByLabel('Currency code').fill('USDT');
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+
+  await page.goto('/more');
+  await page.getByRole('link', { name: 'Patterns', exact: true }).click();
+  await expect(page).toHaveURL(/\/patterns$/);
+  await expect(page.getByRole('heading', { name: 'Your patterns', level: 1 })).toBeVisible();
+  const overall = page.getByRole('region', { name: 'All your trades' });
+  await expect(overall).toContainText('1 trade.');
+  await expect(overall).toContainText('Not enough trades with a result yet (1 of 10).');
+  for (const title of ['Keeping your plan', 'After a win or a loss', 'By strategy', 'By day of the week', 'By time of day', 'Long or short']) {
+    await expect(page.getByRole('heading', { name: title, level: 2 })).toBeVisible();
+  }
+  await expect(page.getByRole('region', { name: 'Long or short' }).getByRole('listitem').filter({ hasText: 'Short (you sold first)' })).toContainText('1 trade.');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+
+  await page.goto('/practice');
+  await page.getByRole('link', { name: 'Your practice patterns' }).click();
+  await expect(page).toHaveURL(/\/practice\/patterns$/);
+  await expect(page.getByRole('heading', { name: 'Your practice patterns', level: 1 })).toBeVisible();
+  await expect(page.getByText(/^No closed practice trades in the last 90 days yet\./)).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   expect(errors).toEqual([]);
 });

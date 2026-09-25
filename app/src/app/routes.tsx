@@ -40,6 +40,10 @@ export const appRoutes = [
         const { CoachScreen } = await import('../features/discipline/CoachScreen');
         return { Component: function PracticeCoachRoute() { return <CoachScreen db={kairosDatabase} scope="practice" renderTradeLink={id => <ReviewTradeLink id={id} />} />; } };
       } },
+      { path: 'practice/patterns', lazy: async () => {
+        const { PatternsScreen } = await import('../features/patterns/PatternsScreen');
+        return { Component: function PracticePatternsRoute() { return <PatternsScreen db={kairosDatabase} scope="practice" />; } };
+      } },
       { path: 'goals', lazy: async () => ({ Component: (await import('./GoalsRoute')).GoalsRoute }) },
       { path: 'strategies', lazy: async () => {
         const { StrategiesScreen } = await import('../features/discipline/StrategiesScreen');
@@ -48,6 +52,10 @@ export const appRoutes = [
       { path: 'coach', lazy: async () => {
         const { CoachScreen } = await import('../features/discipline/CoachScreen');
         return { Component: function CoachRoute() { return <CoachScreen db={kairosDatabase} scope="real" renderTradeLink={id => <ReviewTradeLink id={id} />} />; } };
+      } },
+      { path: 'patterns', lazy: async () => {
+        const { PatternsScreen } = await import('../features/patterns/PatternsScreen');
+        return { Component: function PatternsRoute() { return <PatternsScreen db={kairosDatabase} scope="real" />; } };
       } },
       { path: 'settings', lazy: async () => ({ Component: (await import('./SettingsRoute')).SettingsRoute }) },
       { path: 'profile', lazy: async () => ({ Component: (await import('./ProfileRoute')).ProfileRoute }) },

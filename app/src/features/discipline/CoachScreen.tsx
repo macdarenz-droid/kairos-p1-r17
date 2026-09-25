@@ -96,6 +96,7 @@ export function CoachScreen({ db, scope, renderTradeLink, now = wallClock }: Coa
       </div>
     </> : null}
     {result?.kind === 'ready' ? <p className="kairos-coach__zone">Time zone: {result.timeZone}</p> : null}
+    <p><CoachLink to={practice ? '/practice/patterns' : '/patterns'}>{practice ? 'See your practice patterns' : 'See your patterns'}</CoachLink></p>
     <p><CoachLink to={practice ? '/practice' : '/journal'}>{practice ? 'Back to Practice' : 'Back to your Journal'}</CoachLink></p>
   </section>;
 }
