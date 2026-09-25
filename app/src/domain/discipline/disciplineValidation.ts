@@ -6,7 +6,9 @@ import {
   KAIROS_PRE_TRADE_CHECKLIST_KEYS,
   type LegacyTradeDisciplineRecord,
   type TradeDisciplineRecord,
+  type TradeStrategyMark,
 } from './disciplineTypes';
+import { isStrategyName, parseStrategyRules } from './strategies';
 import { KAIROS_DEFAULT_DISCIPLINE_LISTS, isDisciplineLabel, isDisciplineListItemId, type DisciplineListItem } from './disciplineLists';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -136,4 +138,21 @@ export function upgradeLegacyTradeDisciplineRecord(record: LegacyTradeDiscipline
 export function validateTradeDisciplineRecord(record: TradeDisciplineRecord): DomainValidationResult<TradeDisciplineRecord> {
   if (!isTradeDisciplineRecordShape(record)) return { ok: false, reason: 'invalid-discipline-record' };
   return { ok: true, value: record };
+}
+
+/** P28: a trade's strategy snapshot: a valid strategy copy, ticks only on its written rules (once each), and when it was chosen. */
+export function isTradeStrategyMark(value: unknown): value is TradeStrategyMark {
+  if (!isRecord(value) || !isDisciplineListItemId(value.strategyId)) return false;
+  if (typeof value.revision !== 'number' || !Number.isSafeInteger(value.revision) || value.revision < 1) return false;
+  if (!isStrategyName(value.name)) return false;
+  const rules = parseStrategyRules(value.rules);
+  if (!rules.ok || !Array.isArray(value.answers)) return false;
+  const written = new Set(rules.rules.filter(rule => rule.kind === 'written').map(rule => rule.id));
+  const seen = new Set<string>();
+  for (const answer of value.answers) {
+    if (!isRecord(answer) || typeof answer.ruleId !== 'string' || !written.has(answer.ruleId) || seen.has(answer.ruleId)) return false;
+    if (answer.answer !== 'yes' && answer.answer !== 'no') return false;
+    seen.add(answer.ruleId);
+  }
+  return isIsoMoment(value.linkedAt);
 }
