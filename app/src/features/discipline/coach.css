@@ -9,3 +9,8 @@
 .kairos-coach-note__trades li { display:grid; gap:var(--kairos-space-1); min-width:0; padding-top:var(--kairos-space-3); border-top:1px solid var(--kairos-border-subtle); }
 .kairos-coach-note [data-bar="planned"] > span { background:var(--kairos-text-secondary); }
 .kairos-coach-note [data-bar="traded"] > span { background:var(--kairos-accent-primary); }
+.kairos-card.kairos-coach-card { display:grid; gap:var(--kairos-space-2); min-width:0; overflow-wrap:anywhere; }
+.kairos-coach-card.kairos-coach-card h3, .kairos-coach-card.kairos-coach-card p { margin:0; }
+.kairos-coach-card__heading { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:var(--kairos-space-2); }
+.kairos-coach-card.kairos-coach-card .kairos-coach-card__heading p, .kairos-coach-card.kairos-coach-card .kairos-coach-card__count { color:var(--kairos-text-secondary); font-size:var(--kairos-font-size-sm); }
+.kairos-coach-card.kairos-coach-card .kairos-coach-card__title { color:var(--kairos-text-primary); font-weight:var(--kairos-font-weight-semibold); }
