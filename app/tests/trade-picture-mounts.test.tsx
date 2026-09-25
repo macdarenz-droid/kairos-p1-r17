@@ -36,6 +36,16 @@ async function seedClosedTrade(db: KairosDatabase) {
 const offline: TradePictureCandleLoader = async () => null;
 
 describe('T-027d trade picture on the cards', () => {
+  it('the picture\'s Closed time equals the card header (T-039d)', async () => {
+    const db = await database();
+    await seedClosedTrade(db);
+    const { container } = render(<TradePictureCandleLoaderContext.Provider value={offline}><MemoryRouter><JournalRoute db={db} /></MemoryRouter></TradePictureCandleLoaderContext.Provider>);
+    fireEvent.click(await screen.findByRole('button', { name: 'Open the BTCUSDT trade picture' }));
+    const dialog = screen.getByRole('dialog', { name: 'BTCUSDT trade' });
+    const header = container.querySelector('.kairos-history-card > time')!;
+    expect(header.textContent).toBe(dialog.querySelector('[data-info="closed"] dd')!.textContent);
+  });
+
   it('Journal shows a picture for a closed trade; without candles it says they need a connection, and it opens full size', async () => {
     const db = await database();
     await seedClosedTrade(db);

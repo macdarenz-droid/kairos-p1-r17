@@ -5,9 +5,10 @@
 .kairos-trade-picture__box rect { stroke: none; }
 .kairos-trade-picture__box--risk rect { fill: var(--kairos-trade-risk-zone); }
 .kairos-trade-picture__box--reward rect { fill: var(--kairos-trade-reward-zone); }
-.kairos-trade-picture__box text { font-size: 10px; font-weight: 600; }
-.kairos-trade-picture__box--risk text { fill: var(--kairos-trade-stop); }
-.kairos-trade-picture__box--reward text { fill: var(--kairos-trade-target); }
+.kairos-trade-picture__box-label rect { fill: var(--kairos-chart-background); opacity: 0.85; }
+.kairos-trade-picture__box-label text { font-size: 10px; font-weight: 600; }
+.kairos-trade-picture__box-label--risk text { fill: var(--kairos-trade-stop); }
+.kairos-trade-picture__box-label--reward text { fill: var(--kairos-trade-target); }
 .kairos-trade-picture__candle--up line, .kairos-trade-picture__candle--up rect, .kairos-trade-picture__candle--up polygon { stroke: var(--kairos-chart-wick-up); fill: var(--kairos-chart-candle-up); }
 .kairos-trade-picture__candle--down line, .kairos-trade-picture__candle--down rect, .kairos-trade-picture__candle--down polygon { stroke: var(--kairos-chart-wick-down); fill: var(--kairos-chart-candle-down); }
 .kairos-trade-picture__candle line { stroke-width: 1; }

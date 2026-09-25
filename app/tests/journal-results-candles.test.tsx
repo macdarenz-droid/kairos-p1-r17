@@ -64,7 +64,7 @@ describe('P13.A3 ResultsCandles', () => {
     expect(heading).toHaveTextContent('▼');
     expect(heading).toHaveTextContent('-60 USD');
     expect(container.querySelector('.kairos-results-candles')!.getAttribute('data-outcome')).toBe('loss');
-    expect([...container.querySelectorAll('.kairos-results-candles__axis span')].map((span) => span.textContent)).toEqual(['1 September 2026', '3 September 2026']);
+    expect([...container.querySelectorAll('.kairos-results-candles__date')].map((date) => date.textContent)).toEqual(['1 Sep', '2 Sep', '3 Sep']);
     const numbers = container.querySelector('details')!;
     expect(within(numbers).getByText('Show the numbers')).toBeInTheDocument();
     expect(within(numbers).getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual(['Day', 'Start', 'Highest', 'Lowest', 'End']);
@@ -79,7 +79,7 @@ describe('P13.A3 ResultsCandles', () => {
     expect(groups).toHaveLength(1);
     expect(groups[0].getAttribute('data-direction')).toBe('down');
     expect(groups[0].querySelector('[data-mark="down"]')).not.toBeNull();
-    expect(container.querySelectorAll('.kairos-results-candles__axis span')).toHaveLength(1);
+    expect([...container.querySelectorAll('.kairos-results-candles__date')].map((date) => date.textContent)).toEqual(['25 Sep']);
     expect(container.querySelector('.kairos-results-candles__heading')).toHaveTextContent('▼');
   });
 
@@ -152,5 +152,60 @@ describe('P13.A3 the candles on the pages', () => {
     await waitFor(() => expect(region.querySelector('[data-candle-day="2026-09-16"]')?.getAttribute('data-direction')).toBe('up'));
     expect(region.querySelector('[data-candle-day="2026-09-18"]')?.getAttribute('data-direction')).toBe('down');
     expect(region.querySelector('[data-candle-day="2026-09-17"]')).toBeNull();
+  });
+});
+
+describe('T-039d dates and value labels in the total picture', () => {
+  afterEach(cleanup);
+  const dates = (container: HTMLElement) => [...container.querySelectorAll('.kairos-results-candles__date')];
+  const daily = (count: number) => candlesOf(...Array.from({ length: count }, (_, i) => entry(`2026-09-${String(i + 1).padStart(2, '0')}T10:00:00.000Z`, visual('1'))));
+
+  it('three days: a date under each candle, and the highest and lowest total at the right', () => {
+    const { container } = render(<ResultsCandles projection={threeDays()} />);
+    expect(dates(container).map((date) => date.textContent)).toEqual(['1 Sep', '2 Sep', '3 Sep']);
+    dates(container).forEach((date, index) => {
+      expect(Number(date.getAttribute('x'))).toBeCloseTo(Number(candle(container, index).querySelector('line')!.getAttribute('x1')));
+      expect(date.getAttribute('text-anchor')).toBe('middle');
+    });
+    const highest = container.querySelector('[data-value="highest"]')!, lowest = container.querySelector('[data-value="lowest"]')!;
+    expect(highest.textContent).toBe('100');
+    expect(lowest.textContent).toBe('-60');
+    const zeroY = Number(container.querySelector('.kairos-results-candles__zero-label')!.getAttribute('y'));
+    expect(Number(highest.getAttribute('y'))).toBeLessThan(zeroY);
+    expect(zeroY).toBeLessThan(Number(lowest.getAttribute('y')));
+  });
+
+  it('7 days get every date; 8 days get the first, middle and last', () => {
+    const seven = render(<ResultsCandles projection={daily(7)} />);
+    expect(dates(seven.container).map((date) => date.textContent)).toEqual(['1 Sep', '2 Sep', '3 Sep', '4 Sep', '5 Sep', '6 Sep', '7 Sep']);
+    cleanup();
+    const { container } = render(<ResultsCandles projection={daily(8)} />);
+    expect(dates(container).map((date) => date.textContent)).toEqual(['1 Sep', '4 Sep', '8 Sep']);
+    expect(dates(container).map((date) => date.getAttribute('text-anchor'))).toEqual(['start', 'middle', 'end']);
+    expect(Number(dates(container)[0]!.getAttribute('x'))).toBe(4);
+    expect(Number(dates(container)[2]!.getAttribute('x'))).toBe(302);
+  });
+
+  it('the 30-day cap: first, middle and last dates, and no lowest label crowding the zero', () => {
+    const { container } = render(<ResultsCandles projection={candlesOf(...Array.from({ length: 31 }, (_, i) => entry(`2026-08-${String(i + 1).padStart(2, '0')}T10:00:00.000Z`, visual('1'))))} />);
+    expect(dates(container).map((date) => date.textContent)).toEqual(['2 Aug', '16 Aug', '31 Aug']);
+    expect(container.querySelector('[data-value="highest"]')!.textContent).toBe('31');
+    expect(container.querySelector('[data-value="lowest"]')).toBeNull();
+  });
+
+  it('the owner\'s one-day loss: one date, the lowest total, and no repeated 0', () => {
+    const { container } = render(<ResultsCandles projection={candlesOf(entry('2026-09-25T10:00:00.000Z', visual('-6.233', 'USDT')))} />);
+    expect(dates(container).map((date) => date.textContent)).toEqual(['25 Sep']);
+    const lowest = container.querySelector('[data-value="lowest"]')!;
+    expect(lowest.textContent).toBe('-6.233');
+    expect(lowest.hasAttribute('textLength')).toBe(false);
+    expect(container.querySelector('[data-value="highest"]')).toBeNull();
+  });
+
+  it('squeezes a long total into the right strip', () => {
+    const { container } = render(<ResultsCandles projection={candlesOf(entry('2026-09-25T10:00:00.000Z', visual('-123456.789')))} />);
+    const lowest = container.querySelector('[data-value="lowest"]')!;
+    expect(lowest.getAttribute('textLength')).toBe('52');
+    expect(lowest.getAttribute('lengthAdjust')).toBe('spacingAndGlyphs');
   });
 });

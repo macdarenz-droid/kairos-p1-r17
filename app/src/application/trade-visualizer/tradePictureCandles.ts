@@ -6,18 +6,26 @@ const MINUTE_MS = 60_000;
 const HOUR_MS = 60 * MINUTE_MS;
 const DAY_MS = 24 * HOUR_MS;
 
-/** Picture timeframes, smallest first, with their candle length. */
+/** Picture timeframes, smallest first, with their candle length. Neighbours are at most 3× apart (T-039d). */
 export const TRADE_PICTURE_INTERVALS = Object.freeze([
   Object.freeze({ interval: '1m', ms: MINUTE_MS }),
+  Object.freeze({ interval: '3m', ms: 3 * MINUTE_MS }),
   Object.freeze({ interval: '5m', ms: 5 * MINUTE_MS }),
   Object.freeze({ interval: '15m', ms: 15 * MINUTE_MS }),
+  Object.freeze({ interval: '30m', ms: 30 * MINUTE_MS }),
   Object.freeze({ interval: '1h', ms: HOUR_MS }),
+  Object.freeze({ interval: '2h', ms: 2 * HOUR_MS }),
   Object.freeze({ interval: '4h', ms: 4 * HOUR_MS }),
+  Object.freeze({ interval: '6h', ms: 6 * HOUR_MS }),
+  Object.freeze({ interval: '8h', ms: 8 * HOUR_MS }),
+  Object.freeze({ interval: '12h', ms: 12 * HOUR_MS }),
   Object.freeze({ interval: '1d', ms: DAY_MS }),
+  Object.freeze({ interval: '3d', ms: 3 * DAY_MS }),
   Object.freeze({ interval: '1w', ms: 7 * DAY_MS }),
 ] as const);
 
-export const TRADE_PICTURE_MAX_CANDLES = 150;
+/** A picture window holds at most this many candles, so a body is at least 4 units wide (T-039d). */
+export const TRADE_PICTURE_MAX_WINDOW_CANDLES = 48;
 export const TRADE_PICTURE_PADDING_FRACTION = 0.2;
 export const TRADE_PICTURE_MIN_PADDING_CANDLES = 3;
 
@@ -36,16 +44,23 @@ export interface TradePictureCandleWindow {
 
 /**
  * The picture window: the trade padded by max(20% of its length, 3 candles) on
- * each side, on the smallest timeframe that shows the trade itself in at most
- * 150 candles. Null when the trade has no start or ends before it starts.
+ * each side, on the smallest timeframe whose whole window holds at most
+ * TRADE_PICTURE_MAX_WINDOW_CANDLES candles (1w when none does). Null when the
+ * trade has no start or ends before it starts.
  */
 export function planTradePictureCandleWindow(startMs: number, endMs: number): TradePictureCandleWindow | null {
   if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs < startMs) return null;
   const length = endMs - startMs;
-  const choice = TRADE_PICTURE_INTERVALS.find(item => length / item.ms <= TRADE_PICTURE_MAX_CANDLES) ?? TRADE_PICTURE_INTERVALS[TRADE_PICTURE_INTERVALS.length - 1];
-  const padding = Math.max(length * TRADE_PICTURE_PADDING_FRACTION, TRADE_PICTURE_MIN_PADDING_CANDLES * choice.ms);
-  const startTimeMs = Math.floor(startMs - padding), endTimeMs = Math.ceil(endMs + padding);
-  return Object.freeze({ interval: choice.interval, startTimeMs, endTimeMs, limit: Math.ceil((endTimeMs - startTimeMs) / choice.ms) + 1 });
+  const windowFor = (choice: (typeof TRADE_PICTURE_INTERVALS)[number]): TradePictureCandleWindow => {
+    const padding = Math.max(length * TRADE_PICTURE_PADDING_FRACTION, TRADE_PICTURE_MIN_PADDING_CANDLES * choice.ms);
+    const startTimeMs = Math.floor(startMs - padding), endTimeMs = Math.ceil(endMs + padding);
+    return Object.freeze({ interval: choice.interval, startTimeMs, endTimeMs, limit: Math.ceil((endTimeMs - startTimeMs) / choice.ms) + 1 });
+  };
+  for (const choice of TRADE_PICTURE_INTERVALS) {
+    const window = windowFor(choice);
+    if (window.limit <= TRADE_PICTURE_MAX_WINDOW_CANDLES) return window;
+  }
+  return windowFor(TRADE_PICTURE_INTERVALS[TRADE_PICTURE_INTERVALS.length - 1]);
 }
 
 const parseMs = (iso: string | null | undefined): number | null => {

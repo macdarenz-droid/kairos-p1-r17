@@ -1,5 +1,5 @@
 /**
- * P13.A3: the total result so far as one candle per day with results. Start = the total before that day, End = the total after it (both from the cumulative owner); Highest and Lowest = the highest and lowest running total after each of that day's closed trades, in close order. Built only after the progress-series owner proves every day is available in one currency: nothing is converted, nothing missing counts as zero. Drawing positions are step counts from the decimal kernel, never money. Zero is always on the scale. At most the last `VISUAL_PNL_RESULT_CANDLES_MAX_DAYS` days are drawn; the total counts every day.
+ * P13.A3: the total result so far as one candle per day with results. Start = the total before that day, End = the total after it (both from the cumulative owner); Highest and Lowest = the highest and lowest running total after each of that day's closed trades, in close order. Built only after the progress-series owner proves every day is available in one currency: nothing is converted, nothing missing counts as zero. Drawing positions are step counts from the decimal kernel, never money. Zero is always on the scale. At most the last `VISUAL_PNL_RESULT_CANDLES_MAX_DAYS` days are drawn; the total counts every day. `highest` and `lowest` are the highest and lowest total the drawn candles reach, for the picture's value labels.
  */
 
 import { decimalAdd, decimalCompare, decimalScaleToSteps, decimalSubtract } from '../../domain/calculations';
@@ -21,7 +21,7 @@ export interface VisualPnlResultCandle {
   readonly openStep: number; readonly highStep: number; readonly lowStep: number; readonly closeStep: number;
 }
 export type VisualPnlResultCandlesProjection =
-  | Readonly<{ available: true; currency: string; candles: readonly VisualPnlResultCandle[]; zeroStep: number; total: DecimalString; totalOutcome: 'profit' | 'loss' | 'breakeven'; resultDays: number }>
+  | Readonly<{ available: true; currency: string; candles: readonly VisualPnlResultCandle[]; zeroStep: number; highest: DecimalString; highestStep: number; lowest: DecimalString; lowestStep: number; total: DecimalString; totalOutcome: 'profit' | 'loss' | 'breakeven'; resultDays: number }>
   | Readonly<{ available: false; reason: Extract<VisualPnlCumulativeRealizedPnlProjection, { available: false }>['reason'] | 'invalid-candle-decimal' }>;
 
 type Unavailable = Extract<VisualPnlResultCandlesProjection, { available: false }>;
@@ -62,11 +62,15 @@ export function projectVisualPnlResultCandles(days: readonly VisualPnlDailySumma
 
   const shown = built.slice(-VISUAL_PNL_RESULT_CANDLES_MAX_DAYS);
   let low = ZERO, high = ZERO;
+  let highest = shown[0].high, lowest = shown[0].low;
   for (const candle of shown) {
     const belowLow = decimalCompare(candle.low, low), aboveHigh = decimalCompare(candle.high, high);
-    if (belowLow === null || aboveHigh === null) return invalidCandle;
+    const belowLowest = decimalCompare(candle.low, lowest), aboveHighest = decimalCompare(candle.high, highest);
+    if (belowLow === null || aboveHigh === null || belowLowest === null || aboveHighest === null) return invalidCandle;
     if (belowLow < 0) low = candle.low;
     if (aboveHigh > 0) high = candle.high;
+    if (belowLowest < 0) lowest = candle.low;
+    if (aboveHighest > 0) highest = candle.high;
   }
   const range = decimalSubtract(high, low);
   if (!range.ok) return invalidCandle;
@@ -78,6 +82,8 @@ export function projectVisualPnlResultCandles(days: readonly VisualPnlDailySumma
   };
   const zeroStep = toStep(ZERO);
   if (zeroStep === null) return invalidCandle;
+  const highestStep = toStep(highest), lowestStep = toStep(lowest);
+  if (highestStep === null || lowestStep === null) return invalidCandle;
   const candles: VisualPnlResultCandle[] = [];
   for (const candle of shown) {
     const openStep = toStep(candle.open), highStep = toStep(candle.high), lowStep = toStep(candle.low), closeStep = toStep(candle.close);
@@ -86,5 +92,5 @@ export function projectVisualPnlResultCandles(days: readonly VisualPnlDailySumma
   }
   const total = built[built.length - 1].close;
   const totalOutcome = total === '0' ? 'breakeven' as const : total.startsWith('-') ? 'loss' as const : 'profit' as const;
-  return Object.freeze({ available: true as const, currency: cumulative.currency, candles: Object.freeze(candles), zeroStep, total, totalOutcome, resultDays: days.length });
+  return Object.freeze({ available: true as const, currency: cumulative.currency, candles: Object.freeze(candles), zeroStep, highest, highestStep, lowest, lowestStep, total, totalOutcome, resultDays: days.length });
 }

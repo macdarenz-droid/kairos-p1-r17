@@ -70,7 +70,7 @@ export function TradePicture({ entry, variant, savePorts }: {
     now: new Date().toISOString(),
   }), [entry, candles]);
   const loading = candles.kind === 'waiting';
-  const dateIso = model.info.find(row => row.key === 'date')?.value ?? null;
+  const dateIso = model.info.find(row => row.key === 'opened')?.value ?? null;
 
   if (variant === 'full') {
     return <section className="kairos-trade-picture-panel" aria-labelledby={titleId} ref={container}>
