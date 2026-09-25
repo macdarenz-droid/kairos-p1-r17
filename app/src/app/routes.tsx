@@ -6,6 +6,7 @@ import { RouteError } from './RouteError';
 import { NotFoundRoute } from '../features/shell/NotFoundRoute';
 import { kairosDatabase } from '../data/database';
 import { createTradePictureCandleBrowserDeps } from './tradePictureCandleBrowserDeps';
+import { ReviewTradeLink } from './ReviewTradeLink';
 
 /** Shown only when the app starts on a screen whose code is still loading. */
 function RouteLoading() {
@@ -35,10 +36,18 @@ export const appRoutes = [
         const market = createTradePictureCandleBrowserDeps();
         return { Component: function PracticeReplayRoute() { return <ReplayScreen db={kairosDatabase} market={market} />; } };
       } },
+      { path: 'practice/coach', lazy: async () => {
+        const { CoachScreen } = await import('../features/discipline/CoachScreen');
+        return { Component: function PracticeCoachRoute() { return <CoachScreen db={kairosDatabase} scope="practice" renderTradeLink={id => <ReviewTradeLink id={id} />} />; } };
+      } },
       { path: 'goals', lazy: async () => ({ Component: (await import('./GoalsRoute')).GoalsRoute }) },
       { path: 'strategies', lazy: async () => {
         const { StrategiesScreen } = await import('../features/discipline/StrategiesScreen');
         return { Component: function StrategiesRoute() { return <StrategiesScreen db={kairosDatabase} />; } };
+      } },
+      { path: 'coach', lazy: async () => {
+        const { CoachScreen } = await import('../features/discipline/CoachScreen');
+        return { Component: function CoachRoute() { return <CoachScreen db={kairosDatabase} scope="real" renderTradeLink={id => <ReviewTradeLink id={id} />} />; } };
       } },
       { path: 'settings', lazy: async () => ({ Component: (await import('./SettingsRoute')).SettingsRoute }) },
       { path: 'profile', lazy: async () => ({ Component: (await import('./ProfileRoute')).ProfileRoute }) },
