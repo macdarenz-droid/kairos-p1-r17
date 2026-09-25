@@ -59,7 +59,7 @@ function CoachNoteCard({ note, renderTradeLink }: { readonly note: CoachNote; re
       {note.trades.map((trade, index) => <li key={trade.tradeId}>
         <p><strong>{trade.symbol}</strong>{trade.closedAt ? ` · closed ${closedOn(trade.closedAt)}` : ''}</p>
         {note.kind === 'size-over-plan' ? <SizeBars planned={note.trades[index]!.planned} traded={note.trades[index]!.traded} /> : null}
-        {describeCoachTradeFacts(note, index).map(line => <p key={line}>{line}</p>)}
+        {describeCoachTradeFacts(note, index).map((line, lineIndex) => <p key={lineIndex}>{line}</p>)}
         {renderTradeLink(trade.tradeId)}
       </li>)}
     </ul> : null}

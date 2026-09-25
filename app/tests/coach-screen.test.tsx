@@ -6,6 +6,7 @@ import { RouterProvider } from 'react-router/dom';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { appRoutes } from '../src/app/routes';
 import { saveTradeDiscipline } from '../src/application/discipline';
+import { saveStrategy } from '../src/application/discipline/strategies';
 import { writeGoalsPreference } from '../src/application/goals';
 import { savePracticeTrade } from '../src/application/practice';
 import { saveManualTrade } from '../src/application/trades';
@@ -115,6 +116,24 @@ describe('T-041d the coach page', () => {
     const links = within(stop).getAllByRole('link', { name: 'View trade' });
     expect(links.map(link => link.getAttribute('href'))).toEqual([`/analysis?trade=${paper}`]);
     expect(screen.getByRole('link', { name: 'Back to Practice' }).getAttribute('href')).toBe('/practice');
+  });
+
+  it('shows two written rules with the same words once each', async () => {
+    const db = await database();
+    await withZone(db);
+    const saved = await saveStrategy(db, { id: null, name: 'Patient', rules: [{ id: 'wait-1', kind: 'written', label: 'Wait for the close' }, { id: 'wait-2', kind: 'written', label: 'Wait for the close' }] });
+    if (!saved.ok) throw new Error('fixture');
+    const id = idOf(await saveManualTrade(db, closed('ETHUSDT', '1', '110', '2026-09-05T10:00:00.000Z')));
+    const marked = await saveTradeDiscipline(db, { tradeId: id, scope: 'real', half: 'strategy', strategyId: saved.strategy.id, answers: [] });
+    if (!marked.ok) throw new Error('fixture');
+    const ticked = await saveTradeDiscipline(db, { tradeId: id, scope: 'real', half: 'strategy', strategyId: saved.strategy.id, answers: [{ itemId: 'wait-1', answer: 'no' }, { itemId: 'wait-2', answer: 'no' }] });
+    if (!ticked.ok) throw new Error('fixture');
+    const errors = vi.spyOn(console, 'error');
+    renderScreen(db);
+    const note = await screen.findByRole('article', { name: '1 trade this month broke a rule of its strategy.' });
+    const trade = within(within(note).getByRole('list')).getByRole('listitem');
+    expect(within(trade).getAllByText('Wait for the close: you did not keep it.')).toHaveLength(2);
+    expect(errors.mock.calls.flat().join(' ')).not.toMatch(/same key/);
   });
 
   it('says when there is nothing to point out', async () => {
