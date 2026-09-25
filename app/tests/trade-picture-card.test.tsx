@@ -161,3 +161,93 @@ describe('T-039c rounded ratios in the picture', () => {
     expect(label).not.toContain('0.1124');
   });
 });
+
+describe('T-039d labels, wick arrows and times', () => {
+  const extra = [
+    { openTime: '2026-09-20T07:00:00.000Z', closeTime: '2026-09-20T07:59:59.999Z', open: dec('150'), high: dec('200'), low: dec('150'), close: dec('190') },
+    ...input.candles!,
+    { openTime: '2026-09-20T14:00:00.000Z', closeTime: '2026-09-20T14:59:59.999Z', open: dec('121'), high: dec('122'), low: dec('40'), close: dec('45') },
+    { openTime: '2026-09-20T15:00:00.000Z', closeTime: '2026-09-20T15:59:59.999Z', open: dec('45'), high: dec('50'), low: dec('38'), close: dec('41') },
+  ];
+  const lineY = (container: HTMLElement, kind: string) => Number(container.querySelector(`[data-level="${kind}"] line`)!.getAttribute('y1'));
+  const labelBox = (container: HTMLElement, kind: string) => {
+    const rect = container.querySelector(`[data-box-label="${kind}"] rect`)!;
+    const top = Number(rect.getAttribute('y'));
+    return { top, bottom: top + Number(rect.getAttribute('height')), x: Number(rect.getAttribute('x')) };
+  };
+  const between = (value: number, a: number, b: number) => value >= Math.min(a, b) && value <= Math.max(a, b);
+  const middle = (box: { top: number; bottom: number }) => (box.top + box.bottom) / 2;
+
+  function expectFarEdgeLabels(container: HTMLElement) {
+    const entry = lineY(container, 'entry'), stop = lineY(container, 'stop'), target = lineY(container, 'target');
+    const risk = labelBox(container, 'risk'), reward = labelBox(container, 'reward');
+    for (const [box, edge] of [[risk, stop], [reward, target]] as const) {
+      expect(between(box.top, entry, edge) && between(box.bottom, entry, edge)).toBe(true);
+      expect(Math.abs(middle(box) - edge)).toBeLessThan(Math.abs(middle(box) - entry));
+      expect(between(entry, box.top, box.bottom)).toBe(false);
+    }
+    expect(container.querySelector('[data-box-label="risk"] text')!.textContent).toBe('Risk');
+    expect(container.querySelector('[data-box-label="reward"] text')!.textContent).toBe('Reward');
+    const candlesGroup = container.querySelector('.kairos-trade-picture__candles')!;
+    const markers = [...container.querySelectorAll('[data-marker]')];
+    for (const label of container.querySelectorAll('[data-box-label]')) {
+      for (const earlier of [candlesGroup, ...markers]) expect(earlier.compareDocumentPosition(label) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+    const entryMarker = container.querySelector('[data-marker="entry"]')!.getAttribute('points')!;
+    const markerRight = Number(entryMarker.split(' ')[1]!.split(',')[0]);
+    for (const box of [risk, reward]) expect(box.x).toBeGreaterThanOrEqual(markerRight);
+  }
+
+  it('puts Risk and Reward at the far edge of a long trade\'s boxes, drawn last', () => {
+    const { container } = render(<TradePictureCard model={projectTradePicture(input)} />);
+    expectFarEdgeLabels(container);
+  });
+
+  it('does the same for a short trade', () => {
+    const short: TradePictureInput = {
+      ...input,
+      trade: { ...trade, side: 'short' },
+      plans: [{ ...plan('110', '80')[0]! }],
+      executions: [
+        { id: 'e1' as TradeExecutionId, tradeId, type: 'entry', price: dec('100'), quantity: dec('2'), executedAt: opened, createdAt: opened },
+        { id: 'x1' as TradeExecutionId, tradeId, type: 'exit', price: dec('85'), quantity: dec('2'), executedAt: closed, createdAt: closed },
+      ],
+    };
+    const { container } = render(<TradePictureCard model={projectTradePicture(short)} />);
+    expectFarEdgeLabels(container);
+  });
+
+  it('a thin box puts its label outside, past the stop', () => {
+    const { container } = render(<TradePictureCard model={projectTradePicture({ ...input, plans: plan('99', '130') })} />);
+    expect(labelBox(container, 'risk').top).toBeGreaterThan(lineY(container, 'stop'));
+  });
+
+  it('puts an arrow at every edge a candle runs past', () => {
+    const both = { openTime: '2026-09-20T16:00:00.000Z', closeTime: '2026-09-20T16:59:59.999Z', open: dec('100'), high: dec('140'), low: dec('80'), close: dec('90') };
+    const { container } = render(<TradePictureCard model={projectTradePicture({ ...input, candles: [...extra, both] })} />);
+    const groups = [...container.querySelectorAll('.kairos-trade-picture__candles > g')];
+    const [g07, g08, g10, g14, g15, g16] = groups;
+    expect(g14!.querySelectorAll('[data-edge="below"]')).toHaveLength(1);
+    expect(g14!.querySelector('[data-beyond]')).toBeNull();
+    expect(g15!.querySelector('[data-edge="below"][data-beyond="below"]')).not.toBeNull();
+    expect(g07!.querySelector('[data-edge="above"][data-beyond="above"]')).not.toBeNull();
+    expect(g16!.querySelector('[data-edge="above"]')).not.toBeNull();
+    expect(g16!.querySelector('[data-edge="below"]')).not.toBeNull();
+    expect(g16!.querySelector('[data-beyond]')).toBeNull();
+    expect(g08!.querySelector('[data-edge]')).toBeNull();
+    expect(g10!.querySelector('[data-edge]')).toBeNull();
+  });
+
+  it('shows Opened and Closed like the card header', () => {
+    const format = (iso: string) => new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
+    const { container } = render(<TradePictureCard model={projectTradePicture(input)} />);
+    expect(container.querySelector('[data-info="opened"] dd')!.textContent).toBe(format(opened));
+    expect(container.querySelector('[data-info="closed"] dd')!.textContent).toBe(format(closed));
+    expect(container.querySelector('[data-info="opened"] dt')!.textContent).toBe('Opened');
+    expect(container.querySelector('[data-info="closed"] dt')!.textContent).toBe('Closed');
+    expect(container.querySelector('[data-info="date"]')).toBeNull();
+    cleanup();
+    const open = render(<TradePictureCard model={projectTradePicture({ ...input, trade: { ...trade, status: 'open', closedAt: null } })} />);
+    expect(open.container.querySelector('[data-info="closed"] dd')!.textContent).toBe('Not available');
+  });
+});

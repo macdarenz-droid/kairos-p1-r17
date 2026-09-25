@@ -20,6 +20,12 @@ export function dayLabel(dayKey: string): string {
   return `${day} ${MONTH_NAMES[month - 1]} ${year}`;
 }
 
+/** "3 Sep" for a YYYY-MM-DD key: the day and the first three letters of the month. */
+export function shortDayLabel(dayKey: string): string {
+  const [, month, day] = dayKey.split('-').map(Number);
+  return `${day} ${MONTH_NAMES[month - 1].slice(0, 3)}`;
+}
+
 /** "September 2026" for a `YYYY-MM` key. */
 export function monthLabel(monthKey: string): string {
   const [year, month] = monthKey.split('-').map(Number);

@@ -45,6 +45,8 @@ export interface TradePictureCandle {
   readonly close: DecimalString;
   /** 'above' or 'below' when the whole candle lies outside priceRange (drawn as an edge arrow); null when any part is inside or there is no range. */
   readonly beyond: 'above' | 'below' | null;
+  /** The plot edges this candle runs past: 'above' when its high is above priceRange.high, 'below' when its low is below priceRange.low, 'both', or null when it fits or there is no range. The card puts an edge arrow at each. */
+  readonly cut: 'above' | 'below' | 'both' | null;
 }
 
 export interface TradePictureBox {
@@ -66,7 +68,7 @@ export interface TradePictureMarker {
 }
 
 export type TradePictureInfoKey =
-  | 'market' | 'direction' | 'date' | 'planned-entry' | 'stop' | 'target' | 'average-exit'
+  | 'market' | 'direction' | 'opened' | 'closed' | 'planned-entry' | 'stop' | 'target' | 'average-exit'
   | 'size' | 'result' | 'planned-reward' | 'actual-r' | 'duration' | 'status';
 
 export interface TradePictureInfoRow {
@@ -254,7 +256,12 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
     if (compare(candle.high, priceRange.low) === -1) return 'below';
     return null;
   };
-  const pictureCandles = baseCandles.map(candle => Object.freeze({ ...candle, beyond: beyondOf(candle) }));
+  const cutOf = (candle: { high: DecimalString; low: DecimalString }): 'above' | 'below' | 'both' | null => {
+    if (priceRange === null) return null;
+    const above = compare(candle.high, priceRange.high) === 1, below = compare(candle.low, priceRange.low) === -1;
+    return above && below ? 'both' : above ? 'above' : below ? 'below' : null;
+  };
+  const pictureCandles = baseCandles.map(candle => Object.freeze({ ...candle, beyond: beyondOf(candle), cut: cutOf(candle) }));
 
   const times = [
     ...(startMs === null ? [] : [startMs]), ...(startMs === null ? [] : [endMs ?? Date.parse(now)]),
@@ -276,7 +283,8 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
   const info: TradePictureInfoRow[] = [
     row('market', 'Market', trade.symbol, null, value => value),
     row('direction', 'Direction', trade.side === 'long' ? 'Long' : 'Short', null, value => value),
-    row('date', 'Date', startAt, null, value => value),
+    row('opened', 'Opened', trade.openedAt, null, value => value),
+    row('closed', 'Closed', trade.closedAt, null, value => value),
     row('planned-entry', 'Planned entry', entry, null, value => value),
     row('stop', 'Stop', stop, null, value => value),
     row('target', 'Target', target, null, value => value),

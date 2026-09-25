@@ -208,3 +208,43 @@ describe('T-039c the picture\'s ratios read to 2 places', () => {
     expect(value(model, 'actual-r')?.text).toBe('+1.95× what you risked');
   });
 });
+
+describe('T-039d cut edges and the trade\'s own times', () => {
+  const extra: MarketCandle[] = [
+    { openTime: '2026-09-20T07:00:00.000Z', closeTime: '2026-09-20T07:59:59.999Z', open: dec('150'), high: dec('200'), low: dec('150'), close: dec('190') },
+    ...candles,
+    { openTime: '2026-09-20T14:00:00.000Z', closeTime: '2026-09-20T14:59:59.999Z', open: dec('121'), high: dec('122'), low: dec('40'), close: dec('45') },
+    { openTime: '2026-09-20T15:00:00.000Z', closeTime: '2026-09-20T15:59:59.999Z', open: dec('45'), high: dec('50'), low: dec('38'), close: dec('41') },
+    { openTime: '2026-09-20T16:00:00.000Z', closeTime: '2026-09-20T16:59:59.999Z', open: dec('100'), high: dec('140'), low: dec('80'), close: dec('90') },
+  ];
+
+  it('marks every edge a candle runs past, and keeps beyond for wholly-outside candles', () => {
+    const model = projectTradePicture({ ...longInput, candles: extra });
+    expect(model.priceRange).toEqual({ low: '86.8', high: '133.2' });
+    expect(model.candles.map(candle => [candle.time, candle.beyond, candle.cut])).toEqual([
+      ['2026-09-20T07:00:00.000Z', 'above', 'above'],
+      ['2026-09-20T08:00:00.000Z', null, null],
+      ['2026-09-20T10:00:00.000Z', null, null],
+      ['2026-09-20T14:00:00.000Z', null, 'below'],
+      ['2026-09-20T15:00:00.000Z', 'below', 'below'],
+      ['2026-09-20T16:00:00.000Z', null, 'both'],
+    ]);
+  });
+
+  it('the fallback range cuts nothing', () => {
+    const before: MarketCandle = { openTime: '2026-09-20T07:00:00.000Z', closeTime: '2026-09-20T07:59:59.999Z', open: dec('98'), high: dec('105'), low: dec('95'), close: dec('104') };
+    const model = projectTradePicture({ trade: trade({ status: 'open', closedAt: null }), plans: plan(null, null, null), executions: [], fees: [], candles: [before], now });
+    expect(model.candles.map(candle => candle.cut)).toEqual([null]);
+  });
+
+  it('shows Opened and Closed from the trade itself', () => {
+    const model = projectTradePicture(longInput);
+    expect(model.info.map(row => row.key)).toEqual(['market', 'direction', 'opened', 'closed', 'planned-entry', 'stop', 'target', 'average-exit', 'size', 'result', 'planned-reward', 'actual-r', 'duration', 'status']);
+    expect(value(model, 'opened')).toMatchObject({ label: 'Opened', value: opened, text: opened });
+    expect(value(model, 'closed')).toMatchObject({ label: 'Closed', value: closed });
+    const open = projectTradePicture({ ...longInput, trade: trade({ status: 'open', closedAt: null }) });
+    expect(value(open, 'closed')).toMatchObject({ value: null, text: null });
+    const draft = projectTradePicture({ ...longInput, trade: trade({ status: 'draft', openedAt: null, closedAt: null }) });
+    expect(value(draft, 'opened')).toMatchObject({ value: null, text: null });
+  });
+});

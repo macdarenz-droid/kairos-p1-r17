@@ -78,7 +78,25 @@ function Box({ box, scale, kind }: { readonly box: TradePictureBox; readonly sca
   const y1 = scale.y(box.top), y2 = scale.y(box.bottom);
   return <g className={`kairos-trade-picture__box kairos-trade-picture__box--${kind}`} data-box={kind}>
     <rect x={x1} y={y1} width={x2 - x1} height={Math.max(y2 - y1, 1)} />
-    <text x={x1 + 4} y={kind === 'risk' ? y2 - 4 : y1 + 12}>{kind === 'risk' ? 'Risk' : 'Reward'}</text>
+  </g>;
+}
+
+/** Box labels: 10-unit bold words on a small background. */
+const BOX_LABEL_HEIGHT = 12;
+const BOX_LABEL_WIDTH = { risk: 28, reward: 48 } as const;
+/** A box shorter than this puts its label outside, past its far edge. */
+const BOX_LABEL_ROOM = BOX_LABEL_HEIGHT + 6;
+
+/** "Risk" or "Reward" at the box's far edge (stop or target): inside when it fits, else just past that edge. */
+function BoxLabel({ box, scale, kind }: { readonly box: TradePictureBox; readonly scale: Scale; readonly kind: 'risk' | 'reward' }) {
+  const x = scale.x(box.startAt) + 8;
+  const yEntry = scale.y(box.entryPrice), yEdge = scale.y(box.edgePrice);
+  const inside = Math.abs(yEntry - yEdge) >= BOX_LABEL_ROOM;
+  const under = yEdge + 2, over = yEdge - 2 - BOX_LABEL_HEIGHT;
+  const top = yEdge < yEntry ? (inside ? under : over) : (inside ? over : under);
+  return <g className={`kairos-trade-picture__box-label kairos-trade-picture__box-label--${kind}`} data-box-label={kind}>
+    <rect x={x} y={top} width={BOX_LABEL_WIDTH[kind]} height={BOX_LABEL_HEIGHT} rx="2" />
+    <text x={x + 3} y={top + 9.5}>{kind === 'risk' ? 'Risk' : 'Reward'}</text>
   </g>;
 }
 
@@ -112,9 +130,10 @@ export function describeTradePicture(model: TradePictureModel): string {
 function displayValue(model: TradePictureModel, key: string): string {
   const row = model.info.find(item => item.key === key);
   if (!row || row.text === null) return 'Not available';
-  if (key === 'date' && row.value !== null) {
+  if ((key === 'opened' || key === 'closed') && row.value !== null) {
+    // Same format and time zone (the device's) as the card header and View trade.
     const date = new Date(row.value);
-    return Number.isNaN(date.getTime()) ? row.value : date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+    return Number.isNaN(date.getTime()) ? row.value : new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
   }
   return row.text;
 }
@@ -123,6 +142,7 @@ function displayValue(model: TradePictureModel, key: string): string {
  * The trade picture: candles with the planned risk and reward boxes, the
  * planned levels and every fill, beside a plain-word info panel. It draws the
  * T-027a model only; every number shown comes from that model.
+ * Box labels sit at the far edge and are drawn last; every edge a candle runs past gets an arrow (T-039d).
  */
 export function TradePictureCard({ model, candlesLoading = false, svgRef, compact = false }: {
   readonly model: TradePictureModel;
@@ -160,14 +180,12 @@ export function TradePictureCard({ model, candlesLoading = false, svgRef, compac
               const height = Math.max(bottom - top, TRADE_PICTURE_CANDLE_MIN_HEIGHT);
               const middle = (top + bottom) / 2;
               const bottomEdge = pad.top + plotHeight;
+              const edges: readonly ('above' | 'below')[] = candle.cut === 'both' ? ['above', 'below'] : candle.cut === null ? [] : [candle.cut];
               return <g key={candle.time} className={`kairos-trade-picture__candle${direction === 'flat' ? '' : ` kairos-trade-picture__candle--${direction}`}`} data-direction={direction}>
                 <line x1={x} x2={x} y1={scale.y(candle.high)} y2={scale.y(candle.low)} />
                 <rect x={x - candleWidth / 2} y={middle - height / 2} width={candleWidth} height={height} />
-                {candle.beyond === 'below'
-                  ? <polygon className="kairos-trade-picture__beyond" data-beyond="below" points={`${x - 3},${bottomEdge - 5} ${x + 3},${bottomEdge - 5} ${x},${bottomEdge - 1}`} />
-                  : candle.beyond === 'above'
-                    ? <polygon className="kairos-trade-picture__beyond" data-beyond="above" points={`${x - 3},${pad.top + 5} ${x + 3},${pad.top + 5} ${x},${pad.top + 1}`} />
-                    : null}
+                {edges.map(edge => <polygon key={edge} className="kairos-trade-picture__beyond" data-edge={edge} data-beyond={candle.beyond === edge ? edge : undefined}
+                  points={edge === 'below' ? `${x - 3},${bottomEdge - 5} ${x + 3},${bottomEdge - 5} ${x},${bottomEdge - 1}` : `${x - 3},${pad.top + 5} ${x + 3},${pad.top + 5} ${x},${pad.top + 1}`} />)}
               </g>;
             })}
           </g>
@@ -180,6 +198,8 @@ export function TradePictureCard({ model, candlesLoading = false, svgRef, compac
               ? <polygon key={`e${index}`} className="kairos-trade-picture__marker kairos-trade-picture__marker--entry" data-marker="entry" points={`${x},${y - 7} ${x + 6},${y + 4} ${x - 6},${y + 4}`} />
               : <polygon key={`x${index}`} className="kairos-trade-picture__marker kairos-trade-picture__marker--exit" data-marker="exit" points={`${x},${y + 7} ${x + 6},${y - 4} ${x - 6},${y - 4}`} />;
           })}
+          {model.riskBox ? <BoxLabel box={model.riskBox} scale={scale} kind="risk" /> : null}
+          {model.rewardBox ? <BoxLabel box={model.rewardBox} scale={scale} kind="reward" /> : null}
         </> : null}
       </svg>
       {noCandles ? <p className="kairos-trade-picture__note">{candlesLoading ? 'Loading candles…' : 'Candles need a connection.'}</p> : null}

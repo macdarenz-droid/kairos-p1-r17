@@ -80,3 +80,18 @@ describe('P13.A3 day candles of the total so far', () => {
     expect(projectVisualPnlResultCandles([])).toEqual({ available: false, reason: 'no-result-days' });
   });
 });
+
+describe('T-039d the highest and lowest total drawn', () => {
+  it('three days', () => {
+    expect(projectVisualPnlResultCandles(threeDays())).toMatchObject({ highest: '100', highestStep: 1000, lowest: '-60', lowestStep: 0 });
+  });
+  it('the 30-day cap counts only the drawn days', () => {
+    expect(projectVisualPnlResultCandles(monthOfDays())).toMatchObject({ highest: '31', highestStep: 1000, lowest: '1', lowestStep: 32 });
+  });
+  it('one profit day reaches zero at its start', () => {
+    expect(projectVisualPnlResultCandles(daysOf(entry('2026-09-01T10:00:00.000Z', visual('5'))))).toMatchObject({ highest: '5', highestStep: 1000, lowest: '0', lowestStep: 0 });
+  });
+  it('flat days', () => {
+    expect(projectVisualPnlResultCandles(daysOf(entry('2026-09-01T10:00:00.000Z', visual('0')), entry('2026-09-02T10:00:00.000Z', visual('0'))))).toMatchObject({ highest: '0', highestStep: 500, lowest: '0', lowestStep: 500 });
+  });
+});
