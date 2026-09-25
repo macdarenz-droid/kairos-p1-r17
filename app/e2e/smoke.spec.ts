@@ -132,3 +132,26 @@ test('(e) Library: trading words and the calculators', async ({ page }) => {
   await expect(calculator.getByText('You can buy up to 2')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });
+
+test('(f) Library: a lesson from start to finish', async ({ page }) => {
+  await activate(page);
+  await page.goto('/library');
+  await page.getByRole('link', { name: /^Lessons/ }).click();
+  await expect(page).toHaveURL(/\/library\/lessons$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Lessons' })).toBeVisible();
+  await page.locator('.kairos-lessons__list a').first().click();
+  const progress = page.locator('.kairos-lesson__progress');
+  await expect(progress).toHaveText(/^Step 1 of \d+$/);
+  const steps = Number(/of (\d+)$/.exec((await progress.textContent()) ?? '')![1]);
+  for (let i = 1; i <= steps; i += 1) {
+    await expect(progress).toHaveText(`Step ${i} of ${steps}`);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    if (await page.locator('.kairos-lesson-check').count() > 0) {
+      await page.locator('.kairos-lesson-check button').first().click();
+      await expect(page.locator('.kairos-lesson-check__feedback')).toHaveText(/^(Right\.|Not quite\.)/);
+    }
+    await page.getByRole('button', { name: i < steps ? 'Next' : 'Finish', exact: true }).click();
+  }
+  await expect(page.getByRole('heading', { level: 2, name: 'Lesson finished' })).toBeVisible();
+  await expect(progress).toHaveText(`All ${steps} steps done`);
+});

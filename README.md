@@ -59,7 +59,30 @@ Trading words are data, not code. To add or change one:
 3. In `app/`, run `npx vitest run tests/glossary-content.test.ts`. It fails if an entry breaks a rule or links to a word that does not exist.
 4. Commit. The word appears under Library → Trading words in the next release. No code changes.
 
-Screens link to some ids (the test lists them): keep those. To remove a word, also remove every `related` link to it.
+Screens and lessons link to some ids (the glossary test lists the screens' ids; the lesson test checks the lessons'): keep those. To remove a word, also remove every `related` link and every lesson `words` entry that names it.
+
+## Add a lesson
+
+Lessons are data, not code. To add or change one:
+
+1. Open `app/src/content/learn/lessons.json` and copy a lesson.
+2. Fill in:
+   - `id`: lowercase letters, digits and dashes; never reuse an old id;
+   - `revision`: `1` for a new lesson; add 1 whenever you change what it teaches (a step, a check or its right answer); fixing a typo keeps the number;
+   - `title` (at most 60 characters) and `summary`, one plain sentence (at most 120);
+   - `level`: 1, 2 or 3; `minutes`: about how long it takes, from 1 to 20;
+   - `steps`: 2 to 12. Each step has an `id` (not used twice in the lesson), a `title` (at most 40) and 1 to 4 `blocks`.
+3. Each step is one screen. Put the picture first and keep each text short. The blocks:
+   - `text`: one short paragraph (at most 200 characters);
+   - `picture`: one of the shapes the trading words use (`risk-box`, `candle`, `result-bars`, `leverage`) and a `caption` (at most 100) or `null`;
+   - `words`: 1 to 4 trading word ids; each gets a "?" that explains it;
+   - `size-example`: `accountSize`, `riskPercent`, `entryPrice` and `stopPrice` as plain numbers like `"1000"`; Kairos works out the answer and draws it;
+   - `check`: a `question` (at most 120), 2 to 4 `choices` (each a `text` of at most 60; exactly one has `"right": true`) and an `explanation` (at most 200) shown after the answer; one check per step at most;
+   - `try`: a `text` (at most 140) and a `tool`, `calculators` or `journal`.
+4. In `app/`, run `npx vitest run tests/lesson-content.test.ts`. It fails if a lesson breaks a rule, names a word that does not exist, or has a size example Kairos cannot work out.
+5. Commit. The lesson appears under Library → Lessons in the next release. No code changes.
+
+Lessons never hold HTML, links or code: `try` opens only the pages in its list.
 
 ## Deploy (Cloudflare Pages)
 
