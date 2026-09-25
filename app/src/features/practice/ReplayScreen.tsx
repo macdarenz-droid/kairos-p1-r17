@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { loadReplayCandles, REPLAY_CANDLE_SIZES, type LoadedReplay, type ReplayLoadFailure, type ReplayMarketDeps } from '../../application/practice/replayCandles';
-import { projectReplayView } from '../../application/practice/replayEngine';
+import { projectReplayView, type ReplayOrder } from '../../application/practice/replayEngine';
 import { projectReplayPicture } from '../../application/practice/replayTrade';
 import type { KairosDatabase } from '../../data/database';
 import { Button, Card, Field } from '../../design-system/primitives';
 import { TradePictureCard } from '../journal/TradePictureCard';
+import { ReplayTradePanel } from './ReplayTradePanel';
 import './replay.css';
 
 /** How long each candle stays on screen while playing. */
@@ -33,11 +34,12 @@ const FIELD_ERRORS: Readonly<Partial<Record<ReplayLoadFailure, { readonly field:
 const formatTime = (iso: string) => new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
 
 /** P27 replay: pick a market and a past moment, then show its candles one at a time. Candles live in this page's memory only. */
-export function ReplayScreen({ market, playStepMs = REPLAY_PLAY_STEP_MS }: { readonly db: KairosDatabase; readonly market: ReplayMarketDeps; readonly playStepMs?: number }) {
+export function ReplayScreen({ db, market, playStepMs = REPLAY_PLAY_STEP_MS }: { readonly db: KairosDatabase; readonly market: ReplayMarketDeps; readonly playStepMs?: number }) {
   const [form, setForm] = useState({ market: 'BTCUSDT', candleSize: '1h', startAt: '' });
   const [load, setLoad] = useState<LoadState>({ kind: 'idle' });
   const [cursor, setCursor] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [order, setOrder] = useState<ReplayOrder | null>(null);
   const setupTitleId = useId(), stageTitleId = useId();
   const marketId = useId(), sizeId = useId(), startId = useId();
   const controller = useRef<AbortController | null>(null);
@@ -47,8 +49,8 @@ export function ReplayScreen({ market, playStepMs = REPLAY_PLAY_STEP_MS }: { rea
   useEffect(() => () => controller.current?.abort(), []);
 
   const replay = load.kind === 'ready' ? load.replay : null;
-  const view = useMemo(() => (replay ? projectReplayView(replay.candles, cursor, null) : null), [replay, cursor]);
-  const picture = useMemo(() => (replay ? projectReplayPicture(replay, cursor, null) : null), [replay, cursor]);
+  const view = useMemo(() => (replay ? projectReplayView(replay.candles, cursor, order) : null), [replay, cursor, order]);
+  const picture = useMemo(() => (replay ? projectReplayPicture(replay, cursor, order) : null), [replay, cursor, order]);
   const candlesLeft = view?.candlesLeft ?? 0;
 
   const start = useCallback(async () => {
@@ -60,6 +62,7 @@ export function ReplayScreen({ market, playStepMs = REPLAY_PLAY_STEP_MS }: { rea
     const result = await loadReplayCandles(form, { ...market, signal: own.signal }).catch(() => ({ ok: false as const, reason: 'unavailable' as const }));
     if (own.signal.aborted) return;
     if (result.ok) {
+      setOrder(null);
       setCursor(result.replay.startIndex);
       focusAfterLoad.current = 'stage';
       setLoad({ kind: 'ready', replay: result.replay });
@@ -93,8 +96,15 @@ export function ReplayScreen({ market, playStepMs = REPLAY_PLAY_STEP_MS }: { rea
     if (playing && candlesLeft === 0) setPlaying(false);
   }, [playing, candlesLeft]);
 
+  // The trade changed: stop, so the beginner sees the entry or the exit happen.
+  const outcomeKind = view?.outcome?.kind ?? null;
+  useEffect(() => {
+    if (outcomeKind === 'open' || outcomeKind === 'closed') setPlaying(false);
+  }, [outcomeKind]);
+
   const again = () => {
     setPlaying(false);
+    setOrder(null);
     focusAfterLoad.current = 'market';
     setLoad({ kind: 'idle' });
   };
@@ -117,9 +127,9 @@ export function ReplayScreen({ market, playStepMs = REPLAY_PLAY_STEP_MS }: { rea
     {replay && view && picture ? (() => {
       const quote = replay.quoteAsset ? ` ${replay.quoteAsset}` : '';
       const time = formatTime(view.replayTime);
-      return <section className="kairos-replay__stage" aria-labelledby={stageTitleId}>
+      return <><section className="kairos-replay__stage" aria-labelledby={stageTitleId}>
         <h2 id={stageTitleId} tabIndex={-1} ref={stageHeading}>{replay.symbol} · {replay.candleSize.label} candles</h2>
-        <TradePictureCard model={picture} compact notes={false} label={`${replay.symbol}: ${view.window.length} candles up to ${time}. Price now ${view.last.close}${quote}.`} />
+        <TradePictureCard model={picture} compact={order === null} notes={false} label={order === null ? `${replay.symbol}: ${view.window.length} candles up to ${time}. Price now ${view.last.close}${quote}.` : undefined} />
         <p className="kairos-replay__now" aria-live={playing ? 'off' : 'polite'}>Now in the replay: <time dateTime={view.replayTime}>{time}</time>. Price: <strong>{view.last.close}{quote}</strong></p>
         <div className="kairos-replay__controls" role="group" aria-label="Replay controls">
           <Button onClick={next} disabled={playing || candlesLeft === 0}>Next candle</Button>
@@ -128,7 +138,9 @@ export function ReplayScreen({ market, playStepMs = REPLAY_PLAY_STEP_MS }: { rea
           <Button variant="ghost" onClick={again}>Choose another moment</Button>
         </div>
         {candlesLeft === 0 ? <p>This replay has no candles left. Choose another moment to keep practising.</p> : null}
-      </section>;
+      </section>
+      <ReplayTradePanel db={db} replay={replay} cursor={cursor} view={view} order={order} onPlace={setOrder} onClear={() => setOrder(null)} />
+      </>;
     })() : <>
       <Card as="form" className="kairos-replay__setup" aria-labelledby={setupTitleId} noValidate onSubmit={submit}>
         <h2 id={setupTitleId} tabIndex={-1}>Choose a market and a moment</h2>
