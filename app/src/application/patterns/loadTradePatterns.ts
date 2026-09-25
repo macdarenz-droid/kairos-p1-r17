@@ -1,9 +1,11 @@
 /**
- * P30: the read for the patterns of one scope. It reads the saved time zone, then every closed trade of the scope whose close falls in the last TRADE_PATTERN_PERIOD_DAYS days (the one indexed period query, never the bounded history list), and gives them to the patterns owner. It writes nothing and never guesses a time zone.
+ * P30: the read for the patterns of one scope. It reads the saved time zone, then every closed trade of the scope whose close falls in the last TRADE_PATTERN_PERIOD_DAYS days (the one indexed period query, never the bounded history list) and their discipline records (the one reader), and gives them to the patterns owner. It writes nothing and never guesses a time zone.
  */
 
 import type { KairosDatabase } from '../../data/database';
 import { createKairosRepositories } from '../../data/repositories';
+import type { TradeDisciplineRecord } from '../../domain/discipline';
+import { loadTradeDiscipline } from '../discipline/tradeDiscipline';
 import { listJournalClosedTradesInPeriod } from '../journal/closedTradePeriodQuery';
 import type { JournalHistoryScope } from '../journal/historyQuery';
 import { projectVisualPnlDayKey, readVisualPnlTimeZonePreference, shiftVisualPnlDayKey } from '../visual-pnl';
@@ -25,5 +27,12 @@ export async function loadTradePatterns(db: KairosDatabase, options: { readonly 
   const lastDayKey = today.dayKey;
   const closed = await listJournalClosedTradesInPeriod(db, { timeZone, fromDayKey: firstDayKey, toDayKey: shiftVisualPnlDayKey(today.dayKey, 1), scope: options.scope ?? 'real' });
   if (!closed.ok) throw new Error(`Your patterns could not read your trades: ${closed.reason}.`);
-  return Object.freeze({ kind: 'ready' as const, timeZone, firstDayKey, lastDayKey, projection: projectTradePatterns({ entries: closed.entries, timeZone }) });
+  const ids = closed.entries.map(entry => entry.trade.id);
+  let records: ReadonlyMap<string, TradeDisciplineRecord> = new Map();
+  if (ids.length > 0) {
+    const loaded = await loadTradeDiscipline(db, ids);
+    if (!loaded.ok) throw new Error(`Your patterns could not read your strategies: ${loaded.reason}.`);
+    records = loaded.records;
+  }
+  return Object.freeze({ kind: 'ready' as const, timeZone, firstDayKey, lastDayKey, projection: projectTradePatterns({ entries: closed.entries, timeZone, records }) });
 }
