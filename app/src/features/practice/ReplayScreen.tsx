@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
+import { parseForexPair } from '../../application/markets/forexPair';
 import { loadReplayCandles, REPLAY_CANDLE_SIZES, type LoadedReplay, type ReplayLoadFailure, type ReplayMarketDeps } from '../../application/practice/replayCandles';
 import { projectReplayView, type ReplayOrder } from '../../application/practice/replayEngine';
 import { projectReplayPicture } from '../../application/practice/replayTrade';
@@ -15,7 +16,7 @@ export const REPLAY_PLAY_STEP_MS = 800;
 type LoadState =
   | { readonly kind: 'idle' }
   | { readonly kind: 'loading' }
-  | { readonly kind: 'failed'; readonly reason: ReplayLoadFailure }
+  | { readonly kind: 'failed'; readonly reason: ReplayLoadFailure; readonly market: string }
   | { readonly kind: 'ready'; readonly replay: LoadedReplay };
 
 type FieldName = 'market' | 'candleSize' | 'startAt';
@@ -68,7 +69,7 @@ export function ReplayScreen({ db, market, playStepMs = REPLAY_PLAY_STEP_MS }: {
       setLoad({ kind: 'ready', replay: result.replay });
     } else {
       focusAfterLoad.current = FIELD_ERRORS[result.reason]?.field ?? null;
-      setLoad({ kind: 'failed', reason: result.reason });
+      setLoad({ kind: 'failed', reason: result.reason, market: form.market });
     }
   }, [form, market]);
 
@@ -114,7 +115,12 @@ export function ReplayScreen({ db, market, playStepMs = REPLAY_PLAY_STEP_MS }: {
     void start();
   };
 
-  const fieldError = load.kind === 'failed' ? FIELD_ERRORS[load.reason] : undefined;
+  const forex = load.kind === 'failed' && load.reason === 'unknown-market' ? parseForexPair(load.market) : null;
+  const fieldError = load.kind === 'failed'
+    ? (forex !== null && forex.ok && forex.pair.standard
+      ? { field: 'market' as const, text: `Replay has crypto markets from Binance only for now, so it cannot replay ${forex.pair.label}. Try a crypto market, for example BTCUSDT.` }
+      : FIELD_ERRORS[load.reason])
+    : undefined;
   const errorFor = (field: FieldName) => (fieldError?.field === field ? fieldError.text : undefined);
   const loading = load.kind === 'loading';
 
