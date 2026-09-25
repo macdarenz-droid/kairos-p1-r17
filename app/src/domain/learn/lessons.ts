@@ -7,7 +7,7 @@ import { parseLearnPictureSpec, type LearnPictureSpec } from './learnPicture';
 
 export type LessonId = string;
 export type LessonLevel = 1 | 2 | 3;
-export type LessonTool = 'calculators' | 'journal';
+export type LessonTool = 'calculators' | 'journal' | 'practice';
 export interface LessonChoice { readonly text: string; readonly right: boolean }
 export type LessonBlock =
   | { readonly kind: 'text'; readonly text: string }
@@ -45,7 +45,7 @@ export const KAIROS_LESSON_ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
 export const KAIROS_LESSON_TEXT_LIMITS = Object.freeze({ title: 60, summary: 120, stepTitle: 40, text: 200, caption: 100, question: 120, choice: 60, explanation: 200, tryText: 140 });
 export const KAIROS_LESSON_LIST_LIMITS = Object.freeze({ minSteps: 2, maxSteps: 12, maxBlocks: 4, maxWords: 4, minChoices: 2, maxChoices: 4 });
 export const KAIROS_LESSON_MAX_MINUTES = 20;
-export const KAIROS_LESSON_TOOLS: readonly LessonTool[] = Object.freeze(['calculators', 'journal']);
+export const KAIROS_LESSON_TOOLS: readonly LessonTool[] = Object.freeze(['calculators', 'journal', 'practice']);
 /** A plain number like 1000 or 0.5: no sign, no commas, no spaces. */
 export const KAIROS_LESSON_EXAMPLE_NUMBER_PATTERN = /^(0|[1-9]\d{0,11})(\.\d{1,8})?$/;
 

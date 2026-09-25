@@ -12,6 +12,7 @@ import './learn.css';
 const LESSON_TOOL_LINKS: Readonly<Record<LessonTool, { readonly href: string; readonly label: string }>> = {
   calculators: { href: '/library/calculators', label: 'Open the calculators' },
   journal: { href: '/journal', label: 'Open the Journal' },
+  practice: { href: '/practice', label: 'Open Practice' },
 };
 
 /** Keeps one broken block to one plain line; the rest of the step still shows. */
