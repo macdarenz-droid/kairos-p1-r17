@@ -31,15 +31,20 @@ export interface TradeVisualizerFactsProjection {
   readonly executedExits: readonly TradeVisualizerExecutedExit[];
 }
 
+/** The plan a trade's facts use: the one updated last; null when the trade has none. */
+export function latestTradePlan(plans: readonly TradePlanRecord[]): TradePlanRecord | null {
+  return plans.length === 0
+    ? null
+    : plans.reduce((latest, candidate) =>
+        candidate.updatedAt > latest.updatedAt ? candidate : latest);
+}
+
 export function projectTradeVisualizerFacts(
   trade: TradeRecord,
   plans: readonly TradePlanRecord[],
   executions: readonly TradeExecutionRecord[],
 ): TradeVisualizerFactsProjection {
-  const latestPlan = plans.length === 0
-    ? null
-    : plans.reduce((latest, candidate) =>
-        candidate.updatedAt > latest.updatedAt ? candidate : latest);
+  const latestPlan = latestTradePlan(plans);
 
   const projectExecution = (execution: TradeExecutionRecord): TradeVisualizerExecutedLevel => Object.freeze({
     executionId: execution.id,
