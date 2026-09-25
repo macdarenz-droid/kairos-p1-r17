@@ -24,6 +24,8 @@ export const appRoutes = [
       { path: 'library', lazy: async () => ({ Component: (await import('./LibraryRoute')).LibraryRoute }) },
       { path: 'library/words', lazy: async () => ({ Component: (await import('../features/learn/GlossaryScreen')).GlossaryScreen }) },
       { path: 'library/calculators', lazy: async () => ({ Component: (await import('../features/learn/CalculatorsScreen')).CalculatorsScreen }) },
+      { path: 'library/lessons', lazy: async () => ({ Component: (await import('../features/learn/LessonListScreen')).LessonListScreen }) },
+      { path: 'library/lessons/:lessonId', lazy: async () => ({ Component: (await import('../features/learn/LessonReaderScreen')).LessonReaderScreen }) },
       { path: 'more', element: <MoreRoute /> },
       { path: 'practice', lazy: async () => ({ Component: (await import('./PracticeRoute')).PracticeRoute }) },
       { path: 'goals', lazy: async () => ({ Component: (await import('./GoalsRoute')).GoalsRoute }) },

@@ -49,6 +49,7 @@ export function LibraryRoute({ db = kairosDatabase, learningSourceDevice }: Libr
     <section className="kairos-library__section" aria-labelledby="kairos-library-learn-title">
       <h2 id="kairos-library-learn-title">Learn the basics</h2>
       <ul className="kairos-library__learn">
+        <li><Link className="kairos-library__learn-link" to="/library/lessons"><strong>Lessons</strong><span>Short lessons with pictures, a few minutes each.</span></Link></li>
         <li><Link className="kairos-library__learn-link" to="/library/words"><strong>Trading words</strong><span>What the words on screen mean, and what traders call them.</span></Link></li>
         <li><Link className="kairos-library__learn-link" to="/library/calculators"><strong>Calculators</strong><span>How much you can buy for your risk, and what leverage does.</span></Link></li>
       </ul>
