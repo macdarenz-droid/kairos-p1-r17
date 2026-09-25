@@ -396,3 +396,53 @@ test('(k) Patterns: a closed trade, then your patterns and your practice pattern
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   expect(errors).toEqual([]);
 });
+
+test('(l) Forex: a EUR/USD trade in units, its picture without crypto candles, and Analysis', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  await activate(page);
+  await page.goto('/journal');
+  const marketRequests: string[] = [];
+  page.on('request', request => {
+    const url = new URL(request.url());
+    if (url.hostname === 'data-api.binance.vision' && (url.pathname === '/api/v3/klines' || url.pathname === '/api/v3/exchangeInfo')) marketRequests.push(url.pathname);
+  });
+
+  await page.getByRole('button', { name: 'Quick log' }).click();
+  await page.getByLabel(/^Market/).selectOption('forex');
+  await page.getByLabel(/^Symbol/).fill('EUR/USD');
+  await expect(page.getByText(/EUR\/USD: the price is how many USD one EUR costs\./)).toBeVisible();
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Entry price/).fill('1.085');
+  await page.getByLabel(/^Exit price/).fill('1.09');
+  await page.getByLabel(/^Quantity/).fill('10000');
+  await expect(page.getByLabel(/^Quantity/)).toHaveAccessibleDescription('10000 units is 0.1 lots.');
+  await page.getByRole('button', { name: 'Set opened time to now' }).click();
+  await page.getByRole('button', { name: 'Set closed time to now' }).click();
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+
+  const card = page.locator('.kairos-history-card').filter({ hasText: 'EUR/USD' });
+  await expect(card.locator('[data-outcome="profit"]')).toContainText('50 USD');
+  await expect(card).toContainText('Candles are shown for crypto trades only for now.');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+
+  await page.getByRole('button', { name: 'Open the EUR/USD trade picture' }).click();
+  const dialog = page.getByRole('dialog', { name: 'EUR/USD trade' });
+  await expect(dialog.locator('.kairos-trade-picture__title')).toHaveText('EUR/USD · Long · Closed');
+  await expect(dialog.locator('[data-info="size"] dd')).toHaveText('10000 units (0.1 lots)');
+  await expect(dialog.locator('[data-info="pips"] dd')).toHaveText('+50 pips');
+  await expect(dialog.locator('[data-info="pip-value"] dd')).toHaveText('1 USD');
+  expect(marketRequests).toEqual([]);
+  await dialog.getByRole('button', { name: 'Close' }).click();
+
+  await card.getByRole('link', { name: 'View trade' }).click();
+  await expect(page).toHaveURL(/\/analysis\?trade=/);
+  await expect(page.getByRole('heading', { name: 'Your trade' })).toBeVisible();
+  await expect(page.getByText(/The market chart has crypto markets from Binance only for now\./)).toBeVisible();
+  const result = page.getByRole('region', { name: 'Recorded result' });
+  await expect(result).toContainText('Result before fees');
+  await expect(result).toContainText('50 USD');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  expect(errors).toEqual([]);
+});
