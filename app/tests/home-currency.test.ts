@@ -132,15 +132,19 @@ describe('T-045c typed exchange rates', () => {
       bank('USD', '1.1481', '2026-09-17'),
       bank('GBP', '0.8588', '2026-09-18'),
       typed('EUR', 'USD', '1.2', '2026-09-18'),
+      typed('CHF', 'EUR', '0.95', '2026-09-18'),
+      typed('EUR', 'GBP', '0.86', '2026-09-18'),
       { ...bank('JPY', '180.94', '2026-09-18'), rate: '0' as DecimalString },
     ]);
     const day = await listExchangeRatesForDays(db, ['2026-09-18']);
-    expect(day.map((rate) => rate.id).sort()).toEqual(['ecb:EUR:GBP:2026-09-18', 'ecb:EUR:USD:2026-09-18', 'typed:EUR:USD:2026-09-18', 'typed:GBP:EUR:2026-09-18']);
+    expect(day.map((rate) => rate.id).sort()).toEqual(['ecb:EUR:GBP:2026-09-18', 'ecb:EUR:USD:2026-09-18', 'typed:CHF:EUR:2026-09-18', 'typed:EUR:GBP:2026-09-18', 'typed:EUR:USD:2026-09-18', 'typed:GBP:EUR:2026-09-18']);
     expect(Object.isFrozen(day)).toBe(true);
     expect(await listExchangeRatesForDays(db, [])).toEqual([]);
     const all = await listSavedExchangeRates(db);
     expect(all.map((rate) => rate.id)).toEqual([
+      'typed:CHF:EUR:2026-09-18',
       'ecb:EUR:GBP:2026-09-18',
+      'typed:EUR:GBP:2026-09-18',
       'ecb:EUR:USD:2026-09-18',
       'typed:EUR:USD:2026-09-18',
       'typed:GBP:EUR:2026-09-18',
