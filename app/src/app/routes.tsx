@@ -4,6 +4,8 @@ import { HomeRoute } from './HomeRoute';
 import { MoreRoute } from './MoreRoute';
 import { RouteError } from './RouteError';
 import { NotFoundRoute } from '../features/shell/NotFoundRoute';
+import { kairosDatabase } from '../data/database';
+import { createTradePictureCandleBrowserDeps } from './tradePictureCandleBrowserDeps';
 
 /** Shown only when the app starts on a screen whose code is still loading. */
 function RouteLoading() {
@@ -28,6 +30,11 @@ export const appRoutes = [
       { path: 'library/lessons/:lessonId', lazy: async () => ({ Component: (await import('../features/learn/LessonReaderScreen')).LessonReaderScreen }) },
       { path: 'more', element: <MoreRoute /> },
       { path: 'practice', lazy: async () => ({ Component: (await import('./PracticeRoute')).PracticeRoute }) },
+      { path: 'practice/replay', lazy: async () => {
+        const { ReplayScreen } = await import('../features/practice/ReplayScreen');
+        const market = createTradePictureCandleBrowserDeps();
+        return { Component: function PracticeReplayRoute() { return <ReplayScreen db={kairosDatabase} market={market} />; } };
+      } },
       { path: 'goals', lazy: async () => ({ Component: (await import('./GoalsRoute')).GoalsRoute }) },
       { path: 'settings', lazy: async () => ({ Component: (await import('./SettingsRoute')).SettingsRoute }) },
       { path: 'profile', lazy: async () => ({ Component: (await import('./ProfileRoute')).ProfileRoute }) },
