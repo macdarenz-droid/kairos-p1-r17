@@ -99,6 +99,13 @@ describe('T-027d save image', () => {
     expect(text).toContain('fill:rgb(255, 0, 0)');
   });
 
+  it('the serialized picture keeps the candle clip (T-039b)', async () => {
+    const { container } = render(<TradePictureCard model={await model()} />);
+    const text = serializeTradePictureSvg(container.querySelector('svg')!, () => ({ getPropertyValue: () => '' }));
+    expect(text).toContain('<clipPath');
+    expect(text).toContain('clip-path="url(#');
+  });
+
   function ports(canShare: boolean) {
     const rasterize = vi.fn(async (_svg: string, _width: number, _height: number, _scale: number) => new Blob(['png'], { type: 'image/png' }));
     const share = vi.fn(async (_data: { files: File[]; title: string }) => undefined);

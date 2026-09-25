@@ -40,6 +40,8 @@ export interface TradePictureCandle {
   readonly high: DecimalString;
   readonly low: DecimalString;
   readonly close: DecimalString;
+  /** 'above' or 'below' when the whole candle lies outside priceRange (drawn as an edge arrow); null when any part is inside or there is no range. */
+  readonly beyond: 'above' | 'below' | null;
 }
 
 export interface TradePictureBox {
@@ -89,6 +91,7 @@ export interface TradePictureModel {
   readonly side: TradeSide;
   readonly status: TradeRecord['status'];
   readonly timeRange: Readonly<{ from: string; to: string }> | null;
+  /** The trade's candles, the plan's entry, stop and target, and every entry and exit, plus TRADE_PICTURE_PRICE_PADDING; all candles when none of these exist. Candles before or after the trade may go past it: the card cuts them at the edge. */
   readonly priceRange: Readonly<{ low: DecimalString; high: DecimalString }> | null;
   readonly candles: readonly TradePictureCandle[];
   readonly riskBox: TradePictureBox | null;
@@ -206,7 +209,7 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
   const startAt = startMs === null ? null : iso(startMs);
   const endAt = iso(endMs ?? Date.parse(now));
 
-  const pictureCandles = (candles ?? []).map(candle => Object.freeze({ time: candle.openTime, open: candle.open, high: candle.high, low: candle.low, close: candle.close }));
+  const baseCandles = (candles ?? []).map(candle => ({ time: candle.openTime, open: candle.open, high: candle.high, low: candle.low, close: candle.close }));
   const markers = [
     ...facts.executedEntries.map(fill => Object.freeze({ kind: 'entry' as const, at: fill.executedAt, price: fill.price, quantity: fill.quantity })),
     ...facts.executedExits.map(fill => Object.freeze({ kind: 'exit' as const, at: fill.executedAt, price: fill.price, quantity: fill.quantity })),
@@ -216,13 +219,27 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
   const riskBox = box(entry, stop, startAt, endAt);
   const rewardBox = box(entry, target, startAt, endAt);
 
-  const prices: DecimalString[] = [
-    ...pictureCandles.flatMap(candle => [candle.high, candle.low]),
+  // The range is the trade itself: candles it overlaps, the plan and the fills. Candles before or after it never stretch it.
+  const tradeEnd = endMs ?? Date.parse(now);
+  const during = startMs === null ? [] : (candles ?? []).filter(candle => {
+    const open = ms(candle.openTime), close = ms(candle.closeTime);
+    return open !== null && close !== null && open <= tradeEnd && close >= startMs;
+  });
+  const core: DecimalString[] = [
+    ...during.flatMap(candle => [candle.high, candle.low]),
     ...[entry, stop, target].filter((value): value is DecimalString => value !== null),
     ...markers.map(marker => marker.price),
   ];
+  const prices = core.length > 0 ? core : baseCandles.flatMap(candle => [candle.high, candle.low]);
   const range = extremes(prices);
   const priceRange = range === null ? null : padded(range);
+  const beyondOf = (candle: { high: DecimalString; low: DecimalString }): 'above' | 'below' | null => {
+    if (priceRange === null) return null;
+    if (compare(candle.low, priceRange.high) === 1) return 'above';
+    if (compare(candle.high, priceRange.low) === -1) return 'below';
+    return null;
+  };
+  const pictureCandles = baseCandles.map(candle => Object.freeze({ ...candle, beyond: beyondOf(candle) }));
 
   const times = [
     ...(startMs === null ? [] : [startMs]), ...(startMs === null ? [] : [endMs ?? Date.parse(now)]),
