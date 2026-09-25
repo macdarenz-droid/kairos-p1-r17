@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { Link, useSearchParams } from 'react-router';
+import { practicePlanDraft, readPracticePlanStart } from '../application/practice/practicePlanStart';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
 import type { TradeStatus } from '../domain/trades';
 import { TradeForm } from '../features/journal/TradeForm';
@@ -20,6 +22,8 @@ export function PracticeRoute({ db = kairosDatabase, now }: PracticeRouteProps) 
   const [historyStatus, setHistoryStatus] = useState<TradeStatus | ''>('');
   const [listNotice, setListNotice] = useState('');
   const pages = useJournalHistoryPages(db, 'practice', historyStatus);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const planStart = readPracticePlanStart(searchParams);
   const [practiceRevision, setPracticeRevision] = useState(0);
   const [disciplineRevision, setDisciplineRevision] = useState(0);
   const changed = () => setPracticeRevision(value => value + 1);
@@ -37,7 +41,10 @@ export function PracticeRoute({ db = kairosDatabase, now }: PracticeRouteProps) 
 
       <PracticeMoneyCard db={db} refreshRevision={practiceRevision} />
 
-      <TradeForm db={db} kind="practice" onSaved={async () => { setListNotice(''); await pages.refresh(); changed(); }} />
+      <p className="kairos-practice__calculator-link">Not sure how much to buy? <Link to="/library/calculators">Work it out in the calculators</Link>.</p>
+      {planStart ? <p className="kairos-practice__plan-note">From the calculator: {planStart.side === 'long' ? 'buy' : 'sell'} up to {planStart.quantity}, entry {planStart.entryPrice}, stop {planStart.stopPrice}. It is filled in under Trade plan. Add the symbol, the market and the rest, then save.</p> : null}
+
+      <TradeForm db={db} kind="practice" initialDraft={planStart ? practicePlanDraft(planStart) : undefined} onSaved={async () => { if (planStart) setSearchParams(new URLSearchParams(), { replace: true }); setListNotice(''); await pages.refresh(); changed(); }} />
 
       <JournalDailyResults db={db} scope="practice" refreshRevision={practiceRevision} now={now} disciplineRevision={disciplineRevision} />
 

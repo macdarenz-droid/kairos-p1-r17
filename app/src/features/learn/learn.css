@@ -88,3 +88,4 @@
 .kairos-lesson__nav { display: flex; gap: var(--kairos-space-3); }
 .kairos-lesson__nav .kairos-button { flex: 1 1 0; }
 .kairos-lesson__next-lesson { display: grid; gap: var(--kairos-space-1); padding: var(--kairos-space-4); border: 1px solid var(--kairos-border-subtle); border-radius: var(--kairos-radius-lg); background: var(--kairos-surface-card); color: var(--kairos-text-primary); font-weight: var(--kairos-font-weight-semibold); text-decoration: none; overflow-wrap: anywhere; }
+.kairos-calculator__practice a { color: var(--kairos-accent-primary); font-weight: var(--kairos-font-weight-semibold); }

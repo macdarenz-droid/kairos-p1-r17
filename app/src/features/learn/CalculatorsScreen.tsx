@@ -1,5 +1,6 @@
 import { useId, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
+import { practicePlanHref } from '../../application/practice/practicePlanStart';
 import { projectLeveragePicture, type LeverageField } from '../../application/learn/leveragePicture';
 import { projectPositionSizePlan, type PositionSizeField, type PositionSizeProblem, type PositionSizeProblemReason } from '../../application/learn/positionSizePlan';
 import { Field } from '../../design-system/primitives';
@@ -63,6 +64,7 @@ function PositionSizeCalculator() {
             {result.plan.sizeWasRounded ? <li>The size is rounded down to 8 decimal places, so the loss at your stop is never more than you chose. Your exchange may only allow bigger steps.</li> : null}
             <li>Fees are not included.</li>
           </ul>
+          <p className="kairos-calculator__practice"><Link to={practicePlanHref({ side: result.plan.side, entryPrice: result.plan.entryPrice, stopPrice: result.plan.stopPrice, quantity: result.plan.size })}>Try it as a practice trade</Link></p>
         </>
       ) : null}
     </section>
