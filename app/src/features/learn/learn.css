@@ -52,3 +52,21 @@
 .kairos-glossary-hint.kairos-glossary-hint { display: inline-grid; place-items: center; inline-size: 24px; block-size: 24px; min-inline-size: 24px; min-block-size: 24px; margin-inline-start: var(--kairos-space-1); padding: 0; border: 1px solid var(--kairos-border-default); border-radius: var(--kairos-radius-full); background: transparent; color: var(--kairos-text-secondary); font: inherit; font-size: var(--kairos-font-size-xs); line-height: 1; cursor: help; vertical-align: middle; flex: none; }
 /* Analysis "Your trade": the route's control rule (0,2,1) would give the "?" the field gradient and a strong border. */
 .kairos-review .kairos-glossary-hint.kairos-glossary-hint { border-color: var(--kairos-border-default); background-image: none; }
+
+.kairos-learn .kairos-lesson__text { font-size: var(--kairos-font-size-lg); line-height: 1.5; color: var(--kairos-text-primary); }
+.kairos-lesson__figure { display: grid; gap: var(--kairos-space-2); justify-items: center; margin: 0; }
+.kairos-lesson__figure figcaption { color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-sm); text-align: center; overflow-wrap: anywhere; }
+.kairos-lesson__words { display: flex; flex-wrap: wrap; align-items: center; gap: var(--kairos-space-2); color: var(--kairos-text-secondary); }
+.kairos-lesson__word { display: inline-flex; align-items: center; color: var(--kairos-text-primary); }
+.kairos-lesson-check { display: grid; gap: var(--kairos-space-3); min-width: 0; margin: 0; padding: 0; border: 0; }
+.kairos-lesson-check legend { padding: 0; margin-block-end: var(--kairos-space-3); font-size: var(--kairos-font-size-lg); font-weight: var(--kairos-font-weight-semibold); }
+.kairos-lesson-check__choices { display: grid; gap: var(--kairos-space-2); }
+.kairos-lesson-check__choices .kairos-button { justify-content: flex-start; text-align: start; white-space: normal; padding-block: var(--kairos-space-2); }
+.kairos-lesson-check__choices .kairos-button[aria-disabled="true"] { cursor: default; }
+.kairos-lesson-check__tag { font-size: var(--kairos-font-size-sm); font-weight: 700; }
+/* The words keep the text colour; the state colours only draw the bar (non-text 3:1 is enough, and Paper's are below 4.5:1 on white). */
+.kairos-lesson-check__feedback[data-result] { padding-inline-start: var(--kairos-space-3); border-inline-start: 4px solid transparent; color: var(--kairos-text-primary); }
+.kairos-lesson-check__feedback[data-result="right"] { border-inline-start-color: var(--kairos-state-success); }
+.kairos-lesson-check__feedback[data-result="wrong"] { border-inline-start-color: var(--kairos-state-warning); }
+.kairos-lesson__try { display: grid; gap: var(--kairos-space-2); }
+.kairos-lesson__try a { color: var(--kairos-accent-primary); font-weight: var(--kairos-font-weight-semibold); }
