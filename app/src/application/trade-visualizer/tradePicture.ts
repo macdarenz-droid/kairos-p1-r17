@@ -19,6 +19,7 @@ import type {
 } from '../../domain/trades';
 import type { MarketCandle } from '../../services/market-data/MarketCandleHistoryPort';
 import { parseForexPair, projectForexPips, projectForexPipValue, projectForexSize } from '../markets/forexPair';
+import { projectStockResultPerShare } from '../markets/stockTicker';
 import { tradePictureHasCandleSource } from './tradePictureCandles';
 import { projectTradeVisualizerFacts } from './tradeVisualizerFacts';
 import { projectPlannedRewardToRisk } from '../risk-reward/plannedRewardToRisk';
@@ -29,6 +30,8 @@ export const TRADE_PICTURE_PRICE_PADDING = '0.08';
 export const TRADE_PICTURE_RATIO_PLACES = 2;
 /** Pips are shown to this many places (tenths of a pip), half up; the row's value keeps the exact owner value. */
 export const TRADE_PICTURE_PIP_PLACES = 1;
+/** Won or lost per share is shown to this many places, half up; the row's value keeps the exact owner value. */
+export const TRADE_PICTURE_PER_SHARE_PLACES = 4;
 
 export interface TradePictureInput {
   readonly trade: TradeRecord;
@@ -73,7 +76,7 @@ export interface TradePictureMarker {
 
 export type TradePictureInfoKey =
   | 'market' | 'direction' | 'opened' | 'closed' | 'planned-entry' | 'stop' | 'target' | 'average-exit'
-  | 'size' | 'result' | 'planned-reward' | 'actual-r' | 'duration' | 'status' | 'pips' | 'pip-value';
+  | 'size' | 'result' | 'planned-reward' | 'actual-r' | 'duration' | 'status' | 'pips' | 'pip-value' | 'per-share';
 
 export interface TradePictureInfoRow {
   readonly key: TradePictureInfoKey;
@@ -296,6 +299,13 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
   const pipsText = pipsShown !== null && pipsShown.ok ? `${signed(pipsShown.value)} ${pipsShown.value === '1' || pipsShown.value === '-1' ? 'pip' : 'pips'}` : null;
   const pipValue = pair !== null && size !== null ? projectForexPipValue(pair, size) : null;
   const unitWord = (value: string) => (value === '1' ? 'unit' : 'units');
+  // P32: a stock trade's size is shares; what it won or lost per share comes from the one ticker owner (D105).
+  const stock = trade.marketType === 'stock';
+  const perShare = stock && metrics !== null ? projectStockResultPerShare(metrics) : null;
+  const perShareShown = perShare === null ? null : decimalRound(perShare, TRADE_PICTURE_PER_SHARE_PLACES, 'half-up');
+  const priceCurrency = trade.grossPnlCurrency || null;
+  const perShareText = perShareShown !== null && perShareShown.ok
+    ? `${signed(perShareShown.value)}${priceCurrency ? ` ${priceCurrency}` : ''} before fees` : null;
 
   const info: TradePictureInfoRow[] = [
     row('market', 'Market', trade.symbol, null, value => (pair?.quoteKnown ? pair.label : value)),
@@ -310,12 +320,15 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
       ? row('size', 'Size', size, 'units', value => (lots === null
         ? `${value} ${unitWord(value)}`
         : `${value} ${unitWord(value)} (${lots} ${lots === '1' ? 'lot' : 'lots'})`))
-      : row('size', 'Size', size, null, value => value),
+      : stock
+        ? row('size', 'Size', size, 'shares', value => `${value} ${value === '1' ? 'share' : 'shares'}`)
+        : row('size', 'Size', size, null, value => value),
     row('result', 'Result after fees', metrics?.netPnl ?? null, currency, value => (currency ? `${value} ${currency}` : value)),
     ...(forex ? [
       row('pips', 'Pips won or lost', pipsText === null ? null : pips, 'pips', () => pipsText ?? ''),
       row('pip-value', 'Value of 1 pip', pipValue, pair?.quote ?? null, value => (pair ? `${value} ${pair.quote}` : value)),
     ] : []),
+    ...(stock ? [row('per-share', 'Won or lost per share', perShareText === null ? null : perShare, priceCurrency, () => perShareText ?? '')] : []),
     row('planned-reward', 'Planned reward', rewardText === null ? null : reward, null, () => rewardText ?? ''),
     row('actual-r', 'Actual result', realizedText === null ? null : realized, null, () => realizedText ?? ''),
     row('duration', 'How long it lasted', durationMs === null ? null : String(durationMs), 'ms', value => durationText(Number(value))),
@@ -323,7 +336,7 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
   ];
 
   const missing: TradePictureMissing[] = [];
-  if (candles === null || candles.length === 0) missing.push({ part: 'candles', message: forex ? 'No forex candles yet, so only your plan, entries and exits are shown.' : 'No candles, so only your plan and fills are shown.' });
+  if (candles === null || candles.length === 0) missing.push({ part: 'candles', message: forex ? 'No forex candles yet, so only your plan, entries and exits are shown.' : stock ? 'No stock candles yet, so only your plan, entries and exits are shown.' : 'No candles, so only your plan and fills are shown.' });
   if (startAt === null) missing.push({ part: 'start-time', message: 'No start time, so no risk or reward box.' });
   if (entry === null) missing.push({ part: 'planned-entry', message: 'No planned entry, so no risk or reward box.' });
   if (stop === null) missing.push({ part: 'stop', message: 'No stop, so no risk box.' });
