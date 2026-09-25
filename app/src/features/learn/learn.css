@@ -70,3 +70,9 @@
 .kairos-lesson-check__feedback[data-result="wrong"] { border-inline-start-color: var(--kairos-state-warning); }
 .kairos-lesson__try { display: grid; gap: var(--kairos-space-2); }
 .kairos-lesson__try a { color: var(--kairos-accent-primary); font-weight: var(--kairos-font-weight-semibold); }
+
+.kairos-lessons__list { display: grid; gap: var(--kairos-space-3); margin: 0; padding: 0; list-style: none; }
+.kairos-lessons__link { display: grid; gap: var(--kairos-space-1); padding: var(--kairos-space-4); border: 1px solid var(--kairos-border-subtle); border-radius: var(--kairos-radius-lg); background: var(--kairos-surface-card); color: var(--kairos-text-primary); text-decoration: none; overflow-wrap: anywhere; }
+.kairos-lessons__link > span { color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-sm); }
+.kairos-lessons__link > .kairos-lessons__facts { font-size: var(--kairos-font-size-xs); }
+.kairos-lessons__picture .kairos-learn-picture { max-width: 10rem; }
