@@ -2,8 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { createZonedClock, fnv1a64Hex, normaliseNewsText, readIcsEvents } from '../src/news/newsParsing';
 
 describe('normaliseNewsText', () => {
+  it('keeps text inside CDATA exactly as written, joins CDATA parts, and still decodes an entity once outside CDATA', () => {
+    expect(normaliseNewsText('<![CDATA[S&amp;P 500 < 5000]]>', 200)).toBe('S&amp;P 500 < 5000');
+    expect(normaliseNewsText('<![CDATA[Stocks <b>rise]]><![CDATA[</b> as rates fall]]>', 200)).toBe('Stocks <b>rise</b> as rates fall');
+    expect(normaliseNewsText('S&amp;P <![CDATA[&amp;]]> &amp;amp;', 200)).toBe('S&P &amp; &amp;');
+  });
+
   it('keeps plain text only: entities decoded once, no markup, no control characters', () => {
-    expect(normaliseNewsText(' <![CDATA[ A &amp; B ]]> ', 200)).toBe('A & B');
+    expect(normaliseNewsText(' <![CDATA[ A &amp; B ]]> ', 200)).toBe('A &amp; B');
     expect(normaliseNewsText('&lt;img src=x onerror=alert(1)&gt; Rates', 200)).toBe('Rates');
     expect(normaliseNewsText('&amp;lt;b&amp;gt;', 200)).toBe('&lt;b&gt;');
     expect(normaliseNewsText('a\u0007b', 200)).toBe('a b');

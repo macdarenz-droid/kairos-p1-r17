@@ -71,6 +71,9 @@ describe('the news routes through the Kairos server client', () => {
       ['2,001 events', { ...BLS, events: Array.from({ length: 2_001 }, () => event) }],
       ['leftOut below zero', { ...BLS, leftOut: -1 }],
       ['a title with spaces around it', { ...BLS, events: [{ ...event, title: ' Consumer Price Index' }] }],
+      ['a 201-character title', { ...BLS, events: [{ ...event, title: 't'.repeat(201) }] }],
+      ['a title with a control character', { ...BLS, events: [{ ...event, title: 'Consumer\u0007Price Index' }] }],
+      ['a non-canonical fetchedAt', { ...BLS, fetchedAt: '2026-09-24T03:00:00Z' }],
     ];
     for (const [label, data] of broken) {
       const { news } = port({ apiVersion: 1, ok: true, data });
@@ -88,6 +91,8 @@ describe('the news routes through the Kairos server client', () => {
       ['another source', { ...HEADLINES, source: 'fed' }],
       ['a 301-character title', { ...HEADLINES, items: [{ ...item, title: 't'.repeat(301) }] }],
       ['leftOut below zero', { ...HEADLINES, leftOut: -1 }],
+      ['a non-canonical publishedAt', { ...HEADLINES, items: [{ ...item, publishedAt: '2026-09-24T02:00:00Z' }] }],
+      ['a url that is not a string', { ...HEADLINES, items: [{ ...item, url: 42 }] }],
     ];
     for (const [label, data] of broken) {
       const { news } = port({ apiVersion: 1, ok: true, data });

@@ -18,6 +18,7 @@ export const moreNavigation = Object.freeze([
   { label: 'Strategies', to: '/strategies' },
   { label: 'Coach', to: '/coach' },
   { label: 'Patterns', to: '/patterns' },
+  { label: 'News calendar', to: '/news-calendar' },
   { label: 'Currency', to: '/currency' },
   { label: 'Settings', to: '/settings' },
   { label: 'Profile', to: '/profile' },
