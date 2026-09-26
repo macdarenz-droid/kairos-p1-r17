@@ -142,7 +142,7 @@ describe('the five more calendar routes', () => {
 
 describe('every rule of the five decoders', () => {
   const fed = (...entries: object[]) => JSON.stringify({ events: [{ title: 'Good', time: '2:00 p.m.', month: '2026-10', days: '28' }, ...entries] });
-  const fedEntry = (fields: Record<string, string>) => ({ title: 'Checked', time: '2:00 p.m.', month: '2026-10', days: '15', ...fields });
+  const fedEntry = (fields: Partial<Record<'title' | 'time' | 'month' | 'days', string>>) => ({ title: 'Checked', time: '2:00 p.m.', month: '2026-10', days: '15', ...fields });
 
   it('fed: morning and noon times in New York; an hour outside 1 to 12 counts', () => {
     expect(times('fed', [fed(fedEntry({ time: '9:00 a.m.' }), fedEntry({ title: 'Noon', time: '12:00 p.m.' }), fedEntry({ title: 'Bad hour', time: '13:00 p.m.' }))])).toEqual({
