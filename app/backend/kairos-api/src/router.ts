@@ -1,12 +1,14 @@
 /**
  * U1: one pipeline for every request, in this order: origin, preflight, route, method, query, device, access, rate limit,
- * handler. A route is a fixed
+ * cache, handler. A route is a fixed
  * entry in the route table (routes.ts): an exact path, the query names it accepts with a strict pattern each, and a
  * handler. Anything else is refused with the one error shape; nothing is guessed and no request value becomes a URL.
  */
+import { cacheControlFor, cacheKey, keep, readCached, type RouteCachePolicy } from './cache';
 import { checkDevice, KAIROS_DEVICE_HEADER, type DeviceCheck } from './device';
 import type { KairosApiEnv } from './env';
 import { isAllowedOrigin, okResponse, parseAllowedOrigins, preflightResponse, unavailableResponse, type UnavailableReason } from './http';
+import { createUpstreamFetch, UpstreamHostRefused, type UpstreamFetch } from './upstream';
 
 export interface QueryRule { readonly pattern: RegExp; readonly required: boolean }
 
@@ -18,6 +20,7 @@ export interface RouteContext {
   readonly query: URLSearchParams;
   readonly env: KairosApiEnv;
   readonly device: DeviceCheck;
+  readonly upstream: UpstreamFetch;
   readonly now: Date;
 }
 
@@ -29,12 +32,16 @@ export interface KairosApiRoute {
   /** false only for a route that does no upstream, storage or heavy work (/health). */
   readonly rateLimited: boolean;
   readonly query: Readonly<Record<string, QueryRule>>;
+  readonly upstreamHosts: readonly string[];
+  readonly cache: RouteCachePolicy | null;
   readonly handle: (context: RouteContext) => Promise<RouteAnswer>;
 }
 
 export interface RouterOptions {
   readonly routes: readonly KairosApiRoute[];
   readonly now?: () => Date;
+  /** Tests only: the fetch the upstream fetcher uses. */
+  readonly fetchImpl?: typeof fetch;
 }
 
 export const MAX_QUERY_LENGTH = 512;
@@ -91,11 +98,23 @@ export async function handleKairosApiRequest(request: Request, env: KairosApiEnv
       if (!(await limiter.limit({ key })).success) return fail('rate-limited');
     }
     const now = options.now?.() ?? new Date();
-    const answer = await route.handle({ query: url.searchParams, env, device, now });
+    const key = route.cache === null ? null : cacheKey(route.id, route.cache, url.searchParams);
+    if (route.cache !== null && key !== null) {
+      const hit = await readCached(key, route.cache, env.KAIROS_API_CACHE, now.getTime());
+      if (hit !== null) {
+        const response = okResponse(hit.stored.data, origin, allowed, cacheControlFor(route.cache));
+        response.headers.set('x-kairos-cache', hit.layer);
+        return response;
+      }
+    }
+    const answer = await route.handle({ query: url.searchParams, env, device, upstream: createUpstreamFetch(route.upstreamHosts, options.fetchImpl), now });
     if (!answer.ok) return fail(answer.reason, answer.retryAfter);
-    return okResponse(answer.data, origin, allowed, 'no-store');
-  } catch {
-    console.error(JSON.stringify({ event: 'kairos-api-error' }));
+    if (route.cache !== null && key !== null) keep(key, { storedAt: now.toISOString(), data: answer.data }, route.cache, env.KAIROS_API_CACHE, now.getTime(), (promise) => ctx.waitUntil(promise));
+    const response = okResponse(answer.data, origin, allowed, cacheControlFor(route.cache));
+    if (route.cache !== null) response.headers.set('x-kairos-cache', 'miss');
+    return response;
+  } catch (error) {
+    console.error(JSON.stringify({ event: 'kairos-api-error', kind: error instanceof UpstreamHostRefused ? 'upstream-host-refused' : 'exception' }));
     return fail('service-error');
   }
 }

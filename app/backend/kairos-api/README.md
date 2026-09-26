@@ -56,6 +56,37 @@ key and knows the device by its `activationId`.
 - Secret `KAIROS_ACTIVATION_PUBLIC_KEY_SPKI`: the activation public key (base64 SPKI), the same value as the Pages
   setting `VITE_KAIROS_ACTIVATION_PUBLIC_KEY_SPKI`. It is public; it is stored as a Worker secret only so deploys keep it.
 
+## Upstream sources and caching
+
+A route reads another site only through `createUpstreamFetch` (`src/upstream.ts`), which:
+- accepts only https URLs on the hosts the route lists in `upstreamHosts` (no other host, no port, no user name or
+  password); anything else is a bug answered as `service-error` before any network use;
+- never follows a redirect, never forwards the caller's headers (it sends only `accept`, its own `user-agent` and the
+  headers the route adds itself), stops after 8 s and refuses an answer over 1 MB (a route may set its own limits);
+- refuses an answer of the wrong content type. Every failure maps to `source-unavailable` in the route.
+
+Answers are kept per route (`cache` in the route table: `version`, `edgeSeconds`, `memorySeconds`, `kvSeconds`), only
+when ok, under keys that carry the route id and its version:
+1. **Workers Cache** (`edgeSeconds`): Cloudflare keeps the answer in front of the Worker and serves hits without running
+   it, so without the device check and the limits. A device-only route uses `edgeSeconds: 0`.
+2. **Memory** (`memorySeconds`): a copy in the running isolate, for short-lived answers; at most 200 answers and
+   8 million characters of JSON together, none over 1 million.
+3. **KV** (`kvSeconds`, at least 3,600): for answers kept an hour or more. The Free plan allows 1,000 KV writes a day,
+   so use it only for answers that change rarely. A KV failure never fails the request.
+
+## Rules for a new route
+
+- An exact path; every query name with an anchored pattern (`^…$`).
+- `access` (`public` or `device`) and `rateLimited` stated.
+- Every upstream host listed in `upstreamHosts`.
+- Prices, rates and amounts sent as strings (decimal text), never numbers.
+- A key only from `env` (a Worker secret), and only in `UpstreamRequest.headers` or the fixed URL.
+- `data` rebuilt from checked values, never an upstream body passed through.
+- Bump `cache.version` when `data` changes shape.
+- Tests for the decoder and the route.
+- Reserved secret names, each added to `KairosApiEnv` with its route: `NEWS_API_KEY` (O3), `MARKET_DATA_API_KEY` (O4),
+  `FX_RATES_API_KEY` (O5), `COIN_DATA_API_KEY` (O6).
+
 ## Checks (run from `app/`)
 
 ```

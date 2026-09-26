@@ -1,6 +1,8 @@
-import { createExecutionContext } from 'cloudflare:test';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
-import type { KairosApiEnv, RateLimiter } from '../src/env';
+import { createExecutionContext, waitOnExecutionContext } from 'cloudflare:test';
+import { env as workerEnv } from 'cloudflare:workers';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { clearMemoryCache, MEMORY_ENTRY_MAX_CHARS, type RouteCachePolicy } from '../src/cache';
+import type { KairosApiEnv, KvStore, RateLimiter } from '../src/env';
 import { handleKairosApiRequest, limiterAddress, type KairosApiRoute, type RouteContext } from '../src/router';
 import { KAIROS_API_ROUTES } from '../src/routes';
 import { ACTIVATION_ID, activationKeys, deviceToken, type ActivationKeys } from './signedReceipt';
@@ -15,6 +17,8 @@ function route(overrides: Partial<KairosApiRoute> = {}): KairosApiRoute {
     access: 'public',
     rateLimited: false,
     query: { symbol: { pattern: /^[A-Z]{2,12}$/, required: true }, limit: { pattern: /^[1-9][0-9]{0,2}$/, required: false } },
+    upstreamHosts: [],
+    cache: null,
     handle: vi.fn(async () => ({ ok: true as const, data: { n: 1 } })),
     ...overrides,
   };
@@ -181,5 +185,95 @@ describe('devices and limits', () => {
   it('says on /health that it recognised the device', async () => {
     const response = await callWith(KAIROS_API_ROUTES, '/health', { ...env, KAIROS_ACTIVATION_PUBLIC_KEY_SPKI: keys.spki }, { 'x-kairos-device': good });
     expect(await response.json()).toMatchObject({ ok: true, data: { device: 'recognised' } });
+  });
+});
+
+describe('keeping answers and reading other sites', () => {
+  const POLICY: RouteCachePolicy = { version: 1, edgeSeconds: 60, memorySeconds: 60, kvSeconds: 3600 };
+  const cachedRoute = (overrides: Partial<KairosApiRoute> = {}) => route({ upstreamHosts: ['a.test'], cache: POLICY, ...overrides });
+
+  async function send(routes: readonly KairosApiRoute[], path: string, callEnv: KairosApiEnv, fetchImpl?: typeof fetch): Promise<Response> {
+    const ctx = createExecutionContext();
+    const response = await handleKairosApiRequest(new Request(`https://kairos-api.example.workers.dev${path}`, { headers: { origin: APP } }), callEnv, ctx, { routes, fetchImpl });
+    await waitOnExecutionContext(ctx);
+    return response;
+  }
+
+  beforeEach(() => clearMemoryCache());
+
+  it('keeps an ok answer in memory and KV, whatever the order of the query', async () => {
+    const sample = cachedRoute();
+    const kvEnv = { ...env, KAIROS_API_CACHE: workerEnv.KAIROS_API_CACHE };
+    const first = await send([sample], '/sample?symbol=BTC&limit=5', kvEnv);
+    expect(first.headers.get('x-kairos-cache')).toBe('miss');
+    expect(first.headers.get('cache-control')).toBe('public, max-age=60');
+    const firstJson = await first.json();
+
+    const again = await send([sample], '/sample?limit=5&symbol=BTC', kvEnv);
+    expect(again.headers.get('x-kairos-cache')).toBe('memory');
+
+    clearMemoryCache();
+    const fromKv = await send([sample], '/sample?symbol=BTC&limit=5', kvEnv);
+    expect(fromKv.headers.get('x-kairos-cache')).toBe('kv');
+    expect(await fromKv.json()).toEqual(firstJson);
+    expect(sample.handle).toHaveBeenCalledTimes(1);
+    expect(await workerEnv.KAIROS_API_CACHE!.get('sample:v1:limit=5&symbol=BTC', 'text')).not.toBeNull();
+  });
+
+  it('never keeps a failed answer', async () => {
+    const handle = vi.fn(async () => ({ ok: false as const, reason: 'source-unavailable' as const }));
+    const sample = cachedRoute({ handle });
+    for (let call = 0; call < 2; call += 1) {
+      const response = await send([sample], '/sample?symbol=FAIL', env);
+      expect(response.status).toBe(502);
+      expect(response.headers.get('cache-control')).toBe('no-store');
+    }
+    expect(handle).toHaveBeenCalledTimes(2);
+  });
+
+  it('never fails a request because KV fails', async () => {
+    const failingPut: KvStore = { get: async () => null, put: async () => { throw new Error('kv down'); } };
+    expect((await send([cachedRoute()], '/sample?symbol=PUT', { ...env, KAIROS_API_CACHE: failingPut })).status).toBe(200);
+
+    const failingGet: KvStore = { get: async () => { throw new Error('kv down'); }, put: async () => undefined };
+    const sample = cachedRoute();
+    expect((await send([sample], '/sample?symbol=GET', { ...env, KAIROS_API_CACHE: failingGet })).status).toBe(200);
+    expect(sample.handle).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses a host the route did not list, before the network', async () => {
+    const fetchImpl = vi.fn<typeof fetch>();
+    const sample = cachedRoute({
+      handle: async ({ upstream }) => {
+        await upstream('https://evil.example/x', { accept: 'application/json' });
+        return { ok: true as const, data: {} };
+      },
+    });
+    const response = await send([sample], '/sample?symbol=EVIL', env, fetchImpl);
+    expect(response.status).toBe(500);
+    expect(await response.json()).toMatchObject({ reason: 'service-error' });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('keeps nothing for a route without a cache policy', async () => {
+    const response = await send([route()], '/sample?symbol=BTC', env);
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(response.headers.get('x-kairos-cache')).toBeNull();
+  });
+
+  it('keeps memory copies within their size caps', async () => {
+    const memoryOnly: RouteCachePolicy = { version: 1, edgeSeconds: 0, memorySeconds: 60, kvSeconds: null };
+    const sized = (n: number) => cachedRoute({ cache: memoryOnly, handle: vi.fn(async () => ({ ok: true as const, data: { text: 'x'.repeat(n) } })) });
+
+    const big = sized(MEMORY_ENTRY_MAX_CHARS + 1);
+    expect((await send([big], '/sample?symbol=BIG', env)).headers.get('x-kairos-cache')).toBe('miss');
+    expect((await send([big], '/sample?symbol=BIG', env)).headers.get('x-kairos-cache')).toBe('miss');
+    expect(big.handle).toHaveBeenCalledTimes(2);
+
+    const many = sized(950_000);
+    const symbols = ['AA', 'BB', 'CC', 'DD', 'EE', 'FF', 'GG', 'HH', 'II'];
+    for (const symbol of symbols) await send([many], `/sample?symbol=${symbol}`, env);
+    expect((await send([many], '/sample?symbol=AA', env)).headers.get('x-kairos-cache')).toBe('miss');
+    expect((await send([many], '/sample?symbol=II', env)).headers.get('x-kairos-cache')).toBe('memory');
   });
 });
