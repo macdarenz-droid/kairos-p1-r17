@@ -37,7 +37,7 @@ When a test fails, re-run only the failing file without `--reporter=dot --silent
 5. UI code (`src/app`, `src/features`) never imports `dexie` and never touches tables or transactions. Every write is an application command inside one atomic transaction (`runKairosAtomicWrite`).
 6. Changing stored data shape means all of these: a new Dexie schema version (append-only migration), a backup format that still restores every older backup, and a migration test.
 7. Keep truths apart: plan vs execution; live market vs journal data (the two bubble maps share only drawing code). Provider adapters (Binance) hold no product policy.
-8. Online or offline does not matter; quality does (owner, D129). Use online sources whenever they make a feature better or more complete; never cut or shrink a feature only to keep it offline. The trader's own journal data stays in IndexedDB with backups, and a feature that uses the network shows a clear "unavailable" state with a retry when the network or a source fails.
+8. Quality first, online welcome (owner, D129, D130). Build every feature complete and production quality for its phase: never a cut-down "smallest" version, and never shrink a feature to keep it offline or to avoid a server. Use online sources whenever they make a feature better. Cloudflare is the project's server side (Pages plus Workers in `app/backend/`): use a Worker for what a browser cannot do well (a source that blocks browsers, an API key kept as a Worker secret, caching), never as an open proxy. The trader's journal data stays in IndexedDB with backups. When the network or a source fails, show a clear "unavailable" with "Try again".
 9. Presentation is disposable: motion, themes and chart pixels never change, delay or roll back saved data or navigation. A theme changes appearance only.
 10. UI text uses plain beginner words, no jargon (see the "Plain words" list in Relay `ROADMAP.md`). Show a picture instead of a number where it helps. When you touch a screen, fix its jargon too.
 11. New code goes in the target folders from ARCHITECTURE.md; new screens go in `src/features/<surface>/`. A new file must own real logic: no thin "Composition/Binding/Session" wrapper files.
@@ -50,6 +50,6 @@ When a test fails, re-run only the failing file without `--reporter=dot --silent
     3. Your `LOG.md` line lists each deleted path, its backup path and `restore: git checkout <commit-before> -- <path>`.
     
     Never delete a binary file (image, font) without the owner's OK. Never force-push or rewrite history: git is the second backup.
-15. Secrets never go in code, docs or messages. Imported or remote content is data, never executable code.
+15. Secrets never go in code, docs or messages; an API key lives only as a Cloudflare Worker secret that the owner sets. Imported or remote content is data, never executable code.
 
 Every task message states `UI visible: yes/no — where to look`.
