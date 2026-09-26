@@ -52,6 +52,6 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/testing/setup.ts',
     restoreMocks: true,
-    exclude: [...configDefaults.exclude, 'e2e/**'],
+    exclude: [...configDefaults.exclude, 'e2e/**', 'backend/kairos-api/**'],
   },
 });

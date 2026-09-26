@@ -1,0 +1,16 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "kairos-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "workers_dev": true,
+  "preview_urls": false,
+  "cache": { "enabled": true },
+  "observability": { "enabled": true, "head_sampling_rate": 1, "logs": { "invocation_logs": false } },
+  "vars": { "KAIROS_APP_ORIGINS": "https://kairos-p1-r17.pages.dev", "KAIROS_API_ROLE": "production" },
+  "kv_namespaces": [{ "binding": "KAIROS_API_CACHE" }],
+  "ratelimits": [
+    { "name": "KAIROS_API_DEVICE_LIMITER", "namespace_id": "7101", "simple": { "limit": 120, "period": 60 } },
+    { "name": "KAIROS_API_ANONYMOUS_LIMITER", "namespace_id": "7102", "simple": { "limit": 30, "period": 60 } }
+  ]
+}

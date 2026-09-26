@@ -98,3 +98,5 @@ Settings for building from `app/` (the owner sets them once, when the first rele
 | `SKIP_DEPENDENCY_INSTALL` | `true` |
 
 Keep the `VITE_KAIROS_ACTIVATION_ENDPOINT` and `VITE_KAIROS_ACTIVATION_PUBLIC_KEY_SPKI` variables if they are set. Without them the built app shows only the activation screen.
+
+Add `VITE_KAIROS_API_URL` with the Kairos server's address (`https://kairos-api.<subdomain>.workers.dev`, shown in the summary of CI's "deploy kairos-api (main)" job) once the server is deployed; see `app/backend/kairos-api/README.md`. Without it, online features say they are not set up in this version of Kairos.
