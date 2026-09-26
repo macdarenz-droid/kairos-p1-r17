@@ -248,9 +248,9 @@ export function NewsCalendarScreen({ db, now = wallClock, news }: NewsCalendarSc
         {deleted === null ? null : <p role="status">{deleted}</p>}
         <p>{`Times in ${result.timeZone}.`}</p>
         <div className="kairos-news-calendar__controls">
-          <Button variant="secondary" size="sm" onClick={() => setWeekStart((current) => shiftVisualPnlDayKey(current ?? result.thisWeekStartDayKey, -7))}>Earlier week</Button>
-          <Button variant="secondary" size="sm" onClick={() => setWeekStart(null)}>This week</Button>
-          <Button variant="secondary" size="sm" onClick={() => setWeekStart((current) => shiftVisualPnlDayKey(current ?? result.thisWeekStartDayKey, 7))}>Later week</Button>
+          <Button variant="secondary" size="sm" onClick={() => { setDeleted(null); setWeekStart((current) => shiftVisualPnlDayKey(current ?? result.thisWeekStartDayKey, -7)); }}>Earlier week</Button>
+          <Button variant="secondary" size="sm" onClick={() => { setDeleted(null); setWeekStart(null); }}>This week</Button>
+          <Button variant="secondary" size="sm" onClick={() => { setDeleted(null); setWeekStart((current) => shiftVisualPnlDayKey(current ?? result.thisWeekStartDayKey, 7)); }}>Later week</Button>
         </div>
         <p>{describeWeekCoverage(result.checkedSources)}</p>
         <div className="kairos-news-calendar__filter">

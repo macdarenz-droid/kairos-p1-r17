@@ -18,16 +18,16 @@ type Draft = Readonly<{ title: string; startsAt: string; currency: string; impac
 type Outcome = Readonly<{ kind: 'saved'; text: string }> | Readonly<{ kind: 'alert'; text: string }>;
 
 const EMPTY: Draft = Object.freeze({ title: '', startsAt: '', currency: '', impact: null, expected: '', previous: '', actual: '' });
-const SIZES: readonly (EconomicEventImpact | null)[] = [null, 'high', 'medium', 'low'];
+const SIZES: readonly (EconomicEventImpact | null)[] = ['high', 'medium', 'low', null];
 const VALUE_FIELDS = [['expected', 'Expected'], ['previous', 'Last time'], ['actual', 'Actual']] as const;
 
 /**
- * "Big news" as two text parts ("Big" in a span, then " news"): the radio's name is the same, while the page's one
+ * "Big news" as one span of two text parts ("Big" in a span, then " news"), so the label's gap never splits them: the radio's name is the same, while the page's one
  * element whose own text is exactly "Big news" stays the size line of a saved event.
  */
 function SizeWords({ words }: { readonly words: string }) {
   const space = words.indexOf(' ');
-  return space < 0 ? <>{words}</> : <><span>{words.slice(0, space)}</span>{words.slice(space)}</>;
+  return space < 0 ? <>{words}</> : <span><span>{words.slice(0, space)}</span>{words.slice(space)}</span>;
 }
 
 /** P34: "Add your own news": saved offline with the typed-news command; nothing is worked out from the numbers. */

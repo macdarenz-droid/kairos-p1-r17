@@ -171,3 +171,42 @@ describe('T-046l delete your own news', () => {
     expect(await db.economicEvents.get(SPEECH.id)).toBeDefined();
   });
 });
+
+describe('T-046l fix r1', () => {
+  it('lists the sizes Big, Medium, Small, then Not sure (checked at first), each label\'s words as one piece with one space', async () => {
+    const form = await openForm(await database(MACHINE_ZONE));
+    const radios = within(form.getByRole('group', { name: 'How big is it?' })).getAllByRole('radio');
+    expect(radios.map((radio) => radio.closest('label')!.textContent)).toEqual(['Big news', 'Medium news', 'Small news', 'Not sure']);
+    expect(radios.map((radio) => (radio as HTMLInputElement).checked)).toEqual([false, false, false, true]);
+    for (const radio of radios) {
+      const label = radio.closest('label')!;
+      // The label is a flex box: its gap would split loose words, so the words sit in one element, or are one text piece.
+      const words = [...label.childNodes].filter((node) => node !== radio && (node.nodeType !== Node.TEXT_NODE || node.textContent!.trim() !== ''));
+      expect(words).toHaveLength(1);
+      expect(words[0].textContent).toMatch(/^\S+( \S+)?$/);
+    }
+  });
+
+  it('a field error clears the last saved or failed line', async () => {
+    const form = await openForm(await database(MACHINE_ZONE));
+    type(form.getByLabelText(/^Name/), 'US CPI');
+    type(form.getByLabelText(/^Date and time/), '2026-09-24T20:30');
+    fireEvent.click(form.getByRole('button', { name: 'Save news' }));
+    expect(await form.findByRole('status')).toHaveTextContent('Saved: US CPI');
+    fireEvent.click(form.getByRole('button', { name: 'Save news' }));
+    await waitFor(() => expect(form.getByLabelText(/^Name/)).toHaveFocus());
+    expect(form.queryByRole('status')).toBeNull();
+    expect(form.queryByRole('alert')).toBeNull();
+  });
+
+  it('the "Deleted …" line goes away when the week changes', async () => {
+    const db = await database('Asia/Manila', [SPEECH, CPI_BLS]);
+    render(<NewsCalendarScreen db={db} now={now} />);
+    fireEvent.click(await screen.findByRole('button', { name: /^Delete ECB President speaks/ }));
+    fireEvent.click(within(screen.getByRole('group', { name: 'Delete ECB President speaks?' })).getByRole('button', { name: 'Yes, delete' }));
+    expect(await screen.findByText('Deleted ECB President speaks.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Earlier week' }));
+    expect(await screen.findByRole('heading', { level: 2, name: 'Week of Monday 14 September 2026' })).toBeInTheDocument();
+    expect(screen.queryByText('Deleted ECB President speaks.')).toBeNull();
+  });
+});
