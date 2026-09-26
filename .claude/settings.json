@@ -40,5 +40,13 @@
       "mcp__Kairos_CODER__write_file",
       "mcp__github__merge_pull_request"
     ]
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      { "hooks": [ { "type": "command", "command": "cat \"$CLAUDE_PROJECT_DIR/.claude/owner-rules.md\"" } ] }
+    ],
+    "SessionStart": [
+      { "matcher": "startup|resume|clear|compact", "hooks": [ { "type": "command", "command": "cat \"$CLAUDE_PROJECT_DIR/.claude/owner-rules.md\"" } ] }
+    ]
   }
 }
