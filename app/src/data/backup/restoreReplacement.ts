@@ -13,6 +13,7 @@ export interface KairosRestoreResultV2 {
   readonly restoredSavedTimeAssistedSnapshotRecords: number;
   readonly restoredTradeDisciplineRecords: number;
   readonly restoredExchangeRateRecords: number;
+  readonly restoredEconomicEventRecords: number;
   readonly integrity: DatabaseIntegrityReport;
 }
 
@@ -30,10 +31,11 @@ export async function replaceKairosDatabaseFromPreparedRestore(
   const savedTimeAssistedSnapshots = incoming.savedTimeAssistedSnapshots.map((record) => structuredClone(record));
   const tradeDiscipline = incoming.tradeDiscipline.map((record) => structuredClone(record));
   const exchangeRates = incoming.exchangeRates.map((record) => ({ ...record }));
+  const economicEvents = incoming.economicEvents.map((record) => ({ ...record }));
 
   await runKairosAtomicWrite(
     db,
-    ['metadata', 'trades', 'tradePlans', 'tradeExecutions', 'tradeFees', 'savedAnalyses', 'savedTimeAssistedSnapshots', 'tradeDiscipline', 'exchangeRates'],
+    ['metadata', 'trades', 'tradePlans', 'tradeExecutions', 'tradeFees', 'savedAnalyses', 'savedTimeAssistedSnapshots', 'tradeDiscipline', 'exchangeRates', 'economicEvents'],
     async ({ repositories }) => {
       // Parent first on write; all stores are still covered by one atomic transaction.
       await repositories.metadata.replaceAll(metadata);
@@ -45,6 +47,7 @@ export async function replaceKairosDatabaseFromPreparedRestore(
       await repositories.savedTimeAssistedSnapshots.replaceAll(savedTimeAssistedSnapshots);
       await repositories.tradeDiscipline.replaceAll(tradeDiscipline);
       await repositories.exchangeRates.replaceAll(exchangeRates);
+      await repositories.economicEvents.replaceAll(economicEvents);
     },
   );
 
@@ -59,6 +62,7 @@ export async function replaceKairosDatabaseFromPreparedRestore(
     restoredSavedTimeAssistedSnapshotRecords: savedTimeAssistedSnapshots.length,
     restoredTradeDisciplineRecords: tradeDiscipline.length,
     restoredExchangeRateRecords: exchangeRates.length,
+    restoredEconomicEventRecords: economicEvents.length,
     integrity,
   });
 }

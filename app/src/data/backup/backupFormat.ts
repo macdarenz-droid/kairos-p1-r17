@@ -2,10 +2,12 @@ import type { SavedAnalysis } from '../../domain/saved-records/savedAnalysisCont
 import type { SavedTimeAssistedSnapshot } from '../../domain/saved-records/savedTimeAssistedSnapshotContract';
 import type { LegacyTradeDisciplineRecord, TradeDisciplineRecord } from '../../domain/discipline';
 import type { ExchangeRateRecord } from '../../domain/calculations/currencyConversion';
+import type { EconomicEventRecord } from '../../domain/economic-calendar/economicEvent';
 import type { DatabaseMetadataRecord, DatabaseTradeExecutionRecord, DatabaseTradeFeeRecord, DatabaseTradePlanRecord, DatabaseTradeRecord } from '../database/schema';
 
 export const KAIROS_BACKUP_FORMAT_NAME = 'kairos-full-backup' as const;
-export const KAIROS_BACKUP_FORMAT_VERSION = 9 as const;
+export const KAIROS_BACKUP_FORMAT_VERSION = 10 as const;
+export const KAIROS_EXCHANGE_RATE_BACKUP_FORMAT_VERSION = 9 as const;
 export const KAIROS_STRATEGY_MARK_BACKUP_FORMAT_VERSION = 8 as const;
 export const KAIROS_DISCIPLINE_ITEMS_BACKUP_FORMAT_VERSION = 7 as const;
 export const KAIROS_CHART_ZONE_BACKUP_FORMAT_VERSION = 6 as const;
@@ -50,5 +52,10 @@ export interface KairosBackupPayloadV9 extends KairosBackupPayloadV7 { readonly 
 export interface KairosBackupRecordCountsV9 extends KairosBackupRecordCountsV5 { readonly exchangeRates:number; }
 export interface KairosBackupEnvelopeV9 { readonly formatName:typeof KAIROS_BACKUP_FORMAT_NAME; readonly formatVersion:9; readonly appVersion:string; readonly buildId:string; readonly exportedAt:string; readonly databaseSchemaVersion:10; readonly recordCounts:KairosBackupRecordCountsV9; readonly payload:KairosBackupPayloadV9; }
 
-export type KairosBackupEnvelope = KairosBackupEnvelopeV1|KairosBackupEnvelopeV2|KairosBackupEnvelopeV3|KairosBackupEnvelopeV4|KairosBackupEnvelopeV5|KairosBackupEnvelopeV6|KairosBackupEnvelopeV7|KairosBackupEnvelopeV8|KairosBackupEnvelopeV9;
-export type KairosCurrentBackupEnvelope = KairosBackupEnvelopeV9;
+/** V10 adds the P34 saved news events (D124). It describes schema 11. */
+export interface KairosBackupPayloadV10 extends KairosBackupPayloadV9 { readonly economicEvents: readonly EconomicEventRecord[]; }
+export interface KairosBackupRecordCountsV10 extends KairosBackupRecordCountsV9 { readonly economicEvents:number; }
+export interface KairosBackupEnvelopeV10 { readonly formatName:typeof KAIROS_BACKUP_FORMAT_NAME; readonly formatVersion:10; readonly appVersion:string; readonly buildId:string; readonly exportedAt:string; readonly databaseSchemaVersion:11; readonly recordCounts:KairosBackupRecordCountsV10; readonly payload:KairosBackupPayloadV10; }
+
+export type KairosBackupEnvelope = KairosBackupEnvelopeV1|KairosBackupEnvelopeV2|KairosBackupEnvelopeV3|KairosBackupEnvelopeV4|KairosBackupEnvelopeV5|KairosBackupEnvelopeV6|KairosBackupEnvelopeV7|KairosBackupEnvelopeV8|KairosBackupEnvelopeV9|KairosBackupEnvelopeV10;
+export type KairosCurrentBackupEnvelope = KairosBackupEnvelopeV10;

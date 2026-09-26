@@ -65,11 +65,11 @@ describe('P36.1 trade discipline record foundation', () => {
   });
 
   it('appends schema v8 with the one-per-trade discipline store and keeps v5 history intact', async () => {
-    expect(KAIROS_DB_SCHEMA_VERSION).toBe(10);
+    expect(KAIROS_DB_SCHEMA_VERSION).toBe(11);
     expect(KAIROS_V6_STORES).toEqual({ tradeDiscipline: '&id,tradeId,updatedAt' });
     expect(KAIROS_V5_STORES).toEqual({ savedTimeAssistedSnapshots: '&id' });
     const db = createKairosDatabase(dbName('schema'));
-    await expect(openKairosDatabase(db)).resolves.toEqual({ state: 'ready', schemaVersion: 10 });
+    await expect(openKairosDatabase(db)).resolves.toEqual({ state: 'ready', schemaVersion: 11 });
     expect(db.tradeDiscipline.schema.primKey.keyPath).toBe('id');
     expect(db.tradeDiscipline.schema.indexes.map((index) => index.name)).toEqual(['tradeId', 'updatedAt']);
     expect(db.tradeDiscipline.schema.idxByName.tradeId?.unique).toBe(true);
@@ -90,7 +90,7 @@ describe('P36.1 trade discipline record foundation', () => {
     await expect(repo.getByTradeId(tradeId)).resolves.toEqual(discipline);
     await expect(repo.getByTradeId('other-trade' as TradeId)).resolves.toBeUndefined();
     await expect(repo.listAll()).resolves.toEqual([discipline]);
-    await expect(assertKairosDatabaseIntegrity(db)).resolves.toMatchObject({ ok: true, schemaVersion: 10, tradeRecordCount: 1, tradeDisciplineRecordCount: 1 });
+    await expect(assertKairosDatabaseIntegrity(db)).resolves.toMatchObject({ ok: true, schemaVersion: 11, tradeRecordCount: 1, tradeDisciplineRecordCount: 1 });
     await repo.delete(discipline.id);
     await expect(repo.get(discipline.id)).resolves.toBeUndefined();
     db.close();
@@ -120,7 +120,7 @@ describe('P36.1 trade discipline record foundation', () => {
   it('round-trips a discipline record through current backup V5 and counts it in the envelope', async () => {
     const envelope = createKairosBackupEnvelope({ metadata: [], trades: [trade], tradeDiscipline: [discipline] });
     const parsed = parseKairosBackup(serializeKairosBackup(envelope));
-    expect(parsed).toMatchObject({ formatVersion: 9, databaseSchemaVersion: 10, recordCounts: { trades: 1, savedTimeAssistedSnapshots: 0, tradeDiscipline: 1, total: 2 } });
+    expect(parsed).toMatchObject({ formatVersion: 10, databaseSchemaVersion: 11, recordCounts: { trades: 1, savedTimeAssistedSnapshots: 0, tradeDiscipline: 1, total: 2 } });
     expect(parsed.payload.tradeDiscipline).toEqual([discipline]);
     const db = createKairosDatabase(dbName('snapshot'));
     await openKairosDatabase(db);
@@ -135,11 +135,11 @@ describe('P36.1 trade discipline record foundation', () => {
   it('migrates a released V4 backup to V5 with an empty discipline store and still accepts V1 through V3', () => {
     const legacyV4 = { formatName: KAIROS_BACKUP_FORMAT_NAME, formatVersion: 4, appVersion: 'old-v4', buildId: 'old-v4', exportedAt: '2026-09-18T08:30:00.000Z', databaseSchemaVersion: 5, recordCounts: { metadata: 0, trades: 1, tradePlans: 0, tradeExecutions: 0, tradeFees: 0, savedAnalyses: 0, savedTimeAssistedSnapshots: 0, total: 1 }, payload: { metadata: [], trades: [trade], tradePlans: [], tradeExecutions: [], tradeFees: [], savedAnalyses: [], savedTimeAssistedSnapshots: [] } };
     const migrated = parseKairosBackup(JSON.stringify(legacyV4));
-    expect(migrated).toMatchObject({ formatVersion: 9, databaseSchemaVersion: 10, recordCounts: { trades: 1, tradeDiscipline: 0, total: 1 } });
+    expect(migrated).toMatchObject({ formatVersion: 10, databaseSchemaVersion: 11, recordCounts: { trades: 1, tradeDiscipline: 0, total: 1 } });
     expect(migrated.payload.tradeDiscipline).toEqual([]);
     expect(migrated.payload.trades).toEqual([trade]);
     const legacyV3 = { ...legacyV4, formatVersion: 3, databaseSchemaVersion: 4, recordCounts: { metadata: 0, trades: 1, tradePlans: 0, tradeExecutions: 0, tradeFees: 0, savedAnalyses: 0, total: 1 }, payload: { metadata: [], trades: [trade], tradePlans: [], tradeExecutions: [], tradeFees: [], savedAnalyses: [] } };
-    expect(parseKairosBackup(JSON.stringify(legacyV3))).toMatchObject({ formatVersion: 9, databaseSchemaVersion: 10, recordCounts: { trades: 1, savedTimeAssistedSnapshots: 0, tradeDiscipline: 0, total: 1 } });
+    expect(parseKairosBackup(JSON.stringify(legacyV3))).toMatchObject({ formatVersion: 10, databaseSchemaVersion: 11, recordCounts: { trades: 1, savedTimeAssistedSnapshots: 0, tradeDiscipline: 0, total: 1 } });
     const legacyV1 = { formatName: KAIROS_BACKUP_FORMAT_NAME, formatVersion: 1, appVersion: 'old', buildId: 'old', exportedAt: '2026-08-31T08:30:00.000Z', databaseSchemaVersion: 1, recordCounts: { metadata: 0, total: 0 }, payload: { metadata: [] } };
     expect(parseKairosBackup(JSON.stringify(legacyV1)).payload.tradeDiscipline).toEqual([]);
   });

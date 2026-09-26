@@ -3,9 +3,10 @@ import type { SavedTimeAssistedSnapshot } from '../../domain/saved-records/saved
 import type { TradeDisciplineRecord } from '../../domain/discipline';
 import type { TradeExecutionRecord, TradeFeeRecord, TradePlanRecord, TradeRecord } from '../../domain/trades';
 import type { ExchangeRateRecord } from '../../domain/calculations/currencyConversion';
+import type { EconomicEventRecord } from '../../domain/economic-calendar/economicEvent';
 
 export const KAIROS_DATABASE_NAME = 'kairos';
-export const KAIROS_DB_SCHEMA_VERSION = 10 as const;
+export const KAIROS_DB_SCHEMA_VERSION = 11 as const;
 
 /** Immutable released V1 contract. Never edit. */
 export const KAIROS_V1_STORES = Object.freeze({
@@ -58,6 +59,9 @@ export const KAIROS_V9_STORES = Object.freeze({});
 /** V10 appends the P33 exchange rate store: one rate per source, pair and UTC day (D114). Nothing to convert. */
 export const KAIROS_V10_STORES = Object.freeze({ exchangeRates: '&id,day' });
 
+/** V11 appends the P34 news store: one row per saved news event, indexed by the instant it is scheduled (D124). Nothing to convert. */
+export const KAIROS_V11_STORES = Object.freeze({ economicEvents: '&id,startsAt' });
+
 /** Current complete store authority used by transactions/integrity only. */
 export const KAIROS_CURRENT_STORES = Object.freeze({
   ...KAIROS_V2_STORES,
@@ -69,6 +73,7 @@ export const KAIROS_CURRENT_STORES = Object.freeze({
   ...KAIROS_V8_STORES,
   ...KAIROS_V9_STORES,
   ...KAIROS_V10_STORES,
+  ...KAIROS_V11_STORES,
 });
 
 export interface DatabaseMetadataRecord {
@@ -82,6 +87,7 @@ export type DatabaseTradePlanRecord = TradePlanRecord;
 export type DatabaseTradeExecutionRecord = TradeExecutionRecord;
 export type DatabaseTradeFeeRecord = TradeFeeRecord;
 export type DatabaseExchangeRateRecord = ExchangeRateRecord;
+export type DatabaseEconomicEventRecord = EconomicEventRecord;
 
 export type DatabaseSavedAnalysisRecord = SavedAnalysis;
 export type DatabaseSavedTimeAssistedSnapshotRecord = SavedTimeAssistedSnapshot;

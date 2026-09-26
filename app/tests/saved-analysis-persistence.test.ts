@@ -26,14 +26,14 @@ describe('P20.2 Saved Analysis persistence foundation', () => {
     const loaded = await repo.get(saved.id);
     expect(loaded).toEqual(saved);
     expect(loaded).not.toBe(saved);
-    await expect(assertKairosDatabaseIntegrity(db)).resolves.toMatchObject({ ok: true, schemaVersion: 10, savedAnalysisRecordCount: 1 });
+    await expect(assertKairosDatabaseIntegrity(db)).resolves.toMatchObject({ ok: true, schemaVersion: 11, savedAnalysisRecordCount: 1 });
     db.close();
   });
 
   it('round-trips Saved Analysis through current backup V4', () => {
     const envelope = createKairosBackupEnvelope({ metadata: [], savedAnalyses: [saved] });
     const parsed = parseKairosBackup(serializeKairosBackup(envelope));
-    expect(parsed).toMatchObject({ formatVersion: 9, databaseSchemaVersion: 10, recordCounts: { savedAnalyses: 1, savedTimeAssistedSnapshots: 0, tradeDiscipline: 0, total: 1 } });
+    expect(parsed).toMatchObject({ formatVersion: 10, databaseSchemaVersion: 11, recordCounts: { savedAnalyses: 1, savedTimeAssistedSnapshots: 0, tradeDiscipline: 0, total: 1 } });
     expect(parsed.payload.savedAnalyses).toEqual([saved]);
   });
 

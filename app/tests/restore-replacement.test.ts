@@ -82,8 +82,8 @@ describe('P6.4 transactional validated replacement', () => {
     await db.open();
     const prepared = await prepareKairosRestore(db, incomingBackup([]));
     await replaceKairosDatabaseFromPreparedRestore(db, prepared);
-    expect(db.verno).toBe(10);
-    expect(db.tables.map((table) => table.name).sort()).toEqual(['exchangeRates', 'metadata', 'savedAnalyses', 'savedTimeAssistedSnapshots', 'tradeDiscipline', 'tradeExecutions', 'tradeFees', 'tradePlans', 'trades'].sort());
+    expect(db.verno).toBe(11);
+    expect(db.tables.map((table) => table.name).sort()).toEqual(['economicEvents', 'exchangeRates', 'metadata', 'savedAnalyses', 'savedTimeAssistedSnapshots', 'tradeDiscipline', 'tradeExecutions', 'tradeFees', 'tradePlans', 'trades'].sort());
     db.close();
   });
 });

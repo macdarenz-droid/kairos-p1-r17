@@ -50,9 +50,9 @@ export async function restoreAndVerifyKairosDatabase(
 
   const integrity = await assertKairosDatabaseIntegrity(db);
   const repositories = createKairosRepositories(db);
-  const [metadata, trades, tradePlans, tradeExecutions, tradeFees, savedAnalyses, savedTimeAssistedSnapshots, tradeDiscipline, exchangeRates] = await db.transaction(
+  const [metadata, trades, tradePlans, tradeExecutions, tradeFees, savedAnalyses, savedTimeAssistedSnapshots, tradeDiscipline, exchangeRates, economicEvents] = await db.transaction(
     'r',
-    [db.metadata, db.trades, db.tradePlans, db.tradeExecutions, db.tradeFees, db.savedAnalyses, db.savedTimeAssistedSnapshots, db.tradeDiscipline, db.exchangeRates],
+    [db.metadata, db.trades, db.tradePlans, db.tradeExecutions, db.tradeFees, db.savedAnalyses, db.savedTimeAssistedSnapshots, db.tradeDiscipline, db.exchangeRates, db.economicEvents],
     async () => Promise.all([
       repositories.metadata.listAll(),
       repositories.trades.listAll(),
@@ -63,6 +63,7 @@ export async function restoreAndVerifyKairosDatabase(
       repositories.savedTimeAssistedSnapshots.listAll(),
       repositories.tradeDiscipline.listAll(),
       repositories.exchangeRates.listAll(),
+      repositories.economicEvents.listAll(),
     ]),
   );
   const backupMetadata = metadata.filter((record) => !isKairosDeviceScopedMetadataKey(record.key));
@@ -76,7 +77,8 @@ export async function restoreAndVerifyKairosDatabase(
     normalizedJson(savedAnalyses, 'id') === normalizedJson(expected.savedAnalyses, 'id') &&
     normalizedJson(savedTimeAssistedSnapshots, 'id') === normalizedJson(expected.savedTimeAssistedSnapshots, 'id') &&
     normalizedJson(tradeDiscipline, 'id') === normalizedJson(expected.tradeDiscipline, 'id') &&
-    normalizedJson(exchangeRates, 'id') === normalizedJson(expected.exchangeRates, 'id');
+    normalizedJson(exchangeRates, 'id') === normalizedJson(expected.exchangeRates, 'id') &&
+    normalizedJson(economicEvents, 'id') === normalizedJson(expected.economicEvents, 'id');
 
   if (!matches) {
     throw new KairosRestoreVerificationError('REQUERY_MISMATCH', 'Restored data did not match the prepared backup after reopening and re-querying.', prepared.recovery);
@@ -89,7 +91,7 @@ export async function restoreAndVerifyKairosDatabase(
     restoredSavedTimeAssistedSnapshotRecords: replacement.restoredSavedTimeAssistedSnapshotRecords,
     restoredTradeDisciplineRecords: replacement.restoredTradeDisciplineRecords,
     reloadedMetadataRecords: backupMetadata.length,
-    reloadedTotalRecords: backupMetadata.length + trades.length + tradePlans.length + tradeExecutions.length + tradeFees.length + savedAnalyses.length + savedTimeAssistedSnapshots.length + tradeDiscipline.length + exchangeRates.length,
+    reloadedTotalRecords: backupMetadata.length + trades.length + tradePlans.length + tradeExecutions.length + tradeFees.length + savedAnalyses.length + savedTimeAssistedSnapshots.length + tradeDiscipline.length + exchangeRates.length + economicEvents.length,
     verifiedAfterReload: true as const,
     integrity,
     recovery: prepared.recovery,

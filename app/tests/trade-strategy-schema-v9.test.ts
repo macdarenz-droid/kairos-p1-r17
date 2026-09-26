@@ -49,7 +49,7 @@ describe('T-040c schema v9: a trade can carry its strategy', () => {
     await old.table('tradeDiscipline').put(plain);
     old.close();
     const db = createKairosDatabase(name); opened.push(db);
-    expect(await openKairosDatabase(db)).toEqual({ state: 'ready', schemaVersion: 10 });
+    expect(await openKairosDatabase(db)).toEqual({ state: 'ready', schemaVersion: 11 });
     expect(await db.tradeDiscipline.toArray()).toEqual([plain]);
     expect((await inspectKairosDatabaseIntegrity(db)).ok).toBe(true);
   });
@@ -86,7 +86,7 @@ describe('T-040c schema v9: a trade can carry its strategy', () => {
     await db.trades.put(trade);
     await db.tradeDiscipline.put(marked);
     const snapshot = await createKairosDatabaseSnapshot(db);
-    expect(snapshot).toMatchObject({ formatVersion: 9, databaseSchemaVersion: 10 });
+    expect(snapshot).toMatchObject({ formatVersion: 10, databaseSchemaVersion: 11 });
     expect(snapshot.payload.tradeDiscipline).toEqual([marked]);
     expect(parseKairosBackup(serializeKairosBackup(snapshot))).toEqual(snapshot);
   });
@@ -94,7 +94,7 @@ describe('T-040c schema v9: a trade can carry its strategy', () => {
   it('reads a format 7 backup as format 8, keeping its record, and restores it', async () => {
     const text = JSON.stringify({ ...header, formatVersion: 7, databaseSchemaVersion: 8, recordCounts: counts, payload: payload(plain) });
     const parsed = parseKairosBackup(text);
-    expect(parsed).toMatchObject({ formatVersion: 9, databaseSchemaVersion: 10, recordCounts: { tradeDiscipline: 1 } });
+    expect(parsed).toMatchObject({ formatVersion: 10, databaseSchemaVersion: 11, recordCounts: { tradeDiscipline: 1 } });
     expect(parsed.payload.tradeDiscipline).toEqual([plain]);
     const db = await current('restore');
     const prepared = await prepareBackupRestore(db, text);
@@ -106,7 +106,7 @@ describe('T-040c schema v9: a trade can carry its strategy', () => {
 
   it('reads a format 5 backup as format 8 with the converted record and no mark', () => {
     const parsed = parseKairosBackup(JSON.stringify({ ...header, formatVersion: 5, databaseSchemaVersion: 6, recordCounts: counts, payload: payload(legacy) }));
-    expect(parsed).toMatchObject({ formatVersion: 9, databaseSchemaVersion: 10 });
+    expect(parsed).toMatchObject({ formatVersion: 10, databaseSchemaVersion: 11 });
     expect(parsed.payload.tradeDiscipline).toEqual([plain]);
     expect('strategy' in parsed.payload.tradeDiscipline[0]!).toBe(false);
   });
@@ -114,6 +114,6 @@ describe('T-040c schema v9: a trade can carry its strategy', () => {
   it('refuses a mark in format 7, a format 8 header naming schema 8, and format 10', () => {
     expect(() => parseKairosBackup(JSON.stringify({ ...header, formatVersion: 7, databaseSchemaVersion: 8, recordCounts: counts, payload: payload(marked) }))).toThrow(expect.objectContaining({ code: 'INVALID_PAYLOAD' }));
     expect(() => parseKairosBackup(JSON.stringify({ ...header, formatVersion: 8, databaseSchemaVersion: 8, recordCounts: counts, payload: payload(marked) }))).toThrow(expect.objectContaining({ code: 'INVALID_HEADER' }));
-    expect(() => parseKairosBackup(JSON.stringify({ ...header, formatVersion: 10, databaseSchemaVersion: 11, recordCounts: counts, payload: payload(marked) }))).toThrow(expect.objectContaining({ code: 'UNSUPPORTED_FORMAT_VERSION' }));
+    expect(() => parseKairosBackup(JSON.stringify({ ...header, formatVersion: 11, databaseSchemaVersion: 12, recordCounts: counts, payload: payload(marked) }))).toThrow(expect.objectContaining({ code: 'UNSUPPORTED_FORMAT_VERSION' }));
   });
 });
