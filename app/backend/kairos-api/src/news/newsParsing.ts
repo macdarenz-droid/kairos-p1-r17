@@ -122,3 +122,31 @@ export function fnv1a64Hex(text: string): string {
 export function newsEventKey(source: string, title: string, startsAt: string): string {
   return fnv1a64Hex(`${source}|${title}|${startsAt}`);
 }
+
+export interface RssItem {
+  readonly title: string | null;
+  readonly link: string | null;
+  readonly date: string | null;
+  readonly publisher: string | null;
+}
+
+/** The inner text of an element's first appearance; the name must end there, so `link` never matches `<linkHistoric>`. */
+function firstElement(body: string, name: string): string | null {
+  const match = new RegExp(`<${name}\\b[^>]*>([\\s\\S]*?)<\\/${name}>`).exec(body);
+  return match === null ? null : match[1];
+}
+
+/** The items of an RSS 2.0 or RSS 1.0 (RDF) feed, each element's raw inner text; null when the text is not a feed. */
+export function readRssItems(text: string): readonly RssItem[] | null {
+  if (!text.includes('<rss') && !text.includes('<rdf:RDF')) return null;
+  const items: RssItem[] = [];
+  for (const [, body] of text.matchAll(/<item\b[^>]*>([\s\S]*?)<\/item>/g)) {
+    items.push(Object.freeze({
+      title: firstElement(body, 'title'),
+      link: firstElement(body, 'link'),
+      date: firstElement(body, 'pubDate') ?? firstElement(body, 'dc:date'),
+      publisher: firstElement(body, 'source'),
+    }));
+  }
+  return Object.freeze(items);
+}

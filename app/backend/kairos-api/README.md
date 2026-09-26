@@ -120,6 +120,25 @@ source per call keeps each call inside the Free plan's 10 ms of CPU. BEA and Eur
 send their iCalendar files as `text/plain`, and Eurostat answers 406 to `text/calendar`. Census, ECB and RBA are web pages,
 asked for `text/html`; a page that changes shape reads as `source-unavailable` or as rows left out, never as a wrong time.
 
+`GET /news/headlines/<source>` reads one feed of the latest headlines: `fed`, `ecb`, `boc`, `bea`, `rba` and `yahoo`
+(`src/news/headlineFeeds.ts`, fixed URLs). Same access and query rules; `data` = `{ source, fetchedAt, items: [{ title,
+url, publishedAt, publisher }], leftOut }`: titles and links only (no article text, no images), links only `https` on the
+feed's own hosts, the last 30 days, one per link, newest first, at most 20; `leftOut` = items with no plain title, allowed
+link or readable date.
+
+- **Fed** press releases (`www.federalreserve.gov`, RSS): public domain, cite the Board.
+- **ECB** press releases (`www.ecb.europa.eu`, RSS): free use, accurate, cite the ECB.
+- **Bank of Canada** press releases (`www.bankofcanada.ca`, RSS 1.0): free with attribution; a paid service must say it
+  is 'available on this website free of charge'.
+- **BEA** releases (`apps.bea.gov`, RSS, links on `www.bea.gov` and `bea.gov`): citation appreciated, no endorsement
+  implied. Asked for `text/xml`: BEA answers 406 to `application/rss+xml` and `application/xml`.
+- **RBA** media releases (`www.rba.gov.au`, RSS): CC BY 4.0.
+- **Yahoo Finance** headlines (`finance.yahoo.com`, RSS): shown without modification, credited and linked to the full
+  article, no ads; commercial use needs Yahoo (the owner's yes is pending).
+
+Cache (`NEWS_HEADLINES_CACHE`): 10 minutes in Workers Cache and memory, never in KV (its shortest copy is an hour), and
+never read ahead.
+
 ## Checks (run from `app/`)
 
 ```
