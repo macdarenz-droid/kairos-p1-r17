@@ -4,13 +4,15 @@
  */
 import type { EconomicEventImpact, EconomicEventRecord } from '../../domain/economic-calendar/economicEvent';
 import { economicEventSize } from '../../domain/economic-calendar/newsImpact';
-import { NEWS_CALENDAR_SOURCE_IDS, NEWS_SOURCES, type NewsCalendarSourceId } from '../../domain/economic-calendar/newsSources';
+import { NEWS_CALENDAR_SOURCE_IDS, NEWS_HEADLINE_SOURCE_IDS, NEWS_SOURCES, type NewsCalendarSourceId, type NewsHeadlineSourceId } from '../../domain/economic-calendar/newsSources';
 import { currencyDayLabel } from '../currency/currencyWords';
 import { describeUnavailable, type UnavailableWords } from '../online/onlineWords';
 import { projectVisualPnlClockTime, projectVisualPnlDayKey } from '../visual-pnl/dayBucket';
 import { visualPnlMondayFirstWeekday } from '../visual-pnl/dayKeyCalendar';
 import type { TypedEconomicEventField } from './economicEvents';
+import type { KairosApiFailure } from '../online/onlineWords';
 import type { RefreshNewsCalendarResult } from './fetchedNews';
+import type { SavedNewsHeadline } from './newsHeadlines';
 import { NEWS_NEAR_TRADE_MINUTES } from './newsNearTrades';
 
 export const NEWS_CALENDAR_INTRO = `Some scheduled news, such as a central bank's rate decision or a country's inflation or jobs numbers, can move prices a lot and fast. Kairos gets the official schedules of central banks and statistics offices, and you can add your own news. Each closed trade's card says when big news was within ${NEWS_NEAR_TRADE_MINUTES} minutes of when it opened or closed, or while it was open. This calendar never predicts prices and never tells you when to trade.`;
@@ -181,4 +183,21 @@ export function eventDeleteLabel(event: EconomicEventRecord, timeZone: string): 
 /** "Deleted US CPI." */
 export function describeEventDeleted(event: EconomicEventRecord): string {
   return `Deleted ${event.title}.`;
+}
+
+/** "Yahoo Finance · Thursday 24 September 2026 at 12:00 · Reuters" in the saved zone. */
+export function describeHeadlineMeta(item: SavedNewsHeadline, timeZone: string): string {
+  const meta = `${NEWS_SOURCES[item.source].name} · ${describeCalendarMoment(item.publishedAt, timeZone)}`;
+  return item.publisher === null ? meta : `${meta} · ${item.publisher}`;
+}
+
+/** "Could not get headlines from European Central Bank this time." */
+export function describeHeadlineFailures(ids: readonly NewsHeadlineSourceId[]): string {
+  const names = NEWS_HEADLINE_SOURCE_IDS.filter((id) => ids.includes(id)).map((id) => NEWS_SOURCES[id].name);
+  return `Could not get headlines from ${listNames(names)} this time.`;
+}
+
+/** U1's words with the subject "Headlines". */
+export function describeHeadlinesUnavailable(failure: KairosApiFailure): string {
+  return describeUnavailable(failure, 'Headlines').message;
 }

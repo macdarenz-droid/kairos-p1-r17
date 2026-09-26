@@ -21,6 +21,8 @@ import {
   type NewsRefreshState,
 } from '../../application/economic-calendar/calendarWords';
 import { isNewsRefreshDue, loadNewsCalendarCoverage, refreshNewsCalendar, type NewsApiPort } from '../../application/economic-calendar/fetchedNews';
+import { loadSavedNewsHeadlines, refreshNewsHeadlines, type SavedNewsHeadlines } from '../../application/economic-calendar/newsHeadlines';
+import type { KairosApiFailure } from '../../application/online/onlineWords';
 import { deleteEconomicEvent, economicCalendarWeekOf, loadEconomicCalendarWeek, onlyBigNews, type EconomicCalendarWeekResult } from '../../application/economic-calendar/economicEvents';
 import { shiftVisualPnlDayKey } from '../../application/visual-pnl/dayKeyCalendar';
 import type { KairosDatabase } from '../../data/database';
@@ -30,6 +32,7 @@ import { economicEventName, economicEventSize } from '../../domain/economic-cale
 import { Button, Card, UnavailableNotice } from '../../design-system/primitives';
 import { GlossaryHint } from '../learn/GlossaryHint';
 import { NewsEventForm } from './NewsEventForm';
+import { NewsHeadlinesCard } from './NewsHeadlinesCard';
 import { WorldCalendarPanel } from './WorldCalendarPanel';
 import './newsCalendar.css';
 
@@ -56,6 +59,7 @@ function NewsSize({ size }: { readonly size: EconomicEventImpact | null }) {
 }
 
 const NOT_SET_UP: NewsRefreshState = Object.freeze({ kind: 'not-set-up' as const });
+const HEADLINES_NOT_SET_UP: KairosApiFailure = Object.freeze({ ok: false as const, reason: 'not-set-up' as const });
 
 /** The state a busy refresh started from, down to a settled one. */
 const settled = (state: NewsRefreshState): NewsRefreshState => (state.kind === 'busy' ? settled(state.previous) : state);
@@ -125,6 +129,9 @@ export function NewsCalendarScreen({ db, now = wallClock, news }: NewsCalendarSc
   const statusRef = useRef<HTMLDivElement>(null);
   const [settledByTap, setSettledByTap] = useState(0);
   const [deleted, setDeleted] = useState<string | null>(null);
+  const [headlines, setHeadlines] = useState<SavedNewsHeadlines | null>(null);
+  const [headlineFailure, setHeadlineFailure] = useState<KairosApiFailure | null>(setUp ? null : HEADLINES_NOT_SET_UP);
+  const headlinesRunning = useRef<AbortController | null>(null);
   const [state, setState] = useState<ScreenState>({ kind: 'loading' });
   const weekId = useId();
   const idPrefix = useId();
@@ -140,6 +147,7 @@ export function NewsCalendarScreen({ db, now = wallClock, news }: NewsCalendarSc
 
   function startRefresh(from: NewsRefreshState, button: HTMLElement | null) {
     if (news === undefined || !news.setUp || from.kind === 'busy' || from.kind === 'not-set-up') return;
+    running.current?.abort();
     const controller = new AbortController();
     running.current = controller;
     tapped.current = button;
@@ -152,21 +160,45 @@ export function NewsCalendarScreen({ db, now = wallClock, news }: NewsCalendarSc
       if (button !== null) setSettledByTap((count) => count + 1);
     });
   }
-  const refreshOnTap = (event: MouseEvent<HTMLElement>) => {
-    if (refreshRef.current !== null) startRefresh(refreshRef.current, event.currentTarget);
-  };
+  // The headlines' own refresh: it sets only the card's saved copy and failure, never the status block.
+  function startHeadlinesRefresh() {
+    if (news === undefined || !news.setUp) return;
+    headlinesRunning.current?.abort();
+    const controller = new AbortController();
+    headlinesRunning.current = controller;
+    void refreshNewsHeadlines(db, news, { now: now(), signal: controller.signal }).then(async (result) => {
+      if (controller.signal.aborted) return;
+      setHeadlineFailure(!result.ok && result.reason === 'unavailable' ? result.failure : null);
+      const saved = await loadSavedNewsHeadlines(db);
+      if (!controller.signal.aborted) setHeadlines(saved);
+    });
+  }
+  /** "Refresh" / "Try again": the calendar and the headlines together. */
+  function refreshBoth(from: NewsRefreshState | null, button: HTMLElement | null) {
+    if (from === null || from.kind === 'busy' || from.kind === 'not-set-up') return;
+    startRefresh(from, button);
+    startHeadlinesRefresh();
+  }
+  const refreshOnTap = (event: MouseEvent<HTMLElement>) => refreshBoth(refreshRef.current, event.currentTarget);
 
   // On open, once: read the coverage, then refresh when the saved copy is missing or 30 minutes old. Never from a timer.
+  // Each saved copy refreshes only when it is due.
   useEffect(() => {
-    if (news === undefined || !news.setUp) return;
     let ignore = false;
-    void loadNewsCalendarCoverage(db).then((coverage) => {
+    void loadSavedNewsHeadlines(db).then((saved) => {
       if (ignore) return;
-      const idle: NewsRefreshState = { kind: 'idle' };
-      setRefresh(idle);
-      if (isNewsRefreshDue(coverage.refreshedAt, now())) startRefresh(idle, null);
+      setHeadlines(saved);
+      if (setUp && isNewsRefreshDue(saved.refreshedAt, now())) startHeadlinesRefresh();
     });
-    return () => { ignore = true; running.current?.abort(); };
+    if (setUp) {
+      void loadNewsCalendarCoverage(db).then((coverage) => {
+        if (ignore) return;
+        const idle: NewsRefreshState = { kind: 'idle' };
+        setRefresh(idle);
+        if (isNewsRefreshDue(coverage.refreshedAt, now())) startRefresh(idle, null);
+      });
+    }
+    return () => { ignore = true; running.current?.abort(); headlinesRunning.current?.abort(); };
   }, []);
 
   // After a refresh the trader started: when the tapped button left the document, focus the block's new button, or the week heading.
@@ -203,7 +235,7 @@ export function NewsCalendarScreen({ db, now = wallClock, news }: NewsCalendarSc
         {refresh.kind === 'busy' ? <p role="status">{NEWS_REFRESHING}</p> : null}
         {line.kind === 'line'
           ? <><p role={line.role}>{line.text}</p>{line.button === null ? null : <div><Button variant="secondary" size="sm" busy={line.busy} onClick={refreshOnTap}>{line.button}</Button></div>}</>
-          : <UnavailableNotice message={line.words.message} retryLabel={line.words.retryLabel} onRetry={() => { if (refreshRef.current !== null) startRefresh(refreshRef.current, statusRef.current?.querySelector('.kairos-unavailable button') ?? null); }} busy={line.busy} />}
+          : <UnavailableNotice message={line.words.message} retryLabel={line.words.retryLabel} onRetry={() => refreshBoth(refreshRef.current, statusRef.current?.querySelector('.kairos-unavailable button') ?? null)} busy={line.busy} />}
         {showSaved && result.refreshedAt !== null ? <p>{describeSavedCopy(result.refreshedAt, result.timeZone)}</p> : null}
       </div>;
     })() : null}
@@ -260,6 +292,9 @@ export function NewsCalendarScreen({ db, now = wallClock, news }: NewsCalendarSc
         setReload((count) => count + 1);
       }} />;
     })() : null}
+    {state.kind === 'ready' && state.result.kind === 'ready' && headlines !== null
+      ? <NewsHeadlinesCard headlines={headlines} timeZone={state.result.timeZone} failure={headlineFailure} />
+      : null}
     <NewsSourcesCard />
     <WorldCalendarPanel />
   </section>;

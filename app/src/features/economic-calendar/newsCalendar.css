@@ -27,3 +27,6 @@
 .kairos-news-form details > summary { display: flex; align-items: center; min-block-size: var(--kairos-control-sm); cursor: pointer; }
 .kairos-news-form details[open] > .kairos-form-field { margin-top: var(--kairos-space-2); }
 .kairos-news-delete { display: flex; flex-wrap: wrap; align-items: center; gap: var(--kairos-space-2); }
+.kairos-news-headlines__list { display: grid; gap: var(--kairos-space-2); margin: 0; padding: 0; list-style: none; }
+.kairos-news-headlines__list li { display: grid; gap: var(--kairos-space-1); padding-top: var(--kairos-space-2); border-top: 1px solid var(--kairos-border-subtle); min-width: 0; }
+.kairos-news-headlines__list li p { margin: 0; color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-sm); }
