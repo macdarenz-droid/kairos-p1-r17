@@ -20,3 +20,10 @@
 .kairos-news-calendar__frame { inline-size: 100%; block-size: 600px; border: 0; }
 .kairos-news-calendar__status { display: grid; gap: var(--kairos-space-2); justify-items: start; min-width: 0; }
 .kairos-news-calendar__status p, .kairos-news-calendar__sources ul { margin: 0; }
+.kairos-news-form form { display: grid; gap: var(--kairos-space-3); min-width: 0; }
+.kairos-news-form fieldset { display: grid; gap: var(--kairos-space-1); min-width: 0; margin: 0; padding: var(--kairos-space-2) var(--kairos-space-3); border: 1px solid var(--kairos-border-subtle); border-radius: var(--kairos-radius-md); }
+.kairos-news-form .kairos-news-form__choice { display: inline-flex; align-items: center; gap: var(--kairos-space-2); min-block-size: var(--kairos-control-sm); }
+.kairos-news-form details { display: grid; gap: var(--kairos-space-2); min-width: 0; }
+.kairos-news-form details > summary { display: flex; align-items: center; min-block-size: var(--kairos-control-sm); cursor: pointer; }
+.kairos-news-form details[open] > .kairos-form-field { margin-top: var(--kairos-space-2); }
+.kairos-news-delete { display: flex; flex-wrap: wrap; align-items: center; gap: var(--kairos-space-2); }

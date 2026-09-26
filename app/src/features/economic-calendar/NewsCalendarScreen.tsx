@@ -10,23 +10,26 @@ import {
   describeAddedNewsCount,
   describeEmptyWeek,
   describeEventFacts,
+  describeEventDeleted,
   describeEventOrigin,
   describeEventValues,
   describeNewsRefresh,
   describeSavedCopy,
   describeWeekCoverage,
   eventClock,
+  eventDeleteLabel,
   type NewsRefreshState,
 } from '../../application/economic-calendar/calendarWords';
 import { isNewsRefreshDue, loadNewsCalendarCoverage, refreshNewsCalendar, type NewsApiPort } from '../../application/economic-calendar/fetchedNews';
-import { loadEconomicCalendarWeek, onlyBigNews, type EconomicCalendarWeekResult } from '../../application/economic-calendar/economicEvents';
+import { deleteEconomicEvent, economicCalendarWeekOf, loadEconomicCalendarWeek, onlyBigNews, type EconomicCalendarWeekResult } from '../../application/economic-calendar/economicEvents';
 import { shiftVisualPnlDayKey } from '../../application/visual-pnl/dayKeyCalendar';
 import type { KairosDatabase } from '../../data/database';
-import type { EconomicEventImpact } from '../../domain/economic-calendar/economicEvent';
+import type { EconomicEventImpact, EconomicEventRecord } from '../../domain/economic-calendar/economicEvent';
 import { NEWS_CALENDAR_SOURCE_IDS, NEWS_SOURCES } from '../../domain/economic-calendar/newsSources';
 import { economicEventName, economicEventSize } from '../../domain/economic-calendar/newsImpact';
 import { Button, Card, UnavailableNotice } from '../../design-system/primitives';
 import { GlossaryHint } from '../learn/GlossaryHint';
+import { NewsEventForm } from './NewsEventForm';
 import { WorldCalendarPanel } from './WorldCalendarPanel';
 import './newsCalendar.css';
 
@@ -57,6 +60,42 @@ const NOT_SET_UP: NewsRefreshState = Object.freeze({ kind: 'not-set-up' as const
 /** The state a busy refresh started from, down to a settled one. */
 const settled = (state: NewsRefreshState): NewsRefreshState => (state.kind === 'busy' ? settled(state.previous) : state);
 
+/** "Delete" on news the trader added, with a confirm; official news has none (the next refresh replaces it). */
+function DeleteNews({ db, event, timeZone, onDeleted }: { readonly db: KairosDatabase; readonly event: EconomicEventRecord; readonly timeZone: string; readonly onDeleted: (event: EconomicEventRecord) => void }) {
+  const [confirming, setConfirming] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const deleteButton = useRef<HTMLButtonElement>(null);
+  const keepButton = useRef<HTMLButtonElement>(null);
+  const focusDelete = useRef(false);
+
+  useEffect(() => {
+    if (confirming) keepButton.current?.focus();
+    else if (focusDelete.current) { focusDelete.current = false; deleteButton.current?.focus(); }
+  }, [confirming]);
+
+  async function remove() {
+    setDeleting(true);
+    const result = await deleteEconomicEvent(db, event.id);
+    setDeleting(false);
+    if (result.ok) { onDeleted(event); return; }
+    focusDelete.current = true;
+    setFailed(true);
+    setConfirming(false);
+  }
+
+  return <div className="kairos-news-delete">
+    {confirming
+      ? <div role="group" aria-label={`Delete ${event.title}?`} className="kairos-news-delete">
+        <p>{`Delete ${event.title} for good?`}</p>
+        <Button variant="danger" size="sm" busy={deleting} onClick={() => { void remove(); }}>Yes, delete</Button>
+        <Button ref={keepButton} variant="secondary" size="sm" onClick={() => { focusDelete.current = true; setConfirming(false); }}>Keep it</Button>
+      </div>
+      : <Button ref={deleteButton} variant="ghost" size="sm" aria-label={eventDeleteLabel(event, timeZone)} onClick={() => { setFailed(false); setConfirming(true); }}>Delete</Button>}
+    {failed ? <p role="alert">Kairos could not delete this news. Nothing was changed.</p> : null}
+  </div>;
+}
+
 /** Where the news comes from: the nine official schedules with links, and the licence credits. */
 function NewsSourcesCard() {
   const headingId = useId();
@@ -85,6 +124,7 @@ export function NewsCalendarScreen({ db, now = wallClock, news }: NewsCalendarSc
   const tapped = useRef<HTMLElement | null>(null);
   const statusRef = useRef<HTMLDivElement>(null);
   const [settledByTap, setSettledByTap] = useState(0);
+  const [deleted, setDeleted] = useState<string | null>(null);
   const [state, setState] = useState<ScreenState>({ kind: 'loading' });
   const weekId = useId();
   const idPrefix = useId();
@@ -173,6 +213,7 @@ export function NewsCalendarScreen({ db, now = wallClock, news }: NewsCalendarSc
       const allChecked = result.checkedSources.length === NEWS_CALENDAR_SOURCE_IDS.length;
       return <Card as="section" className="kairos-news-calendar-card" aria-labelledby={weekId}>
         <h2 id={weekId} tabIndex={-1}>{calendarWeekHeading(result.weekStartDayKey)}</h2>
+        {deleted === null ? null : <p role="status">{deleted}</p>}
         <p>{`Times in ${result.timeZone}.`}</p>
         <div className="kairos-news-calendar__controls">
           <Button variant="secondary" size="sm" onClick={() => setWeekStart((current) => shiftVisualPnlDayKey(current ?? result.thisWeekStartDayKey, -7))}>Earlier week</Button>
@@ -198,6 +239,11 @@ export function NewsCalendarScreen({ db, now = wallClock, news }: NewsCalendarSc
                     <p>{describeEventFacts(event)}</p>
                     <p>{describeEventOrigin(event)}</p>
                     {values === null ? null : <p>{values}</p>}
+                    {event.source === 'typed' ? <DeleteNews db={db} event={event} timeZone={result.timeZone} onDeleted={(gone) => {
+                      setDeleted(describeEventDeleted(gone));
+                      setReload((count) => count + 1);
+                      document.getElementById(weekId)?.focus();
+                    }} /> : null}
                   </li>;
                 })}
               </ul>
@@ -205,6 +251,14 @@ export function NewsCalendarScreen({ db, now = wallClock, news }: NewsCalendarSc
           })}
         <p>{describeAddedNewsCount(result.savedCount)}</p>
       </Card>;
+    })() : null}
+    {state.kind === 'ready' && state.result.kind === 'ready' ? (() => {
+      const timeZone = state.result.timeZone;
+      return <NewsEventForm db={db} timeZone={timeZone} now={now} onSaved={(event) => {
+        setDeleted(null);
+        setWeekStart(economicCalendarWeekOf(event.startsAt, timeZone));
+        setReload((count) => count + 1);
+      }} />;
     })() : null}
     <NewsSourcesCard />
     <WorldCalendarPanel />

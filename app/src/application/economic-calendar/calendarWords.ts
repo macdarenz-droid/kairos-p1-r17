@@ -9,6 +9,7 @@ import { currencyDayLabel } from '../currency/currencyWords';
 import { describeUnavailable, type UnavailableWords } from '../online/onlineWords';
 import { projectVisualPnlClockTime, projectVisualPnlDayKey } from '../visual-pnl/dayBucket';
 import { visualPnlMondayFirstWeekday } from '../visual-pnl/dayKeyCalendar';
+import type { TypedEconomicEventField } from './economicEvents';
 import type { RefreshNewsCalendarResult } from './fetchedNews';
 import { NEWS_NEAR_TRADE_MINUTES } from './newsNearTrades';
 
@@ -114,11 +115,6 @@ export const NEWS_REFRESHING = 'Getting the latest news…';
 const line = (text: string, role: 'status' | 'alert', button: 'Refresh' | 'Try again' | null): NewsRefreshLine =>
   Object.freeze({ kind: 'line' as const, text, role, button, busy: false });
 
-/** "A", "A and B", "A, B and C". */
-function joinNames(names: readonly string[]): string {
-  return names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
-}
-
 /** "Showing news saved Thursday 24 September 2026 at 11:50." */
 export function describeSavedCopy(savedAt: string, timeZone: string): string {
   return `Showing news saved ${describeCalendarMoment(savedAt, timeZone)}.`;
@@ -140,7 +136,7 @@ export function describeNewsRefresh(state: NewsRefreshState, savedAt: string | n
         const failed = new Set(result.outcomes.filter((outcome) => !outcome.ok).map((outcome) => outcome.source));
         if (failed.size === 0) return line(updated, 'status', 'Refresh');
         const names = NEWS_CALENDAR_SOURCE_IDS.filter((source) => failed.has(source)).map((source) => NEWS_SOURCES[source].name);
-        return line(`${updated} Could not get news from ${joinNames(names)} this time.`, 'status', 'Try again');
+        return line(`${updated} Could not get news from ${listNames(names)} this time.`, 'status', 'Try again');
       }
       if (result.reason === 'unavailable') return Object.freeze({ kind: 'unavailable' as const, words: describeUnavailable(result.failure, 'News'), busy: false });
       return line('Kairos could not save the news. Nothing was changed.', 'alert', 'Try again');
@@ -150,3 +146,39 @@ export function describeNewsRefresh(state: NewsRefreshState, savedAt: string | n
 
 /** The sources card; restates newsImpact.ts's high rules, so it changes when they change. */
 export const NEWS_SOURCES_INTRO = "Kairos's server reads these official schedules for you. They give the name and date of each release, and most give the time. For Eurostat, the European Central Bank and the Reserve Bank of Australia, Kairos adds the release time each one publishes: 11:00 in Luxembourg, 14:15 in Frankfurt and 14:30 in Sydney. No schedule says how big a release is or what numbers are expected. Kairos shows only the releases on its own fixed list and sizes them itself. Big news: rate decisions and the US Fed's press conference; US and UK inflation, and the euro area's first inflation estimate; the US and UK jobs reports; and the first US growth (GDP), spending and retail sales numbers. Everything else on the list is medium or small news, and each release on the calendar shows its size.";
+
+/** The add form's words for each field it refuses (T-046l). */
+export const EVENT_FIELD_ERRORS: Readonly<Record<TypedEconomicEventField, string>> = Object.freeze({
+  title: 'Add a name of up to 80 characters, such as US CPI.',
+  startsAt: 'Add the date and time.',
+  currency: 'Use 3 letters, such as USD, or leave it empty.',
+  impact: 'Choose how big it is.',
+  expected: 'Use up to 16 characters, such as 3.1% or 21.5K.',
+  previous: 'Use up to 16 characters, such as 3.1% or 21.5K.',
+  actual: 'Use up to 16 characters, such as 3.1% or 21.5K.',
+});
+
+/** "1,000": a whole count with thousands commas. */
+function countWithCommas(count: number): string {
+  return String(count).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+/** "Saved: US CPI, Thursday 24 September 2026 at 20:30." */
+export function describeEventSaved(event: EconomicEventRecord, timeZone: string): string {
+  return `Saved: ${event.title}, ${describeCalendarMoment(event.startsAt, timeZone)}.`;
+}
+
+/** Said when the typed news cap is reached. */
+export function describeNewsLimit(limit: number): string {
+  return `You have added ${countWithCommas(limit)} news events, the most Kairos keeps. Delete some you no longer need, then save this one.`;
+}
+
+/** "Delete US CPI, Thursday 24 September 2026 at 20:30": the Delete button's name. */
+export function eventDeleteLabel(event: EconomicEventRecord, timeZone: string): string {
+  return `Delete ${event.title}, ${describeCalendarMoment(event.startsAt, timeZone)}`;
+}
+
+/** "Deleted US CPI." */
+export function describeEventDeleted(event: EconomicEventRecord): string {
+  return `Deleted ${event.title}.`;
+}
