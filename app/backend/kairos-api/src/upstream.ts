@@ -12,7 +12,7 @@ export type UpstreamResult =
   | Readonly<{ ok: false; failure: 'timeout' | 'network' | 'status' | 'redirect' | 'too-large' | 'content-type'; status: number | null }>;
 
 export interface UpstreamRequest {
-  readonly accept: 'application/json' | 'text/csv' | 'text/plain' | 'application/xml' | 'text/xml' | 'application/rss+xml' | 'text/calendar';
+  readonly accept: 'application/json' | 'text/csv' | 'text/plain' | 'application/xml' | 'text/xml' | 'application/rss+xml' | 'text/calendar' | 'text/html';
   /** Headers the route adds itself, such as a key read from a Worker secret. Never from the caller. */
   readonly headers?: Readonly<Record<string, string>>;
   readonly timeoutMs?: number;

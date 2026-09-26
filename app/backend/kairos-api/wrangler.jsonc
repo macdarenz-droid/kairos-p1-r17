@@ -6,6 +6,7 @@
   "workers_dev": true,
   "preview_urls": false,
   "cache": { "enabled": true },
+  "triggers": { "crons": ["*/20 * * * *"] },
   "observability": { "enabled": true, "head_sampling_rate": 1, "logs": { "invocation_logs": false } },
   "vars": { "KAIROS_APP_ORIGINS": "https://kairos-p1-r17.pages.dev", "KAIROS_API_ROLE": "production" },
   "kv_namespaces": [{ "binding": "KAIROS_API_CACHE" }],

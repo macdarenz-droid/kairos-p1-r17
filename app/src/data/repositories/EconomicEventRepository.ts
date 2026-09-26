@@ -30,6 +30,20 @@ export class EconomicEventRepository {
   delete(id: string) {
     return this.db.economicEvents.delete(id);
   }
+  putMany(records: readonly EconomicEventRecord[]) {
+    return this.db.economicEvents.bulkPut(records.map((record) => ({ ...record }))).then(() => undefined);
+  }
+  deleteMany(ids: readonly string[]) {
+    return this.db.economicEvents.bulkDelete([...ids]);
+  }
+  /** The `limit` fetched events scheduled earliest (typed news is never listed). */
+  listOldestFetched(limit: number) {
+    return this.db.economicEvents
+      .orderBy("startsAt")
+      .filter((record) => record.source !== "typed")
+      .limit(limit)
+      .toArray();
+  }
   async replaceAll(records: readonly EconomicEventRecord[]) {
     await this.db.economicEvents.clear();
     if (records.length)

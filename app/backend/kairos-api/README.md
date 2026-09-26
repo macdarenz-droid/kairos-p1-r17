@@ -90,13 +90,15 @@ when ok, under keys that carry the route id and its version:
 
 ## News (P34)
 
-`GET /news/calendar/<source>` reads one official release calendar: `bls`, `bea`, `eurostat` and `boc` so far
-(`src/news/calendarFeeds.ts`, one fixed URL each). Each route is `public` and rate-limited, takes no query (any query is
-400), and answers `data` = `{ source, fetchedAt, covers: { from, to } | null, events: [{ key, title, startsAt }], leftOut }`:
+`GET /news/calendar/<source>` reads one official release calendar: `fed`, `bls`, `bea`, `census`, `ecb`, `eurostat`,
+`ons`, `boc` and `rba` (`src/news/calendarFeeds.ts`, fixed URLs; ONS reads two pages). Each route is `public` and
+rate-limited, takes no query (any query is 400), and answers `data` = `{ source, fetchedAt, covers: { from, to } | null, events: [{ key, title, startsAt }], leftOut }`:
 titles as plain text, times as UTC instants, events within 400 days of now (at most 2,000), `key` = FNV-1a 64 of
 `source|title|startsAt`, and `leftOut` = rows with no title or no time Kairos can prove. The server rates nothing; the app
 does. Any failed read or unreadable body is `source-unavailable` (502), never kept.
 
+- **Fed** (`www.federalreserve.gov`, calendar JSON, times in New York; a day list is one event per day): public domain,
+  cite the Board.
 - **BLS** (`www.bls.gov`, iCalendar, times in US-Eastern): public domain, cite BLS. BLS refuses automated readers without
   contact details, and accepts the server's user agent.
 - **BEA** (`www.bea.gov`, iCalendar, UTC times): citation appreciated, no endorsement implied.
@@ -104,10 +106,54 @@ does. Any failed read or unreadable body is `source-unavailable` (502), never ke
   renames them and adds their published times (11:00 Luxembourg time). The app credits it.
 - **Bank of Canada** (`www.bankofcanada.ca`, iCalendar, UTC times): free with attribution; a paid service must say it is
   'available on this website free of charge'. Only names, times and a link to its page are shown.
+- **Census Bureau** (`www.census.gov`, the economic indicator calendar page, times in New York; a row's time must agree
+  with its sort key): US federal work (UNVERIFIED wording).
+- **ECB** (`www.ecb.europa.eu`, the meetings page): free use, accurate, cite the ECB. Only a monetary policy meeting's Day
+  2 is kept, at 14:15 Frankfurt time: its decisions "are published in a press release at 14:15 CET on the day of the
+  Governing Council monetary policy meeting".
+- **ONS** (`api.beta.ons.gov.uk`, release calendar API, the last and the next 92 days, each page whole; cancelled and
+  provisional dates are left out): Open Government Licence v3.0.
+- **RBA** (`www.rba.gov.au`, the board meeting schedule page): CC BY 4.0. Each Monetary Policy Board meeting at 14:30
+  Sydney time on its second day, when "the outcome of the meeting is announced".
 
 Cache (`NEWS_CALENDAR_CACHE`): 30 minutes in Workers Cache and memory (the page refreshes after 30), 6 hours in KV. One
 source per call keeps each call inside the Free plan's 10 ms of CPU. BEA and Eurostat are asked for `text/plain`: they
-send their iCalendar files as `text/plain`, and Eurostat answers 406 to `text/calendar`.
+send their iCalendar files as `text/plain`, and Eurostat answers 406 to `text/calendar`. Census, ECB and RBA are web pages,
+asked for `text/html`; a page that changes shape reads as `source-unavailable` or as rows left out, never as a wrong time.
+
+`GET /news/headlines/<source>` reads one feed of the latest headlines: `fed`, `ecb`, `boc`, `bea`, `rba` and `yahoo`
+(`src/news/headlineFeeds.ts`, fixed URLs). Same access and query rules; `data` = `{ source, fetchedAt, items: [{ title,
+url, publishedAt, publisher }], leftOut }`: titles and links only (no article text, no images), links only `https` on the
+feed's own hosts, the last 30 days, one per link, newest first, at most 20; `leftOut` = items with no plain title, allowed
+link or readable date.
+
+- **Fed** press releases (`www.federalreserve.gov`, RSS): public domain, cite the Board.
+- **ECB** press releases (`www.ecb.europa.eu`, RSS): free use, accurate, cite the ECB.
+- **Bank of Canada** press releases (`www.bankofcanada.ca`, RSS 1.0): free with attribution; a paid service must say it
+  is 'available on this website free of charge'.
+- **BEA** releases (`apps.bea.gov`, RSS, links on `www.bea.gov` and `bea.gov`): citation appreciated, no endorsement
+  implied. Asked for `text/xml`: BEA answers 406 to `application/rss+xml` and `application/xml`.
+- **RBA** media releases (`www.rba.gov.au`, RSS): CC BY 4.0.
+- **Yahoo Finance** headlines (`finance.yahoo.com`, RSS): shown without modification, credited and linked to the full
+  article, no ads; commercial use needs Yahoo (the owner's yes is pending).
+
+Cache (`NEWS_HEADLINES_CACHE`): 10 minutes in Workers Cache and memory, never in KV (its shortest copy is an hour), and
+never read ahead.
+
+## Scheduled reads (P34)
+
+A cron trigger (`wrangler.jsonc`, `*/20 * * * *`) runs `src/scheduled.ts` every 20 minutes. Each run reads ONE of the
+routes marked `prefetch` (the nine official calendars, in `NEWS_CALENDAR_SOURCES` order: fed, bls, bea, census, ecb,
+eurostat, ons, boc, rba), in turn by the run's scheduled time, and keeps its answer in KV. That is 72 runs a day, each
+calendar read 8 times a day (every 3 hours), and at most 72 KV writes a day from the job (the Free plan allows 1,000); it
+uses 1 of the account's 5 cron triggers on the Free plan. Headlines are never read ahead.
+
+Only an ok answer is kept, so a failed read keeps the last copy until its 6 hours end, and logs only
+`{"event":"kairos-api-prefetch-failed","route":"<id>"}`. A trader's request still reads the source itself when KV has
+nothing. The job runs only where `KAIROS_API_ROLE` is "production": the preview Worker `kairos-api-preview` is deployed
+from the same config, so it holds the same cron trigger (a second of the account's 5 on the Free plan, 72 more runs a
+day), but its `KAIROS_API_ROLE` is "preview" (CI's `--var`), so each of its runs returns at once, with no source read and
+no KV write; a missing role does the same.
 
 ## Checks (run from `app/`)
 
