@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { projectNewsNearTrade, type NewsNearTradeInput } from '../src/application/economic-calendar/newsNearTrades';
-import { economicEventId, isEconomicEventRecordShape, type EconomicEventRecord } from '../src/domain/economic-calendar/economicEvent';
+import { economicEventId, isEconomicEventRecordShape, type EconomicEventImpact, type EconomicEventRecord } from '../src/domain/economic-calendar/economicEvent';
 import { economicEventName, economicEventSize, rateOfficialRelease } from '../src/domain/economic-calendar/newsImpact';
-import { NEWS_CALENDAR_SOURCE_IDS, NEWS_HEADLINE_SOURCE_IDS, NEWS_SOURCES, isAllowedNewsLink } from '../src/domain/economic-calendar/newsSources';
+import { NEWS_CALENDAR_SOURCE_IDS, NEWS_HEADLINE_SOURCE_IDS, NEWS_SOURCES, isAllowedNewsLink, type NewsCalendarSourceId } from '../src/domain/economic-calendar/newsSources';
 
 const CPI_BLS: EconomicEventRecord = {
   id: 'bls:3bc656751421b9fb',
@@ -37,6 +37,11 @@ describe('T-046d the news sources', () => {
       expect(isAllowedNewsLink('yahoo', url), url).toBe(false);
     }
   });
+
+  it('refuses a link with only a user name, and one with only a password', () => {
+    expect(isAllowedNewsLink('yahoo', 'https://u@finance.yahoo.com/a')).toBe(false);
+    expect(isAllowedNewsLink('yahoo', 'https://:p@finance.yahoo.com/a')).toBe(false);
+  });
 });
 
 describe("T-046d Kairos's size list", () => {
@@ -62,12 +67,54 @@ describe("T-046d Kairos's size list", () => {
     expect(rated('boc', 'Christmas Day')).toBeNull();
     expect(rated('rba', 'Monetary Policy Board')?.size).toBe('high');
   });
+
+  it('gives every row of the list its size and plain name on a saved fetched event', () => {
+    const rows: readonly [NewsCalendarSourceId, string, EconomicEventImpact, string][] = [
+      ['fed', 'FOMC Meeting', 'high', 'US interest rate decision'],
+      ['fed', 'FOMC Press Conference', 'high', 'US Fed press conference'],
+      ['fed', 'FOMC Minutes', 'medium', 'US Fed meeting notes (minutes)'],
+      ['fed', 'Speech - Chair Jerome H. Powell', 'medium', 'US Fed Chair speaks'],
+      ['fed', 'Beige Book', 'medium', 'US Fed economy report (Beige Book)'],
+      ['bls', 'Employment Situation', 'high', 'US jobs report'],
+      ['bls', 'Consumer Price Index', 'high', 'US inflation (CPI)'],
+      ['bls', 'Producer Price Index', 'medium', 'US producer prices (PPI)'],
+      ['bls', 'Job Openings and Labor Turnover Survey', 'medium', 'US job openings'],
+      ['bls', 'Employment Cost Index', 'medium', 'US wage costs'],
+      ['bea', 'GDP (Advance Estimate), 3rd Quarter 2026', 'high', 'US growth (GDP), first estimate'],
+      ['bea', 'Personal Income and Outlays, August 2026', 'high', 'US spending and PCE inflation'],
+      ['bea', 'GDP (Second Estimate), 2nd Quarter 2026', 'medium', 'US growth (GDP), update'],
+      ['bea', 'U.S. International Trade in Goods and Services, August 2026', 'medium', 'US trade balance'],
+      ['census', 'Advance Monthly Sales for Retail and Food Services', 'high', 'US retail sales'],
+      ['census', "Advance Report on Durable Goods Manufacturers' Shipments, Inventories and Orders", 'medium', 'US durable goods orders'],
+      ['census', 'New Residential Construction', 'medium', 'US housing starts'],
+      ['ecb', 'Governing Council of the ECB: monetary policy meeting in Frankfurt (Day 2), followed by press conference', 'high', 'Euro interest rate decision'],
+      ['eurostat', 'Flash estimate inflation euro area', 'high', 'Euro area inflation, first estimate'],
+      ['eurostat', 'Preliminary flash estimate GDP - EU and euro area', 'medium', 'Euro area growth (GDP), first estimate'],
+      ['eurostat', 'Unemployment', 'medium', 'Euro area unemployment'],
+      ['eurostat', 'Inflation (HICP)', 'low', 'Euro area inflation, final'],
+      ['eurostat', 'Retail trade', 'low', 'Euro area retail sales'],
+      ['ons', 'Consumer price inflation, UK: September 2026', 'high', 'UK inflation (CPI)'],
+      ['ons', 'UK Labour Market: October 2026', 'high', 'UK jobs report'],
+      ['ons', 'GDP first quarterly estimate, UK: July to September 2026', 'medium', 'UK growth (GDP), first estimate'],
+      ['ons', 'GDP monthly estimate, UK: August 2026', 'medium', 'UK growth (GDP), monthly'],
+      ['ons', 'Retail sales, Great Britain: September 2026', 'medium', 'UK retail sales'],
+      ['boc', 'Interest Rate Announcement', 'high', 'Canada interest rate decision'],
+      ['boc', 'Publication: Summary of Deliberations', 'low', 'Bank of Canada meeting notes'],
+      ['rba', 'Monetary Policy Board', 'high', 'Australia interest rate decision'],
+    ];
+    for (const [source, title, size, plainName] of rows) {
+      const event: EconomicEventRecord = { ...CPI_BLS, id: `${source}:3bc656751421b9fb`, source, title, currency: NEWS_SOURCES[source].currency };
+      expect(economicEventSize(event), title).toEqual({ size, ratedBy: 'kairos' });
+      expect(economicEventName(event), title).toBe(plainName);
+    }
+  });
 });
 
 describe('T-046d a fetched row', () => {
   it('has its own stored shape: fetchedAt set, no size, a calendar source and a whole title', () => {
     expect(isEconomicEventRecordShape(CPI_BLS)).toBe(true);
     expect(isEconomicEventRecordShape({ ...CPI_BLS, fetchedAt: null })).toBe(false);
+    expect(isEconomicEventRecordShape({ ...CPI_BLS, fetchedAt: 'yesterday' })).toBe(false);
     expect(isEconomicEventRecordShape({ ...CPI_BLS, impact: 'high' })).toBe(false);
     expect(isEconomicEventRecordShape({ ...CPI_BLS, id: 'fed:3bc656751421b9fb' })).toBe(false);
     expect(isEconomicEventRecordShape({ ...CPI_BLS, source: 'yahoo' })).toBe(false);
