@@ -3,78 +3,60 @@
  * news the trader marked big, and only news scheduled from NEWS_NEAR_TRADE_MINUTES before the open to NEWS_NEAR_TRADE_MINUTES after
  * the close. Kairos knows only the news the trader saved, so an empty answer never means "no news".
  */
-import {
-  isEconomicEventRecordShape,
-  type EconomicEventRecord,
-} from "../../domain/economic-calendar/economicEvent";
-import type { TradeRecord } from "../../domain/trades";
+import type { KairosDatabase } from '../../data/database';
+import { createKairosRepositories } from '../../data/repositories';
+import { isEconomicEventRecordShape, type EconomicEventRecord } from '../../domain/economic-calendar/economicEvent';
+import type { TradeRecord } from '../../domain/trades';
 
 export const NEWS_NEAR_TRADE_MINUTES = 30;
 const MINUTE_MS = 60_000;
 const WINDOW_MS = NEWS_NEAR_TRADE_MINUTES * MINUTE_MS;
 
-export type NewsNearTradeRelation =
-  | "before-open"
-  | "while-open"
-  | "after-close";
+export type NewsNearTradeRelation = 'before-open' | 'while-open' | 'after-close';
 export interface NewsNearTrade {
   readonly event: EconomicEventRecord;
   readonly relation: NewsNearTradeRelation;
   /** Whole minutes from the news to the open ('before-open') or from the close to the news ('after-close'); null while the trade was open. */
   readonly minutes: number | null;
 }
-export type NewsNearTradeInput = Pick<
-  TradeRecord,
-  "status" | "openedAt" | "closedAt"
->;
+export type NewsNearTradeInput = Pick<TradeRecord, 'status' | 'openedAt' | 'closedAt'>;
 
 function instantMs(value: string | null): number | null {
   if (value === null) return null;
   const ms = Date.parse(value);
-  return Number.isFinite(ms) && new Date(ms).toISOString() === value
-    ? ms
-    : null;
+  return Number.isFinite(ms) && new Date(ms).toISOString() === value ? ms : null;
 }
 /** The open and close of a closed trade, when both are canonical and in order; else null. */
-function tradeSpan(
-  trade: NewsNearTradeInput,
-): Readonly<{ open: number; close: number }> | null {
-  if (trade.status !== "closed") return null;
+function tradeSpan(trade: NewsNearTradeInput): Readonly<{ open: number; close: number }> | null {
+  if (trade.status !== 'closed') return null;
   const open = instantMs(trade.openedAt);
   const close = instantMs(trade.closedAt);
-  return open !== null && close !== null && open <= close
-    ? { open, close }
-    : null;
+  return open !== null && close !== null && open <= close ? { open, close } : null;
 }
 
 /** The saved big news near one trade, in time order. Damaged events and news not marked big are left out. */
-export function projectNewsNearTrade(
-  trade: NewsNearTradeInput,
-  events: readonly EconomicEventRecord[],
-): readonly NewsNearTrade[] {
+export function projectNewsNearTrade(trade: NewsNearTradeInput, events: readonly EconomicEventRecord[]): readonly NewsNearTrade[] {
   const span = tradeSpan(trade);
   if (span === null) return Object.freeze([]);
   const near: NewsNearTrade[] = [];
   for (const event of events) {
-    if (!isEconomicEventRecordShape(event) || event.impact !== "high") continue;
+    if (!isEconomicEventRecordShape(event) || event.impact !== 'high') continue;
     const at = Date.parse(event.startsAt);
     if (at <= span.open && span.open - at <= WINDOW_MS) {
       near.push(
         Object.freeze({
           event,
-          relation: "before-open",
+          relation: 'before-open',
           minutes: Math.floor((span.open - at) / MINUTE_MS),
         }),
       );
     } else if (span.open < at && at < span.close) {
-      near.push(
-        Object.freeze({ event, relation: "while-open", minutes: null }),
-      );
+      near.push(Object.freeze({ event, relation: 'while-open', minutes: null }));
     } else if (at >= span.close && at - span.close <= WINDOW_MS) {
       near.push(
         Object.freeze({
           event,
-          relation: "after-close",
+          relation: 'after-close',
           minutes: Math.floor((at - span.close) / MINUTE_MS),
         }),
       );
@@ -90,9 +72,7 @@ export function projectNewsNearTrade(
 }
 
 /** The instants a read must cover to find the news near these trades; null when none is a closed trade with both times. */
-export function newsNearTradesWindow(
-  trades: readonly NewsNearTradeInput[],
-): Readonly<{ from: string; to: string }> | null {
+export function newsNearTradesWindow(trades: readonly NewsNearTradeInput[]): Readonly<{ from: string; to: string }> | null {
   let earliest: number | null = null;
   let latest: number | null = null;
   for (const trade of trades) {
@@ -106,4 +86,20 @@ export function newsNearTradesWindow(
     from: new Date(earliest - WINDOW_MS).toISOString(),
     to: new Date(latest + WINDOW_MS).toISOString(),
   });
+}
+
+/** The saved big news near each trade on a page, by trade id: one read of the instants the trades cover; a trade with none has no key. */
+export async function loadNewsNearTrades(
+  db: KairosDatabase,
+  trades: readonly (NewsNearTradeInput & { readonly id: string })[],
+): Promise<ReadonlyMap<string, readonly NewsNearTrade[]>> {
+  const near = new Map<string, readonly NewsNearTrade[]>();
+  const window = newsNearTradesWindow(trades);
+  if (window === null) return near;
+  const rows = await createKairosRepositories(db).economicEvents.listStartingBetween(window.from, window.to);
+  for (const trade of trades) {
+    const items = projectNewsNearTrade(trade, rows);
+    if (items.length > 0) near.set(trade.id, items);
+  }
+  return near;
 }
