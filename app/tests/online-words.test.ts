@@ -31,6 +31,24 @@ describe('describeUnavailable', () => {
   });
 });
 
+describe('describeUnavailable: every failure in full', () => {
+  it('gives each failure its sentence, its retry and its wait', () => {
+    const server = (serverReason: string, retryAfterSeconds: number | null, status: number) => ({ ok: false as const, reason: 'unavailable' as const, serverReason, retryAfterSeconds, status });
+    const cases: Array<[Parameters<typeof describeUnavailable>[0], string, 'Try again' | null, number | null]> = [
+      [{ ok: false, reason: 'transport-failed' }, 'News: Kairos could not reach its server. Check your connection, then try again.', 'Try again', null],
+      [{ ok: false, reason: 'invalid-response', status: 200 }, 'News: the answer could not be read. Try again later.', 'Try again', null],
+      [server('rate-limited', 60, 429), 'News: too many requests from this device. Wait a minute, then try again.', 'Try again', 60],
+      [server('source-unavailable', 30, 503), 'News: the source did not answer. Try again in a moment.', 'Try again', 30],
+      [server('not-set-up', null, 503), 'News: not ready on the Kairos server yet.', null, null],
+      [server('device-not-recognised', null, 401), 'News: the Kairos server did not recognise this device.', null, null],
+      [server('teapot', 5, 418), 'News: unavailable right now. Try again later.', 'Try again', 5],
+    ];
+    for (const [failure, message, retryLabel, retryAfterSeconds] of cases) {
+      expect(describeUnavailable(failure, 'News'), JSON.stringify(failure)).toEqual({ title: 'Unavailable', message, retryLabel, retryAfterSeconds });
+    }
+  });
+});
+
 describe('describeOnlineServices', () => {
   it('says the services work and what it knows about this device', () => {
     const sentences = {

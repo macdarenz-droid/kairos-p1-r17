@@ -4,7 +4,6 @@ import {
   createKairosApiClient,
   createKairosApiHealthPort,
   decodeKairosApiHealth,
-  KAIROS_API_REQUEST_TIMEOUT_MS,
   kairosDeviceToken,
   parseKairosApiBaseUrl,
   storedReceiptReader,
@@ -48,6 +47,8 @@ describe('kairosDeviceToken and storedReceiptReader', () => {
     expect(payload).toMatch(/^[A-Za-z0-9_-]+$/);
     expect(fromBase64Url(payload)).toBe(PAYLOAD);
     expect(kairosDeviceToken({ ...receipt, verifierSignature: 'ab+c' })).toBeNull();
+    // '???>>>a' is Pz8/Pj4+YQ== in standard base64: the token carries - and _ in their places and no =.
+    expect(kairosDeviceToken({ ...receipt, verifierPayload: '???>>>a' })).toBe('v1.Pz8_Pj4-YQ.abc_DEF-123');
     expect(kairosDeviceToken({ ...receipt, verifierSignature: 'abc=' })).toBeNull();
   });
 
@@ -110,6 +111,10 @@ describe('createKairosApiClient', () => {
       [jsonResponse({ apiVersion: 1, ok: false, error: 'unavailable', reason: 'rate-limited', retryAfter: 0 }, 429), 429],
       [jsonResponse({ apiVersion: 1, ok: false, error: 'unavailable', reason: 'Rate Limited', retryAfter: null }, 429), 429],
       [jsonResponse('{not json', 200), 200],
+      [jsonResponse({ apiVersion: 1, ok: true, data: { ...HEALTH, service: 'other-api' } }), 200],
+      [jsonResponse({ apiVersion: 1, ok: true, data: { ...HEALTH, checks: { ...HEALTH.checks, cache: 'ok' } } }), 200],
+      [jsonResponse({ apiVersion: 1, ok: false, error: 'oops', reason: 'rate-limited', retryAfter: 60 }, 429), 429],
+      [jsonResponse({ apiVersion: 1, ok: false, error: 'unavailable', reason: 'rate-limited', retryAfter: 86_401 }, 429), 429],
     ];
     for (const [response, status] of cases) {
       const port = createKairosApiHealthPort(createKairosApiClient({ baseUrl: BASE, fetchImpl: vi.fn<typeof fetch>().mockResolvedValue(response) }));
@@ -130,7 +135,7 @@ describe('createKairosApiClient', () => {
     const port = createKairosApiHealthPort(createKairosApiClient({ baseUrl: BASE, fetchImpl: hanging }));
     let settled: unknown = 'pending';
     const pending = port.checkHealth().then((result) => { settled = result; });
-    await vi.advanceTimersByTimeAsync(KAIROS_API_REQUEST_TIMEOUT_MS - 1);
+    await vi.advanceTimersByTimeAsync(19_999);
     expect(settled).toBe('pending');
     await vi.advanceTimersByTimeAsync(1);
     await pending;
@@ -140,5 +145,40 @@ describe('createKairosApiClient', () => {
     const stopped = port.checkHealth({ signal: controller.signal });
     controller.abort();
     expect(await stopped).toEqual({ ok: false, reason: 'transport-failed' });
+  });
+
+  it('gives up on a stuck device read after the time limit, or when the caller stops it, without the network', async () => {
+    vi.useFakeTimers();
+    const fetchImpl = vi.fn<typeof fetch>();
+    const stuck = () => new Promise<ActivationReceipt | null>(() => undefined);
+    const port = createKairosApiHealthPort(createKairosApiClient({ baseUrl: BASE, readReceipt: stuck, fetchImpl }));
+    let settled: unknown = 'pending';
+    const pending = port.checkHealth().then((result) => { settled = result; });
+    await vi.advanceTimersByTimeAsync(19_999);
+    expect(settled).toBe('pending');
+    await vi.advanceTimersByTimeAsync(1);
+    await pending;
+    expect(settled).toEqual({ ok: false, reason: 'transport-failed' });
+
+    const controller = new AbortController();
+    const stopped = port.checkHealth({ signal: controller.signal });
+    await vi.advanceTimersByTimeAsync(0);
+    controller.abort();
+    expect(await stopped).toEqual({ ok: false, reason: 'transport-failed' });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('answers transport-failed at once for a caller signal that was already stopped', async () => {
+    vi.useFakeTimers();
+    const hanging = vi.fn<typeof fetch>((_input, init) => new Promise<Response>((_resolve, reject) => {
+      init!.signal!.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+    }));
+    const port = createKairosApiHealthPort(createKairosApiClient({ baseUrl: BASE, fetchImpl: hanging }));
+    let settled: unknown = 'pending';
+    const pending = port.checkHealth({ signal: AbortSignal.abort() }).then((result) => { settled = result; });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(settled).toEqual({ ok: false, reason: 'transport-failed' });
+    await vi.advanceTimersByTimeAsync(20_000);
+    await pending;
   });
 });
