@@ -85,13 +85,15 @@ const FED_TIME = /^(\d{1,2}):(\d{2}) (a|p)\.m\.$/;
 const fedFeed: CalendarFeed = Object.freeze({
   request: Object.freeze({ accept: 'application/json' as const }),
   urls: () => Object.freeze(['https://www.federalreserve.gov/json/calendar.json']),
-  decode(texts: readonly string[]): DecodedCalendar | null {
+  decode(texts: readonly string[], nowMs: number): DecodedCalendar | null {
     const json = texts.length === 1 ? parseJson(texts[0]) : undefined;
     if (!isRecord(json) || !Array.isArray(json.events)) return null;
+    // Days more than a day outside the window are never shown: they are checked, but not converted (the Free plan allows 10 ms of CPU).
+    const window = { from: nowMs - (NEWS_CALENDAR_WINDOW_DAYS + 1) * DAY_MS, to: nowMs + (NEWS_CALENDAR_WINDOW_DAYS + 1) * DAY_MS };
     const events: { title: string; startsAt: string }[] = [];
     let leftOut = 0;
     for (const entry of json.events) {
-      const found = isRecord(entry) ? fedEntry(entry) : null;
+      const found = isRecord(entry) ? fedEntry(entry, window) : null;
       if (found === null) leftOut += 1;
       else events.push(...found);
     }
@@ -100,7 +102,7 @@ const fedFeed: CalendarFeed = Object.freeze({
   },
 });
 
-function fedEntry(entry: Record<string, unknown>): { title: string; startsAt: string }[] | null {
+function fedEntry(entry: Record<string, unknown>, window: Readonly<{ from: number; to: number }>): { title: string; startsAt: string }[] | null {
   const title = normaliseNewsText(entry.title, NEWS_CALENDAR_TITLE_MAX);
   const { month, days, time } = entry;
   if (title === null || typeof month !== 'string' || !FED_MONTH.test(month) || typeof days !== 'string' || !FED_DAYS.test(days) || typeof time !== 'string') return null;
@@ -108,7 +110,20 @@ function fedEntry(entry: Record<string, unknown>): { title: string; startsAt: st
   if (clock === null || Number(clock[1]) < 1 || Number(clock[1]) > 12) return null;
   const hour = (Number(clock[1]) % 12) + (clock[3] === 'p' ? 12 : 0);
   const found: { title: string; startsAt: string }[] = [];
+  const year = Number(month.slice(0, 4));
+  const monthNumber = Number(month.slice(5));
+  const first = Date.UTC(year, monthNumber - 1, 1);
+  const length = monthNumber >= 1 && monthNumber <= 12 && year >= 100 ? new Date(Date.UTC(year, monthNumber, 0)).getUTCDate() : 0;
+  // A day more than a day outside the window is never shown, so it is not converted: it exists, and New York clocks
+  // change between 01:00 and 03:00, so from 04:00 on every existing day has the time. A day that does not exist still
+  // goes to the clock, which refuses it.
+  const skippable = length > 0 && hour >= 4;
   for (const day of days.split(/, ?/)) {
+    const date = Number(day);
+    if (skippable && date >= 1 && date <= length) {
+      const midnight = first + (date - 1) * DAY_MS;
+      if (midnight < window.from || midnight > window.to) continue;
+    }
     const startsAt = newYork(`${month}-${pad2(Number(day))}`, `${pad2(hour)}:${clock[2]}`);
     if (startsAt === null) return null;
     found.push({ title, startsAt });
