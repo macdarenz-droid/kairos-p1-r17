@@ -1,6 +1,6 @@
 # Kairos Trading Journal
 
-A visual-first, offline-first trading journal and discipline system (PWA).
+A visual-first trading journal and discipline system (PWA).
 
 - **App source:** `app/` (React + TypeScript + Vite + Dexie + lightweight-charts).
 - **Rules for coding agents:** `CLAUDE.md`.

@@ -1,6 +1,6 @@
 # Kairos — rules for coding agents
 
-Kairos is an offline-first PWA trading journal: React 19, TypeScript 7, Vite 8, Dexie 4 (IndexedDB), decimal.js, lightweight-charts 5.2.1, Vitest 4.
+Kairos is a PWA trading journal: React 19, TypeScript 7, Vite 8, Dexie 4 (IndexedDB), decimal.js, lightweight-charts 5.2.1, Vitest 4.
 
 **The app lives in `app/`.** Agent files at the root are `CLAUDE.md`, `README.md`, `.ignore`, `.gitignore`, `.claude/` and `.github/workflows/ci.yml`. A coder edits `ci.yml` only when its task says so.
 
@@ -37,7 +37,7 @@ When a test fails, re-run only the failing file without `--reporter=dot --silent
 5. UI code (`src/app`, `src/features`) never imports `dexie` and never touches tables or transactions. Every write is an application command inside one atomic transaction (`runKairosAtomicWrite`).
 6. Changing stored data shape means all of these: a new Dexie schema version (append-only migration), a backup format that still restores every older backup, and a migration test.
 7. Keep truths apart: plan vs execution; live market vs journal data (the two bubble maps share only drawing code). Provider adapters (Binance) hold no product policy.
-8. Offline-first: saving and reading the journal never needs the network. Network features show a clear "unavailable" state with a retry.
+8. Online or offline does not matter; quality does (owner, D129). Use online sources whenever they make a feature better or more complete; never cut or shrink a feature only to keep it offline. The trader's own journal data stays in IndexedDB with backups, and a feature that uses the network shows a clear "unavailable" state with a retry when the network or a source fails.
 9. Presentation is disposable: motion, themes and chart pixels never change, delay or roll back saved data or navigation. A theme changes appearance only.
 10. UI text uses plain beginner words, no jargon (see the "Plain words" list in Relay `ROADMAP.md`). Show a picture instead of a number where it helps. When you touch a screen, fix its jargon too.
 11. New code goes in the target folders from ARCHITECTURE.md; new screens go in `src/features/<surface>/`. A new file must own real logic: no thin "Composition/Binding/Session" wrapper files.
