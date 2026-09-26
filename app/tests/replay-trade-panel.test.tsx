@@ -150,3 +150,40 @@ describe('T-038e a practice trade on the replay', () => {
     expect(screen.getByRole('button', { name: 'Save to my practice trades' })).toBeInTheDocument();
   });
 });
+
+describe('T-038g play steps that arrive late', () => {
+  afterEach(() => { vi.useRealTimers(); });
+  const fakeTimers = () => vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
+
+  it('stops on the very candle where the entry is reached', async () => {
+    await started();
+    placeTrade('long', '100', '95', '110', '2');
+    fakeTimers();
+    fireEvent.click(screen.getByRole('button', { name: 'Play' }));
+    act(() => { vi.advanceTimersByTime(25 * 5); });
+    expect(screen.getByText('Your entry was reached: in at 100 USDT.')).toBeInTheDocument();
+    expect(left()).toBe('239 candles left');
+  });
+
+  it('stops on the very candle where the target is reached', async () => {
+    await started();
+    placeTrade('long', '100', '95', '110', '2');
+    nextCandle();
+    fakeTimers();
+    fireEvent.click(screen.getByRole('button', { name: 'Play' }));
+    for (let round = 0; round < 15; round += 1) act(() => { vi.advanceTimersByTime(25 * 4); });
+    expect(screen.getByText('Your target was reached: out at 110 USDT.')).toBeInTheDocument();
+    expect(left()).toBe('230 candles left');
+  });
+
+  it('never moves after Pause, however late a step fires', async () => {
+    await started();
+    fakeTimers();
+    fireEvent.click(screen.getByRole('button', { name: 'Play' }));
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
+      vi.advanceTimersByTime(25 * 3);
+    });
+    expect(left()).toBe('240 candles left');
+  });
+});

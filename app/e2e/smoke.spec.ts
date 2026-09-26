@@ -592,3 +592,28 @@ test('(n) Currency: totals in your currency, with the bank\'s rates and a rate y
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   expect(errors).toEqual([]);
 });
+
+test('(o) Online services: Profile checks the Kairos server only on a tap', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  await activate(page);
+  const requests: { url: string; device: string | undefined }[] = [];
+  let serverOnline = false;
+  await page.route(url => url.hostname === 'api.qa.invalid', async route => {
+    requests.push({ url: route.request().url(), device: route.request().headers()['x-kairos-device'] });
+    if (!serverOnline) return route.abort('internetdisconnected');
+    return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ apiVersion: 1, ok: true, data: { service: 'kairos-api', serverTime: new Date().toISOString(), device: 'recognised', checks: { deviceKey: 'ready', cache: 'ready', limits: 'ready' } } }) });
+  });
+  await page.goto('/profile');
+  await expect(page.getByRole('button', { name: 'Check online services' })).toBeVisible();
+  expect(requests).toEqual([]);
+  await page.getByRole('button', { name: 'Check online services' }).click();
+  await expect(page.locator('[data-online-services="unavailable"]')).toContainText('Unavailable · Online services: Kairos could not reach its server. Check your connection, then try again.');
+  serverOnline = true;
+  await page.getByRole('button', { name: 'Try again' }).click();
+  await expect(page.getByText('Online services are working. This device is recognised.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Check again' })).toBeFocused();
+  expect(requests.map(request => request.url)).toEqual(['https://api.qa.invalid/health', 'https://api.qa.invalid/health']);
+  expect(requests[1].device).toMatch(/^v1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
+  expect(errors).toEqual([]);
+});

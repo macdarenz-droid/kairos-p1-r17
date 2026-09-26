@@ -40,6 +40,8 @@ export function ReplayScreen({ db, market, playStepMs = REPLAY_PLAY_STEP_MS }: {
   const [load, setLoad] = useState<LoadState>({ kind: 'idle' });
   const [cursor, setCursor] = useState(0);
   const [playing, setPlaying] = useState(false);
+  // Read by a play step when it fires: a step that arrives after the replay stopped does nothing.
+  const playingNow = useRef(false);
   const [order, setOrder] = useState<ReplayOrder | null>(null);
   const setupTitleId = useId(), stageTitleId = useId();
   const marketId = useId(), sizeId = useId(), startId = useId();
@@ -48,6 +50,11 @@ export function ReplayScreen({ db, market, playStepMs = REPLAY_PLAY_STEP_MS }: {
   const focusAfterLoad = useRef<'stage' | FieldName | null>(null);
 
   useEffect(() => () => controller.current?.abort(), []);
+
+  const play = useCallback((value: boolean) => {
+    playingNow.current = value;
+    setPlaying(value);
+  }, []);
 
   const replay = load.kind === 'ready' ? load.replay : null;
   const view = useMemo(() => (replay ? projectReplayView(replay.candles, cursor, order) : null), [replay, cursor, order]);
@@ -58,7 +65,7 @@ export function ReplayScreen({ db, market, playStepMs = REPLAY_PLAY_STEP_MS }: {
     controller.current?.abort();
     const own = new AbortController();
     controller.current = own;
-    setPlaying(false);
+    play(false);
     setLoad({ kind: 'loading' });
     const result = await loadReplayCandles(form, { ...market, signal: own.signal }).catch(() => ({ ok: false as const, reason: 'unavailable' as const }));
     if (own.signal.aborted) return;
@@ -71,7 +78,7 @@ export function ReplayScreen({ db, market, playStepMs = REPLAY_PLAY_STEP_MS }: {
       focusAfterLoad.current = FIELD_ERRORS[result.reason]?.field ?? null;
       setLoad({ kind: 'failed', reason: result.reason, market: form.market });
     }
-  }, [form, market]);
+  }, [form, market, play]);
 
   // Focus moves once the new content is on screen.
   useEffect(() => {
@@ -87,24 +94,34 @@ export function ReplayScreen({ db, market, playStepMs = REPLAY_PLAY_STEP_MS }: {
     setCursor(c => Math.min(c + 1, replay.candles.length));
   }, [replay]);
 
+  // One step per shown candle. The step stops the replay in the same update as the candle that reaches the entry, the
+  // exit or the last candle, so the beginner sees it happen; a step that fires after Pause or a new start does nothing.
   useEffect(() => {
-    if (!playing) return;
-    const timer = setInterval(next, playStepMs);
-    return () => clearInterval(timer);
-  }, [playing, next, playStepMs]);
+    if (!playing || replay === null) return;
+    const timer = setTimeout(() => {
+      if (!playingNow.current) return;
+      const nextCursor = Math.min(cursor + 1, replay.candles.length);
+      const before = projectReplayView(replay.candles, cursor, order)?.outcome?.kind ?? null;
+      const after = projectReplayView(replay.candles, nextCursor, order);
+      const changed = after?.outcome?.kind ?? null;
+      if (after === null || after.candlesLeft === 0 || (changed !== before && (changed === 'open' || changed === 'closed'))) play(false);
+      setCursor(nextCursor);
+    }, playStepMs);
+    return () => clearTimeout(timer);
+  }, [playing, replay, cursor, order, playStepMs, play]);
 
   useEffect(() => {
-    if (playing && candlesLeft === 0) setPlaying(false);
-  }, [playing, candlesLeft]);
+    if (playing && candlesLeft === 0) play(false);
+  }, [playing, candlesLeft, play]);
 
   // The trade changed: stop, so the beginner sees the entry or the exit happen.
   const outcomeKind = view?.outcome?.kind ?? null;
   useEffect(() => {
-    if (outcomeKind === 'open' || outcomeKind === 'closed') setPlaying(false);
-  }, [outcomeKind]);
+    if (outcomeKind === 'open' || outcomeKind === 'closed') play(false);
+  }, [outcomeKind, play]);
 
   const again = () => {
-    setPlaying(false);
+    play(false);
     setOrder(null);
     focusAfterLoad.current = 'market';
     setLoad({ kind: 'idle' });
@@ -139,7 +156,7 @@ export function ReplayScreen({ db, market, playStepMs = REPLAY_PLAY_STEP_MS }: {
         <p className="kairos-replay__now" aria-live={playing ? 'off' : 'polite'}>Now in the replay: <time dateTime={view.replayTime}>{time}</time>. Price: <strong>{view.last.close}{quote}</strong></p>
         <div className="kairos-replay__controls" role="group" aria-label="Replay controls">
           <Button onClick={next} disabled={playing || candlesLeft === 0}>Next candle</Button>
-          <Button variant="secondary" onClick={() => setPlaying(value => !value)} disabled={candlesLeft === 0}>{playing && candlesLeft > 0 ? 'Pause' : 'Play'}</Button>
+          <Button variant="secondary" onClick={() => play(!playingNow.current)} disabled={candlesLeft === 0}>{playing && candlesLeft > 0 ? 'Pause' : 'Play'}</Button>
           <span>{candlesLeft === 0 ? 'No candles left' : candlesLeft === 1 ? '1 candle left' : `${candlesLeft} candles left`}</span>
           <Button variant="ghost" onClick={again}>Choose another moment</Button>
         </div>

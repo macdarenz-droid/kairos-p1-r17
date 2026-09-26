@@ -7,6 +7,8 @@ import { NotFoundRoute } from '../features/shell/NotFoundRoute';
 import { kairosDatabase } from '../data/database';
 import { createTradePictureCandleBrowserDeps } from './tradePictureCandleBrowserDeps';
 import { ReviewTradeLink } from './ReviewTradeLink';
+import { kairosRepositories } from '../data/repositories';
+import { ActivationReceiptRepository } from '../services/activation';
 
 /** Shown only when the app starts on a screen whose code is still loading. */
 function RouteLoading() {
@@ -63,7 +65,12 @@ export const appRoutes = [
         return { Component: function CurrencyRoute() { return <CurrencyScreen db={kairosDatabase} rates={rates} />; } };
       } },
       { path: 'settings', lazy: async () => ({ Component: (await import('./SettingsRoute')).SettingsRoute }) },
-      { path: 'profile', lazy: async () => ({ Component: (await import('./ProfileRoute')).ProfileRoute }) },
+      { path: 'profile', lazy: async () => {
+        const [{ ProfileRoute }, kairosApi] = await Promise.all([import('./ProfileRoute'), import('../services/kairos-api/kairosApi')]);
+        const client = kairosApi.createKairosApiClient({ baseUrl: kairosApi.parseKairosApiBaseUrl(import.meta.env.VITE_KAIROS_API_URL), readReceipt: kairosApi.storedReceiptReader(new ActivationReceiptRepository(kairosRepositories.metadata)) });
+        const onlineServices = kairosApi.createKairosApiHealthPort(client);
+        return { Component: function ProfileWithOnlineServicesRoute() { return <ProfileRoute onlineServices={onlineServices} />; } };
+      } },
       { path: '*', element: <NotFoundRoute /> },
     ],
   },

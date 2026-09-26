@@ -29,6 +29,8 @@ import { createKairosRepositories } from '../data/repositories';
 import { inspectStorageDurability, requestPersistentStorage, subscribeStorageDurabilityStatus, type StorageDurabilityStatus } from '../pwa/storageDurability';
 import { ActivationReceiptRepository, type StoredActivationReceiptLoadResult } from '../services/activation';
 import { buildInfo } from '../shared/config/buildInfo';
+import { OnlineServicesCheck } from '../features/settings/OnlineServicesCheck';
+import type { KairosApiHealthPort } from '../application/online/onlineWords';
 import './profileRoute.css';
 
 interface ProfileRouteProps {
@@ -41,6 +43,8 @@ interface ProfileRouteProps {
   readonly readBackupFile?: (file: File) => Promise<string>;
   /** The released storage-durability owner; tests inject fakes. */
   readonly durability?: StorageDurabilityPorts;
+  /** The Kairos server check (U1), built by the composition root; tests that do not need it leave it out. */
+  readonly onlineServices?: KairosApiHealthPort;
 }
 
 export interface StorageDurabilityPorts {
@@ -137,7 +141,7 @@ function Activation({ state }: { readonly state: ActivationState }) {
 }
 
 /** Profile: this device's data. Export through P28.1, restore through P28.2, activation read-only; nothing here estimates or edits records. */
-export function ProfileRoute({ db = kairosDatabase, now = wallClock, downloads, readBackupFile = readFileText, durability = releasedDurability }: ProfileRouteProps) {
+export function ProfileRoute({ db = kairosDatabase, now = wallClock, downloads, readBackupFile = readFileText, durability = releasedDurability, onlineServices }: ProfileRouteProps) {
   const ports = useMemo(() => downloads ?? createBrowserBackupDownloadPorts(window), [downloads]);
   const metadata = useMemo(() => createKairosRepositories(db).metadata, [db]);
   const receipts = useMemo(() => new ActivationReceiptRepository(metadata), [metadata]);
@@ -276,6 +280,7 @@ export function ProfileRoute({ db = kairosDatabase, now = wallClock, downloads, 
       {storage.state === 'best-effort' ? <div className="kairos-profile-card__actions"><button type="button" className="kairos-profile-button--secondary" onClick={() => { void handlePersist(); }} disabled={persist.kind === 'requesting'}>{persist.kind === 'requesting' ? 'Asking…' : 'Keep my data on this device'}</button></div> : null}
       {persist.kind === 'declined' ? <p className="kairos-profile__note" role="status">The browser did not grant persistent storage this time. Keep a recent backup.</p> : null}
       <p className="kairos-profile__note">Kairos {buildInfo.appVersion} · build {buildInfo.buildId}. Everything you record stays on this device unless you export it.</p>
+      {onlineServices ? <OnlineServicesCheck port={onlineServices} /> : null}
     </article>
 
     <article className="kairos-profile-card" aria-labelledby="kairos-profile-export-title">
