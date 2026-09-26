@@ -13,10 +13,15 @@ export const NEWS_CALENDAR_CACHE: RouteCachePolicy = Object.freeze({ version: 1,
 
 /** P34: the only host each official calendar is read from (the exact URLs are in news/calendarFeeds.ts). */
 const NEWS_CALENDAR_HOSTS: Readonly<Record<NewsCalendarSource, readonly string[]>> = Object.freeze({
+  fed: ['www.federalreserve.gov'],
   bls: ['www.bls.gov'],
   bea: ['www.bea.gov'],
+  census: ['www.census.gov'],
+  ecb: ['www.ecb.europa.eu'],
   eurostat: ['ec.europa.eu'],
+  ons: ['api.beta.ons.gov.uk'],
   boc: ['www.bankofcanada.ca'],
+  rba: ['www.rba.gov.au'],
 });
 
 /** P34: one route per official calendar. Public: the data is public, keyless and the same for every trader, so Workers Cache may keep it. */

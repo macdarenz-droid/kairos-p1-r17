@@ -90,13 +90,15 @@ when ok, under keys that carry the route id and its version:
 
 ## News (P34)
 
-`GET /news/calendar/<source>` reads one official release calendar: `bls`, `bea`, `eurostat` and `boc` so far
-(`src/news/calendarFeeds.ts`, one fixed URL each). Each route is `public` and rate-limited, takes no query (any query is
-400), and answers `data` = `{ source, fetchedAt, covers: { from, to } | null, events: [{ key, title, startsAt }], leftOut }`:
+`GET /news/calendar/<source>` reads one official release calendar: `fed`, `bls`, `bea`, `census`, `ecb`, `eurostat`,
+`ons`, `boc` and `rba` (`src/news/calendarFeeds.ts`, fixed URLs; ONS reads two pages). Each route is `public` and
+rate-limited, takes no query (any query is 400), and answers `data` = `{ source, fetchedAt, covers: { from, to } | null, events: [{ key, title, startsAt }], leftOut }`:
 titles as plain text, times as UTC instants, events within 400 days of now (at most 2,000), `key` = FNV-1a 64 of
 `source|title|startsAt`, and `leftOut` = rows with no title or no time Kairos can prove. The server rates nothing; the app
 does. Any failed read or unreadable body is `source-unavailable` (502), never kept.
 
+- **Fed** (`www.federalreserve.gov`, calendar JSON, times in New York; a day list is one event per day): public domain,
+  cite the Board.
 - **BLS** (`www.bls.gov`, iCalendar, times in US-Eastern): public domain, cite BLS. BLS refuses automated readers without
   contact details, and accepts the server's user agent.
 - **BEA** (`www.bea.gov`, iCalendar, UTC times): citation appreciated, no endorsement implied.
@@ -104,10 +106,19 @@ does. Any failed read or unreadable body is `source-unavailable` (502), never ke
   renames them and adds their published times (11:00 Luxembourg time). The app credits it.
 - **Bank of Canada** (`www.bankofcanada.ca`, iCalendar, UTC times): free with attribution; a paid service must say it is
   'available on this website free of charge'. Only names, times and a link to its page are shown.
+- **Census Bureau** (`www.census.gov`, the economic indicator calendar page, times in New York; a row's time must agree
+  with its sort key): US federal work (UNVERIFIED wording).
+- **ECB** (`www.ecb.europa.eu`, the meetings page): free use, accurate, cite the ECB. Only a monetary policy meeting's Day
+  2 is kept, at 14:15 Frankfurt time, when the decision "is published in a press release".
+- **ONS** (`api.beta.ons.gov.uk`, release calendar API, the last and the next 92 days, each page whole; cancelled and
+  provisional dates are left out): Open Government Licence v3.0.
+- **RBA** (`www.rba.gov.au`, the board meeting schedule page): CC BY 4.0. Each Monetary Policy Board meeting at 14:30
+  Sydney time on its second day, when "the outcome of the meeting is announced".
 
 Cache (`NEWS_CALENDAR_CACHE`): 30 minutes in Workers Cache and memory (the page refreshes after 30), 6 hours in KV. One
 source per call keeps each call inside the Free plan's 10 ms of CPU. BEA and Eurostat are asked for `text/plain`: they
-send their iCalendar files as `text/plain`, and Eurostat answers 406 to `text/calendar`.
+send their iCalendar files as `text/plain`, and Eurostat answers 406 to `text/calendar`. Census, ECB and RBA are web pages,
+asked for `text/html`; a page that changes shape reads as `source-unavailable` or as rows left out, never as a wrong time.
 
 ## Checks (run from `app/`)
 
