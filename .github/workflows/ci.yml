@@ -81,3 +81,30 @@ jobs:
         with:
           name: playwright-report
           path: app/playwright-report/
+
+  worker:
+    name: kairos-api Worker (typecheck, tests, bundle)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: app/backend/kairos-api
+    env:
+      WRANGLER_SEND_METRICS: 'false'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            /app/
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: app/.nvmrc
+          cache: npm
+          cache-dependency-path: app/backend/kairos-api/package-lock.json
+
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm test -- --reporter=dot
+      - run: npm run build
