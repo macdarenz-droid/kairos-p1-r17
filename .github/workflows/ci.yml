@@ -108,3 +108,123 @@ jobs:
       - run: npm run typecheck
       - run: npm test -- --reporter=dot
       - run: npm run build
+
+  cloudflare:
+    name: Cloudflare secrets (owner step O1)
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      ready: ${{ steps.secrets.outputs.ready }}
+    steps:
+      - id: secrets
+        working-directory: ${{ runner.temp }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=kairos-api not deployed::The GitHub secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are not set (owner step O1), so the Kairos server deploy and preview were skipped. Nothing failed."
+          fi
+
+  deploy-api:
+    name: deploy kairos-api (main)
+    needs: [check, e2e, worker, cloudflare]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && needs.cloudflare.outputs.ready == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: kairos-api-deploy
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: app/backend/kairos-api
+    env:
+      WRANGLER_SEND_METRICS: 'false'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            /app/
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: app/.nvmrc
+          cache: npm
+          cache-dependency-path: app/backend/kairos-api/package-lock.json
+
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Deploy to production
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -o pipefail
+          npx wrangler deploy --message "main ${GITHUB_SHA::7}" 2>&1 | tee "$RUNNER_TEMP/deploy.log"
+
+      - name: The live /health answers
+        run: |
+          set -o pipefail
+          url=$(grep -oE 'https://kairos-api\.[a-z0-9-]+\.workers\.dev' "$RUNNER_TEMP/deploy.log" | head -n 1 || true)
+          if [ -z "$url" ]; then echo "::error::The deploy log names no kairos-api workers.dev address."; exit 1; fi
+          curl -fsS --retry 5 --retry-delay 5 --retry-all-errors "$url/health" | tee "$RUNNER_TEMP/health.json"
+          grep -q '"ok":true' "$RUNNER_TEMP/health.json"
+          echo "kairos-api is live at $url. Use this address as the Pages setting VITE_KAIROS_API_URL (owner step O2)." >> "$GITHUB_STEP_SUMMARY"
+
+  preview-api:
+    name: preview kairos-api (pull request)
+    needs: [worker, cloudflare]
+    if: github.event_name == 'pull_request' && needs.cloudflare.outputs.ready == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: kairos-api-preview
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: app/backend/kairos-api
+    env:
+      WRANGLER_SEND_METRICS: 'false'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            /app/
+          sparse-checkout-cone-mode: false
+
+      - name: Did this pull request change the Worker?
+        id: changes
+        working-directory: .
+        run: |
+          git fetch --no-tags --depth=1 --filter=blob:none origin ${{ github.event.pull_request.base.sha }}
+          if [ -n "$(git diff --no-renames --name-only ${{ github.event.pull_request.base.sha }} HEAD -- app/backend/kairos-api)" ]; then
+            echo "worker=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "worker=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=No kairos-api preview::This pull request does not change app/backend/kairos-api."
+          fi
+
+      - uses: actions/setup-node@v5
+        if: steps.changes.outputs.worker == 'true'
+        with:
+          node-version-file: app/.nvmrc
+          cache: npm
+          cache-dependency-path: app/backend/kairos-api/package-lock.json
+
+      - if: steps.changes.outputs.worker == 'true'
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Deploy the preview Worker
+        if: steps.changes.outputs.worker == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -o pipefail
+          npx wrangler deploy --name kairos-api-preview --var KAIROS_API_ROLE:preview --message "PR #${{ github.event.pull_request.number }} ${GITHUB_SHA::7}" 2>&1 | tee "$RUNNER_TEMP/preview.log"
+          { grep -oE 'https://kairos-api-preview\.[a-z0-9-]+\.workers\.dev' "$RUNNER_TEMP/preview.log" || true; } | head -n 1 | sed 's/^/Preview (the latest pull request wins): /' >> "$GITHUB_STEP_SUMMARY"

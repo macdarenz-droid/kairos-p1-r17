@@ -101,4 +101,46 @@ Cloudflare login. CI runs all four in the job "kairos-api Worker (typecheck, tes
 
 ## Deploy
 
-See below (T-047d).
+CI (`.github/workflows/ci.yml`) has four jobs for this Worker:
+- **kairos-api Worker (typecheck, tests, bundle)**: on every pull request and every `main` push; no secrets.
+- **Cloudflare secrets (owner step O1)**: checks that the GitHub secrets `CLOUDFLARE_API_TOKEN` and
+  `CLOUDFLARE_ACCOUNT_ID` are set. Without them it stays green with a notice, and both deploy jobs are skipped.
+- **deploy kairos-api (main)**: on a `main` push or a manual run (GitHub → Actions → CI → Run workflow → `main`), after
+  every other check passed. It deploys `kairos-api` to production, checks that the live `/health` answers, and writes
+  the Worker's address in the job summary.
+- **preview kairos-api (pull request)**: on a pull request that changes `app/backend/kairos-api`; it deploys the
+  separate Worker `kairos-api-preview`. The latest pull request that changes the Worker replaces the preview.
+
+The preview Worker `kairos-api-preview` has its own KV (auto-created `kairos-api-preview-kairos-api-cache`) and none of
+production's secrets, so its device check reads 'not-checked'. Its `KAIROS_API_ROLE` is 'preview' (the deploy's
+`--var`), so a scheduled job (P34) does nothing there, although the preview gets the config's cron triggers too: from
+P34 on it holds a second of the account's cron triggers. It shares the limiter namespaces 7101/7102. Production versions
+have no preview URLs.
+
+Production's KV namespace `kairos-api-kairos-api-cache` is created by the first deploy. Bump a route's `cache.version`
+whenever its `data` changes shape. The Cloudflare token reaches only the wrangler deploy steps; both deploy jobs install
+with `npm ci --ignore-scripts`.
+
+## Owner steps
+
+- **O1 · A Cloudflare token for CI.**
+  1. Cloudflare dashboard → My Profile → API Tokens → Create Token → template "Edit Cloudflare Workers" → Use template.
+  2. Account Resources: Include → your account. Zone Resources: Include → All zones from an account → your account.
+  3. Change nothing else in the template: add no D1 and no Pages permission (Pages builds from Git). A later owner step adds D1 to this token when a task needs it.
+  4. Continue to summary → Create Token → copy it (shown once).
+  5. Your account ID: Workers & Pages → Overview, "Account ID" on the right (or `npx wrangler whoami`).
+  6. GitHub → `macdarenz-droid/kairos-p1-r17` → Settings → Secrets and variables → Actions → New repository secret: `CLOUDFLARE_API_TOKEN` = the token; again for `CLOUDFLARE_ACCOUNT_ID` = the account ID.
+  7. Never paste the token in chat, Relay, code or a Pages variable.
+- **O2 · First deploy and the Pages setting** (after the release with T-047a–f is merged into `main`):
+  1. With O1 done before the merge, CI's job "deploy kairos-api (main)" deploys by itself. With O1 done later: GitHub → Actions → CI → Run workflow → branch `main` → Run workflow.
+  2. The job's summary says "kairos-api is live at https://kairos-api.<subdomain>.workers.dev". Keep that address.
+  3. Worker secret: Cloudflare → Workers & Pages → `kairos-api` → Settings → Variables and Secrets → Add → Type **Secret** (not Text: a deploy removes Text values set in the dashboard) → Name `KAIROS_ACTIVATION_PUBLIC_KEY_SPKI` → Value: exactly the Pages variable `VITE_KAIROS_ACTIVATION_PUBLIC_KEY_SPKI` (a public key; it is stored as a secret only so deploys keep it) → Deploy. If Pages shows that variable as encrypted, ask the supervisor for the value: it is public, and it is inside the live app's code (the supervisor reads it from https://kairos-p1-r17.pages.dev). Paste it with no spaces or line breaks.
+  4. Pages: Workers & Pages → `kairos-p1-r17` → Settings → Variables and Secrets → Production → Add `VITE_KAIROS_API_URL` = the address from step 2, nothing after `.dev` → Save → Deployments → the latest production deployment → Retry deployment (VITE_ values are read when the app is built).
+  5. Check: Kairos → More → Profile → "Check online services" → "Online services are working. This device is recognised." Or `curl -H 'Origin: https://kairos-p1-r17.pages.dev' https://kairos-api.<subdomain>.workers.dev/health` shows `"ok":true` and `"deviceKey":"ready"`.
+- **O10 · Workers Paid** (before the first product route goes live, P16.A1 or P34; recommended: yes):
+  1. Why: on the Workers Free plan the whole Cloudflare account gets 100,000 requests a day, and `kairos-api` shares them with `kairos-activation` (preflights and refused calls count too). One runaway device at its limit of 120 a minute could use the whole day's budget; Cloudflare then answers "error 1027" until midnight UTC, and new devices cannot activate either. Until you switch, everything works; only this risk remains.
+  2. Cloudflare dashboard → Workers & Pages → Plans → choose Workers Paid and confirm the payment (USD 5 a month; 10 million requests a month included; higher KV and CPU limits).
+  3. Nothing else changes: no deploy, no setting, no code. (The app never retries on its own; a retry is always the trader's tap.)
+
+Setting a provider key later: in `app/backend/kairos-api`, `npm ci`, then `npx wrangler secret put <NAME>` and paste the key
+when asked (or the dashboard, type Secret).
