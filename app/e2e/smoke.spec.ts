@@ -36,7 +36,7 @@ test('(b) every route renders inside the phone width without page errors', async
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
   await activate(page);
-  for (const path of ['/', '/journal', '/analysis', '/library', '/more', '/practice', '/goals', '/strategies', '/coach', '/practice/coach', '/patterns', '/practice/patterns', '/currency', '/settings', '/profile', '/does-not-exist']) {
+  for (const path of ['/', '/journal', '/analysis', '/library', '/more', '/practice', '/goals', '/strategies', '/coach', '/practice/coach', '/patterns', '/practice/patterns', '/news-calendar', '/currency', '/settings', '/profile', '/does-not-exist']) {
     await page.goto(path);
     await expect(page.locator('.kairos-shell'), path).toBeVisible();
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
@@ -615,5 +615,92 @@ test('(o) Online services: Profile checks the Kairos server only on a tap', asyn
   await expect(page.getByRole('button', { name: 'Check again' })).toBeFocused();
   expect(requests.map(request => request.url)).toEqual(['https://api.qa.invalid/health', 'https://api.qa.invalid/health']);
   expect(requests[1].device).toMatch(/^v1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
+  expect(errors).toEqual([]);
+});
+
+test('(p) News: official news from the Kairos server, then offline, then on the trade it was near', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  await activate(page);
+  const newsCalls: { path: string; device: string | undefined }[] = []; let serverUp = false; let cpiAt = '';
+  await page.route(url => url.hostname === 'api.qa.invalid' && url.pathname.startsWith('/news/'), async route => {
+    const url = new URL(route.request().url());
+    newsCalls.push({ path: `${url.pathname}${url.search}`, device: route.request().headers()['x-kairos-device'] });
+    if (!serverUp) return route.abort('internetdisconnected');
+    const [, , kind, source] = url.pathname.split('/'); const fetchedAt = new Date().toISOString();
+    const data = kind === 'calendar'
+      ? { source, fetchedAt, covers: { from: new Date(Date.now() - 3 * 86_400_000).toISOString(), to: new Date(Date.now() + 30 * 86_400_000).toISOString() }, events: source === 'bls' ? [{ key: '0123456789abcdef', title: 'Consumer Price Index', startsAt: cpiAt }] : [], leftOut: 0 }
+      : { source, fetchedAt, items: source === 'yahoo' ? [{ title: 'Stocks rise as inflation cools', url: 'https://finance.yahoo.com/news/stocks-rise-inflation-cools-000000000.html', publishedAt: fetchedAt, publisher: 'Reuters' }] : [], leftOut: 0 };
+    return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ apiVersion: 1, ok: true, data }) });
+  });
+
+  await page.goto('/journal');
+  await page.getByRole('button', { name: 'Use Asia/Manila (this device)' }).click();
+  await page.getByRole('button', { name: 'Quick log' }).click();
+  await page.getByLabel(/^Market/).selectOption('stock');
+  await page.getByLabel(/^Symbol/).fill('aapl');
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Entry price/).fill('187.5');
+  await page.getByLabel(/^Exit price/).fill('190');
+  await page.getByLabel(/^Quantity/).fill('10');
+  await page.getByRole('button', { name: 'Set opened time to now' }).click();
+  await page.getByRole('button', { name: 'Set closed time to now' }).click();
+  await page.getByLabel('Currency code').fill('USD');
+  const opened = await page.locator('input[name="openedAt"]').inputValue();
+  cpiAt = await page.evaluate(value => new Date(new Date(value).getTime() - 12 * 60_000).toISOString(), opened);
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+
+  await page.goto('/more');
+  await page.getByRole('link', { name: 'News calendar' }).click();
+  await expect(page.getByRole('heading', { name: 'News calendar', level: 1 })).toBeVisible();
+  const unavailable = 'Unavailable · News: Kairos could not reach its server. Check your connection, then try again.';
+  await expect(page.locator('.kairos-unavailable')).toContainText(unavailable);
+  await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
+
+  serverUp = true;
+  await page.getByRole('button', { name: 'Try again' }).click();
+  await expect(page.getByText(/^Updated /)).toBeVisible();
+  // A run in the first 12 minutes of a Monday in Manila puts the CPI in the week before.
+  const cpiLastWeek = await page.evaluate(([cpi, now]) => {
+    const day = (instant: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(instant));
+    const weekday = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', weekday: 'short' }).format(new Date(now));
+    return weekday === 'Mon' && day(cpi) !== day(now);
+  }, [cpiAt, new Date().toISOString()]);
+  if (cpiLastWeek) await page.getByRole('button', { name: 'Earlier week' }).click();
+  await expect(page.getByText('US inflation (CPI)').first()).toBeVisible();
+  await expect(page.getByText("USD · Big news (Kairos's rating)").first()).toBeVisible();
+  await expect(page.getByText('From U.S. Bureau of Labor Statistics: Consumer Price Index')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Stocks rise as inflation cools' })).toHaveAttribute('href', /^https:\/\/finance\.yahoo\.com\//);
+  const paths = newsCalls.map(call => call.path);
+  expect(paths.filter(path => path.includes('?'))).toEqual([]);
+  expect(paths).toEqual(expect.arrayContaining(['/news/calendar/bls', '/news/headlines/yahoo']));
+  for (const call of newsCalls) expect(call.device).toMatch(/^v1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
+
+  serverUp = false;
+  await page.context().setOffline(true);
+  await page.getByRole('button', { name: 'Refresh' }).click();
+  await expect(page.locator('.kairos-unavailable')).toContainText(unavailable);
+  await expect(page.getByText(/^Showing news saved /)).toBeVisible();
+  await expect(page.getByText('US inflation (CPI)').first()).toBeVisible();
+  const localCpi = await page.evaluate(value => {
+    const date = new Date(value); const pad = (part: number) => String(part).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  }, cpiAt);
+  await page.getByLabel(/^Name/).fill('ECB President speaks');
+  await page.getByLabel(/^Date and time/).fill(localCpi);
+  await page.getByLabel(/^Currency \(optional\)/).fill('eur');
+  await page.getByRole('radio', { name: 'Medium news', exact: true }).check();
+  await page.getByRole('button', { name: 'Save news' }).click();
+  await expect(page.getByText(/^Saved: ECB President speaks, /)).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.context().setOffline(false);
+
+  await page.goto('/journal');
+  const card = page.locator('.kairos-history-card').filter({ hasText: 'AAPL' });
+  await expect(card).toContainText('Big news near this trade');
+  await expect(card).toContainText("US inflation (CPI): scheduled 12 minutes before this trade opened. Source: U.S. Bureau of Labor Statistics. Big news by Kairos's rating.");
+  await expect(card).not.toContainText('ECB President speaks');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   expect(errors).toEqual([]);
 });
