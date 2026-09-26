@@ -2,7 +2,7 @@
 
 Kairos is a PWA trading journal: React 19, TypeScript 7, Vite 8, Dexie 4 (IndexedDB), decimal.js, lightweight-charts 5.2.1, Vitest 4.
 
-**The app lives in `app/`.** Agent files at the root are `CLAUDE.md`, `README.md`, `.ignore`, `.gitignore`, `.claude/` and `.github/workflows/ci.yml`. A coder edits `ci.yml` only when its task says so.
+**The app lives in `app/`.** Agent files at the root are `CLAUDE.md`, `README.md`, `.ignore`, `.gitignore`, `.claude/` (settings and the owner's rules in `.claude/owner-rules.md`, shown to every agent before each reply) and `.github/workflows/ci.yml`. A coder edits `ci.yml` only when its task says so.
 
 Everything else at the root is the ZIP-era archive: the `*.zip` files, root `src/ tests/ docs/ scripts/ package.json`, old workflows and helper payloads. The last ZIP-era GOLDEN is commit `f4e8178` (Gate531). The archive has its own stale `package.json` and `src/`, so:
 - write every path as `app/…`;
@@ -41,7 +41,7 @@ When a test fails, re-run only the failing file without `--reporter=dot --silent
 9. Presentation is disposable: motion, themes and chart pixels never change, delay or roll back saved data or navigation. A theme changes appearance only.
 10. UI text uses plain beginner words, no jargon (see the "Plain words" list in Relay `ROADMAP.md`). Show a picture instead of a number where it helps. When you touch a screen, fix its jargon too.
 11. New code goes in the target folders from ARCHITECTURE.md; new screens go in `src/features/<surface>/`. A new file must own real logic: no thin "Composition/Binding/Session" wrapper files.
-12. Tests check behaviour through public functions or the rendered UI. Never pin exact source or doc text, and never assert that a future file is absent. Never skip, delete or loosen a test to get green. A task may change a test only where it says so.
+12. Tests check behaviour through public functions or the rendered UI. A new or changed test must fail before your change and pass after it (check it, and say so in your report). Never pin exact source or doc text, and never assert that a future file is absent. Never skip, delete or loosen a test to get green. A task may change a test only where it says so.
 13. **Ready** means: typecheck, your focused tests and the build pass locally, every acceptance criterion is met, and you reported the exact commands and counts. **Done** means the supervisor approved it and CI is green on a commit that contains it. Anything you did not run is UNVERIFIED. If the same fix fails twice, read the log and change approach.
 14. No ZIP candidates, no helper or bridge workflows, no dated or versioned file names, no per-task report files. The record is the commit, one Relay message and one `LOG.md` line.
     Delete a file only when the task names it (owner rules D16 and D17):
