@@ -83,6 +83,7 @@ when ok, under keys that carry the route id and its version:
 - A key only from `env` (a Worker secret), and only in `UpstreamRequest.headers` or the fixed URL.
 - `data` rebuilt from checked values, never an upstream body passed through.
 - Bump `cache.version` when `data` changes shape.
+- A cached answer never depends on the device: the cache key holds only the route, its `cache.version` and the checked query, so `data` must be the same for every device.
 - Tests for the decoder and the route.
 - Reserved secret names, each added to `KairosApiEnv` with its route: `NEWS_API_KEY` (O3), `MARKET_DATA_API_KEY` (O4),
   `FX_RATES_API_KEY` (O5), `COIN_DATA_API_KEY` (O6).
@@ -118,7 +119,7 @@ P34 on it holds a second of the account's cron triggers. It shares the limiter n
 have no preview URLs.
 
 Production's KV namespace `kairos-api-kairos-api-cache` is created by the first deploy. Bump a route's `cache.version`
-whenever its `data` changes shape. The Cloudflare token reaches only the wrangler deploy steps; both deploy jobs install
+whenever its `data` changes shape. The Cloudflare token reaches only the `cloudflare` job's check and the two wrangler deploy steps; both deploy jobs install
 with `npm ci --ignore-scripts`.
 
 ## Owner steps

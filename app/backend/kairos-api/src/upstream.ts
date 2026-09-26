@@ -32,13 +32,14 @@ export function createUpstreamFetch(allowedHosts: readonly string[], fetchImpl: 
       throw new UpstreamHostRefused(url.hostname);
     }
     const maxBytes = request.maxBytes ?? UPSTREAM_MAX_BYTES;
+    const timeout = AbortSignal.timeout(request.timeoutMs ?? UPSTREAM_TIMEOUT_MS);
     let response: Response;
     try {
       response = await fetchImpl(url.href, {
         method: 'GET',
         headers: { ...request.headers, accept: request.accept, 'user-agent': UPSTREAM_USER_AGENT },
         redirect: 'manual',
-        signal: AbortSignal.timeout(request.timeoutMs ?? UPSTREAM_TIMEOUT_MS),
+        signal: timeout,
       });
     } catch (error) {
       return { ok: false, failure: error instanceof DOMException && error.name === 'TimeoutError' ? 'timeout' : 'network', status: null };
@@ -51,9 +52,14 @@ export function createUpstreamFetch(allowedHosts: readonly string[], fetchImpl: 
     if (Number.isFinite(declared) && declared > maxBytes) return discard(response, 'too-large');
     const text = await readCapped(response, maxBytes);
     if (text === null) return { ok: false, failure: 'too-large', status: response.status };
-    if (text === undefined) return { ok: false, failure: 'network', status: response.status };
+    if (text === undefined) return { ok: false, failure: timedOut(timeout) ? 'timeout' : 'network', status: response.status };
     return { ok: true, status: response.status, contentType, text };
   };
+}
+
+/** The time limit ran out, as opposed to any other reason reading stopped. */
+function timedOut(signal: AbortSignal): boolean {
+  return signal.aborted && signal.reason instanceof DOMException && signal.reason.name === 'TimeoutError';
 }
 
 async function discard(response: Response, failure: 'redirect' | 'status' | 'too-large' | 'content-type'): Promise<UpstreamResult> {
