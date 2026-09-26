@@ -128,6 +128,8 @@ export function NewsCalendarScreen({ db, now = wallClock, news }: NewsCalendarSc
   const tapped = useRef<HTMLElement | null>(null);
   const statusRef = useRef<HTMLDivElement>(null);
   const [settledByTap, setSettledByTap] = useState(0);
+  // Changes with every finished refresh, so the outcome line is a new live region and the same outcome is heard again.
+  const [attempt, setAttempt] = useState(0);
   const [deleted, setDeleted] = useState<string | null>(null);
   const [headlines, setHeadlines] = useState<SavedNewsHeadlines | null>(null);
   const [headlineFailure, setHeadlineFailure] = useState<KairosApiFailure | null>(setUp ? null : HEADLINES_NOT_SET_UP);
@@ -156,6 +158,7 @@ export function NewsCalendarScreen({ db, now = wallClock, news }: NewsCalendarSc
       if (controller.signal.aborted) return;
       running.current = null;
       setRefresh({ kind: 'done', result });
+      setAttempt((count) => count + 1);
       setReload((count) => count + 1);
       if (button !== null) setSettledByTap((count) => count + 1);
     });
@@ -234,8 +237,8 @@ export function NewsCalendarScreen({ db, now = wallClock, news }: NewsCalendarSc
       return <div className="kairos-news-calendar__status" ref={statusRef}>
         {refresh.kind === 'busy' ? <p role="status">{NEWS_REFRESHING}</p> : null}
         {line.kind === 'line'
-          ? <><p role={line.role}>{line.text}</p>{line.button === null ? null : <div><Button variant="secondary" size="sm" busy={line.busy} onClick={refreshOnTap}>{line.button}</Button></div>}</>
-          : <UnavailableNotice message={line.words.message} retryLabel={line.words.retryLabel} onRetry={() => refreshBoth(refreshRef.current, statusRef.current?.querySelector('.kairos-unavailable button') ?? null)} busy={line.busy} />}
+          ? <><p key={attempt} role={line.role}>{line.text}</p>{line.button === null ? null : <div><Button variant="secondary" size="sm" busy={line.busy} onClick={refreshOnTap}>{line.button}</Button></div>}</>
+          : <UnavailableNotice key={attempt} message={line.words.message} retryLabel={line.words.retryLabel} onRetry={() => refreshBoth(refreshRef.current, statusRef.current?.querySelector('.kairos-unavailable button') ?? null)} busy={line.busy} />}
         {showSaved && result.refreshedAt !== null ? <p>{describeSavedCopy(result.refreshedAt, result.timeZone)}</p> : null}
       </div>;
     })() : null}
