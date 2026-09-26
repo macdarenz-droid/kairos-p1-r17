@@ -97,13 +97,13 @@ titles as plain text, times as UTC instants, events within 400 days of now (at m
 `source|title|startsAt`, and `leftOut` = rows with no title or no time Kairos can prove. The server rates nothing; the app
 does. Any failed read or unreadable body is `source-unavailable` (502), never kept.
 
-- **BLS** (`www.bls.gov`, iCalendar, times in US-Eastern): a U.S. government work; BLS refuses automated readers without
+- **BLS** (`www.bls.gov`, iCalendar, times in US-Eastern): public domain, cite BLS. BLS refuses automated readers without
   contact details, and accepts the server's user agent.
-- **BEA** (`www.bea.gov`, iCalendar, UTC times): a U.S. government work.
-- **Eurostat** (`ec.europa.eu`, iCalendar, euro indicators, dates only): CC BY 4.0; Kairos adds the time Eurostat
-  publishes, 11:00 Luxembourg time, and the app credits it.
-- **Bank of Canada** (`www.bankofcanada.ca`, iCalendar, UTC times): used under the Bank's terms of use; only names, times
-  and a link to its page are shown.
+- **BEA** (`www.bea.gov`, iCalendar, UTC times): citation appreciated, no endorsement implied.
+- **Eurostat** (`ec.europa.eu`, iCalendar, euro indicators, dates only): CC BY 4.0; Kairos keeps only listed releases,
+  renames them and adds their published times (11:00 Luxembourg time). The app credits it.
+- **Bank of Canada** (`www.bankofcanada.ca`, iCalendar, UTC times): free with attribution; a paid service must say it is
+  'available on this website free of charge'. Only names, times and a link to its page are shown.
 
 Cache (`NEWS_CALENDAR_CACHE`): 30 minutes in Workers Cache and memory (the page refreshes after 30), 6 hours in KV. One
 source per call keeps each call inside the Free plan's 10 ms of CPU. BEA and Eurostat are asked for `text/plain`: they

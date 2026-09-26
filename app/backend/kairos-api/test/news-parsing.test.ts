@@ -17,12 +17,26 @@ describe('normaliseNewsText', () => {
 
 describe('readIcsEvents', () => {
   it('reads each event summary and start, unfolded and unescaped', () => {
-    const text = 'BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nSUMMARY;LANGUAGE=en:A\\, B\; C\\\\ D\\nE\r\n  folded\r\nDTSTART;TZID=US-Eastern: 20261014T083000 \r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nDTSTART:20261029T123000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n';
+    const text = 'BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nSUMMARY;LANGUAGE=en:A\\, B\\; C\\\\ D\\nE\r\n  folded\r\nDTSTART;TZID=US-Eastern: 20261014T083000 \r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nDTSTART:20261029T123000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n';
     expect(readIcsEvents(text)).toEqual([
       { summary: 'A, B; C\\ D E folded', dtstart: { params: ';TZID=US-Eastern', value: '20261014T083000' } },
       { summary: null, dtstart: { params: '', value: '20261029T123000Z' } },
     ]);
     expect(readIcsEvents('<!doctype html><title>Calendar</title>')).toBeNull();
+  });
+
+  it('unfolds a line folded with a tab', () => {
+    expect(readIcsEvents('BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nSUMMARY:Interest Rate\r\n\t Announcement\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n')![0].summary).toBe('Interest Rate Announcement');
+  });
+
+  it('reads a file whose lines end with CR only', () => {
+    expect(readIcsEvents('BEGIN:VCALENDAR\rBEGIN:VEVENT\rSUMMARY:Retail trade\rDTSTART:20261029T123000Z\rEND:VEVENT\rEND:VCALENDAR\r')).toEqual([
+      { summary: 'Retail trade', dtstart: { params: '', value: '20261029T123000Z' } },
+    ]);
+  });
+
+  it('reads the capital backslash-N as a new line, shown as a space', () => {
+    expect(readIcsEvents('BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nSUMMARY:Monetary\\NPolicy Board\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n')![0].summary).toBe('Monetary Policy Board');
   });
 });
 

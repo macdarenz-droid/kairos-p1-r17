@@ -6,7 +6,7 @@ import type { KairosApiEnv } from '../src/env';
 import { buildCalendarAnswer, NEWS_CALENDAR_FEEDS, NEWS_CALENDAR_SOURCES } from '../src/news/calendarFeeds';
 import { newsEventKey } from '../src/news/newsParsing';
 import { handleKairosApiRequest } from '../src/router';
-import { KAIROS_API_ROUTES, NEWS_CALENDAR_CACHE } from '../src/routes';
+import { KAIROS_API_ROUTES } from '../src/routes';
 import { createUpstreamFetch } from '../src/upstream';
 
 const NOW = Date.parse('2026-09-26T02:00:00Z');
@@ -16,7 +16,7 @@ const ics = (...events: string[]) => ['BEGIN:VCALENDAR', 'VERSION:2.0', ...event
 const THIRD = 'GDP (Third Estimate), Industries, Corporate Profits, State GDP, and State Personal Income, 2nd Quarter 2026; State PCE, 2025';
 const BEA = ics(
   'DTSTART;VALUE=DATE-TIME:20261029T123000Z\nSUMMARY:GDP (Advance Estimate)\\, 3rd Quarter 2026',
-  `DTSTART:20260930T123000Z\nSUMMARY:${THIRD.slice(0, 60).replace(/,/g, '\\,').replace(/;/g, '\;')}\n ${THIRD.slice(60).replace(/,/g, '\\,').replace(/;/g, '\;')}`,
+  `DTSTART:20260930T123000Z\nSUMMARY:${THIRD.slice(0, 60).replace(/,/g, '\\,').replace(/;/g, '\\;')}\n ${THIRD.slice(60).replace(/,/g, '\\,').replace(/;/g, '\\;')}`,
 );
 const BLS = ics(
   'DTSTART;TZID=US-Eastern:20261014T083000\nSUMMARY:Consumer Price Index',
@@ -64,6 +64,42 @@ describe('the four iCalendar decoders', () => {
     expect(data.events.map((event) => event.title)).toEqual(['Interest Rate Announcement']);
     expect(data.leftOut).toBe(0);
     expect(buildCalendarAnswer('bea', [HTML], NOW)).toBeNull();
+  });
+
+  it('drops events more than 400 days back, uncounted', () => {
+    const early = new Date(NOW - 401 * 86_400_000).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+    const data = buildCalendarAnswer('boc', [ics(`DTSTART:${early}\nSUMMARY:Long ago`, 'DTSTART:20261028T134500Z\nSUMMARY:Interest Rate Announcement')], NOW)!;
+    expect(data.events.map((event) => event.title)).toEqual(['Interest Rate Announcement']);
+    expect(data.leftOut).toBe(0);
+  });
+
+  it('orders events at the same time by title', () => {
+    const data = buildCalendarAnswer('boc', [ics('DTSTART:20261028T134500Z\nSUMMARY:B release', 'DTSTART:20261028T134500Z\nSUMMARY:A release')], NOW)!;
+    expect(data.events.map((event) => event.title)).toEqual(['A release', 'B release']);
+  });
+
+  it('keeps a title of 200 characters and leaves out, counted, a longer one', () => {
+    const data = buildCalendarAnswer('boc', [ics(`DTSTART:20261028T134500Z\nSUMMARY:${'x'.repeat(200)}`, `DTSTART:20261029T134500Z\nSUMMARY:${'y'.repeat(201)}`)], NOW)!;
+    expect(data.events.map((event) => event.title)).toEqual(['x'.repeat(200)]);
+    expect(data.leftOut).toBe(1);
+  });
+
+  it('answers at most 2,000 events and refuses a body with more', () => {
+    const many = (count: number) => ics(...Array.from({ length: count }, (_, index) => `DTSTART:20261028T134500Z\nSUMMARY:Release ${index}`));
+    expect(buildCalendarAnswer('boc', [many(2_000)], NOW)!.events).toHaveLength(2_000);
+    expect(buildCalendarAnswer('boc', [many(2_001)], NOW)).toBeNull();
+  });
+
+  it('leaves out, counted, a start whose parameter the source does not use', () => {
+    const wrongZone = 'DTSTART;TZID=US-Eastern:20261028T134500Z\nSUMMARY:Interest Rate Announcement';
+    for (const source of ['bea', 'boc'] as const) {
+      const data = buildCalendarAnswer(source, [ics(wrongZone)], NOW)!;
+      expect(data.events, source).toEqual([]);
+      expect(data.leftOut, source).toBe(1);
+    }
+    const noDateParameter = buildCalendarAnswer('eurostat', [ics('DTSTART:20261002\nSUMMARY:Flash estimate inflation euro area')], NOW)!;
+    expect(noDateParameter.events).toEqual([]);
+    expect(noDateParameter.leftOut).toBe(1);
   });
 });
 
@@ -118,6 +154,12 @@ describe('the news calendar routes', () => {
     expect(await workerEnv.KAIROS_API_CACHE!.get('news-calendar-bls:v1:', 'text')).not.toBeNull();
   });
 
+  it('asks the Bank of Canada for text/calendar', async () => {
+    const fetchImpl = sources();
+    expect((await call('/news/calendar/boc', baseEnv(), fetchImpl)).status).toBe(200);
+    expect((fetchImpl.mock.calls[0][1]!.headers as Record<string, string>).accept).toBe('text/calendar');
+  });
+
   it('asks BEA and Eurostat for text/plain and reads their text/plain answers', async () => {
     for (const [source, host] of [['bea', 'www.bea.gov'], ['eurostat', 'ec.europa.eu']] as const) {
       const fetchImpl = sources();
@@ -167,7 +209,9 @@ describe('the news calendar routes', () => {
   it('lists each calendar as a public, limited route with no query, the calendar cache and every host its feed reads', () => {
     for (const id of NEWS_CALENDAR_SOURCES) {
       const route = KAIROS_API_ROUTES.find((candidate) => candidate.id === `news-calendar-${id}`);
-      expect(route, id).toMatchObject({ path: `/news/calendar/${id}`, access: 'public', rateLimited: true, query: {}, cache: NEWS_CALENDAR_CACHE });
+      expect(route, id).toMatchObject({ path: `/news/calendar/${id}`, access: 'public', rateLimited: true });
+      expect(Object.keys(route!.query), id).toEqual([]);
+      expect(route!.cache, id).toEqual({ version: 1, edgeSeconds: 1_800, memorySeconds: 1_800, kvSeconds: 21_600 });
       for (const url of NEWS_CALENDAR_FEEDS[id].urls(NOW)) expect(route!.upstreamHosts, url).toContain(new URL(url).hostname);
     }
   });
