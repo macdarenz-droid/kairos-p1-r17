@@ -16,5 +16,6 @@ execSync('npx vite build', {
     VITE_KAIROS_ACTIVATION_ENDPOINT: 'https://activation.qa.invalid/v1/activate',
     VITE_KAIROS_ACTIVATION_PUBLIC_KEY_SPKI: spki,
     VITE_BUILD_ID: 'qa-e2e',
+    VITE_KAIROS_API_URL: 'https://api.qa.invalid',
   },
 });

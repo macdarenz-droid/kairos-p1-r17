@@ -44,3 +44,6 @@
   .kairos-sheet { align-items: center; padding: var(--kairos-space-4); }
   .kairos-sheet__panel { border-radius: var(--kairos-radius-xl); }
 }
+
+.kairos-unavailable { display: flex; flex-wrap: wrap; align-items: center; gap: var(--kairos-space-3); padding: var(--kairos-space-3); border: 1px solid var(--kairos-state-warning); border-radius: var(--kairos-radius-md); color: var(--kairos-text-secondary); }
+.kairos-unavailable__text { flex: 1 1 14rem; margin: 0; min-width: 0; }
