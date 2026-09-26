@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { parseForexPair } from '../../application/markets/forexPair';
 import { loadReplayCandles, REPLAY_CANDLE_SIZES, type LoadedReplay, type ReplayLoadFailure, type ReplayMarketDeps } from '../../application/practice/replayCandles';
@@ -80,8 +80,8 @@ export function ReplayScreen({ db, market, playStepMs = REPLAY_PLAY_STEP_MS }: {
     }
   }, [form, market, play]);
 
-  // Focus moves once the new content is on screen.
-  useEffect(() => {
+  // Focus moves in the same update as the new content.
+  useLayoutEffect(() => {
     const target = focusAfterLoad.current;
     if (target === null) return;
     focusAfterLoad.current = null;
