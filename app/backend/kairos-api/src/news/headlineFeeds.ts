@@ -50,7 +50,7 @@ function headlineUrl(raw: string | null, linkHosts: readonly string[]): string |
   if (text === null) return null;
   let url: URL;
   try { url = new URL(text); } catch { return null; }
-  if (url.protocol !== 'https:' || url.username !== '' || url.password !== '' || !linkHosts.includes(url.hostname)) return null;
+  if (url.protocol !== 'https:' || url.username !== '' || url.password !== '' || url.port !== '' || !linkHosts.includes(url.hostname)) return null;
   url.pathname = url.pathname.replace(/^\/{2,}/, '/');
   return url.href;
 }
