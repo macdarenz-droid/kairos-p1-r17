@@ -6,8 +6,10 @@ import type { EconomicEventImpact, EconomicEventRecord } from '../../domain/econ
 import { economicEventSize } from '../../domain/economic-calendar/newsImpact';
 import { NEWS_CALENDAR_SOURCE_IDS, NEWS_SOURCES, type NewsCalendarSourceId } from '../../domain/economic-calendar/newsSources';
 import { currencyDayLabel } from '../currency/currencyWords';
+import { describeUnavailable, type UnavailableWords } from '../online/onlineWords';
 import { projectVisualPnlClockTime, projectVisualPnlDayKey } from '../visual-pnl/dayBucket';
 import { visualPnlMondayFirstWeekday } from '../visual-pnl/dayKeyCalendar';
+import type { RefreshNewsCalendarResult } from './fetchedNews';
 import { NEWS_NEAR_TRADE_MINUTES } from './newsNearTrades';
 
 export const NEWS_CALENDAR_INTRO = `Some scheduled news, such as a central bank's rate decision or a country's inflation or jobs numbers, can move prices a lot and fast. Kairos gets the official schedules of central banks and statistics offices, and you can add your own news. Each closed trade's card says when big news was within ${NEWS_NEAR_TRADE_MINUTES} minutes of when it opened or closed, or while it was open. This calendar never predicts prices and never tells you when to trade.`;
@@ -95,3 +97,56 @@ export function describeAddedNewsCount(count: number): string {
   if (count === 0) return 'You have not added any news on this device.';
   return count === 1 ? 'You added 1 news event on this device.' : `You added ${count} news events on this device.`;
 }
+
+/** Where the page is with the official schedules on this visit (T-046k); busy keeps the state it started from. */
+export type NewsRefreshState =
+  | Readonly<{ kind: 'idle' }>
+  | Readonly<{ kind: 'not-set-up' }>
+  | Readonly<{ kind: 'busy'; previous: NewsRefreshState }>
+  | Readonly<{ kind: 'done'; result: RefreshNewsCalendarResult }>;
+
+export type NewsRefreshLine =
+  | Readonly<{ kind: 'line'; text: string; role: 'status' | 'alert'; button: 'Refresh' | 'Try again' | null; busy: boolean }>
+  | Readonly<{ kind: 'unavailable'; words: UnavailableWords; busy: boolean }>;
+
+export const NEWS_REFRESHING = 'Getting the latest news…';
+
+const line = (text: string, role: 'status' | 'alert', button: 'Refresh' | 'Try again' | null): NewsRefreshLine =>
+  Object.freeze({ kind: 'line' as const, text, role, button, busy: false });
+
+/** "A", "A and B", "A, B and C". */
+function joinNames(names: readonly string[]): string {
+  return names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
+
+/** "Showing news saved Thursday 24 September 2026 at 11:50." */
+export function describeSavedCopy(savedAt: string, timeZone: string): string {
+  return `Showing news saved ${describeCalendarMoment(savedAt, timeZone)}.`;
+}
+
+/** The status block's line for a refresh state; `savedAt` is the saved copy's refreshedAt (null: none on this device). */
+export function describeNewsRefresh(state: NewsRefreshState, savedAt: string | null, timeZone: string): NewsRefreshLine {
+  switch (state.kind) {
+    case 'idle':
+      return savedAt === null ? line('Kairos has not got the official schedules on this device yet.', 'status', 'Refresh') : line(describeSavedCopy(savedAt, timeZone), 'status', 'Refresh');
+    case 'busy':
+      return Object.freeze({ ...describeNewsRefresh(state.previous, savedAt, timeZone), busy: true });
+    case 'not-set-up':
+      return line(`${describeUnavailable({ ok: false, reason: 'not-set-up' }, 'News').message} You can still add your own news.`, 'status', null);
+    case 'done': {
+      const { result } = state;
+      if (result.ok) {
+        const updated = `Updated ${describeCalendarMoment(result.refreshedAt, timeZone)}.`;
+        const failed = new Set(result.outcomes.filter((outcome) => !outcome.ok).map((outcome) => outcome.source));
+        if (failed.size === 0) return line(updated, 'status', 'Refresh');
+        const names = NEWS_CALENDAR_SOURCE_IDS.filter((source) => failed.has(source)).map((source) => NEWS_SOURCES[source].name);
+        return line(`${updated} Could not get news from ${joinNames(names)} this time.`, 'status', 'Try again');
+      }
+      if (result.reason === 'unavailable') return Object.freeze({ kind: 'unavailable' as const, words: describeUnavailable(result.failure, 'News'), busy: false });
+      return line('Kairos could not save the news. Nothing was changed.', 'alert', 'Try again');
+    }
+  }
+}
+
+/** The sources card; restates newsImpact.ts's high rules, so it changes when they change. */
+export const NEWS_SOURCES_INTRO = "Kairos's server reads these official schedules for you. They give the name and date of each release, and most give the time. For Eurostat, the European Central Bank and the Reserve Bank of Australia, Kairos adds the release time each one publishes: 11:00 in Luxembourg, 14:15 in Frankfurt and 14:30 in Sydney. No schedule says how big a release is or what numbers are expected. Kairos shows only the releases on its own fixed list and sizes them itself. Big news: rate decisions and the US Fed's press conference; US and UK inflation, and the euro area's first inflation estimate; the US and UK jobs reports; and the first US growth (GDP), spending and retail sales numbers. Everything else on the list is medium or small news, and each release on the calendar shows its size.";

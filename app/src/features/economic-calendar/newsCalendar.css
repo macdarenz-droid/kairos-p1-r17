@@ -17,3 +17,6 @@
 .kairos-news-size[data-impact="low"] > span:nth-child(-n+1),
 .kairos-news-size[data-impact="medium"] > span:nth-child(-n+2),
 .kairos-news-size[data-impact="high"] > span { background: var(--kairos-state-warning); }
+.kairos-news-calendar__frame { inline-size: 100%; block-size: 600px; border: 0; }
+.kairos-news-calendar__status { display: grid; gap: var(--kairos-space-2); justify-items: start; min-width: 0; }
+.kairos-news-calendar__status p, .kairos-news-calendar__sources ul { margin: 0; }

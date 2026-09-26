@@ -16,6 +16,11 @@ function RouteLoading() {
 }
 
 // Each screen's code loads when the screen opens; Home, More and not-found stay in the first script.
+/** U1: the app's Kairos server client (address from VITE_KAIROS_API_URL, device header from this device's receipt), the same for every screen that talks to the server. */
+function kairosApiClientFrom(kairosApi: typeof import('../services/kairos-api/kairosApi')) {
+  return kairosApi.createKairosApiClient({ baseUrl: kairosApi.parseKairosApiBaseUrl(import.meta.env.VITE_KAIROS_API_URL), readReceipt: kairosApi.storedReceiptReader(new ActivationReceiptRepository(kairosRepositories.metadata)) });
+}
+
 export const appRoutes = [
   {
     path: '/',
@@ -60,8 +65,9 @@ export const appRoutes = [
         return { Component: function PatternsRoute() { return <PatternsScreen db={kairosDatabase} scope="real" />; } };
       } },
       { path: 'news-calendar', lazy: async () => {
-        const { NewsCalendarScreen } = await import('../features/economic-calendar/NewsCalendarScreen');
-        return { Component: function NewsCalendarRoute() { return <NewsCalendarScreen db={kairosDatabase} />; } };
+        const [{ NewsCalendarScreen }, kairosApi, { createNewsApiPort }] = await Promise.all([import('../features/economic-calendar/NewsCalendarScreen'), import('../services/kairos-api/kairosApi'), import('../services/kairos-api/newsApi')]);
+        const news = createNewsApiPort(kairosApiClientFrom(kairosApi));
+        return { Component: function NewsCalendarRoute() { return <NewsCalendarScreen db={kairosDatabase} news={news} />; } };
       } },
       { path: 'currency', lazy: async () => {
         const [{ CurrencyScreen }, { createEcbReferenceRatesPort }] = await Promise.all([import('../features/currency/CurrencyScreen'), import('../services/exchange-rates/ecbReferenceRates')]);
@@ -71,7 +77,7 @@ export const appRoutes = [
       { path: 'settings', lazy: async () => ({ Component: (await import('./SettingsRoute')).SettingsRoute }) },
       { path: 'profile', lazy: async () => {
         const [{ ProfileRoute }, kairosApi] = await Promise.all([import('./ProfileRoute'), import('../services/kairos-api/kairosApi')]);
-        const client = kairosApi.createKairosApiClient({ baseUrl: kairosApi.parseKairosApiBaseUrl(import.meta.env.VITE_KAIROS_API_URL), readReceipt: kairosApi.storedReceiptReader(new ActivationReceiptRepository(kairosRepositories.metadata)) });
+        const client = kairosApiClientFrom(kairosApi);
         const onlineServices = kairosApi.createKairosApiHealthPort(client);
         return { Component: function ProfileWithOnlineServicesRoute() { return <ProfileRoute onlineServices={onlineServices} />; } };
       } },
