@@ -1,5 +1,6 @@
 import { kairosDatabase } from '../database/databaseLifecycle';
 import type { KairosDatabase } from '../database/KairosDatabase';
+import { EconomicEventRepository } from './EconomicEventRepository';
 import { ExchangeRateRepository } from './ExchangeRateRepository';
 import { MetadataRepository } from './MetadataRepository';
 import { SavedAnalysisRepository } from './SavedAnalysisRepository';
@@ -17,11 +18,13 @@ export interface KairosRepositories {
   readonly savedTimeAssistedSnapshots: SavedTimeAssistedSnapshotRepository;
   readonly tradeDiscipline: TradeDisciplineRepository;
   readonly exchangeRates: ExchangeRateRepository;
+  readonly economicEvents: EconomicEventRepository;
 }
 export function createKairosRepositories(db: KairosDatabase): KairosRepositories {
-  return Object.freeze({ metadata: new MetadataRepository(db), trades: new TradeRepository(db), tradePlans: new TradePlanRepository(db), tradeExecutions: new TradeExecutionRepository(db), tradeFees: new TradeFeeRepository(db), savedAnalyses: new SavedAnalysisRepository(db), savedTimeAssistedSnapshots: new SavedTimeAssistedSnapshotRepository(db), tradeDiscipline: new TradeDisciplineRepository(db), exchangeRates: new ExchangeRateRepository(db) });
+  return Object.freeze({ metadata: new MetadataRepository(db), trades: new TradeRepository(db), tradePlans: new TradePlanRepository(db), tradeExecutions: new TradeExecutionRepository(db), tradeFees: new TradeFeeRepository(db), savedAnalyses: new SavedAnalysisRepository(db), savedTimeAssistedSnapshots: new SavedTimeAssistedSnapshotRepository(db), tradeDiscipline: new TradeDisciplineRepository(db), exchangeRates: new ExchangeRateRepository(db), economicEvents: new EconomicEventRepository(db) });
 }
 export const kairosRepositories = createKairosRepositories(kairosDatabase);
+export { EconomicEventRepository } from './EconomicEventRepository';
 export { ExchangeRateRepository } from './ExchangeRateRepository';
 export { MetadataRepository } from './MetadataRepository';
 export { SavedAnalysisRepository } from './SavedAnalysisRepository';

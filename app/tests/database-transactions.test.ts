@@ -98,8 +98,8 @@ describe('P5.5 atomic transaction foundation', () => {
     const db = createKairosDatabase(makeDatabaseName('schema'));
     await openKairosDatabase(db);
 
-    expect(db.verno).toBe(10);
-    expect(db.tables.map((table) => table.name).sort()).toEqual(['exchangeRates', 'metadata', 'savedAnalyses', 'savedTimeAssistedSnapshots', 'tradeDiscipline', 'tradeExecutions', 'tradeFees', 'tradePlans', 'trades'].sort());
+    expect(db.verno).toBe(11);
+    expect(db.tables.map((table) => table.name).sort()).toEqual(['economicEvents', 'exchangeRates', 'metadata', 'savedAnalyses', 'savedTimeAssistedSnapshots', 'tradeDiscipline', 'tradeExecutions', 'tradeFees', 'tradePlans', 'trades'].sort());
     db.close();
   });
 });

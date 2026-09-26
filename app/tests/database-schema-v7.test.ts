@@ -60,7 +60,7 @@ describe('schema v7: the close-time index', () => {
     old.close();
 
     const { db, status } = await openCurrent(name);
-    expect(status).toEqual({ state: 'ready', schemaVersion: 10 });
+    expect(status).toEqual({ state: 'ready', schemaVersion: 11 });
     expect(await db.trades.orderBy('id').toArray()).toEqual([...trades].sort((l, r) => l.id.localeCompare(r.id)));
     expect(await db.tradePlans.toArray()).toEqual([plan]);
     expect(await db.tradeExecutions.toArray()).toEqual([execution]);
@@ -72,7 +72,7 @@ describe('schema v7: the close-time index', () => {
     db.close();
 
     const again = await openCurrent(name);
-    expect(again.status).toEqual({ state: 'ready', schemaVersion: 10 });
+    expect(again.status).toEqual({ state: 'ready', schemaVersion: 11 });
     expect(await again.db.trades.count()).toBe(4);
   });
 
@@ -99,7 +99,7 @@ describe('backup format V5 across schema v6 and v7', () => {
     const { db } = await openCurrent(newName('restore-v6'));
     const envelope = { ...createKairosBackupEnvelope({ metadata: [{ key: 'journal.note', value: 'kept', updatedAt: at }], trades: [trade('closed-a', 'closed', 'manual', at)], exportedAt: new Date(at) }), formatVersion: 5, databaseSchemaVersion: 6 };
     const text = JSON.stringify(envelope);
-    expect(parseKairosBackup(text)).toMatchObject({ formatVersion: 9, databaseSchemaVersion: 10 });
+    expect(parseKairosBackup(text)).toMatchObject({ formatVersion: 10, databaseSchemaVersion: 11 });
     const prepared = await prepareKairosRestore(db, text);
     const result = await replaceKairosDatabaseFromPreparedRestore(db, prepared);
     expect(result.integrity.ok).toBe(true);
@@ -110,7 +110,7 @@ describe('backup format V5 across schema v6 and v7', () => {
     const { db } = await openCurrent(newName('snapshot'));
     await db.trades.put(trade('closed-a', 'closed', 'manual', at));
     const snapshot = await createKairosDatabaseSnapshot(db);
-    expect(snapshot.databaseSchemaVersion).toBe(10);
+    expect(snapshot.databaseSchemaVersion).toBe(11);
     expect(parseKairosBackup(serializeKairosBackup(snapshot))).toEqual(snapshot);
   });
 

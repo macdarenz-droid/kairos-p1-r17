@@ -53,7 +53,7 @@ describe('T-045b schema v10: exchange rates are stored', () => {
     await old.table('trades').put(trade);
     old.close();
     const db = createKairosDatabase(name); opened.push(db);
-    expect(await openKairosDatabase(db)).toEqual({ state: 'ready', schemaVersion: 10 });
+    expect(await openKairosDatabase(db)).toEqual({ state: 'ready', schemaVersion: 11 });
     expect(await db.trades.toArray()).toEqual([trade]);
     expect(await db.exchangeRates.count()).toBe(0);
     expect((await inspectKairosDatabaseIntegrity(db)).ok).toBe(true);
@@ -95,14 +95,14 @@ describe('T-045b backup format 9', () => {
     const db = await current('export');
     await db.exchangeRates.bulkPut([typedGbp, ecbUsd]);
     const snapshot = await createKairosDatabaseSnapshot(db);
-    expect(snapshot).toMatchObject({ formatVersion: 9, databaseSchemaVersion: 10, recordCounts: { exchangeRates: 2 } });
+    expect(snapshot).toMatchObject({ formatVersion: 10, databaseSchemaVersion: 11, recordCounts: { exchangeRates: 2 } });
     expect(snapshot.payload.exchangeRates).toEqual([ecbUsd, typedGbp]);
     expect(parseKairosBackup(serializeKairosBackup(snapshot))).toEqual(snapshot);
   });
 
   it('reads a format 8 backup as format 9 with its discipline record and no rates', () => {
     const parsed = parseKairosBackup(format8());
-    expect(parsed).toMatchObject({ formatVersion: 9, databaseSchemaVersion: 10, recordCounts: { exchangeRates: 0 } });
+    expect(parsed).toMatchObject({ formatVersion: 10, databaseSchemaVersion: 11, recordCounts: { exchangeRates: 0 } });
     expect(parsed.payload.tradeDiscipline).toEqual([plain]);
     expect(parsed.payload.exchangeRates).toEqual([]);
   });
@@ -121,7 +121,7 @@ describe('T-045b backup format 9', () => {
   it('reads a format 1 metadata-only backup as format 9 with no rates', () => {
     const legacy = { ...header, formatVersion: 1, databaseSchemaVersion: 1, recordCounts: { metadata: 0, total: 0 }, payload: { metadata: [] } };
     const parsed = parseKairosBackup(JSON.stringify(legacy));
-    expect(parsed).toMatchObject({ formatVersion: 9, databaseSchemaVersion: 10 });
+    expect(parsed).toMatchObject({ formatVersion: 10, databaseSchemaVersion: 11 });
     expect(parsed.payload.exchangeRates).toEqual([]);
   });
 
@@ -146,7 +146,7 @@ describe('T-045b backup format 9', () => {
     expect(() => parseKairosBackup(JSON.stringify(wrongCount))).toThrow(expect.objectContaining({ code: 'INVALID_RECORD_COUNTS' }));
     const db = await current('duplicate');
     expect(await prepareBackupRestore(db, JSON.stringify(format9([ecbUsd, ecbUsd])))).toMatchObject({ ok: false, type: 'incompatible-backup', code: 'DUPLICATE_EXCHANGE_RATE_ID' });
-    expect(() => parseKairosBackup(JSON.stringify({ ...format9([]), formatVersion: 10 }))).toThrow(expect.objectContaining({ code: 'UNSUPPORTED_FORMAT_VERSION' }));
+    expect(() => parseKairosBackup(JSON.stringify({ ...format9([]), formatVersion: 11 }))).toThrow(expect.objectContaining({ code: 'UNSUPPORTED_FORMAT_VERSION' }));
   });
 
   it('a merge import adds the trade and leaves rates alone', async () => {

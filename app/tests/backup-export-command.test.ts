@@ -41,12 +41,12 @@ describe('P28.1 backup export command', () => {
     expect(file.fileName).toBe('kairos-backup-2026-09-18T15-51-00Z.json');
     expect(file.mediaType).toBe('application/json');
     expect(file.exportedAt).toBe('2026-09-18T15:51:00.250Z');
-    expect(file.recordCounts).toEqual({ metadata: 1, trades: 0, tradePlans: 0, tradeExecutions: 0, tradeFees: 0, savedAnalyses: 1, savedTimeAssistedSnapshots: 0, tradeDiscipline: 0, exchangeRates: 0, total: 2 });
+    expect(file.recordCounts).toEqual({ metadata: 1, trades: 0, tradePlans: 0, tradeExecutions: 0, tradeFees: 0, savedAnalyses: 1, savedTimeAssistedSnapshots: 0, tradeDiscipline: 0, exchangeRates: 0, economicEvents: 0, total: 2 });
     expect(file.byteLength).toBe(new TextEncoder().encode(file.contents).byteLength);
     expect(Object.isFrozen(file)).toBe(true);
     const parsed = parseKairosBackup(file.contents);
-    expect(parsed.formatVersion).toBe(9);
-    expect(parsed.databaseSchemaVersion).toBe(10);
+    expect(parsed.formatVersion).toBe(10);
+    expect(parsed.databaseSchemaVersion).toBe(11);
     expect(parsed.payload.metadata.map(record => record.key)).toEqual(['preferences.goals.v1']);
     expect(parsed.payload.savedAnalyses[0]).toMatchObject({ id: 'a-1', label: 'Alpha plan' });
     expect({ metadata: await db.metadata.count(), analyses: await db.savedAnalyses.count() }).toEqual(before);

@@ -13,6 +13,7 @@ import {
   KAIROS_V8_STORES,
   KAIROS_V9_STORES,
   KAIROS_V10_STORES,
+  KAIROS_V11_STORES,
   createKairosDatabase,
   openKairosDatabase,
   registerKairosMigrations,
@@ -42,8 +43,8 @@ afterEach(async () => {
 
 describe('P5.3 migration harness', () => {
   it('keeps immutable history and appends the current v7 schema', () => {
-    expect(KAIROS_DB_SCHEMA_VERSION).toBe(10);
-    expect(KAIROS_DATABASE_MIGRATIONS).toHaveLength(10);
+    expect(KAIROS_DB_SCHEMA_VERSION).toBe(11);
+    expect(KAIROS_DATABASE_MIGRATIONS).toHaveLength(11);
     expect(KAIROS_DATABASE_MIGRATIONS[0]).toEqual({ version: 1, stores: KAIROS_V1_STORES });
     expect(KAIROS_DATABASE_MIGRATIONS[1]?.version).toBe(2);
     expect(KAIROS_DATABASE_MIGRATIONS[2]).toEqual({ version: 3, stores: KAIROS_V3_STORES });
@@ -54,6 +55,7 @@ describe('P5.3 migration harness', () => {
     expect(KAIROS_DATABASE_MIGRATIONS[7]).toMatchObject({ version: 8, stores: KAIROS_V8_STORES });
     expect(KAIROS_DATABASE_MIGRATIONS[8]).toEqual({ version: 9, stores: KAIROS_V9_STORES });
     expect(KAIROS_DATABASE_MIGRATIONS[9]).toEqual({ version: 10, stores: KAIROS_V10_STORES });
+    expect(KAIROS_DATABASE_MIGRATIONS[10]).toEqual({ version: 11, stores: KAIROS_V11_STORES });
     expect(Object.isFrozen(KAIROS_DATABASE_MIGRATIONS)).toBe(true);
     expect(Object.isFrozen(KAIROS_DATABASE_MIGRATIONS[0])).toBe(true);
     expect(() => validateKairosMigrationSequence(KAIROS_DATABASE_MIGRATIONS)).not.toThrow();
@@ -79,9 +81,9 @@ describe('P5.3 migration harness', () => {
     const db = createKairosDatabase(makeDatabaseName('production-schema'));
     const status = await openKairosDatabase(db);
 
-    expect(status).toEqual({ state: 'ready', schemaVersion: 10 });
-    expect(db.verno).toBe(10);
-    expect(db.tables.map((table) => table.name)).toEqual(['metadata', 'trades', 'tradePlans', 'tradeExecutions', 'tradeFees', 'savedAnalyses', 'savedTimeAssistedSnapshots', 'tradeDiscipline', 'exchangeRates']);
+    expect(status).toEqual({ state: 'ready', schemaVersion: 11 });
+    expect(db.verno).toBe(11);
+    expect(db.tables.map((table) => table.name)).toEqual(['metadata', 'trades', 'tradePlans', 'tradeExecutions', 'tradeFees', 'savedAnalyses', 'savedTimeAssistedSnapshots', 'tradeDiscipline', 'exchangeRates', 'economicEvents']);
     expect(db.trades.schema.indexes.map((index) => index.name)).toContain('[status+updatedAt]');
     expect(db.trades.schema.indexes.map((index) => index.name)).toContain('[status+closedAt]');
     db.close();
