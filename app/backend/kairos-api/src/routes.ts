@@ -7,13 +7,16 @@ export const KAIROS_API_ROUTES: readonly KairosApiRoute[] = Object.freeze([
   {
     id: 'health',
     path: '/health',
+    access: 'public',
+    rateLimited: false,
     query: {},
-    async handle({ env, now }) {
+    async handle({ env, device, now }) {
       return {
         ok: true,
         data: {
           service: 'kairos-api',
           serverTime: now.toISOString(),
+          device: device.kind,
           checks: {
             deviceKey: ready(typeof env.KAIROS_ACTIVATION_PUBLIC_KEY_SPKI === 'string' && env.KAIROS_ACTIVATION_PUBLIC_KEY_SPKI.trim() !== ''),
             cache: ready(env.KAIROS_API_CACHE !== undefined),

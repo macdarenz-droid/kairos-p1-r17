@@ -1,7 +1,9 @@
 import { createExecutionContext } from 'cloudflare:test';
-import { describe, expect, it, vi } from 'vitest';
-import type { KairosApiEnv } from '../src/env';
-import { handleKairosApiRequest, type KairosApiRoute, type RouteContext } from '../src/router';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+import type { KairosApiEnv, RateLimiter } from '../src/env';
+import { handleKairosApiRequest, limiterAddress, type KairosApiRoute, type RouteContext } from '../src/router';
+import { KAIROS_API_ROUTES } from '../src/routes';
+import { ACTIVATION_ID, activationKeys, deviceToken, type ActivationKeys } from './signedReceipt';
 
 const APP = 'https://kairos-p1-r17.pages.dev';
 const env: KairosApiEnv = { KAIROS_APP_ORIGINS: APP };
@@ -10,6 +12,8 @@ function route(overrides: Partial<KairosApiRoute> = {}): KairosApiRoute {
   return {
     id: 'sample',
     path: '/sample',
+    access: 'public',
+    rateLimited: false,
     query: { symbol: { pattern: /^[A-Z]{2,12}$/, required: true }, limit: { pattern: /^[1-9][0-9]{0,2}$/, required: false } },
     handle: vi.fn(async () => ({ ok: true as const, data: { n: 1 } })),
     ...overrides,
@@ -88,5 +92,94 @@ describe('handleKairosApiRequest', () => {
 
     const own = await call(route({ handle: async () => ({ ok: false as const, reason: 'source-unavailable' as const, retryAfter: 5 }) }), '/sample?symbol=BTC');
     expect(own.headers.get('retry-after')).toBe('5');
+  });
+});
+
+function limiter(success: boolean) {
+  return { limit: vi.fn<RateLimiter['limit']>().mockResolvedValue({ success }) };
+}
+
+function callWith(routes: readonly KairosApiRoute[], path: string, callEnv: KairosApiEnv, headers: Record<string, string> = {}): Promise<Response> {
+  return handleKairosApiRequest(new Request(`https://kairos-api.example.workers.dev${path}`, { headers: { origin: APP, ...headers } }), callEnv, createExecutionContext(), { routes });
+}
+
+describe('devices and limits', () => {
+  let keys: ActivationKeys;
+  let good: string;
+
+  beforeAll(async () => {
+    keys = await activationKeys();
+    good = await deviceToken(keys.privateKey);
+  });
+
+  it('answers a device route only for a recognised device, and limits it by its activation id', async () => {
+    const deviceRoute = () => route({ access: 'device', rateLimited: true });
+    const withKey = () => ({ ...env, KAIROS_ACTIVATION_PUBLIC_KEY_SPKI: keys.spki, KAIROS_API_DEVICE_LIMITER: limiter(true), KAIROS_API_ANONYMOUS_LIMITER: limiter(true) });
+
+    const none = await callWith([deviceRoute()], '/sample?symbol=BTC', withKey());
+    expect(none.status).toBe(401);
+    expect(await none.json()).toMatchObject({ reason: 'device-not-recognised' });
+
+    expect((await callWith([deviceRoute()], '/sample?symbol=BTC', withKey(), { 'x-kairos-device': 'v1.junk.junk' })).status).toBe(401);
+
+    const noKey = await callWith([deviceRoute()], '/sample?symbol=BTC', { ...env, KAIROS_API_DEVICE_LIMITER: limiter(true) }, { 'x-kairos-device': good });
+    expect(noKey.status).toBe(503);
+    expect(await noKey.json()).toMatchObject({ reason: 'not-set-up' });
+
+    const sample = deviceRoute();
+    const recognisedEnv = withKey();
+    const ok = await callWith([sample], '/sample?symbol=BTC', recognisedEnv, { 'x-kairos-device': good });
+    expect(ok.status).toBe(200);
+    expect((vi.mocked(sample.handle).mock.calls[0][0] as RouteContext).device).toEqual({ kind: 'recognised', activationId: ACTIVATION_ID });
+    expect(recognisedEnv.KAIROS_API_DEVICE_LIMITER.limit).toHaveBeenCalledWith({ key: `device:${ACTIVATION_ID}` });
+    expect(recognisedEnv.KAIROS_API_ANONYMOUS_LIMITER.limit).not.toHaveBeenCalled();
+  });
+
+  it('limits everyone else by a hash of their address', async () => {
+    const anonymous = limiter(true);
+    const response = await callWith([route({ rateLimited: true })], '/sample?symbol=BTC', { ...env, KAIROS_API_ANONYMOUS_LIMITER: anonymous }, { 'cf-connecting-ip': '203.0.113.9' });
+    expect(response.status).toBe(200);
+    const { key } = anonymous.limit.mock.calls[0][0];
+    expect(key).toMatch(/^anonymous:[0-9a-f]{64}$/);
+    expect(key).not.toContain('203.0.113.9');
+
+    const denied = await callWith([route({ rateLimited: true })], '/sample?symbol=BTC', { ...env, KAIROS_API_ANONYMOUS_LIMITER: limiter(false) }, { 'cf-connecting-ip': '203.0.113.9' });
+    expect(denied.status).toBe(429);
+    expect(denied.headers.get('retry-after')).toBe('60');
+    expect(await denied.json()).toMatchObject({ reason: 'rate-limited', retryAfter: 60 });
+
+    const missing = await callWith([route({ rateLimited: true })], '/sample?symbol=BTC', env);
+    expect(missing.status).toBe(503);
+    expect(await missing.json()).toMatchObject({ reason: 'not-set-up' });
+
+    const unlimited = limiter(true);
+    expect((await callWith([route()], '/sample?symbol=BTC', { ...env, KAIROS_API_ANONYMOUS_LIMITER: unlimited })).status).toBe(200);
+    expect(unlimited.limit).not.toHaveBeenCalled();
+  });
+
+  it('gives one IPv6 /64 network one anonymous limit', async () => {
+    const anonymous = limiter(true);
+    const limitedEnv = { ...env, KAIROS_API_ANONYMOUS_LIMITER: anonymous };
+    for (const ip of ['2001:db8:1:2::1', '2001:0db8:0001:0002:ffff:ffff:ffff:fffe', '2001:db8:1:3::1']) {
+      await callWith([route({ rateLimited: true })], '/sample?symbol=BTC', limitedEnv, { 'cf-connecting-ip': ip });
+    }
+    const [first, second, third] = anonymous.limit.mock.calls.map(([options]) => options.key);
+    expect(second).toBe(first);
+    expect(third).not.toBe(first);
+  });
+
+  it('turns an address into the anonymous limiter address', () => {
+    expect(limiterAddress('2001:db8:1:2::1')).toBe('2001:db8:1:2::/64');
+    expect(limiterAddress('2001:0db8:0001:0002:ffff:ffff:ffff:fffe')).toBe('2001:db8:1:2::/64');
+    expect(limiterAddress('2001:db8:1:3::1')).toBe('2001:db8:1:3::/64');
+    expect(limiterAddress('203.0.113.9')).toBe('203.0.113.9');
+    expect(limiterAddress('::ffff:203.0.113.9')).toBe('::ffff:203.0.113.9');
+    expect(limiterAddress(null)).toBe('unidentified-client');
+    expect(limiterAddress('')).toBe('unidentified-client');
+  });
+
+  it('says on /health that it recognised the device', async () => {
+    const response = await callWith(KAIROS_API_ROUTES, '/health', { ...env, KAIROS_ACTIVATION_PUBLIC_KEY_SPKI: keys.spki }, { 'x-kairos-device': good });
+    expect(await response.json()).toMatchObject({ ok: true, data: { device: 'recognised' } });
   });
 });

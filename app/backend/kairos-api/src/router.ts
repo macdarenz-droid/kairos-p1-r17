@@ -1,8 +1,10 @@
 /**
- * U1: one pipeline for every request, in this order: origin, preflight, route, method, query, handler. A route is a fixed
+ * U1: one pipeline for every request, in this order: origin, preflight, route, method, query, device, access, rate limit,
+ * handler. A route is a fixed
  * entry in the route table (routes.ts): an exact path, the query names it accepts with a strict pattern each, and a
  * handler. Anything else is refused with the one error shape; nothing is guessed and no request value becomes a URL.
  */
+import { checkDevice, KAIROS_DEVICE_HEADER, type DeviceCheck } from './device';
 import type { KairosApiEnv } from './env';
 import { isAllowedOrigin, okResponse, parseAllowedOrigins, preflightResponse, unavailableResponse, type UnavailableReason } from './http';
 
@@ -15,12 +17,17 @@ export type RouteAnswer =
 export interface RouteContext {
   readonly query: URLSearchParams;
   readonly env: KairosApiEnv;
+  readonly device: DeviceCheck;
   readonly now: Date;
 }
 
 export interface KairosApiRoute {
   readonly id: string;
   readonly path: string;
+  /** 'device': only a recognised device gets an answer. */
+  readonly access: 'public' | 'device';
+  /** false only for a route that does no upstream, storage or heavy work (/health). */
+  readonly rateLimited: boolean;
   readonly query: Readonly<Record<string, QueryRule>>;
   readonly handle: (context: RouteContext) => Promise<RouteAnswer>;
 }
@@ -44,6 +51,23 @@ export function isValidQuery(route: KairosApiRoute, url: URL): boolean {
   return Object.entries(route.query).every(([name, rule]) => !rule.required || seen.has(name));
 }
 
+async function sha256Hex(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+/** The anonymous limiter's address: IPv4 as sent; IPv6 by its /64 network, because one line or server owns a whole /64. */
+export function limiterAddress(ip: string | null): string {
+  const value = ip?.trim().toLowerCase() ?? '';
+  if (value === '') return 'unidentified-client';
+  if (!value.includes(':') || value.includes('.')) return value;
+  const [head, tail] = value.split('::');
+  const left = head === '' ? [] : head.split(':');
+  const right = tail === undefined || tail === '' ? [] : tail.split(':');
+  const groups = tail === undefined ? left : [...left, ...Array<string>(Math.max(0, 8 - left.length - right.length)).fill('0'), ...right];
+  return `${groups.slice(0, 4).map((group) => group.replace(/^0+(?=.)/, '')).join(':')}::/64`;
+}
+
 export async function handleKairosApiRequest(request: Request, env: KairosApiEnv, ctx: { waitUntil(promise: Promise<unknown>): void }, options: RouterOptions): Promise<Response> {
   const allowed = parseAllowedOrigins(env.KAIROS_APP_ORIGINS);
   const origin = request.headers.get('origin');
@@ -56,8 +80,18 @@ export async function handleKairosApiRequest(request: Request, env: KairosApiEnv
     if (route === undefined) return fail('not-found');
     if (request.method !== 'GET') return fail('method-not-allowed');
     if (!isValidQuery(route, url)) return fail('bad-request');
+    const device = await checkDevice(request.headers.get(KAIROS_DEVICE_HEADER), env.KAIROS_ACTIVATION_PUBLIC_KEY_SPKI);
+    if (route.access === 'device' && device.kind !== 'recognised') return fail(device.kind === 'not-checked' ? 'not-set-up' : 'device-not-recognised');
+    if (route.rateLimited) {
+      const limiter = device.kind === 'recognised' ? env.KAIROS_API_DEVICE_LIMITER : env.KAIROS_API_ANONYMOUS_LIMITER;
+      if (limiter === undefined) return fail('not-set-up');
+      const key = device.kind === 'recognised'
+        ? `device:${device.activationId}`
+        : `anonymous:${await sha256Hex(limiterAddress(request.headers.get('cf-connecting-ip')))}`;
+      if (!(await limiter.limit({ key })).success) return fail('rate-limited');
+    }
     const now = options.now?.() ?? new Date();
-    const answer = await route.handle({ query: url.searchParams, env, now });
+    const answer = await route.handle({ query: url.searchParams, env, device, now });
     if (!answer.ok) return fail(answer.reason, answer.retryAfter);
     return okResponse(answer.data, origin, allowed, 'no-store');
   } catch {
