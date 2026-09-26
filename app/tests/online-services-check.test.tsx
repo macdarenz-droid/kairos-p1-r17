@@ -25,6 +25,9 @@ function heldPort() {
   return { port, checkHealth, answer };
 }
 
+/** The Unavailable box inside the line, if shown. */
+const box = () => document.querySelector('[data-online-services] .kairos-unavailable');
+
 function tap(button: HTMLElement) {
   button.focus();
   fireEvent.click(button);
@@ -43,7 +46,7 @@ describe('OnlineServicesCheck', () => {
     const { port, checkHealth, answer } = heldPort();
     render(<OnlineServicesCheck port={port} />);
     expect(checkHealth).not.toHaveBeenCalled();
-    expect(screen.queryByRole('status')).toBeNull();
+    expect(screen.getByRole('status').textContent).toBe('');
 
     const first = screen.getByRole('button', { name: 'Check online services' });
     tap(first);
@@ -54,7 +57,9 @@ describe('OnlineServicesCheck', () => {
     expect(screen.getByRole('status').textContent).toBe('Checking online services…');
 
     await answer(OFFLINE);
-    expect(screen.getByRole('alert').textContent).toContain(OFFLINE_TEXT);
+    expect(screen.getByRole('status').textContent).toBe(OFFLINE_TEXT);
+    expect(box()?.textContent).toContain(OFFLINE_TEXT);
+    expect(screen.queryByRole('alert')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Check online services' })).toBeNull();
     const retry = screen.getByRole('button', { name: 'Try again' });
     expect(document.activeElement).toBe(retry);
@@ -63,11 +68,13 @@ describe('OnlineServicesCheck', () => {
     expect(screen.getByRole('button', { name: 'Try again' })).toBe(retry);
     expect((retry as HTMLButtonElement).disabled).toBe(true);
     expect(retry.getAttribute('aria-busy')).toBe('true');
-    expect(screen.getByRole('alert').textContent).toContain(OFFLINE_TEXT);
+    expect(screen.getByRole('status').textContent).toBe('Checking online services…');
+    expect(box()?.textContent).toContain(OFFLINE_TEXT);
 
     await answer(OK);
     expect(screen.getByText('Online services are working. This device is recognised.').getAttribute('role')).toBe('status');
     expect(screen.queryByRole('alert')).toBeNull();
+    expect(box()).toBeNull();
     const again = screen.getByRole('button', { name: 'Check again' });
     expect(document.activeElement).toBe(again);
 
@@ -75,7 +82,7 @@ describe('OnlineServicesCheck', () => {
     expect(screen.getByRole('button', { name: 'Check again' })).toBe(again);
     expect((again as HTMLButtonElement).disabled).toBe(true);
     expect(again.getAttribute('aria-busy')).toBe('true');
-    expect(screen.getByText('Online services are working. This device is recognised.')).toBeTruthy();
+    expect(screen.getByRole('status').textContent).toBe('Checking online services…');
 
     await answer(OK);
     expect((again as HTMLButtonElement).disabled).toBe(false);
@@ -84,12 +91,30 @@ describe('OnlineServicesCheck', () => {
     for (const [options] of checkHealth.mock.calls) expect(options?.signal).toBeInstanceOf(AbortSignal);
   });
 
+  it('lets a screen reader hear every answer, also the same one twice, from one live element', async () => {
+    const { port, answer } = heldPort();
+    const { container } = render(<OnlineServicesCheck port={port} />);
+    const status = screen.getByRole('status');
+    expect(status.textContent).toBe('');
+    tap(screen.getByRole('button', { name: 'Check online services' }));
+    await answer(OFFLINE);
+    expect(status.textContent).toBe(OFFLINE_TEXT);
+    tap(screen.getByRole('button', { name: 'Try again' }));
+    expect(status.textContent).toBe('Checking online services…');
+    await answer(OFFLINE);
+    expect(screen.getByRole('status')).toBe(status);
+    expect(status.textContent).toBe(OFFLINE_TEXT);
+    const live = [...container.querySelectorAll('[role="status"], [role="alert"], [aria-live]')].filter((element) => element.textContent?.includes(OFFLINE_TEXT));
+    expect(live).toEqual([status]);
+  });
+
   it('focuses the line when the answer has no button', async () => {
     const { port, answer } = heldPort();
     const { container } = render(<OnlineServicesCheck port={port} />);
     tap(screen.getByRole('button', { name: 'Check online services' }));
     await answer({ ok: false, reason: 'unavailable', serverReason: 'not-set-up', retryAfterSeconds: null, status: 503 });
-    expect(screen.getByRole('alert')).toBeTruthy();
+    expect(screen.getByRole('status').textContent).toBe('Unavailable · Online services: not ready on the Kairos server yet.');
+    expect(box()?.textContent).toContain('Online services: not ready on the Kairos server yet.');
     expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
     expect(document.activeElement).toBe(container.querySelector('[data-online-services="unavailable"]'));
   });
@@ -155,6 +180,15 @@ describe('Profile', () => {
 
     render(<MemoryRouter><ProfileRoute db={db} /></MemoryRouter>);
     expect(within(await screen.findByRole('article', { name: 'This device' })).queryByRole('button', { name: 'Check online services' })).toBeNull();
+    db.close();
+  });
+
+  it('leaves focus on the page when Profile opens', async () => {
+    const checkHealth = vi.fn<KairosApiHealthPort['checkHealth']>();
+    const db = await database();
+    render(<MemoryRouter><ProfileRoute db={db} onlineServices={{ setUp: true, checkHealth }} /></MemoryRouter>);
+    within(await screen.findByRole('article', { name: 'This device' })).getByRole('button', { name: 'Check online services' });
+    expect(document.activeElement).toBe(document.body);
     db.close();
   });
 });

@@ -63,6 +63,20 @@ const PATH = /^\/[a-z0-9-]+(?:\/[a-z0-9-]+)*$/;
 const NOT_SET_UP = Object.freeze({ ok: false as const, reason: 'not-set-up' as const });
 const TRANSPORT_FAILED = Object.freeze({ ok: false as const, reason: 'transport-failed' as const });
 const invalid = (status: number) => Object.freeze({ ok: false as const, reason: 'invalid-response' as const, status });
+/** The device token from the stored receipt; a missing, damaged or unreadable receipt reads as null. */
+async function readDeviceToken(readReceipt: (() => Promise<ActivationReceipt | null>) | undefined): Promise<string | null> {
+  try {
+    const receipt = readReceipt ? await readReceipt() : null;
+    return receipt ? kairosDeviceToken(receipt) : null;
+  } catch { return null; }
+}
+/** Settles (with null) once the signal aborts; the request then answers 'transport-failed' without the network. */
+function untilAborted(signal: AbortSignal): Promise<null> {
+  return new Promise((resolve) => {
+    if (signal.aborted) resolve(null);
+    else signal.addEventListener('abort', () => resolve(null), { once: true });
+  });
+}
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
 
 export function createKairosApiClient({ baseUrl, readReceipt, fetchImpl = globalThis.fetch.bind(globalThis) }: KairosApiClientOptions): KairosApiClient {
@@ -72,20 +86,18 @@ export function createKairosApiClient({ baseUrl, readReceipt, fetchImpl = global
       if (baseUrl === null) return NOT_SET_UP;
       if (!PATH.test(path)) throw new TypeError(`Not a Kairos server path: ${path}`);
       const search = new URLSearchParams(Object.entries(query).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))).toString();
-      let token: string | null = null;
-      try {
-        const receipt = readReceipt ? await readReceipt() : null;
-        token = receipt ? kairosDeviceToken(receipt) : null;
-      } catch { token = null; }
-      const headers: Record<string, string> = { accept: 'application/json' };
-      if (token !== null) headers[KAIROS_API_DEVICE_HEADER] = token;
-      // The time limit and the caller's signal abort one controller (ecbReferenceRates.ts:55-60).
+      // The time limit and the caller's signal abort one controller (ecbReferenceRates.ts:55-60), set up before the
+      // receipt is read, so a stuck device read still ends in time and the caller can still stop it.
       const controller = new AbortController();
       const timeoutId = globalThis.setTimeout(() => controller.abort(), KAIROS_API_REQUEST_TIMEOUT_MS);
       const onAbort = () => controller.abort();
       options?.signal?.addEventListener('abort', onAbort, { once: true });
       if (options?.signal?.aborted) controller.abort();
       try {
+        const token = await Promise.race([readDeviceToken(readReceipt), untilAborted(controller.signal)]);
+        if (controller.signal.aborted) return TRANSPORT_FAILED;
+        const headers: Record<string, string> = { accept: 'application/json' };
+        if (token !== null) headers[KAIROS_API_DEVICE_HEADER] = token;
         let response: Response;
         try {
           response = await fetchImpl(`${baseUrl}${path}${search === '' ? '' : `?${search}`}`, { method: 'GET', headers, signal: controller.signal, credentials: 'omit', redirect: 'error', cache: 'default' });
