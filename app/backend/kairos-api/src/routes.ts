@@ -27,7 +27,7 @@ const NEWS_CALENDAR_HOSTS: Readonly<Record<NewsCalendarSource, readonly string[]
 
 /** P34: one route per official calendar. Public: the data is public, keyless and the same for every trader, so Workers Cache may keep it. */
 function newsCalendarRoute(source: NewsCalendarSource): KairosApiRoute {
-  return { id: `news-calendar-${source}`, path: `/news/calendar/${source}`, access: 'public', rateLimited: true, query: {}, upstreamHosts: NEWS_CALENDAR_HOSTS[source], cache: NEWS_CALENDAR_CACHE, handle: (context) => answerNewsCalendar(source, context) };
+  return { id: `news-calendar-${source}`, path: `/news/calendar/${source}`, access: 'public', rateLimited: true, query: {}, upstreamHosts: NEWS_CALENDAR_HOSTS[source], cache: NEWS_CALENDAR_CACHE, prefetch: true, handle: (context) => answerNewsCalendar(source, context) };
 }
 
 /** P34: headlines change within minutes: 10 minutes in Workers Cache and memory, never in KV (its shortest copy is an hour). */

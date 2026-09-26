@@ -140,6 +140,21 @@ link or readable date.
 Cache (`NEWS_HEADLINES_CACHE`): 10 minutes in Workers Cache and memory, never in KV (its shortest copy is an hour), and
 never read ahead.
 
+## Scheduled reads (P34)
+
+A cron trigger (`wrangler.jsonc`, `*/20 * * * *`) runs `src/scheduled.ts` every 20 minutes. Each run reads ONE of the
+routes marked `prefetch` (the nine official calendars, in `NEWS_CALENDAR_SOURCES` order: fed, bls, bea, census, ecb,
+eurostat, ons, boc, rba), in turn by the run's scheduled time, and keeps its answer in KV. That is 72 runs a day, each
+calendar read 8 times a day (every 3 hours), and at most 72 KV writes a day from the job (the Free plan allows 1,000); it
+uses 1 of the account's 5 cron triggers on the Free plan. Headlines are never read ahead.
+
+Only an ok answer is kept, so a failed read keeps the last copy until its 6 hours end, and logs only
+`{"event":"kairos-api-prefetch-failed","route":"<id>"}`. A trader's request still reads the source itself when KV has
+nothing. The job runs only where `KAIROS_API_ROLE` is "production": the preview Worker `kairos-api-preview` is deployed
+from the same config, so it holds the same cron trigger (a second of the account's 5 on the Free plan, 72 more runs a
+day), but its `KAIROS_API_ROLE` is "preview" (CI's `--var`), so each of its runs returns at once, with no source read and
+no KV write; a missing role does the same.
+
 ## Checks (run from `app/`)
 
 ```

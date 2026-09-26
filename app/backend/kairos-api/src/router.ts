@@ -34,6 +34,8 @@ export interface KairosApiRoute {
   readonly query: Readonly<Record<string, QueryRule>>;
   readonly upstreamHosts: readonly string[];
   readonly cache: RouteCachePolicy | null;
+  /** true: the scheduled job keeps this route's answer in KV (scheduled.ts); only for a public route with no query names and a KV copy. */
+  readonly prefetch?: true;
   readonly handle: (context: RouteContext) => Promise<RouteAnswer>;
 }
 
