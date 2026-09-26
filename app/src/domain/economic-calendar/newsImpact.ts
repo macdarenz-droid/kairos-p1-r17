@@ -21,7 +21,7 @@ const RULES: readonly ReleaseRule[] = Object.freeze([
   rule('fed', /^FOMC meeting$/i, 'high', 'US interest rate decision'),
   rule('fed', /^FOMC Press Conference$/i, 'high', 'US Fed press conference'),
   rule('fed', /^FOMC Minutes$/i, 'medium', 'US Fed meeting notes (minutes)'),
-  rule('fed', /^(Speech|Discussion|Testimony) --? Chair(man)? /, 'medium', 'US Fed Chair speaks'),
+  rule('fed', /^(?:(?:Speech|Discussion|Testimony|Panel Discussion|Roundtable Discussion)(?: --? |--|: )Chair(?:man)? |Conversation with the Chair(?:man)?:)/, 'medium', 'US Fed Chair speaks'),
   rule('fed', /^Beige Book$/, 'medium', 'US Fed economy report (Beige Book)'),
   rule('bls', /^Employment Situation$/, 'high', 'US jobs report'),
   rule('bls', /^Consumer Price Index$/, 'high', 'US inflation (CPI)'),

@@ -62,6 +62,18 @@ describe('the headline decoders', () => {
     expect(data.leftOut).toBe(5);
   });
 
+  it('counts a link with a port, a link with credentials and a date with trailing text', () => {
+    const feed = rss(
+      item('Kept', 'https://finance.yahoo.com/news/kept.html', 'Fri, 25 Sep 2026 18:00:00 GMT'),
+      item('Port', 'https://finance.yahoo.com:8443/news/a.html', 'Fri, 25 Sep 2026 18:00:00 GMT'),
+      item('Credentials', 'https://u:p@finance.yahoo.com/x', 'Fri, 25 Sep 2026 18:00:00 GMT'),
+      item('Trailing', 'https://finance.yahoo.com/news/b.html', 'Fri, 25 Sep 2026 18:00:00 GMT and more'),
+    );
+    const data = buildHeadlinesAnswer('yahoo', [feed], NOW)!;
+    expect(data.items.map((headline) => headline.title)).toEqual(['Kept']);
+    expect(data.leftOut).toBe(3);
+  });
+
   it('keeps one per link, newest first, at most 20; refuses a body that is not a feed', () => {
     const at = (index: number) => new Date(NOW - (index + 1) * 3_600_000).toUTCString();
     const many = Array.from({ length: 25 }, (_, index) => item(`Headline ${index}`, `https://finance.yahoo.com/news/${index}.html`, at(index)));

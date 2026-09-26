@@ -110,3 +110,23 @@ export function projectVisualPnlHourOfDay(instant: string | null, timeZone: stri
   const hour = Number.parseInt(value, 10);
   return hour >= 0 && hour <= 23 ? hour : null;
 }
+
+/**
+ * P34: the clock time ("20:30", 24-hour) an instant shows in `timeZone`. Never the device time zone; null for a
+ * missing or non-canonical instant or an invalid time zone.
+ */
+export function projectVisualPnlClockTime(instant: string | null, timeZone: string): string | null {
+  if (instant === null) return null;
+  const at = canonicalInstant(instant);
+  if (at === null) return null;
+  let parts: Intl.DateTimeFormatPart[];
+  try {
+    parts = new Intl.DateTimeFormat('en', { numberingSystem: 'latn', timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(at);
+  } catch {
+    return null;
+  }
+  const hour = parts.find((part) => part.type === 'hour')?.value;
+  const minute = parts.find((part) => part.type === 'minute')?.value;
+  if (hour === undefined || minute === undefined || !/^\d{1,2}$/.test(hour) || !/^\d{2}$/.test(minute)) return null;
+  return `${hour.padStart(2, '0')}:${minute}`;
+}

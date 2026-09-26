@@ -8,7 +8,7 @@ const NAMED_ENTITIES: Readonly<Record<string, string>> = Object.freeze({
   lsquo: '‘', rsquo: '’', ldquo: '“', rdquo: '”', hellip: '…',
 });
 const ENTITY = /&(#\d{1,7}|#x[0-9a-fA-F]{1,6}|[a-zA-Z]{2,8});/g;
-const CDATA = /^\s*<!\[CDATA\[([\s\S]*)\]\]>\s*$/;
+const CDATA_SECTION = /<!\[CDATA\[([\s\S]*?)\]\]>/g;
 
 function decodeEntity(whole: string, body: string): string {
   if (body.startsWith('#')) {
@@ -21,15 +21,20 @@ function decodeEntity(whole: string, body: string): string {
 /** Words already plain: no entity, tag or control character, and single spaces only between them. */
 const PLAIN = /^[^&<\u0000-\u001f\u007f\s]+(?: [^&<\u0000-\u001f\u007f\s]+)*$/;
 
-/** Plain text from a source's text: entities decoded once, tags and control characters gone, spaces collapsed; null unless 1 to maxLength characters. Never cut. */
+/** Plain text from a source's text: outside CDATA entities decoded once and tags gone; control characters gone, spaces collapsed; null unless 1 to maxLength characters. Never cut. */
 export function normaliseNewsText(raw: unknown, maxLength: number): string | null {
   if (typeof raw !== 'string') return null;
   // Most titles are already plain, and the steps below would give them back unchanged.
   if (raw.length <= maxLength && PLAIN.test(raw)) return raw;
-  const cdata = CDATA.exec(raw);
-  const text = (cdata === null ? raw : cdata[1])
-    .replace(ENTITY, decodeEntity)
-    .replace(/<[^>]*>/g, ' ')
+  // Inside CDATA the text is kept as written (no entity decoding, no tag stripping); sections join with nothing between.
+  const markupOutside = (part: string): string => part.replace(ENTITY, decodeEntity).replace(/<[^>]*>/g, ' ');
+  let joined = '';
+  let from = 0;
+  for (const section of raw.matchAll(CDATA_SECTION)) {
+    joined += markupOutside(raw.slice(from, section.index)) + section[1];
+    from = section.index + section[0].length;
+  }
+  const text = (joined + markupOutside(raw.slice(from)))
     .replace(/[\u0000-\u001f\u007f]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
