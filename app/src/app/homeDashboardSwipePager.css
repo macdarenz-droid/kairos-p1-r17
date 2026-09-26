@@ -1,0 +1,13 @@
+/* Home pager: one mounted pane, finger-follow while swiping, direction-aware entry. */
+.kairos-home-pager { position: relative; touch-action: pan-y; overflow-x: clip; }
+.kairos-home-pager__pane { will-change: transform; }
+.kairos-home-pager[data-swiping="true"] .kairos-home-pager__pane { transition: none; }
+.kairos-home-pager:not([data-swiping="true"]) .kairos-home-pager__pane { transition: transform var(--kairos-motion-slow) var(--kairos-ease-spring); }
+.kairos-home-pager__pane[data-enter="forward"] { animation: kairos-home-pager-forward var(--kairos-motion-slow) var(--kairos-ease-out) both; }
+.kairos-home-pager__pane[data-enter="back"] { animation: kairos-home-pager-back var(--kairos-motion-slow) var(--kairos-ease-out) both; }
+@keyframes kairos-home-pager-forward { from { opacity: 0; transform: translateX(6%); } to { opacity: 1; transform: translateX(0); } }
+@keyframes kairos-home-pager-back { from { opacity: 0; transform: translateX(-6%); } to { opacity: 1; transform: translateX(0); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .kairos-home-pager__pane, .kairos-home-pager__pane[data-enter] { transition: none; animation: none; }
+}

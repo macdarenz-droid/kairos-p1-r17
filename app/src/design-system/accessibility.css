@@ -1,0 +1,23 @@
+/* P2.3 interaction/accessibility contract. Theme values remain owned by P3. */
+:where(button, [role='button'], input, select, textarea, a[href]) {
+  min-block-size: var(--kairos-control-md);
+}
+
+:where(button, [role='button'], input, select, textarea, a[href]):focus-visible {
+  outline: 2px solid var(--kairos-state-focus, currentColor);
+  outline-offset: 2px;
+}
+
+:where(button, [role='button'], input, select, textarea):disabled,
+:where([aria-disabled='true']) {
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(*, *::before, *::after) {
+    scroll-behavior: auto !important;
+    animation-duration: var(--kairos-motion-instant) !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: var(--kairos-motion-instant) !important;
+  }
+}

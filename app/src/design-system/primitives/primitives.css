@@ -1,0 +1,49 @@
+/* Shared pieces: Button, Field, Card, Sheet. Colours come from theme tokens, geometry from tokens.css.
+   The focus ring and reduced motion come from accessibility.css. */
+
+.kairos-button { display: inline-flex; align-items: center; justify-content: center; gap: var(--kairos-space-2); padding: 0 var(--kairos-space-5); border: 1px solid transparent; border-radius: var(--kairos-radius-md); font: inherit; font-weight: var(--kairos-font-weight-semibold); cursor: pointer; transition: border-color var(--kairos-motion-fast) var(--kairos-ease-out), color var(--kairos-motion-fast) var(--kairos-ease-out), filter var(--kairos-motion-fast) var(--kairos-ease-out); }
+.kairos-button--sm { min-block-size: var(--kairos-control-sm); padding: 0 var(--kairos-space-3); font-size: var(--kairos-font-size-sm); }
+.kairos-button--md { min-block-size: var(--kairos-control-md); }
+.kairos-button--lg { min-block-size: var(--kairos-control-lg); font-size: var(--kairos-font-size-lg); }
+.kairos-button--primary { border-color: var(--kairos-accent-primary); background: linear-gradient(180deg, var(--kairos-accent-secondary), var(--kairos-accent-primary)); color: var(--kairos-accent-ink); }
+.kairos-button--primary:hover { filter: brightness(1.06); }
+.kairos-button--secondary { border-color: var(--kairos-border-strong); background-color: var(--kairos-surface-input); background-image: var(--kairos-field-gradient); color: var(--kairos-text-primary); }
+.kairos-button--secondary:hover { border-color: var(--kairos-text-muted); }
+.kairos-button--ghost { border-color: var(--kairos-border-default); background: transparent; color: var(--kairos-text-secondary); }
+.kairos-button--ghost:hover { border-color: var(--kairos-accent-primary); color: var(--kairos-accent-primary); }
+.kairos-button--danger { border-color: var(--kairos-state-error); background: var(--kairos-state-error); color: var(--kairos-background-depth); }
+.kairos-button[aria-pressed='true'] { border-color: var(--kairos-accent-primary); background: var(--kairos-accent-soft); color: var(--kairos-text-primary); }
+.kairos-button:disabled { opacity: .58; cursor: not-allowed; }
+
+.kairos-form-field { display: grid; gap: var(--kairos-space-2); min-width: 0; color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-sm); }
+.kairos-form-field input, .kairos-form-field select, .kairos-form-field textarea { width: 100%; min-width: 0; padding: 0 var(--kairos-space-3); border: 1px solid var(--kairos-border-strong); border-radius: var(--kairos-radius-md); background-color: var(--kairos-surface-input); background-image: var(--kairos-field-gradient); color: var(--kairos-text-primary); font: inherit; }
+.kairos-form-field--sm input, .kairos-form-field--sm select { min-block-size: var(--kairos-control-sm); }
+.kairos-form-field--md input, .kairos-form-field--md select { min-block-size: var(--kairos-control-md); }
+.kairos-form-field--lg input, .kairos-form-field--lg select { min-block-size: var(--kairos-control-lg); }
+.kairos-form-field input:focus-visible, .kairos-form-field select:focus-visible, .kairos-form-field textarea:focus-visible { border-color: var(--kairos-accent-primary); }
+.kairos-form-field--error input, .kairos-form-field--error select, .kairos-form-field--error textarea { border-color: var(--kairos-state-error); }
+.kairos-form-field__hint { color: var(--kairos-text-muted); }
+.kairos-form-field__error { color: var(--kairos-state-error); }
+.kairos-form-field--wide { grid-column: 1 / -1; }
+
+.kairos-card { display: grid; gap: var(--kairos-space-3); padding: var(--kairos-space-5); border: 1px solid var(--kairos-border-hairline); border-radius: var(--kairos-radius-lg); background-color: var(--kairos-surface-card); background-image: var(--kairos-surface-gradient); }
+.kairos-card--raised { background-color: var(--kairos-surface-raised); }
+
+.kairos-sheet { position: fixed; inset: 0; z-index: 40; display: grid; align-items: end; justify-items: center; }
+.kairos-sheet__backdrop { position: absolute; inset: 0; background: var(--kairos-background-overlay); }
+.kairos-sheet__panel { position: relative; display: grid; gap: var(--kairos-space-3); width: min(100%, 32rem); max-block-size: 90dvh; overflow: auto; padding: var(--kairos-space-4); border: 1px solid var(--kairos-border-default); border-radius: var(--kairos-radius-xl) var(--kairos-radius-xl) 0 0; background: var(--kairos-surface-modal); color: var(--kairos-text-primary); animation: kairos-sheet-in var(--kairos-motion-normal) var(--kairos-ease-out); }
+.kairos-sheet__header { display: flex; align-items: center; justify-content: space-between; gap: var(--kairos-space-3); }
+.kairos-sheet__title { margin: 0; font-size: var(--kairos-font-size-md); }
+@keyframes kairos-sheet-in { from { transform: translateY(1.5rem); opacity: 0; } to { transform: none; opacity: 1; } }
+
+@media (max-width: 34rem) {
+  .kairos-form-field--wide { grid-column: auto; }
+  .kairos-card { padding: var(--kairos-space-4); }
+}
+@media (min-width: 34.0625rem) {
+  .kairos-sheet { align-items: center; padding: var(--kairos-space-4); }
+  .kairos-sheet__panel { border-radius: var(--kairos-radius-xl); }
+}
+
+.kairos-unavailable { display: flex; flex-wrap: wrap; align-items: center; gap: var(--kairos-space-3); padding: var(--kairos-space-3); border: 1px solid var(--kairos-state-warning); border-radius: var(--kairos-radius-md); color: var(--kairos-text-secondary); }
+.kairos-unavailable__text { flex: 1 1 14rem; margin: 0; min-width: 0; }

@@ -1,0 +1,14 @@
+.kairos-replay { display:grid; gap:var(--kairos-space-4); min-width:0; }
+.kairos-replay .kairos-replay__setup, .kairos-replay .kairos-replay__stage { display:grid; gap:var(--kairos-space-3); min-width:0; }
+.kairos-replay h2 { margin:0; font-size:var(--kairos-font-size-lg); }
+.kairos-replay .kairos-replay__setup p, .kairos-replay .kairos-replay__stage p { margin:0; }
+.kairos-replay .kairos-trade-picture { grid-template-columns:minmax(0,1fr); }
+.kairos-replay__controls { display:flex; flex-wrap:wrap; align-items:center; gap:var(--kairos-space-2); }
+.kairos-replay .kairos-replay__now { color:var(--kairos-text-primary); font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.kairos-replay .kairos-replay__eyebrow { margin:0; color:var(--kairos-accent-primary); font-size:var(--kairos-font-size-xs); font-weight:var(--kairos-font-weight-semibold); letter-spacing:.08em; text-transform:uppercase; }
+.kairos-replay__back a { color:var(--kairos-accent-primary); font-weight:var(--kairos-font-weight-semibold); }
+.kairos-replay .kairos-replay__trade { display:grid; gap:var(--kairos-space-3); min-width:0; }
+.kairos-replay .kairos-replay__trade p { margin:0; }
+.kairos-replay .kairos-replay__status { color:var(--kairos-text-primary); font-weight:var(--kairos-font-weight-semibold); }
+.kairos-replay__rules ul { margin:var(--kairos-space-2) 0 0; padding-inline-start:var(--kairos-space-5); }
+.kairos-replay__trade a { color:var(--kairos-accent-primary); font-weight:var(--kairos-font-weight-semibold); }

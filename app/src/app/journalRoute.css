@@ -1,0 +1,209 @@
+/* Ink amendment (Gate470). Declared first with route-scoped specificity so every released block below keeps its exact contract strings.
+   Hairline framing over gradient surfaces, mono tabular numerals for every recorded value, accent-inked primary action, streak tint. */
+.kairos-journal :is(.kairos-trade-form__section, .kairos-history-card, .kairos-pnl-streak, .kairos-pnl-performance-summary, .kairos-history__state, .kairos-pnl-calendar__state, .kairos-journal__feedback) { border-color: var(--kairos-border-hairline); background-color: var(--kairos-surface-card); background-image: var(--kairos-surface-gradient); }
+.kairos-journal :is(.kairos-history-card, .kairos-pnl-streak, .kairos-pnl-performance-summary) { background-color: var(--kairos-surface-raised); }
+.kairos-journal :is(.kairos-journal__badge, .kairos-trade-map, .kairos-history-card__outcome--unavailable) { border-color: var(--kairos-border-hairline); }
+.kairos-journal .kairos-journal__badge { background: transparent; color: var(--kairos-text-secondary); font-family: var(--kairos-font-mono); font-size: var(--kairos-font-size-xs); letter-spacing: .04em; }
+.kairos-journal :is(.kairos-history-card__topline strong, .kairos-history-card__outcome strong, .kairos-history-card__facts dd, .kairos-pnl-streak strong, .kairos-pnl-performance-summary strong, .kairos-trade-map__levels dd) { font-family: var(--kairos-font-mono); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.kairos-journal .kairos-history-card__outcome { border-radius: var(--kairos-radius-full); background: transparent; }
+.kairos-journal .kairos-history-card__outcome-mark { font-size: var(--kairos-font-size-xs); }
+.kairos-journal .kairos-history-card__review { border-color: var(--kairos-border-strong); background: transparent; transition: border-color var(--kairos-motion-fast) var(--kairos-ease-out), background-color var(--kairos-motion-fast) var(--kairos-ease-out); }
+.kairos-journal .kairos-history-card__review:hover { border-color: var(--kairos-accent-primary); background: var(--kairos-accent-soft); }
+.kairos-journal .kairos-pnl-streak { border-inline-start: 3px solid var(--kairos-border-strong); }
+.kairos-journal .kairos-pnl-streak--profit { border-inline-start-color: var(--kairos-trade-profit); }
+.kairos-journal .kairos-pnl-streak--loss { border-inline-start-color: var(--kairos-trade-loss); }
+.kairos-journal .kairos-field :is(input, select) { border-color: var(--kairos-border-strong); background-color: var(--kairos-surface-input); background-image: var(--kairos-field-gradient); transition: border-color var(--kairos-motion-fast) var(--kairos-ease-out); }
+.kairos-journal .kairos-field :is(input, select):hover { border-color: var(--kairos-text-muted); }
+.kairos-journal .kairos-field :is(input, select):focus-visible { border-color: var(--kairos-accent-primary); }
+.kairos-journal .kairos-trade-form__submit { border-color: var(--kairos-accent-primary); color: var(--kairos-accent-ink); background-image: linear-gradient(180deg, var(--kairos-accent-secondary), var(--kairos-accent-primary)); box-shadow: 0 10px 24px -14px var(--kairos-accent-primary); transition: filter var(--kairos-motion-fast) var(--kairos-ease-out), translate var(--kairos-motion-fast) var(--kairos-ease-out); }
+.kairos-journal .kairos-trade-form__submit:hover:not(:disabled) { filter: brightness(1.06); }
+.kairos-journal .kairos-trade-form__submit:active:not(:disabled) { translate: 0 1px; }
+@media (prefers-reduced-motion: reduce) {
+  .kairos-journal :is(.kairos-history-card__review, .kairos-field input, .kairos-field select, .kairos-trade-form__submit) { transition: none; }
+}
+
+.kairos-journal { display: grid; gap: var(--kairos-space-6); }
+.kairos-journal__heading { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--kairos-space-4); }
+.kairos-journal__heading h1 { margin-top: var(--kairos-space-1); }
+.kairos-journal__eyebrow { margin: 0 !important; color: var(--kairos-accent-primary) !important; font-size: var(--kairos-font-size-xs); font-weight: var(--kairos-font-weight-semibold); letter-spacing: .08em; text-transform: uppercase; }
+.kairos-journal__badge { flex: none; padding: var(--kairos-space-1) var(--kairos-space-3); border: 1px solid var(--kairos-border-subtle); border-radius: var(--kairos-radius-full); background: var(--kairos-accent-soft); color: var(--kairos-accent-primary); font-size: var(--kairos-font-size-xs); font-weight: var(--kairos-font-weight-medium); }
+.kairos-journal__intro { margin: calc(var(--kairos-space-4) * -1) 0 0 !important; max-width: 42rem; }
+.kairos-journal__feedback { padding: var(--kairos-space-3) var(--kairos-space-4); border: 1px solid var(--kairos-border-default); border-radius: var(--kairos-radius-md); background: var(--kairos-surface-card); line-height: var(--kairos-line-height-normal); }
+.kairos-journal__feedback--error { border-color: var(--kairos-state-error); color: var(--kairos-state-error); }
+.kairos-journal__feedback--success { border-color: var(--kairos-state-success); color: var(--kairos-state-success); }
+.kairos-trade-form { display: grid; gap: var(--kairos-space-4); }
+.kairos-trade-form__section { min-width: 0; margin: 0; padding: var(--kairos-space-5); border: 1px solid var(--kairos-border-subtle); border-radius: var(--kairos-radius-lg); background: var(--kairos-surface-card); }
+.kairos-trade-form__section legend { padding: 0 var(--kairos-space-2); color: var(--kairos-text-primary); font-size: var(--kairos-font-size-md); font-weight: var(--kairos-font-weight-semibold); }
+.kairos-trade-form__section legend span { color: var(--kairos-text-muted); font-size: var(--kairos-font-size-xs); font-weight: var(--kairos-font-weight-regular); }
+.kairos-trade-form__section-copy { margin: 0 0 var(--kairos-space-4) !important; font-size: var(--kairos-font-size-sm); }
+.kairos-trade-form__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--kairos-space-4); }
+.kairos-field { min-width: 0; display: grid; gap: var(--kairos-space-2); color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-sm); }
+.kairos-field--wide { grid-column: 1 / -1; }
+.kairos-field > span { display: flex; align-items: baseline; justify-content: space-between; gap: var(--kairos-space-2); }
+.kairos-field strong { color: var(--kairos-text-muted); font-size: var(--kairos-font-size-xs); font-weight: var(--kairos-font-weight-regular); }
+.kairos-field small { color: var(--kairos-text-muted); line-height: var(--kairos-line-height-normal); }
+.kairos-field input,
+.kairos-field select { width: 100%; min-width: 0; padding: 0 var(--kairos-space-3); border: 1px solid var(--kairos-border-default); border-radius: var(--kairos-radius-md); background: var(--kairos-surface-input); color: var(--kairos-text-primary); font: inherit; }
+.kairos-field input::placeholder { color: var(--kairos-text-muted); }
+.kairos-field :is(input, select)[aria-invalid='true'] { border-color: var(--kairos-state-error); }
+.kairos-trade-form__actions { display: flex; justify-content: flex-end; }
+.kairos-trade-form__submit { min-width: 9rem; padding: 0 var(--kairos-space-5); border: 1px solid var(--kairos-accent-primary); border-radius: var(--kairos-radius-md); background: var(--kairos-accent-primary); color: var(--kairos-background-depth); font: inherit; font-weight: var(--kairos-font-weight-semibold); box-shadow: var(--kairos-glow-subtle); }
+.kairos-trade-form__submit:disabled { opacity: .58; }
+@media (max-width: 34rem) {
+  .kairos-trade-form__grid { grid-template-columns: 1fr; }
+  .kairos-field--wide { grid-column: auto; }
+  .kairos-trade-form__section { padding: var(--kairos-space-4); }
+  .kairos-trade-form__actions, .kairos-trade-form__submit { width: 100%; }
+}
+
+
+.kairos-history { margin-top: var(--kairos-space-8); border-top: 1px solid var(--kairos-border-subtle); padding-top: var(--kairos-space-6); }
+.kairos-history__heading { display:flex; align-items:flex-end; justify-content:space-between; gap:var(--kairos-space-4); margin-bottom:var(--kairos-space-4); }
+.kairos-history__heading h2 { margin:0; }
+.kairos-history__count { color:var(--kairos-text-muted); font-size:var(--kairos-font-size-sm); white-space:nowrap; }
+.kairos-history__controls { display:flex; justify-content:flex-end; margin-bottom:var(--kairos-space-4); }
+.kairos-history__filter { width:min(100%, 15rem); }
+.kairos-history__state { margin:0; padding:var(--kairos-space-4); border:1px solid var(--kairos-border-subtle); border-radius:var(--kairos-radius-md); color:var(--kairos-text-muted); }
+.kairos-history__state--error { color:var(--kairos-state-error); }
+.kairos-history__older { width:100%; min-block-size:var(--kairos-control-md); margin-top:var(--kairos-space-3); border:1px solid var(--kairos-border-default); border-radius:var(--kairos-radius-md); background:transparent; color:var(--kairos-text-secondary); font:inherit; }
+.kairos-history__older:disabled { opacity:.58; }
+.kairos-history__list { list-style:none; margin:0; padding:0; display:grid; gap:var(--kairos-space-3); }
+.kairos-history-card { padding:var(--kairos-space-4); border:1px solid var(--kairos-border-subtle); border-radius:var(--kairos-radius-lg); background:var(--kairos-surface-raised); }
+.kairos-history-card__topline { display:flex; flex-wrap:wrap; align-items:center; gap:var(--kairos-space-2); }
+.kairos-history-card__topline strong { margin-right:auto; font-size:var(--kairos-font-size-lg); }
+.kairos-history-card__topline span { color:var(--kairos-text-muted); font-size:var(--kairos-font-size-sm); }
+
+.kairos-history-card__outcome { display:flex; align-items:center; gap:var(--kairos-space-2); margin-top:var(--kairos-space-3); padding:var(--kairos-space-2) var(--kairos-space-3); border:1px solid var(--kairos-border-subtle); border-radius:var(--kairos-radius-md); color:var(--kairos-text-secondary); font-size:var(--kairos-font-size-sm); font-weight:var(--kairos-font-weight-medium); }
+.kairos-history-card__outcome strong { margin-left:auto; color:currentColor; font-weight:var(--kairos-font-weight-semibold); overflow-wrap:anywhere; text-align:right; }
+.kairos-history-card__outcome-mark { width:1rem; text-align:center; font-weight:var(--kairos-font-weight-bold); }
+.kairos-history-card__outcome--profit { border-color:var(--kairos-trade-profit); color:var(--kairos-trade-profit); }
+.kairos-history-card__outcome--loss { border-color:var(--kairos-trade-loss); color:var(--kairos-trade-loss); }
+.kairos-history-card__outcome--breakeven { border-color:var(--kairos-trade-flat); color:var(--kairos-trade-flat); }
+.kairos-history-card__outcome--unavailable { color:var(--kairos-text-muted); }
+
+.kairos-history-card time { display:block; margin-top:var(--kairos-space-2); color:var(--kairos-text-muted); font-size:var(--kairos-font-size-sm); }
+.kairos-history-card__facts { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--kairos-space-3); margin:var(--kairos-space-4) 0 0; }
+.kairos-history-card__facts div { min-width:0; }
+.kairos-history-card__facts dt { display:flex; align-items:center; gap:var(--kairos-space-1); color:var(--kairos-text-muted); font-size:var(--kairos-font-size-xs); }
+.kairos-history-card__facts dd { margin:var(--kairos-space-1) 0 0; overflow-wrap:anywhere; }
+.kairos-history-card__notice { margin:var(--kairos-space-3) 0 0; color:var(--kairos-text-muted); font-size:var(--kairos-font-size-sm); }
+.kairos-history-card__coach { display:grid; gap:var(--kairos-space-1); margin:var(--kairos-space-3) 0 0; color:var(--kairos-text-secondary); font-size:var(--kairos-font-size-sm); line-height:var(--kairos-line-height-normal); overflow-wrap:anywhere; }
+.kairos-history-card__coach > span:first-child { color:var(--kairos-text-primary); font-weight:var(--kairos-font-weight-semibold); }
+@media (max-width: 420px) { .kairos-history-card__facts { grid-template-columns:1fr; } .kairos-history__heading { align-items:flex-start; } .kairos-history__controls { justify-content:stretch; } .kairos-history__filter { width:100%; } }
+
+.kairos-pnl-calendar { margin-top:var(--kairos-space-8); border-top:1px solid var(--kairos-border-subtle); padding-top:var(--kairos-space-6); }
+.kairos-pnl-calendar__heading { display:flex; align-items:flex-end; justify-content:space-between; gap:var(--kairos-space-4); margin-bottom:var(--kairos-space-4); }
+.kairos-pnl-calendar__heading h2 { margin:0; }
+.kairos-pnl-calendar__state { margin:0; padding:var(--kairos-space-4); border:1px solid var(--kairos-border-subtle); border-radius:var(--kairos-radius-md); color:var(--kairos-text-muted); }
+.kairos-pnl-calendar__notice { margin:var(--kairos-space-3) 0 0; color:var(--kairos-text-muted); font-size:var(--kairos-font-size-sm); }
+@media (max-width:420px) { .kairos-pnl-calendar__heading { align-items:flex-start; } }
+
+.kairos-pnl-streak {
+  display: grid;
+  gap: var(--kairos-space-1);
+  margin-block-end: var(--kairos-space-3);
+  padding: var(--kairos-space-3);
+  border: 1px solid var(--kairos-border-subtle);
+  border-radius: var(--kairos-radius-lg);
+  background: var(--kairos-surface-raised);
+}
+
+.kairos-pnl-streak__label,
+.kairos-pnl-streak small {
+  color: var(--kairos-text-muted);
+}
+
+.kairos-pnl-streak--profit strong {
+  color: var(--kairos-trade-profit);
+}
+
+.kairos-pnl-streak--loss strong {
+  color: var(--kairos-trade-loss);
+}
+
+.kairos-pnl-streak--breakeven strong,
+.kairos-pnl-streak--empty strong {
+  color: var(--kairos-text-secondary);
+}
+
+.kairos-pnl-performance-summary {
+  display: grid;
+  gap: var(--kairos-space-2);
+  margin-block-end: var(--kairos-space-3);
+  padding: var(--kairos-space-3);
+  border: 1px solid var(--kairos-border-subtle);
+  border-radius: var(--kairos-radius-lg);
+  background: var(--kairos-surface-raised);
+}
+
+.kairos-pnl-performance-summary__label {
+  color: var(--kairos-text-muted);
+}
+
+.kairos-pnl-performance-summary__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--kairos-space-2);
+  color: var(--kairos-text-secondary);
+}
+
+@media (max-width: 420px) {
+  .kairos-pnl-performance-summary__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+.kairos-trade-map { margin-top:var(--kairos-space-4); padding:var(--kairos-space-3); border:1px solid var(--kairos-border-subtle); border-radius:var(--kairos-radius-md); }
+.kairos-trade-map__heading { display:flex; flex-wrap:wrap; align-items:baseline; gap:var(--kairos-space-2); }
+.kairos-trade-map__heading strong { margin-right:auto; }
+.kairos-trade-map__heading span { color:var(--kairos-text-muted); font-size:var(--kairos-font-size-xs); }
+.kairos-trade-map__levels { display:grid; gap:var(--kairos-space-2); margin:var(--kairos-space-3) 0 0; }
+.kairos-trade-map__levels div { display:flex; align-items:baseline; gap:var(--kairos-space-3); min-width:0; }
+.kairos-trade-map__levels dt { color:var(--kairos-text-muted); font-size:var(--kairos-font-size-sm); }
+.kairos-trade-map__levels dd { margin:0 0 0 auto; overflow-wrap:anywhere; text-align:right; font-variant-numeric:tabular-nums; }
+
+.kairos-trade-map__scale-note { margin:var(--kairos-space-2) 0 0; color:var(--kairos-text-muted); font-size:var(--kairos-font-size-xs); }
+.kairos-trade-map__graphic { display:block; width:100%; height:auto; margin-top:var(--kairos-space-3); overflow:visible; }
+.kairos-trade-map__lane { stroke:var(--kairos-border-subtle); stroke-width:1; }
+.kairos-trade-map__marker { fill:var(--kairos-text-secondary); }
+.kairos-trade-map__graphic-label { fill:var(--kairos-text-secondary); font-size:12px; }
+
+/* P14.6 categorical marker semantics: shape/pattern cues supplement labels and color. */
+.kairos-trade-map__lane--planned-stop { stroke-dasharray:6 4; }
+.kairos-trade-map__lane--planned-target { stroke-dasharray:2 3; }
+.kairos-trade-map__lane--executed-entry,
+.kairos-trade-map__lane--executed-exit { stroke-width:2; }
+.kairos-trade-map__marker--entry,
+.kairos-trade-map__marker--target { fill:var(--kairos-text-secondary); }
+.kairos-trade-map__marker--stop,
+.kairos-trade-map__marker--exit { fill:var(--kairos-surface-raised); stroke:var(--kairos-text-secondary); stroke-width:1.5; }
+.kairos-trade-map__marker--actual-entry { fill:none; stroke:var(--kairos-text-secondary); stroke-width:2; stroke-linecap:round; }
+
+/* P14.7/P14.10 execution presentation: actual fills expose authoritative quantity and time. */
+.kairos-trade-map__levels dd {
+  display: grid;
+  gap: var(--kairos-space-1);
+}
+
+.kairos-trade-map__execution-time {
+  color: var(--kairos-text-secondary);
+  font-size: var(--kairos-font-size-xs);
+  line-height: 1.35;
+}
+
+
+/* P14.8/P14.10 motion semantics: reveal only authoritative executions; no positional motion. */
+.kairos-trade-map__graphic [data-level-kind='executed-entry'],
+.kairos-trade-map__levels [data-level-kind='executed-entry'],
+.kairos-trade-map__graphic [data-level-kind='executed-exit'],
+.kairos-trade-map__levels [data-level-kind='executed-exit'] {
+  animation: kairos-trade-map-executed-exit-reveal var(--kairos-motion-normal) ease-out both;
+}
+
+@keyframes kairos-trade-map-executed-exit-reveal {
+  from { opacity: 0.55; }
+  to { opacity: 1; }
+}
+
+.kairos-history-card__review { display: flex; align-items: center; justify-content: center; min-height: var(--kairos-control-md); margin-top: var(--kairos-space-3); padding: var(--kairos-space-2) var(--kairos-space-3); border: 1px solid var(--kairos-border-default); border-radius: var(--kairos-radius-md); color: var(--kairos-accent-primary); background: var(--kairos-surface-input); font-size: var(--kairos-font-size-sm); text-decoration: none; }

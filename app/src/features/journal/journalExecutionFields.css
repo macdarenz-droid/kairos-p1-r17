@@ -1,0 +1,14 @@
+.kairos-executions { display: grid; gap: var(--kairos-space-3); }
+.kairos-executions__row { min-width: 0; margin: 0; padding: var(--kairos-space-3); border: 1px solid var(--kairos-border-subtle); border-radius: var(--kairos-radius-md); }
+.kairos-executions__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--kairos-space-3); }
+.kairos-executions__grid .kairos-field--wide { grid-column: 1 / -1; }
+.kairos-executions button { padding: 0 var(--kairos-space-3); border: 1px solid var(--kairos-border-default); border-radius: var(--kairos-radius-md); background: var(--kairos-surface-input); color: var(--kairos-accent-primary); font: inherit; }
+.kairos-executions button:disabled { color: var(--kairos-text-muted); opacity: .6; }
+.kairos-executions__add { display: flex; flex-wrap: wrap; gap: var(--kairos-space-3); }
+.kairos-executions__add button { flex: 1; }
+.kairos-executions .kairos-executions__remove { display: block; margin-top: var(--kairos-space-2); margin-left: auto; color: var(--kairos-text-secondary); }
+.kairos-executions__hint { margin: 0 !important; font-size: var(--kairos-font-size-xs); color: var(--kairos-text-muted); }
+.kairos-executions__fees { border-top: 1px solid var(--kairos-border-subtle); padding-top: var(--kairos-space-3); }
+.kairos-executions__fees > * + * { margin-top: var(--kairos-space-3) !important; }
+.kairos-executions__fees summary, .kairos-trade-form__optional > summary { cursor: pointer; padding: var(--kairos-space-3) 0; color: var(--kairos-text-secondary); }
+.kairos-trade-form__optional > .kairos-trade-form__section { margin-top: var(--kairos-space-2); }

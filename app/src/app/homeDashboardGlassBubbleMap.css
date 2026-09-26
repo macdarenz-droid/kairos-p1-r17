@@ -1,0 +1,59 @@
+.kairos-glass-map { color: var(--kairos-text-primary); }
+.kairos-glass-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--kairos-space-3); color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-sm); }
+.kairos-glass-toolbar button { color: var(--kairos-text-primary); background: var(--kairos-surface-raised); border: 1px solid var(--kairos-border-default); border-radius: var(--kairos-radius-md); padding: var(--kairos-space-2) var(--kairos-space-3); min-height: var(--kairos-control-md); cursor: pointer; }
+.kairos-glass-toolbar button:focus-visible { outline: 2px solid var(--kairos-state-focus); outline-offset: 3px; }
+.kairos-glass-field { position: relative; width: 100%; overflow: hidden; isolation: isolate; }
+.kairos-glass-bubble { position: absolute; border-radius: 50%; background: var(--kairos-bubble-glass); border: 1px solid var(--kairos-bubble-border); box-shadow: var(--kairos-bubble-shadow); transition: width 800ms ease, height 800ms ease; animation: kairos-glass-hover var(--glass-duration) ease-in-out infinite; animation-delay: var(--glass-delay); }
+/* Ink: the approved artwork becomes a faint monochrome texture; earlier themes keep it untouched. */
+.kairos-glass-bubble[data-movement="positive"] { box-shadow: 0 0 0 1px var(--kairos-bubble-ring-up), var(--kairos-bubble-shadow); }
+.kairos-glass-bubble[data-movement="negative"] { box-shadow: 0 0 0 1px var(--kairos-bubble-ring-down), var(--kairos-bubble-shadow); }
+.kairos-glass-art { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; filter: var(--kairos-bubble-art-filter); opacity: var(--kairos-bubble-art-opacity); mask-image: radial-gradient(circle closest-side, transparent 38%, rgba(0,0,0,.2) 48%, black 64%, black 82%, rgba(0,0,0,.32) 90%, transparent 100%); -webkit-mask-image: radial-gradient(circle closest-side, transparent 38%, rgba(0,0,0,.2) 48%, black 64%, black 82%, rgba(0,0,0,.32) 90%, transparent 100%); }
+.kairos-glass-core { position: absolute; inset: 18%; border-radius: 50%; background: radial-gradient(ellipse, var(--kairos-surface-card), transparent 74%); filter: blur(10px); opacity: .7; }
+.kairos-glass-label { position: absolute; inset: 12% 9%; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: calc(var(--kairos-space-1) / 4); text-align: center; line-height: 1.2; font-size: var(--glass-label-size); font-variant-numeric: tabular-nums; overflow: hidden; }
+.kairos-glass-icon { color: var(--kairos-accent-primary); font-size: var(--glass-icon-size); line-height: 1.1; }
+.kairos-glass-movement { color: var(--kairos-trade-profit); font-weight: var(--kairos-font-weight-semibold); }
+.kairos-glass-label small { color: var(--kairos-text-secondary); font-size: max(10px, .6em); }
+.kairos-glass-label > strong, .kairos-glass-movement, .kairos-glass-label small { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kairos-glass-bubble[data-movement="negative"] .kairos-glass-art { filter: var(--kairos-bubble-art-filter) hue-rotate(102deg) saturate(.8); }
+.kairos-glass-bubble[data-movement="negative"] .kairos-glass-movement { color: var(--kairos-trade-loss); }
+.kairos-glass-bubble[data-movement="neutral"] .kairos-glass-art { filter: var(--kairos-bubble-art-filter) saturate(.2); }
+.kairos-glass-bubble[data-movement="neutral"] .kairos-glass-movement { color: var(--kairos-trade-flat); }
+.kairos-glass-bubble[data-freshness="stale"] .kairos-glass-art { opacity: calc(var(--kairos-bubble-art-opacity) * .48); }
+.kairos-glass-bubble[data-freshness="expired"] .kairos-glass-art { opacity: calc(var(--kairos-bubble-art-opacity) * .22); }
+.kairos-glass-bubble[data-freshness="expired"] .kairos-glass-movement { color: var(--kairos-text-muted); }
+.kairos-glass-map[data-motion="paused"] .kairos-glass-bubble { animation-play-state: paused; }
+.kairos-glass-sr { position: absolute; width: calc(var(--kairos-space-1) / 4); height: calc(var(--kairos-space-1) / 4); padding: 0; margin: calc(var(--kairos-space-1) / -4); overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@keyframes kairos-glass-hover { 0%,100% { transform: translate(-1px,1px); } 35% { transform: translate(2px,-2px); } 70% { transform: translate(-2px,-1px); } }
+@media (prefers-reduced-motion: reduce) { .kairos-glass-bubble { animation: none; transition: none; } }
+
+.kairos-glass-icon svg { display: block; width: 1em; height: 1em; }
+
+.kairos-glass-icon[data-fallback="true"] { font-size: var(--glass-label-size); opacity: var(--kairos-bubble-fallback-opacity); }
+.kairos-glass-label > strong { font-size: var(--glass-label-size); font-weight: var(--kairos-font-weight-semibold); font-family: var(--kairos-font-mono); letter-spacing: .02em; }
+.kairos-glass-movement { font-size: max(10px, calc(var(--glass-label-size) * .95)); }
+.kairos-route[data-kairos-home-dashboard] { max-width: 72rem; }
+.kairos-route[data-kairos-home-dashboard] > header { position: absolute; width: calc(var(--kairos-space-1) / 4); height: calc(var(--kairos-space-1) / 4); overflow: hidden; clip-path: inset(50%); }
+.kairos-route[data-kairos-home-dashboard] h2 { margin: 0 0 var(--kairos-space-1); font-size: var(--kairos-font-size-md); }
+.kairos-shell__content:has([data-kairos-home-dashboard]) { padding: calc(var(--kairos-space-2) * 1.25) var(--kairos-space-2) 0; }
+
+/* Restore the approved V5 outer-rim curl; texture and text stay independent. */
+.kairos-glass-smoke { position:absolute; inset:-1%; border-radius:50%; background:conic-gradient(from 20deg,transparent 10%,var(--kairos-bubble-smoke-1) 19%,transparent 26%,var(--kairos-bubble-smoke-2) 39%,transparent 48%,var(--kairos-bubble-smoke-3) 68%,transparent 78%,var(--kairos-bubble-smoke-4) 88%,transparent 98%); mask-image:radial-gradient(circle closest-side,transparent 78%,black 85%,transparent 99%); -webkit-mask-image:radial-gradient(circle closest-side,transparent 78%,black 85%,transparent 99%); filter:blur(2px); opacity:.65; animation:kairos-glass-curl 18s ease-in-out infinite alternate; animation-delay:var(--glass-delay); pointer-events:none; }
+.kairos-glass-bubble[data-movement="negative"] .kairos-glass-smoke { filter:blur(2px) hue-rotate(110deg); }
+.kairos-glass-bubble[data-freshness="stale"] .kairos-glass-smoke { opacity:.3; }
+.kairos-glass-bubble[data-freshness="expired"] .kairos-glass-smoke { opacity:.12; }
+.kairos-glass-map[data-motion="paused"] .kairos-glass-smoke { animation-play-state:paused; }
+@keyframes kairos-glass-curl { from { transform:rotate(-14deg) scale(.985); } to { transform:rotate(19deg) scale(1.03); } }
+@media(prefers-reduced-motion:reduce) { .kairos-glass-smoke { animation:none; } }
+
+/* Instrument identity stays recognizable while market direction retains its own color. */
+.kairos-glass-bubble[data-identity="BTC"] { --glass-identity-color: var(--kairos-bubble-identity-btc); }
+.kairos-glass-bubble[data-identity="ETH"] { --glass-identity-color: var(--kairos-bubble-identity-eth); }
+.kairos-glass-bubble[data-identity]::after { content: ''; position: absolute; inset: 1%; border: 2px solid var(--glass-identity-color); border-radius: 50%; box-shadow: 0 0 var(--kairos-space-2) var(--glass-identity-color), inset 0 0 var(--kairos-space-1) var(--glass-identity-color); pointer-events: none; }
+.kairos-glass-bubble[data-identity] .kairos-glass-icon { color: var(--glass-identity-color); }
+.kairos-glass-bubble[data-identity] .kairos-glass-label > strong { font-weight: var(--kairos-font-weight-bold); }
+.kairos-glass-bubble[data-identity][data-freshness="stale"]::after { opacity: .5; }
+.kairos-glass-bubble[data-identity][data-freshness="expired"]::after, .kairos-glass-bubble[data-identity][data-freshness="missing"]::after { opacity: .28; }
+
+/* Direct manipulation shares the existing field and theme; page pans and pinch zoom remain available. */
+.kairos-glass-field .kairos-glass-bubble { cursor: grab; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
+.kairos-glass-field .kairos-glass-bubble[data-glass-dragging="true"] { cursor: grabbing; z-index: 2; animation-play-state: paused; outline: 1px solid var(--kairos-state-focus); outline-offset: var(--kairos-space-1); }

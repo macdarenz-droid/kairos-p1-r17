@@ -1,0 +1,112 @@
+.kairos-analysis-chart { min-width: 0; display: grid; gap: var(--kairos-space-3); padding: var(--kairos-space-3); border: 1px solid var(--kairos-border-default); border-radius: var(--kairos-radius-lg); background: var(--kairos-surface-card); }
+.kairos-analysis-chart__heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--kairos-space-2); }
+.kairos-analysis-chart__heading span, .kairos-analysis-chart__note { color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-xs); }
+.kairos-analysis-chart p { margin: 0; }
+.kairos-analysis-chart__selection { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: var(--kairos-space-3); }
+.kairos-analysis-chart__selection label { display: grid; gap: var(--kairos-space-2); color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-sm); min-width: 0; }
+.kairos-analysis-chart__selection select { width: 100%; min-width: 0; }
+.kairos-analysis-chart__canvas { width: 100%; height: var(--kairos-layout-analysis-canvas-height); min-width: 0; overflow: hidden; background: var(--kairos-chart-background); }
+.kairos-analysis-chart__canvas:focus-visible { outline: 2px solid var(--kairos-state-focus); outline-offset: 2px; }
+.kairos-analysis-chart__empty { min-height: var(--kairos-layout-analysis-empty-min-height); display: grid; align-content: center; gap: var(--kairos-space-2); text-align: center; color: var(--kairos-text-secondary); }
+.kairos-analysis-chart__tools { display: flex; gap: var(--kairos-space-2); }
+.kairos-analysis-chart__tools button { min-width: var(--kairos-control-md); }
+.kairos-analysis-chart__data { min-width: 0; }
+.kairos-analysis-chart__data summary { cursor: pointer; min-height: var(--kairos-control-md); align-content: center; color: var(--kairos-accent-primary); }
+.kairos-analysis-chart__table-scroll { width: 100%; min-width: 0; max-width: 100%; overflow: auto; max-height: var(--kairos-layout-analysis-table-max-height); }
+.kairos-analysis-chart table { width: 100%; border-collapse: collapse; font-size: var(--kairos-font-size-xs); font-variant-numeric: tabular-nums; }
+.kairos-analysis-chart td, .kairos-analysis-chart th { padding: var(--kairos-space-2); border-bottom: 1px solid var(--kairos-border-subtle); text-align: right; white-space: nowrap; }
+.kairos-analysis-chart th:first-child { text-align: left; }
+.kairos-analysis-chart a { font-size: var(--kairos-font-size-xs); }
+@media (max-width: 359px) { .kairos-analysis-chart__selection { grid-template-columns: minmax(0, 1fr); } }
+
+/* Ink amendment (Gate471). Appended with route-scoped specificity so every released rule above keeps its exact contract strings.
+   Hairline card over the surface gradient, live-status pill with a state dot, segmented view tools, mono tabular numerals. */
+.kairos-review .kairos-analysis-chart { border-color: var(--kairos-border-hairline); background-color: var(--kairos-surface-card); background-image: var(--kairos-surface-gradient); }
+.kairos-review .kairos-analysis-chart__canvas { border: 1px solid var(--kairos-border-hairline); border-radius: var(--kairos-radius-md); }
+.kairos-review .kairos-analysis-chart__live-status { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: var(--kairos-space-2); row-gap: calc(var(--kairos-space-1) / 2); align-items: center; padding: var(--kairos-space-2) var(--kairos-space-3); border: 1px solid var(--kairos-border-hairline); border-radius: var(--kairos-radius-md); background-color: var(--kairos-surface-raised); background-image: var(--kairos-surface-gradient); }
+.kairos-review .kairos-analysis-chart__live-status::before { content: ''; grid-row: 1 / span 2; width: var(--kairos-space-2); height: var(--kairos-space-2); border-radius: var(--kairos-radius-full); background: var(--kairos-text-muted); }
+.kairos-review .kairos-analysis-chart__live-status strong { font-family: var(--kairos-font-mono); font-size: var(--kairos-font-size-sm); font-variant-numeric: tabular-nums; }
+.kairos-review .kairos-analysis-chart__live-status span { color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-xs); }
+.kairos-review .kairos-analysis-chart__live-status--live::before { background: var(--kairos-trade-profit); animation: kairos-analysis-live-pulse 2.4s var(--kairos-ease-in-out) infinite; }
+.kairos-review :is(.kairos-analysis-chart__live-status--loading, .kairos-analysis-chart__live-status--connecting, .kairos-analysis-chart__live-status--reconnecting, .kairos-analysis-chart__live-status--recovering)::before { background: var(--kairos-accent-primary); }
+.kairos-review :is(.kairos-analysis-chart__live-status--unavailable, .kairos-analysis-chart__live-status--error)::before { background: var(--kairos-trade-loss); }
+@keyframes kairos-analysis-live-pulse { 0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--kairos-trade-profit) 50%, transparent); } 70% { box-shadow: 0 0 0 6px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+.kairos-review .kairos-analysis-chart__tools { display: inline-flex; justify-self: start; gap: 0; padding: calc(var(--kairos-space-1) / 2); border: 1px solid var(--kairos-border-hairline); border-radius: var(--kairos-radius-full); background-color: var(--kairos-surface-raised); }
+.kairos-review .kairos-analysis-chart__tools button { border-color: transparent; border-radius: var(--kairos-radius-full); background: transparent; color: var(--kairos-text-secondary); transition: color var(--kairos-motion-fast) var(--kairos-ease-out), background-color var(--kairos-motion-fast) var(--kairos-ease-out); }
+.kairos-review .kairos-analysis-chart__tools button:hover { color: var(--kairos-text-primary); background: var(--kairos-accent-soft); }
+.kairos-review .kairos-analysis-chart__tools button:active { translate: 0 1px; }
+.kairos-review .kairos-analysis-chart__selection select { border-color: var(--kairos-border-strong); background-image: var(--kairos-field-gradient); }
+.kairos-review .kairos-analysis-chart :is(td, th, caption) { font-family: var(--kairos-font-mono); }
+.kairos-review .kairos-analysis-chart :is(td, th) { border-bottom-color: var(--kairos-border-hairline); }
+.kairos-review .kairos-analysis-chart__data summary { font-weight: var(--kairos-font-weight-medium); }
+@media (prefers-reduced-motion: reduce) {
+  .kairos-review .kairos-analysis-chart__live-status--live::before { animation: none; }
+  .kairos-review .kairos-analysis-chart__tools button { transition: none; }
+}
+
+/* Time-assisted snapshot (Gate482): opening/closing instants to market-candle estimates; route-scoped, tokens only. */
+.kairos-review .kairos-time-assisted { display: grid; gap: var(--kairos-space-2); padding: var(--kairos-space-3); border: 1px solid var(--kairos-border-hairline); border-radius: var(--kairos-radius-md); background-color: var(--kairos-surface-raised); }
+.kairos-review .kairos-time-assisted h3 { margin: 0; font-size: var(--kairos-font-size-md); }
+.kairos-review .kairos-time-assisted__form { display: flex; flex-wrap: wrap; align-items: end; gap: var(--kairos-space-2); }
+.kairos-review .kairos-time-assisted__form label { display: grid; gap: var(--kairos-space-1); min-width: 0; flex: 1 1 auto; }
+.kairos-review .kairos-time-assisted__form label span { font-size: var(--kairos-font-size-xs); color: var(--kairos-text-muted); }
+.kairos-review .kairos-time-assisted__form input { min-width: 0; max-width: 100%; }
+.kairos-review .kairos-time-assisted__estimate { display: grid; gap: var(--kairos-space-1); padding-top: var(--kairos-space-2); border-top: 1px solid var(--kairos-border-hairline); }
+.kairos-review .kairos-time-assisted__estimate p { margin: 0; color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-sm); }
+.kairos-review .kairos-time-assisted__estimate dl { display: grid; gap: var(--kairos-space-1); margin: 0; }
+.kairos-review .kairos-time-assisted__estimate dl div { display: flex; justify-content: space-between; gap: var(--kairos-space-3); min-width: 0; }
+.kairos-review .kairos-time-assisted__estimate dt { color: var(--kairos-text-muted); font-family: var(--kairos-font-mono); font-size: var(--kairos-font-size-xs); }
+.kairos-review .kairos-time-assisted__estimate dd { margin: 0; font-family: var(--kairos-font-mono); font-variant-numeric: tabular-nums; font-size: var(--kairos-font-size-sm); overflow-wrap: anywhere; text-align: end; }
+.kairos-review .kairos-time-assisted__window { display: flex; flex-wrap: wrap; align-items: center; gap: var(--kairos-space-2); margin: 0; font-size: var(--kairos-font-size-sm); color: var(--kairos-text-secondary); }
+.kairos-review .kairos-time-assisted__saved { display: flex; flex-wrap: wrap; align-items: end; gap: var(--kairos-space-2); padding-top: var(--kairos-space-2); border-top: 1px solid var(--kairos-border-hairline); }
+.kairos-review .kairos-time-assisted__saved label { display: grid; gap: var(--kairos-space-1); min-width: 0; flex: 1 1 auto; }
+.kairos-review .kairos-time-assisted__saved label span { font-size: var(--kairos-font-size-xs); color: var(--kairos-text-muted); }
+.kairos-review .kairos-time-assisted__saved select { min-width: 0; max-width: 100%; }
+.kairos-review .kairos-time-assisted__saved input { min-width: 0; max-width: 100%; }
+.kairos-review .kairos-time-assisted__saved .kairos-analysis-chart__note { flex-basis: 100%; }
+
+/* Saved analysis (Gate478): save the drawn lines and load them back; route-scoped, tokens only. */
+.kairos-review .kairos-analysis-chart__saved-analysis { display: flex; flex-wrap: wrap; align-items: end; gap: var(--kairos-space-2); }
+.kairos-review .kairos-analysis-chart__saved-analysis label { display: grid; gap: var(--kairos-space-1); min-width: 0; flex: 1 1 auto; }
+.kairos-review .kairos-analysis-chart__saved-analysis label span { font-size: var(--kairos-font-size-xs); color: var(--kairos-text-muted); }
+.kairos-review .kairos-analysis-chart__saved-analysis > span { flex: 1 1 100%; }
+.kairos-review .kairos-analysis-chart__saved-analysis input { min-width: 0; max-width: 100%; }
+
+/* Drawing tools (Gate476): toolbar for the released P18 trend-line session above the chart. Route-scoped like the blocks above. */
+.kairos-review .kairos-analysis-chart__drawing-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--kairos-space-2); }
+.kairos-review .kairos-analysis-chart__drawing-tools button[aria-pressed="true"] { border-color: var(--kairos-accent-primary); background: var(--kairos-accent-soft); color: var(--kairos-text-primary); }
+.kairos-review .kairos-analysis-chart__drawing-tools > span { flex: 1 1 100%; }
+
+/* Position box (Gate473): saved-trade planned levels, reward/risk and live R beside the chart. Route-scoped like the Ink amendment above. */
+.kairos-review .kairos-position-box { display: grid; gap: var(--kairos-space-2); padding: var(--kairos-space-3); border: 1px solid var(--kairos-border-hairline); border-radius: var(--kairos-radius-md); background-color: var(--kairos-surface-raised); background-image: var(--kairos-surface-gradient); }
+.kairos-review .kairos-position-box__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--kairos-space-3); }
+.kairos-review .kairos-position-box__side { font-size: var(--kairos-font-size-sm); color: var(--kairos-text-secondary); font-weight: var(--kairos-font-weight-medium); }
+.kairos-review .kairos-position-box__side span { font-family: var(--kairos-font-mono); color: var(--kairos-text-primary); }
+.kairos-review .kairos-position-box__side[data-side="long"]::before, .kairos-review .kairos-position-box__side[data-side="short"]::before { content: ''; display: inline-block; width: var(--kairos-space-2); height: var(--kairos-space-2); margin-inline-end: var(--kairos-space-2); border-radius: var(--kairos-radius-full); background: var(--kairos-trade-long); }
+.kairos-review .kairos-position-box__side[data-side="short"]::before { background: var(--kairos-trade-short); }
+.kairos-review .kairos-position-box__r { font-family: var(--kairos-font-mono); font-variant-numeric: tabular-nums; font-size: var(--kairos-font-size-xl); letter-spacing: -.02em; color: var(--kairos-text-primary); }
+.kairos-review .kairos-position-box__r[data-tone="profit"] { color: var(--kairos-trade-profit); }
+.kairos-review .kairos-position-box__r[data-tone="loss"] { color: var(--kairos-trade-loss); }
+.kairos-review .kairos-position-box__r[data-tone="flat"], .kairos-review .kairos-position-box__r[data-tone="planned"] { color: var(--kairos-text-secondary); }
+.kairos-review .kairos-position-box__rows, .kairos-review .kairos-position-box__levels { display: grid; gap: var(--kairos-space-1); margin: 0; }
+.kairos-review .kairos-position-box__rows div, .kairos-review .kairos-position-box__levels div { display: flex; align-items: baseline; justify-content: space-between; gap: var(--kairos-space-3); min-width: 0; }
+.kairos-review .kairos-position-box dt { color: var(--kairos-text-muted); font-family: var(--kairos-font-mono); font-size: var(--kairos-font-size-xs); }
+.kairos-review .kairos-position-box dd { margin: 0; font-family: var(--kairos-font-mono); font-variant-numeric: tabular-nums; font-size: var(--kairos-font-size-sm); overflow-wrap: anywhere; text-align: end; }
+.kairos-review .kairos-position-box__row[data-role="reward"] dd { color: var(--kairos-trade-profit); }
+.kairos-review .kairos-position-box__row[data-role="risk"] dd { color: var(--kairos-trade-loss); }
+.kairos-review .kairos-position-box__levels { padding-top: var(--kairos-space-2); border-top: 1px solid var(--kairos-border-hairline); }
+.kairos-review .kairos-position-box--unavailable strong, .kairos-review .kairos-position-box--pending p { color: var(--kairos-text-secondary); }
+
+/* T-007: searchable symbol picker, and the chart before its tools on phones. */
+.kairos-analysis-chart__controls { display: grid; gap: var(--kairos-space-3); min-width: 0; }
+.kairos-symbol-picker { position: relative; display: grid; gap: var(--kairos-space-2); color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-sm); min-width: 0; }
+.kairos-symbol-picker input { width: 100%; min-width: 0; }
+.kairos-symbol-picker__list { position: absolute; z-index: 5; top: 100%; left: 0; right: 0; max-height: 18rem; overflow: auto; margin: var(--kairos-space-1) 0 0; padding: var(--kairos-space-1); list-style: none; border: 1px solid var(--kairos-border-strong); border-radius: var(--kairos-radius-md); background: var(--kairos-surface-raised); box-shadow: var(--kairos-shadow-md, 0 8px 24px rgb(0 0 0 / 0.25)); }
+.kairos-symbol-picker__list[hidden] { display: none; }
+.kairos-symbol-picker__option { padding: var(--kairos-space-2); border-radius: var(--kairos-radius-sm); color: var(--kairos-text-primary); font-family: var(--kairos-font-mono); cursor: pointer; }
+.kairos-symbol-picker__option[aria-selected="true"], .kairos-symbol-picker__option:hover { background: var(--kairos-accent-soft); }
+.kairos-symbol-picker__empty { margin: 0; color: var(--kairos-text-secondary); }
+@media (max-width: 600px) {
+  .kairos-analysis-chart__controls { order: 1; }
+  .kairos-analysis-chart > .kairos-analysis-chart__note, .kairos-analysis-chart > a { order: 2; }
+}
