@@ -18,6 +18,8 @@ import type { KairosDatabase } from '../data/database';
 import { updateTradeExecution } from '../application/trades';
 import { EntriesAndExitsEditor } from '../features/journal/EntriesAndExitsEditor';
 import { GlossaryHint } from '../features/learn/GlossaryHint';
+import { useNewsNearTrades } from '../features/economic-calendar/useNewsNearTrades';
+import { describeNewsNearTrade } from '../application/economic-calendar/calendarWords';
 
 interface JournalHistoryListProps {
   readonly entries: readonly JournalHistoryEntry[];
@@ -74,6 +76,7 @@ function formatTimestamp(value: string): string {
 
 export function JournalHistoryList({ entries, isLoading, errorMessage, statusFilter, onStatusFilterChange, db, onTradeUpdated, updateNotice, onTradeDeleted, onTradeOpened, allowedSources = ['manual'], hasOlder = false, isLoadingOlder = false, olderFailed = false, onShowOlder, onDisciplineSaved, disciplineSources = allowedSources }: JournalHistoryListProps) {
   const discipline = useTradeDisciplineCards(db, entries.map(entry => entry.trade.id));
+  const news = useNewsNearTrades(db, entries.map(entry => entry.trade));
   // Journal passes the real sources, Practice the paper one; the discipline writer needs the page's scope.
   const disciplineSaved = (record: Parameters<typeof discipline.remember>[0]) => { discipline.remember(record); onDisciplineSaved?.(); };
   const scope: JournalHistoryScope = allowedSources.some(source => (JOURNAL_HISTORY_SOURCES.practice as readonly TradeSource[]).includes(source)) ? 'practice' : 'real';
@@ -119,6 +122,7 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
           {entries.map((entry, index) => {
             const timestamp = entry.trade.closedAt ?? entry.trade.openedAt ?? entry.trade.updatedAt;
             const coach = entry.trade.status === 'closed' ? describeTradePlanVsExecution(projectTradePlanVsExecution(entry.trade, entry.plans, entry.metrics)) : [];
+            const newsLines = describeNewsNearTrade(news.get(entry.trade.id) ?? []);
             return (
               <li className="kairos-history-card" key={entry.trade.id}>
                 <div className="kairos-history-card__topline">
@@ -161,6 +165,7 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
                   <div><dt><span>Result after fees</span>{index === 0 ? <GlossaryHint termId="result-after-fees" label="Result after fees" /> : null}</dt><dd>{entry.metrics?.netPnl != null && entry.metrics.netPnlCurrency ? money(entry.metrics.netPnl, entry.metrics.netPnlCurrency) : entry.metrics?.netPnl ?? 'Not available'}</dd></div>
                 </dl>
                 {coach.length > 0 ? <p className="kairos-history-card__coach"><span>Your coach</span>{coach.map(line => <span key={line}>{line}</span>)}</p> : null}
+                {newsLines.length > 0 ? <p className="kairos-history-card__news"><span>Big news near this trade</span>{newsLines.map((line, index) => <span key={index}>{line}</span>)}</p> : null}
                 {entry.fees.length > 0 && entry.metrics?.grossPnl != null && entry.metrics.netPnl == null ? <p className="kairos-history-card__notice">
                   {entry.trade.grossPnlCurrency ? 'Result after fees needs fees in the same currency as your recorded prices, or in pounds (GBP) for prices in pence (GBX). Kairos does not convert a trade\'s fees with exchange rates.' : 'The price currency is not recorded, so fees cannot be taken off yet.'}
                 </p> : null}

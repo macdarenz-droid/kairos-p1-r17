@@ -3,7 +3,7 @@
  * newsImpact.ts, dayBucket.ts). "Unavailable · Try again" stay U1's (online/onlineWords.ts).
  */
 import type { EconomicEventImpact, EconomicEventRecord } from '../../domain/economic-calendar/economicEvent';
-import { economicEventSize } from '../../domain/economic-calendar/newsImpact';
+import { economicEventName, economicEventSize } from '../../domain/economic-calendar/newsImpact';
 import { NEWS_CALENDAR_SOURCE_IDS, NEWS_HEADLINE_SOURCE_IDS, NEWS_SOURCES, type NewsCalendarSourceId, type NewsHeadlineSourceId } from '../../domain/economic-calendar/newsSources';
 import { currencyDayLabel } from '../currency/currencyWords';
 import { describeUnavailable, type UnavailableWords } from '../online/onlineWords';
@@ -13,7 +13,7 @@ import type { TypedEconomicEventField } from './economicEvents';
 import type { KairosApiFailure } from '../online/onlineWords';
 import type { RefreshNewsCalendarResult } from './fetchedNews';
 import type { SavedNewsHeadline } from './newsHeadlines';
-import { NEWS_NEAR_TRADE_MINUTES } from './newsNearTrades';
+import { NEWS_NEAR_TRADE_MINUTES, type NewsNearTrade } from './newsNearTrades';
 
 export const NEWS_CALENDAR_INTRO = `Some scheduled news, such as a central bank's rate decision or a country's inflation or jobs numbers, can move prices a lot and fast. Kairos gets the official schedules of central banks and statistics offices, and you can add your own news. Each closed trade's card says when big news was within ${NEWS_NEAR_TRADE_MINUTES} minutes of when it opened or closed, or while it was open. This calendar never predicts prices and never tells you when to trade.`;
 export const NEWS_CALENDAR_LIMITS = "Official schedules only, and only the releases on Kairos's own list. Some big news is not there, such as business surveys (PMIs), China's numbers and most speeches: add it yourself.";
@@ -200,4 +200,27 @@ export function describeHeadlineFailures(ids: readonly NewsHeadlineSourceId[]): 
 /** U1's words with the subject "Headlines". */
 export function describeHeadlinesUnavailable(failure: KairosApiFailure): string {
   return describeUnavailable(failure, 'Headlines').message;
+}
+
+export const NEWS_NEAR_TRADE_LINES_SHOWN = 3;
+
+function minutesWord(minutes: number): string {
+  return minutes === 1 ? '1 minute' : `${minutes} minutes`;
+}
+
+function describeNearWhen(item: NewsNearTrade): string {
+  if (item.relation === 'while-open' || item.minutes === null) return 'scheduled while this trade was open';
+  if (item.relation === 'before-open') return item.minutes === 0 ? 'scheduled right when this trade opened' : `scheduled ${minutesWord(item.minutes)} before this trade opened`;
+  return item.minutes === 0 ? 'scheduled right when this trade closed' : `scheduled ${minutesWord(item.minutes)} after this trade closed`;
+}
+
+/** One line per big news near a trade (at most NEWS_NEAR_TRADE_LINES_SHOWN, then how many more); none for none. The size is never the source's. */
+export function describeNewsNearTrade(items: readonly NewsNearTrade[]): readonly string[] {
+  const lines = items.slice(0, NEWS_NEAR_TRADE_LINES_SHOWN).map(({ event, ...item }) => {
+    const origin = event.source === 'typed' ? 'Added by you.' : `Source: ${NEWS_SOURCES[event.source].name}. Big news by Kairos's rating.`;
+    return `${economicEventName(event)}: ${describeNearWhen({ event, ...item })}. ${origin}`;
+  });
+  const more = items.length - lines.length;
+  if (more > 0) lines.push(`And ${more} more big news ${more === 1 ? 'event' : 'events'} near this trade.`);
+  return Object.freeze(lines);
 }
