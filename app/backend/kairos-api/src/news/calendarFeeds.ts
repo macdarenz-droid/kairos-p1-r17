@@ -95,7 +95,8 @@ const fedFeed: CalendarFeed = Object.freeze({
       if (found === null) leftOut += 1;
       else events.push(...found);
     }
-    return { events, leftOut, covers: null };
+    // A body that matches no entry at all has changed shape.
+    return events.length === 0 && leftOut === 0 ? null : { events, leftOut, covers: null };
   },
 });
 
@@ -104,7 +105,7 @@ function fedEntry(entry: Record<string, unknown>): { title: string; startsAt: st
   const { month, days, time } = entry;
   if (title === null || typeof month !== 'string' || !FED_MONTH.test(month) || typeof days !== 'string' || !FED_DAYS.test(days) || typeof time !== 'string') return null;
   const clock = FED_TIME.exec(time);
-  if (clock === null) return null;
+  if (clock === null || Number(clock[1]) < 1 || Number(clock[1]) > 12) return null;
   const hour = (Number(clock[1]) % 12) + (clock[3] === 'p' ? 12 : 0);
   const found: { title: string; startsAt: string }[] = [];
   for (const day of days.split(/, ?/)) {
@@ -150,14 +151,16 @@ function onsRelease(description: Record<string, unknown>): { title: string; star
   const title = normaliseNewsText(description.title, NEWS_CALENDAR_TITLE_MAX);
   const date = description.release_date;
   if (title === null || typeof date !== 'string' || !ONS_RELEASE_DATE.test(date)) return null;
-  if (description.cancelled === true || (description.published !== true && description.finalised !== true)) return null;
+  // Only a finalised date is kept: a provisional one may still move.
+  if (description.cancelled === true || description.finalised !== true) return null;
   const at = Date.parse(date);
   if (!Number.isFinite(at) || new Date(at).toISOString().slice(0, 19) !== date.slice(0, 19)) return null;
   return { title, startsAt: new Date(at).toISOString() };
 }
 
 const CENSUS_ROW = /<tr\b[\s\S]*?<\/tr>/g;
-const CENSUS_KEY = /sorttable_customkey="(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})"/;
+const CENSUS_KEY = /sorttable_customkey="(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})"[^>]*>([\s\S]*?)<\/td>/;
+const CENSUS_DATE = /^([A-Z][a-z]+) (\d{1,2}), (\d{4})$/;
 const CENSUS_LINK = /<a\b[^>]*>([\s\S]*?)<\/a>/;
 const CENSUS_TIME = /<td>\s*(\d{1,2}):(\d{2}) (AM|PM)\s*<\/td>/;
 
@@ -169,7 +172,8 @@ const censusFeed: CalendarFeed = Object.freeze({
     const start = texts.length === 1 ? texts[0].indexOf('id="calendar"') : -1;
     if (start < 0) return null;
     const end = texts[0].indexOf('</table>', start);
-    const table = texts[0].slice(start, end < 0 ? undefined : end);
+    if (end < 0) return null;
+    const table = texts[0].slice(start, end);
     const events: { title: string; startsAt: string }[] = [];
     let leftOut = 0;
     for (const [row] of table.matchAll(CENSUS_ROW)) {
@@ -178,12 +182,16 @@ const censusFeed: CalendarFeed = Object.freeze({
       const link = CENSUS_LINK.exec(row);
       const title = link === null ? null : normaliseNewsText(link[1], NEWS_CALENDAR_TITLE_MAX);
       const cell = CENSUS_TIME.exec(row);
-      const agrees = cell !== null && pad2((Number(cell[1]) % 12) + (cell[3] === 'PM' ? 12 : 0)) === key[4] && cell[2] === key[5];
+      // The visible date cell must name the key's day: a suspended release keeps its key but says "Suspended".
+      const date = CENSUS_DATE.exec(normaliseNewsText(key[6], 40) ?? '');
+      const sameDay = date !== null && MONTHS.indexOf(date[1]) + 1 === Number(key[2]) && Number(date[2]) === Number(key[3]) && date[3] === key[1];
+      const agrees = sameDay && cell !== null && pad2((Number(cell[1]) % 12) + (cell[3] === 'PM' ? 12 : 0)) === key[4] && cell[2] === key[5];
       const startsAt = agrees ? newYork(`${key[1]}-${key[2]}-${key[3]}`, `${key[4]}:${key[5]}`) : null;
       if (title === null || startsAt === null) leftOut += 1;
       else events.push({ title, startsAt });
     }
-    return { events, leftOut, covers: null };
+    // A calendar table with no dated row has changed shape.
+    return events.length === 0 && leftOut === 0 ? null : { events, leftOut, covers: null };
   },
 });
 
@@ -225,20 +233,24 @@ const rbaFeed: CalendarFeed = Object.freeze({
     if (parts.length === 0) return null;
     const events: { title: string; startsAt: string }[] = [];
     let leftOut = 0;
+    let rows = 0;
     for (const { year, part } of parts) {
       for (const [, cell] of part.matchAll(RBA_ROW)) {
+        rows += 1;
         const text = normaliseNewsText(cell, NEWS_CALENDAR_TITLE_MAX);
         // An empty cell is no meeting.
         if (text === null && cell.replace(/<[^>]*>|&nbsp;|\s/g, '') === '') continue;
         const days = text === null ? null : RBA_DAYS.exec(text);
-        const firstMonthKnown = days !== null && (days[2] === undefined || MONTHS.includes(days[2]));
         const month = days === null ? -1 : MONTHS.indexOf(days[4]);
+        // A meeting from December into January would put its second day in the wrong year: left out.
+        const firstMonthKnown = days !== null && (days[2] === undefined || (MONTHS.includes(days[2]) && MONTHS.indexOf(days[2]) <= month));
         const startsAt = firstMonthKnown && month >= 0 ? sydney(`${year}-${pad2(month + 1)}-${pad2(Number(days[3]))}`, '14:30') : null;
         if (startsAt === null) leftOut += 1;
         else events.push({ title: 'Monetary Policy Board', startsAt });
       }
     }
-    return { events, leftOut, covers: null };
+    // A schedule with no meeting rows at all has changed shape.
+    return rows === 0 ? null : { events, leftOut, covers: null };
   },
 });
 

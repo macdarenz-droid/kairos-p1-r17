@@ -109,7 +109,8 @@ does. Any failed read or unreadable body is `source-unavailable` (502), never ke
 - **Census Bureau** (`www.census.gov`, the economic indicator calendar page, times in New York; a row's time must agree
   with its sort key): US federal work (UNVERIFIED wording).
 - **ECB** (`www.ecb.europa.eu`, the meetings page): free use, accurate, cite the ECB. Only a monetary policy meeting's Day
-  2 is kept, at 14:15 Frankfurt time, when the decision "is published in a press release".
+  2 is kept, at 14:15 Frankfurt time: its decisions "are published in a press release at 14:15 CET on the day of the
+  Governing Council monetary policy meeting".
 - **ONS** (`api.beta.ons.gov.uk`, release calendar API, the last and the next 92 days, each page whole; cancelled and
   provisional dates are left out): Open Government Licence v3.0.
 - **RBA** (`www.rba.gov.au`, the board meeting schedule page): CC BY 4.0. Each Monetary Policy Board meeting at 14:30

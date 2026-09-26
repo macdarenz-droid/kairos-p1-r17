@@ -32,9 +32,10 @@ const ONS_UPCOMING = onsPage(3, [
 ]);
 
 const CENSUS = `<html><body><table class="sortable" id="calendar"><tr><th>Date</th><th>Time</th><th>Indicator</th></tr>
-<tr><td sorttable_customkey="202610150830">October 15</td><td> 8:30 AM </td><td><a href="/retail/index.html">Advance Monthly Sales for Retail and Food Services</a></td></tr>
-<tr><td sorttable_customkey="202610171000">October 17</td><td>8:30 AM</td><td><a href="/construction/nrc/index.html">New Residential Construction (Building Permits, Housing Starts,
+<tr><td sorttable_customkey="202610150830">October 15, 2026</td><td> 8:30 AM </td><td><a href="/retail/index.html">Advance Monthly Sales for Retail and Food Services</a></td></tr>
+<tr><td sorttable_customkey="202610171000">October 17, 2026</td><td>8:30 AM</td><td><a href="/construction/nrc/index.html">New Residential Construction (Building Permits, Housing Starts,
  and Housing Completions)</a></td></tr>
+<tr><td style="background-color: #FFE954;" sorttable_customkey="202610270830">Suspended</td><td>8:30 AM</td><td><a href="/economic-indicators/">Advance Economic Indicators Report</a></td></tr>
 </table><table><tr><td sorttable_customkey="202610200830">October 20</td><td>8:30 AM</td><td><a href="/x">Outside the calendar</a></td></tr></table></body></html>`;
 
 const ECB_DAY_2 = 'Governing Council of the ECB: monetary policy meeting in Frankfurt (Day 2), followed by press conference';
@@ -72,8 +73,8 @@ describe('the five more calendar decoders', () => {
     expect(buildCalendarAnswer('ons', [ONS_PUBLISHED, cutShort], NOW)).toBeNull();
   });
 
-  it('census: a row whose time cell agrees with its key; one that disagrees counts; no calendar table is null', () => {
-    expect(times('census', [CENSUS])).toEqual({ events: [['Advance Monthly Sales for Retail and Food Services', '2026-10-15T12:30:00.000Z']], leftOut: 1 });
+  it('census: a row whose time cell agrees with its key; one that disagrees and a suspended one count; no calendar table is null', () => {
+    expect(times('census', [CENSUS])).toEqual({ events: [['Advance Monthly Sales for Retail and Food Services', '2026-10-15T12:30:00.000Z']], leftOut: 2 });
     expect(buildCalendarAnswer('census', [CENSUS.replace('id="calendar"', 'id="other"')], NOW)).toBeNull();
   });
 
@@ -136,5 +137,89 @@ describe('the five more calendar routes', () => {
     expect(response.status).toBe(200);
     expect(String(fetchImpl.mock.calls[0][0])).toBe('https://www.federalreserve.gov/json/calendar.json');
     expect((fetchImpl.mock.calls[0][1]!.headers as Record<string, string>).accept).toBe('application/json');
+  });
+});
+
+describe('every rule of the five decoders', () => {
+  const fed = (...entries: object[]) => JSON.stringify({ events: [{ title: 'Good', time: '2:00 p.m.', month: '2026-10', days: '28' }, ...entries] });
+  const fedEntry = (fields: Record<string, string>) => ({ title: 'Checked', time: '2:00 p.m.', month: '2026-10', days: '15', ...fields });
+
+  it('fed: morning and noon times in New York; an hour outside 1 to 12 counts', () => {
+    expect(times('fed', [fed(fedEntry({ time: '9:00 a.m.' }), fedEntry({ title: 'Noon', time: '12:00 p.m.' }), fedEntry({ title: 'Bad hour', time: '13:00 p.m.' }))])).toEqual({
+      events: [['Checked', '2026-10-15T13:00:00.000Z'], ['Noon', '2026-10-15T16:00:00.000Z'], ['Good', '2026-10-28T18:00:00.000Z']],
+      leftOut: 1,
+    });
+  });
+
+  it('fed: a day list with one day that does not exist is left out whole and counted once', () => {
+    expect(times('fed', [fed(fedEntry({ month: '2026-11', days: '1, 31' }))])).toEqual({ events: [['Good', '2026-10-28T18:00:00.000Z']], leftOut: 1 });
+  });
+
+  it('fed: the month, days and time must be exactly their form, with nothing before or after', () => {
+    const extra = [{ month: 'x2026-10' }, { month: '2026-10x' }, { days: ' 15' }, { days: '15 ' }, { time: 'x2:00 p.m.' }, { time: '2:00 p.m. ET' }].map(fedEntry);
+    expect(times('fed', [fed(...extra)])).toEqual({ events: [['Good', '2026-10-28T18:00:00.000Z']], leftOut: 6 });
+  });
+
+  it('fed: a body with no entries, or with no events list, has changed shape', () => {
+    expect(buildCalendarAnswer('fed', [JSON.stringify({ events: [] })], NOW)).toBeNull();
+    expect(buildCalendarAnswer('fed', ['{}'], NOW)).toBeNull();
+  });
+
+  it('ons: a cut-short published page, a date that does not exist, a published date not finalised, and the wrong number of pages', () => {
+    expect(buildCalendarAnswer('ons', [ONS_PUBLISHED.replace('"total":2', '"total":3'), ONS_UPCOMING], NOW)).toBeNull();
+    const published = onsPage(3, [
+      release('Consumer price inflation, UK: August 2026', '2026-09-16T06:00:00.000Z'),
+      release('No such day', '2026-09-31T06:00:00Z'),
+      release('Not finalised', '2026-09-17T06:00:00.000Z', { published: true, finalised: false }),
+    ]);
+    const data = buildCalendarAnswer('ons', [published, ONS_UPCOMING], NOW)!;
+    expect(data.events.map((event) => event.title)).toEqual(['Consumer price inflation, UK: August 2026', 'UK Labour Market: October 2026']);
+    expect(data.leftOut).toBe(4);
+    expect(buildCalendarAnswer('ons', [ONS_PUBLISHED], NOW)).toBeNull();
+    expect(buildCalendarAnswer('ons', [ONS_PUBLISHED, ONS_UPCOMING, ONS_UPCOMING], NOW)).toBeNull();
+  });
+
+  const censusPage = (rows: string) => `<table class="sortable" id="calendar"><tr><th>Date</th><th>Time</th><th>Indicator</th></tr>${rows}</table>`;
+  const censusRow = (key: string, date: string, time: string, title: string | null) =>
+    `<tr><td sorttable_customkey="${key}">${date}</td><td>${time}</td><td>${title === null ? 'No link' : `<a href="/x">${title}</a>`}</td></tr>`;
+
+  it('census: a p.m. row; the minutes must agree; a row without a link counts', () => {
+    expect(times('census', [censusPage(
+      censusRow('202610151400', 'October 15, 2026', '2:00 PM', 'Quarterly Services Survey')
+      + censusRow('202610160830', 'October 16, 2026', '8:45 AM', 'Minutes disagree')
+      + censusRow('202610190830', 'October 19, 2026', '8:30 AM', null),
+    )])).toEqual({ events: [['Quarterly Services Survey', '2026-10-15T18:00:00.000Z']], leftOut: 2 });
+  });
+
+  it('census: a date cell naming another day counts', () => {
+    expect(times('census', [censusPage(
+      censusRow('202610151400', 'October 15, 2026', '2:00 PM', 'Quarterly Services Survey')
+      + censusRow('202610160830', 'October 17, 2026', '8:30 AM', 'Wrong day')
+      + censusRow('202610160830', 'November 16, 2026', '8:30 AM', 'Wrong month')
+      + censusRow('202610160830', 'October 16, 2025', '8:30 AM', 'Wrong year'),
+    )]).leftOut).toBe(3);
+  });
+
+  it('census: a calendar table with no dated row, or with no end, has changed shape', () => {
+    expect(buildCalendarAnswer('census', [censusPage('<tr><td>Nothing scheduled</td></tr>')], NOW)).toBeNull();
+    expect(buildCalendarAnswer('census', [censusPage(censusRow('202610151400', 'October 15, 2026', '2:00 PM', 'Quarterly Services Survey')).replace('</table>', '')], NOW)).toBeNull();
+  });
+
+  it('ecb: a Day 2 that is not a monetary policy meeting counts', () => {
+    const page = `<dl><dt>29/10/2026</dt><dd>${ECB_DAY_2}</dd><dt>30/10/2026</dt><dd>General Council meeting of the ECB (Day 2)</dd></dl>`;
+    expect(times('ecb', [page])).toEqual({ events: [[ECB_DAY_2, '2026-10-29T13:15:00.000Z']], leftOut: 1 });
+  });
+
+  const rbaPage = (...cells: string[]) => `<table><caption>Board meeting schedules 2026</caption>${cells.map((cell, index) => rbaRow(String(index + 1), cell)).join('')}</table>`;
+
+  it('rba: a misspelt first month, extra text and a meeting into the next year count', () => {
+    expect(times('rba', [rbaPage('28&ndash;29 September', '31 Marhc&ndash;1 April', '28&ndash;29 September 2026', 'about 28&ndash;29 September', '30 December&ndash;2 January')])).toEqual({
+      events: [['Monetary Policy Board', '2026-09-29T04:30:00.000Z']],
+      leftOut: 4,
+    });
+  });
+
+  it('rba: a schedule with a year but no meeting rows has changed shape', () => {
+    expect(buildCalendarAnswer('rba', [rbaPage()], NOW)).toBeNull();
   });
 });
