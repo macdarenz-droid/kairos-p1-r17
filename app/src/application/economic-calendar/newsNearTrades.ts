@@ -1,11 +1,12 @@
 /**
  * P34: the one owner of which saved big news is near a trade (D125). Only a closed trade with canonical open and close times, only
- * news the trader marked big, and only news scheduled from NEWS_NEAR_TRADE_MINUTES before the open to NEWS_NEAR_TRADE_MINUTES after
+ * news marked big by the trader or by Kairos's list, and only news scheduled from NEWS_NEAR_TRADE_MINUTES before the open to NEWS_NEAR_TRADE_MINUTES after
  * the close. Kairos knows only the news the trader saved, so an empty answer never means "no news".
  */
 import type { KairosDatabase } from '../../data/database';
 import { createKairosRepositories } from '../../data/repositories';
 import { isEconomicEventRecordShape, type EconomicEventRecord } from '../../domain/economic-calendar/economicEvent';
+import { economicEventSize } from '../../domain/economic-calendar/newsImpact';
 import type { TradeRecord } from '../../domain/trades';
 
 export const NEWS_NEAR_TRADE_MINUTES = 30;
@@ -40,7 +41,7 @@ export function projectNewsNearTrade(trade: NewsNearTradeInput, events: readonly
   if (span === null) return Object.freeze([]);
   const near: NewsNearTrade[] = [];
   for (const event of events) {
-    if (!isEconomicEventRecordShape(event) || event.impact !== 'high') continue;
+    if (!isEconomicEventRecordShape(event) || economicEventSize(event).size !== 'high') continue;
     const at = Date.parse(event.startsAt);
     if (at <= span.open && span.open - at <= WINDOW_MS) {
       near.push(

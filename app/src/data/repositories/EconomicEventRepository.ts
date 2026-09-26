@@ -10,6 +10,10 @@ export class EconomicEventRepository {
   count() {
     return this.db.economicEvents.count();
   }
+  /** Typed news only: ids start with 'typed:'. */
+  countTyped() {
+    return this.db.economicEvents.where("id").startsWith("typed:").count();
+  }
   listAll() {
     return this.db.economicEvents.toArray();
   }
