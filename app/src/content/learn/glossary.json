@@ -63,6 +63,12 @@
       "picture": null, "related": ["ticker", "position-size"] },
     { "id": "exchange-rate", "plainWords": "Exchange rate", "tradingTerm": "Foreign exchange rate (FX rate)", "alsoCalled": ["FX rate", "conversion rate", "currency rate"],
       "explanation": "How much of one currency one unit of another is worth on a given day, such as 1 EUR = 1.146 USD. Kairos uses it only to show your totals in your own currency; each trade keeps the currency you recorded.",
-      "picture": null, "related": ["result-after-fees"] }
+      "picture": null, "related": ["result-after-fees"] },
+    { "id": "news-calendar", "plainWords": "News calendar", "tradingTerm": "Economic calendar", "alsoCalled": ["econ calendar", "forex calendar", "news schedule"],
+      "explanation": "A list of when scheduled news comes out, such as a central bank's rate decision or a country's inflation or jobs numbers. Prices can move a lot around these times. Kairos shows official schedules and the news you add, and never predicts prices.",
+      "picture": null, "related": ["big-news"] },
+    { "id": "big-news", "plainWords": "Big news", "tradingTerm": "High-impact event", "alsoCalled": ["high-impact news", "market-moving news", "major news"],
+      "explanation": "Scheduled news that often moves prices a lot and fast, such as a central bank's rate decision or US inflation and jobs numbers. Kairos sizes official releases with its own list; you size the news you add. Trade cards show big news within 30 minutes.",
+      "picture": null, "related": ["news-calendar"] }
   ]
 }

@@ -59,6 +59,10 @@ export const appRoutes = [
         const { PatternsScreen } = await import('../features/patterns/PatternsScreen');
         return { Component: function PatternsRoute() { return <PatternsScreen db={kairosDatabase} scope="real" />; } };
       } },
+      { path: 'news-calendar', lazy: async () => {
+        const { NewsCalendarScreen } = await import('../features/economic-calendar/NewsCalendarScreen');
+        return { Component: function NewsCalendarRoute() { return <NewsCalendarScreen db={kairosDatabase} />; } };
+      } },
       { path: 'currency', lazy: async () => {
         const [{ CurrencyScreen }, { createEcbReferenceRatesPort }] = await Promise.all([import('../features/currency/CurrencyScreen'), import('../services/exchange-rates/ecbReferenceRates')]);
         const rates = createEcbReferenceRatesPort();
