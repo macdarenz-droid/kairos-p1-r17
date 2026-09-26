@@ -242,6 +242,7 @@ describe('keeping answers and reading other sites', () => {
   });
 
   it('refuses a host the route did not list, before the network', async () => {
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const fetchImpl = vi.fn<typeof fetch>();
     const sample = cachedRoute({
       handle: async ({ upstream }) => {
@@ -253,6 +254,23 @@ describe('keeping answers and reading other sites', () => {
     expect(response.status).toBe(500);
     expect(await response.json()).toMatchObject({ reason: 'service-error' });
     expect(fetchImpl).not.toHaveBeenCalled();
+    expect(errors).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(String(errors.mock.calls[0][0]))).toMatchObject({ kind: 'upstream-host-refused' });
+    errors.mockRestore();
+  });
+
+  it('lets a route read a host it listed', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response('{}', { headers: { 'content-type': 'application/json' } }));
+    const listed = cachedRoute({
+      handle: async ({ upstream }) => {
+        const result = await upstream('https://a.test/x', { accept: 'application/json' });
+        return { ok: true as const, data: { read: result.ok } };
+      },
+    });
+    const response = await send([listed], '/sample?symbol=LISTED', env, fetchImpl);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ ok: true, data: { read: true } });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
   it('keeps nothing for a route without a cache policy', async () => {

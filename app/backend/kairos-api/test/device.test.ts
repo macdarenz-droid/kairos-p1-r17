@@ -38,6 +38,19 @@ describe('checkDevice', () => {
     }
   });
 
+  it('does not recognise a correctly signed receipt longer than 1,024 characters', async () => {
+    const base = (await deviceToken(keys.privateKey, { ...GOOD_PAYLOAD, note: '' })).length;
+    const withNote = (targetLength: number) => deviceToken(keys.privateKey, { ...GOOD_PAYLOAD, note: 'x'.repeat(Math.floor(((targetLength - base) * 3) / 4)) });
+    const long = await withNote(1060);
+    const short = await withNote(1010);
+    expect(long.length).toBeGreaterThanOrEqual(1025);
+    expect(long.length).toBeLessThanOrEqual(1100);
+    expect(short.length).toBeGreaterThanOrEqual(1000);
+    expect(short.length).toBeLessThanOrEqual(1024);
+    expect(await checkDevice(long, keys.spki)).toEqual({ kind: 'not-recognised' });
+    expect(await checkDevice(short, keys.spki)).toEqual({ kind: 'recognised', activationId: ACTIVATION_ID });
+  });
+
   it('says not-sent without a header and not-checked without a usable key', async () => {
     expect(await checkDevice(null, keys.spki)).toEqual({ kind: 'not-sent' });
     expect(await checkDevice('', keys.spki)).toEqual({ kind: 'not-sent' });

@@ -48,4 +48,17 @@ describe('createUpstreamFetch', () => {
     const broken = vi.fn<typeof fetch>().mockRejectedValue(new TypeError('network down'));
     expect(await createUpstreamFetch(HOSTS, broken)('https://api.binance.com/x', { accept: 'application/json' })).toEqual({ ok: false, failure: 'network', status: null });
   });
+
+  it('reports a timeout when the time limit runs out while the answer is being read', async () => {
+    const stalling = vi.fn<typeof fetch>(async (_input, init) => {
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('{"x":'));
+          init!.signal!.addEventListener('abort', () => controller.error(init!.signal!.reason));
+        },
+      });
+      return new Response(body, { status: 200, headers: { 'content-type': 'application/json' } });
+    });
+    expect(await createUpstreamFetch(HOSTS, stalling)('https://api.binance.com/x', { accept: 'application/json', timeoutMs: 50 })).toEqual({ ok: false, failure: 'timeout', status: 200 });
+  });
 });
