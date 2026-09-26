@@ -88,6 +88,27 @@ when ok, under keys that carry the route id and its version:
 - Reserved secret names, each added to `KairosApiEnv` with its route: `NEWS_API_KEY` (O3), `MARKET_DATA_API_KEY` (O4),
   `FX_RATES_API_KEY` (O5), `COIN_DATA_API_KEY` (O6).
 
+## News (P34)
+
+`GET /news/calendar/<source>` reads one official release calendar: `bls`, `bea`, `eurostat` and `boc` so far
+(`src/news/calendarFeeds.ts`, one fixed URL each). Each route is `public` and rate-limited, takes no query (any query is
+400), and answers `data` = `{ source, fetchedAt, covers: { from, to } | null, events: [{ key, title, startsAt }], leftOut }`:
+titles as plain text, times as UTC instants, events within 400 days of now (at most 2,000), `key` = FNV-1a 64 of
+`source|title|startsAt`, and `leftOut` = rows with no title or no time Kairos can prove. The server rates nothing; the app
+does. Any failed read or unreadable body is `source-unavailable` (502), never kept.
+
+- **BLS** (`www.bls.gov`, iCalendar, times in US-Eastern): a U.S. government work; BLS refuses automated readers without
+  contact details, and accepts the server's user agent.
+- **BEA** (`www.bea.gov`, iCalendar, UTC times): a U.S. government work.
+- **Eurostat** (`ec.europa.eu`, iCalendar, euro indicators, dates only): CC BY 4.0; Kairos adds the time Eurostat
+  publishes, 11:00 Luxembourg time, and the app credits it.
+- **Bank of Canada** (`www.bankofcanada.ca`, iCalendar, UTC times): used under the Bank's terms of use; only names, times
+  and a link to its page are shown.
+
+Cache (`NEWS_CALENDAR_CACHE`): 30 minutes in Workers Cache and memory (the page refreshes after 30), 6 hours in KV. One
+source per call keeps each call inside the Free plan's 10 ms of CPU. BEA and Eurostat are asked for `text/plain`: they
+send their iCalendar files as `text/plain`, and Eurostat answers 406 to `text/calendar`.
+
 ## Checks (run from `app/`)
 
 ```
