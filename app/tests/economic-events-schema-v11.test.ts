@@ -31,8 +31,8 @@ const header = { formatName: KAIROS_BACKUP_FORMAT_NAME, appVersion: 'old', build
 const savedAt = '2026-09-19T08:00:00.000Z';
 const ecbUsd: ExchangeRateRecord = { id: exchangeRateId('ecb', 'EUR', 'USD', '2026-09-18'), source: 'ecb', from: 'EUR', to: 'USD', day: '2026-09-18', rateDay: '2026-09-18', rate: '1.146' as DecimalString, savedAt };
 
-const cpi: EconomicEventRecord = { id: economicEventId('typed', 'cpi'), source: 'typed', title: 'US CPI', currency: 'USD', startsAt: '2026-09-24T12:30:00.000Z', impact: 'high', expected: '3.1%', previous: '2.9%', actual: null, savedAt };
-const speech: EconomicEventRecord = { id: economicEventId('typed', 'speech'), source: 'typed', title: 'ECB President speaks', currency: 'EUR', startsAt: '2026-09-24T09:00:00.000Z', impact: 'medium', expected: null, previous: null, actual: null, savedAt };
+const cpi: EconomicEventRecord = { id: economicEventId('typed', 'cpi'), source: 'typed', title: 'US CPI', currency: 'USD', startsAt: '2026-09-24T12:30:00.000Z', impact: 'high', expected: '3.1%', previous: '2.9%', actual: null, savedAt, fetchedAt: null };
+const speech: EconomicEventRecord = { id: economicEventId('typed', 'speech'), source: 'typed', title: 'ECB President speaks', currency: 'EUR', startsAt: '2026-09-24T09:00:00.000Z', impact: 'medium', expected: null, previous: null, actual: null, savedAt, fetchedAt: null };
 const damagedEvent = { ...cpi, id: economicEventId('typed', 'bad'), title: '' } as EconomicEventRecord;
 
 const format8 = () => JSON.stringify({

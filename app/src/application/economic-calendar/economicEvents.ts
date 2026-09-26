@@ -15,11 +15,12 @@ import {
   type EconomicEventImpact,
   type EconomicEventRecord,
 } from '../../domain/economic-calendar/economicEvent';
+import { economicEventSize } from '../../domain/economic-calendar/newsImpact';
 import { projectVisualPnlDayKey } from '../visual-pnl/dayBucket';
 import { isVisualPnlDayKey, shiftVisualPnlDayKey, visualPnlMondayFirstWeekday } from '../visual-pnl/dayKeyCalendar';
 import { readVisualPnlTimeZonePreference } from '../visual-pnl/timeZonePreference';
 
-/** The most news events kept on this device; a save beyond it is refused, and no old event is ever deleted on its own (D124). */
+/** The most typed news events kept on this device; a save beyond it is refused, and no old event is ever deleted on its own (D124). */
 export const ECONOMIC_EVENT_MAX_SAVED = 1000;
 
 export interface TypedEconomicEventInput {
@@ -43,7 +44,10 @@ export type SaveTypedEconomicEventResult =
     }>
   | Readonly<{ ok: false; type: 'limit-reached'; limit: number }>
   | Readonly<{ ok: false; type: 'storage-error' }>;
-export type DeleteEconomicEventResult = Readonly<{ ok: true }> | Readonly<{ ok: false; type: 'storage-error' }>;
+export type DeleteEconomicEventResult =
+  | Readonly<{ ok: true }>
+  | Readonly<{ ok: false; type: 'not-typed' }>
+  | Readonly<{ ok: false; type: 'storage-error' }>;
 
 const DEVICE_CLOCK_PATTERN = /^(\d{4}-\d{2}-\d{2})T([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
 /** A datetime-local value read on this device's clock, as the trade form's times are (manualTradeExecutionDraft.ts:20-24); null for anything else, such as 30 February. */
@@ -92,6 +96,7 @@ export function parseTypedEconomicEvent(
     previous,
     actual,
     savedAt,
+    fetchedAt: null,
   });
   return isEconomicEventRecordShape(event) ? Object.freeze({ ok: true as const, event }) : refuse('title');
 }
@@ -119,7 +124,7 @@ export async function saveTypedEconomicEvent(
   const event = parsed.event;
   try {
     const saved = await runKairosAtomicWrite(db, ['economicEvents'], async ({ repositories }) => {
-      if ((await repositories.economicEvents.count()) >= ECONOMIC_EVENT_MAX_SAVED) return false;
+      if ((await repositories.economicEvents.countTyped()) >= ECONOMIC_EVENT_MAX_SAVED) return false;
       await repositories.economicEvents.put(event);
       return true;
     });
@@ -138,8 +143,9 @@ export async function saveTypedEconomicEvent(
   }
 }
 
-/** Deletes one saved news event in one atomic write; an id that is not saved is fine. */
+/** Deletes one typed news event in one atomic write; an id that is not saved is fine. Fetched news is never deleted here. */
 export async function deleteEconomicEvent(db: KairosDatabase, id: string): Promise<DeleteEconomicEventResult> {
+  if (!id.startsWith('typed:')) return Object.freeze({ ok: false as const, type: 'not-typed' as const });
   try {
     await runKairosAtomicWrite(db, ['economicEvents'], ({ repositories }) => repositories.economicEvents.delete(id));
     return Object.freeze({ ok: true as const });
@@ -176,14 +182,14 @@ function byTime(a: EconomicEventRecord, b: EconomicEventRecord): number {
   return a.startsAt.localeCompare(b.startsAt) || a.title.localeCompare(b.title) || a.id.localeCompare(b.id);
 }
 
-/** Only the news marked big; a day left with none is dropped. */
+/** Only the news marked big (by the trader or by Kairos's list); a day left with none is dropped. */
 export function onlyBigNews(days: readonly EconomicCalendarDay[]): readonly EconomicCalendarDay[] {
   return Object.freeze(
     days
       .map((day) =>
         Object.freeze({
           dayKey: day.dayKey,
-          events: Object.freeze(day.events.filter((event) => event.impact === 'high')),
+          events: Object.freeze(day.events.filter((event) => economicEventSize(event).size === 'high')),
         }),
       )
       .filter((day) => day.events.length > 0),
@@ -210,7 +216,7 @@ export async function loadEconomicCalendarWeek(
       `${shiftVisualPnlDayKey(start, -1)}T00:00:00.000Z`,
       `${shiftVisualPnlDayKey(end, 1)}T00:00:00.000Z`,
     ),
-    repositories.economicEvents.count(),
+    repositories.economicEvents.countTyped(),
   ]);
   const byDay = new Map<string, EconomicEventRecord[]>();
   for (const row of rows) {

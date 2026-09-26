@@ -29,7 +29,7 @@ async function current(label: string): Promise<KairosDatabase> {
 const now = '2026-09-24T04:00:00.000Z';
 const savedAt = '2026-09-20T08:00:00.000Z';
 function event(key: string, title: string, currency: string | null, startsAt: string, impact: EconomicEventImpact | null, values: Partial<Pick<EconomicEventRecord, 'expected' | 'previous'>> = {}): EconomicEventRecord {
-  return { id: economicEventId('typed', key), source: 'typed', title, currency, startsAt, impact, expected: values.expected ?? null, previous: values.previous ?? null, actual: null, savedAt };
+  return { id: economicEventId('typed', key), source: 'typed', title, currency, startsAt, impact, expected: values.expected ?? null, previous: values.previous ?? null, actual: null, savedAt, fetchedAt: null };
 }
 const CPI = event('cpi', 'US CPI', 'USD', '2026-09-24T12:30:00.000Z', 'high', { expected: '3.1%', previous: '2.9%' });
 const SPEECH = event('speech', 'ECB President speaks', 'EUR', '2026-09-24T09:00:00.000Z', 'medium');
@@ -51,7 +51,7 @@ describe('T-046c typed news: parse', () => {
   it('keeps the trimmed name and values, the currency in capitals and the device-clock time as a UTC instant', () => {
     expect(parseTypedEconomicEvent(typed, 'k-1', savedAt)).toEqual({
       ok: true,
-      event: { id: 'typed:k-1', source: 'typed', title: 'US CPI', currency: 'USD', startsAt: new Date('2026-09-24T20:30').toISOString(), impact: 'high', expected: '3.1%', previous: null, actual: null, savedAt },
+      event: { id: 'typed:k-1', source: 'typed', title: 'US CPI', currency: 'USD', startsAt: new Date('2026-09-24T20:30').toISOString(), impact: 'high', expected: '3.1%', previous: null, actual: null, savedAt, fetchedAt: null },
     });
   });
 

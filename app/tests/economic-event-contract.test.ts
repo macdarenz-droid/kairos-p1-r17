@@ -28,6 +28,7 @@ function event(
     previous: null,
     actual: null,
     savedAt: "2026-09-20T08:00:00.000Z",
+    fetchedAt: null,
   };
 }
 const trade: NewsNearTradeInput = {

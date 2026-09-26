@@ -1,9 +1,15 @@
 /**
- * P34: what a saved news event is (D124). Kairos has no news calendar it may read and keep yet (D122), so every event is typed by the
- * trader and keeps where it came from (`source`) and when it was saved. It is scheduled at one UTC instant; its name and its expected,
- * last and actual values are the trader's own text, never numbers Kairos works out, and a missing value stays null.
+ * P34: what a saved news event is (D124). An event is typed by the trader or fetched from an official schedule through the Kairos
+ * server, and keeps where it came from (`source`), when it was fetched (`fetchedAt`, fetched news only) and when it was saved. It is
+ * scheduled at one UTC instant; its name and its expected, last and actual values are text, never numbers Kairos works out, and a
+ * missing value stays null.
  */
-export const ECONOMIC_EVENT_SOURCES = Object.freeze(["typed"] as const);
+import { NEWS_CALENDAR_SOURCE_IDS } from "./newsSources";
+
+export const ECONOMIC_EVENT_SOURCES = Object.freeze([
+  "typed",
+  ...NEWS_CALENDAR_SOURCE_IDS,
+] as const);
 export type EconomicEventSource = (typeof ECONOMIC_EVENT_SOURCES)[number];
 /** How much the trader expects the news to move prices: big, medium or small. null = not sure. */
 export const ECONOMIC_EVENT_IMPACTS = Object.freeze([
@@ -12,8 +18,12 @@ export const ECONOMIC_EVENT_IMPACTS = Object.freeze([
   "low",
 ] as const);
 export type EconomicEventImpact = (typeof ECONOMIC_EVENT_IMPACTS)[number];
-/** Longest name, and longest expected, last or actual value (such as 3.1% or 21.5K). */
-export const ECONOMIC_EVENT_LIMITS = Object.freeze({ title: 80, value: 16 });
+/** Longest typed name, longest fetched name (a source's title is kept whole, never cut), and longest expected, last or actual value (such as 3.1% or 21.5K). */
+export const ECONOMIC_EVENT_LIMITS = Object.freeze({
+  title: 80,
+  fetchedTitle: 200,
+  value: 16,
+});
 
 export interface EconomicEventRecord {
   readonly id: string;
@@ -23,15 +33,18 @@ export interface EconomicEventRecord {
   readonly currency: string | null;
   /** When it is scheduled: a canonical UTC instant. */
   readonly startsAt: string;
+  /** The trader's size for typed news; always null for fetched news (Kairos rates it on read, newsImpact.ts). */
   readonly impact: EconomicEventImpact | null;
   readonly expected: string | null;
   readonly previous: string | null;
   readonly actual: string | null;
   readonly savedAt: string;
+  /** When the Kairos server read the source (UTC instant); null exactly for typed news. */
+  readonly fetchedAt: string | null;
 }
 
 const RECORD_KEYS =
-  "actual,currency,expected,id,impact,previous,savedAt,source,startsAt,title";
+  "actual,currency,expected,fetchedAt,id,impact,previous,savedAt,source,startsAt,title";
 const KEY_PATTERN = /^[A-Za-z0-9-]{1,64}$/;
 const CURRENCY_PATTERN = /^[A-Z]{3}$/;
 const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/;
@@ -83,8 +96,17 @@ export function isEconomicEventRecordShape(
     !KEY_PATTERN.test(record.id.slice(prefix.length))
   )
     return false;
-  if (!isEconomicEventText(record.title, ECONOMIC_EVENT_LIMITS.title))
+  const typed = record.source === "typed";
+  if (
+    !isEconomicEventText(
+      record.title,
+      typed ? ECONOMIC_EVENT_LIMITS.title : ECONOMIC_EVENT_LIMITS.fetchedTitle,
+    )
+  )
     return false;
+  if (typed ? record.fetchedAt !== null : !isInstant(record.fetchedAt))
+    return false;
+  if (!typed && record.impact !== null) return false;
   if (
     record.currency !== null &&
     !(
