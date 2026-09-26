@@ -16,9 +16,11 @@ import {
   type EconomicEventRecord,
 } from '../../domain/economic-calendar/economicEvent';
 import { economicEventSize } from '../../domain/economic-calendar/newsImpact';
+import { NEWS_CALENDAR_SOURCE_IDS, type NewsCalendarSourceId } from '../../domain/economic-calendar/newsSources';
 import { projectVisualPnlDayKey } from '../visual-pnl/dayBucket';
 import { isVisualPnlDayKey, shiftVisualPnlDayKey, visualPnlMondayFirstWeekday } from '../visual-pnl/dayKeyCalendar';
 import { readVisualPnlTimeZonePreference } from '../visual-pnl/timeZonePreference';
+import { NEWS_COVERAGE_KEY, isNewsWeekChecked, parseNewsCalendarCoverage } from './fetchedNews';
 
 /** The most typed news events kept on this device; a save beyond it is refused, and no old event is ever deleted on its own (D124). */
 export const ECONOMIC_EVENT_MAX_SAVED = 1000;
@@ -171,6 +173,10 @@ export type EconomicCalendarWeekResult =
       thisWeekStartDayKey: string;
       days: readonly EconomicCalendarDay[];
       savedCount: number;
+      /** When official news was last refreshed; null before the first refresh. */
+      refreshedAt: string | null;
+      /** The official sources whose saved copy covers this whole week, in NEWS_CALENDAR_SOURCE_IDS order. */
+      checkedSources: readonly NewsCalendarSourceId[];
     }>;
 
 /** The Monday on or before a day: weeks run Monday to Sunday, as the results calendar does. */
@@ -211,13 +217,15 @@ export async function loadEconomicCalendarWeek(
   const start = typeof wanted === 'string' && isVisualPnlDayKey(wanted) ? economicCalendarWeekStart(wanted) : thisWeek;
   const end = shiftVisualPnlDayKey(start, 7);
   // One day of padding on each side holds the week in every time zone (closedTradePeriodQuery.ts).
-  const [rows, savedCount] = await Promise.all([
+  const [rows, savedCount, coverageRecord] = await Promise.all([
     repositories.economicEvents.listStartingBetween(
       `${shiftVisualPnlDayKey(start, -1)}T00:00:00.000Z`,
       `${shiftVisualPnlDayKey(end, 1)}T00:00:00.000Z`,
     ),
     repositories.economicEvents.countTyped(),
+    repositories.metadata.get(NEWS_COVERAGE_KEY),
   ]);
+  const coverage = parseNewsCalendarCoverage(coverageRecord?.value);
   const byDay = new Map<string, EconomicEventRecord[]>();
   for (const row of rows) {
     if (!isEconomicEventRecordShape(row)) continue;
@@ -240,5 +248,7 @@ export async function loadEconomicCalendarWeek(
     thisWeekStartDayKey: thisWeek,
     days: Object.freeze(days),
     savedCount,
+    refreshedAt: coverage.refreshedAt,
+    checkedSources: Object.freeze(NEWS_CALENDAR_SOURCE_IDS.filter((source) => isNewsWeekChecked(coverage, source, start))),
   });
 }
