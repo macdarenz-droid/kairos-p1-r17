@@ -9,10 +9,10 @@ describe('P13.16 Visual P&L performance summary presentation', () => {
       availableResultDays: 5, profitDays: 3, lossDays: 1, breakEvenDays: 1,
       unavailableResultDays: 0, totalResultDays: 5,
     }} />);
-    expect(screen.getByText('▲ Profit')).toBeInTheDocument();
-    expect(screen.getByText('▼ Loss')).toBeInTheDocument();
-    expect(screen.getByText('— Break-even')).toBeInTheDocument();
-    expect(screen.getByText('Available')).toBeInTheDocument();
+    expect(screen.getByText('Profit days')).toBeInTheDocument();
+    expect(screen.getByText('Loss days')).toBeInTheDocument();
+    expect(screen.getByText('Break-even days')).toBeInTheDocument();
+    expect(screen.getByText('Days with a result')).toBeInTheDocument();
   });
 
   it('surfaces unavailable result days separately', () => {
@@ -20,7 +20,7 @@ describe('P13.16 Visual P&L performance summary presentation', () => {
       availableResultDays: 2, profitDays: 1, lossDays: 1, breakEvenDays: 0,
       unavailableResultDays: 2, totalResultDays: 4,
     }} />);
-    expect(screen.getByText('· Unavailable')).toBeInTheDocument();
+    expect(screen.getByText('Days not available')).toBeInTheDocument();
   });
 
   it('presents an explicit empty state', () => {

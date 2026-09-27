@@ -4,6 +4,7 @@ import type { MarketCandleHistoryPort } from '../services/market-data/MarketCand
 import type { MarketDataInstrument } from '../services/market-data/marketDataTypes';
 import { analysisHistoryPorts } from './analysisHistoryPorts';
 import { useAnalysisHandoff } from './analysisHandoff';
+import { ConfirmDialog } from '../design-system/primitives';
 import { SAVED_RECORD_LABEL_MAX_LENGTH } from '../domain/saved-records/savedRecordLabel';
 import { analysisSavedTimeAssistedSnapshotPorts, savedTimeAssistedSnapshotToSnapshot, type AnalysisSavedTimeAssistedSnapshotPorts, type AnalysisSavedTimeAssistedSnapshotSummary } from './analysisSavedTimeAssistedSnapshotRoundTrip';
 import type { AnalysisTimeAssistedMarkerSessionPresentation } from './analysisTimeAssistedMarkerSession';
@@ -139,6 +140,8 @@ export function AnalysisTimeAssistedSnapshotControls({ history = analysisHistory
   const [selectedSavedId, setSelectedSavedId] = useState('');
   const [savedLabelInput, setSavedLabelInput] = useState('');
   const [savedStatus, setSavedStatus] = useState<SavedStatus>({ kind: 'idle' });
+  // "Delete snapshot" asks first (D178); the saved estimate is removed only on "Delete for good".
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [listRevision, setListRevision] = useState(0);
   const marketKey = instrument === null ? null : `${instrument.venue}|${instrument.symbol}`;
   const handoff = useAnalysisHandoff();
@@ -236,7 +239,10 @@ export function AnalysisTimeAssistedSnapshotControls({ history = analysisHistory
         {savedList.length === 0 ? <option value="">None saved</option> : savedList.map(item => <option key={item.id} value={item.id}>{savedOption(item)}</option>)}
       </select></label>
       <button type="button" disabled={savedBusy || selectedSavedId === ''} onClick={loadSnapshot}>Load snapshot</button>
-      <button type="button" disabled={savedBusy || selectedSavedId === ''} onClick={removeSnapshot}>Delete snapshot</button>
+      <button type="button" disabled={savedBusy || selectedSavedId === ''} onClick={() => setConfirmingDelete(true)}>Delete snapshot</button>
+      <ConfirmDialog open={confirmingDelete} tone="danger" title="Delete this saved estimate for good?"
+        message="It will be gone from this device. Your trades stay as they are." confirmLabel="Delete for good" cancelLabel="Keep it"
+        onConfirm={() => { setConfirmingDelete(false); removeSnapshot(); }} onCancel={() => setConfirmingDelete(false)} />
       <span className="kairos-analysis-chart__note" aria-live="polite" data-saved-snapshot-message="true">{savedMessage(savedStatus, savedList.length)}</span>
     </div>
   </section>;

@@ -6,7 +6,6 @@
 .kairos-journal .kairos-journal__badge { background: transparent; color: var(--kairos-text-secondary); font-family: var(--kairos-font-mono); font-size: var(--kairos-font-size-xs); letter-spacing: .04em; }
 .kairos-journal :is(.kairos-history-card__topline strong, .kairos-history-card__outcome strong, .kairos-history-card__facts dd, .kairos-pnl-streak strong, .kairos-pnl-performance-summary strong, .kairos-trade-map__levels dd) { font-family: var(--kairos-font-mono); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
 .kairos-journal .kairos-history-card__outcome { border-radius: var(--kairos-radius-full); background: transparent; }
-.kairos-journal .kairos-history-card__outcome-mark { font-size: var(--kairos-font-size-xs); }
 .kairos-journal .kairos-history-card__review { border-color: var(--kairos-border-strong); background: transparent; transition: border-color var(--kairos-motion-fast) var(--kairos-ease-out), background-color var(--kairos-motion-fast) var(--kairos-ease-out); }
 .kairos-journal .kairos-history-card__review:hover { border-color: var(--kairos-accent-primary); background: var(--kairos-accent-soft); }
 .kairos-journal .kairos-pnl-streak { border-inline-start: 3px solid var(--kairos-border-strong); }
@@ -75,7 +74,6 @@
 
 .kairos-history-card__outcome { display:flex; align-items:center; gap:var(--kairos-space-2); margin-top:var(--kairos-space-3); padding:var(--kairos-space-2) var(--kairos-space-3); border:1px solid var(--kairos-border-subtle); border-radius:var(--kairos-radius-md); color:var(--kairos-text-secondary); font-size:var(--kairos-font-size-sm); font-weight:var(--kairos-font-weight-medium); }
 .kairos-history-card__outcome strong { margin-left:auto; color:currentColor; font-weight:var(--kairos-font-weight-semibold); overflow-wrap:anywhere; text-align:right; }
-.kairos-history-card__outcome-mark { width:1rem; text-align:center; font-weight:var(--kairos-font-weight-bold); }
 .kairos-history-card__outcome--profit { border-color:var(--kairos-trade-profit); color:var(--kairos-trade-profit); }
 .kairos-history-card__outcome--loss { border-color:var(--kairos-trade-loss); color:var(--kairos-trade-loss); }
 .kairos-history-card__outcome--breakeven { border-color:var(--kairos-trade-flat); color:var(--kairos-trade-flat); }

@@ -45,6 +45,7 @@ export function JournalRoute({ db = kairosDatabase, now }: JournalRouteProps) {
         isLoadingOlder={pages.isLoadingOlder}
         olderFailed={pages.olderFailed}
         onShowOlder={pages.showOlder}
+        onRetry={pages.refresh}
         statusFilter={historyStatus}
         onStatusFilterChange={setHistoryStatus}
         onDisciplineSaved={() => setDisciplineRevision(value => value + 1)}

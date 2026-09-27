@@ -28,11 +28,11 @@ describe('P30.2 trade delete control', () => {
     render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
     await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(2));
     fireEvent.click(within(card('ETHUSDT')).getByRole('button', { name: 'Delete trade' }));
-    const confirm = within(card('ETHUSDT')).getByRole('group', { name: 'Delete ETHUSDT' });
-    expect(confirm.textContent).toContain('Delete ETHUSDT for good? Its 2 fills and 1 fee go with it. A backup taken before this keeps it.');
+    const confirm = screen.getByRole('alertdialog', { name: 'Delete ETHUSDT for good?' });
+    expect(confirm).toHaveAccessibleDescription('Its 2 entries and exits and 1 fee go with it. A backup taken before this keeps it.');
     fireEvent.click(within(confirm).getByRole('button', { name: 'Delete for good' }));
     await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(1));
-    expect(screen.getByRole('status').textContent).toBe('ETHUSDT deleted. 2 fills and 1 fee were removed with it.');
+    expect(screen.getByRole('status').textContent).toBe('ETHUSDT deleted, with its 2 entries and exits and 1 fee.');
     expect((await db.trades.toArray()).map(trade => trade.symbol)).toEqual(['BTCUSDT']);
     expect(await counts(db)).toEqual({ trades: 1, executions: 2, fees: 1, analyses: 1 });
   });
@@ -44,7 +44,7 @@ describe('P30.2 trade delete control', () => {
     await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(1));
     fireEvent.click(screen.getByRole('button', { name: 'Delete trade' }));
     fireEvent.click(screen.getByRole('button', { name: 'Keep trade' }));
-    expect(screen.queryByRole('group', { name: 'Delete BTCUSDT' })).toBeNull();
+    expect(screen.queryByRole('alertdialog', { name: 'Delete BTCUSDT for good?' })).toBeNull();
     expect(await db.trades.count()).toBe(1);
     vi.spyOn(db, 'transaction').mockRejectedValue(new Error('quota'));
     fireEvent.click(screen.getByRole('button', { name: 'Delete trade' }));
@@ -64,7 +64,7 @@ describe('P30.2 trade delete control', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Delete trade' }));
     fireEvent.click(screen.getByRole('button', { name: 'Delete for good' }));
     await waitFor(() => expect(screen.getByRole('region', { name: 'Practice' }).getAttribute('data-practice-count')).toBe('0'));
-    expect(screen.getByRole('status').textContent).toBe('SOLUSDT deleted. 2 fills and 1 fee were removed with it.');
+    expect(screen.getByRole('status').textContent).toBe('SOLUSDT deleted, with its 2 entries and exits and 1 fee.');
     expect((await db.trades.toArray()).map(trade => [trade.symbol, trade.source])).toEqual([['BTCUSDT', 'manual']]);
   });
 });

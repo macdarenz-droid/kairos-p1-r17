@@ -1,6 +1,6 @@
 import { JOURNAL_HISTORY_SOURCES, type JournalHistoryEntry, type JournalHistoryScope } from '../application/journal';
 import { saveTradeDiscipline } from '../application/discipline';
-import { Button } from '../design-system/primitives';
+import { Button, EmptyState, ErrorState, Field, ResultText, Select, Skeleton } from '../design-system/primitives';
 import { TradeChecklistControl } from '../features/discipline/TradeChecklistControl';
 import { TradeReviewControl } from '../features/discipline/TradeReviewControl';
 import { TradeStrategyControl } from '../features/discipline/TradeStrategyControl';
@@ -27,6 +27,8 @@ interface JournalHistoryListProps {
   readonly errorMessage: string | null;
   readonly statusFilter: TradeStatus | '';
   readonly onStatusFilterChange: (status: TradeStatus | '') => void;
+  /** "Try again" after a failed load: loads the list again. */
+  readonly onRetry?: () => void;
   readonly db?: KairosDatabase;
   readonly onTradeUpdated?: () => Promise<void>;
   readonly updateNotice?: string;
@@ -47,6 +49,11 @@ interface JournalHistoryListProps {
   readonly disciplineSources?: readonly TradeSource[];
 }
 
+const STATUS_FILTERS = [
+  { value: '', label: 'All trades' }, { value: 'draft', label: 'Draft' }, { value: 'open', label: 'Open' },
+  { value: 'closed', label: 'Closed' }, { value: 'cancelled', label: 'Cancelled' },
+] as const;
+
 function statusLabel(status: JournalHistoryEntry['trade']['status']): string {
   if (status === 'draft') return 'Draft';
   if (status === 'open') return 'Open';
@@ -56,12 +63,6 @@ function statusLabel(status: JournalHistoryEntry['trade']['status']): string {
 
 function sideLabel(side: JournalHistoryEntry['trade']['side']): string {
   return side === 'long' ? 'Long' : 'Short';
-}
-
-function visualPnlAmount(entry: JournalHistoryEntry): string {
-  const { visualPnl } = entry;
-  if (visualPnl.amount === null) return 'Not available';
-  return visualPnl.currency ? `${visualPnl.amount} ${visualPnl.currency}` : visualPnl.amount;
 }
 
 function money(value: string | null | undefined, currency: string | null | undefined): string {
@@ -74,7 +75,7 @@ function formatTimestamp(value: string): string {
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 }
 
-export function JournalHistoryList({ entries, isLoading, errorMessage, statusFilter, onStatusFilterChange, db, onTradeUpdated, updateNotice, onTradeDeleted, onTradeOpened, allowedSources = ['manual'], hasOlder = false, isLoadingOlder = false, olderFailed = false, onShowOlder, onDisciplineSaved, disciplineSources = allowedSources }: JournalHistoryListProps) {
+export function JournalHistoryList({ entries, isLoading, errorMessage, statusFilter, onStatusFilterChange, onRetry, db, onTradeUpdated, updateNotice, onTradeDeleted, onTradeOpened, allowedSources = ['manual'], hasOlder = false, isLoadingOlder = false, olderFailed = false, onShowOlder, onDisciplineSaved, disciplineSources = allowedSources }: JournalHistoryListProps) {
   const discipline = useTradeDisciplineCards(db, entries.map(entry => entry.trade.id));
   const news = useNewsNearTrades(db, entries.map(entry => entry.trade));
   // Journal passes the real sources, Practice the paper one; the discipline writer needs the page's scope.
@@ -91,30 +92,20 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
       </div>
 
       <div className="kairos-history__controls">
-        <label className="kairos-field kairos-history__filter" htmlFor="kairos-history-status-filter">
-          <span>Show trades</span>
-          <select
-            id="kairos-history-status-filter"
-            name="historyStatusFilter"
-            value={statusFilter}
-            onChange={(event) => onStatusFilterChange(event.target.value as TradeStatus | '')}
-          >
-            <option value="">All trades</option>
-            <option value="draft">Draft</option>
-            <option value="open">Open</option>
-            <option value="closed">Closed</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
-        </label>
+        <Field label="Show trades" id="kairos-history-status-filter" className="kairos-history__filter">
+          {control => <Select {...control} name="historyStatusFilter" value={statusFilter} options={STATUS_FILTERS}
+            onChange={(event) => onStatusFilterChange(event.target.value as TradeStatus | '')} />}
+        </Field>
       </div>
 
-      {errorMessage ? <p className="kairos-history__state kairos-history__state--error" role="alert">{errorMessage}</p> : null}
+      {errorMessage ? <ErrorState message={errorMessage} onRetry={onRetry} /> : null}
       {updateNotice ? <p className="kairos-history__state" role="status">{updateNotice}</p> : null}
-      {isLoading ? <p className="kairos-history__state" aria-live="polite">Loading trade history…</p> : null}
+      {isLoading ? <Skeleton label="Loading trade history…" live={false} /> : null}
       {!isLoading && !errorMessage && entries.length === 0 ? (
-        <p className="kairos-history__state">
-          {statusFilter === '' ? 'No saved trades yet. Your first saved trade will appear here.' : `No ${statusLabel(statusFilter).toLowerCase()} trades found.`}
-        </p>
+        statusFilter === ''
+          ? <EmptyState icon="journal" headingLevel={3} title="No saved trades yet" message="Your first saved trade will appear here." />
+          : <EmptyState icon="journal" headingLevel={3} title={`No ${statusLabel(statusFilter).toLowerCase()} trades found.`}
+            action={<Button variant="secondary" size="sm" onClick={() => onStatusFilterChange('')}>Show all trades</Button>} />
       ) : null}
 
       {!isLoading && !errorMessage && entries.length > 0 ? (
@@ -151,11 +142,8 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
                 {db && onTradeUpdated && allowedSources.includes(entry.trade.source) ? <EntriesAndExitsEditor entry={entry} save={input => updateTradeExecution(db, { ...input, allowedSources })} onSaved={onTradeUpdated} /> : null}
                 {db && onTradeOpened ? <JournalDraftTradeActivation entry={entry} db={db} onOpened={onTradeOpened} allowedSources={allowedSources} /> : null}
                 {db && onTradeDeleted ? <JournalTradeDeleteControl entry={entry} db={db} onDeleted={onTradeDeleted} /> : null}
-                <div className={`kairos-history-card__outcome kairos-history-card__outcome--${entry.visualPnl.outcome}`} data-outcome={entry.visualPnl.outcome}>
-                  <span className="kairos-history-card__outcome-mark" aria-hidden="true">{entry.visualPnl.outcome === 'profit' ? '▲' : entry.visualPnl.outcome === 'loss' ? '▼' : entry.visualPnl.outcome === 'breakeven' ? '—' : '·'}</span>
-                  <span>{entry.visualPnl.label}</span>
-                  <strong>{visualPnlAmount(entry)}</strong>
-                </div>
+                <ResultText outcome={entry.visualPnl.outcome} label={entry.visualPnl.label} amount={entry.visualPnl.amount} currency={entry.visualPnl.currency}
+                  className={`kairos-history-card__outcome kairos-history-card__outcome--${entry.visualPnl.outcome}`} />
                 <TradePicture entry={entry} variant="thumbnail" />
                 {/* The four words are explained once per list (D69): only the first card has the "?" buttons. */}
                 <dl className="kairos-history-card__facts">
@@ -180,7 +168,7 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
           {isLoadingOlder ? 'Loading older trades…' : 'Show older trades'}
         </button>
       ) : null}
-      {olderFailed ? <p className="kairos-history__state kairos-history__state--error" role="alert">Kairos could not load older trades. Your stored trades were not changed.</p> : null}
+      {olderFailed ? <ErrorState message="Kairos could not load older trades. Your stored trades were not changed." onRetry={onShowOlder} /> : null}
     </section>
   );
 }

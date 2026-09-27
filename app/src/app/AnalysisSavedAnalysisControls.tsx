@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAnalysisHandoff } from './analysisHandoff';
+import { ConfirmDialog } from '../design-system/primitives';
 import { SAVED_RECORD_LABEL_MAX_LENGTH } from '../domain/saved-records/savedRecordLabel';
 import type { ChartDrawing, ChartMarketReference } from '../features/chart';
 import type { AnalysisSavedAnalysisPorts, AnalysisSavedAnalysisSummary } from './analysisSavedAnalysisRoundTrip';
@@ -75,6 +76,8 @@ export function AnalysisSavedAnalysisControls({ ports, market, drawingCount, get
   const [labelInput, setLabelInput] = useState('');
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
   const [listRevision, setListRevision] = useState(0);
+  // "Delete analysis" asks first (D178); the saved record is removed only on "Delete for good".
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const marketKey = market === null ? null : `${market.venue}|${market.instrument}`;
   const handoff = useAnalysisHandoff();
   const handoffOpened = useRef(false);
@@ -139,7 +142,11 @@ export function AnalysisSavedAnalysisControls({ ports, market, drawingCount, get
       {saved.length === 0 ? <option value="">None saved</option> : saved.map(item => <option key={item.id} value={item.id}>{item.label === undefined ? '' : `${item.label} · `}{shortId(item.id)} · {drawingWords(item.drawingCount, item.zoneCount, item.riskBoxCount)}</option>)}
     </select></label>
     <button type="button" disabled={busy || selectedId === ''} onClick={load}>Load analysis</button>
-    <button type="button" disabled={busy || selectedId === ''} onClick={remove}>Delete analysis</button>
+    <button type="button" disabled={busy || selectedId === ''} onClick={() => setConfirmingDelete(true)}>Delete analysis</button>
+    <ConfirmDialog open={confirmingDelete} tone="danger" title="Delete this saved analysis for good?"
+      message={`${saved.find(item => item.id === selectedId)?.label ?? shortId(selectedId)} will be gone from this device. Your chart and your trades stay as they are.`}
+      confirmLabel="Delete for good" cancelLabel="Keep it"
+      onConfirm={() => { setConfirmingDelete(false); remove(); }} onCancel={() => setConfirmingDelete(false)} />
     <span className="kairos-analysis-chart__note" aria-live="polite" data-saved-analysis-message="true">{message(status, saved.length)}</span>
   </div>;
 }

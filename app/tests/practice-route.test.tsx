@@ -23,7 +23,8 @@ describe('P29.3 Practice route', () => {
     mount(db);
     await waitFor(() => expect(route().getAttribute('data-practice-status')).toBe('ready'));
     expect(route().getAttribute('data-practice-count')).toBe('0');
-    expect(screen.getByText('No saved trades yet. Your first saved trade will appear here.')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'No saved trades yet' })).toBeTruthy();
+    expect(screen.getByText('Your first saved trade will appear here.')).toBeTruthy();
     type(/Symbol/, 'ethusdt');
     type(/Market/, 'crypto');
     type(/Direction/, 'short');
