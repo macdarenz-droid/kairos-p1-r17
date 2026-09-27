@@ -3,11 +3,12 @@
  * same for every trader. Each reads one fixed host; no request value becomes a host.
  */
 import type { RouteCachePolicy } from '../cache';
-import type { KairosApiRoute } from '../router';
+import type { KairosApiRoute, RouteAnswer } from '../router';
 import {
-  BINANCE_SPOT_HOST, BINANCE_USDM_HOST, binanceFailure, decodeBinanceExchangeInfo, decodeBinanceKlines, decodeBinanceTickers, failureAnswer,
+  BINANCE_SPOT_HOST, BINANCE_USDM_HOST, binanceFailure, decodeBinanceExchangeInfo, decodeBinanceKlines, decodeBinanceTickers, failureAnswer, type MarketCandle,
 } from './binance';
-import { isMarketInterval, isSettled } from './marketValues';
+import { isMarketInterval, isSettled, type MarketInterval } from './marketValues';
+import { decodeOkxCandles, OKX_BARS, OKX_HOST, okxInstrument, readOkxPages, type CandleMarket } from './okx';
 
 /** The market list changes a few times a day: 1 hour in Workers Cache and memory, 6 hours in KV. */
 export const MARKET_SYMBOLS_CACHE: RouteCachePolicy = Object.freeze({ version: 1, edgeSeconds: 3_600, memorySeconds: 3_600, kvSeconds: 21_600 });
@@ -90,10 +91,10 @@ const marketCandlesRoute: KairosApiRoute = {
     base: { pattern: ASSET_RULE, required: false },
     quote: { pattern: ASSET_RULE, required: false },
   },
-  upstreamHosts: [BINANCE_SPOT_HOST, BINANCE_USDM_HOST],
+  upstreamHosts: [BINANCE_SPOT_HOST, BINANCE_USDM_HOST, OKX_HOST],
   cache: MARKET_CANDLES_OPEN_CACHE,
-  async handle({ query, upstream, now }) {
-    const market = query.get('market');
+  async handle({ query, env, upstream, now }) {
+    const market = query.get('market') as CandleMarket;
     const symbol = query.get('symbol') ?? '';
     const interval = query.get('interval');
     const limit = digits(query.get('limit')) ?? 0;
@@ -112,24 +113,48 @@ const marketCandlesRoute: KairosApiRoute = {
     if (market === 'binance-spot') params.set('timeZone', '0');
     const url = market === 'binance-spot' ? `https://${BINANCE_SPOT_HOST}/api/v3/klines?${params}` : `https://${BINANCE_USDM_HOST}/fapi/v1/klines?${params}`;
     const result = await upstream(url, { accept: 'application/json', readErrorBody: true });
-    if (!result.ok) return failureAnswer(binanceFailure(result));
+    const nowMs = now.getTime();
+    if (!result.ok) {
+      const failure = binanceFailure(result);
+      // Binance's "no such market" is the truth; the backup answers only when Binance refused, was busy or was down.
+      if (failure.kind !== 'unknown-market' && env.KAIROS_MARKET_BACKUP === 'okx' && base !== null) {
+        const instId = okxInstrument(market, base, quote);
+        const bar = OKX_BARS[interval];
+        if (instId !== null && bar !== undefined) {
+          const ask = { interval, limit, startMs, endMs };
+          const texts = await readOkxPages(upstream, instId, bar, ask, market, nowMs);
+          const decoded = texts === null || 'unknown' in texts ? null : decodeOkxCandles(texts, ask, market, nowMs);
+          if (decoded !== null && !('unknown' in decoded)) {
+            const source = { provider: 'okx', market: market === 'binance-spot' ? 'spot' : 'perpetual-swap', symbol: instId };
+            return candlesAnswer(source, failure.kind, interval, decoded.candles, decoded.closed, ask, now);
+          }
+        }
+      }
+      // OKX's own reason is never shown: the answer is Binance's.
+      return failureAnswer(failure);
+    }
     const candles = decodeBinanceKlines(result.text, { interval, limit, startMs, endMs });
     if (candles === null) return { ok: false, reason: 'source-unavailable' };
-
-    const nowMs = now.getTime();
-    const lastOpenMs = candles.length === 0 ? null : Date.parse(candles[candles.length - 1].openTime);
-    const next = lastOpenMs !== null && candles.length === limit && (endMs === null || lastOpenMs < endMs) ? lastOpenMs + 1 : null;
-    const data = {
-      source: { provider: 'binance', market: market === 'binance-spot' ? 'spot' : 'usdm-futures', symbol },
-      backup: null,
-      interval,
-      fetchedAt: now.toISOString(),
-      candles,
-      next,
-    };
-    const settled = isSettled(endMs, interval, nowMs) && candles.every((candle) => Date.parse(candle.closeTime) < nowMs);
-    return settled ? { ok: true, data, cache: MARKET_CANDLES_SETTLED_CACHE } : { ok: true, data };
+    const source = { provider: 'binance', market: market === 'binance-spot' ? 'spot' : 'usdm-futures', symbol };
+    return candlesAnswer(source, null, interval, candles, true, { limit, startMs, endMs }, now);
   },
 };
+
+/**
+ * The candles answer: the next page start when a page read forward from `start` is full and the window goes on (a page
+ * without `start` is the newest candles, so it has no next page); kept 7 days once settled.
+ */
+function candlesAnswer(
+  source: Readonly<{ provider: string; market: string; symbol: string }>, backup: string | null, interval: MarketInterval,
+  candles: readonly MarketCandle[], allConfirmed: boolean, ask: Readonly<{ limit: number; startMs: number | null; endMs: number | null }>, now: Date,
+): RouteAnswer {
+  const { limit, startMs, endMs } = ask;
+  const nowMs = now.getTime();
+  const lastOpenMs = candles.length === 0 ? null : Date.parse(candles[candles.length - 1].openTime);
+  const next = startMs !== null && lastOpenMs !== null && candles.length === limit && (endMs === null || lastOpenMs < endMs) ? lastOpenMs + 1 : null;
+  const data = { source, backup, interval, fetchedAt: now.toISOString(), candles, next };
+  const settled = allConfirmed && isSettled(endMs, interval, nowMs) && candles.every((candle) => Date.parse(candle.closeTime) < nowMs);
+  return settled ? { ok: true, data, cache: MARKET_CANDLES_SETTLED_CACHE } : { ok: true, data };
+}
 
 export const MARKET_ROUTES: readonly KairosApiRoute[] = Object.freeze([marketSymbolsRoute, marketTickersRoute, marketCandlesRoute]);

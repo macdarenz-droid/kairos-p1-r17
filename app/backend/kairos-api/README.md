@@ -156,7 +156,7 @@ decimal text and times as ISO 8601 UTC (`src/market/marketRoutes.ts`, `binance.t
 |---|---|---|---|
 | `/market/symbols` | none (any query is 400) | Binance Spot `GET /api/v3/exchangeInfo?permissions=SPOT&symbolStatus=TRADING&showPermissionSets=false` | 1 h in Workers Cache and memory, 6 h in KV |
 | `/market/tickers` | `symbols`: 1 to 100 Binance Spot symbols, comma-separated, strictly ascending | Binance Spot `GET /api/v3/ticker/24hr?symbols=[…]&type=MINI` | 5 s in Workers Cache and memory, never KV |
-| `/market/candles` | `market` (`binance-spot` or `binance-usdm`), `symbol`, `interval`, `limit` (1–1000); optional `start`, `end` (epoch ms, open times, inclusive); optional `base` and `quote` together, spelling `symbol` | Binance Spot `GET /api/v3/klines` on `data-api.binance.vision`, USDⓈ-M `GET /fapi/v1/klines` on `fapi.binance.com` | a settled page 7 days in Workers Cache (and the browser), 1 h in memory; any other page 10 s; never KV |
+| `/market/candles` | `market` (`binance-spot` or `binance-usdm`), `symbol`, `interval`, `limit` (1–1000); optional `start`, `end` (epoch ms, open times, inclusive); optional `base` and `quote` together, spelling `symbol` | Binance Spot `GET /api/v3/klines` on `data-api.binance.vision`, USDⓈ-M `GET /fapi/v1/klines` on `fapi.binance.com`; backup OKX `GET /api/v5/market/history-candles` on `www.okx.com` | a settled page 7 days in Workers Cache (and the browser), 1 h in memory; any other page 10 s; never KV |
 
 - `/market/symbols`: `{ source: 'binance-spot', fetchedAt, markets: [{ symbol, base, quote, tickSize, stepSize }], leftOut }`,
   ascending by symbol, only markets open for trading; a market without exactly one price step and one size step, or whose
@@ -165,7 +165,7 @@ decimal text and times as ISO 8601 UTC (`src/market/marketRoutes.ts`, `binance.t
   in the requested order, each requested symbol exactly once (anything else is `source-unavailable`). One order for the
   list means one cache key for every device.
 - `/market/candles`: `{ source: { provider, market, symbol }, backup, interval, fetchedAt, candles: [{ openTime, closeTime, open, high, low, close, volume }], next }`;
-  `provider` is `binance`, `market` is `spot` or `usdm-futures`, `backup` is `null`. Rows that are not whole, in order,
+  `provider` is `binance` or `okx`, `market` is `spot`, `usdm-futures` or `perpetual-swap`, `backup` is `null` when Binance answered. Rows that are not whole, in order,
   inside the window and within `limit` make the answer `source-unavailable`. 1-second candles are spot only.
 - Settled: a page is settled when `end` is given and at least one full candle (`1M`: 31 days) has passed since `end`,
   and every candle has closed. The candle holding `end` began at or before it, so it has closed too; this needs no
@@ -173,6 +173,18 @@ decimal text and times as ISO 8601 UTC (`src/market/marketRoutes.ts`, `binance.t
 - Cursor: `next` is the `start` for the next page (the last open time + 1) when the page is full and the window goes
   on, else `null`.
 - USDⓈ-M: `fapi.binance.com` answers 451 from the US (checked); T-048c's backup covers it.
+- Backup (D157, D158): when Binance refuses (451, 403), is busy (429, 418) or is down for a candles request that
+  carries `base` and `quote` (ASCII), the server asks OKX (`www.okx.com`, keyless,
+  `GET /api/v5/market/history-candles`, 300 rows a page, at most 4 pages): spot `BASE-QUOTE`, USDⓈ-M the USDT
+  perpetual swap `BASE-QUOTE-SWAP`. The answer names it: `source.provider: 'okx'`, `market` `spot` or
+  `perpetual-swap`, `symbol` OKX's name, and `backup` says why Binance did not answer (`refused`, `busy`, `down`).
+  Bars: `1h`→`1H`, `2h`→`2H`, `4h`→`4H`, and the UTC bars `6Hutc`, `12Hutc`, `1Dutc`, `1Wutc`, `1Mutc` (OKX's bars
+  without `utc` open at UTC+8); minutes and `1s` keep their names. No `8h` (OKX has none) and no `3d` (alignment
+  unchecked): those get Binance's answer. When OKX fails too, or does not know the pair, the answer is Binance's reason,
+  never OKX's. Binance's `unknown-market` never asks OKX. A forming OKX candle keeps the page at 10 seconds.
+  The var `KAIROS_MARKET_BACKUP` (`"okx"` in `wrangler.jsonc`; anything else means no backup) switches it off.
+  OKX's terms for showing its candles in another app: UNVERIFIED (owner step O11).
+- A page asked without `start` is the newest candles, so its `next` is `null`.
 - Reasons: `unknown-market`, `source-busy` and `source-refused` (table above) say what Binance answered; everything
   else is `source-unavailable`.
 - CPU (D162): reading Binance's 2.48 MB market list takes about 8–14 ms of CPU, over the Free plan's 10 ms, so the
