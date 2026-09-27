@@ -27,9 +27,13 @@ says otherwise), `x-content-type-options: nosniff`, `vary: Origin`.
 | `service-error` | 500 | null | a bug (a thrown error, a host not on the route's list) |
 | `source-unavailable` | 502 | 30 (a route may set its own) | the upstream failed, timed out, redirected, was too big or of the wrong type |
 | `not-set-up` | 503 | null | a binding or secret the route needs is missing |
+| `unknown-market` | 404 | null | the market data source has no such market (Binance `-1121` "Invalid symbol.") |
+| `source-busy` | 503 | the source's `Retry-After` (1–3,600 s), else 60 | the source answered 429 or 418 and no backup answered |
+| `source-refused` | 451 | null | the source refused the server's place (451 or 403) and no backup answered |
 
 Routes today: `GET /health` (says whether the device key, cache and limits are set up, and whether it recognised the
-device; never a value).
+device; never a value); the news routes (`/news/calendar/<source>`, `/news/headlines/<source>`, below); `GET /market/symbols`
+and `GET /market/tickers?symbols=…` (market data, below).
 
 ## CORS and `KAIROS_APP_ORIGINS`
 
@@ -83,6 +87,8 @@ when ok, under keys that carry the route id and its version:
 - A key only from `env` (a Worker secret), and only in `UpstreamRequest.headers` or the fixed URL.
 - `data` rebuilt from checked values, never an upstream body passed through.
 - Bump `cache.version` when `data` changes shape.
+- A route may return its own `cache` for one answer (same `version`); it is kept and labelled with it.
+- `maxQueryLength` only for a list query, at most 4,096.
 - A cached answer never depends on the device: the cache key holds only the route, its `cache.version` and the checked query, so `data` must be the same for every device.
 - Tests for the decoder and the route.
 - Reserved secret names, each added to `KairosApiEnv` with its route: `NEWS_API_KEY` (O3), `MARKET_DATA_API_KEY` (O4),
@@ -139,6 +145,29 @@ link or readable date.
 
 Cache (`NEWS_HEADLINES_CACHE`): 10 minutes in Workers Cache and memory, never in KV (its shortest copy is an hour), and
 never read ahead.
+
+## Market data (P16.A1)
+
+Binance's public market data: `data-api.binance.vision` (market data only; answers from the US), terms UNVERIFIED.
+Both routes are `public` and rate-limited; `data` is rebuilt from checked values, with prices, sizes and volumes as
+decimal text and times as ISO 8601 UTC (`src/market/marketRoutes.ts`, `binance.ts`, `marketValues.ts`).
+
+| Route | Query | Source | Kept |
+|---|---|---|---|
+| `/market/symbols` | none (any query is 400) | Binance Spot `GET /api/v3/exchangeInfo?permissions=SPOT&symbolStatus=TRADING&showPermissionSets=false` | 1 h in Workers Cache and memory, 6 h in KV |
+| `/market/tickers` | `symbols`: 1 to 100 Binance Spot symbols, comma-separated, strictly ascending | Binance Spot `GET /api/v3/ticker/24hr?symbols=[…]&type=MINI` | 5 s in Workers Cache and memory, never KV |
+
+- `/market/symbols`: `{ source: 'binance-spot', fetchedAt, markets: [{ symbol, base, quote, tickSize, stepSize }], leftOut }`,
+  ascending by symbol, only markets open for trading; a market without exactly one price step and one size step, or whose
+  base and quote do not spell its symbol, is left out and counted.
+- `/market/tickers`: `{ source: 'binance-spot', fetchedAt, tickers: [{ symbol, lastPrice, openPrice, highPrice, lowPrice, volume, quoteVolume, openTime, closeTime }] }`,
+  in the requested order, each requested symbol exactly once (anything else is `source-unavailable`). One order for the
+  list means one cache key for every device.
+- Reasons: `unknown-market`, `source-busy` and `source-refused` (table above) say what Binance answered; everything
+  else is `source-unavailable`.
+- CPU (D162): reading Binance's 2.48 MB market list takes about 8–14 ms of CPU, over the Free plan's 10 ms, so the
+  market list needs Workers Paid (O10) to be dependable. Its three cache layers make the read rare; there is no
+  scheduled read of market data.
 
 ## Scheduled reads (P34)
 

@@ -295,3 +295,38 @@ describe('keeping answers and reading other sites', () => {
     expect((await send([many], '/sample?symbol=II', env)).headers.get('x-kairos-cache')).toBe('memory');
   });
 });
+
+describe('P16.A1 a longer list query, and an answer with its own cache lifetime', () => {
+  beforeEach(() => clearMemoryCache());
+  const longRoute = (maxQueryLength?: number) => route({ query: { symbol: { pattern: /^[A-Z]{1,4096}$/, required: true } }, ...(maxQueryLength === undefined ? {} : { maxQueryLength }) });
+  const query = (length: number) => `/sample?symbol=${'A'.repeat(length - '?symbol='.length)}`;
+
+  it('allows a route its own query length, and keeps 512 for the others', async () => {
+    expect((await call(longRoute(2_000), query(1_500))).status).toBe(200);
+    expect((await call(longRoute(2_000), query(2_001))).status).toBe(400);
+    expect((await call(longRoute(), query(513))).status).toBe(400);
+    expect((await call(longRoute(), query(512))).status).toBe(200);
+  });
+
+  it('keeps and labels an answer with the lifetime its handler chose, also when it answers from memory', async () => {
+    const own: RouteCachePolicy = { version: 1, edgeSeconds: 600, memorySeconds: 60, kvSeconds: null };
+    const sample = route({ cache: { version: 1, edgeSeconds: 10, memorySeconds: 60, kvSeconds: null }, handle: vi.fn(async () => ({ ok: true as const, data: { n: 1 }, cache: own })) });
+    const first = await call(sample, '/sample?symbol=BTC');
+    expect(first.headers.get('cache-control')).toBe('public, max-age=600');
+    expect(first.headers.get('x-kairos-cache')).toBe('miss');
+    const again = await call(sample, '/sample?symbol=BTC');
+    expect(again.headers.get('x-kairos-cache')).toBe('memory');
+    expect(again.headers.get('cache-control')).toBe('public, max-age=600');
+    expect(sample.handle).toHaveBeenCalledTimes(1);
+  });
+
+  it('answers service-error when an answer brings a policy of another version, or one on a route that keeps nothing', async () => {
+    const other: RouteCachePolicy = { version: 2, edgeSeconds: 600, memorySeconds: 60, kvSeconds: null };
+    for (const cache of [{ version: 1, edgeSeconds: 10, memorySeconds: 60, kvSeconds: null }, null]) {
+      const sample = route({ cache, handle: vi.fn(async () => ({ ok: true as const, data: { n: 1 }, cache: other })) });
+      const response = await call(sample, '/sample?symbol=BTC');
+      expect(response.status).toBe(500);
+      expect(await response.json()).toMatchObject({ ok: false, reason: 'service-error' });
+    }
+  });
+});

@@ -62,3 +62,25 @@ describe('createUpstreamFetch', () => {
     expect(await createUpstreamFetch(HOSTS, stalling)('https://api.binance.com/x', { accept: 'application/json', timeoutMs: 50 })).toEqual({ ok: false, failure: 'timeout', status: 200 });
   });
 });
+
+describe('P16.A1 a failed answer: the retry-after header and the error body', () => {
+  const get = (fetchImpl: typeof fetch, readErrorBody?: true) => createUpstreamFetch(HOSTS, fetchImpl)('https://api.binance.com/x', { accept: 'application/json', ...(readErrorBody ? { readErrorBody } : {}) });
+
+  it('gives the retry-after seconds only when the header is whole seconds from 1 to 86,400', async () => {
+    expect(await get(answer('', 429, { 'retry-after': '30' }))).toEqual({ ok: false, failure: 'status', status: 429, retryAfterSeconds: 30 });
+    for (const value of ['Wed, 21 Oct 2026 07:28:00 GMT', '0', 'abc', '86401']) {
+      expect(await get(answer('', 429, { 'retry-after': value })), value).toEqual({ ok: false, failure: 'status', status: 429 });
+    }
+  });
+
+  it('returns the error body only when asked, only up to 4,096 bytes, and cancels it otherwise', async () => {
+    const invalid = '{"code":-1121,"msg":"Invalid symbol."}';
+    expect(await get(answer(invalid, 400), true)).toEqual({ ok: false, failure: 'status', status: 400, errorText: invalid });
+    expect(await get(answer('x'.repeat(5_000), 400), true)).toEqual({ ok: false, failure: 'status', status: 400 });
+    const cancel = vi.fn();
+    const body = new ReadableStream<Uint8Array>({ pull(controller) { controller.enqueue(new TextEncoder().encode(invalid)); }, cancel });
+    const streaming = vi.fn<typeof fetch>().mockResolvedValue(new Response(body, { status: 400, headers: { 'content-type': 'application/json' } }));
+    expect(await get(streaming)).toEqual({ ok: false, failure: 'status', status: 400 });
+    expect(cancel).toHaveBeenCalled();
+  });
+});

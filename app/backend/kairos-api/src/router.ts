@@ -13,8 +13,9 @@ import { createUpstreamFetch, UpstreamHostRefused, type UpstreamFetch } from './
 export interface QueryRule { readonly pattern: RegExp; readonly required: boolean }
 
 export type RouteAnswer =
-  | Readonly<{ ok: true; data: unknown }>
-  | Readonly<{ ok: false; reason: 'source-unavailable' | 'not-set-up' | 'bad-request'; retryAfter?: number | null }>;
+  /** cache: this answer's own policy (same version as the route's); the router keeps and labels the answer with it. */
+  | Readonly<{ ok: true; data: unknown; cache?: RouteCachePolicy }>
+  | Readonly<{ ok: false; reason: 'source-unavailable' | 'not-set-up' | 'bad-request' | 'unknown-market' | 'source-busy' | 'source-refused'; retryAfter?: number | null }>;
 
 export interface RouteContext {
   readonly query: URLSearchParams;
@@ -36,6 +37,8 @@ export interface KairosApiRoute {
   readonly cache: RouteCachePolicy | null;
   /** true: the scheduled job keeps this route's answer in KV (scheduled.ts); only for a public route with no query names and a KV copy. */
   readonly prefetch?: true;
+  /** Longest query in characters (default MAX_QUERY_LENGTH, at most 4,096). */
+  readonly maxQueryLength?: number;
   readonly handle: (context: RouteContext) => Promise<RouteAnswer>;
 }
 
@@ -47,10 +50,12 @@ export interface RouterOptions {
 }
 
 export const MAX_QUERY_LENGTH = 512;
+/** The most any route may allow (maxQueryLength), for a list query. */
+export const MAX_LIST_QUERY_LENGTH = 4_096;
 
 /** Every name known to the route, each once, each value matching its pattern, every required name present. */
 export function isValidQuery(route: KairosApiRoute, url: URL): boolean {
-  if (url.search.length > MAX_QUERY_LENGTH) return false;
+  if (url.search.length > Math.min(route.maxQueryLength ?? MAX_QUERY_LENGTH, MAX_LIST_QUERY_LENGTH)) return false;
   const seen = new Set<string>();
   for (const [name, value] of url.searchParams) {
     const rule = Object.hasOwn(route.query, name) ? route.query[name] : undefined;
@@ -104,15 +109,18 @@ export async function handleKairosApiRequest(request: Request, env: KairosApiEnv
     if (route.cache !== null && key !== null) {
       const hit = await readCached(key, route.cache, env.KAIROS_API_CACHE, now.getTime());
       if (hit !== null) {
-        const response = okResponse(hit.stored.data, origin, allowed, cacheControlFor(route.cache));
+        const response = okResponse(hit.stored.data, origin, allowed, cacheControlFor({ ...route.cache, edgeSeconds: hit.stored.edgeSeconds ?? route.cache.edgeSeconds }));
         response.headers.set('x-kairos-cache', hit.layer);
         return response;
       }
     }
     const answer = await route.handle({ query: url.searchParams, env, device, upstream: createUpstreamFetch(route.upstreamHosts, options.fetchImpl), now });
     if (!answer.ok) return fail(answer.reason, answer.retryAfter);
-    if (route.cache !== null && key !== null) keep(key, { storedAt: now.toISOString(), data: answer.data }, route.cache, env.KAIROS_API_CACHE, now.getTime(), (promise) => ctx.waitUntil(promise));
-    const response = okResponse(answer.data, origin, allowed, cacheControlFor(route.cache));
+    // An answer's own policy must belong to the route's cache (same version); anything else is a bug.
+    if (answer.cache !== undefined && (route.cache === null || answer.cache.version !== route.cache.version)) return fail('service-error');
+    const policy = answer.cache ?? route.cache;
+    if (policy !== null && key !== null) keep(key, { storedAt: now.toISOString(), data: answer.data, edgeSeconds: policy.edgeSeconds }, policy, env.KAIROS_API_CACHE, now.getTime(), (promise) => ctx.waitUntil(promise));
+    const response = okResponse(answer.data, origin, allowed, cacheControlFor(policy));
     if (route.cache !== null) response.headers.set('x-kairos-cache', 'miss');
     return response;
   } catch (error) {

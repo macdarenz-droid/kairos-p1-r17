@@ -5,6 +5,7 @@
 import type { RouteCachePolicy } from './cache';
 import { answerNewsCalendar, NEWS_CALENDAR_SOURCES, type NewsCalendarSource } from './news/calendarFeeds';
 import { answerNewsHeadlines, NEWS_HEADLINE_SOURCES, type NewsHeadlineSource } from './news/headlineFeeds';
+import { MARKET_ROUTES } from './market/marketRoutes';
 import type { KairosApiRoute } from './router';
 
 const ready = (present: boolean) => (present ? 'ready' : 'missing');
@@ -75,4 +76,5 @@ export const KAIROS_API_ROUTES: readonly KairosApiRoute[] = Object.freeze([
   },
   ...NEWS_CALENDAR_SOURCES.map(newsCalendarRoute),
   ...NEWS_HEADLINE_SOURCES.map(newsHeadlinesRoute),
+  ...MARKET_ROUTES,
 ]);
