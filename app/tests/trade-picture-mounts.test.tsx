@@ -103,6 +103,18 @@ describe('T-027d trade picture on the cards', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Open the BTCUSDT trade picture' }));
     const dialog = screen.getByRole('dialog', { name: 'BTCUSDT trade' });
     const retry = await within(dialog).findByRole('button', { name: 'Try again' });
+    // As Chromium does (checked with Playwright): a focused button that becomes disabled loses focus to the page at once
+    // (jsdom's blur ignores a disabled element, so the blur comes just before the change).
+    const setAttribute = Element.prototype.setAttribute;
+    vi.spyOn(Element.prototype, 'setAttribute').mockImplementation(function (this: Element, name: string, value: string) {
+      if (name === 'disabled' && this === document.activeElement) (this as HTMLElement).blur();
+      setAttribute.call(this, name, value);
+    });
+    const disabled = Object.getOwnPropertyDescriptor(HTMLButtonElement.prototype, 'disabled')!;
+    vi.spyOn(HTMLButtonElement.prototype, 'disabled', 'set').mockImplementation(function (this: HTMLButtonElement, value: boolean) {
+      if (value && this === document.activeElement) this.blur();
+      disabled.set!.call(this, value);
+    });
     retry.focus();
     fireEvent.click(retry);
     await waitFor(() => expect(loader).toHaveBeenCalledTimes(2));
