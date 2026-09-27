@@ -119,8 +119,12 @@ export const themeRegistry: Readonly<Record<ThemeId, ThemeDefinition>> = Object.
   ocean: Object.freeze({ id: 'ocean', label: 'Ocean', colorScheme: 'dark', tokens: Object.freeze(oceanTokens) }),
 });
 
-export function resolveTheme(preference: ThemePreference, _systemDark: boolean): ThemeId {
-  return preference === 'system' ? defaultThemeId : preference;
+/** "Match my phone" (D175): a dark phone shows Kairos Depth, a light phone Paper, the only light theme. */
+export const MATCH_PHONE_THEMES = Object.freeze({ dark: 'kairos-depth', light: 'paper' } as const);
+
+export function resolveTheme(preference: ThemePreference, systemDark: boolean): ThemeId {
+  if (preference !== 'system') return preference;
+  return systemDark ? MATCH_PHONE_THEMES.dark : MATCH_PHONE_THEMES.light;
 }
 
 export function applyTheme(root: HTMLElement, themeId: ThemeId): void {
@@ -128,4 +132,13 @@ export function applyTheme(root: HTMLElement, themeId: ThemeId): void {
   root.dataset.kairosTheme = theme.id;
   root.style.colorScheme = theme.colorScheme;
   for (const [property, value] of Object.entries(theme.tokens)) root.style.setProperty(property, value);
+  // The phone's status bar takes the theme's page colour (D175).
+  const head = root.ownerDocument.head;
+  let statusBar = head.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  if (statusBar === null) {
+    statusBar = root.ownerDocument.createElement('meta');
+    statusBar.name = 'theme-color';
+    head.append(statusBar);
+  }
+  statusBar.content = theme.tokens['--kairos-background-base']!;
 }

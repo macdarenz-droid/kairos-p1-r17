@@ -48,3 +48,46 @@ test('(1) Cards stand off the page and every field edge is 3:1, in all 5 themes'
     await context.close();
   }
 });
+
+test('(2) Inter with lined-up digits', async ({ page, request }) => {
+  await openKairos(page);
+  await page.goto('/journal');
+  await expect(page.locator('main h1').first()).toBeVisible();
+  const font = await page.evaluate(async () => {
+    await document.fonts.ready;
+    return {
+      interLoaded: [...document.fonts].some(face => face.family.includes('Inter Variable') && face.status === 'loaded'),
+      numeric: getComputedStyle(document.body).fontVariantNumeric,
+    };
+  });
+  expect(font.interLoaded, 'an Inter Variable face is loaded').toBe(true);
+  expect(font.numeric).toContain('tabular-nums');
+  const serviceWorker = await request.get('/sw.js');
+  expect(serviceWorker.ok()).toBe(true);
+  expect(await serviceWorker.text()).toContain('.woff2');
+});
+
+test('(3) Match my phone follows the phone', async ({ browser }) => {
+  const statusBar = (page: import('@playwright/test').Page) => page.locator('meta[name="theme-color"]');
+  const matchPhone = await browser.newContext(test.info().project.use);
+  const page = await matchPhone.newPage();
+  await page.emulateMedia({ colorScheme: 'light' });
+  await openKairos(page, { theme: 'system' });
+  await expect(page.locator('html')).toHaveAttribute('data-kairos-theme', 'paper');
+  await expect(statusBar(page)).toHaveAttribute('content', '#fafafa');
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expect(page.locator('html')).toHaveAttribute('data-kairos-theme', 'kairos-depth');
+  await expect(statusBar(page)).toHaveAttribute('content', '#0b0d14');
+  await matchPhone.close();
+
+  const saved = await browser.newContext(test.info().project.use);
+  const oceanPage = await saved.newPage();
+  await oceanPage.emulateMedia({ colorScheme: 'light' });
+  await openKairos(oceanPage, { theme: 'ocean' });
+  await expect(oceanPage.locator('html')).toHaveAttribute('data-kairos-theme', 'ocean');
+  await oceanPage.emulateMedia({ colorScheme: 'dark' });
+  await expect(oceanPage.locator('html')).toHaveAttribute('data-kairos-theme', 'ocean');
+  await oceanPage.emulateMedia({ colorScheme: 'light' });
+  await expect(oceanPage.locator('html')).toHaveAttribute('data-kairos-theme', 'ocean');
+  await saved.close();
+});

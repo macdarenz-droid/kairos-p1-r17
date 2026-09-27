@@ -4,6 +4,7 @@ body {
   background: var(--kairos-background-base);
   color: var(--kairos-text-primary);
   font-family: var(--kairos-font-sans);
+  font-variant-numeric: tabular-nums;
 }
 .kairos-shell {
   min-height: 100dvh;
