@@ -24,7 +24,7 @@ import { SymbolPicker } from '../features/analysis/SymbolPicker';
 import { pickTradeReviewInterval, tradeReviewTimes } from '../features/analysis/tradeReviewInterval';
 import { useAnalysisTradeFocus } from '../features/analysis/useAnalysisTradeFocus';
 import { tradePictureHasCandleSource } from '../application/trade-visualizer/tradePictureCandles';
-import { matchCryptoMarket } from '../application/market-reference/cryptoMarket';
+import { describeFuturesOnlyOnChart, futuresOnlyMarket, matchCryptoMarket, matchNoteFor } from '../application/market-reference/cryptoMarket';
 import { describeMarketDataUnavailable } from '../application/online/onlineWords';
 import type { MarketDataUnavailable } from '../services/market-data/marketDataTypes';
 import { UnavailableNotice } from '../design-system/primitives';
@@ -90,8 +90,12 @@ export function AnalysisHistoryWorkspace({
     if (tradeId === null || tradeSymbol === null || metadata.phase !== 'ready' || tradeApplied.current === tradeId) return;
     tradeApplied.current = tradeId;
     if (tradeOffChart) { setTradeSymbolNote(null); return; }
-    const match = matchCryptoMarket(tradeSymbol, entry?.trade.marketType ?? 'crypto', metadata.facts);
-    setTradeSymbolNote(match.ok ? (match.note === null ? null : { symbol: match.symbol, note: match.note }) : { symbol: null, note: match.note });
+    const marketType = entry?.trade.marketType ?? 'crypto';
+    const match = matchCryptoMarket(tradeSymbol, marketType, metadata.facts);
+    // The market chart is always Binance Spot: no "Futures candles." here, and a futures-only market is not "unlisted" (D171).
+    const note = match.ok ? matchNoteFor(match, 'spot')
+      : match.why === 'not-listed' && futuresOnlyMarket(tradeSymbol, marketType) !== null ? describeFuturesOnlyOnChart() : match.note;
+    setTradeSymbolNote(match.ok ? (note === null ? null : { symbol: match.symbol, note }) : { symbol: null, note: note ?? match.note });
     if (!match.ok) return;
     setSymbol(current => (current === '' || autoSymbol.current ? (autoSymbol.current = true, match.symbol) : current));
     if (tradeStartMs !== null) setTimeframe(current => (current === '' || autoInterval.current ? (autoInterval.current = true, pickTradeReviewInterval(tradeStartMs, Date.now())) : current));

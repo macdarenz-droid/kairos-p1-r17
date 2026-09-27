@@ -155,6 +155,11 @@ export function describeFuturesOnlyNotListed(typed: string): string {
   return `Binance Spot and Futures don't list ${typed.trim()}. Check the spelling, for example BTCUSDT.`;
 }
 
+/** Analysis's note for a futures-only market (D171): its market chart has Binance Spot markets only. */
+export function describeFuturesOnlyOnChart(): string {
+  return "The market chart shows Binance Spot markets only; the trade's picture shows its futures candles.";
+}
+
 /** The match note for the candles actually shown: no "Futures candles." under spot candles (Replay, or the spot fallback). */
 export function matchNoteFor(match: CryptoMarketMatch, shown: CryptoCandleMarket): string | null {
   if (match.note === null || shown !== 'spot' || !match.note.endsWith(FUTURES_CANDLES)) return match.note;

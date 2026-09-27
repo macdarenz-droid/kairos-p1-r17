@@ -604,7 +604,8 @@ test('(o) Online services: Profile checks the Kairos server only on a tap', asyn
   await activate(page);
   const requests: { url: string; device: string | undefined }[] = [];
   let serverOnline = false;
-  await page.route(url => url.hostname === 'api.qa.invalid', async route => {
+  // Home asks the server for market data after activation; only the online services check is counted here.
+  await page.route(url => url.hostname === 'api.qa.invalid' && !url.pathname.startsWith('/market/'), async route => {
     requests.push({ url: route.request().url(), device: route.request().headers()['x-kairos-device'] });
     if (!serverOnline) return route.abort('internetdisconnected');
     return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ apiVersion: 1, ok: true, data: { service: 'kairos-api', serverTime: new Date().toISOString(), device: 'recognised', checks: { deviceKey: 'ready', cache: 'ready', limits: 'ready' } } }) });

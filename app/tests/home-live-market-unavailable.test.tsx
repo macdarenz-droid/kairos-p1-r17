@@ -8,6 +8,13 @@ import { glassTestModel } from './fixtures/homeDashboardGlassModel';
 import { HomeRoute } from '../src/app/HomeRoute';
 import { resetBinanceSpotExchangeInfoCache } from '../src/services/market-data';
 
+// T-048g fix r1: a test may hand Home the server route's ports; every other test keeps the build's own choice.
+const serverPorts = vi.hoisted(() => ({ current: null as null | Record<string, unknown> }));
+vi.mock('../src/app/marketDataPorts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../src/app/marketDataPorts')>();
+  return { ...actual, appMarketDataPorts: () => (serverPorts.current ?? actual.appMarketDataPorts()) as ReturnType<typeof actual.appMarketDataPorts> };
+});
+
 const originalFetch = globalThis.fetch;
 // Payloads from tests/binance-home-dashboard-live-market-runtime-bootstrap-foundation.test.ts:12-40.
 const exchangeInfoPayload = JSON.stringify({ symbols: [
@@ -33,6 +40,7 @@ beforeEach(() => {
   vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(390);
 });
 afterEach(() => {
+  serverPorts.current = null;
   cleanup();
   globalThis.fetch = originalFetch;
   vi.restoreAllMocks();
@@ -99,5 +107,41 @@ describe('T-006 Home live market says when it cannot load', () => {
     }
     expect(deriveHomeLiveMarketLoadState({ hasData: false, status: 'running', online: true, startTimedOut: true })).toBe('loading');
     expect(deriveHomeLiveMarketLoadState({ hasData: false, status: 'starting', online: true, startTimedOut: false })).toBe('loading');
+  });
+
+  const serverRoute = (metadata: () => Promise<unknown>) => {
+    const acquireInstrumentMetadata = vi.fn(metadata);
+    serverPorts.current = {
+      route: 'server',
+      metadata: { acquireInstrumentMetadata },
+      baseline: { acquireBaseline: vi.fn(async () => { throw new Error('not asked'); }) },
+      history: { acquireHistory: vi.fn(async () => { throw new Error('not asked'); }) },
+    };
+    return acquireInstrumentMetadata;
+  };
+
+  it('T-048g fix r1: the server route\'s reason reaches Home, and nothing asks Binance directly', async () => {
+    const fetchSpy = vi.fn(async () => { throw new Error('no direct request expected'); });
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+    const metadata = serverRoute(async () => ({ ok: false, reason: 'unavailable', why: 'region', retryAfterSeconds: null }));
+    renderHome();
+    expect(await screen.findByRole('alert')).toHaveTextContent("Unavailable · Live prices: Binance isn't available in your region");
+    expect(metadata).toHaveBeenCalled();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('T-048g fix r1: a failure with no reason while offline says so, and one online event asks exactly once more', async () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    globalThis.fetch = vi.fn(async () => { throw new Error('no direct request expected'); }) as unknown as typeof fetch;
+    const metadata = serverRoute(async () => { throw new Error('network'); });
+    renderHome();
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent("Unavailable · Live prices: you're offline."));
+    await waitFor(() => expect(metadata).toHaveBeenCalled());
+    const before = metadata.mock.calls.length;
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
+    act(() => { window.dispatchEvent(new Event('online')); });
+    await waitFor(() => expect(metadata.mock.calls.length).toBe(before + 1));
+    await new Promise(resolve => setTimeout(resolve, 50));
+    expect(metadata.mock.calls.length).toBe(before + 1);
   });
 });
