@@ -134,6 +134,19 @@ describe('the market list: the session, the device copy and the server', () => {
     expect(old).toEqual({ ok: false, reason: 'unavailable', why: 'source-down', retryAfterSeconds: 30 });
   });
 
+  it('keeps the fallback copy until the server\'s wait has passed, then asks again', async () => {
+    let clock = NOW;
+    const fetchImpl = vi.fn<typeof fetch>(async () => failAnswer('source-unavailable', 502, 30));
+    const market = createKairosMarketDataPorts(createKairosApiClient({ baseUrl: BASE, fetchImpl }), { store: memoryStore(copy(7 * HOUR)), now: () => clock, isOnline: () => true });
+    const first = await market.metadata.acquireInstrumentMetadata();
+    const second = await market.metadata.acquireInstrumentMetadata();
+    expect(first.ok && second.ok).toBe(true);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    clock = NOW + 31_000;
+    expect((await market.metadata.acquireInstrumentMetadata()).ok).toBe(true);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
   it('asks again for a copy dated in the future or a damaged copy', async () => {
     for (const text of [copy(-HOUR), '{"storedAt":', JSON.stringify({ storedAt: NOW, markets: [{ symbol: 'BTCUSDT' }] })]) {
       const fetchImpl = vi.fn<typeof fetch>(async () => symbolsAnswer());

@@ -49,9 +49,11 @@ describe('P22.1 estimated market reference', () => {
 
   it('stores a typed unavailable failure as a reason readers already know, and never keeps volume', async () => {
     const at = '2026-09-10T02:13:27.000Z';
-    const typed = (why: 'offline' | 'region') => ({ acquireHistory: async (): Promise<MarketCandleHistoryResult> => ({ ok: false, reason: 'unavailable', why, retryAfterSeconds: null }) });
+    const typed = (why: 'offline' | 'region' | 'unreadable' | 'source-down') => ({ acquireHistory: async (): Promise<MarketCandleHistoryResult> => ({ ok: false, reason: 'unavailable', why, retryAfterSeconds: null }) });
     expect(await estimateMarketReferenceAt(typed('offline'), { instrument, requestedAt: at }, { now })).toMatchObject({ kind: 'unavailable', reason: 'transport-failed' });
     expect(await estimateMarketReferenceAt(typed('region'), { instrument, requestedAt: at }, { now })).toMatchObject({ kind: 'unavailable', reason: 'http-error' });
+    expect(await estimateMarketReferenceAt(typed('unreadable'), { instrument, requestedAt: at }, { now })).toMatchObject({ kind: 'unavailable', reason: 'invalid-response' });
+    expect(await estimateMarketReferenceAt(typed('source-down'), { instrument, requestedAt: at }, { now })).toMatchObject({ kind: 'unavailable', reason: 'transport-failed' });
     const withVolume = await estimateMarketReferenceAt({ acquireHistory: async request => ok(request, [{ ...candle('2026-09-10T02:13:00.000Z'), volume: '12.5' as DecimalString } as ReturnType<typeof candle>]) }, { instrument, requestedAt: at }, { now });
     expect(withVolume.kind).toBe('candle-range');
     if (withVolume.kind === 'candle-range') {

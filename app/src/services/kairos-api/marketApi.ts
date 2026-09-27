@@ -18,6 +18,8 @@ import type { KairosApiClient, KairosApiFailure, KairosApiQuery } from './kairos
 export const MARKET_LIST_FRESH_MS = 6 * 60 * 60 * 1000;
 /** When the server fails, a device copy up to this old is still used. */
 export const MARKET_LIST_KEEP_MS = 7 * 24 * 60 * 60 * 1000;
+/** After a failed market list request answered from the device copy, the server is asked again after its wait, or this many seconds. */
+export const MARKET_LIST_RETRY_SECONDS = 60;
 export const MARKET_LIST_MAX_MARKETS = 5_000;
 export const MARKET_TICKERS_MAX_SYMBOLS = 100;
 export const MARKET_TICKERS_MAX_QUERY = 3_000;
@@ -263,6 +265,8 @@ export function createKairosMarketDataPorts(client: KairosApiClient, options: Ka
   const failed = (failure: KairosApiFailure) => marketDataUnavailableOf(failure, isOnline);
   let session: { readonly facts: readonly LiveMarketUniverseInstrumentMetadataFact[]; readonly storedAt: number } | null = null;
   let inFlight: InFlight | null = null;
+  /** A device copy used after a failed request, kept until the server's wait has passed, so callers do not ask again at once. */
+  let fallback: { readonly facts: readonly LiveMarketUniverseInstrumentMetadataFact[]; readonly until: number } | null = null;
   const ageOk = (storedAt: number, limit: number) => { const age = now() - storedAt; return age >= 0 && age <= limit; };
 
   const history: MarketCandleHistoryPort = {
@@ -292,14 +296,19 @@ export function createKairosMarketDataPorts(client: KairosApiClient, options: Ka
       if (result.ok && result.value.markets.length > 0) {
         const storedAt = now();
         const facts = factsOf(result.value.markets);
-        if (inFlight === entry) session = { facts, storedAt };
+        if (inFlight === entry) { session = { facts, storedAt }; fallback = null; }
         await options.store?.write(JSON.stringify({ storedAt, markets: result.value.markets }));
         return { ok: true, facts };
       }
-      const copy = decodeDeviceCopy((await options.store?.read()) ?? null);
-      if (copy !== null && ageOk(copy.storedAt, MARKET_LIST_KEEP_MS)) return { ok: true, facts: factsOf(copy.markets) };
       // An empty list is never kept: it would hide every market.
-      return result.ok ? unavailable('unreadable') : failed(result);
+      const failure = result.ok ? unavailable('unreadable') : failed(result);
+      const copy = decodeDeviceCopy((await options.store?.read()) ?? null);
+      if (copy !== null && ageOk(copy.storedAt, MARKET_LIST_KEEP_MS)) {
+        const facts = factsOf(copy.markets);
+        if (inFlight === entry) fallback = { facts, until: now() + (failure.retryAfterSeconds ?? MARKET_LIST_RETRY_SECONDS) * 1000 };
+        return { ok: true, facts };
+      }
+      return failure;
     })().finally(() => { if (inFlight === entry) inFlight = null; });
     return entry;
   }
@@ -329,6 +338,7 @@ export function createKairosMarketDataPorts(client: KairosApiClient, options: Ka
       const signal = callerOptions?.signal;
       if (signal?.aborted) return { ok: false, reason: 'acquisition-failed' };
       if (session !== null && ageOk(session.storedAt, MARKET_LIST_FRESH_MS)) return { ok: true, facts: session.facts };
+      if (fallback !== null && now() < fallback.until) return { ok: true, facts: fallback.facts };
       if (inFlight === null) {
         const copy = decodeDeviceCopy((await options.store?.read()) ?? null);
         if (copy !== null && ageOk(copy.storedAt, MARKET_LIST_FRESH_MS)) {

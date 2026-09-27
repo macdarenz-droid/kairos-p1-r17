@@ -1,5 +1,5 @@
 import type { MarketCandle, MarketCandleHistoryPort, MarketCandleHistoryResult } from '../../services/market-data/MarketCandleHistoryPort';
-import type { MarketDataInstrument } from '../../services/market-data/marketDataTypes';
+import type { MarketDataInstrument, MarketDataUnavailableWhy } from '../../services/market-data/marketDataTypes';
 
 /** The only estimation resolution approved for the candle-based fallback: the one-minute candle containing the instant. */
 export const ESTIMATED_MARKET_REFERENCE_RESOLUTION = '1m' as const;
@@ -67,6 +67,17 @@ const parseInstant = (value: string): number | null => {
  * one-minute candle window around the requested instant. It writes nothing,
  * touches no journal record and never returns a price as a fill.
  */
+/** A typed failure stored as a reason readers already know (D170): no connection, an unusable answer, or a refusal. */
+const STORED_REASON_FOR_WHY: Readonly<Record<MarketDataUnavailableWhy, EstimatedMarketReferenceUnavailableReason>> = Object.freeze({
+  offline: 'transport-failed',
+  'source-down': 'transport-failed',
+  unreadable: 'invalid-response',
+  busy: 'http-error',
+  region: 'http-error',
+  'unknown-market': 'http-error',
+  'not-set-up': 'http-error',
+});
+
 export async function estimateMarketReferenceAt(
   port: Pick<MarketCandleHistoryPort, 'acquireHistory'>,
   request: EstimatedMarketReferenceRequest,
@@ -84,7 +95,7 @@ export async function estimateMarketReferenceAt(
     options.signal === undefined ? undefined : { signal: options.signal },
   );
   if (!result.ok) {
-    if (result.reason === 'unavailable') return unavailable(result.why === 'offline' ? 'transport-failed' : 'http-error');
+    if (result.reason === 'unavailable') return unavailable(STORED_REASON_FOR_WHY[result.why]);
     return unavailable(result.reason);
   }
   const candle = result.snapshot.candles[0];
