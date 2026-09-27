@@ -24,7 +24,7 @@ describe('Ink theme registry amendment', () => {
     expect(ink['--kairos-border-default']).toBe(ink['--kairos-border-strong']);
     expect(ink['--kairos-text-primary']).toBe('#f3f4f6');
     expect(ink['--kairos-text-secondary']).toBe('#a1a7b3');
-    expect(ink['--kairos-text-muted']).toBe('#6b7280');
+    expect(ink['--kairos-text-muted']).toBe('#7a8190');
     expect(ink['--kairos-accent-primary']).toBe('#7d86ff');
     expect(ink['--kairos-trade-profit']).toBe('#3ecf8e');
     expect(ink['--kairos-trade-loss']).toBe('#f0616d');
@@ -60,10 +60,10 @@ describe('Ink theme registry amendment', () => {
     expect(Object.keys(paper).sort()).toEqual(Object.keys(ink).sort());
     expect(paper['--kairos-background-base']).toBe('#fafafa');
     expect(paper['--kairos-text-primary']).toBe('#111114');
-    expect(paper['--kairos-accent-primary']).toBe('#5e6ad2');
+    expect(paper['--kairos-accent-primary']).toBe('#5461cf');
     expect(paper['--kairos-accent-ink']).toBe('#ffffff');
-    expect(paper['--kairos-trade-profit']).toBe('#1a9e63');
-    expect(paper['--kairos-trade-loss']).toBe('#d9434f');
+    expect(paper['--kairos-trade-profit']).toBe('#147b4d');
+    expect(paper['--kairos-trade-loss']).toBe('#cf2a37');
   });
 
   it('adds the settle duration and easing curves to the geometry owner, never to a theme', () => {

@@ -35,7 +35,7 @@
 .kairos-review .kairos-analysis-chart__tools button { border-color: transparent; border-radius: var(--kairos-radius-full); background: transparent; color: var(--kairos-text-secondary); transition: color var(--kairos-motion-fast) var(--kairos-ease-out), background-color var(--kairos-motion-fast) var(--kairos-ease-out); }
 .kairos-review .kairos-analysis-chart__tools button:hover { color: var(--kairos-text-primary); background: var(--kairos-accent-soft); }
 .kairos-review .kairos-analysis-chart__tools button:active { translate: 0 1px; }
-.kairos-review .kairos-analysis-chart__selection select { border-color: var(--kairos-border-strong); background-image: var(--kairos-field-gradient); }
+.kairos-review .kairos-analysis-chart__selection select { border-color: var(--kairos-border-field); background-image: var(--kairos-field-gradient); }
 .kairos-review .kairos-analysis-chart :is(td, th, caption) { font-family: var(--kairos-font-mono); }
 .kairos-review .kairos-analysis-chart :is(td, th) { border-bottom-color: var(--kairos-border-hairline); }
 .kairos-review .kairos-analysis-chart__data summary { font-weight: var(--kairos-font-weight-medium); }

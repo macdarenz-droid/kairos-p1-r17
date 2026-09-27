@@ -5,7 +5,7 @@
 .kairos-library__note, .kairos-library__empty { margin:0; color:var(--kairos-text-muted); font-size:var(--kairos-font-size-sm); line-height:var(--kairos-line-height-normal); }
 .kairos-library__filters { display:flex; flex-wrap:wrap; gap:var(--kairos-space-3); }
 .kairos-library__filters label { display:grid; gap:var(--kairos-space-2); flex:1 1 auto; min-width:0; color:var(--kairos-text-secondary); font-size:var(--kairos-font-size-sm); }
-.kairos-library__filters select { width:100%; min-width:0; padding:0 var(--kairos-space-3); border:1px solid var(--kairos-border-default); border-radius:var(--kairos-radius-md); background:var(--kairos-surface-input); color:var(--kairos-text-primary); font:inherit; line-height:2.5; }
+.kairos-library__filters select { width:100%; min-width:0; padding:0 var(--kairos-space-3); border:1px solid var(--kairos-border-field); border-radius:var(--kairos-radius-md); background:var(--kairos-surface-input); color:var(--kairos-text-primary); font:inherit; line-height:2.5; }
 .kairos-library__list { display:grid; gap:var(--kairos-space-3); margin:0; padding:0; list-style:none; }
 .kairos-library__item { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:var(--kairos-space-3); padding:var(--kairos-space-4); border:1px solid var(--kairos-border-subtle); border-radius:var(--kairos-radius-lg); background:var(--kairos-surface-card); }
 .kairos-library__item-body { display:grid; gap:var(--kairos-space-1); min-width:0; flex:1 1 60%; }

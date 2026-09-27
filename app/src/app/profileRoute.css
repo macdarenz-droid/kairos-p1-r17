@@ -7,7 +7,7 @@
 .kairos-profile-card code, .kairos-profile-card strong { font-family:var(--kairos-font-mono); font-variant-numeric:tabular-nums; color:var(--kairos-text-primary); }
 .kairos-profile__note { margin:0; color:var(--kairos-text-muted) !important; font-size:var(--kairos-font-size-xs); line-height:var(--kairos-line-height-normal); }
 .kairos-profile-field { display:grid; gap:var(--kairos-space-2); color:var(--kairos-text-secondary); font-size:var(--kairos-font-size-sm); min-width:0; }
-.kairos-profile-field input { width:100%; min-width:0; padding:var(--kairos-space-2) var(--kairos-space-3); border:1px solid var(--kairos-border-default); border-radius:var(--kairos-radius-md); background:var(--kairos-surface-input); color:var(--kairos-text-primary); font:inherit; }
+.kairos-profile-field input { width:100%; min-width:0; padding:var(--kairos-space-2) var(--kairos-space-3); border:1px solid var(--kairos-border-field); border-radius:var(--kairos-radius-md); background:var(--kairos-surface-input); color:var(--kairos-text-primary); font:inherit; }
 .kairos-profile-preview { display:grid; gap:var(--kairos-space-3); padding:var(--kairos-space-4); border:1px solid var(--kairos-border-default); border-radius:var(--kairos-radius-md); }
 .kairos-profile-preview__warning { color:var(--kairos-state-error) !important; }
 .kairos-profile-card__actions { display:flex; align-items:center; gap:var(--kairos-space-3); flex-wrap:wrap; }

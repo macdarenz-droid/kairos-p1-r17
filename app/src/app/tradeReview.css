@@ -30,7 +30,7 @@
 /* Ink amendment (Gate471). Appended with route-scoped specificity: hairline cards over the surface gradient, field gradient controls, mono tabular numerals. */
 .kairos-review .kairos-review__card { border-color: var(--kairos-border-hairline); background-color: var(--kairos-surface-card); background-image: var(--kairos-surface-gradient); }
 .kairos-review .kairos-review__record { border-top-color: var(--kairos-border-hairline); }
-.kairos-review :is(button, select, .kairos-symbol-picker input) { border-color: var(--kairos-border-strong); background-image: var(--kairos-field-gradient); transition: border-color var(--kairos-motion-fast) var(--kairos-ease-out); }
+.kairos-review :is(button, select, .kairos-symbol-picker input) { border-color: var(--kairos-border-field); background-image: var(--kairos-field-gradient); transition: border-color var(--kairos-motion-fast) var(--kairos-ease-out); }
 .kairos-review :is(button, select, .kairos-symbol-picker input):hover { border-color: var(--kairos-text-muted); }
 .kairos-review :is(button, select, .kairos-symbol-picker input):focus-visible { border-color: var(--kairos-accent-primary); }
 .kairos-review :is(.kairos-review__facts dd, .kairos-review__result strong, .kairos-review__topline strong) { font-family: var(--kairos-font-mono); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }

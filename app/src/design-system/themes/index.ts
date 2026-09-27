@@ -14,6 +14,15 @@ export {
 } from './themeCanary';
 export type { ThemeCanaryResult, ThemeCanarySurface } from './themeCanary';
 export {
+  contrastRatio,
+  evaluateThemeContrast,
+  evaluateTokenContrast,
+  THEME_EDGE_ROLES,
+  THEME_SURFACES,
+  THEME_TEXT_ROLES,
+} from './themeContrast';
+export type { ThemeContrastFailure, ThemeContrastResult, ThemeDepth, TokenContrastResult } from './themeContrast';
+export {
   defaultThemePreference,
   getBrowserStorage,
   readThemePreference,

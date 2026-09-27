@@ -5,7 +5,7 @@
 .kairos-settings-card h2 { margin:0; font-size:var(--kairos-font-size-md); }
 .kairos-settings-card p { margin:var(--kairos-space-2) 0 0; }
 .kairos-settings-field { display:grid; gap:var(--kairos-space-2); color:var(--kairos-text-secondary); font-size:var(--kairos-font-size-sm); }
-.kairos-settings-field input { width:100%; min-width:0; padding:0 var(--kairos-space-3); border:1px solid var(--kairos-border-default); border-radius:var(--kairos-radius-md); background:var(--kairos-surface-input); color:var(--kairos-text-primary); font:inherit; }
+.kairos-settings-field input { width:100%; min-width:0; padding:0 var(--kairos-space-3); border:1px solid var(--kairos-border-field); border-radius:var(--kairos-radius-md); background:var(--kairos-surface-input); color:var(--kairos-text-primary); font:inherit; }
 .kairos-settings-field small, .kairos-settings-card__actions span { color:var(--kairos-text-muted); font-size:var(--kairos-font-size-xs); line-height:var(--kairos-line-height-normal); }
 .kairos-settings-card__actions { display:flex; align-items:center; gap:var(--kairos-space-3); flex-wrap:wrap; }
 .kairos-settings-card__actions button { padding:0 var(--kairos-space-5); border:1px solid var(--kairos-accent-primary); border-radius:var(--kairos-radius-md); background:var(--kairos-accent-primary); color:var(--kairos-background-depth); font:inherit; font-weight:var(--kairos-font-weight-semibold); }

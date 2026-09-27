@@ -12,7 +12,7 @@
 .kairos-journal .kairos-pnl-streak { border-inline-start: 3px solid var(--kairos-border-strong); }
 .kairos-journal .kairos-pnl-streak--profit { border-inline-start-color: var(--kairos-trade-profit); }
 .kairos-journal .kairos-pnl-streak--loss { border-inline-start-color: var(--kairos-trade-loss); }
-.kairos-journal .kairos-field :is(input, select) { border-color: var(--kairos-border-strong); background-color: var(--kairos-surface-input); background-image: var(--kairos-field-gradient); transition: border-color var(--kairos-motion-fast) var(--kairos-ease-out); }
+.kairos-journal .kairos-field :is(input, select) { border-color: var(--kairos-border-field); background-color: var(--kairos-surface-input); background-image: var(--kairos-field-gradient); transition: border-color var(--kairos-motion-fast) var(--kairos-ease-out); }
 .kairos-journal .kairos-field :is(input, select):hover { border-color: var(--kairos-text-muted); }
 .kairos-journal .kairos-field :is(input, select):focus-visible { border-color: var(--kairos-accent-primary); }
 .kairos-journal .kairos-trade-form__submit { border-color: var(--kairos-accent-primary); color: var(--kairos-accent-ink); background-image: linear-gradient(180deg, var(--kairos-accent-secondary), var(--kairos-accent-primary)); box-shadow: 0 10px 24px -14px var(--kairos-accent-primary); transition: filter var(--kairos-motion-fast) var(--kairos-ease-out), translate var(--kairos-motion-fast) var(--kairos-ease-out); }
@@ -43,7 +43,7 @@
 .kairos-field strong { color: var(--kairos-text-muted); font-size: var(--kairos-font-size-xs); font-weight: var(--kairos-font-weight-regular); }
 .kairos-field small { color: var(--kairos-text-muted); line-height: var(--kairos-line-height-normal); }
 .kairos-field input,
-.kairos-field select { width: 100%; min-width: 0; padding: 0 var(--kairos-space-3); border: 1px solid var(--kairos-border-default); border-radius: var(--kairos-radius-md); background: var(--kairos-surface-input); color: var(--kairos-text-primary); font: inherit; }
+.kairos-field select { width: 100%; min-width: 0; padding: 0 var(--kairos-space-3); border: 1px solid var(--kairos-border-field); border-radius: var(--kairos-radius-md); background: var(--kairos-surface-input); color: var(--kairos-text-primary); font: inherit; }
 .kairos-field input::placeholder { color: var(--kairos-text-muted); }
 .kairos-field :is(input, select)[aria-invalid='true'] { border-color: var(--kairos-state-error); }
 .kairos-trade-form__actions { display: flex; justify-content: flex-end; }

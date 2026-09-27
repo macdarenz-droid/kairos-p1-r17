@@ -3,7 +3,7 @@ import { geometryTokens, semanticTokens } from '../src/design-system/tokens';
 
 describe('P2 design token foundation', () => {
   it('exposes the locked semantic role groups without concrete theme values', () => {
-    expect(Object.keys(semanticTokens)).toEqual(['background', 'surface', 'border', 'text', 'accent', 'trade', 'chart', 'state', 'glow']);
+    expect(Object.keys(semanticTokens)).toEqual(['background', 'surface', 'border', 'text', 'accent', 'trade', 'chart', 'state', 'glow', 'elevation']);
     expect(semanticTokens.surface.card).toBe('var(--kairos-surface-card)');
     expect(semanticTokens.trade.profit).toBe('var(--kairos-trade-profit)');
     expect(semanticTokens.chart.grid).toBe('var(--kairos-chart-grid)');
