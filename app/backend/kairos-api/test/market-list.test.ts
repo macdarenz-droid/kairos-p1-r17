@@ -91,6 +91,13 @@ describe('the /market/symbols route', () => {
     expect(await workerEnv.KAIROS_API_CACHE!.get('market-symbols:v1:', 'text')).toContain('"BTCUSDT"');
   });
 
+  it('reads a market list as large as the real one (2,483,061 bytes)', async () => {
+    const padded = JSON.stringify({ ...JSON.parse(EXCHANGE_INFO), padding: 'x'.repeat(2_483_061) });
+    const response = await call('/market/symbols', answer(padded));
+    expect(response.status).toBe(200);
+    expect(((await response.json()) as { data: { markets: unknown[] } }).data.markets).toHaveLength(3);
+  });
+
   it('refuses any query', async () => {
     const fetchImpl = answer(EXCHANGE_INFO);
     expect((await call('/market/symbols?x=1', fetchImpl)).status).toBe(400);
@@ -100,7 +107,9 @@ describe('the /market/symbols route', () => {
   it("says the source's real reason, and never keeps a failure", async () => {
     const cases: [typeof fetch, number, string, number | null][] = [
       [answer('{"code":0,"msg":"Service unavailable from a restricted location"}', 451), 451, 'source-refused', null],
+      [answer('{"code":0,"msg":"Forbidden"}', 403), 451, 'source-refused', null],
       [answer('', 429, { 'retry-after': '30' }), 503, 'source-busy', 30],
+      [answer('', 429, { 'retry-after': '7200' }), 503, 'source-busy', 3600],
       [answer('', 418), 503, 'source-busy', 60],
       [answer('', 500), 502, 'source-unavailable', 30],
       [answer('{"symbols":[]}'), 502, 'source-unavailable', 30],

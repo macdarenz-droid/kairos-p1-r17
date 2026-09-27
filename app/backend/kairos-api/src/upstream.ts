@@ -76,7 +76,7 @@ function timedOut(signal: AbortSignal): boolean {
 /** The failure, with the source's retry-after when it gave one, and its error body when the route asked for it. */
 async function discard(response: Response, failure: 'redirect' | 'status' | 'too-large' | 'content-type', request: UpstreamRequest): Promise<UpstreamResult> {
   const retryAfter = response.headers.get('retry-after')?.trim() ?? '';
-  const seconds = /^[0-9]{1,5}$/.test(retryAfter) ? Number.parseInt(retryAfter, 10) : 0;
+  const seconds = /^[0-9]+$/.test(retryAfter) ? Number.parseInt(retryAfter, 10) : 0;
   let errorText: string | null | undefined;
   if (request.readErrorBody === true && response.status >= 400) {
     errorText = await readCapped(response, ERROR_BODY_MAX_BYTES);
