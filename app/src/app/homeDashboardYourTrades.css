@@ -3,7 +3,6 @@
 .kairos-your-trades a:not(.kairos-button) { color:var(--kairos-accent-primary); }
 .kairos-your-trades a.kairos-button { text-decoration:none; }
 .kairos-your-trades__bubble { padding:0; border:0; background:transparent; color:var(--kairos-text-primary); font-family:inherit; cursor:pointer; }
-.kairos-your-trades__empty { text-align:center; padding:var(--kairos-space-8) var(--kairos-space-4); color:var(--kairos-text-secondary); }
 .kairos-your-trades__detail { position:absolute; inset:auto var(--kairos-space-2) var(--kairos-space-2); z-index:2; border:1px solid var(--kairos-border-active); border-radius:var(--kairos-radius-lg); background:var(--kairos-surface-modal); padding:var(--kairos-space-3); overflow-wrap:anywhere; }
 .kairos-your-trades__detail p { margin:var(--kairos-space-1) 0; }
 .kairos-your-trades__detail time, .kairos-your-trades__detail small { display:block; font-size:var(--kairos-font-size-xs); color:var(--kairos-text-secondary); margin-bottom:var(--kairos-space-2); }

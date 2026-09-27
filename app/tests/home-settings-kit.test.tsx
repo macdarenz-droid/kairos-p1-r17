@@ -134,3 +134,67 @@ describe('T-049f checklist Undo and "Try again"', () => {
     expect(within(card()).queryByText('Kairos could not load your checklist.')).toBeNull();
   });
 });
+
+describe('T-049f fix r1', () => {
+  const card = () => screen.getByRole('form', { name: 'Your checklist' });
+  function failZoneReads(db: KairosDatabase, times: number): void {
+    const read = db.metadata.get.bind(db.metadata);
+    let left = times;
+    vi.spyOn(db.metadata, 'get').mockImplementation(((key: string) => {
+      if (key === visualPnlTimeZonePreferenceMetadataKey && left > 0) { left -= 1; return Promise.reject(new Error('storage')); }
+      return read(key);
+    }) as typeof db.metadata.get);
+  }
+  const loadAlert = () => screen.queryByText('Kairos could not load your daily-results time zone.');
+
+  it('Settings: a zone saved after a failed read removes the "could not load" alert', async () => {
+    const db = await database();
+    failZoneReads(db, 1);
+    render(<ThemeProvider><ToastProvider><SettingsRoute db={db} /></ToastProvider></ThemeProvider>);
+    await screen.findByText('Kairos could not load your daily-results time zone.');
+    const input = screen.getByRole('combobox', { name: 'Time zone' });
+    fireEvent.change(input, { target: { value: 'UTC' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save time zone' }));
+    expect(await screen.findByText('Daily-results time zone saved.')).toBeInTheDocument();
+    expect(loadAlert()).toBeNull();
+  });
+
+  it('Settings: after "Try again" focus goes to the new "Try again" when it fails, and to the Time zone field when it loads', async () => {
+    const db = await database();
+    await writeVisualPnlTimeZonePreference(createKairosRepositories(db).metadata, 'Asia/Manila', '2026-09-27T00:00:00.000Z');
+    failZoneReads(db, 2);
+    render(<ThemeProvider><ToastProvider><SettingsRoute db={db} /></ToastProvider></ThemeProvider>);
+    const retry = () => within(loadAlert()!.closest('[role="alert"]') as HTMLElement).getByRole('button', { name: 'Try again' });
+    await screen.findByText('Kairos could not load your daily-results time zone.');
+    retry().focus();
+    fireEvent.click(retry());
+    await waitFor(() => expect(loadAlert()).not.toBeNull());
+    await waitFor(() => expect(retry()).toHaveFocus());
+    fireEvent.click(retry());
+    expect(await screen.findByText('Current: Asia/Manila')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Time zone' })).toHaveFocus());
+  });
+
+  it('checklist: after "Remove" focus goes to the next row\'s "Remove", or to "Add a step" after the last row', async () => {
+    const db = await database();
+    render(<ThemeProvider><ToastProvider><SettingsRoute db={db} /></ToastProvider></ThemeProvider>);
+    await waitFor(() => expect(within(card()).getByRole('textbox', { name: 'Step 1' })).toBeInTheDocument());
+    const steps = within(card()).getByRole('group', { name: 'Before you trade: your steps' });
+    fireEvent.click(within(steps).getByRole('button', { name: 'Remove step 2' }));
+    expect(within(steps).getByRole('button', { name: 'Remove step 2' })).toHaveFocus();
+    const last = within(steps).getAllByRole('textbox').length;
+    fireEvent.click(within(steps).getByRole('button', { name: `Remove step ${last}` }));
+    expect(within(steps).getByRole('button', { name: 'Add a step' })).toHaveFocus();
+  });
+
+  it('checklist: after a save, the "Undo" for a removed step is gone', async () => {
+    const db = await database();
+    render(<ThemeProvider><ToastProvider><SettingsRoute db={db} /></ToastProvider></ThemeProvider>);
+    await waitFor(() => expect(within(card()).getByRole('textbox', { name: 'Step 1' })).toBeInTheDocument());
+    fireEvent.click(within(card()).getByRole('button', { name: 'Remove step 2' }));
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeInTheDocument();
+    fireEvent.click(within(card()).getByRole('button', { name: 'Save your checklist' }));
+    expect(await within(card()).findByText('Your checklist is saved.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+  });
+});

@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
 import { loadDisciplineLists, saveDisciplineLists } from '../../application/discipline';
 import type { KairosDatabase } from '../../data/database';
 import { Button, ErrorState, Field, Skeleton, useToast } from '../../design-system/primitives';
@@ -48,6 +48,18 @@ export function DisciplineListsEditor({ db }: DisciplineListsEditorProps) {
   // Bumped whenever the draft is replaced by stored lists (load or save); an older Undo then does nothing.
   const draftGeneration = useRef(0);
   const toast = useToast();
+  // True while this editor's "Undo" toast may be up; a new draft generation closes it, so no Undo does nothing (D178).
+  const undoShown = useRef(false);
+  const form = useRef<HTMLFormElement>(null);
+  // Set when "Try again" had focus: once the load settles, focus the first step's field, or the new "Try again" (WCAG 2.4.3).
+  const refocusAfterRetry = useRef(false);
+  // The row just removed: focus then goes to the next row's "Remove", or to "Add a {noun}" after the last row.
+  const removedAt = useRef<Readonly<{ group: number; noun: string; index: number }> | null>(null);
+
+  const newGeneration = () => {
+    draftGeneration.current += 1;
+    if (undoShown.current) { undoShown.current = false; toast.dismiss(); }
+  };
 
   useEffect(() => {
     let ignore = false;
@@ -56,7 +68,7 @@ export function DisciplineListsEditor({ db }: DisciplineListsEditorProps) {
       result => {
         if (ignore) return;
         if (!result.ok) { setLoad({ kind: 'failed' }); return; }
-        draftGeneration.current += 1;
+        newGeneration();
         setDraft(draftOf(result.lists));
         setLoad({ kind: 'ready' });
       },
@@ -64,6 +76,24 @@ export function DisciplineListsEditor({ db }: DisciplineListsEditorProps) {
     );
     return () => { ignore = true; };
   }, [db, loadAttempt]);
+
+  useEffect(() => {
+    if (load.kind === 'loading' || !refocusAfterRetry.current) return;
+    refocusAfterRetry.current = false;
+    const first = form.current?.querySelector('fieldset');
+    const target = load.kind === 'failed' ? form.current?.querySelector<HTMLElement>('.kairos-error-state button') : first?.querySelector<HTMLElement>('input, button');
+    target?.focus();
+  }, [load.kind]);
+
+  useLayoutEffect(() => {
+    const removed = removedAt.current;
+    if (removed === null) return;
+    removedAt.current = null;
+    const group = form.current?.querySelectorAll('fieldset')[removed.group];
+    const next = group?.querySelector<HTMLElement>(`button[aria-label="Remove ${removed.noun} ${removed.index + 1}"]`);
+    const add = [...(group?.querySelectorAll<HTMLElement>('button') ?? [])].find(button => button.textContent === `Add a ${removed.noun}`);
+    (next ?? add)?.focus();
+  }, [draft]);
 
   const change = (kind: DisciplineListKind, update: (items: DisciplineListItem[]) => DisciplineListItem[]) => {
     setDraft(current => ({ ...current, [kind]: update(current[kind]) }));
@@ -75,12 +105,15 @@ export function DisciplineListsEditor({ db }: DisciplineListsEditorProps) {
     const item = draft[kind][index];
     if (item === undefined) return;
     const generation = draftGeneration.current;
+    removedAt.current = { group: GROUPS.findIndex(group => group.kind === kind), noun, index };
     change(kind, items => items.filter((_, at) => at !== index));
+    undoShown.current = true;
     toast.show({
       message: `${capital(noun)} ${index + 1} removed.`,
       action: {
         label: 'Undo',
         onAction: () => {
+          undoShown.current = false;
           if (draftGeneration.current !== generation) return;
           change(kind, items => items.some(row => row.id === item.id) ? items : [...items.slice(0, index), item, ...items.slice(index)]);
         },
@@ -100,19 +133,19 @@ export function DisciplineListsEditor({ db }: DisciplineListsEditorProps) {
       return;
     }
     if (!result.ok) { setFeedback({ kind: 'refused', message: refusalText(result.reason) }); return; }
-    draftGeneration.current += 1;
+    newGeneration();
     setDraft(draftOf(result.lists));
     setFeedback({ kind: 'saved' });
   }
 
   const loading = load.kind === 'loading';
-  return <form className="kairos-settings-card kairos-discipline-lists" aria-labelledby={titleId} onSubmit={event => { void submit(event); }} noValidate>
+  return <form ref={form} className="kairos-settings-card kairos-discipline-lists" aria-labelledby={titleId} onSubmit={event => { void submit(event); }} noValidate>
     <div>
       <h2 id={titleId}>Your checklist</h2>
       <p>These are the steps and questions Kairos asks on your trade cards. Changes apply to answers you give from now on; answers you already saved keep their words.</p>
     </div>
     {loading ? <Skeleton label="Loading your checklist…" /> : null}
-    {load.kind === 'failed' ? <ErrorState message="Kairos could not load your checklist." onRetry={() => setLoadAttempt(current => current + 1)} /> : <>
+    {load.kind === 'failed' ? <ErrorState message="Kairos could not load your checklist." onRetry={() => { refocusAfterRetry.current = document.activeElement?.closest('.kairos-error-state') != null; setLoadAttempt(current => current + 1); }} /> : <>
       {GROUPS.map(group => <fieldset key={group.kind} disabled={loading || saving}>
         <legend>{group.legend}</legend>
         {draft[group.kind].map((item, index) => <div className="kairos-discipline-lists__row" key={item.id}>
