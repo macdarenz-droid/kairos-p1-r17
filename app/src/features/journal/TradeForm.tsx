@@ -195,6 +195,8 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft }: 
   const [planShown, setPlanShown] = useState(() => initialDraft !== undefined && Object.values(initialDraft.plan).some(value => value.trim() !== ''));
   const [executions, setExecutions] = useState<readonly ManualExecutionRow[]>([]);
   const [fees, setFees] = useState<readonly ManualFeeRow[]>([]);
+  // Bumped when a save empties the form: the entry and fee rows mount fresh, which closes any Undo for the saved rows.
+  const [formGeneration, setFormGeneration] = useState(0);
   const feedbackRef = useRef<HTMLDivElement>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -299,6 +301,7 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft }: 
       setPlanShown(false);
       setExecutions([]);
       setFees([]);
+      setFormGeneration(current => current + 1);
       setQuick(createEmptyQuickTradeLogDraft());
       setStrategyId('');
       setFeedback({ kind: 'success', message: saved });
@@ -431,6 +434,7 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft }: 
         <JournalPriceCurrencyField value={draft.priceCurrency ?? ''} onChange={value => update('priceCurrency', value)} disabled={isSaving} error={feedback?.kind === 'error' && feedback.field === 'grossPnlCurrency' ? feedback.message : undefined} />
         {isQuick ? null : <>
           <JournalExecutionFields
+            key={formGeneration}
             executions={executions} fees={fees}
             onExecutionsChange={rows => { setExecutions(rows); setFeedback(null); }}
             onFeesChange={rows => { setFees(rows); setFeedback(null); }}

@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import type { ManualExecutionRow, ManualFeeRow } from '../../application/trades/manualTradeExecutionDraft';
 import { Button, PriceInput, useToast } from '../../design-system/primitives';
 import './journalExecutionFields.css';
@@ -18,25 +18,58 @@ export function JournalExecutionFields({ executions, fees, onExecutionsChange, o
   // Undo reads the rows as they are when it runs, so edits made while the toast was shown are kept.
   const latest = useRef({ executions, fees });
   latest.current = { executions, fees };
+  // True while this form's "Undo" toast may be up. When the rows go away (saved, cancelled, closed) the toast closes with
+  // them, so an Undo never puts an old row into a new or cancelled form (D178).
+  const undoShown = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; if (undoShown.current) { undoShown.current = false; toast.dismiss(); } };
+  }, [toast]);
+  // Where focus goes after "Remove" or "Undo" (WCAG 2.4.3): a field id, or the text of an "Add …" button.
+  const section = useRef<HTMLFieldSetElement>(null);
+  const focusNext = useRef<Readonly<{ id: string } | { add: string }> | null>(null);
+  useLayoutEffect(() => {
+    const target = focusNext.current;
+    if (target === null) return;
+    focusNext.current = null;
+    const element = 'id' in target ? document.getElementById(target.id)
+      : [...(section.current?.querySelectorAll('button') ?? [])].find(button => button.textContent === target.add && !button.disabled);
+    element?.focus();
+  }, [executions, fees]);
+  const afterRemoval = <T extends { key: string }>(rows: readonly T[], index: number, field: string, add: string) => {
+    const next = rows[index + 1] ?? rows[index - 1];
+    focusNext.current = next ? { id: `${next.key}-${field}` } : { add };
+  };
+  const undo = (onAction: () => void) => {
+    undoShown.current = true;
+    return () => { undoShown.current = false; if (mounted.current) onAction(); };
+  };
   const removeExecution = (row: ManualExecutionRow, index: number, title: string) => {
+    afterRemoval(executions, index, 'price', row.type === 'entry' ? 'Add entry' : 'Add exit');
     onExecutionsChange(executions.filter(item => item.key !== row.key));
-    toast.show({ message: `${title} removed.`, action: { label: 'Undo', onAction: () => {
+    toast.show({ message: `${title} removed.`, action: { label: 'Undo', onAction: undo(() => {
       const rows = latest.current.executions;
-      if (!rows.some(item => item.key === row.key)) onExecutionsChange([...rows.slice(0, index), row, ...rows.slice(index)]);
-    } } });
+      if (rows.some(item => item.key === row.key)) return;
+      focusNext.current = { id: `${row.key}-price` };
+      onExecutionsChange([...rows.slice(0, index), row, ...rows.slice(index)]);
+    }) } });
   };
   const removeFee = (row: ManualFeeRow, index: number) => {
+    afterRemoval(fees, index, 'amount', 'Add fee');
     onFeesChange(fees.filter(item => item.key !== row.key));
-    toast.show({ message: `Fee ${index + 1} removed.`, action: { label: 'Undo', onAction: () => {
+    toast.show({ message: `Fee ${index + 1} removed.`, action: { label: 'Undo', onAction: undo(() => {
       const rows = latest.current.fees;
-      if (!rows.some(item => item.key === row.key)) onFeesChange([...rows.slice(0, index), row, ...rows.slice(index)]);
-    } } });
+      if (rows.some(item => item.key === row.key)) return;
+      focusNext.current = { id: `${row.key}-amount` };
+      onFeesChange([...rows.slice(0, index), row, ...rows.slice(index)]);
+    }) } });
   };
   const updateExecution = (key: string, field: 'price' | 'quantity' | 'executedAt', value: string) =>
     onExecutionsChange(executions.map(row => row.key === key ? { ...row, [field]: value } : row));
   const updateFee = (key: string, field: 'amount' | 'currency', value: string) =>
     onFeesChange(fees.map(row => row.key === key ? { ...row, [field]: value } : row));
-  return <fieldset className="kairos-trade-form__section kairos-executions" disabled={disabled}>
+  return <fieldset ref={section} className="kairos-trade-form__section kairos-executions" disabled={disabled}>
     <legend>Actual entries &amp; exits <span>Optional</span></legend>
     <p className="kairos-trade-form__section-copy">Record each entry and exit from your exchange or broker, including partial exits. Each row needs a price, quantity and time.</p>
     {executions.map((row, index) => {

@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { JournalRoute } from '../src/app/JournalRoute';
 import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
 import { createKairosRepositories } from '../src/data/repositories';
+import { saveManualTrade } from '../src/application/trades';
 import { ToastProvider } from '../src/design-system/primitives';
 import { TradeForm } from '../src/features/journal/TradeForm';
 import { axeViolations } from './fixtures/axe';
@@ -131,5 +132,61 @@ describe('T-049g the Journal header and the trade form on the kit', () => {
     expect(await axeViolations(container)).toEqual([]);
     fireEvent.click(screen.getByRole('button', { name: 'All details' }));
     expect(await axeViolations(container)).toEqual([]);
+  });
+});
+
+describe('T-049g fix r1', () => {
+  function allDetailsClosed(): void {
+    fireEvent.click(screen.getByRole('button', { name: 'All details' }));
+    for (const [label, value] of [['Symbol', 'BTCUSDT'], ['Market', 'crypto'], ['Direction', 'long'], ['Status', 'closed'], ['Opened', '2026-09-12T10:00'], ['Closed', '2026-09-12T11:00']]) {
+      fireEvent.change(screen.getByLabelText(new RegExp('^' + label), { selector: 'input,select' }), { target: { value } });
+    }
+  }
+
+  it('after "Save trade" the new form stays empty and no "Undo" is offered for a removed row', async () => {
+    const db = await database();
+    mount(db);
+    allDetailsClosed();
+    fireEvent.click(screen.getByRole('button', { name: 'Add entry' }));
+    type('Entry 1 price', '100');
+    fireEvent.click(screen.getByRole('button', { name: 'Remove entry 1' }));
+    expect(within(toastRegion()).getByRole('button', { name: 'Undo' })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/^Status/, { selector: 'select' }), { target: { value: 'draft' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save trade' }));
+    await waitFor(() => expect(screen.getByText('Trade saved to your journal.')).toBeInTheDocument());
+    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+    expect(screen.queryByLabelText('Entry 1 price')).toBeNull();
+  });
+
+  it('on the draft card, a row removed before Cancel does not come back on reopen', async () => {
+    const db = await database();
+    await saveManualTrade(db, { symbol: 'BTCUSDT', marketType: 'crypto', side: 'long', status: 'draft', plan: { plannedEntryPrice: '100', plannedQuantity: '2' } });
+    render(<MemoryRouter><ToastProvider><JournalRoute db={db} /></ToastProvider></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: 'Open this trade' }));
+    const panel = screen.getByRole('region', { name: 'Open BTCUSDT' });
+    fireEvent.click(within(panel).getByRole('button', { name: 'Add entry' }));
+    fireEvent.change(within(panel).getByLabelText('Entry 1 price'), { target: { value: '100' } });
+    fireEvent.click(within(panel).getByRole('button', { name: 'Remove entry 1' }));
+    fireEvent.click(within(panel).getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Open this trade' }));
+    expect(within(screen.getByRole('region', { name: 'Open BTCUSDT' })).queryByLabelText('Entry 1 price')).toBeNull();
+  });
+
+  it('after "Remove" focus goes to the price of the row now in its place, else the row before, else "Add …"; after "Undo" to the restored row', async () => {
+    const db = await database();
+    mount(db);
+    chooseClosed();
+    fireEvent.click(screen.getByRole('button', { name: 'Add entry' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add exit' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add entry' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove entry 1' }));
+    expect(screen.getByLabelText('Exit 1 price')).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: 'Remove entry 2' }));
+    expect(screen.getByLabelText('Exit 1 price')).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: 'Remove exit 1' }));
+    expect(screen.getByRole('button', { name: 'Add exit' })).toHaveFocus();
+    fireEvent.click(within(toastRegion()).getByRole('button', { name: 'Undo' }));
+    expect(screen.getByLabelText('Exit 1 price')).toHaveFocus();
   });
 });

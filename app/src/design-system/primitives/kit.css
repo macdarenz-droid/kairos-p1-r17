@@ -60,6 +60,7 @@
 
 .kairos-select { position: relative; display: block; min-width: 0; }
 .kairos-select select { width: 100%; min-width: 0; min-block-size: var(--kairos-control-md); padding: 0 calc(var(--kairos-space-3) + 1.25rem) 0 var(--kairos-space-3); border: 1px solid var(--kairos-border-field); border-radius: var(--kairos-radius-md); background-color: var(--kairos-surface-input); background-image: var(--kairos-field-gradient); color: var(--kairos-text-primary); font: inherit; appearance: none; }
+.kairos-form-field--error .kairos-select select, .kairos-select select[aria-invalid='true'] { border-color: var(--kairos-state-error); }
 .kairos-select__chevron { position: absolute; inset-inline-end: var(--kairos-space-3); top: 50%; transform: translateY(-50%); color: var(--kairos-text-secondary); pointer-events: none; }
 
 .kairos-price-input { font-variant-numeric: tabular-nums; }
