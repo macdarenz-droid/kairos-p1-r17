@@ -46,14 +46,18 @@ describe('Ink app shell presentation', () => {
     expect(inner().style.getPropertyValue('--kairos-nav-index')).toBe('0');
   });
 
-  it('shows the mono build identity with a live pulse and an idle route loader', () => {
+  it('shows no version in the header, and an idle route loader', async () => {
     renderPath('/');
-    expect(screen.getByText(packageJson.version)).toHaveClass('kairos-shell__version');
-    expect(document.querySelector('.kairos-shell__pulse')).toHaveAttribute('aria-hidden', 'true');
+    expect(document.querySelector('.kairos-shell__header')).not.toHaveTextContent(packageJson.version);
     const loader = document.querySelector('.kairos-shell__progress');
     expect(loader).toHaveAttribute('role', 'progressbar');
     expect(loader).toHaveAttribute('aria-hidden', 'true');
     expect(document.querySelector('.kairos-shell')).toHaveAttribute('data-loading', 'false');
+  });
+
+  it('shows the version on Profile instead', async () => {
+    renderPath('/profile');
+    expect(await screen.findByText(new RegExp(`Kairos ${packageJson.version.replaceAll('.', '\\.')} · build`), undefined, { timeout: 10_000 })).toBeInTheDocument();
   });
 
   it('renders inside a plain MemoryRouter without data-router state, as the browser fixtures do', () => {
