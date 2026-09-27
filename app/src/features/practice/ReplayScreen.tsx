@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { parseForexPair } from '../../application/markets/forexPair';
-import { loadReplayCandles, REPLAY_CANDLE_SIZES, type LoadedReplay, type ReplayLoadFailure, type ReplayMarketDeps } from '../../application/practice/replayCandles';
+import { loadReplayCandles, REPLAY_CANDLE_SIZES, type LoadedReplay, type ReplayLoadFailure, type ReplayLoadResult, type ReplayMarketDeps } from '../../application/practice/replayCandles';
 import { projectReplayView, type ReplayOrder } from '../../application/practice/replayEngine';
 import { projectReplayPicture } from '../../application/practice/replayTrade';
 import type { KairosDatabase } from '../../data/database';
-import { Button, Card, Field } from '../../design-system/primitives';
+import { describeMarketDataUnavailable } from '../../application/online/onlineWords';
+import { Button, Card, Field, UnavailableNotice } from '../../design-system/primitives';
 import { TradePictureCard } from '../journal/TradePictureCard';
 import { ReplayTradePanel } from './ReplayTradePanel';
 import './replay.css';
@@ -16,7 +17,7 @@ export const REPLAY_PLAY_STEP_MS = 800;
 type LoadState =
   | { readonly kind: 'idle' }
   | { readonly kind: 'loading' }
-  | { readonly kind: 'failed'; readonly reason: ReplayLoadFailure; readonly market: string }
+  | { readonly kind: 'failed'; readonly reason: ReplayLoadFailure; readonly market: string; readonly why: NonNullable<Extract<ReplayLoadResult, { ok: false }>['why']>; readonly retryAfterSeconds: number | null }
   | { readonly kind: 'ready'; readonly replay: LoadedReplay };
 
 type FieldName = 'market' | 'candleSize' | 'startAt';
@@ -67,7 +68,7 @@ export function ReplayScreen({ db, market, playStepMs = REPLAY_PLAY_STEP_MS }: {
     controller.current = own;
     play(false);
     setLoad({ kind: 'loading' });
-    const result = await loadReplayCandles(form, { ...market, signal: own.signal }).catch(() => ({ ok: false as const, reason: 'unavailable' as const }));
+    const result = await loadReplayCandles(form, { ...market, signal: own.signal }).catch(() => ({ ok: false as const, reason: 'unavailable' as const, why: 'source-down' as const, retryAfterSeconds: null }));
     if (own.signal.aborted) return;
     if (result.ok) {
       setOrder(null);
@@ -76,7 +77,7 @@ export function ReplayScreen({ db, market, playStepMs = REPLAY_PLAY_STEP_MS }: {
       setLoad({ kind: 'ready', replay: result.replay });
     } else {
       focusAfterLoad.current = FIELD_ERRORS[result.reason]?.field ?? null;
-      setLoad({ kind: 'failed', reason: result.reason, market: form.market });
+      setLoad({ kind: 'failed', reason: result.reason, market: form.market, why: result.why ?? 'source-down', retryAfterSeconds: result.retryAfterSeconds ?? null });
     }
   }, [form, market, play]);
 
@@ -153,6 +154,8 @@ export function ReplayScreen({ db, market, playStepMs = REPLAY_PLAY_STEP_MS }: {
       return <><section className="kairos-replay__stage" aria-labelledby={stageTitleId}>
         <h2 id={stageTitleId} tabIndex={-1} ref={stageHeading}>{replay.symbol} · {replay.candleSize.label} candles</h2>
         <TradePictureCard model={picture} compact={order === null} notes={false} label={order === null ? `${replay.symbol}: ${view.window.length} candles up to ${time}. Price now ${view.last.close}${quote}.` : undefined} />
+        <p className="kairos-replay__source">{replay.source}</p>
+        {replay.note !== null ? <p className="kairos-replay__source">{replay.note}</p> : null}
         <p className="kairos-replay__now" aria-live={playing ? 'off' : 'polite'}>Now in the replay: <time dateTime={view.replayTime}>{time}</time>. Price: <strong>{view.last.close}{quote}</strong></p>
         <div className="kairos-replay__controls" role="group" aria-label="Replay controls">
           <Button onClick={next} disabled={playing || candlesLeft === 0}>Next candle</Button>
@@ -181,10 +184,13 @@ export function ReplayScreen({ db, market, playStepMs = REPLAY_PLAY_STEP_MS }: {
         <Button type="submit" busy={loading}>Start replay</Button>
         {loading ? <p>Loading past prices…</p> : null}
       </Card>
-      {load.kind === 'failed' && load.reason === 'unavailable' ? <div role="alert" className="kairos-replay__unavailable">
-        <p>Past prices are unavailable. Replay needs an internet connection to load them. Your saved trades are not affected.</p>
-        <Button onClick={() => { void start(); }}>Try again</Button>
-      </div> : null}
+      {load.kind === 'failed' && load.reason === 'unavailable' ? (() => {
+        const words = describeMarketDataUnavailable({ ok: false, reason: 'unavailable', why: load.why, retryAfterSeconds: load.retryAfterSeconds }, 'Past prices');
+        return <div className="kairos-replay__unavailable">
+          <UnavailableNotice message={words.message} retryLabel={words.retryLabel} onRetry={() => { void start(); }} retryWhenOnline={words.retryWhenOnline} />
+          <p>Your saved trades are not affected.</p>
+        </div>;
+      })() : null}
     </>}
   </section>;
 }

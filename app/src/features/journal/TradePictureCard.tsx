@@ -1,6 +1,8 @@
 import { useId, type Ref } from 'react';
+import type { UnavailableWords } from '../../application/online/onlineWords';
 import type { TradePictureBox, TradePictureInfoKey, TradePictureModel } from '../../application/trade-visualizer';
 import { decimalSubtract } from '../../domain/calculations';
+import { UnavailableNotice } from '../../design-system/primitives';
 import { projectChartDecimal } from '../chart';
 import { GlossaryHint } from '../learn/GlossaryHint';
 import './tradePictureCard.css';
@@ -144,7 +146,7 @@ function displayValue(model: TradePictureModel, key: string): string {
  * T-027a model only; every number shown comes from that model.
  * Box labels sit at the far edge and are drawn last; every edge a candle runs past gets an arrow (T-039d).
  */
-export function TradePictureCard({ model, candlesLoading = false, svgRef, compact = false, label, notes = true }: {
+export function TradePictureCard({ model, candlesLoading = false, svgRef, compact = false, label, notes = true, candleSource = null, candleNote = null, candleFailure = null, onRetryCandles }: {
   readonly model: TradePictureModel;
   /** Candles are still on their way: say so instead of the connection note. */
   readonly candlesLoading?: boolean;
@@ -156,6 +158,13 @@ export function TradePictureCard({ model, candlesLoading = false, svgRef, compac
   readonly label?: string;
   /** Shows the notes under the drawing; the replay says what is happening itself. */
   readonly notes?: boolean;
+  /** Where the candles came from ("Candles: Binance Spot · BTC/USDT"), shown under a full picture. */
+  readonly candleSource?: string | null;
+  /** How the typed market was matched, or why it was not; shown when not null. */
+  readonly candleNote?: string | null;
+  /** Why the candles could not be had, in the application's words; null when there is no such failure. */
+  readonly candleFailure?: UnavailableWords | null;
+  readonly onRetryCandles?: () => void;
 }) {
   const pad = compact ? COMPACT_PAD : PAD;
   const clipId = `kairos-trade-picture-clip${useId()}`;
@@ -168,6 +177,7 @@ export function TradePictureCard({ model, candlesLoading = false, svgRef, compac
 
   // The image role sits on the chart only: children of role="img" are hidden from screen readers, and the info panel holds buttons.
   return <figure className="kairos-trade-picture" data-trade-picture={model.symbol}>
+    <div className="kairos-trade-picture__main">
     <div className="kairos-trade-picture__chart" role="img" aria-label={label ?? describeTradePicture(model)}>
       <svg ref={svgRef} viewBox={`0 0 ${TRADE_PICTURE_WIDTH} ${TRADE_PICTURE_HEIGHT}`} preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">
         <defs><clipPath id={clipId}><rect x="0" y={pad.top} width={TRADE_PICTURE_WIDTH} height={plotHeight} /></clipPath></defs>
@@ -206,8 +216,18 @@ export function TradePictureCard({ model, candlesLoading = false, svgRef, compac
           {model.rewardBox ? <BoxLabel box={model.rewardBox} scale={scale} kind="reward" /> : null}
         </> : null}
       </svg>
-      {notes && noCandles ? <p className="kairos-trade-picture__note">{!model.marketHasCandles ? 'Candles are shown for crypto trades only for now.' : candlesLoading ? 'Loading candles…' : 'Candles need a connection.'}</p> : null}
+      {notes && noCandles && candleFailure === null ? <p className="kairos-trade-picture__note">{!model.marketHasCandles ? 'Candles are shown for crypto trades only for now.' : candlesLoading ? 'Loading candles…' : candleNote ?? 'No candles for this time.'}</p> : null}
       {notes && noPlan ? <p className="kairos-trade-picture__note">Add a stop and target to see your risk box.</p> : null}
+    </div>
+    {/* Outside the image role, so its words and button reach screen readers. The thumbnail sits inside a button:
+        it shows the reason and retries quietly; the full picture has "Try again". */}
+    {notes && noCandles && model.marketHasCandles && !candlesLoading && candleFailure !== null
+      ? <UnavailableNotice live={false} message={candleFailure.message} retryLabel={compact ? null : candleFailure.retryLabel} onRetry={onRetryCandles} retryWhenOnline={candleFailure.retryWhenOnline} />
+      : null}
+    {notes && !noCandles && !compact && candleSource !== null ? <>
+      <p className="kairos-trade-picture__source">{candleSource}</p>
+      {candleNote !== null ? <p className="kairos-trade-picture__note">{candleNote}</p> : null}
+    </> : null}
     </div>
     {compact ? null : <div className="kairos-trade-picture__info">
       <p className="kairos-trade-picture__title">{[rowText(model, 'market'), rowText(model, 'direction'), rowText(model, 'status')].filter(Boolean).join(' · ')}</p>

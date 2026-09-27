@@ -10,6 +10,7 @@ import type { TradeExecutionId, TradeExecutionRecord, TradeId, TradeRecord } fro
 import { resetBinanceSpotExchangeInfoCache } from '../src/services/market-data';
 import { createTradePictureCandleBrowserDeps } from '../src/app/tradePictureCandleBrowserDeps';
 import { BINANCE_SPOT_CANDLE_INTERVALS } from '../src/services/market-data/providers/binance/binanceSpotCandleHistoryRequest';
+import type { MarketCandleHistoryRequest, MarketCandleHistoryResult, MarketCandleOrigin } from '../src/services/market-data/MarketCandleHistoryPort';
 
 const HOUR = 60 * 60_000, DAY = 24 * HOUR;
 const originalFetch = globalThis.fetch;
@@ -60,8 +61,8 @@ afterEach(() => {
 describe('T-027b candles for the trade window', () => {
   it('a 3 h trade uses 15m and asks for the padded window', async () => {
     stubFetch();
-    const candles = await loadTradePictureCandles(trade(), [fill('entry', start), fill('exit', start + 3 * HOUR)], deps());
-    expect(candles).toHaveLength(2);
+    const result = await loadTradePictureCandles(trade(), [fill('entry', start), fill('exit', start + 3 * HOUR)], deps());
+    expect(result.ok && result.candles).toHaveLength(2);
     expect(klineUrls).toHaveLength(1);
     const url = klineUrls[0];
     expect(url.searchParams.get('symbol')).toBe('BTCUSDT');
@@ -93,20 +94,20 @@ describe('T-027b candles for the trade window', () => {
     ['candles offline', { klines: 'fail' }],
     ['candles error status', { klines: 'error-status' }],
     ['market list offline', { exchangeInfo: 'fail' }],
-  ] as const)('%s → null, never throws', async (_label, options) => {
+  ] as const)('%s → the source did not answer, never throws', async (_label, options) => {
     stubFetch(options);
-    await expect(loadTradePictureCandles(trade(), [fill('entry', start), fill('exit', start + HOUR)], deps())).resolves.toBeNull();
+    await expect(loadTradePictureCandles(trade(), [fill('entry', start), fill('exit', start + HOUR)], deps())).resolves.toMatchObject({ ok: false, why: 'source-down' });
   });
 
-  it('an unknown symbol → null, with no candle request', async () => {
+  it('an unknown symbol → not listed, with no candle request', async () => {
     stubFetch();
-    await expect(loadTradePictureCandles(trade({ symbol: 'AAPL' }), [fill('entry', start)], deps())).resolves.toBeNull();
+    await expect(loadTradePictureCandles(trade({ symbol: 'AAPL' }), [fill('entry', start)], deps())).resolves.toMatchObject({ ok: false, why: 'not-listed' });
     expect(klineUrls).toHaveLength(0);
   });
 
-  it('a trade with no start time → null, with no request', async () => {
+  it('a trade with no start time → no start, with no request', async () => {
     const fetchMock = stubFetch();
-    await expect(loadTradePictureCandles(trade({ status: 'draft', openedAt: null }), [], deps())).resolves.toBeNull();
+    await expect(loadTradePictureCandles(trade({ status: 'draft', openedAt: null }), [], deps())).resolves.toMatchObject({ ok: false, why: 'no-start' });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
@@ -153,5 +154,61 @@ describe('T-039d real candles at every trade length', () => {
     expect(url.searchParams.get('limit')).toBe('35');
     expect(Number(url.searchParams.get('startTime'))).toBe(start - 24 * MIN);
     expect(Number(url.searchParams.get('endTime'))).toBe(start + 2 * HOUR + 24 * MIN);
+  });
+});
+
+describe('T-048f the matching market, futures candles and the real reason', () => {
+  const listed = [
+    { instrument: { venue: 'binance-spot', symbol: 'BTCUSDT' }, baseAsset: 'BTC', quoteAsset: 'USDT', tradingEnabled: true },
+    { instrument: { venue: 'binance-spot', symbol: 'ETHUSDT' }, baseAsset: 'ETH', quoteAsset: 'USDT', tradingEnabled: true },
+  ];
+  const candle = { openTime: new Date(start).toISOString(), closeTime: new Date(start + HOUR - 1).toISOString(), open: '100', high: '105', low: '95', close: '102' } as never;
+  const answered = (request: MarketCandleHistoryRequest, origin: MarketCandleOrigin): MarketCandleHistoryResult =>
+    ({ ok: true, snapshot: { source: 'market-reference', timeZone: 'UTC', request, observedAt: new Date(start).toISOString(), candles: [candle], origin } });
+  function ports(answer: (request: MarketCandleHistoryRequest) => MarketCandleHistoryResult) {
+    const acquireHistory = vi.fn(async (request: MarketCandleHistoryRequest) => answer(request));
+    return {
+      acquireHistory,
+      deps: {
+        venue: 'binance-spot',
+        history: { acquireHistory },
+        metadata: { acquireInstrumentMetadata: async () => ({ ok: true as const, facts: listed as never }) },
+        nowMs: () => Date.parse('2026-09-24T12:00:00.000Z'),
+      },
+    };
+  }
+  const fills = [fill('entry', start), fill('exit', start + HOUR)];
+  const binance = (market: 'spot' | 'usdm-futures'): MarketCandleOrigin => ({ provider: 'binance', market, symbol: 'BTCUSDT', backup: null });
+
+  it('a futures trade asks binance-usdm with the pair, and names Binance Futures', async () => {
+    const { acquireHistory, deps } = ports(request => answered(request, binance('usdm-futures')));
+    const result = await loadTradePictureCandles(trade({ symbol: 'BTCUSDT', marketType: 'futures' }), fills, deps);
+    expect(acquireHistory).toHaveBeenCalledTimes(1);
+    expect(acquireHistory.mock.calls[0]![0]).toMatchObject({ instrument: { venue: 'binance-usdm', symbol: 'BTCUSDT' }, pair: { base: 'BTC', quote: 'USDT' } });
+    expect(result).toMatchObject({ ok: true, source: 'Candles: Binance Futures · BTC/USDT', note: null });
+  });
+
+  it('a futures market Binance does not have → spot candles once, and the source line says so', async () => {
+    const { acquireHistory, deps } = ports(request => request.instrument.venue === 'binance-usdm'
+      ? { ok: false, reason: 'unavailable', why: 'unknown-market', retryAfterSeconds: null }
+      : answered(request, binance('spot')));
+    const result = await loadTradePictureCandles(trade({ symbol: 'BTCUSDT', marketType: 'futures' }), fills, deps);
+    expect(acquireHistory.mock.calls.map(([request]) => request.instrument.venue)).toEqual(['binance-usdm', 'binance-spot']);
+    expect(result).toMatchObject({ ok: true, source: 'Candles: Binance Spot · BTC/USDT · no futures candles for this market' });
+  });
+
+  it('BTC/USD loads BTCUSDT with the stablecoin note', async () => {
+    const { acquireHistory, deps } = ports(request => answered(request, binance('spot')));
+    const result = await loadTradePictureCandles(trade({ symbol: 'BTC/USD' }), fills, deps);
+    expect(acquireHistory.mock.calls[0]![0]).toMatchObject({ instrument: { venue: 'binance-spot', symbol: 'BTCUSDT' }, pair: { base: 'BTC', quote: 'USDT' } });
+    expect(result).toMatchObject({ ok: true, source: 'Candles: Binance Spot · BTC/USDT' });
+    expect(result.note).toContain('USDT is a dollar stablecoin');
+  });
+
+  it('a region failure gives its why, and failures are not kept: a second call asks again', async () => {
+    const { acquireHistory, deps } = ports(() => ({ ok: false, reason: 'unavailable', why: 'region', retryAfterSeconds: null }));
+    await expect(loadTradePictureCandles(trade({ symbol: 'BTCUSDT' }), fills, deps)).resolves.toMatchObject({ ok: false, why: 'region', retryAfterSeconds: null });
+    await expect(loadTradePictureCandles(trade({ symbol: 'BTCUSDT' }), fills, deps)).resolves.toMatchObject({ ok: false, why: 'region' });
+    expect(acquireHistory).toHaveBeenCalledTimes(2);
   });
 });

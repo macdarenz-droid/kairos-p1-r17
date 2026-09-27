@@ -15,10 +15,12 @@ export interface UnavailableWords {
   readonly retryLabel: 'Try again' | null;
   /** Seconds the server asked to wait, or null. */
   readonly retryAfterSeconds: number | null;
+  /** true: the box retries once by itself when the browser is back online. */
+  readonly retryWhenOnline: boolean;
 }
 
-const words = (message: string, retry: boolean, retryAfterSeconds: number | null): UnavailableWords =>
-  Object.freeze({ title: 'Unavailable' as const, message, retryLabel: retry ? ('Try again' as const) : null, retryAfterSeconds });
+const words = (message: string, retry: boolean, retryAfterSeconds: number | null, retryWhenOnline = false): UnavailableWords =>
+  Object.freeze({ title: 'Unavailable' as const, message, retryLabel: retry ? ('Try again' as const) : null, retryAfterSeconds, retryWhenOnline });
 
 const unknownMarket = (subject: string) => `${subject}: Binance doesn't list this market. Check the spelling, for example BTCUSDT.`;
 const regionRefused = (subject: string) => `${subject}: Binance isn't available in your region, and the backup source couldn't help. Try again later.`;
@@ -27,7 +29,7 @@ const regionRefused = (subject: string) => `${subject}: Binance isn't available 
 export function describeUnavailable(failure: KairosApiFailure, subject: string): UnavailableWords {
   switch (failure.reason) {
     case 'not-set-up': return words(`${subject}: not set up in this version of Kairos.`, false, null);
-    case 'transport-failed': return words(`${subject}: Kairos could not reach its server. Check your connection, then try again.`, true, null);
+    case 'transport-failed': return words(`${subject}: Kairos could not reach its server. Check your connection, then try again.`, true, null, true);
     case 'invalid-response': return words(`${subject}: the answer could not be read. Try again later.`, true, null);
     case 'unavailable':
       switch (failure.serverReason) {
@@ -46,7 +48,7 @@ export function describeUnavailable(failure: KairosApiFailure, subject: string):
 /** The words for market data that could not be had (U2): one sentence per `why`, and "Try again" unless it cannot help. */
 export function describeMarketDataUnavailable(failure: MarketDataUnavailable, subject: string): UnavailableWords {
   switch (failure.why) {
-    case 'offline': return words(`${subject}: you're offline. Kairos will try again when you're back online.`, true, null);
+    case 'offline': return words(`${subject}: you're offline. Kairos will try again when you're back online.`, true, null, true);
     case 'unknown-market': return words(unknownMarket(subject), false, null);
     case 'busy': return words(`${subject}: too many requests right now. Wait a minute, then try again.`, true, failure.retryAfterSeconds);
     case 'region': return words(regionRefused(subject), true, null);

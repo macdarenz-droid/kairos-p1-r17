@@ -43,13 +43,13 @@ describe('T-027c trade picture card', () => {
     expect(within(info).getByText(infoText(model, 'planned-reward'))).toBeInTheDocument();
     expect(within(info).getByText(infoText(model, 'actual-r'))).toBeInTheDocument();
     expect(within(info).getByText('3 h')).toBeInTheDocument();
-    expect(screen.queryByText('Candles need a connection.')).toBeNull();
+    expect(screen.queryByText('No candles for this time.')).toBeNull();
     expect(screen.queryByText('Add a stop and target to see your risk box.')).toBeNull();
   });
 
   it('shows the connection note without candles, and still draws the boxes', () => {
     const { container } = render(<TradePictureCard model={projectTradePicture({ ...input, candles: null })} />);
-    expect(screen.getByText('Candles need a connection.')).toBeInTheDocument();
+    expect(screen.getByText('No candles for this time.')).toBeInTheDocument();
     expect(container.querySelector('[data-box="risk"]')).not.toBeNull();
     expect(container.querySelectorAll('.kairos-trade-picture__candle')).toHaveLength(0);
   });

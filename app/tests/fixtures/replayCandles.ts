@@ -19,7 +19,7 @@ export function replayCandle(openMs: number, open: string, high: string, low: st
   });
 }
 
-export const REPLAY_TEST_VENUE = 'test-venue';
+export const REPLAY_TEST_VENUE = 'binance-spot';
 
 /** Flat at 100 before `rampFromMs`, then one step up per candle. */
 export function rampPrices(openMs: number, rampFromMs: number, ms = HOUR): [string, string, string, string] {

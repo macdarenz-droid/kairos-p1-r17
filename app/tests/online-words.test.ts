@@ -11,6 +11,7 @@ describe('describeUnavailable', () => {
       message: 'News: Kairos could not reach its server. Check your connection, then try again.',
       retryLabel: 'Try again',
       retryAfterSeconds: null,
+      retryWhenOnline: true,
     });
   });
 
@@ -26,6 +27,7 @@ describe('describeUnavailable', () => {
       message: 'News: too many requests from this device. Wait a minute, then try again.',
       retryLabel: 'Try again',
       retryAfterSeconds: 60,
+      retryWhenOnline: false,
     });
     expect(describeUnavailable({ ok: false, reason: 'unavailable', serverReason: 'teapot', retryAfterSeconds: null, status: 418 }, 'News'))
       .toMatchObject({ message: 'News: unavailable right now. Try again later.', retryLabel: 'Try again' });
@@ -45,7 +47,7 @@ describe('describeUnavailable: every failure in full', () => {
       [server('teapot', 5, 418), 'News: unavailable right now. Try again later.', 'Try again', 5],
     ];
     for (const [failure, message, retryLabel, retryAfterSeconds] of cases) {
-      expect(describeUnavailable(failure, 'News'), JSON.stringify(failure)).toEqual({ title: 'Unavailable', message, retryLabel, retryAfterSeconds });
+      expect(describeUnavailable(failure, 'News'), JSON.stringify(failure)).toEqual({ title: 'Unavailable', message, retryLabel, retryAfterSeconds, retryWhenOnline: failure.reason === 'transport-failed' });
     }
   });
 });
@@ -86,8 +88,21 @@ describe('describeMarketDataUnavailable', () => {
       ['unreadable', 'Candles: the answer could not be read. Try again later.', 'Try again'],
     ];
     for (const [why, message, retryLabel] of cases) {
-      expect(describeMarketDataUnavailable(failure(why), 'Candles'), why).toEqual({ title: 'Unavailable', message, retryLabel, retryAfterSeconds: null });
+      expect(describeMarketDataUnavailable(failure(why), 'Candles'), why).toEqual({ title: 'Unavailable', message, retryLabel, retryAfterSeconds: null, retryWhenOnline: why === 'offline' });
     }
+  });
+
+  it('retries by itself when back online only for the network failure and offline', () => {
+    const whys: MarketDataUnavailableWhy[] = ['offline', 'unknown-market', 'busy', 'region', 'source-down', 'not-set-up', 'unreadable'];
+    expect(whys.filter(why => describeMarketDataUnavailable(failure(why), 'Candles').retryWhenOnline)).toEqual(['offline']);
+    const server = (serverReason: string) => ({ ok: false as const, reason: 'unavailable' as const, serverReason, retryAfterSeconds: null, status: 503 });
+    const failures = [
+      { ok: false as const, reason: 'transport-failed' as const },
+      { ok: false as const, reason: 'not-set-up' as const },
+      { ok: false as const, reason: 'invalid-response' as const, status: 200 },
+      ...['rate-limited', 'source-busy', 'unknown-market', 'source-refused', 'source-unavailable', 'not-set-up', 'device-not-recognised', 'teapot'].map(server),
+    ];
+    expect(failures.filter(item => describeUnavailable(item, 'News').retryWhenOnline).map(item => item.reason)).toEqual(['transport-failed']);
   });
 
   it('passes on how long the source asked to wait when it is busy', () => {

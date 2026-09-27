@@ -1,8 +1,8 @@
 import { createContext } from 'react';
 import type { TradeExecutionRecord, TradeRecord } from '../../domain/trades';
-import type { MarketCandle } from '../../services/market-data/MarketCandleHistoryPort';
+import type { TradePictureCandlesResult } from '../../application/trade-visualizer';
 
-export type TradePictureCandleLoader = (trade: TradeRecord, executions: readonly TradeExecutionRecord[]) => Promise<readonly MarketCandle[] | null>;
+export type TradePictureCandleLoader = (trade: TradeRecord, executions: readonly TradeExecutionRecord[]) => Promise<TradePictureCandlesResult>;
 
 export const TRADE_PICTURE_MAX_PARALLEL_LOADS = 3;
 

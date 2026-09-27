@@ -1,6 +1,8 @@
 import type { MarketType, TradeExecutionRecord, TradeRecord } from '../../domain/trades';
 import type { LiveMarketUniverseInstrumentMetadataAcquisitionPort } from '../../services/market-data/LiveMarketUniverseInstrumentMetadataAcquisitionPort';
-import type { MarketCandle, MarketCandleHistoryPort } from '../../services/market-data/MarketCandleHistoryPort';
+import type { MarketCandle, MarketCandleHistoryPort, MarketCandleHistoryResult } from '../../services/market-data/MarketCandleHistoryPort';
+import type { MarketDataUnavailableWhy } from '../../services/market-data/marketDataTypes';
+import { describeCandleSource, matchCryptoMarket } from '../market-reference/cryptoMarket';
 
 const MINUTE_MS = 60_000;
 const HOUR_MS = 60 * MINUTE_MS;
@@ -88,59 +90,92 @@ export function tradePictureTimes(trade: TradeRecord, executions: readonly Trade
 }
 
 export interface TradePictureCandleDeps {
-  /** The market venue the history and metadata ports serve (the composition root picks the provider). */
+  /** The Binance Spot venue the metadata port lists (the composition root picks the provider). */
   readonly venue: string;
   readonly history: MarketCandleHistoryPort;
-  /** Known market list; a symbol that is not on it is never requested. */
+  /** Known market list; a symbol that does not match a market on it is never requested. */
   readonly metadata: LiveMarketUniverseInstrumentMetadataAcquisitionPort;
   readonly nowMs?: () => number;
   readonly signal?: AbortSignal;
 }
 
-// Session-only memory (D15): candles are market reference, never stored in IndexedDB.
-const cache = new Map<string, readonly MarketCandle[]>();
+/** The USDⓈ-M futures venue the history port serves for futures trades (D165). */
+const FUTURES_VENUE = 'binance-usdm';
+
+export type TradePictureCandlesFailure = 'no-candle-source' | 'no-start' | 'not-listed' | 'no-candles' | MarketDataUnavailableWhy;
+
+export type TradePictureCandlesResult =
+  | Readonly<{ ok: true; candles: readonly MarketCandle[]; source: string; note: string | null }>
+  | Readonly<{ ok: false; why: TradePictureCandlesFailure; retryAfterSeconds: number | null; note: string | null }>;
+
+type TradePictureCandlesSuccess = Extract<TradePictureCandlesResult, { ok: true }>;
+
+// Session-only memory (D15): candles are market reference, never stored in IndexedDB. Only successes are kept.
+const cache = new Map<string, TradePictureCandlesSuccess>();
 
 export function resetTradePictureCandleCache(): void {
   cache.clear();
 }
 
+const failed = (why: TradePictureCandlesFailure, retryAfterSeconds: number | null = null, note: string | null = null): TradePictureCandlesResult =>
+  Object.freeze({ ok: false as const, why, retryAfterSeconds, note });
+
+/** A port failure's reason: the typed one when the port gave it, else "the source didn't answer". */
+const unavailable = (result: { readonly reason: string; readonly why?: MarketDataUnavailableWhy; readonly retryAfterSeconds?: number | null }, note: string | null = null): TradePictureCandlesResult =>
+  result.reason === 'unavailable' && result.why !== undefined ? failed(result.why, result.retryAfterSeconds ?? null, note) : failed('source-down', null, note);
+
 /**
- * Candles around one trade for its picture, or null when there are none to
- * show (offline, unknown symbol, error, no start time, or a market with no candle source). It never throws.
+ * Candles around one trade for its picture, with the line that says where they came from, or why there are none:
+ * no candle source for the market, no start time, a market Binance doesn't list, no candles for the time, or the
+ * source's own reason. Futures trades ask futures candles, and spot candles once when there is no futures market. It never throws.
  */
 export async function loadTradePictureCandles(
   trade: TradeRecord,
   executions: readonly TradeExecutionRecord[],
   deps: TradePictureCandleDeps,
-): Promise<readonly MarketCandle[] | null> {
+): Promise<TradePictureCandlesResult> {
   try {
-    if (!tradePictureHasCandleSource(trade.marketType)) return null;
+    if (!tradePictureHasCandleSource(trade.marketType)) return failed('no-candle-source');
     const nowMs = (deps.nowMs ?? Date.now)();
     const times = tradePictureTimes(trade, executions, nowMs);
-    if (times.startMs === null) return null;
+    if (times.startMs === null) return failed('no-start');
     const window = planTradePictureCandleWindow(times.startMs, times.endMs);
-    if (window === null) return null;
-    const symbol = normalizeTradeSymbol(trade.symbol);
-    const key = [symbol, window.interval, window.startTimeMs, window.endTimeMs].join('|');
+    if (window === null) return failed('no-start');
+    const options = deps.signal ? { signal: deps.signal } : undefined;
+
+    const metadata = await deps.metadata.acquireInstrumentMetadata(options);
+    if (!metadata.ok) return unavailable(metadata);
+    const match = matchCryptoMarket(trade.symbol, trade.marketType, metadata.facts);
+    if (!match.ok) return failed('not-listed', null, match.note);
+
+    const key = [match.symbol, match.candles, window.interval, window.startTimeMs, window.endTimeMs].join('|');
     const stored = cache.get(key);
     if (stored) return stored;
 
-    const metadata = await deps.metadata.acquireInstrumentMetadata(deps.signal ? { signal: deps.signal } : undefined);
-    if (!metadata.ok) return null;
-    const known = metadata.facts.some(fact => fact.instrument.venue === deps.venue && fact.instrument.symbol === symbol);
-    if (!known) return null;
-
-    const result = await deps.history.acquireHistory({
-      instrument: { venue: deps.venue, symbol },
+    const ask = (venue: string): Promise<MarketCandleHistoryResult> => deps.history.acquireHistory({
+      instrument: { venue, symbol: match.symbol },
       interval: window.interval,
       limit: window.limit,
       startTimeMs: window.startTimeMs,
       endTimeMs: window.endTimeMs,
-    }, deps.signal ? { signal: deps.signal } : undefined);
-    if (!result.ok || result.snapshot.candles.length === 0) return null;
-    cache.set(key, result.snapshot.candles);
-    return result.snapshot.candles;
+      pair: { base: match.base, quote: match.quote },
+    }, options);
+    let result = await ask(match.candles === 'usdm-futures' ? FUTURES_VENUE : deps.venue);
+    // No futures market (or a source without futures candles): spot candles once, and the source line says so.
+    if (match.candles === 'usdm-futures' && !result.ok && ((result.reason === 'unavailable' && result.why === 'unknown-market') || result.reason === 'invalid-request')) {
+      result = await ask(deps.venue);
+    }
+    if (!result.ok) return unavailable(result, match.note);
+    if (result.snapshot.candles.length === 0) return failed('no-candles', null, match.note);
+    const success: TradePictureCandlesSuccess = Object.freeze({
+      ok: true as const,
+      candles: result.snapshot.candles,
+      source: describeCandleSource(result.snapshot.origin, match, match.candles),
+      note: match.note,
+    });
+    cache.set(key, success);
+    return success;
   } catch {
-    return null;
+    return failed('source-down');
   }
 }

@@ -157,7 +157,8 @@ describe('T-038d refusals and offline', () => {
     fake.state.metadataFails = true;
     await mount(fake);
     await startReplay();
-    expect(await screen.findByRole('alert')).toHaveTextContent('Past prices are unavailable. Replay needs an internet connection to load them. Your saved trades are not affected.');
+    expect(await screen.findByRole('alert')).toHaveTextContent("Unavailable · Past prices: the price source didn't answer. Try again in a moment.");
+    expect(screen.getByText('Your saved trades are not affected.')).toBeInTheDocument();
     fake.state.metadataFails = false;
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(await stage()).toBeInTheDocument();
@@ -165,7 +166,7 @@ describe('T-038d refusals and offline', () => {
 });
 
 describe('T-038d trade picture label and notes', () => {
-  const replay = { symbol: 'BTCUSDT', quoteAsset: 'USDT', candleSize: { interval: '1h', label: '1 hour', ms: HOUR } as const, candles: [replayCandle(0, '1', '2', '1', '2'), replayCandle(HOUR, '2', '3', '2', '3')], startIndex: 1 };
+  const replay = { symbol: 'BTCUSDT', quoteAsset: 'USDT', candleSize: { interval: '1h', label: '1 hour', ms: HOUR } as const, candles: [replayCandle(0, '1', '2', '1', '2'), replayCandle(HOUR, '2', '3', '2', '3')], startIndex: 1, source: 'Candles: Binance Spot · BTC/USDT', note: null };
 
   it('takes its own label, and can hide its notes', () => {
     const model = projectReplayPicture(replay, 1, null)!;
@@ -174,10 +175,10 @@ describe('T-038d trade picture label and notes', () => {
     cleanup();
     const empty = { ...model, candles: [] };
     render(<TradePictureCard model={empty} notes={false} />);
-    expect(screen.queryByText('Candles need a connection.')).toBeNull();
+    expect(screen.queryByText('No candles for this time.')).toBeNull();
     cleanup();
     render(<TradePictureCard model={empty} />);
-    expect(screen.getByText('Candles need a connection.')).toBeInTheDocument();
+    expect(screen.getByText('No candles for this time.')).toBeInTheDocument();
     expect(screen.getByText('Add a stop and target to see your risk box.')).toBeInTheDocument();
   });
 });

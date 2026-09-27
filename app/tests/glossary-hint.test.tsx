@@ -79,7 +79,7 @@ async function journalWithClosedTrade() {
     executions: [{ type: 'entry', price: '60000', quantity: '0.1', executedAt: at }, { type: 'exit', price: '61500', quantity: '0.1', executedAt: end }],
   });
   if (!saved.ok) throw new Error('fixture');
-  const offline: TradePictureCandleLoader = async () => null;
+  const offline: TradePictureCandleLoader = async () => ({ ok: false, why: 'no-candles', retryAfterSeconds: null, note: null });
   render(<TradePictureCandleLoaderContext.Provider value={offline}><MemoryRouter><JournalRoute db={db} /></MemoryRouter></TradePictureCandleLoaderContext.Provider>);
   return screen.findByRole('button', { name: 'Open the BTCUSDT trade picture' });
 }
@@ -118,7 +118,7 @@ describe('P24.8 "What does this mean?" on the trade card', () => {
       });
       if (!saved.ok) throw new Error('fixture');
     }
-    const offline: TradePictureCandleLoader = async () => null;
+    const offline: TradePictureCandleLoader = async () => ({ ok: false, why: 'no-candles', retryAfterSeconds: null, note: null });
     const { container } = render(<TradePictureCandleLoaderContext.Provider value={offline}><MemoryRouter><JournalRoute db={db} /></MemoryRouter></TradePictureCandleLoaderContext.Provider>);
     await waitFor(() => expect(container.querySelectorAll('.kairos-history-card')).toHaveLength(2));
     const [first, second] = [...container.querySelectorAll<HTMLElement>('.kairos-history-card')];

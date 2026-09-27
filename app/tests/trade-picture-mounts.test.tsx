@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import '@testing-library/jest-dom/vitest';
 import Dexie from 'dexie';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { JournalRoute } from '../src/app/JournalRoute';
@@ -33,7 +33,7 @@ async function seedClosedTrade(db: KairosDatabase) {
   });
   if (!saved.ok) throw new Error('fixture');
 }
-const offline: TradePictureCandleLoader = async () => null;
+const offline: TradePictureCandleLoader = async () => ({ ok: false, why: 'no-candles', retryAfterSeconds: null, note: null });
 
 describe('T-027d trade picture on the cards', () => {
   it('the picture\'s Closed time equals the card header (T-039d)', async () => {
@@ -52,7 +52,7 @@ describe('T-027d trade picture on the cards', () => {
     const loader = vi.fn(offline);
     render(<TradePictureCandleLoaderContext.Provider value={loader}><MemoryRouter><JournalRoute db={db} /></MemoryRouter></TradePictureCandleLoaderContext.Provider>);
     const open = await screen.findByRole('button', { name: 'Open the BTCUSDT trade picture' });
-    await waitFor(() => expect(within(open).getByText('Candles need a connection.')).toBeInTheDocument());
+    await waitFor(() => expect(within(open).getByText('No candles for this time.')).toBeInTheDocument());
     expect(loader).toHaveBeenCalledTimes(1);
     expect(within(open).getByText('Risk')).toBeInTheDocument();
     expect(screen.queryByText('Visual guide · Not to scale')).toBeNull();
@@ -71,7 +71,34 @@ describe('T-027d trade picture on the cards', () => {
     const [entry] = await listJournalHistory(db);
     render(<TradePictureCandleLoaderContext.Provider value={offline}><TradePicture entry={entry} variant="full" /></TradePictureCandleLoaderContext.Provider>);
     expect(screen.getByRole('heading', { name: 'Your trade' })).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByText('Candles need a connection.')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('No candles for this time.')).toBeInTheDocument());
+  });
+
+  it('T-048f: an offline failure shows the reason with Try again, and asks again when back online or on Try again', async () => {
+    const db = await database();
+    await seedClosedTrade(db);
+    const [entry] = await listJournalHistory(db);
+    const loader = vi.fn<TradePictureCandleLoader>(async () => ({ ok: false, why: 'offline', retryAfterSeconds: null, note: null }));
+    render(<TradePictureCandleLoaderContext.Provider value={loader}><TradePicture entry={entry} variant="full" /></TradePictureCandleLoaderContext.Provider>);
+    await waitFor(() => expect(screen.getByText(/Candles: you're offline\./)).toBeInTheDocument());
+    expect(screen.getByText(/Candles: you're offline\./).closest('.kairos-unavailable')).toHaveTextContent("Unavailable · Candles: you're offline.");
+    expect(loader).toHaveBeenCalledTimes(1);
+    act(() => { window.dispatchEvent(new Event('online')); });
+    await waitFor(() => expect(loader).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(loader).toHaveBeenCalledTimes(3));
+  });
+
+  it('T-048f: loaded candles show where they came from', async () => {
+    const db = await database();
+    await seedClosedTrade(db);
+    const [entry] = await listJournalHistory(db);
+    const candles = [{ openTime: opened, closeTime: '2026-09-20T09:59:59.999Z', open: '60000', high: '61600', low: '59900', close: '61500' }] as never;
+    const loader: TradePictureCandleLoader = async () => ({ ok: true, candles, source: 'Candles: Binance Spot · BTC/USDT', note: null });
+    render(<TradePictureCandleLoaderContext.Provider value={loader}><TradePicture entry={entry} variant="full" /></TradePictureCandleLoaderContext.Provider>);
+    expect(await screen.findByText('Candles: Binance Spot · BTC/USDT')).toBeInTheDocument();
+    expect(screen.queryByText(/Unavailable/)).toBeNull();
   });
 
   it('loads at most three pictures at a time', async () => {

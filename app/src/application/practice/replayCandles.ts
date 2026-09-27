@@ -5,6 +5,8 @@
 import { decimalNormalize } from '../../domain/calculations/decimalKernel';
 import type { LiveMarketUniverseInstrumentMetadataAcquisitionPort } from '../../services/market-data/LiveMarketUniverseInstrumentMetadataAcquisitionPort';
 import type { MarketCandle, MarketCandleHistoryPort } from '../../services/market-data/MarketCandleHistoryPort';
+import type { MarketDataUnavailableWhy } from '../../services/market-data/marketDataTypes';
+import { describeCandleSource, matchCryptoMarket } from '../market-reference/cryptoMarket';
 import { normalizeTradeSymbol } from '../trade-visualizer/tradePictureCandles';
 import { isPriceCurrencyInput } from '../trades/priceCurrencyInput';
 
@@ -34,24 +36,38 @@ export interface LoadedReplay {
   readonly candles: readonly MarketCandle[];
   /** How many candles are shown when the replay starts. */
   readonly startIndex: number;
+  /** Where the candles came from ("Candles: Binance Spot · BTC/USDT"). */
+  readonly source: string;
+  /** How the typed market was matched, when it was not typed exactly; null otherwise. */
+  readonly note: string | null;
 }
 export type ReplayLoadFailure = 'market-required' | 'candle-size-invalid' | 'start-invalid' | 'start-in-future' | 'unknown-market' | 'no-history' | 'no-future' | 'unavailable';
-export type ReplayLoadResult = { readonly ok: true; readonly replay: LoadedReplay } | { readonly ok: false; readonly reason: ReplayLoadFailure };
+export type ReplayLoadResult =
+  | { readonly ok: true; readonly replay: LoadedReplay }
+  | { readonly ok: false; readonly reason: ReplayLoadFailure; readonly why?: MarketDataUnavailableWhy; readonly retryAfterSeconds?: number | null };
 
 const fail = (reason: ReplayLoadFailure): ReplayLoadResult => Object.freeze({ ok: false as const, reason });
 
-/** One candle with every price in its shortest exact form, or null when a price is not a decimal. */
+/** A port failure as 'unavailable' with its reason: the typed one when the port gave it, else "the source didn't answer". */
+const unavailable = (result?: { readonly reason: string; readonly why?: MarketDataUnavailableWhy; readonly retryAfterSeconds?: number | null }): ReplayLoadResult =>
+  Object.freeze(result !== undefined && result.reason === 'unavailable' && result.why !== undefined
+    ? { ok: false as const, reason: 'unavailable' as const, why: result.why, retryAfterSeconds: result.retryAfterSeconds ?? null }
+    : { ok: false as const, reason: 'unavailable' as const, why: 'source-down' as const, retryAfterSeconds: null });
+
+/** One candle with every price (and the volume, when there is one) in its shortest exact form, or null when one is not a decimal. */
 function normalizeCandle(candle: MarketCandle): MarketCandle | null {
   const open = decimalNormalize(candle.open), high = decimalNormalize(candle.high), low = decimalNormalize(candle.low), close = decimalNormalize(candle.close);
   if (!open.ok || !high.ok || !low.ok || !close.ok) return null;
-  return Object.freeze({ openTime: candle.openTime, closeTime: candle.closeTime, open: open.value, high: high.value, low: low.value, close: close.value });
+  const prices = { openTime: candle.openTime, closeTime: candle.closeTime, open: open.value, high: high.value, low: low.value, close: close.value };
+  if (candle.volume === undefined) return Object.freeze(prices);
+  const volume = decimalNormalize(candle.volume);
+  return volume.ok ? Object.freeze({ ...prices, volume: volume.value }) : null;
 }
 
-/** Past candles around one moment for a replay. It never rejects: any port failure is 'unavailable'. */
+/** Past candles around one moment for a replay, always spot (practice is spot). It never rejects: any port failure is 'unavailable', with its reason. */
 export async function loadReplayCandles(request: ReplayRequest, deps: ReplayMarketDeps): Promise<ReplayLoadResult> {
   try {
-    const symbol = normalizeTradeSymbol(request.market);
-    if (symbol === '') return fail('market-required');
+    if (normalizeTradeSymbol(request.market) === '') return fail('market-required');
     const size = REPLAY_CANDLE_SIZES.find(item => item.interval === request.candleSize);
     if (size === undefined) return fail('candle-size-invalid');
     // A datetime-local value is read in the device's time zone.
@@ -66,10 +82,11 @@ export async function loadReplayCandles(request: ReplayRequest, deps: ReplayMark
 
     const options = deps.signal ? { signal: deps.signal } : undefined;
     const metadata = await deps.metadata.acquireInstrumentMetadata(options);
-    if (!metadata.ok) return fail('unavailable');
-    const fact = metadata.facts.find(item => item.instrument.venue === deps.venue && item.instrument.symbol === symbol);
-    if (fact === undefined) return fail('unknown-market');
-    const quote = fact.quoteAsset.trim().toUpperCase();
+    if (!metadata.ok) return unavailable(metadata);
+    const match = matchCryptoMarket(request.market, 'crypto', metadata.facts);
+    if (!match.ok) return fail('unknown-market');
+    const symbol = match.symbol;
+    const quote = match.quote.trim().toUpperCase();
     const quoteAsset = quote !== '' && isPriceCurrencyInput(quote) ? quote : null;
 
     const history = await deps.history.acquireHistory({
@@ -78,21 +95,25 @@ export async function loadReplayCandles(request: ReplayRequest, deps: ReplayMark
       limit: REPLAY_HISTORY_CANDLES + REPLAY_FUTURE_CANDLES,
       startTimeMs: fromMs,
       endTimeMs: Math.min(alignedStart + (REPLAY_FUTURE_CANDLES - 1) * size.ms, nowMs),
+      pair: { base: match.base, quote: match.quote },
     }, options);
-    if (!history.ok) return fail('unavailable');
+    if (!history.ok) return unavailable(history);
     // The last candle of a page may still be forming: only finished candles are replayed.
     const candles: MarketCandle[] = [];
     for (const candle of history.snapshot.candles) {
       if (!(Date.parse(candle.closeTime) < nowMs)) continue;
       const normalized = normalizeCandle(candle);
-      if (normalized === null) return fail('unavailable');
+      if (normalized === null) return Object.freeze({ ok: false as const, reason: 'unavailable' as const, why: 'unreadable' as const, retryAfterSeconds: null });
       candles.push(normalized);
     }
     const startIndex = candles.filter(candle => Date.parse(candle.openTime) < alignedStart).length;
     if (startIndex === 0) return fail('no-history');
     if (startIndex === candles.length) return fail('no-future');
-    return Object.freeze({ ok: true as const, replay: Object.freeze({ symbol, quoteAsset, candleSize: size, candles: Object.freeze(candles), startIndex }) });
+    return Object.freeze({ ok: true as const, replay: Object.freeze({
+      symbol, quoteAsset, candleSize: size, candles: Object.freeze(candles), startIndex,
+      source: describeCandleSource(history.snapshot.origin, match, 'spot'), note: match.note,
+    }) });
   } catch {
-    return fail('unavailable');
+    return unavailable();
   }
 }
