@@ -10,11 +10,11 @@ describe('Analysis live candle product policy', () => {
     expect(ANALYSIS_LIVE_CANDLE_HISTORY_LIMIT).toBe(500);
   });
 
-  it('publishes one immutable bounded reconnect policy', () => {
+  it('publishes one immutable reconnect policy that never gives up', () => {
     expect(ANALYSIS_LIVE_CANDLE_RECONNECT_POLICY).toEqual({
       initialDelayMs: 1_000,
-      maxDelayMs: 8_000,
-      maxAttempts: 4,
+      maxDelayMs: 30_000,
+      maxAttempts: Number.MAX_SAFE_INTEGER,
     });
     expect(Object.isFrozen(ANALYSIS_LIVE_CANDLE_RECONNECT_POLICY)).toBe(true);
   });
@@ -30,6 +30,14 @@ describe('Analysis live candle product policy', () => {
       { retry: true, delayMs: 8_000, nextAttempt: 4 },
     ]);
     expect(decideMarketDataReconnect(ANALYSIS_LIVE_CANDLE_RECONNECT_POLICY, 4))
-      .toEqual({ retry: false, reason: 'attempt-limit' });
+      .toEqual({ retry: true, delayMs: 16_000, nextAttempt: 5 });
+  });
+
+  it('T-048h: still retries after 1,000 failed attempts, waiting at most 30 seconds', () => {
+    const decision = decideMarketDataReconnect(ANALYSIS_LIVE_CANDLE_RECONNECT_POLICY, 1_000);
+    expect(decision.retry).toBe(true);
+    if (!decision.retry) return;
+    expect(decision.delayMs).toBeLessThanOrEqual(30_000);
+    expect(decision.nextAttempt).toBe(1_001);
   });
 });

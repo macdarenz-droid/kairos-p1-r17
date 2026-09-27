@@ -111,7 +111,7 @@ export function presentAnalysisLiveCandleStatus({
     return status('live', 'Live candles connected', 'Validated market updates are being applied to this chart.');
   }
   if (connection === 'disconnected') {
-    return status('reconnecting', 'Reconnecting live candles', 'The chart is waiting for the bounded reconnect policy.');
+    return status('reconnecting', 'Reconnecting live candles', "Kairos keeps trying while this page is open and you're online.");
   }
   return status('connecting', 'Connecting live candles', 'Authoritative history is loaded; waiting for validated market updates.');
 }

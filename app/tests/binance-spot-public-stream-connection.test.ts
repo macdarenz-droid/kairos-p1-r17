@@ -30,7 +30,7 @@ describe('P16.4 Binance Spot injected public stream connection boundary', () => 
 
     expect(connect).toHaveBeenCalledTimes(1);
     expect(connect).toHaveBeenCalledWith(
-      'wss://stream.binance.com:9443/ws/btcusdt@trade',
+      'wss://data-stream.binance.vision:443/ws/btcusdt@trade',
       handlers,
     );
     expect(connection.close).toBe(close);

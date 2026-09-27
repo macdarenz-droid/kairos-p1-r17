@@ -6,13 +6,14 @@ export const ANALYSIS_LIVE_CANDLE_HISTORY_LIMIT = 500;
 /**
  * Route-owned reconnect policy for the eventual Analysis live-candle mount.
  *
- * P15 remains the decision and jitter owner. This product policy limits one
- * disconnected session to four retries with capped exponential backoff.
+ * P15 remains the decision and jitter owner. Never gives up while the page is
+ * visible and online; the availability lifecycle stops the session when it is
+ * hidden or offline and starts it again on return.
  */
 export const ANALYSIS_LIVE_CANDLE_RECONNECT_POLICY: Readonly<MarketDataReconnectPolicy> = Object.freeze({
   initialDelayMs: 1_000,
-  maxDelayMs: 8_000,
-  maxAttempts: 4,
+  maxDelayMs: 30_000,
+  maxAttempts: Number.MAX_SAFE_INTEGER,
 });
 
 /** Trend-line stroke width in CSS pixels for Analysis drawing tools; colour comes from the active chart theme's drawing token. */
