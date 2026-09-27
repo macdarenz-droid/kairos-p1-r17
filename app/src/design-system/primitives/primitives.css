@@ -49,4 +49,4 @@
 }
 
 /* "Unavailable · Try again" draws through ErrorState (kit.css); only its edge colour is its own. */
-.kairos-error-state.kairos-unavailable { border-color: var(--kairos-state-warning); }
+.kairos-error-state.kairos-unavailable { border-color: var(--kairos-state-warning); background-color: transparent; }

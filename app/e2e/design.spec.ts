@@ -91,3 +91,48 @@ test('(3) Match my phone follows the phone', async ({ browser }) => {
   await expect(oceanPage.locator('html')).toHaveAttribute('data-kairos-theme', 'ocean');
   await saved.close();
 });
+
+test('(4) An emphasised stat tile keeps its card shadow in all 5 themes', async ({ browser }) => {
+  for (const theme of THEMES) {
+    const context = await browser.newContext(test.info().project.use);
+    const page = await context.newPage();
+    await openKairos(page, { theme });
+    const shadows = await page.evaluate(() => (['main', 'insight'] as const).map(emphasis => {
+      const tile = document.createElement('div');
+      tile.className = 'kairos-stat';
+      tile.dataset.kairosEmphasis = emphasis;
+      document.querySelector('main')!.append(tile);
+      const shadow = getComputedStyle(tile).boxShadow;
+      tile.remove();
+      return shadow;
+    }));
+    for (const shadow of shadows) expect(shadow, `${theme} emphasised tile shadow`).not.toBe('none');
+    await context.close();
+  }
+});
+
+test('(5) The "Unavailable" box shows a focus ring and no card patch', async ({ browser }) => {
+  for (const theme of ['kairos-depth', 'paper']) {
+    const context = await browser.newContext(test.info().project.use);
+    const page = await context.newPage();
+    await openKairos(page, { theme });
+    await page.evaluate(() => {
+      const box = document.createElement('div');
+      box.className = 'kairos-error-state kairos-unavailable';
+      box.tabIndex = -1;
+      box.id = 'qa-unavailable';
+      box.textContent = 'Unavailable · test';
+      document.querySelector('main')!.append(box);
+    });
+    await page.keyboard.press('Tab');
+    const look = await page.evaluate(() => {
+      const box = document.getElementById('qa-unavailable')!;
+      box.focus();
+      const style = getComputedStyle(box);
+      return { outline: style.outlineStyle, background: style.backgroundColor };
+    });
+    expect(look.outline, `${theme} focus ring`).toBe('solid');
+    expect(look.background, `${theme} background`).toBe('rgba(0, 0, 0, 0)');
+    await context.close();
+  }
+});

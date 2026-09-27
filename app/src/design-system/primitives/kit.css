@@ -14,9 +14,12 @@
 .kairos-page-header__how { justify-self: start; }
 
 .kairos-stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); gap: var(--kairos-space-3); margin: 0; }
-.kairos-stat { display: grid; gap: var(--kairos-space-1); align-content: start; padding: var(--kairos-space-3) var(--kairos-space-4); border: 1px solid var(--kairos-border-hairline); border-radius: var(--kairos-radius-md); background-color: var(--kairos-surface-raised); box-shadow: var(--kairos-elevation-1); }
-.kairos-stat[data-kairos-emphasis='main'] { box-shadow: var(--kairos-elevation-1), var(--kairos-glow-active); }
-.kairos-stat[data-kairos-emphasis='insight'] { box-shadow: var(--kairos-elevation-1), var(--kairos-glow-emphasis); }
+.kairos-stat { display: grid; gap: var(--kairos-space-1); align-content: start; padding: var(--kairos-space-3) var(--kairos-space-4); border: 1px solid var(--kairos-border-hairline); border-radius: var(--kairos-radius-md); background-color: var(--kairos-surface-raised); box-shadow: var(--kairos-elevation-1); position: relative; }
+/* The glow is its own layer: a glow token is `none` in Ink and Paper, and `<shadow>, none` would drop the card shadow too. */
+.kairos-stat[data-kairos-emphasis] { box-shadow: var(--kairos-elevation-1); }
+.kairos-stat[data-kairos-emphasis]::after { content: ''; position: absolute; inset: -1px; border-radius: inherit; pointer-events: none; }
+.kairos-stat[data-kairos-emphasis='main']::after { box-shadow: var(--kairos-glow-active); }
+.kairos-stat[data-kairos-emphasis='insight']::after { box-shadow: var(--kairos-glow-emphasis); }
 .kairos-stat__label { display: flex; align-items: center; gap: var(--kairos-space-1); color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-sm); }
 .kairos-stat[data-mark='up'] .kairos-icon { color: var(--kairos-trade-profit); }
 .kairos-stat[data-mark='down'] .kairos-icon { color: var(--kairos-trade-loss); }
@@ -38,7 +41,8 @@
 .kairos-empty-state__action { margin-top: var(--kairos-space-2); }
 
 .kairos-error-state { display: flex; flex-wrap: wrap; align-items: center; gap: var(--kairos-space-3); padding: var(--kairos-space-3); border: 1px solid var(--kairos-state-error); border-radius: var(--kairos-radius-md); background-color: var(--kairos-surface-card); color: var(--kairos-text-secondary); }
-.kairos-error-state:focus { outline: none; }
+.kairos-error-state:focus:not(:focus-visible) { outline: none; }
+.kairos-error-state:focus-visible { outline: 2px solid var(--kairos-state-focus); outline-offset: 2px; }
 .kairos-error-state__icon { color: var(--kairos-state-error); }
 .kairos-error-state[data-tone='unavailable'] .kairos-error-state__icon { color: var(--kairos-state-warning); }
 .kairos-error-state__message { flex: 1 1 14rem; margin: 0; min-width: 0; }
