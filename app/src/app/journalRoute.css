@@ -15,7 +15,7 @@
 .kairos-journal .kairos-field :is(input, select) { border-color: var(--kairos-border-field); background-color: var(--kairos-surface-input); background-image: var(--kairos-field-gradient); transition: border-color var(--kairos-motion-fast) var(--kairos-ease-out); }
 .kairos-journal .kairos-field :is(input, select):hover { border-color: var(--kairos-text-muted); }
 .kairos-journal .kairos-field :is(input, select):focus-visible { border-color: var(--kairos-accent-primary); }
-.kairos-journal .kairos-trade-form__submit { border-color: var(--kairos-accent-primary); color: var(--kairos-accent-ink); background-image: linear-gradient(180deg, var(--kairos-accent-secondary), var(--kairos-accent-primary)); box-shadow: 0 10px 24px -14px var(--kairos-accent-primary); transition: filter var(--kairos-motion-fast) var(--kairos-ease-out), translate var(--kairos-motion-fast) var(--kairos-ease-out); }
+.kairos-journal .kairos-trade-form__submit { border-color: var(--kairos-accent-primary); color: var(--kairos-accent-ink); background-image: linear-gradient(180deg, var(--kairos-accent-secondary), var(--kairos-accent-primary)); transition: filter var(--kairos-motion-fast) var(--kairos-ease-out), translate var(--kairos-motion-fast) var(--kairos-ease-out); }
 .kairos-journal .kairos-trade-form__submit:hover:not(:disabled) { filter: brightness(1.06); }
 .kairos-journal .kairos-trade-form__submit:active:not(:disabled) { translate: 0 1px; }
 @media (prefers-reduced-motion: reduce) {
@@ -47,7 +47,7 @@
 .kairos-field input::placeholder { color: var(--kairos-text-muted); }
 .kairos-field :is(input, select)[aria-invalid='true'] { border-color: var(--kairos-state-error); }
 .kairos-trade-form__actions { display: flex; justify-content: flex-end; }
-.kairos-trade-form__submit { min-width: 9rem; padding: 0 var(--kairos-space-5); border: 1px solid var(--kairos-accent-primary); border-radius: var(--kairos-radius-md); background: var(--kairos-accent-primary); color: var(--kairos-background-depth); font: inherit; font-weight: var(--kairos-font-weight-semibold); box-shadow: var(--kairos-glow-subtle); }
+.kairos-trade-form__submit { min-width: 9rem; padding: 0 var(--kairos-space-5); border: 1px solid var(--kairos-accent-primary); border-radius: var(--kairos-radius-md); background: var(--kairos-accent-primary); color: var(--kairos-background-depth); font: inherit; font-weight: var(--kairos-font-weight-semibold); }
 .kairos-trade-form__submit:disabled { opacity: .58; }
 @media (max-width: 34rem) {
   .kairos-trade-form__grid { grid-template-columns: 1fr; }

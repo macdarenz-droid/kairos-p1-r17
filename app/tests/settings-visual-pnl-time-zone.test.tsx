@@ -30,11 +30,12 @@ afterEach(async () => {
   names.clear();
 });
 
-const timeZoneAccessibleName =
-  /Time zone Pick your place from the list, for example Australia\/Sydney, America\/New_York, Europe\/London, or UTC\./i;
+const timeZoneHint =
+  /^Pick your place from the list, for example Australia\/Sydney, America\/New_York, Europe\/London, or UTC\.$/;
 
 async function readyTimeZoneInput(): Promise<HTMLInputElement> {
-  const input = screen.getByRole('combobox', { name: timeZoneAccessibleName }) as HTMLInputElement;
+  const input = screen.getByRole('combobox', { name: 'Time zone' }) as HTMLInputElement;
+  expect(input).toHaveAccessibleDescription(timeZoneHint);
   await waitFor(() => expect(input).toBeEnabled());
   return input;
 }

@@ -6,6 +6,7 @@ import { kairosDatabase, type KairosDatabase } from '../data/database';
 import type { TradeStatus } from '../domain/trades';
 import './journalRoute.css';
 import { TradeForm } from '../features/journal/TradeForm';
+import { PageHeader } from '../design-system/primitives';
 import { useJournalHistoryPages } from '../features/journal/useJournalHistoryPages';
 
 interface JournalRouteProps {
@@ -23,14 +24,8 @@ export function JournalRoute({ db = kairosDatabase, now }: JournalRouteProps) {
 
   return (
     <section className="kairos-route kairos-journal" aria-labelledby="kairos-journal-title">
-      <div className="kairos-journal__heading">
-        <div>
-          <p className="kairos-journal__eyebrow">Manual trade</p>
-          <h1 id="kairos-journal-title">Journal</h1>
-        </div>
-        <span className="kairos-journal__badge">Saved on this device</span>
-      </div>
-      <p className="kairos-journal__intro">Log the trade facts you know now. Plan numbers are optional and can be left blank.</p>
+      <PageHeader eyebrow="Manual trade" title="Journal" titleId="kairos-journal-title" intro="Log what you know now; plan numbers are optional."
+        action={<span className="kairos-journal__badge">Saved on this device</span>} />
 
       <TradeForm db={db} kind="journal" onSaved={async () => { await pages.refresh(); setJournalRevision(current => current + 1); }} />
 

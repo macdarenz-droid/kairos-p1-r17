@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
   readVisualPnlTimeZonePreference,
   writeVisualPnlTimeZonePreference,
@@ -8,6 +8,7 @@ import { createKairosRepositories } from '../data/repositories';
 import { DeviceTimeZoneButton } from '../features/settings/DeviceTimeZoneButton';
 import { ThemePicker } from '../features/settings/ThemePicker';
 import { DisciplineListsEditor } from '../features/discipline/DisciplineListsEditor';
+import { Button, ErrorState, Field, PageHeader } from '../design-system/primitives';
 import './settingsRoute.css';
 
 /** Every zone the browser knows, plus UTC and the saved value; empty when the browser cannot list zones. */
@@ -43,10 +44,17 @@ export function SettingsRoute({ db = kairosDatabase }: SettingsRouteProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [loadFailed, setLoadFailed] = useState(false);
+  // "Try again" after a failed load bumps this, which runs the load effect again.
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  // Set when "Try again" had focus: once the load settles, focus goes to the field, or to the new "Try again" (WCAG 2.4.3).
+  const refocusAfterRetry = useRef(false);
+  const form = useRef<HTMLFormElement>(null);
   const timeZoneOptions = useMemo(() => listTimeZoneOptions(savedTimeZone), [savedTimeZone]);
 
   useEffect(() => {
     let ignore = false;
+    setIsLoading(true);
+    setLoadFailed(false);
     async function load(): Promise<void> {
       try {
         const stored = await readVisualPnlTimeZonePreference(repositories.metadata);
@@ -54,14 +62,26 @@ export function SettingsRoute({ db = kairosDatabase }: SettingsRouteProps) {
         setSavedTimeZone(stored);
         setTimeZone(stored ?? '');
       } catch {
-        if (!ignore) { setLoadFailed(true); setFeedback({ kind: 'error', message: 'Kairos could not load your daily-results time zone.' }); }
+        if (!ignore) setLoadFailed(true);
       } finally {
         if (!ignore) setIsLoading(false);
       }
     }
     void load();
     return () => { ignore = true; };
-  }, [repositories]);
+  }, [repositories, loadAttempt]);
+
+  useEffect(() => {
+    if (isLoading || !refocusAfterRetry.current) return;
+    refocusAfterRetry.current = false;
+    const target = loadFailed ? form.current?.querySelector<HTMLElement>('.kairos-error-state button') : document.getElementById('kairos-daily-results-time-zone');
+    target?.focus();
+  }, [isLoading, loadFailed]);
+
+  function retryLoad(): void {
+    refocusAfterRetry.current = document.activeElement?.closest('.kairos-error-state') != null;
+    setLoadAttempt(current => current + 1);
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -80,6 +100,7 @@ export function SettingsRoute({ db = kairosDatabase }: SettingsRouteProps) {
         return;
       }
       setSavedTimeZone(result.timeZone);
+      setLoadFailed(false);
       setFeedback({ kind: 'success', message: 'Daily-results time zone saved.' });
     } catch {
       setFeedback({ kind: 'error', message: 'Kairos could not save your time zone. Your stored setting was not changed.' });
@@ -90,23 +111,19 @@ export function SettingsRoute({ db = kairosDatabase }: SettingsRouteProps) {
 
   return (
     <section className="kairos-route kairos-settings" aria-labelledby="kairos-settings-title">
-      <div className="kairos-settings__heading">
-        <div>
-          <p className="kairos-settings__eyebrow">Preferences</p>
-          <h1 id="kairos-settings-title">Settings</h1>
-        </div>
-      </div>
+      <PageHeader eyebrow="Preferences" title="Settings" titleId="kairos-settings-title" intro="Choose how Kairos looks and which day your trades count on." />
 
-      <form className="kairos-settings-card" onSubmit={handleSubmit} noValidate>
+      <form ref={form} className="kairos-settings-card" onSubmit={handleSubmit} noValidate>
         <div>
           <h2>Daily results time zone</h2>
           <p>Choose which calendar day Kairos should use when grouping closed trades. Kairos never changes this by itself.</p>
         </div>
 
-        <label className="kairos-settings-field" htmlFor="kairos-daily-results-time-zone">
-          <span>Time zone</span>
+        <Field label="Time zone" id="kairos-daily-results-time-zone" wide
+          hint="Pick your place from the list, for example Australia/Sydney, America/New_York, Europe/London, or UTC.">
+          {control => <>
           <input
-            id="kairos-daily-results-time-zone"
+            {...control}
             name="timeZone"
             value={timeZone}
             onChange={(event) => { setTimeZone(event.target.value); setFeedback(null); }}
@@ -117,17 +134,18 @@ export function SettingsRoute({ db = kairosDatabase }: SettingsRouteProps) {
             list={timeZoneOptions.length > 0 ? 'kairos-time-zone-options' : undefined}
           />
           {timeZoneOptions.length > 0 ? <datalist id="kairos-time-zone-options">{timeZoneOptions.map(zone => <option key={zone} value={zone} />)}</datalist> : null}
-          <small>Pick your place from the list, for example Australia/Sydney, America/New_York, Europe/London, or UTC.</small>
-        </label>
+          </>}
+        </Field>
 
         <div className="kairos-settings-card__actions">
-          <button type="submit" disabled={isLoading || isSaving}>
+          <Button type="submit" busy={isSaving} disabled={isLoading}>
             {isSaving ? 'Saving…' : 'Save time zone'}
-          </button>
+          </Button>
           <span>{savedTimeZone === null ? 'Not configured' : `Current: ${savedTimeZone}`}</span>
         </div>
         {!isLoading && !loadFailed && savedTimeZone === null ? <DeviceTimeZoneButton metadata={repositories.metadata} onSaved={(zone) => { setSavedTimeZone(zone); setTimeZone(zone); setFeedback({ kind: 'success', message: 'Daily-results time zone saved.' }); }} /> : null}
 
+        {loadFailed ? <ErrorState message="Kairos could not load your daily-results time zone." onRetry={retryLoad} /> : null}
         {feedback ? (
           <p className={`kairos-settings-card__feedback kairos-settings-card__feedback--${feedback.kind}`} role={feedback.kind === 'error' ? 'alert' : 'status'}>
             {feedback.message}

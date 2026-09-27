@@ -16,7 +16,7 @@ import { PRICE_CURRENCY_INPUT_ERROR } from '../../application/trades/priceCurren
 import { createEmptyQuickTradeLogDraft, quickTradeLogFieldFor, quickTradeLogRows, type QuickTradeLogDraft, type QuickTradeLogField } from '../../application/trades/quickTradeLog';
 import type { KairosDatabase } from '../../data/database';
 import type { StrategyId } from '../../domain/discipline';
-import { Button, Field } from '../../design-system/primitives';
+import { Button, Field, PriceInput, Segmented, Select } from '../../design-system/primitives';
 import { JournalClosedTradeGuidance } from './JournalClosedTradeGuidance';
 import { JournalExecutionFields } from './JournalExecutionFields';
 import { ForexTradeNote, forexQuantityHint } from './ForexTradeNote';
@@ -195,6 +195,8 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft }: 
   const [planShown, setPlanShown] = useState(() => initialDraft !== undefined && Object.values(initialDraft.plan).some(value => value.trim() !== ''));
   const [executions, setExecutions] = useState<readonly ManualExecutionRow[]>([]);
   const [fees, setFees] = useState<readonly ManualFeeRow[]>([]);
+  // Bumped when a save empties the form: the entry and fee rows mount fresh, which closes any Undo for the saved rows.
+  const [formGeneration, setFormGeneration] = useState(0);
   const feedbackRef = useRef<HTMLDivElement>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -299,6 +301,7 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft }: 
       setPlanShown(false);
       setExecutions([]);
       setFees([]);
+      setFormGeneration(current => current + 1);
       setQuick(createEmptyQuickTradeLogDraft());
       setStrategyId('');
       setFeedback({ kind: 'success', message: saved });
@@ -321,10 +324,8 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft }: 
       ) : null}
 
       <form className="kairos-trade-form" onSubmit={handleSubmit} noValidate>
-        <div className="kairos-trade-form__mode" role="group" aria-label="How to log this trade">
-          <Button variant="secondary" size="sm" aria-pressed={isQuick} onClick={() => chooseMode('quick')}>Quick log</Button>
-          <Button variant="secondary" size="sm" aria-pressed={!isQuick} onClick={() => chooseMode('full')}>All details</Button>
-        </div>
+        <Segmented label="How to log this trade" value={mode} onChange={chooseMode}
+          options={[{ value: 'quick', label: 'Quick log' }, { value: 'full', label: 'All details' }]} />
         {isQuick ? <p className="kairos-trade-form__section-copy">Quick log saves a closed trade with one entry and one exit of the same quantity, and no fees. For partial exits or fees, choose All details.</p> : null}
         <fieldset className="kairos-trade-form__section" disabled={isSaving}>
           <legend>{text.legend}</legend>
@@ -343,42 +344,40 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft }: 
             </Field>
 
             <Field label="Market" id={`${idPrefix}-market`} required invalid={fieldHasError(feedback, 'marketType')}>
-              {control => <select
+              {control => <Select
                 {...control}
                 name="marketType"
                 value={draft.marketType}
                 onChange={(event) => update('marketType', event.target.value as ManualTradeDraft['marketType'])}
-              >
-                <option value="">Choose market</option>
-                {MARKET_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-              </select>}
+                placeholder="Choose market"
+                options={MARKET_OPTIONS.map(([value, label]) => ({ value, label }))}
+              />}
             </Field>
 
             <Field label="Direction" id={`${idPrefix}-side`} required invalid={fieldHasError(feedback, 'side')}>
-              {control => <select
+              {control => <Select
                 {...control}
                 name="side"
                 value={draft.side}
                 onChange={(event) => update('side', event.target.value as ManualTradeDraft['side'])}
-              >
-                <option value="">Choose direction</option>
-                {SIDE_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-              </select>}
+                placeholder="Choose direction"
+                options={SIDE_OPTIONS.map(([value, label]) => ({ value, label }))}
+              />}
             </Field>
 
             {isQuick ? <>
               <Field label="Entry price" id={`${idPrefix}-entry-price`} required invalid={quickInvalid('entryPrice')}>
-                {control => <input {...control} name="entryPrice" inputMode="decimal" autoComplete="off" value={quick.entryPrice} onChange={(event) => updateQuick('entryPrice', event.target.value)} />}
+                {control => <PriceInput {...control} name="entryPrice" value={quick.entryPrice} onValueChange={text => updateQuick('entryPrice', text)} />}
               </Field>
               <Field label="Exit price" id={`${idPrefix}-exit-price`} required invalid={quickInvalid('exitPrice')}>
-                {control => <input {...control} name="exitPrice" inputMode="decimal" autoComplete="off" value={quick.exitPrice} onChange={(event) => updateQuick('exitPrice', event.target.value)} />}
+                {control => <PriceInput {...control} name="exitPrice" value={quick.exitPrice} onValueChange={text => updateQuick('exitPrice', text)} />}
               </Field>
               <Field label="Quantity" id={`${idPrefix}-quantity`} required invalid={quickInvalid('quantity')} hint={draft.marketType === 'forex' ? forexQuantityHint(draft.symbol, quick.quantity) ?? undefined : draft.marketType === 'stock' ? STOCK_QUANTITY_HINT : undefined}>
-                {control => <input {...control} name="quantity" inputMode="decimal" autoComplete="off" value={quick.quantity} onChange={(event) => updateQuick('quantity', event.target.value)} />}
+                {control => <PriceInput {...control} name="quantity" value={quick.quantity} onValueChange={text => updateQuick('quantity', text)} />}
               </Field>
             </> : (
               <Field label="Status" id={`${idPrefix}-status`} required wide hint={statusHint} invalid={fieldHasError(feedback, 'status') || fieldHasError(feedback, 'trade')}>
-              {control => <select
+              {control => <Select
                 {...control}
                 name="status"
                 value={draft.status}
@@ -392,10 +391,9 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft }: 
                   }));
                   setFeedback(null);
                 }}
-              >
-                <option value="">Choose status</option>
-                {STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-              </select>}
+                placeholder="Choose status"
+                options={STATUS_OPTIONS.map(([value, label]) => ({ value, label }))}
+              />}
             </Field>
             )}
 
@@ -436,6 +434,7 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft }: 
         <JournalPriceCurrencyField value={draft.priceCurrency ?? ''} onChange={value => update('priceCurrency', value)} disabled={isSaving} error={feedback?.kind === 'error' && feedback.field === 'grossPnlCurrency' ? feedback.message : undefined} />
         {isQuick ? null : <>
           <JournalExecutionFields
+            key={formGeneration}
             executions={executions} fees={fees}
             onExecutionsChange={rows => { setExecutions(rows); setFeedback(null); }}
             onFeesChange={rows => { setFees(rows); setFeedback(null); }}
@@ -453,16 +452,16 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft }: 
           <p className="kairos-trade-form__section-copy">Use the numbers you planned before or during the trade. Your plan stays separate from actual entries and exits.</p>
           <div className="kairos-trade-form__grid">
             <Field label="Planned entry" id={`${planIdPrefix}-entry`} invalid={fieldHasError(feedback, 'plan.plannedEntryPrice')}>
-              {control => <input {...control} inputMode="decimal" value={draft.plan.plannedEntryPrice} onChange={(event) => updatePlan('plannedEntryPrice', event.target.value)} />}
+              {control => <PriceInput {...control} value={draft.plan.plannedEntryPrice} onValueChange={text => updatePlan('plannedEntryPrice', text)} />}
             </Field>
             <Field label="Planned stop" id={`${planIdPrefix}-stop`} invalid={fieldHasError(feedback, 'plan.plannedStopPrice')}>
-              {control => <input {...control} inputMode="decimal" value={draft.plan.plannedStopPrice} onChange={(event) => updatePlan('plannedStopPrice', event.target.value)} />}
+              {control => <PriceInput {...control} value={draft.plan.plannedStopPrice} onValueChange={text => updatePlan('plannedStopPrice', text)} />}
             </Field>
             <Field label="Planned target" id={`${planIdPrefix}-target`} invalid={fieldHasError(feedback, 'plan.plannedTargetPrice')}>
-              {control => <input {...control} inputMode="decimal" value={draft.plan.plannedTargetPrice} onChange={(event) => updatePlan('plannedTargetPrice', event.target.value)} />}
+              {control => <PriceInput {...control} value={draft.plan.plannedTargetPrice} onValueChange={text => updatePlan('plannedTargetPrice', text)} />}
             </Field>
             <Field label="Planned quantity" id={`${planIdPrefix}-quantity`} invalid={fieldHasError(feedback, 'plan.plannedQuantity')}>
-              {control => <input {...control} inputMode="decimal" value={draft.plan.plannedQuantity} onChange={(event) => updatePlan('plannedQuantity', event.target.value)} />}
+              {control => <PriceInput {...control} value={draft.plan.plannedQuantity} onValueChange={text => updatePlan('plannedQuantity', text)} />}
             </Field>
           </div>
         </fieldset>
@@ -472,7 +471,7 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft }: 
         <TradeStrategyField db={db} idPrefix={idPrefix} value={strategyId} onChange={value => { setStrategyId(value); setFeedback(null); }} draft={draft} status={isQuick ? 'closed' : draft.status} disabled={isSaving} />
 
         <div className="kairos-trade-form__actions">
-          <Button type="submit" busy={isSaving} aria-describedby={strategyId ? `${idPrefix}-strategy-note` : undefined}>{isSaving ? 'Saving…' : text.submit}</Button>
+          <Button type="submit" busy={isSaving} emphasis="main" aria-describedby={strategyId ? `${idPrefix}-strategy-note` : undefined}>{isSaving ? 'Saving…' : text.submit}</Button>
         </div>
       </form>
     </>

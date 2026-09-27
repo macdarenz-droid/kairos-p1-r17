@@ -246,3 +246,23 @@ test('(9) one glow at most on every screen', async ({ page }) => {
     expect(await page.locator('[data-kairos-emphasis]').count(), path).toBeLessThanOrEqual(1);
   }
 });
+
+test('(10) a Market, Direction or Status list with a mistake has the red edge', async ({ browser }) => {
+  for (const theme of ['kairos-depth', 'paper']) {
+    const context = await browser.newContext(test.info().project.use);
+    const page = await context.newPage();
+    await openKairos(page, { theme });
+    const look = await page.evaluate(() => {
+      const field = document.createElement('div');
+      field.className = 'kairos-form-field kairos-form-field--error';
+      field.innerHTML = '<div class="kairos-select"><select aria-label="QA list"><option>crypto</option></select></div>';
+      document.querySelector('main')!.append(field);
+      const probe = document.createElement('div');
+      probe.style.color = 'var(--kairos-state-error)';
+      document.querySelector('main')!.append(probe);
+      return { edge: getComputedStyle(field.querySelector('select')!).borderTopColor, error: getComputedStyle(probe).color };
+    });
+    expect(look.edge, `${theme} list edge`).toBe(look.error);
+    await context.close();
+  }
+});
