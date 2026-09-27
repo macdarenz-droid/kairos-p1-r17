@@ -111,8 +111,8 @@ export function decodeOkxCandles(texts: readonly string[], ask: CandleAsk, marke
 }
 
 /**
- * Reads OKX pages for the window, walking back while a page was full, fewer than `limit` candles are in the window and
- * the oldest is still after start; at most OKX_MAX_CALLS calls. The page texts, `{ unknown: true }`, or null on any failure.
+ * Reads OKX pages for the window, walking back while a page was full and, with start, the oldest is still after start
+ * (without start, while fewer than `limit` candles are in the window); at most OKX_MAX_CALLS calls. The page texts, `{ unknown: true }`, or null on any failure.
  */
 export async function readOkxPages(upstream: UpstreamFetch, instId: string, bar: string, ask: CandleAsk, market: CandleMarket, nowMs: number):
   Promise<readonly string[] | { readonly unknown: true } | null> {
@@ -132,7 +132,7 @@ export async function readOkxPages(upstream: UpstreamFetch, instId: string, bar:
     }
     if (page.length < OKX_PAGE_ROWS) break;
     const oldest = Math.min(...page.map((row) => row.openMs));
-    if (inWindow.size >= ask.limit || (ask.startMs !== null && oldest <= ask.startMs)) break;
+    if (ask.startMs !== null ? oldest <= ask.startMs : inWindow.size >= ask.limit) break;
     after = oldest;
   }
   return texts;

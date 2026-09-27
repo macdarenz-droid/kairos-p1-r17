@@ -68,7 +68,6 @@ export const MAX_CANDLES = 1_000;
 
 const MARKET_TEXT_RULE = /^[A-Z0-9一-鿿]{1,20}$/u;
 const EPOCH_MS_RULE = /^[0-9]{1,13}$/;
-const ASSET_RULE = /^[A-Z0-9]{1,20}$/;
 
 /** Digits already checked by the query rules (at most 13), so the value is a safe integer. */
 function digits(text: string | null): number | null {
@@ -87,9 +86,9 @@ const marketCandlesRoute: KairosApiRoute = {
     limit: { pattern: /^[1-9][0-9]{0,3}$/, required: true },
     start: { pattern: EPOCH_MS_RULE, required: false },
     end: { pattern: EPOCH_MS_RULE, required: false },
-    // Used by the backup source (T-048c); accepted now so the app's query and the cache key never change.
-    base: { pattern: ASSET_RULE, required: false },
-    quote: { pattern: ASSET_RULE, required: false },
+    // Used by the backup source. The same characters as the symbol (a listed market may be written in Chinese characters); OKX is asked for ASCII codes only.
+    base: { pattern: MARKET_TEXT_RULE, required: false },
+    quote: { pattern: MARKET_TEXT_RULE, required: false },
   },
   upstreamHosts: [BINANCE_SPOT_HOST, BINANCE_USDM_HOST, OKX_HOST],
   cache: MARKET_CANDLES_OPEN_CACHE,
@@ -124,7 +123,8 @@ const marketCandlesRoute: KairosApiRoute = {
           const ask = { interval, limit, startMs, endMs };
           const texts = await readOkxPages(upstream, instId, bar, ask, market, nowMs);
           const decoded = texts === null || 'unknown' in texts ? null : decodeOkxCandles(texts, ask, market, nowMs);
-          if (decoded !== null && !('unknown' in decoded)) {
+          // No candles is no backup: an empty chart would be kept as if the window had none.
+          if (decoded !== null && !('unknown' in decoded) && decoded.candles.length > 0) {
             const source = { provider: 'okx', market: market === 'binance-spot' ? 'spot' : 'perpetual-swap', symbol: instId };
             return candlesAnswer(source, failure.kind, interval, decoded.candles, decoded.closed, ask, now);
           }

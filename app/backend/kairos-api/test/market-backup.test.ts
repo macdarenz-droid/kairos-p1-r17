@@ -92,8 +92,8 @@ describe('the OKX backup for /market/candles', () => {
   it('never asks OKX without base and quote, for a CJK base, or when the backup is off or not set', async () => {
     const cases: [string, string | null, number][] = [
       [candles('binance-spot', '1h', ''), 'okx', 451],
-      // A CJK base never passes the query rules (ASCII only), so nothing is asked at all.
-      [`/market/candles?market=binance-spot&symbol=${encodeURIComponent('币安人生USDT')}&interval=1h&limit=3&base=${encodeURIComponent('币安人生')}&quote=USDT`, 'okx', 400],
+      // A CJK base is asked of Binance; OKX is asked for ASCII codes only.
+      [`/market/candles?market=binance-spot&symbol=${encodeURIComponent('币安人生USDT')}&interval=1h&limit=3&base=${encodeURIComponent('币安人生')}&quote=USDT`, 'okx', 451],
       [candles('binance-spot', '1h'), 'off', 451],
       [candles('binance-spot', '1h'), null, 451],
     ];
@@ -159,5 +159,88 @@ describe('the OKX backup for /market/candles', () => {
     const response = await call(candles('binance-spot', '1h'), fetchImpl);
     expect(response.status).toBe(200);
     expect(response.headers.get('cache-control')).toBe('public, max-age=10');
+  });
+
+  it('asks Binance for a market written in Chinese characters, with its base and quote', async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () => new Response(JSON.stringify([[START, '0.1', '0.2', '0.1', '0.2', '5', START + HOUR - 1, '1', 1, '1', '1', '0']]), { status: 200, headers: { 'content-type': 'application/json' } }));
+    const response = await call(`/market/candles?market=binance-spot&symbol=${encodeURIComponent('币安人生USDT')}&interval=1h&limit=3&start=${START}&end=${END}&base=${encodeURIComponent('币安人生')}&quote=USDT`, fetchImpl);
+    expect(response.status).toBe(200);
+    expect(String(fetchImpl.mock.calls[0][0])).toContain('https://data-api.binance.vision/api/v3/klines?symbol=%E5%B8%81%E5%AE%89%E4%BA%BA%E7%94%9FUSDT&');
+    const data = await dataOf(response);
+    expect(data.source).toEqual({ provider: 'binance', market: 'spot', symbol: '币安人生USDT' });
+    expect(data.candles.map((candle) => candle.close)).toEqual(['0.2']);
+  });
+
+  it("answers Binance's reason when OKX has no candles for the window, and keeps nothing", async () => {
+    const binanceReplies: [Reply, number, Record<string, unknown>][] = [
+      [{ body: '', status: 451 }, 451, { ok: false, reason: 'source-refused' }],
+      [{ body: '', status: 429, headers: { 'retry-after': '5' } }, 503, { ok: false, reason: 'source-busy', retryAfter: 5 }],
+      [{ body: '', status: 503 }, 502, { ok: false, reason: 'source-unavailable' }],
+    ];
+    for (const [binance, status, body] of binanceReplies) {
+      clearMemoryCache();
+      const fetchImpl = sources(() => ({ body: okxBody([]) }), binance);
+      for (const round of [1, 2]) {
+        const response = await call(candles('binance-spot', '1h'), fetchImpl);
+        expect(response.status, `${status} round ${round}`).toBe(status);
+        expect(response.headers.get('cache-control') ?? '', `${status} round ${round}`).not.toContain('max-age=604800');
+        expect(await response.json(), `${status} round ${round}`).toMatchObject(body);
+      }
+      expect(fetchImpl.mock.calls.length, `${status} asks again`).toBe(4);
+      expect(okxCalls(fetchImpl), `${status} asks OKX again`).toHaveLength(2);
+    }
+  });
+
+  it('walks back from start to its candle: the first candle opens at start, 300 one-minute candles in all', async () => {
+    const begin = START + 17 * MINUTE;
+    // OKX: rows strictly between `after` and `before`, newest first, at most 300.
+    const okx = (url: URL) => {
+      const after = Number(url.searchParams.get('after') ?? NOW + MINUTE);
+      const before = Number(url.searchParams.get('before') ?? -1);
+      const rows: string[][] = [];
+      for (let open = Math.ceil(after / MINUTE) * MINUTE - MINUTE; open > before && rows.length < 300; open -= MINUTE) if (open < after) rows.push(okxRow(open));
+      return { body: okxBody(rows) };
+    };
+    for (const end of ['', `&end=${begin + 400 * MINUTE}`]) {
+      clearMemoryCache();
+      const fetchImpl = sources(okx);
+      const response = await call(`/market/candles?market=binance-spot&symbol=BTCUSDT&interval=1m&limit=300&start=${begin}${end}&base=BTC&quote=USDT`, fetchImpl);
+      expect(response.status, end).toBe(200);
+      expect(okxCalls(fetchImpl).length, end).toBeLessThanOrEqual(4);
+      const data = await dataOf(response);
+      expect(data.candles, end).toHaveLength(300);
+      expect(data.candles[0].openTime, end).toBe(new Date(begin).toISOString());
+      expect(data.candles[299].openTime, end).toBe(new Date(begin + 299 * MINUTE).toISOString());
+      expect(data.next, end).toBe(begin + 299 * MINUTE + 1);
+    }
+  });
+
+  it('asks OKX for the UTC bar of every interval it has, and never for 8h or 3d', async () => {
+    const bars: [string, string][] = [
+      ['1s', '1s'], ['1m', '1m'], ['3m', '3m'], ['5m', '5m'], ['15m', '15m'], ['30m', '30m'], ['1h', '1H'], ['2h', '2H'], ['4h', '4H'],
+      ['6h', '6Hutc'], ['12h', '12Hutc'], ['1d', '1Dutc'], ['1w', '1Wutc'], ['1M', '1Mutc'],
+    ];
+    for (const [interval, bar] of bars) {
+      clearMemoryCache();
+      const fetchImpl = sources(() => ({ body: okxBody([]) }));
+      await call(candles('binance-spot', interval), fetchImpl);
+      const asked = okxCalls(fetchImpl);
+      expect(asked, interval).toHaveLength(1);
+      expect(new URL(asked[0]).searchParams.get('bar'), interval).toBe(bar);
+    }
+    for (const interval of ['8h', '3d']) {
+      clearMemoryCache();
+      const fetchImpl = sources(threeHours);
+      expect((await call(candles('binance-spot', interval), fetchImpl)).status, interval).toBe(451);
+      expect(okxCalls(fetchImpl), interval).toEqual([]);
+    }
+  });
+
+  it("answers Binance's reason, with no backup, when OKX sends an error code with HTTP 200", async () => {
+    const fetchImpl = sources(() => ({ body: okxBody([okxRow(START + 2 * HOUR), okxRow(START + HOUR), okxRow(START)], '50011') }));
+    const response = await call(candles('binance-spot', '1h'), fetchImpl);
+    expect(okxCalls(fetchImpl)).toHaveLength(1);
+    expect(response.status).toBe(451);
+    expect(await response.json()).toMatchObject({ ok: false, reason: 'source-refused' });
   });
 });
