@@ -122,21 +122,47 @@ describe('the /market/candles route', () => {
     expect((await dataOf(response)).next).toBe(START + 2 * HOUR + 1);
   });
 
+  it('points to the next page after the last open time unless the window ends on it', async () => {
+    const full = () => answer([row(START), row(START + HOUR), row(START + 2 * HOUR)]);
+    const page = `/market/candles?market=binance-spot&symbol=BTCUSDT&interval=1h&limit=3&start=${START}`;
+    expect((await dataOf(await call(page, full()))).next).toBe(START + 2 * HOUR + 1);
+    expect((await dataOf(await call(`${page}&end=${START + 2 * HOUR + 1}`, full()))).next).toBe(START + 2 * HOUR + 1);
+    expect((await dataOf(await call(`${page}&end=${START + 2 * HOUR}`, full()))).next).toBeNull();
+  });
+
+  it('keeps a window 7 days from exactly one candle after its end, and 10 seconds 1 ms before that', async () => {
+    const recentStart = NOW - 3 * HOUR;
+    const rows = () => answer([row(recentStart), row(recentStart + HOUR), row(recentStart + 2 * HOUR)]);
+    const path = (end: number) => `/market/candles?market=binance-spot&symbol=BTCUSDT&interval=1h&limit=3&start=${recentStart}&end=${end}`;
+    const settled = await call(path(NOW - HOUR), rows());
+    expect(settled.status).toBe(200);
+    expect(settled.headers.get('cache-control')).toBe('public, max-age=604800');
+    const moving = await call(path(NOW - HOUR + 1), rows());
+    expect(moving.status).toBe(200);
+    expect(moving.headers.get('cache-control')).toBe('public, max-age=10');
+  });
+
   it('answers 502 for rows it cannot trust, and the source reasons for unknown, refused and busy', async () => {
     const shortRow = row(START).slice(0, 11);
     const numberPrice = [START, 83918.01, ...row(START).slice(2)];
-    const bodies: [string, unknown][] = [
+    const wide = `/market/candles?market=binance-spot&symbol=BTCUSDT&interval=1h&limit=3&start=${START}&end=${START + 10 * HOUR}`;
+    const bodies: [string, unknown, string?][] = [
       ['11 items', [shortRow]],
       ['a price as a number', [numberPrice]],
-      ['high below open', [row(START, { high: '83918.00000000', low: '83900.00000000' })]],
+      ['high below open, not below close', [row(START, { open: '100', high: '95', low: '80', close: '90' })]],
+      ['high below close, not below open', [row(START, { open: '90', high: '95', low: '80', close: '100' })]],
+      ['low above open, not above close', [row(START, { open: '90', high: '110', low: '95', close: '100' })]],
+      ['low above close, not above open', [row(START, { open: '100', high: '110', low: '95', close: '90' })]],
       ['a close time not of 1h', [row(START, {}, 60_000)]],
       ['a row outside the window', [row(START + 2 * HOUR)]],
+      ['a row before start', [row(START - HOUR)]],
       ['open times out of order', [row(START + HOUR), row(START)]],
-      ['more rows than the limit', [row(START), row(START + HOUR), row(START + 2 * HOUR), row(START + 3 * HOUR)]],
+      ['two rows with the same open time', [row(START), row(START)]],
+      ['more rows than the limit, all inside the window', [row(START), row(START + HOUR), row(START + 2 * HOUR), row(START + 3 * HOUR)], wide],
     ];
-    for (const [label, body] of bodies) {
+    for (const [label, body, path = SETTLED] of bodies) {
       clearMemoryCache();
-      const response = await call(SETTLED, answer(body));
+      const response = await call(path, answer(body));
       expect(response.status, label).toBe(502);
       expect(await response.json(), label).toMatchObject({ ok: false, reason: 'source-unavailable' });
     }
