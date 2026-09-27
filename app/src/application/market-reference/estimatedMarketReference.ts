@@ -26,7 +26,8 @@ export interface EstimatedMarketReferenceCandleRange {
   readonly instrument: MarketDataInstrument;
   readonly requestedAt: string;
   readonly requestedAtUtc: string;
-  readonly candle: MarketCandle;
+  /** The candle's six stored fields; volume is never kept (D164). */
+  readonly candle: Omit<MarketCandle, 'volume'>;
   /** Milliseconds from the candle open to the requested instant (0–59999). */
   readonly gapMs: number;
   readonly acquiredAt: string;
@@ -37,7 +38,8 @@ export type EstimatedMarketReferenceUnavailableReason =
   | 'future-instant'
   | 'no-candle'
   | 'candle-mismatch'
-  | Extract<MarketCandleHistoryResult, { readonly ok: false }>['reason'];
+  // A typed 'unavailable' failure is stored as one of the reasons readers already know (D164).
+  | Exclude<Extract<MarketCandleHistoryResult, { readonly ok: false }>['reason'], 'unavailable'>;
 
 export interface EstimatedMarketReferenceUnavailable {
   readonly kind: 'unavailable';
@@ -81,7 +83,10 @@ export async function estimateMarketReferenceAt(
     { instrument: request.instrument, interval: ESTIMATED_MARKET_REFERENCE_RESOLUTION, limit: 1, startTimeMs, endTimeMs: startTimeMs + MINUTE_MS - 1 },
     options.signal === undefined ? undefined : { signal: options.signal },
   );
-  if (!result.ok) return unavailable(result.reason);
+  if (!result.ok) {
+    if (result.reason === 'unavailable') return unavailable(result.why === 'offline' ? 'transport-failed' : 'http-error');
+    return unavailable(result.reason);
+  }
   const candle = result.snapshot.candles[0];
   if (candle === undefined) return unavailable('no-candle');
   const openMs = Date.parse(candle.openTime), closeMs = Date.parse(candle.closeTime);
@@ -95,7 +100,8 @@ export async function estimateMarketReferenceAt(
     instrument: request.instrument,
     requestedAt: request.requestedAt,
     requestedAtUtc: new Date(instantMs).toISOString(),
-    candle,
+    // Exactly today's six fields, never volume: a saved snapshot keeps its stored shape (D164).
+    candle: Object.freeze({ openTime: candle.openTime, closeTime: candle.closeTime, open: candle.open, high: candle.high, low: candle.low, close: candle.close }),
     gapMs: instantMs - openMs,
     acquiredAt: result.snapshot.observedAt,
   });

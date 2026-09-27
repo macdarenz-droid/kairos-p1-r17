@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { describeOnlineServices, describeUnavailable } from '../src/application/online/onlineWords';
+import { describeMarketDataUnavailable, describeOnlineServices, describeUnavailable } from '../src/application/online/onlineWords';
+import type { MarketDataUnavailableWhy } from '../src/services/market-data/marketDataTypes';
 
 const HEALTH = { serverTime: '2026-09-26T10:00:00.000Z', checks: { deviceKey: 'ready', cache: 'ready', limits: 'ready' } } as const;
 
@@ -68,5 +69,38 @@ describe('describeOnlineServices', () => {
       words: describeUnavailable({ ok: false, reason: 'transport-failed' }, 'Online services'),
     });
     expect(describeOnlineServices({ ok: false, reason: 'transport-failed' })).toMatchObject({ words: { message: expect.stringMatching(/^Online services: /) } });
+  });
+});
+
+describe('describeMarketDataUnavailable', () => {
+  const failure = (why: MarketDataUnavailableWhy, retryAfterSeconds: number | null = null) => ({ ok: false as const, reason: 'unavailable' as const, why, retryAfterSeconds });
+
+  it('gives every reason its words, and Try again unless a retry cannot help', () => {
+    const cases: [MarketDataUnavailableWhy, string, 'Try again' | null][] = [
+      ['offline', "Candles: you're offline. Kairos will try again when you're back online.", 'Try again'],
+      ['unknown-market', "Candles: Binance doesn't list this market. Check the spelling, for example BTCUSDT.", null],
+      ['busy', 'Candles: too many requests right now. Wait a minute, then try again.', 'Try again'],
+      ['region', "Candles: Binance isn't available in your region, and the backup source couldn't help. Try again later.", 'Try again'],
+      ['source-down', "Candles: the price source didn't answer. Try again in a moment.", 'Try again'],
+      ['not-set-up', 'Candles: not set up in this version of Kairos.', null],
+      ['unreadable', 'Candles: the answer could not be read. Try again later.', 'Try again'],
+    ];
+    for (const [why, message, retryLabel] of cases) {
+      expect(describeMarketDataUnavailable(failure(why), 'Candles'), why).toEqual({ title: 'Unavailable', message, retryLabel, retryAfterSeconds: null });
+    }
+  });
+
+  it('passes on how long the source asked to wait when it is busy', () => {
+    expect(describeMarketDataUnavailable(failure('busy', 30), 'Prices').retryAfterSeconds).toBe(30);
+  });
+});
+
+describe('describeUnavailable for the market reasons', () => {
+  const server = (serverReason: string, status: number, retryAfterSeconds: number | null = null) => ({ ok: false as const, reason: 'unavailable' as const, serverReason, retryAfterSeconds, status });
+
+  it('gives unknown-market, source-busy and source-refused their words', () => {
+    expect(describeUnavailable(server('unknown-market', 404), 'Candles')).toMatchObject({ message: "Candles: Binance doesn't list this market. Check the spelling, for example BTCUSDT.", retryLabel: null });
+    expect(describeUnavailable(server('source-busy', 503, 12), 'Candles')).toMatchObject({ message: 'Candles: too many requests from this device. Wait a minute, then try again.', retryLabel: 'Try again', retryAfterSeconds: 12 });
+    expect(describeUnavailable(server('source-refused', 451), 'Candles')).toMatchObject({ message: "Candles: Binance isn't available in your region, and the backup source couldn't help. Try again later.", retryLabel: 'Try again' });
   });
 });

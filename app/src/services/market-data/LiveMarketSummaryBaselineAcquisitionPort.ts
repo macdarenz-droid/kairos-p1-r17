@@ -1,6 +1,7 @@
 import type {
   LiveMarketSummaryCompleteForScopeDelivery,
   MarketDataInstrument,
+  MarketDataUnavailable,
 } from './marketDataTypes';
 
 /**
@@ -15,7 +16,8 @@ export type LiveMarketSummaryBaselineAcquisitionResult =
   | {
       readonly ok: false;
       readonly reason: 'acquisition-failed';
-    };
+    }
+  | MarketDataUnavailable;
 
 /**
  * Provider-neutral port for obtaining a complete baseline for an explicit scope.

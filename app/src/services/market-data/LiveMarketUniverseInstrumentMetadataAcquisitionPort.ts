@@ -1,4 +1,5 @@
 import type { LiveMarketUniverseInstrumentMetadataFact } from './liveMarketUniverseInstrumentMetadataFact';
+import type { MarketDataUnavailable } from './marketDataTypes';
 
 /** Provider-neutral acquisition result for authoritative instrument metadata facts. */
 export type LiveMarketUniverseInstrumentMetadataAcquisitionResult =
@@ -9,7 +10,8 @@ export type LiveMarketUniverseInstrumentMetadataAcquisitionResult =
   | {
       readonly ok: false;
       readonly reason: 'acquisition-failed';
-    };
+    }
+  | MarketDataUnavailable;
 
 /**
  * Provider-neutral port for acquiring authoritative instrument metadata facts.

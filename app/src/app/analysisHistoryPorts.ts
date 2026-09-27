@@ -1,9 +1,7 @@
-import { createBinanceSpotExchangeInfoBrowserInstrumentMetadataAcquisitionPort } from '../services/market-data/providers/binance/binanceSpotExchangeInfoBrowserInstrumentMetadataAcquisitionBinding';
-import { createBinanceSpotCandleHistoryPort } from '../services/market-data/providers/binance/binanceSpotCandleHistoryAcquisition';
-import { connectBinanceSpotCandleHistoryBrowser } from '../services/market-data/providers/binance/binanceSpotCandleHistoryBrowserConnector';
+import { appMarketDataPorts } from './marketDataPorts';
 
-/** Browser composition only. Existing provider boundaries own acquisition. */
+/** Browser composition only: the build's market data ports (the Kairos server, or Binance directly). */
 export const analysisHistoryPorts = {
-  metadata: createBinanceSpotExchangeInfoBrowserInstrumentMetadataAcquisitionPort(),
-  history: createBinanceSpotCandleHistoryPort(connectBinanceSpotCandleHistoryBrowser, () => new Date().toISOString()),
+  metadata: appMarketDataPorts().metadata,
+  history: appMarketDataPorts().history,
 };

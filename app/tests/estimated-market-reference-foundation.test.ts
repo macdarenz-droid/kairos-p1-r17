@@ -46,4 +46,16 @@ describe('P22.1 estimated market reference', () => {
     expect(acquireHistory.mock.calls[1][1]).toBeUndefined();
     expect((await estimateMarketReferenceAt({ acquireHistory }, { instrument, requestedAt: '2026-09-10T02:13:59.999Z' }, { now }))).toMatchObject({ kind: 'candle-range', gapMs: 59_999 });
   });
+
+  it('stores a typed unavailable failure as a reason readers already know, and never keeps volume', async () => {
+    const at = '2026-09-10T02:13:27.000Z';
+    const typed = (why: 'offline' | 'region') => ({ acquireHistory: async (): Promise<MarketCandleHistoryResult> => ({ ok: false, reason: 'unavailable', why, retryAfterSeconds: null }) });
+    expect(await estimateMarketReferenceAt(typed('offline'), { instrument, requestedAt: at }, { now })).toMatchObject({ kind: 'unavailable', reason: 'transport-failed' });
+    expect(await estimateMarketReferenceAt(typed('region'), { instrument, requestedAt: at }, { now })).toMatchObject({ kind: 'unavailable', reason: 'http-error' });
+    const withVolume = await estimateMarketReferenceAt({ acquireHistory: async request => ok(request, [{ ...candle('2026-09-10T02:13:00.000Z'), volume: '12.5' as DecimalString } as ReturnType<typeof candle>]) }, { instrument, requestedAt: at }, { now });
+    expect(withVolume.kind).toBe('candle-range');
+    if (withVolume.kind === 'candle-range') {
+      expect(Object.keys(withVolume.candle).sort()).toEqual(['close', 'closeTime', 'high', 'low', 'open', 'openTime']);
+    }
+  });
 });

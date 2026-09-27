@@ -209,18 +209,21 @@ test('(h) Replay: a practice trade on past prices, judged candle by candle', asy
   await activate(page);
   const replayStart = Date.parse('2024-03-01T04:00:00.000Z'); // 12:00 in Asia/Manila, the project's time zone (playwright.config.ts)
   const cors = { 'Access-Control-Allow-Origin': '*' };
-  await page.route(url => url.hostname === 'data-api.binance.vision', async route => {
+  // The QA build asks the Kairos server (VITE_KAIROS_API_URL), so the market list and candles come in its answer shape.
+  const serverAnswer = (data: unknown) => JSON.stringify({ apiVersion: 1, ok: true, data });
+  await page.route(url => url.hostname === 'api.qa.invalid' && url.pathname.startsWith('/market/'), async route => {
     const url = new URL(route.request().url());
-    if (url.pathname === '/api/v3/exchangeInfo') return route.fulfill({ headers: cors, contentType: 'application/json', body: JSON.stringify({ symbols: [{ symbol: 'BTCUSDT', status: 'TRADING', baseAsset: 'BTC', quoteAsset: 'USDT' }] }) });
-    if (url.pathname !== '/api/v3/klines' || url.searchParams.get('interval') !== '1h') return route.abort();
-    const hour = 3_600_000, from = Number(url.searchParams.get('startTime')), to = Number(url.searchParams.get('endTime')), limit = Number(url.searchParams.get('limit'));
-    const rows: unknown[] = [];
-    for (let openMs = from; openMs <= to && rows.length < limit; openMs += hour) {
+    const fetchedAt = new Date().toISOString();
+    if (url.pathname === '/market/symbols') return route.fulfill({ headers: cors, contentType: 'application/json', body: serverAnswer({ source: 'binance-spot', fetchedAt, markets: [{ symbol: 'BTCUSDT', base: 'BTC', quote: 'USDT', tickSize: '0.01', stepSize: '0.00001' }], leftOut: 0 }) });
+    if (url.pathname !== '/market/candles' || url.searchParams.get('interval') !== '1h') return route.abort();
+    const hour = 3_600_000, from = Number(url.searchParams.get('start')), to = Number(url.searchParams.get('end')), limit = Number(url.searchParams.get('limit'));
+    const candles: unknown[] = [];
+    for (let openMs = from; openMs <= to && candles.length < limit; openMs += hour) {
       const k = (openMs - replayStart) / hour;
       const [open, high, low, close] = k < 0 ? [100, 101, 99, 100] : [100 + k, 101.5 + k, 99.5 + k, 101 + k];
-      rows.push([openMs, String(open), String(high), String(low), String(close), '1', openMs + hour - 1, '1', 1, '1', '1', '0']);
+      candles.push({ openTime: new Date(openMs).toISOString(), closeTime: new Date(openMs + hour - 1).toISOString(), open: String(open), high: String(high), low: String(low), close: String(close), volume: '1' });
     }
-    return route.fulfill({ headers: cors, contentType: 'application/json', body: JSON.stringify(rows) });
+    return route.fulfill({ headers: cors, contentType: 'application/json', body: serverAnswer({ source: { provider: 'binance', market: 'spot', symbol: 'BTCUSDT' }, backup: null, interval: '1h', fetchedAt, candles, next: null }) });
   });
 
   await page.goto('/practice');
@@ -406,6 +409,7 @@ test('(l) Forex: a EUR/USD trade in units, its picture without crypto candles, a
   page.on('request', request => {
     const url = new URL(request.url());
     if (url.hostname === 'data-api.binance.vision' && (url.pathname === '/api/v3/klines' || url.pathname === '/api/v3/exchangeInfo')) marketRequests.push(url.pathname);
+    if (url.hostname === 'api.qa.invalid' && url.pathname.startsWith('/market/')) marketRequests.push(url.pathname);
   });
 
   await page.getByRole('button', { name: 'Quick log' }).click();
@@ -456,6 +460,7 @@ test('(m) Stocks: an AAPL trade in shares, its picture without crypto candles, A
   page.on('request', request => {
     const url = new URL(request.url());
     if (url.hostname === 'data-api.binance.vision' && (url.pathname === '/api/v3/klines' || url.pathname === '/api/v3/exchangeInfo')) marketRequests.push(url.pathname);
+    if (url.hostname === 'api.qa.invalid' && url.pathname.startsWith('/market/')) marketRequests.push(url.pathname);
   });
 
   await page.getByRole('button', { name: 'Quick log' }).click();
