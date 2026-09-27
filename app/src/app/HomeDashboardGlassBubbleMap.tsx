@@ -5,6 +5,8 @@ import { glassMovementWeight, layoutGlassViewportCircles } from './homeDashboard
 import { useHomeDashboardGlassMotion } from './useHomeDashboardGlassMotion';
 import { removeGlassBlackMatte } from './homeDashboardGlassMaterial';
 import { formatHomeDashboardLiveCryptoBubbleMovement } from './homeDashboardGlassBubbleFormatting';
+import { describeMarketDataUnavailable } from '../application/online/onlineWords';
+import { UnavailableNotice } from '../design-system/primitives';
 import approvedGlassUrl from '../assets/kairos-glass-approved.webp';
 import './homeDashboardGlassBubbleMap.css';
 
@@ -144,6 +146,11 @@ export function HomeDashboardGlassBubbleMap({ model, onRetry }: HomeDashboardGla
   }, []);
   const source = model.radiusScaleProjection;
   const loadState = deriveHomeLiveMarketLoadState({ hasData: source !== null, status: model.runtimeState.status, online, startTimedOut });
+  // The port's reason when it gave one; otherwise offline or a source that did not answer.
+  const unavailable = loadState === 'unavailable' ? describeMarketDataUnavailable(
+    model.runtimeState.unavailable ?? { ok: false, reason: 'unavailable', why: online ? 'source-down' : 'offline', retryAfterSeconds: null },
+    'Live prices',
+  ) : null;
   const projection = source && width >= 140 ? projectHomeDashboardLiveCryptoBubblePixelRadii(source, {
     minimumRadiusCssPixels: 48,
     maximumRadiusCssPixels: Math.max(48, Math.min(155, width * 0.225)),
@@ -182,7 +189,7 @@ export function HomeDashboardGlassBubbleMap({ model, onRetry }: HomeDashboardGla
         <span>24h · size by % move</span>
       </div>
       {model.runtimeState.lastError !== null ? <p role="status">Market update failed. Showing the last available observations with their freshness labels.</p> : null}
-      {loadState === 'unavailable' ? <div role="alert" className="kairos-glass-unavailable"><p>Live prices are unavailable. Check your connection.</p><button type="button" onClick={onRetry}>Try again</button></div>
+      {unavailable !== null ? <div className="kairos-glass-unavailable"><UnavailableNotice message={unavailable.message} retryLabel={unavailable.retryLabel} onRetry={onRetry} retryWhenOnline={unavailable.retryWhenOnline} /></div>
         : loadState === 'loading' ? <p role="status">Loading live prices…</p>
         : source === null ? null : !source.ok ? <p role="status">Bubble data unavailable.</p> : source.entries.length === 0 ? <p role="status">No eligible markets available.</p> : null}
       <div ref={container} className="kairos-glass-field" style={{ height: layout.height }}>

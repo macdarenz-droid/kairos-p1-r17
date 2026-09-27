@@ -21,7 +21,7 @@ describe('P16.9 Binance Spot public trade subscription', () => {
 
     expect(result.ok).toBe(true);
     expect(connect).toHaveBeenCalledWith(
-      'wss://stream.binance.com:9443/ws/btcusdt@trade',
+      'wss://data-stream.binance.vision:443/ws/btcusdt@trade',
       expect.any(Object),
     );
     expect(receiptTimestamp).not.toHaveBeenCalled();

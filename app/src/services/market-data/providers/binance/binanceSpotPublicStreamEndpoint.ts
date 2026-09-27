@@ -1,7 +1,7 @@
 import type { BinanceSpotTradeStreamDescriptor } from './binanceSpotTradeStream';
 
-export const BINANCE_SPOT_PUBLIC_STREAM_HOST = 'stream.binance.com' as const;
-export const BINANCE_SPOT_PUBLIC_STREAM_PORTS = ['9443', '443'] as const;
+export const BINANCE_SPOT_PUBLIC_STREAM_HOST = 'data-stream.binance.vision' as const;
+export const BINANCE_SPOT_PUBLIC_STREAM_PORTS = ['443'] as const;
 
 export type BinanceSpotPublicStreamPort =
   (typeof BINANCE_SPOT_PUBLIC_STREAM_PORTS)[number];
@@ -27,7 +27,7 @@ export interface BinanceSpotPublicRawStreamEndpointDescriptor {
  */
 export function describeBinanceSpotPublicRawStreamEndpoint(
   stream: ValidBinanceSpotTradeStreamDescriptor,
-  port: BinanceSpotPublicStreamPort = '9443',
+  port: BinanceSpotPublicStreamPort = '443',
 ): BinanceSpotPublicRawStreamEndpointDescriptor {
   return {
     host: BINANCE_SPOT_PUBLIC_STREAM_HOST,

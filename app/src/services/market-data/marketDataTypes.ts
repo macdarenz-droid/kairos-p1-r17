@@ -7,6 +7,19 @@ export type MarketDataConnectionState =
   | 'disconnected'
   | 'error';
 
+export const BINANCE_USDM_VENUE = 'binance-usdm' as const;
+
+/** Why market data could not be had; the words are application/online/onlineWords.ts's. */
+export type MarketDataUnavailableWhy = 'offline' | 'unknown-market' | 'busy' | 'region' | 'source-down' | 'not-set-up' | 'unreadable';
+
+export interface MarketDataUnavailable {
+  readonly ok: false;
+  readonly reason: 'unavailable';
+  readonly why: MarketDataUnavailableWhy;
+  /** Seconds the source asked to wait, or null. */
+  readonly retryAfterSeconds: number | null;
+}
+
 export interface MarketDataInstrument {
   readonly venue: string;
   readonly symbol: string;

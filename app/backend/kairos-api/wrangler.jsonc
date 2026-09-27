@@ -8,7 +8,7 @@
   "cache": { "enabled": true },
   "triggers": { "crons": ["*/20 * * * *"] },
   "observability": { "enabled": true, "head_sampling_rate": 1, "logs": { "invocation_logs": false } },
-  "vars": { "KAIROS_APP_ORIGINS": "https://kairos-p1-r17.pages.dev", "KAIROS_API_ROLE": "production" },
+  "vars": { "KAIROS_APP_ORIGINS": "https://kairos-p1-r17.pages.dev", "KAIROS_API_ROLE": "production", "KAIROS_MARKET_BACKUP": "okx" },
   "kv_namespaces": [{ "binding": "KAIROS_API_CACHE" }],
   "ratelimits": [
     { "name": "KAIROS_API_DEVICE_LIMITER", "namespace_id": "7101", "simple": { "limit": 120, "period": 60 } },

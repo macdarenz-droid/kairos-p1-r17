@@ -91,7 +91,7 @@ const unavailableText = (reason: Extract<EstimatedMarketReference, { kind: 'unav
     case 'invalid-instant': return 'That time could not be read.';
     case 'no-candle': return 'No market candle exists for that minute on this venue.';
     case 'candle-mismatch': return 'The venue returned a candle for a different minute; nothing is estimated.';
-    case 'http-error': return 'The venue refused the history request.';
+    case 'http-error': return 'Binance refused the request.';
     case 'transport-failed': case 'cancelled': return 'The history request did not complete. Check your connection.';
     default: return 'The venue response could not be used.';
   }

@@ -1,3 +1,4 @@
+import { describeMarketDataUnavailable } from '../application/online/onlineWords';
 import type { MarketDataConnectionState } from '../services/market-data/marketDataTypes';
 import type { BinanceAnalysisLiveCandleBrowserAvailability } from './binanceAnalysisLiveCandleBrowserAvailabilityLifecycle';
 import type { BinanceAnalysisLiveCandleBrowserAvailabilityLifecycleResult } from './binanceAnalysisLiveCandleBrowserAvailabilityLifecycle';
@@ -52,6 +53,9 @@ const activationFailure = (
     return status('empty', 'No candles returned', 'No authoritative candles are available for this selection.');
   }
   if (result.reason === 'history-failed') {
+    if (result.failure.reason === 'unavailable') {
+      return status('unavailable', 'Candles unavailable', describeMarketDataUnavailable(result.failure, 'Candles').message);
+    }
     if (result.failure.reason === 'http-error') {
       if (result.failure.status === 429 || result.failure.status === 418) {
         return status('unavailable', 'Candles temporarily unavailable', 'The market-data service is limiting requests. Try again later.');
@@ -107,7 +111,7 @@ export function presentAnalysisLiveCandleStatus({
     return status('live', 'Live candles connected', 'Validated market updates are being applied to this chart.');
   }
   if (connection === 'disconnected') {
-    return status('reconnecting', 'Reconnecting live candles', 'The chart is waiting for the bounded reconnect policy.');
+    return status('reconnecting', 'Reconnecting live candles', "Kairos keeps trying while this page is open and you're online.");
   }
   return status('connecting', 'Connecting live candles', 'Authoritative history is loaded; waiting for validated market updates.');
 }

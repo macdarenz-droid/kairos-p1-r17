@@ -1,5 +1,7 @@
 .kairos-trade-picture { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--kairos-space-3); margin: 0; padding: var(--kairos-space-3); border: 1px solid var(--kairos-border-subtle); border-radius: var(--kairos-radius-lg); background: var(--kairos-surface-card); color: var(--kairos-text-primary); min-width: 0; }
 .kairos-trade-picture__chart { min-width: 0; display: grid; gap: var(--kairos-space-2); }
+.kairos-trade-picture__main { min-width: 0; display: grid; gap: var(--kairos-space-2); align-content: start; }
+.kairos-trade-picture__source { margin: 0; color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-xs); }
 .kairos-trade-picture__chart svg { width: 100%; height: auto; display: block; }
 .kairos-trade-picture__background { fill: var(--kairos-chart-background); }
 .kairos-trade-picture__box rect { stroke: none; }

@@ -22,7 +22,7 @@ function ids(prefix = 'r') { let index = 0; return <T extends TradeId | TradePla
 const FIRST = Date.parse('2024-02-27T12:00:00.000Z');
 const RAMP = Date.parse('2024-03-01T00:00:00.000Z');
 const candles = Array.from({ length: 70 }, (_, i) => replayCandle(FIRST + i * HOUR, ...rampPrices(FIRST + i * HOUR, RAMP)));
-const replay: LoadedReplay = { symbol: 'BTCUSDT', quoteAsset: 'USDT', candleSize: REPLAY_CANDLE_SIZES[1], candles, startIndex: 60 };
+const replay: LoadedReplay = { symbol: 'BTCUSDT', quoteAsset: 'USDT', candleSize: REPLAY_CANDLE_SIZES[1], candles, startIndex: 60, source: 'Candles: Binance Spot · BTC/USDT', note: null };
 const placed = placeReplayOrder(candles, 60, { side: 'long', entryPrice: '100', stopPrice: '95', targetPrice: '110', quantity: '2' });
 if (!placed.ok) throw new Error(placed.reason);
 const order: ReplayOrder = placed.order;

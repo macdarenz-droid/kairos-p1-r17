@@ -98,7 +98,7 @@ it('supplies exact product policy and hands one authoritative renderer to the li
   expect(h.calls[0].instrument).toBe(selected.instrument);
   expect(h.calls[0].interval).toBe('1m');
   expect(h.calls[0].historyLimit).toBe(500);
-  expect(h.calls[0].reconnectPolicy).toEqual({ initialDelayMs: 1_000, maxDelayMs: 8_000, maxAttempts: 4 });
+  expect(h.calls[0].reconnectPolicy).toEqual({ initialDelayMs: 1_000, maxDelayMs: 30_000, maxAttempts: Number.MAX_SAFE_INTEGER });
 
   const returned = h.calls[0].renderHistory(snapshot);
   expect(h.createRendererSession).toHaveBeenCalledWith({ container: selected.container, snapshot, themeId: 'ocean' });

@@ -1,3 +1,4 @@
+import type { DecimalString } from '../../domain/trades';
 import type { MarketDataInstrument } from './marketDataTypes';
 
 /**
@@ -9,6 +10,9 @@ export interface LiveMarketUniverseInstrumentMetadataFact {
   readonly baseAsset: string;
   readonly quoteAsset: string;
   readonly tradingEnabled: boolean;
+  /** Price and size steps, when the source gave them. */
+  readonly tickSize?: DecimalString;
+  readonly stepSize?: DecimalString;
 }
 
 export type LiveMarketUniverseInstrumentMetadataFactValidationResult =

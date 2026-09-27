@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { BinanceSpot24hPublicRestBaselineObservedAtSource } from '../services/market-data';
+import type { BinanceSpot24hPublicRestBaselineObservedAtSource, MarketDataUnavailable } from '../services/market-data';
 import type {
   HomeDashboardLiveCryptoBubblePresentationStateObservation,
 } from '../application/dashboard/homeDashboardLiveCryptoBubblePresentationStateObservationBridge';
@@ -19,6 +19,8 @@ export interface HomeDashboardLiveCryptoBubbleReactRuntimeState {
   readonly status: HomeDashboardLiveCryptoBubbleReactRuntimeStatus;
   readonly latestObservation: HomeDashboardLiveCryptoBubblePresentationStateObservation | null;
   readonly lastError: unknown | null;
+  /** Why the start failed, when the market data port said (U2); null otherwise. */
+  readonly unavailable?: MarketDataUnavailable | null;
 }
 
 export interface HomeDashboardLiveCryptoBubbleReactRuntimeBindingOptions
@@ -79,7 +81,7 @@ export function useHomeDashboardLiveCryptoBubblePresentationObservedRuntime(
           return;
         }
         if (!result.ok) {
-          setState((current) => ({ ...current, status: 'acquisition-failed' }));
+          setState((current) => ({ ...current, status: 'acquisition-failed', unavailable: result.unavailable ?? null }));
           return;
         }
         closeRuntime = result.runtime.close;

@@ -1,17 +1,15 @@
 import type { TradePictureCandleDeps } from '../application/trade-visualizer';
 import { createLimitedQueue, TRADE_PICTURE_MAX_PARALLEL_LOADS, type TradePictureCandleLoader } from '../features/journal/tradePictureCandleQueue';
 import { loadTradePictureCandles } from '../application/trade-visualizer';
-import { createBinanceSpotCandleHistoryPort } from '../services/market-data/providers/binance/binanceSpotCandleHistoryAcquisition';
-import { connectBinanceSpotCandleHistoryBrowser } from '../services/market-data/providers/binance/binanceSpotCandleHistoryBrowserConnector';
-import { createBinanceSpotExchangeInfoBrowserInstrumentMetadataAcquisitionPort } from '../services/market-data/providers/binance/binanceSpotExchangeInfoBrowserInstrumentMetadataAcquisitionBinding';
+import { appMarketDataPorts } from './marketDataPorts';
 import { BINANCE_SPOT_VENUE } from '../services/market-data/providers/binance/binanceSpotTradeStream';
 
-/** Composition root for trade-picture candles: Binance Spot history and the shared market list (T-005 cache). */
+/** Composition root for trade-picture candles: the build's history port and the shared market list. */
 export function createTradePictureCandleBrowserDeps(): TradePictureCandleDeps {
   return {
     venue: BINANCE_SPOT_VENUE,
-    history: createBinanceSpotCandleHistoryPort(connectBinanceSpotCandleHistoryBrowser, () => new Date().toISOString()),
-    metadata: createBinanceSpotExchangeInfoBrowserInstrumentMetadataAcquisitionPort(),
+    history: appMarketDataPorts().history,
+    metadata: appMarketDataPorts().metadata,
   };
 }
 

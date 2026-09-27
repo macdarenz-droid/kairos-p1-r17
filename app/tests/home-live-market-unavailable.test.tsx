@@ -2,9 +2,18 @@ import '@testing-library/jest-dom/vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { deriveHomeLiveMarketLoadState, HOME_LIVE_MARKET_START_TIMEOUT_MS } from '../src/app/HomeDashboardGlassBubbleMap';
+import { deriveHomeLiveMarketLoadState, HomeDashboardGlassBubbleMap, HOME_LIVE_MARKET_START_TIMEOUT_MS } from '../src/app/HomeDashboardGlassBubbleMap';
+import type { MarketDataUnavailable } from '../src/services/market-data/marketDataTypes';
+import { glassTestModel } from './fixtures/homeDashboardGlassModel';
 import { HomeRoute } from '../src/app/HomeRoute';
 import { resetBinanceSpotExchangeInfoCache } from '../src/services/market-data';
+
+// T-048g fix r1: a test may hand Home the server route's ports; every other test keeps the build's own choice.
+const serverPorts = vi.hoisted(() => ({ current: null as null | Record<string, unknown> }));
+vi.mock('../src/app/marketDataPorts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../src/app/marketDataPorts')>();
+  return { ...actual, appMarketDataPorts: () => (serverPorts.current ?? actual.appMarketDataPorts()) as ReturnType<typeof actual.appMarketDataPorts> };
+});
 
 const originalFetch = globalThis.fetch;
 // Payloads from tests/binance-home-dashboard-live-market-runtime-bootstrap-foundation.test.ts:12-40.
@@ -31,6 +40,7 @@ beforeEach(() => {
   vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(390);
 });
 afterEach(() => {
+  serverPorts.current = null;
   cleanup();
   globalThis.fetch = originalFetch;
   vi.restoreAllMocks();
@@ -43,7 +53,7 @@ describe('T-006 Home live market says when it cannot load', () => {
     globalThis.fetch = failing as unknown as typeof fetch;
     const { container } = renderHome();
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('Live prices are unavailable. Check your connection.');
+    expect(alert).toHaveTextContent('Unavailable · Live prices');
     const calls = failing.mock.calls.length;
 
     const working = marketFetch();
@@ -59,7 +69,7 @@ describe('T-006 Home live market says when it cannot load', () => {
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
     globalThis.fetch = vi.fn(() => new Promise(() => undefined)) as unknown as typeof fetch;
     renderHome();
-    expect(screen.getByRole('alert')).toHaveTextContent('Live prices are unavailable');
+    expect(screen.getByRole('alert')).toHaveTextContent('Unavailable · Live prices');
   });
 
   it('shows "Loading live prices…" while starting, then the alert after 10 seconds without data', async () => {
@@ -68,7 +78,27 @@ describe('T-006 Home live market says when it cannot load', () => {
     renderHome();
     expect(screen.getByRole('status')).toHaveTextContent('Loading live prices…');
     await act(async () => { vi.advanceTimersByTime(HOME_LIVE_MARKET_START_TIMEOUT_MS); });
-    expect(screen.getByRole('alert')).toHaveTextContent('Live prices are unavailable');
+    expect(screen.getByRole('alert')).toHaveTextContent('Unavailable · Live prices');
+  });
+
+  const failedWith = (why: MarketDataUnavailable['why']) => {
+    const model = glassTestModel();
+    const unavailable: MarketDataUnavailable = { ok: false, reason: 'unavailable', why, retryAfterSeconds: null };
+    return { ...model, radiusScaleProjection: null, runtimeState: { ...model.runtimeState, status: 'acquisition-failed' as const, unavailable } };
+  };
+
+  it('says the port\'s reason: Binance refused this region', () => {
+    render(<HomeDashboardGlassBubbleMap model={failedWith('region')} onRetry={vi.fn()} />);
+    expect(screen.getByRole('alert')).toHaveTextContent("Unavailable · Live prices: Binance isn't available in your region");
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+  });
+
+  it('retries once by itself when an offline failure comes back online', () => {
+    const onRetry = vi.fn();
+    render(<HomeDashboardGlassBubbleMap model={failedWith('offline')} onRetry={onRetry} />);
+    expect(screen.getByRole('alert')).toHaveTextContent("Unavailable · Live prices: you're offline.");
+    act(() => { window.dispatchEvent(new Event('online')); });
+    expect(onRetry).toHaveBeenCalledTimes(1);
   });
 
   it('data always replaces the message', () => {
@@ -77,5 +107,41 @@ describe('T-006 Home live market says when it cannot load', () => {
     }
     expect(deriveHomeLiveMarketLoadState({ hasData: false, status: 'running', online: true, startTimedOut: true })).toBe('loading');
     expect(deriveHomeLiveMarketLoadState({ hasData: false, status: 'starting', online: true, startTimedOut: false })).toBe('loading');
+  });
+
+  const serverRoute = (metadata: () => Promise<unknown>) => {
+    const acquireInstrumentMetadata = vi.fn(metadata);
+    serverPorts.current = {
+      route: 'server',
+      metadata: { acquireInstrumentMetadata },
+      baseline: { acquireBaseline: vi.fn(async () => { throw new Error('not asked'); }) },
+      history: { acquireHistory: vi.fn(async () => { throw new Error('not asked'); }) },
+    };
+    return acquireInstrumentMetadata;
+  };
+
+  it('T-048g fix r1: the server route\'s reason reaches Home, and nothing asks Binance directly', async () => {
+    const fetchSpy = vi.fn(async () => { throw new Error('no direct request expected'); });
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+    const metadata = serverRoute(async () => ({ ok: false, reason: 'unavailable', why: 'region', retryAfterSeconds: null }));
+    renderHome();
+    expect(await screen.findByRole('alert')).toHaveTextContent("Unavailable · Live prices: Binance isn't available in your region");
+    expect(metadata).toHaveBeenCalled();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('T-048g fix r1: a failure with no reason while offline says so, and one online event asks exactly once more', async () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    globalThis.fetch = vi.fn(async () => { throw new Error('no direct request expected'); }) as unknown as typeof fetch;
+    const metadata = serverRoute(async () => { throw new Error('network'); });
+    renderHome();
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent("Unavailable · Live prices: you're offline."));
+    await waitFor(() => expect(metadata).toHaveBeenCalled());
+    const before = metadata.mock.calls.length;
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
+    act(() => { window.dispatchEvent(new Event('online')); });
+    await waitFor(() => expect(metadata.mock.calls.length).toBe(before + 1));
+    await new Promise(resolve => setTimeout(resolve, 50));
+    expect(metadata.mock.calls.length).toBe(before + 1);
   });
 });

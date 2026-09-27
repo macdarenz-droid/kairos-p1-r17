@@ -27,9 +27,13 @@ says otherwise), `x-content-type-options: nosniff`, `vary: Origin`.
 | `service-error` | 500 | null | a bug (a thrown error, a host not on the route's list) |
 | `source-unavailable` | 502 | 30 (a route may set its own) | the upstream failed, timed out, redirected, was too big or of the wrong type |
 | `not-set-up` | 503 | null | a binding or secret the route needs is missing |
+| `unknown-market` | 404 | null | the market data source has no such market (Binance `-1121` "Invalid symbol.") |
+| `source-busy` | 503 | the source's `Retry-After` (1–3,600 s), else 60 | the source answered 429 or 418 and no backup answered |
+| `source-refused` | 451 | null | the source refused the server's place (451 or 403) and no backup answered |
 
 Routes today: `GET /health` (says whether the device key, cache and limits are set up, and whether it recognised the
-device; never a value).
+device; never a value); the news routes (`/news/calendar/<source>`, `/news/headlines/<source>`, below); `GET /market/symbols`
+and `GET /market/tickers?symbols=…` (market data, below).
 
 ## CORS and `KAIROS_APP_ORIGINS`
 
@@ -83,6 +87,8 @@ when ok, under keys that carry the route id and its version:
 - A key only from `env` (a Worker secret), and only in `UpstreamRequest.headers` or the fixed URL.
 - `data` rebuilt from checked values, never an upstream body passed through.
 - Bump `cache.version` when `data` changes shape.
+- A route may return its own `cache` for one answer (same `version`); it is kept and labelled with it.
+- `maxQueryLength` only for a list query, at most 4,096.
 - A cached answer never depends on the device: the cache key holds only the route, its `cache.version` and the checked query, so `data` must be the same for every device.
 - Tests for the decoder and the route.
 - Reserved secret names, each added to `KairosApiEnv` with its route: `NEWS_API_KEY` (O3), `MARKET_DATA_API_KEY` (O4),
@@ -140,6 +146,63 @@ link or readable date.
 Cache (`NEWS_HEADLINES_CACHE`): 10 minutes in Workers Cache and memory, never in KV (its shortest copy is an hour), and
 never read ahead.
 
+## Market data (P16.A1)
+
+Binance's public market data: `data-api.binance.vision` (market data only; answers from the US), terms UNVERIFIED.
+The routes are `public` and rate-limited; `data` is rebuilt from checked values, with prices, sizes and volumes as
+decimal text and times as ISO 8601 UTC (`src/market/marketRoutes.ts`, `binance.ts`, `marketValues.ts`).
+
+| Route | Query | Source | Kept |
+|---|---|---|---|
+| `/market/symbols` | none (any query is 400) | Binance Spot `GET /api/v3/exchangeInfo?permissions=SPOT&symbolStatus=TRADING&showPermissionSets=false` | 1 h in Workers Cache and memory, 6 h in KV |
+| `/market/tickers` | `symbols`: 1 to 100 Binance Spot symbols, comma-separated, strictly ascending | Binance Spot `GET /api/v3/ticker/24hr?symbols=[…]&type=MINI` | 5 s in Workers Cache and memory, never KV |
+| `/market/candles` | `market` (`binance-spot` or `binance-usdm`), `symbol`, `interval`, `limit` (1–1000); optional `start`, `end` (epoch ms, open times, inclusive); optional `base` and `quote` together, spelling `symbol` | Binance Spot `GET /api/v3/klines` on `data-api.binance.vision`, USDⓈ-M `GET /fapi/v1/klines` on `fapi.binance.com`; backup OKX `GET /api/v5/market/history-candles` on `www.okx.com` | a settled page 7 days in Workers Cache (and the browser), 1 h in memory; any other page 10 s; never KV |
+
+- `/market/symbols`: `{ source: 'binance-spot', fetchedAt, markets: [{ symbol, base, quote, tickSize, stepSize }], leftOut }`,
+  ascending by symbol, only markets open for trading; a market without exactly one price step and one size step, or whose
+  base and quote do not spell its symbol, is left out and counted.
+- `/market/tickers`: `{ source: 'binance-spot', fetchedAt, tickers: [{ symbol, lastPrice, openPrice, highPrice, lowPrice, volume, quoteVolume, openTime, closeTime }] }`,
+  in the requested order, each requested symbol exactly once (anything else is `source-unavailable`). One order for the
+  list means one cache key for every device.
+- `/market/candles`: `{ source: { provider, market, symbol }, backup, interval, fetchedAt, candles: [{ openTime, closeTime, open, high, low, close, volume }], next }`;
+  `provider` is `binance` or `okx`, `market` is `spot`, `usdm-futures` or `perpetual-swap`, `backup` is `null` when Binance answered. Rows that are not whole, in order,
+  inside the window and within `limit` make the answer `source-unavailable`. 1-second candles are spot only.
+- Settled: a page is settled when `end` is given and at least one full candle (`1M`: 31 days) has passed since `end`,
+  and every candle has closed. The candle holding `end` began at or before it, so it has closed too; this needs no
+  knowledge of how a source aligns its candles. A settled page is kept 7 days; any other page 10 seconds.
+- Cursor: `next` is the `start` for the next page (the last open time + 1) when the page is full and the window goes
+  on, else `null`.
+- USDⓈ-M: `fapi.binance.com` answers 451 from the US (checked); T-048c's backup covers it.
+- Backup (D157, D158): when Binance refuses (451, 403), is busy (429, 418) or is down for a candles request that
+  carries `base` and `quote` (ASCII), the server asks OKX (`www.okx.com`, keyless,
+  `GET /api/v5/market/history-candles`, 300 rows a page, at most 4 pages): spot `BASE-QUOTE`, USDⓈ-M the USDT
+  perpetual swap `BASE-QUOTE-SWAP`. The answer names it: `source.provider: 'okx'`, `market` `spot` or
+  `perpetual-swap`, `symbol` OKX's name, and `backup` says why Binance did not answer (`refused`, `busy`, `down`).
+  Bars: `1h`→`1H`, `2h`→`2H`, `4h`→`4H`, and the UTC bars `6Hutc`, `12Hutc`, `1Dutc`, `1Wutc`, `1Mutc` (OKX's bars
+  without `utc` open at UTC+8); minutes and `1s` keep their names. No `8h` (OKX has none) and no `3d` (alignment
+  unchecked): those get Binance's answer. When OKX fails too, or does not know the pair, the answer is Binance's reason,
+  never OKX's. Binance's `unknown-market` never asks OKX. A forming OKX candle keeps the page at 10 seconds.
+  The var `KAIROS_MARKET_BACKUP` (`"okx"` in `wrangler.jsonc`; anything else means no backup) switches it off.
+  OKX's terms for showing its candles in another app: UNVERIFIED (owner step O11).
+- A page asked without `start` is the newest candles, so its `next` is `null`.
+- Reasons: `unknown-market`, `source-busy` and `source-refused` (the table in "Answers") say what Binance answered; everything
+  else is `source-unavailable`.
+- CPU (D162): reading Binance's 2.48 MB market list takes about 8–14 ms of CPU, over the Free plan's 10 ms, so the
+  market list needs Workers Paid (O10) to be dependable. Its three cache layers make the read rare; there is no
+  scheduled read of market data. Candles (1,000 rows, about 168 KB) and tickers (100 rows, about 28 KB) stay far below it.
+- Sources and their terms: Binance Spot market data on `data-api.binance.vision` and Binance USDⓈ-M on
+  `fapi.binance.com` (keyless, public; whether their terms allow showing them in another app: UNVERIFIED); OKX on
+  `www.okx.com` as the backup for candles only (terms UNVERIFIED, owner step O11). The market list and the 24-hour
+  prices have no backup source.
+- The app: with `VITE_KAIROS_API_URL` set, the app reads these routes (`src/services/kairos-api/marketApi.ts`); without
+  it, it reads Binance directly as before. It keeps the market list on the device (Cache Storage `kairos-market-list`:
+  fresh 6 h, used up to 7 days when the server fails; not IndexedDB, not in backups), lets the browser keep settled
+  candle pages by this server's `cache-control`, shows each reason in plain words with "Try again", and asks once more
+  by itself when the connection comes back. Every trade picture names its source ("Candles: OKX Futures · BTC/USDT ·
+  Binance isn't available in your region").
+- Live check: after each production deploy, CI asks the live `/market/candles` for one settled BTCUSDT hour (an error
+  fails the job) and `/market/symbols` (a failure only warns: on the Free plan it can exceed the CPU limit, O10).
+
 ## Scheduled reads (P34)
 
 A cron trigger (`wrangler.jsonc`, `*/20 * * * *`) runs `src/scheduled.ts` every 20 minutes. Each run reads ONE of the
@@ -174,8 +237,9 @@ CI (`.github/workflows/ci.yml`) has four jobs for this Worker:
 - **Cloudflare secrets (owner step O1)**: checks that the GitHub secrets `CLOUDFLARE_API_TOKEN` and
   `CLOUDFLARE_ACCOUNT_ID` are set. Without them it stays green with a notice, and both deploy jobs are skipped.
 - **deploy kairos-api (main)**: on a `main` push or a manual run (GitHub → Actions → CI → Run workflow → `main`), after
-  every other check passed. It deploys `kairos-api` to production, checks that the live `/health` answers, and writes
-  the Worker's address in the job summary.
+  every other check passed. It deploys `kairos-api` to production, checks that the live `/health` answers, writes
+  the Worker's address in the job summary, and checks that the live market routes answer (candles must; a market list
+  that fails only warns, see O10).
 - **preview kairos-api (pull request)**: on a pull request that changes `app/backend/kairos-api`; it deploys the
   separate Worker `kairos-api-preview`. The latest pull request that changes the Worker replaces the preview.
 
@@ -202,13 +266,14 @@ with `npm ci --ignore-scripts`.
 - **O2 · First deploy and the Pages setting** (after the release with T-047a–f is merged into `main`):
   1. With O1 done before the merge, CI's job "deploy kairos-api (main)" deploys by itself. With O1 done later: GitHub → Actions → CI → Run workflow → branch `main` → Run workflow.
   2. The job's summary says "kairos-api is live at https://kairos-api.<subdomain>.workers.dev". Keep that address.
-  3. Worker secret: Cloudflare → Workers & Pages → `kairos-api` → Settings → Variables and Secrets → Add → Type **Secret** (not Text: a deploy removes Text values set in the dashboard) → Name `KAIROS_ACTIVATION_PUBLIC_KEY_SPKI` → Value: exactly the Pages variable `VITE_KAIROS_ACTIVATION_PUBLIC_KEY_SPKI` (a public key; it is stored as a secret only so deploys keep it) → Deploy. If Pages shows that variable as encrypted, ask the supervisor for the value: it is public, and it is inside the live app's code (the supervisor reads it from https://kairos-p1-r17.pages.dev). Paste it with no spaces or line breaks.
+  3. Worker secret: Cloudflare → Workers & Pages → `kairos-api` → Settings → Variables and Secrets → Add → Type **Secret** (not Text: a deploy removes Text values set in the dashboard) → Name `KAIROS_ACTIVATION_PUBLIC_KEY_SPKI` → Value: exactly the Pages variable `VITE_KAIROS_ACTIVATION_PUBLIC_KEY_SPKI` (a public key; it is stored as a secret only so deploys keep it) → Deploy. This step matters more with market data: without it the server cannot tell devices apart, so every device shares its network address's limit of 30 requests a minute, and a Journal page with many trade pictures reaches it (the pictures then say "too many requests… Try again"). If Pages shows that variable as encrypted, ask the supervisor for the value: it is public, and it is inside the live app's code (the supervisor reads it from https://kairos-p1-r17.pages.dev). Paste it with no spaces or line breaks.
   4. Pages: Workers & Pages → `kairos-p1-r17` → Settings → Variables and Secrets → Production → Add `VITE_KAIROS_API_URL` = the address from step 2, nothing after `.dev` → Save → Deployments → the latest production deployment → Retry deployment (VITE_ values are read when the app is built).
   5. Check: Kairos → More → Profile → "Check online services" → "Online services are working. This device is recognised." Or `curl -H 'Origin: https://kairos-p1-r17.pages.dev' https://kairos-api.<subdomain>.workers.dev/health` shows `"ok":true` and `"deviceKey":"ready"`.
-- **O10 · Workers Paid** (before the first product route goes live, P16.A1 or P34; recommended: yes):
-  1. Why: on the Workers Free plan the whole Cloudflare account gets 100,000 requests a day, and `kairos-api` shares them with `kairos-activation` (preflights and refused calls count too). One runaway device at its limit of 120 a minute could use the whole day's budget; Cloudflare then answers "error 1027" until midnight UTC, and new devices cannot activate either. Until you switch, everything works; only this risk remains.
+- **O10 · Workers Paid** (required before market data (P16.A1) goes live):
+  1. Why, in plain words: building the market list takes about 10–15 ms of the server's computer time, and the Free plan stops a request at 10 ms, so the list would often fail; Home also asks for prices every 5 seconds per open phone. Also: on the Workers Free plan the whole Cloudflare account gets 100,000 requests a day, and `kairos-api` shares them with `kairos-activation` (preflights and refused calls count too). One runaway device at its limit of 120 a minute could use the whole day's budget; Cloudflare then answers "error 1027" until midnight UTC, and new devices cannot activate either. Until you switch, everything works; only this risk remains.
   2. Cloudflare dashboard → Workers & Pages → Plans → choose Workers Paid and confirm the payment (USD 5 a month; 10 million requests a month included; higher KV and CPU limits).
-  3. Nothing else changes: no deploy, no setting, no code. (The app never retries on its own; a retry is always the trader's tap.)
+  3. Nothing else changes: no deploy, no setting, no code. (The app asks again by itself only once, when the connection comes back; every other retry is the trader's tap.)
+- **O11 · OKX as the backup source for candles** (optional, never blocking): Kairos shows OKX candles only when Binance refuses a region or is down, and names OKX on the picture. Whether OKX's terms allow showing its public candles in another app is UNVERIFIED. If you want it off, say so: a coder changes `KAIROS_MARKET_BACKUP` to `"off"` in `wrangler.jsonc` (one line), and the next deploy stops using OKX.
 
 Setting a provider key later: in `app/backend/kairos-api`, `npm ci`, then `npx wrangler secret put <NAME>` and paste the key
 when asked (or the dashboard, type Secret).

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { describeOnlineServices, describeUnavailable } from '../src/application/online/onlineWords';
+import { describeMarketDataUnavailable, describeOnlineServices, describeUnavailable } from '../src/application/online/onlineWords';
+import type { MarketDataUnavailableWhy } from '../src/services/market-data/marketDataTypes';
 
 const HEALTH = { serverTime: '2026-09-26T10:00:00.000Z', checks: { deviceKey: 'ready', cache: 'ready', limits: 'ready' } } as const;
 
@@ -10,6 +11,7 @@ describe('describeUnavailable', () => {
       message: 'News: Kairos could not reach its server. Check your connection, then try again.',
       retryLabel: 'Try again',
       retryAfterSeconds: null,
+      retryWhenOnline: true,
     });
   });
 
@@ -25,6 +27,7 @@ describe('describeUnavailable', () => {
       message: 'News: too many requests from this device. Wait a minute, then try again.',
       retryLabel: 'Try again',
       retryAfterSeconds: 60,
+      retryWhenOnline: false,
     });
     expect(describeUnavailable({ ok: false, reason: 'unavailable', serverReason: 'teapot', retryAfterSeconds: null, status: 418 }, 'News'))
       .toMatchObject({ message: 'News: unavailable right now. Try again later.', retryLabel: 'Try again' });
@@ -44,7 +47,7 @@ describe('describeUnavailable: every failure in full', () => {
       [server('teapot', 5, 418), 'News: unavailable right now. Try again later.', 'Try again', 5],
     ];
     for (const [failure, message, retryLabel, retryAfterSeconds] of cases) {
-      expect(describeUnavailable(failure, 'News'), JSON.stringify(failure)).toEqual({ title: 'Unavailable', message, retryLabel, retryAfterSeconds });
+      expect(describeUnavailable(failure, 'News'), JSON.stringify(failure)).toEqual({ title: 'Unavailable', message, retryLabel, retryAfterSeconds, retryWhenOnline: failure.reason === 'transport-failed' });
     }
   });
 });
@@ -68,5 +71,51 @@ describe('describeOnlineServices', () => {
       words: describeUnavailable({ ok: false, reason: 'transport-failed' }, 'Online services'),
     });
     expect(describeOnlineServices({ ok: false, reason: 'transport-failed' })).toMatchObject({ words: { message: expect.stringMatching(/^Online services: /) } });
+  });
+});
+
+describe('describeMarketDataUnavailable', () => {
+  const failure = (why: MarketDataUnavailableWhy, retryAfterSeconds: number | null = null) => ({ ok: false as const, reason: 'unavailable' as const, why, retryAfterSeconds });
+
+  it('gives every reason its words, and Try again unless a retry cannot help', () => {
+    const cases: [MarketDataUnavailableWhy, string, 'Try again' | null][] = [
+      ['offline', "Candles: you're offline. Kairos will try again when you're back online.", 'Try again'],
+      ['unknown-market', "Candles: Binance doesn't list this market. Check the spelling, for example BTCUSDT.", null],
+      ['busy', 'Candles: too many requests right now. Wait a minute, then try again.', 'Try again'],
+      ['region', "Candles: Binance isn't available in your region, and the backup source couldn't help. Try again later.", 'Try again'],
+      ['source-down', "Candles: the price source didn't answer. Try again in a moment.", 'Try again'],
+      ['not-set-up', 'Candles: not set up in this version of Kairos.', null],
+      ['unreadable', 'Candles: the answer could not be read. Try again later.', 'Try again'],
+    ];
+    for (const [why, message, retryLabel] of cases) {
+      expect(describeMarketDataUnavailable(failure(why), 'Candles'), why).toEqual({ title: 'Unavailable', message, retryLabel, retryAfterSeconds: null, retryWhenOnline: why === 'offline' });
+    }
+  });
+
+  it('retries by itself when back online only for the network failure and offline', () => {
+    const whys: MarketDataUnavailableWhy[] = ['offline', 'unknown-market', 'busy', 'region', 'source-down', 'not-set-up', 'unreadable'];
+    expect(whys.filter(why => describeMarketDataUnavailable(failure(why), 'Candles').retryWhenOnline)).toEqual(['offline']);
+    const server = (serverReason: string) => ({ ok: false as const, reason: 'unavailable' as const, serverReason, retryAfterSeconds: null, status: 503 });
+    const failures = [
+      { ok: false as const, reason: 'transport-failed' as const },
+      { ok: false as const, reason: 'not-set-up' as const },
+      { ok: false as const, reason: 'invalid-response' as const, status: 200 },
+      ...['rate-limited', 'source-busy', 'unknown-market', 'source-refused', 'source-unavailable', 'not-set-up', 'device-not-recognised', 'teapot'].map(server),
+    ];
+    expect(failures.filter(item => describeUnavailable(item, 'News').retryWhenOnline).map(item => item.reason)).toEqual(['transport-failed']);
+  });
+
+  it('passes on how long the source asked to wait when it is busy', () => {
+    expect(describeMarketDataUnavailable(failure('busy', 30), 'Prices').retryAfterSeconds).toBe(30);
+  });
+});
+
+describe('describeUnavailable for the market reasons', () => {
+  const server = (serverReason: string, status: number, retryAfterSeconds: number | null = null) => ({ ok: false as const, reason: 'unavailable' as const, serverReason, retryAfterSeconds, status });
+
+  it('gives unknown-market, source-busy and source-refused their words', () => {
+    expect(describeUnavailable(server('unknown-market', 404), 'Candles')).toMatchObject({ message: "Candles: Binance doesn't list this market. Check the spelling, for example BTCUSDT.", retryLabel: null });
+    expect(describeUnavailable(server('source-busy', 503, 12), 'Candles')).toMatchObject({ message: 'Candles: too many requests from this device. Wait a minute, then try again.', retryLabel: 'Try again', retryAfterSeconds: 12 });
+    expect(describeUnavailable(server('source-refused', 451), 'Candles')).toMatchObject({ message: "Candles: Binance isn't available in your region, and the backup source couldn't help. Try again later.", retryLabel: 'Try again' });
   });
 });

@@ -38,5 +38,6 @@ export function startBinanceHomeDashboardLiveMarketObservedRuntime(
   return startBinanceHomeDashboardLiveMarketRuntime(readObservedAt, {
     universe: options.universe,
     lifecycle,
+    ports: options.ports,
   });
 }

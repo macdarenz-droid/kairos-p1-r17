@@ -111,4 +111,10 @@ describe('Analysis live-candle status presentation', () => {
   it('returns immutable presentation facts', () => {
     expect(Object.isFrozen(present({}))).toBe(true);
   });
+
+  it('names the real reason when the market data could not be had', () => {
+    const result = present({ activation: { ok: false, reason: 'history-failed', failure: { ok: false, reason: 'unavailable', why: 'region', retryAfterSeconds: null } } });
+    expect(result.kind).toBe('unavailable');
+    expect(result.detail).toContain("isn't available in your region");
+  });
 });

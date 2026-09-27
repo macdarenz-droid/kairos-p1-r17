@@ -176,6 +176,18 @@ jobs:
           grep -q '"ok":true' "$RUNNER_TEMP/health.json"
           echo "kairos-api is live at $url. Use this address as the Pages setting VITE_KAIROS_API_URL (owner step O2)." >> "$GITHUB_STEP_SUMMARY"
 
+      - name: The live market routes answer
+        run: |
+          set -o pipefail
+          url=$(grep -oE 'https://kairos-api\.[a-z0-9-]+\.workers\.dev' "$RUNNER_TEMP/deploy.log" | head -n 1 || true)
+          if [ -z "$url" ]; then echo "::error::The deploy log names no kairos-api workers.dev address."; exit 1; fi
+          curl -fsS --retry 3 --retry-delay 5 "$url/market/candles?market=binance-spot&symbol=BTCUSDT&interval=1h&limit=2&start=1704067200000&end=1704070799999&base=BTC&quote=USDT" | tee "$RUNNER_TEMP/candles.json"
+          grep -q '"ok":true' "$RUNNER_TEMP/candles.json"
+          curl -sS "$url/market/symbols" -o "$RUNNER_TEMP/symbols.json" || true
+          if ! grep -q '"ok":true' "$RUNNER_TEMP/symbols.json" 2>/dev/null; then
+            echo "::warning::The market list did not load. On the Free plan it can exceed the CPU limit: owner step O10 (Workers Paid)."
+          fi
+
   preview-api:
     name: preview kairos-api (pull request)
     needs: [worker, cloudflare]

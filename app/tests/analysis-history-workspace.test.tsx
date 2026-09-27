@@ -132,8 +132,8 @@ it('offers metadata retry while keeping history, transport and journal ownership
   const p = ports(), LiveCanvas = liveCanvas();
   p.metadata.acquireInstrumentMetadata.mockRejectedValueOnce(new Error('offline'));
   render(<AnalysisHistoryWorkspace ports={p} LiveCanvas={LiveCanvas} />);
-  expect(await screen.findByRole('alert')).toHaveTextContent('Supported symbols are unavailable');
-  fireEvent.click(screen.getByRole('button', { name: 'Retry symbols' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Unavailable · Markets');
+  fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
   await select();
   expect(await screen.findByTestId('live-candle-canvas')).toHaveTextContent('ETHUSDT/5m/USDT/0');
   expect(p.metadata.acquireInstrumentMetadata).toHaveBeenCalledTimes(2);
@@ -152,8 +152,70 @@ it('aborts metadata on timeout and unmount without mounting a stale live scope',
   const requestedSignal = p.metadata.acquireInstrumentMetadata.mock.calls[0][0]?.signal;
   await act(async () => { vi.advanceTimersByTime(ANALYSIS_HISTORY_REQUEST_TIMEOUT_MS); });
   expect(requestedSignal?.aborted).toBe(true);
-  expect(screen.getByRole('alert')).toHaveTextContent('Supported symbols are unavailable');
+  expect(screen.getByRole('alert')).toHaveTextContent('Unavailable · Markets');
   ui.unmount();
   await act(async () => pending.resolve({ ok: true, facts }));
   expect(LiveCanvas).not.toHaveBeenCalled();
+});
+
+it('says why the market list failed, and "Try again" reloads it', async () => {
+  const p = ports(), LiveCanvas = liveCanvas();
+  p.metadata.acquireInstrumentMetadata.mockResolvedValueOnce({ ok: false, reason: 'unavailable', why: 'busy', retryAfterSeconds: 30 } as never);
+  render(<AnalysisHistoryWorkspace ports={p} LiveCanvas={LiveCanvas} />);
+  expect(await screen.findByRole('alert')).toHaveTextContent('Unavailable · Markets: too many requests right now.');
+  fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+  await select();
+  expect(await screen.findByTestId('live-candle-canvas')).toHaveTextContent('ETHUSDT/5m');
+  expect(p.metadata.acquireInstrumentMetadata).toHaveBeenCalledTimes(2);
+});
+
+it('opens a trade typed as BTC/USD on BTCUSDT and says how it matched', async () => {
+  const start = new Date(Date.now() - 2 * 86_400_000).toISOString(), end = new Date(Date.now() - 2 * 86_400_000 + 3_600_000).toISOString();
+  const entry = {
+    trade: { id: 'trade-btc-usd', symbol: 'BTC/USD', marketType: 'crypto', status: 'closed', openedAt: start, closedAt: end, createdAt: start },
+    executions: [{ type: 'entry', executedAt: start }, { type: 'exit', executedAt: end }],
+  } as unknown as JournalHistoryEntry;
+  const SavedTradeLiveCanvas = savedTradeLiveCanvas();
+  render(<AnalysisHistoryWorkspace entry={entry} ports={ports()} LiveCanvas={liveCanvas()} SavedTradeLiveCanvas={SavedTradeLiveCanvas} />);
+  expect(await screen.findByTestId('saved-trade-live-candle-canvas')).toHaveTextContent('trade-btc-usd/binance-spot/BTCUSDT/');
+  expect(screen.getByText(/^Matched BTC\/USD to BTC\/USDT on Binance\./)).toBeInTheDocument();
+});
+
+function closedTrade(id: string, symbol: string, marketType: string) {
+  const start = new Date(Date.now() - 2 * 86_400_000).toISOString(), end = new Date(Date.now() - 2 * 86_400_000 + 3_600_000).toISOString();
+  return {
+    trade: { id, symbol, marketType, status: 'closed', openedAt: start, closedAt: end, createdAt: start },
+    executions: [{ type: 'entry', executedAt: start }, { type: 'exit', executedAt: end }],
+  } as unknown as JournalHistoryEntry;
+}
+
+it('T-048g fix r1: a futures trade BTCUSDT.P opens BTCUSDT on Binance Spot, and nothing says "Futures candles"', async () => {
+  const SavedTradeLiveCanvas = savedTradeLiveCanvas();
+  render(<AnalysisHistoryWorkspace entry={closedTrade('trade-perp', 'BTCUSDT.P', 'crypto')} ports={ports()} LiveCanvas={liveCanvas()} SavedTradeLiveCanvas={SavedTradeLiveCanvas} />);
+  expect(await screen.findByTestId('saved-trade-live-candle-canvas')).toHaveTextContent('trade-perp/binance-spot/BTCUSDT/');
+  expect(screen.getByText(/^Matched BTCUSDT\.P to BTC\/USDT on Binance\./)).toBeInTheDocument();
+  expect(document.body.textContent).not.toContain('Futures candles');
+});
+
+it('T-048g fix r1: a futures-only market is not called unlisted; a real misspelling still is', async () => {
+  const first = render(<AnalysisHistoryWorkspace entry={closedTrade('trade-pepe', '1000PEPEUSDT', 'futures')} ports={ports()} LiveCanvas={liveCanvas()} SavedTradeLiveCanvas={savedTradeLiveCanvas()} />);
+  expect(await screen.findByText(/This trade's symbol is not on Binance Spot\./)).toHaveTextContent("This trade's symbol is not on Binance Spot. The market chart shows Binance Spot markets only; the trade's picture shows its futures candles.");
+  expect(document.body.textContent).not.toContain("doesn't list");
+  expect(document.body.textContent).not.toContain('Check the spelling');
+  first.unmount();
+  render(<AnalysisHistoryWorkspace entry={closedTrade('trade-doge', 'DOGE/EUR', 'crypto')} ports={ports()} LiveCanvas={liveCanvas()} SavedTradeLiveCanvas={savedTradeLiveCanvas()} />);
+  expect(await screen.findByText(/This trade's symbol is not on Binance Spot\./)).toHaveTextContent("Binance doesn't list DOGE/EUR.");
+});
+
+it('T-048g fix r1: a market list that fails while offline says so, and coming back online asks once more', async () => {
+  vi.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(false);
+  const p = ports();
+  p.metadata.acquireInstrumentMetadata.mockRejectedValueOnce(new Error('network'));
+  render(<AnalysisHistoryWorkspace ports={p} LiveCanvas={liveCanvas()} />);
+  expect(await screen.findByRole('alert')).toHaveTextContent("Unavailable · Markets: you're offline.");
+  expect(p.metadata.acquireInstrumentMetadata).toHaveBeenCalledTimes(1);
+  vi.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(true);
+  fireEvent(window, new Event('online'));
+  await waitFor(() => expect(p.metadata.acquireInstrumentMetadata).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(screen.getByLabelText('Chart symbol')).toBeEnabled());
 });

@@ -5,11 +5,20 @@
  */
 export const UPSTREAM_TIMEOUT_MS = 8_000;
 export const UPSTREAM_MAX_BYTES = 1_048_576;
+export const ERROR_BODY_MAX_BYTES = 4_096;
 export const UPSTREAM_USER_AGENT = 'Kairos-api/1 (+https://kairos-p1-r17.pages.dev)';
 
 export type UpstreamResult =
   | Readonly<{ ok: true; status: number; contentType: string; text: string }>
-  | Readonly<{ ok: false; failure: 'timeout' | 'network' | 'status' | 'redirect' | 'too-large' | 'content-type'; status: number | null }>;
+  | Readonly<{
+    ok: false;
+    failure: 'timeout' | 'network' | 'status' | 'redirect' | 'too-large' | 'content-type';
+    status: number | null;
+    /** A retry-after header of digits only, 1 to 86,400; set only when known. */
+    retryAfterSeconds?: number;
+    /** Only with readErrorBody, for a status of 400 or more, and only when the body is at most ERROR_BODY_MAX_BYTES. */
+    errorText?: string;
+  }>;
 
 export interface UpstreamRequest {
   readonly accept: 'application/json' | 'text/csv' | 'text/plain' | 'application/xml' | 'text/xml' | 'application/rss+xml' | 'text/calendar' | 'text/html';
@@ -17,6 +26,8 @@ export interface UpstreamRequest {
   readonly headers?: Readonly<Record<string, string>>;
   readonly timeoutMs?: number;
   readonly maxBytes?: number;
+  /** A non-2xx answer's body (at most 4,096 bytes) comes back as errorText. */
+  readonly readErrorBody?: true;
 }
 
 export type UpstreamFetch = (url: string, request: UpstreamRequest) => Promise<UpstreamResult>;
@@ -44,12 +55,12 @@ export function createUpstreamFetch(allowedHosts: readonly string[], fetchImpl: 
     } catch (error) {
       return { ok: false, failure: error instanceof DOMException && error.name === 'TimeoutError' ? 'timeout' : 'network', status: null };
     }
-    if (response.status >= 300 && response.status < 400) return discard(response, 'redirect');
-    if (!response.ok) return discard(response, 'status');
+    if (response.status >= 300 && response.status < 400) return discard(response, 'redirect', request);
+    if (!response.ok) return discard(response, 'status', request);
     const contentType = (response.headers.get('content-type') ?? '').toLowerCase();
-    if (!contentType.includes(request.accept) && !(request.accept.endsWith('xml') && contentType.includes('xml'))) return discard(response, 'content-type');
+    if (!contentType.includes(request.accept) && !(request.accept.endsWith('xml') && contentType.includes('xml'))) return discard(response, 'content-type', request);
     const declared = Number.parseInt(response.headers.get('content-length') ?? '', 10);
-    if (Number.isFinite(declared) && declared > maxBytes) return discard(response, 'too-large');
+    if (Number.isFinite(declared) && declared > maxBytes) return discard(response, 'too-large', request);
     const text = await readCapped(response, maxBytes);
     if (text === null) return { ok: false, failure: 'too-large', status: response.status };
     if (text === undefined) return { ok: false, failure: timedOut(timeout) ? 'timeout' : 'network', status: response.status };
@@ -62,9 +73,23 @@ function timedOut(signal: AbortSignal): boolean {
   return signal.aborted && signal.reason instanceof DOMException && signal.reason.name === 'TimeoutError';
 }
 
-async function discard(response: Response, failure: 'redirect' | 'status' | 'too-large' | 'content-type'): Promise<UpstreamResult> {
-  try { await response.body?.cancel(); } catch { /* already closed */ }
-  return { ok: false, failure, status: response.status };
+/** The failure, with the source's retry-after when it gave one, and its error body when the route asked for it. */
+async function discard(response: Response, failure: 'redirect' | 'status' | 'too-large' | 'content-type', request: UpstreamRequest): Promise<UpstreamResult> {
+  const retryAfter = response.headers.get('retry-after')?.trim() ?? '';
+  const seconds = /^[0-9]+$/.test(retryAfter) ? Number.parseInt(retryAfter, 10) : 0;
+  let errorText: string | null | undefined;
+  if (request.readErrorBody === true && response.status >= 400) {
+    errorText = await readCapped(response, ERROR_BODY_MAX_BYTES);
+  } else {
+    try { await response.body?.cancel(); } catch { /* already closed */ }
+  }
+  return {
+    ok: false,
+    failure,
+    status: response.status,
+    ...(seconds >= 1 && seconds <= 86_400 ? { retryAfterSeconds: seconds } : {}),
+    ...(typeof errorText === 'string' ? { errorText } : {}),
+  };
 }
 
 /** The body as text; null when it passes maxBytes, undefined when reading fails. */

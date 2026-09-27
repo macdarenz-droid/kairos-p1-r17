@@ -28,7 +28,8 @@ export const MEMORY_CACHE_MAX_CHARS = 8_000_000;
 export const MEMORY_ENTRY_MAX_CHARS = 1_000_000;
 export const KV_MIN_SECONDS = 3_600;
 
-interface Stored { readonly storedAt: string; readonly data: unknown }
+/** edgeSeconds: the Workers Cache lifetime the answer was kept with, when its handler chose its own (router.ts). */
+interface Stored { readonly storedAt: string; readonly data: unknown; readonly edgeSeconds?: number }
 export type CacheHit = Readonly<{ layer: 'memory' | 'kv'; stored: Stored }>;
 
 /** Oldest first (Map order); `size` is the entry's JSON text length. */
@@ -58,6 +59,8 @@ export async function readCached(key: string, policy: RouteCachePolicy, kv: KvSt
   let parsed: unknown;
   try { parsed = JSON.parse(text); } catch { return null; }
   if (typeof parsed !== 'object' || parsed === null || typeof (parsed as Stored).storedAt !== 'string' || !('data' in parsed)) return null;
+  const edgeSeconds = (parsed as Stored).edgeSeconds;
+  if (edgeSeconds !== undefined && !(Number.isInteger(edgeSeconds) && edgeSeconds >= 0)) return null;
   const stored = parsed as Stored;
   remember(key, stored, text.length, policy, now);
   return { layer: 'kv', stored };

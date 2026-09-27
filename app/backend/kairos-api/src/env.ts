@@ -20,6 +20,8 @@ export interface KairosApiEnv {
   readonly KAIROS_API_ROLE?: string;
   /** secret: the activation public key (base64 SPKI), the same public value as the Pages setting VITE_KAIROS_ACTIVATION_PUBLIC_KEY_SPKI. */
   readonly KAIROS_ACTIVATION_PUBLIC_KEY_SPKI?: string;
+  /** vars: "okx" lets /market/candles ask OKX when Binance fails; anything else, or missing, means no backup. */
+  readonly KAIROS_MARKET_BACKUP?: string;
   readonly KAIROS_API_CACHE?: KvStore;
   readonly KAIROS_API_DEVICE_LIMITER?: RateLimiter;
   readonly KAIROS_API_ANONYMOUS_LIMITER?: RateLimiter;

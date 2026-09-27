@@ -3,6 +3,7 @@ import type {
   LiveMarketUniverseInstrumentMetadataAcquisitionPort,
   LiveMarketUniverseInstrumentMetadataAcquisitionResult,
   LiveMarketUniverseInstrumentMetadataFact,
+  MarketDataUnavailable,
 } from '../src/services/market-data';
 
 describe('Live Market Universe Instrument Metadata Acquisition Port Contract Foundation', () => {
@@ -39,6 +40,7 @@ describe('Live Market Universe Instrument Metadata Acquisition Port Contract Fou
     expectTypeOf<LiveMarketUniverseInstrumentMetadataAcquisitionResult>().toMatchTypeOf<
       | { readonly ok: true; readonly facts: readonly LiveMarketUniverseInstrumentMetadataFact[] }
       | { readonly ok: false; readonly reason: 'acquisition-failed' }
+      | MarketDataUnavailable
     >();
   });
 });

@@ -53,7 +53,7 @@ describe('P16.16 Binance Spot browser public trade subscription', () => {
     expect(result.ok).toBe(true);
     expect(FakeWebSocket.instances).toHaveLength(1);
     const socket = FakeWebSocket.instances[0]!;
-    expect(socket.url).toBe('wss://stream.binance.com:9443/ws/btcusdt@trade');
+    expect(socket.url).toBe('wss://data-stream.binance.vision:443/ws/btcusdt@trade');
     expect(onStateChange).toHaveBeenCalledWith('connecting');
 
     socket.emit('open', {});

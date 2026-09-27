@@ -7,7 +7,8 @@ export const KAIROS_API_VERSION = 1 as const;
 
 export type UnavailableReason =
   | 'bad-request' | 'device-not-recognised' | 'origin-not-allowed' | 'not-found' | 'method-not-allowed'
-  | 'rate-limited' | 'service-error' | 'source-unavailable' | 'not-set-up';
+  | 'rate-limited' | 'service-error' | 'source-unavailable' | 'not-set-up'
+  | 'unknown-market' | 'source-busy' | 'source-refused';
 
 /** HTTP status and the default wait before "Try again" helps (null: a retry soon will not help). */
 export const UNAVAILABLE_REASONS: Readonly<Record<UnavailableReason, { readonly status: number; readonly retryAfter: number | null }>> = Object.freeze({
@@ -20,6 +21,11 @@ export const UNAVAILABLE_REASONS: Readonly<Record<UnavailableReason, { readonly 
   'service-error': { status: 500, retryAfter: null },
   'source-unavailable': { status: 502, retryAfter: 30 },
   'not-set-up': { status: 503, retryAfter: null },
+  // P16.A1: a market data source's own answer. 'unknown-market': the source has no such market; 'source-busy': it asked
+  // Kairos to wait (its Retry-After, when given, replaces the 60); 'source-refused': it refuses the server's place.
+  'unknown-market': { status: 404, retryAfter: null },
+  'source-busy': { status: 503, retryAfter: 60 },
+  'source-refused': { status: 451, retryAfter: null },
 });
 
 const PREVIEW_LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;

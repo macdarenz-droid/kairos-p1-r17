@@ -27,7 +27,7 @@ describe('T-038b past candles for a replay', () => {
   it('loads 60 candles before the moment and the rest after it, in one request', async () => {
     const { market, requests } = fakeReplayMarket({ nowMs: now });
     const result = await loadReplayCandles(request(), market);
-    expect(requests).toEqual([{ instrument: { venue: 'test-venue', symbol: 'BTCUSDT' }, interval: '1h', limit: 300, startTimeMs: Date.parse('2024-02-28T00:00:00.000Z'), endTimeMs: Date.parse('2024-03-11T11:00:00.000Z') }]);
+    expect(requests).toEqual([{ instrument: { venue: 'binance-spot', symbol: 'BTCUSDT' }, interval: '1h', limit: 300, startTimeMs: Date.parse('2024-02-28T00:00:00.000Z'), endTimeMs: Date.parse('2024-03-11T11:00:00.000Z'), pair: { base: 'X', quote: 'USDT' } }]);
     if (!result.ok) throw new Error(result.reason);
     expect(result.replay).toMatchObject({ symbol: 'BTCUSDT', quoteAsset: 'USDT', startIndex: 60 });
     expect(result.replay.candles).toHaveLength(300);
@@ -77,13 +77,30 @@ describe('T-038b past candles for a replay', () => {
   it('says unavailable when a port fails or throws, and never rejects', async () => {
     const meta = fakeReplayMarket({ nowMs: now });
     meta.state.metadataFails = true;
-    expect(await loadReplayCandles(request(), meta.market)).toEqual({ ok: false, reason: 'unavailable' });
+    expect(await loadReplayCandles(request(), meta.market)).toEqual({ ok: false, reason: 'unavailable', why: 'source-down', retryAfterSeconds: null });
     const history = fakeReplayMarket({ nowMs: now });
     history.state.historyFails = true;
-    expect(await loadReplayCandles(request(), history.market)).toEqual({ ok: false, reason: 'unavailable' });
+    expect(await loadReplayCandles(request(), history.market)).toEqual({ ok: false, reason: 'unavailable', why: 'source-down', retryAfterSeconds: null });
     const rejects = fakeReplayMarket({ nowMs: now });
     const market = { ...rejects.market, history: { acquireHistory: () => Promise.reject(new Error('offline')) } };
-    await expect(loadReplayCandles(request(), market)).resolves.toEqual({ ok: false, reason: 'unavailable' });
+    await expect(loadReplayCandles(request(), market)).resolves.toEqual({ ok: false, reason: 'unavailable', why: 'source-down', retryAfterSeconds: null });
+  });
+
+  it('T-048f: a typed spelling finds its market, a busy source says so, and the replay names its source', async () => {
+    const fake = fakeReplayMarket({ nowMs: now });
+    const btc = { acquireInstrumentMetadata: async () => ({ ok: true as const, facts: [{ instrument: { venue: 'binance-spot', symbol: 'BTCUSDT' }, baseAsset: 'BTC', quoteAsset: 'USDT', tradingEnabled: true }] }) };
+    const loaded = await loadReplayCandles(request({ market: 'btc/usdt' }), { ...fake.market, metadata: btc });
+    if (!loaded.ok) throw new Error(loaded.reason);
+    expect(loaded.replay.symbol).toBe('BTCUSDT');
+    expect(loaded.replay.source).toBe('Candles: Binance Spot · BTC/USDT');
+    expect(loaded.replay.note).toBe('Matched btc/usdt to BTC/USDT on Binance.');
+    expect(fake.requests[0]).toMatchObject({ instrument: { venue: 'binance-spot', symbol: 'BTCUSDT' }, pair: { base: 'BTC', quote: 'USDT' } });
+    // T-048f fix r1: Replay always shows spot candles, so a perpetual mark's note says nothing about futures.
+    const perpetual = await loadReplayCandles(request({ market: 'BTCUSDT.P' }), { ...fake.market, metadata: btc });
+    if (!perpetual.ok) throw new Error(perpetual.reason);
+    expect(perpetual.replay.note).toBe('Matched BTCUSDT.P to BTC/USDT on Binance.');
+    const busy = { acquireHistory: async () => ({ ok: false as const, reason: 'unavailable' as const, why: 'busy' as const, retryAfterSeconds: 30 }) };
+    expect(await loadReplayCandles(request(), { ...fake.market, metadata: btc, history: busy })).toEqual({ ok: false, reason: 'unavailable', why: 'busy', retryAfterSeconds: 30 });
   });
 
   it('needs candles on both sides of the moment', async () => {
@@ -139,6 +156,6 @@ describe('T-038b with the app\'s Binance ports', () => {
 
   it('offline → unavailable', async () => {
     stubFetch(true);
-    expect(await loadReplayCandles(request(), deps())).toEqual({ ok: false, reason: 'unavailable' });
+    expect(await loadReplayCandles(request(), deps())).toEqual({ ok: false, reason: 'unavailable', why: 'source-down', retryAfterSeconds: null });
   });
 });

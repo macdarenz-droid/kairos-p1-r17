@@ -9,6 +9,7 @@ import {
   type BinanceHomeDashboardLiveMarketObservedRuntimeCompositionOptions,
 } from './binanceHomeDashboardLiveMarketObservedRuntimeComposition';
 import type { BinanceHomeDashboardLiveMarketRuntimeBootstrapResult } from './binanceHomeDashboardLiveMarketRuntimeBootstrap';
+import { appMarketDataPorts } from './marketDataPorts';
 
 export interface BinanceHomeDashboardLiveCryptoBubbleObservedRuntimeCompositionOptions
   extends Omit<BinanceHomeDashboardLiveMarketObservedRuntimeCompositionOptions, 'observationSink'> {
@@ -36,6 +37,17 @@ export function startBinanceHomeDashboardLiveCryptoBubbleObservedRuntime(
       universe: options.universe,
       lifecycle: options.lifecycle,
       observationSink,
+      ...serverPorts(options.ports),
     },
   );
+}
+
+/**
+ * U2: with the Kairos server set up, Home reads through the build's ports. Without it, the runtime keeps today's direct
+ * Binance chain with the caller's clock; its failures say the same as the direct ports would (offline or no answer).
+ */
+function serverPorts(ports: BinanceHomeDashboardLiveCryptoBubbleObservedRuntimeCompositionOptions['ports']) {
+  if (ports !== undefined) return { ports };
+  const app = appMarketDataPorts();
+  return app.route === 'server' ? { ports: app } : {};
 }

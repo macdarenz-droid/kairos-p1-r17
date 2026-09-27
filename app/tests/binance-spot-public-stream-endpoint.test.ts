@@ -17,10 +17,10 @@ describe('P16.3 Binance Spot public stream endpoint semantics', () => {
     if (!stream.ok) return;
 
     expect(describeBinanceSpotPublicRawStreamEndpoint(stream)).toEqual({
-      host: 'stream.binance.com',
-      port: '9443',
+      host: 'data-stream.binance.vision',
+      port: '443',
       streamName: 'btcusdt@trade',
-      url: 'wss://stream.binance.com:9443/ws/btcusdt@trade',
+      url: 'wss://data-stream.binance.vision:443/ws/btcusdt@trade',
     });
   });
 
@@ -34,15 +34,15 @@ describe('P16.3 Binance Spot public stream endpoint semantics', () => {
     if (!stream.ok) return;
 
     expect(describeBinanceSpotPublicRawStreamEndpoint(stream, '443')).toEqual({
-      host: 'stream.binance.com',
+      host: 'data-stream.binance.vision',
       port: '443',
       streamName: 'ethusdt@trade',
-      url: 'wss://stream.binance.com:443/ws/ethusdt@trade',
+      url: 'wss://data-stream.binance.vision:443/ws/ethusdt@trade',
     });
   });
 
-  it('pins only the two documented production public-stream ports', () => {
-    expect(BINANCE_SPOT_PUBLIC_STREAM_HOST).toBe('stream.binance.com');
-    expect(BINANCE_SPOT_PUBLIC_STREAM_PORTS).toEqual(['9443', '443']);
+  it('pins the market-data stream host and its one answering port', () => {
+    expect(BINANCE_SPOT_PUBLIC_STREAM_HOST).toBe('data-stream.binance.vision');
+    expect(BINANCE_SPOT_PUBLIC_STREAM_PORTS).toEqual(['443']);
   });
 });

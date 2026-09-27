@@ -43,13 +43,13 @@ describe('T-027c trade picture card', () => {
     expect(within(info).getByText(infoText(model, 'planned-reward'))).toBeInTheDocument();
     expect(within(info).getByText(infoText(model, 'actual-r'))).toBeInTheDocument();
     expect(within(info).getByText('3 h')).toBeInTheDocument();
-    expect(screen.queryByText('Candles need a connection.')).toBeNull();
+    expect(screen.queryByText('No candles for this time.')).toBeNull();
     expect(screen.queryByText('Add a stop and target to see your risk box.')).toBeNull();
   });
 
   it('shows the connection note without candles, and still draws the boxes', () => {
     const { container } = render(<TradePictureCard model={projectTradePicture({ ...input, candles: null })} />);
-    expect(screen.getByText('Candles need a connection.')).toBeInTheDocument();
+    expect(screen.getByText('No candles for this time.')).toBeInTheDocument();
     expect(container.querySelector('[data-box="risk"]')).not.toBeNull();
     expect(container.querySelectorAll('.kairos-trade-picture__candle')).toHaveLength(0);
   });
@@ -249,5 +249,15 @@ describe('T-039d labels, wick arrows and times', () => {
     cleanup();
     const open = render(<TradePictureCard model={projectTradePicture({ ...input, trade: { ...trade, status: 'open', closedAt: null } })} />);
     expect(open.container.querySelector('[data-info="closed"] dd')!.textContent).toBe('Not available');
+  });
+});
+
+describe('T-048f fix r1 the no-candles sentences reach screen readers', () => {
+  it('draws the not-listed sentence outside the image', () => {
+    const model = projectTradePicture({ ...input, candles: null });
+    const note = "Binance doesn't list BTCUSDX. Check the spelling, for example BTCUSDT.";
+    render(<TradePictureCard model={model} candleNote={note} />);
+    const sentence = screen.getByText(note);
+    expect(screen.getByRole('img')).not.toContainElement(sentence);
   });
 });

@@ -128,7 +128,7 @@ describe('T-043c the forex trade picture', () => {
     const acquireInstrumentMetadata = vi.fn();
     const acquireHistory = vi.fn();
     const deps = { venue: 'test', metadata: { acquireInstrumentMetadata }, history: { acquireHistory } } as unknown as Parameters<typeof loadTradePictureCandles>[2];
-    expect(await loadTradePictureCandles(eurUsd.trade, eurUsd.executions, deps)).toBeNull();
+    expect(await loadTradePictureCandles(eurUsd.trade, eurUsd.executions, deps)).toMatchObject({ ok: false, why: 'no-candle-source' });
     expect(acquireInstrumentMetadata).not.toHaveBeenCalled();
     expect(acquireHistory).not.toHaveBeenCalled();
   });
@@ -137,7 +137,7 @@ describe('T-043c the forex trade picture', () => {
     const model = projectTradePicture(eurUsd);
     const { container, rerender } = render(<TradePictureCard model={model} />);
     expect(screen.getByText('Candles are shown for crypto trades only for now.')).toBeTruthy();
-    expect(screen.queryByText('Candles need a connection.')).toBeNull();
+    expect(screen.queryByText('No candles for this time.')).toBeNull();
     rerender(<TradePictureCard model={model} candlesLoading />);
     expect(screen.getByText('Candles are shown for crypto trades only for now.')).toBeTruthy();
     expect(screen.queryByText('Loading candles…')).toBeNull();
@@ -158,13 +158,13 @@ describe('T-043c the forex trade picture', () => {
       executions: [{ type: 'entry', price: '60000', quantity: '0.1', executedAt: opened }, { type: 'exit', price: '61500', quantity: '0.1', executedAt: closed }],
     });
     expect(fx.ok && btc.ok).toBe(true);
-    const offline: TradePictureCandleLoader = async () => null;
+    const offline: TradePictureCandleLoader = async () => ({ ok: false, why: 'no-candles', retryAfterSeconds: null, note: null });
     const loader = vi.fn(offline);
     render(<TradePictureCandleLoaderContext.Provider value={loader}><MemoryRouter><JournalRoute db={db} /></MemoryRouter></TradePictureCandleLoaderContext.Provider>);
     const forex = await screen.findByRole('button', { name: 'Open the EURUSD trade picture' });
     await waitFor(() => expect(within(forex).getByText('Candles are shown for crypto trades only for now.')).toBeInTheDocument());
     const crypto = screen.getByRole('button', { name: 'Open the BTCUSDT trade picture' });
-    await waitFor(() => expect(within(crypto).getByText('Candles need a connection.')).toBeInTheDocument());
+    await waitFor(() => expect(within(crypto).getByText('No candles for this time.')).toBeInTheDocument());
     expect(loader.mock.calls.map(([record]) => record.symbol)).toEqual(['BTCUSDT']);
     cleanup();
 

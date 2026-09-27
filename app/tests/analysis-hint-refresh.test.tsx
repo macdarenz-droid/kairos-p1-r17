@@ -14,7 +14,7 @@ let db: KairosDatabase | null = null;
 afterEach(async () => { cleanup(); vi.restoreAllMocks(); if (db) { db.close(); await db.delete(); db = null; } });
 
 const openedAt = '2026-09-12T04:00:00.000Z', closedAt = '2026-09-12T05:00:00.000Z';
-const offline: TradePictureCandleLoader = async () => null;
+const offline: TradePictureCandleLoader = async () => ({ ok: false, why: 'no-candles', retryAfterSeconds: null, note: null });
 
 it('keeps an open "What does this mean?" sheet when Analysis refreshes the same trade', async () => {
   db = createKairosDatabase(`analysis-hint-${crypto.randomUUID()}`); await db.open();
