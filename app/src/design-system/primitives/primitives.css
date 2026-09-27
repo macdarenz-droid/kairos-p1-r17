@@ -1,4 +1,4 @@
-/* Shared pieces: Button, Field, Card, Sheet. Colours, field edges (3:1) and elevation shadows come from theme tokens,
+/* Shared pieces: Button, Field, Card, Sheet (the newer pieces are styled in kit.css). Colours, field edges (3:1) and elevation shadows come from theme tokens,
    geometry from tokens.css. The focus ring and reduced motion come from accessibility.css. */
 
 .kairos-button { display: inline-flex; align-items: center; justify-content: center; gap: var(--kairos-space-2); padding: 0 var(--kairos-space-5); border: 1px solid transparent; border-radius: var(--kairos-radius-md); font: inherit; font-weight: var(--kairos-font-weight-semibold); cursor: pointer; transition: border-color var(--kairos-motion-fast) var(--kairos-ease-out), color var(--kairos-motion-fast) var(--kairos-ease-out), filter var(--kairos-motion-fast) var(--kairos-ease-out); }
@@ -14,6 +14,9 @@
 .kairos-button--danger { border-color: var(--kairos-state-error); background: var(--kairos-state-error); color: var(--kairos-background-depth); }
 .kairos-button[aria-pressed='true'] { border-color: var(--kairos-accent-primary); background: var(--kairos-accent-soft); color: var(--kairos-text-primary); }
 .kairos-button:disabled { opacity: .58; cursor: not-allowed; }
+/* The one glow per screen (D183), on Button or StatTile; Ink and Paper set both glows to none. */
+[data-kairos-emphasis='main'] { box-shadow: var(--kairos-glow-active); }
+[data-kairos-emphasis='insight'] { box-shadow: var(--kairos-glow-emphasis); }
 
 .kairos-form-field { display: grid; gap: var(--kairos-space-2); min-width: 0; color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-sm); }
 .kairos-form-field input, .kairos-form-field select, .kairos-form-field textarea { width: 100%; min-width: 0; padding: 0 var(--kairos-space-3); border: 1px solid var(--kairos-border-field); border-radius: var(--kairos-radius-md); background-color: var(--kairos-surface-input); background-image: var(--kairos-field-gradient); color: var(--kairos-text-primary); font: inherit; }
@@ -45,5 +48,5 @@
   .kairos-sheet__panel { border-radius: var(--kairos-radius-xl); }
 }
 
-.kairos-unavailable { display: flex; flex-wrap: wrap; align-items: center; gap: var(--kairos-space-3); padding: var(--kairos-space-3); border: 1px solid var(--kairos-state-warning); border-radius: var(--kairos-radius-md); color: var(--kairos-text-secondary); }
-.kairos-unavailable__text { flex: 1 1 14rem; margin: 0; min-width: 0; }
+/* "Unavailable · Try again" draws through ErrorState (kit.css); only its edge colour is its own. */
+.kairos-error-state.kairos-unavailable { border-color: var(--kairos-state-warning); }

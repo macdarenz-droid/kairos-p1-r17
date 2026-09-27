@@ -1,0 +1,50 @@
+/* The kit's newer pieces: PageHeader, StatTile, ResultText, EmptyState, ErrorState, Skeleton, icons. Tokens only. */
+
+.kairos-icon { flex: none; display: inline-block; vertical-align: middle; }
+
+.kairos-page-header { display: grid; gap: var(--kairos-space-2); }
+.kairos-page-header__eyebrow { margin: 0; color: var(--kairos-text-muted); font-size: var(--kairos-font-size-xs); font-weight: var(--kairos-font-weight-semibold); letter-spacing: .06em; text-transform: uppercase; }
+.kairos-page-header[data-tone='insight'] .kairos-page-header__eyebrow { color: var(--kairos-accent-insight); }
+.kairos-page-header__row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--kairos-space-3); }
+.kairos-page-header__title { margin: 0; font-size: var(--kairos-font-size-xxl); line-height: var(--kairos-line-height-tight); }
+.kairos-page-header__title:focus { outline: none; }
+.kairos-page-header__title:focus-visible { outline: 2px solid var(--kairos-state-focus); outline-offset: 2px; }
+.kairos-page-header__bar { display: block; width: 2.5rem; height: .1875rem; border-radius: var(--kairos-radius-full); background: var(--kairos-accent-insight); box-shadow: var(--kairos-glow-emphasis); }
+.kairos-page-header__intro { margin: 0; color: var(--kairos-text-secondary); }
+.kairos-page-header__how { justify-self: start; }
+
+.kairos-stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); gap: var(--kairos-space-3); margin: 0; }
+.kairos-stat { display: grid; gap: var(--kairos-space-1); align-content: start; padding: var(--kairos-space-3) var(--kairos-space-4); border: 1px solid var(--kairos-border-hairline); border-radius: var(--kairos-radius-md); background-color: var(--kairos-surface-raised); box-shadow: var(--kairos-elevation-1); }
+.kairos-stat[data-kairos-emphasis='main'] { box-shadow: var(--kairos-elevation-1), var(--kairos-glow-active); }
+.kairos-stat[data-kairos-emphasis='insight'] { box-shadow: var(--kairos-elevation-1), var(--kairos-glow-emphasis); }
+.kairos-stat__label { display: flex; align-items: center; gap: var(--kairos-space-1); color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-sm); }
+.kairos-stat[data-mark='up'] .kairos-icon { color: var(--kairos-trade-profit); }
+.kairos-stat[data-mark='down'] .kairos-icon { color: var(--kairos-trade-loss); }
+.kairos-stat[data-mark='flat'] .kairos-icon, .kairos-stat[data-mark='unknown'] .kairos-icon { color: var(--kairos-trade-flat); }
+.kairos-stat__value { margin: 0; color: var(--kairos-text-primary); font-size: var(--kairos-font-size-xl); font-weight: var(--kairos-font-weight-semibold); }
+.kairos-stat__hint { margin: 0; color: var(--kairos-text-muted); font-size: var(--kairos-font-size-xs); }
+
+.kairos-result { display: inline-flex; align-items: center; gap: var(--kairos-space-1); }
+.kairos-result[data-outcome='profit'] { color: var(--kairos-trade-profit); }
+.kairos-result[data-outcome='loss'] { color: var(--kairos-trade-loss); }
+.kairos-result[data-outcome='breakeven'], .kairos-result[data-outcome='unavailable'] { color: var(--kairos-trade-flat); }
+.kairos-result .kairos-icon { width: .875em; height: .875em; }
+.kairos-result__amount { font-weight: var(--kairos-font-weight-semibold); }
+
+.kairos-empty-state { display: grid; justify-items: center; gap: var(--kairos-space-2); padding: var(--kairos-space-6) var(--kairos-space-4); text-align: center; }
+.kairos-empty-state__picture { display: grid; place-items: center; width: 4.5rem; height: 4.5rem; border-radius: var(--kairos-radius-full); background: var(--kairos-accent-soft); color: var(--kairos-accent-primary); }
+.kairos-empty-state__title { margin: var(--kairos-space-2) 0 0; font-size: var(--kairos-font-size-lg); }
+.kairos-empty-state__message { margin: 0; max-width: 28rem; color: var(--kairos-text-secondary); }
+.kairos-empty-state__action { margin-top: var(--kairos-space-2); }
+
+.kairos-error-state { display: flex; flex-wrap: wrap; align-items: center; gap: var(--kairos-space-3); padding: var(--kairos-space-3); border: 1px solid var(--kairos-state-error); border-radius: var(--kairos-radius-md); background-color: var(--kairos-surface-card); color: var(--kairos-text-secondary); }
+.kairos-error-state:focus { outline: none; }
+.kairos-error-state__icon { color: var(--kairos-state-error); }
+.kairos-error-state[data-tone='unavailable'] .kairos-error-state__icon { color: var(--kairos-state-warning); }
+.kairos-error-state__message { flex: 1 1 14rem; margin: 0; min-width: 0; }
+
+.kairos-skeleton__bars { display: grid; gap: var(--kairos-space-2); }
+.kairos-skeleton[data-variant='inline'] .kairos-skeleton__bars { display: inline-grid; min-width: 6rem; }
+.kairos-skeleton__bar { display: block; height: .75rem; border-radius: var(--kairos-radius-full); background: linear-gradient(90deg, var(--kairos-surface-raised) 0%, var(--kairos-border-hairline) 50%, var(--kairos-surface-raised) 100%); background-size: 200% 100%; animation: kairos-skeleton-shimmer 1.4s ease-in-out infinite; }
+.kairos-skeleton__bar:last-child:not(:first-child) { width: 62%; }
+@keyframes kairos-skeleton-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
