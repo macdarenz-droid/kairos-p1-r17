@@ -132,8 +132,8 @@ it('offers metadata retry while keeping history, transport and journal ownership
   const p = ports(), LiveCanvas = liveCanvas();
   p.metadata.acquireInstrumentMetadata.mockRejectedValueOnce(new Error('offline'));
   render(<AnalysisHistoryWorkspace ports={p} LiveCanvas={LiveCanvas} />);
-  expect(await screen.findByRole('alert')).toHaveTextContent('Supported symbols are unavailable');
-  fireEvent.click(screen.getByRole('button', { name: 'Retry symbols' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Unavailable · Markets');
+  fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
   await select();
   expect(await screen.findByTestId('live-candle-canvas')).toHaveTextContent('ETHUSDT/5m/USDT/0');
   expect(p.metadata.acquireInstrumentMetadata).toHaveBeenCalledTimes(2);
@@ -152,8 +152,31 @@ it('aborts metadata on timeout and unmount without mounting a stale live scope',
   const requestedSignal = p.metadata.acquireInstrumentMetadata.mock.calls[0][0]?.signal;
   await act(async () => { vi.advanceTimersByTime(ANALYSIS_HISTORY_REQUEST_TIMEOUT_MS); });
   expect(requestedSignal?.aborted).toBe(true);
-  expect(screen.getByRole('alert')).toHaveTextContent('Supported symbols are unavailable');
+  expect(screen.getByRole('alert')).toHaveTextContent('Unavailable · Markets');
   ui.unmount();
   await act(async () => pending.resolve({ ok: true, facts }));
   expect(LiveCanvas).not.toHaveBeenCalled();
+});
+
+it('says why the market list failed, and "Try again" reloads it', async () => {
+  const p = ports(), LiveCanvas = liveCanvas();
+  p.metadata.acquireInstrumentMetadata.mockResolvedValueOnce({ ok: false, reason: 'unavailable', why: 'busy', retryAfterSeconds: 30 } as never);
+  render(<AnalysisHistoryWorkspace ports={p} LiveCanvas={LiveCanvas} />);
+  expect(await screen.findByRole('alert')).toHaveTextContent('Unavailable · Markets: too many requests right now.');
+  fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+  await select();
+  expect(await screen.findByTestId('live-candle-canvas')).toHaveTextContent('ETHUSDT/5m');
+  expect(p.metadata.acquireInstrumentMetadata).toHaveBeenCalledTimes(2);
+});
+
+it('opens a trade typed as BTC/USD on BTCUSDT and says how it matched', async () => {
+  const start = new Date(Date.now() - 2 * 86_400_000).toISOString(), end = new Date(Date.now() - 2 * 86_400_000 + 3_600_000).toISOString();
+  const entry = {
+    trade: { id: 'trade-btc-usd', symbol: 'BTC/USD', marketType: 'crypto', status: 'closed', openedAt: start, closedAt: end, createdAt: start },
+    executions: [{ type: 'entry', executedAt: start }, { type: 'exit', executedAt: end }],
+  } as unknown as JournalHistoryEntry;
+  const SavedTradeLiveCanvas = savedTradeLiveCanvas();
+  render(<AnalysisHistoryWorkspace entry={entry} ports={ports()} LiveCanvas={liveCanvas()} SavedTradeLiveCanvas={SavedTradeLiveCanvas} />);
+  expect(await screen.findByTestId('saved-trade-live-candle-canvas')).toHaveTextContent('trade-btc-usd/binance-spot/BTCUSDT/');
+  expect(screen.getByText(/^Matched BTC\/USD to BTC\/USDT on Binance\./)).toBeInTheDocument();
 });

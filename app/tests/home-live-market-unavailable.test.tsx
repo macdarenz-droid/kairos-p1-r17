@@ -2,7 +2,9 @@ import '@testing-library/jest-dom/vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { deriveHomeLiveMarketLoadState, HOME_LIVE_MARKET_START_TIMEOUT_MS } from '../src/app/HomeDashboardGlassBubbleMap';
+import { deriveHomeLiveMarketLoadState, HomeDashboardGlassBubbleMap, HOME_LIVE_MARKET_START_TIMEOUT_MS } from '../src/app/HomeDashboardGlassBubbleMap';
+import type { MarketDataUnavailable } from '../src/services/market-data/marketDataTypes';
+import { glassTestModel } from './fixtures/homeDashboardGlassModel';
 import { HomeRoute } from '../src/app/HomeRoute';
 import { resetBinanceSpotExchangeInfoCache } from '../src/services/market-data';
 
@@ -43,7 +45,7 @@ describe('T-006 Home live market says when it cannot load', () => {
     globalThis.fetch = failing as unknown as typeof fetch;
     const { container } = renderHome();
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('Live prices are unavailable. Check your connection.');
+    expect(alert).toHaveTextContent('Unavailable · Live prices');
     const calls = failing.mock.calls.length;
 
     const working = marketFetch();
@@ -59,7 +61,7 @@ describe('T-006 Home live market says when it cannot load', () => {
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
     globalThis.fetch = vi.fn(() => new Promise(() => undefined)) as unknown as typeof fetch;
     renderHome();
-    expect(screen.getByRole('alert')).toHaveTextContent('Live prices are unavailable');
+    expect(screen.getByRole('alert')).toHaveTextContent('Unavailable · Live prices');
   });
 
   it('shows "Loading live prices…" while starting, then the alert after 10 seconds without data', async () => {
@@ -68,7 +70,27 @@ describe('T-006 Home live market says when it cannot load', () => {
     renderHome();
     expect(screen.getByRole('status')).toHaveTextContent('Loading live prices…');
     await act(async () => { vi.advanceTimersByTime(HOME_LIVE_MARKET_START_TIMEOUT_MS); });
-    expect(screen.getByRole('alert')).toHaveTextContent('Live prices are unavailable');
+    expect(screen.getByRole('alert')).toHaveTextContent('Unavailable · Live prices');
+  });
+
+  const failedWith = (why: MarketDataUnavailable['why']) => {
+    const model = glassTestModel();
+    const unavailable: MarketDataUnavailable = { ok: false, reason: 'unavailable', why, retryAfterSeconds: null };
+    return { ...model, radiusScaleProjection: null, runtimeState: { ...model.runtimeState, status: 'acquisition-failed' as const, unavailable } };
+  };
+
+  it('says the port\'s reason: Binance refused this region', () => {
+    render(<HomeDashboardGlassBubbleMap model={failedWith('region')} onRetry={vi.fn()} />);
+    expect(screen.getByRole('alert')).toHaveTextContent("Unavailable · Live prices: Binance isn't available in your region");
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+  });
+
+  it('retries once by itself when an offline failure comes back online', () => {
+    const onRetry = vi.fn();
+    render(<HomeDashboardGlassBubbleMap model={failedWith('offline')} onRetry={onRetry} />);
+    expect(screen.getByRole('alert')).toHaveTextContent("Unavailable · Live prices: you're offline.");
+    act(() => { window.dispatchEvent(new Event('online')); });
+    expect(onRetry).toHaveBeenCalledTimes(1);
   });
 
   it('data always replaces the message', () => {

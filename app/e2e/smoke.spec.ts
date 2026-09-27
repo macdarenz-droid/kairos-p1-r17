@@ -46,7 +46,7 @@ test('(b) every route renders inside the phone width without page errors', async
       expect(background).not.toBe('rgba(0, 0, 0, 0)');
     }
     if (path === '/does-not-exist') await expect(page.getByRole('link', { name: 'Go to Home' })).toBeVisible();
-    if (path === '/') await expect(page.getByText('Live prices are unavailable')).toBeVisible({ timeout: 15_000 });
+    if (path === '/') await expect(page.getByText('Unavailable · Live prices', { exact: false })).toBeVisible({ timeout: 15_000 });
   }
   expect(errors).toEqual([]);
 });

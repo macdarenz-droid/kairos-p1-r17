@@ -3,6 +3,7 @@ import { resetBinanceSpotExchangeInfoCache } from '../src/services/market-data';
 import {
   startBinanceHomeDashboardLiveMarketRuntime,
 } from '../src/app/binanceHomeDashboardLiveMarketRuntimeBootstrap';
+import type { DecimalString } from '../src/domain/trades';
 import type {
   HomeDashboardLiveMarketSummaryBrowserTimer,
   HomeDashboardLiveMarketSummaryBrowserVisibilityDocument,
@@ -157,5 +158,65 @@ describe('Binance Home Dashboard live-market runtime bootstrap foundation', () =
     expect(page.removeEventListener).toHaveBeenCalledTimes(1);
     expect(timer.cancel).toHaveBeenCalledTimes(1);
     expect(liveSignal?.aborted).toBe(true);
+  });
+});
+
+describe('U2 Home live market through the build\'s ports (T-048g)', () => {
+  it('calls only the injected metadata and baseline ports, and keeps the top 30 eligible USDT markets by quote volume', async () => {
+    const page = createBrowserDocument();
+    const timer = createTimer();
+    const readObservedAt = vi.fn(() => observedAt);
+    globalThis.fetch = vi.fn(async () => { throw new Error('no direct Binance request expected'); }) as unknown as typeof fetch;
+    const coins = Array.from({ length: 35 }, (_, index) => `C${String(index).padStart(2, '0')}`);
+    const fact = (symbol: string, baseAsset: string, quoteAsset: string, tradingEnabled = true) =>
+      ({ instrument: { venue: 'binance-spot', symbol }, baseAsset, quoteAsset, tradingEnabled });
+    const metadataFacts = [
+      ...coins.map((coin) => fact(`${coin}USDT`, coin, 'USDT')),
+      fact('C00BTC', 'C00', 'BTC'),
+      fact('HALTUSDT', 'HALT', 'USDT', false),
+      fact('USDCUSDT', 'USDC', 'USDT'),
+    ];
+    const volumeOf = (symbol: string) => symbol === 'USDCUSDT' ? '999999999' : String(1000 + Number(symbol.slice(1, 3)));
+    const metadata = { acquireInstrumentMetadata: vi.fn(async () => ({ ok: true as const, facts: metadataFacts })) };
+    const baseline = {
+      acquireBaseline: vi.fn(async (scope: readonly { venue: string; symbol: string }[]) => ({
+        ok: true as const,
+        delivery: {
+          completeness: 'complete-for-scope' as const,
+          scope,
+          facts: scope.map((instrument) => ({
+            instrument, lastPrice: '2' as DecimalString, open24h: '1' as DecimalString, high24h: '3' as DecimalString,
+            low24h: '1' as DecimalString, baseVolume24h: '10' as DecimalString,
+            quoteVolume24h: volumeOf(instrument.symbol) as DecimalString, observedAt, sourceTimestamp: null,
+          })),
+        },
+      })),
+    };
+
+    const result = await startBinanceHomeDashboardLiveMarketRuntime(readObservedAt, {
+      universe: { excludedStablecoinBaseAssets: new Set(['USDC']) },
+      lifecycle: { document: page.browserDocument, timer: timer.timer },
+      ports: { metadata, baseline },
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.runtime.instruments.map((instrument) => instrument.symbol)).toEqual(
+      coins.slice().reverse().slice(0, 30).map((coin) => `${coin}USDT`),
+    );
+    expect(metadata.acquireInstrumentMetadata).toHaveBeenCalledTimes(1);
+    expect(baseline.acquireBaseline.mock.calls[0][0].map((instrument) => instrument.symbol)).toEqual(coins.map((coin) => `${coin}USDT`));
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+    expect(readObservedAt).not.toHaveBeenCalled();
+    result.runtime.close();
+  });
+
+  it('carries the port\'s typed reason when the market list fails', async () => {
+    const unavailable = { ok: false as const, reason: 'unavailable' as const, why: 'region' as const, retryAfterSeconds: null };
+    const result = await startBinanceHomeDashboardLiveMarketRuntime(vi.fn(() => observedAt), {
+      universe: { excludedStablecoinBaseAssets: new Set() },
+      ports: { metadata: { acquireInstrumentMetadata: vi.fn(async () => unavailable) }, baseline: { acquireBaseline: vi.fn() } },
+    });
+    expect(result).toEqual({ ok: false, reason: 'acquisition-failed', unavailable });
   });
 });

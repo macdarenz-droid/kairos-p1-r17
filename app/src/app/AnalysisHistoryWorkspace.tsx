@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ComponentType } from 'react';
+import { useCallback, useEffect, useRef, useState, type ComponentType } from 'react';
 import { ANALYSIS_HANDOFF_DEFAULT_INTERVAL, useAnalysisHandoff } from './analysisHandoff';
 import type { JournalHistoryEntry } from '../application/journal';
 import type { LiveMarketUniverseInstrumentMetadataAcquisitionPort } from '../services/market-data/LiveMarketUniverseInstrumentMetadataAcquisitionPort';
@@ -21,13 +21,17 @@ import {
   type AnalysisSavedTradeOverlayLiveCandleCanvasProps,
 } from './AnalysisSavedTradeOverlayLiveCandleCanvas';
 import { SymbolPicker } from '../features/analysis/SymbolPicker';
-import { normalizeTradeSymbol, pickTradeReviewInterval, tradeReviewTimes } from '../features/analysis/tradeReviewInterval';
+import { pickTradeReviewInterval, tradeReviewTimes } from '../features/analysis/tradeReviewInterval';
 import { useAnalysisTradeFocus } from '../features/analysis/useAnalysisTradeFocus';
 import { tradePictureHasCandleSource } from '../application/trade-visualizer/tradePictureCandles';
+import { matchCryptoMarket } from '../application/market-reference/cryptoMarket';
+import { describeMarketDataUnavailable } from '../application/online/onlineWords';
+import type { MarketDataUnavailable } from '../services/market-data/marketDataTypes';
+import { UnavailableNotice } from '../design-system/primitives';
 import './analysisHistory.css';
 
 type Ports = { readonly metadata: LiveMarketUniverseInstrumentMetadataAcquisitionPort };
-type Metadata = { readonly phase: 'loading' | 'ready' | 'error'; readonly facts: readonly LiveMarketUniverseInstrumentMetadataFact[] };
+type Metadata = { readonly phase: 'loading' | 'ready' | 'error'; readonly facts: readonly LiveMarketUniverseInstrumentMetadataFact[]; readonly failure?: MarketDataUnavailable };
 type LiveCandleCanvas = ComponentType<AnalysisLiveCandleCanvasProps>;
 type SavedTradeLiveCandleCanvas = ComponentType<AnalysisSavedTradeOverlayLiveCandleCanvasProps>;
 export const ANALYSIS_HISTORY_REQUEST_TIMEOUT_MS = 15000;
@@ -50,6 +54,7 @@ export function AnalysisHistoryWorkspace({
 }) {
   const [metadata, setMetadata] = useState<Metadata>({ phase: 'loading', facts: [] });
   const [metadataRevision, setMetadataRevision] = useState(0);
+  const retryMetadata = useCallback(() => setMetadataRevision(value => value + 1), []);
   const [symbol, setSymbol] = useState('');
   const [interval, setTimeframe] = useState('');
   const [revision, setRevision] = useState(0);
@@ -67,7 +72,8 @@ export function AnalysisHistoryWorkspace({
     setTimeframe(current => (current === '' || autoInterval.current ? (autoInterval.current = true, ANALYSIS_HANDOFF_DEFAULT_INTERVAL) : current));
   }, [handoff, metadata]);
   // "View trade" (?trade=): pre-select the trade's symbol and a timeframe that fits it, once per trade, never over a user's choice.
-  const [tradeSymbolMissing, setTradeSymbolMissing] = useState(false);
+  // The matching owner's sentence for the trade's symbol: not listed, or matched from another spelling (null when exact).
+  const [tradeSymbolNote, setTradeSymbolNote] = useState<{ readonly symbol: string | null; readonly note: string } | null>(null);
   const tradeApplied = useRef<string | null>(null);
   const tradeId = entry?.trade.id ?? null;
   const tradeSymbol = typeof entry?.trade.symbol === 'string' ? entry.trade.symbol : null;
@@ -78,19 +84,18 @@ export function AnalysisHistoryWorkspace({
   const tradeStartMs = tradeTimes?.startMs ?? null, tradeEndMs = tradeTimes?.endMs ?? null;
   useEffect(() => {
     // "Choose another trade" clears the entry: its "not on Binance Spot" note goes with it.
-    if (tradeId === null) setTradeSymbolMissing(false);
+    if (tradeId === null) setTradeSymbolNote(null);
   }, [tradeId]);
   useEffect(() => {
     if (tradeId === null || tradeSymbol === null || metadata.phase !== 'ready' || tradeApplied.current === tradeId) return;
     tradeApplied.current = tradeId;
-    if (tradeOffChart) { setTradeSymbolMissing(false); return; }
-    const wanted = normalizeTradeSymbol(tradeSymbol);
-    const match = metadata.facts.find(item => item.instrument.symbol === wanted);
-    setTradeSymbolMissing(!match);
-    if (!match) return;
-    setSymbol(current => (current === '' || autoSymbol.current ? (autoSymbol.current = true, match.instrument.symbol) : current));
+    if (tradeOffChart) { setTradeSymbolNote(null); return; }
+    const match = matchCryptoMarket(tradeSymbol, entry?.trade.marketType ?? 'crypto', metadata.facts);
+    setTradeSymbolNote(match.ok ? (match.note === null ? null : { symbol: match.symbol, note: match.note }) : { symbol: null, note: match.note });
+    if (!match.ok) return;
+    setSymbol(current => (current === '' || autoSymbol.current ? (autoSymbol.current = true, match.symbol) : current));
     if (tradeStartMs !== null) setTimeframe(current => (current === '' || autoInterval.current ? (autoInterval.current = true, pickTradeReviewInterval(tradeStartMs, Date.now())) : current));
-  }, [tradeId, tradeSymbol, tradeOffChart, tradeStartMs, metadata]);
+  }, [tradeId, tradeSymbol, tradeOffChart, tradeStartMs, metadata, entry?.trade.marketType]);
   const fact = metadata.phase === 'ready' ? metadata.facts.find(item => item.instrument.symbol === symbol) : undefined;
   const selected = Boolean(fact && interval);
   // The saved-trade chart opens on the trade's time window (the renderer session applies it after the first render).
@@ -105,17 +110,17 @@ export function AnalysisHistoryWorkspace({
     setMetadata({ phase: 'loading', facts: [] });
     const timeout = window.setTimeout(() => {
       if (!active) return;
-      active = false; controller.abort(); setMetadata({ phase: 'error', facts: [] });
+      active = false; controller.abort(); setMetadata({ phase: 'error', facts: [], failure: noAnswer() });
     }, ANALYSIS_HISTORY_REQUEST_TIMEOUT_MS);
     void ports.metadata.acquireInstrumentMetadata({ signal: controller.signal }).then(result => {
       if (!active) return;
       window.clearTimeout(timeout);
-      if (!result.ok) { setMetadata({ phase: 'error', facts: [] }); return; }
+      if (!result.ok) { setMetadata({ phase: 'error', facts: [], failure: result.reason === 'unavailable' ? result : noAnswer() }); return; }
       const counts = new Map<string, number>();
       for (const item of result.facts) if (item.instrument.venue === BINANCE_SPOT_VENUE) counts.set(item.instrument.symbol, (counts.get(item.instrument.symbol) ?? 0) + 1);
       const facts = result.facts.filter(item => item.instrument.venue === BINANCE_SPOT_VENUE && item.tradingEnabled && counts.get(item.instrument.symbol) === 1).slice().sort((a, b) => a.instrument.symbol.localeCompare(b.instrument.symbol));
       setMetadata({ phase: 'ready', facts });
-    }).catch(() => { if (active) { window.clearTimeout(timeout); setMetadata({ phase: 'error', facts: [] }); } });
+    }).catch(() => { if (active) { window.clearTimeout(timeout); setMetadata({ phase: 'error', facts: [], failure: noAnswer() }); } });
     return () => { active = false; window.clearTimeout(timeout); controller.abort(); };
   }, [ports.metadata, metadataRevision]);
 
@@ -126,8 +131,9 @@ export function AnalysisHistoryWorkspace({
       <label><span>Timeframe</span><select aria-label="Timeframe" value={interval} onChange={event => { autoInterval.current = false; setTimeframe(event.target.value); }}><option value="">Choose timeframe</option>{BINANCE_SPOT_CANDLE_INTERVALS.map(value => <option key={value} value={value}>{value === '1M' ? '1 month' : value}</option>)}</select></label>
     </div>
     {tradeOffChart && !fact ? <p role="status">{`The market chart has crypto markets from Binance only for now. ${offChartTrade} is drawn in its picture above, with your plan, entries and exits.`}</p>
-      : tradeSymbolMissing && !fact ? <p role="status">This trade's symbol is not on Binance Spot.</p> : null}
-    {metadata.phase === 'loading' ? <p role="status">Loading supported symbols…</p> : metadata.phase === 'error' ? <div role="alert"><p>Supported symbols are unavailable. Check your connection.</p><button type="button" onClick={() => setMetadataRevision(value => value + 1)}>Retry symbols</button></div> : !metadata.facts.length ? <p role="status">No supported symbols are available.</p> : !selected ? <div className="kairos-analysis-chart__empty"><p>Choose a symbol and timeframe to explore its candles.</p><p className="kairos-analysis-chart__note">You can use this chart without a saved trade.</p></div> : null}
+      : tradeSymbolNote !== null && tradeSymbolNote.symbol === null && !fact ? <p role="status">This trade's symbol is not on Binance Spot. <span>{tradeSymbolNote.note}</span></p>
+      : tradeSymbolNote !== null && fact && tradeSymbolNote.symbol === symbol ? <p role="status">{tradeSymbolNote.note}</p> : null}
+    {metadata.phase === 'loading' ? <p role="status">Loading supported symbols…</p> : metadata.phase === 'error' ? <MarketsUnavailable failure={metadata.failure ?? noAnswer()} onRetry={retryMetadata} /> : !metadata.facts.length ? <p role="status">No supported symbols are available.</p> : !selected ? <div className="kairos-analysis-chart__empty"><p>Choose a symbol and timeframe to explore its candles.</p><p className="kairos-analysis-chart__note">You can use this chart without a saved trade.</p></div> : null}
     {selected ? <>
       <div className="kairos-analysis-chart__heading"><strong>{symbol} · {interval === '1M' ? '1 month' : interval}</strong><button type="button" onClick={() => setRevision(value => value + 1)}>Refresh candles</button></div>
       <div className="kairos-analysis-chart__controls">
@@ -149,4 +155,14 @@ export function AnalysisHistoryWorkspace({
     <p className="kairos-analysis-chart__note">Market reference only. Saved trade prices and results stay separate.</p>
     <a href="https://www.tradingview.com/" target="_blank" rel="noreferrer">Charts powered by TradingView Lightweight Charts™</a>
   </section>;
+}
+
+/** A failure the port did not explain (a time limit, a thrown error): offline, or the source did not answer. */
+function noAnswer(): MarketDataUnavailable {
+  return { ok: false, reason: 'unavailable', why: typeof navigator !== 'undefined' && navigator.onLine === false ? 'offline' : 'source-down', retryAfterSeconds: null };
+}
+
+function MarketsUnavailable({ failure, onRetry }: { readonly failure: MarketDataUnavailable; readonly onRetry: () => void }) {
+  const words = describeMarketDataUnavailable(failure, 'Markets');
+  return <UnavailableNotice message={words.message} retryLabel={words.retryLabel} onRetry={onRetry} retryWhenOnline={words.retryWhenOnline} />;
 }

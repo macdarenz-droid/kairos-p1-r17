@@ -2,7 +2,7 @@ import type {
   LiveMarketUniverseInstrumentMetadataAcquisitionPort,
 } from './LiveMarketUniverseInstrumentMetadataAcquisitionPort';
 import type { LiveMarketSummaryBaselineAcquisitionPort } from './LiveMarketSummaryBaselineAcquisitionPort';
-import type { MarketDataInstrument } from './marketDataTypes';
+import type { MarketDataInstrument, MarketDataUnavailable } from './marketDataTypes';
 import {
   composeLiveMarketUniverse,
   type LiveMarketUniverseCompositionOptions,
@@ -15,7 +15,7 @@ export interface LiveMarketUniverseAcquisitionOptions extends LiveMarketUniverse
 
 export type LiveMarketUniverseAcquisitionResult =
   | { readonly ok: true; readonly instruments: readonly MarketDataInstrument[] }
-  | { readonly ok: false; readonly reason: 'acquisition-failed' };
+  | { readonly ok: false; readonly reason: 'acquisition-failed'; readonly unavailable?: MarketDataUnavailable };
 
 /**
  * Provider-neutral one-shot acquisition orchestration for the Live Market Universe.
@@ -32,7 +32,7 @@ export async function acquireLiveMarketUniverseOnce(
     ? await metadataAcquisitionPort.acquireInstrumentMetadata()
     : await metadataAcquisitionPort.acquireInstrumentMetadata(acquisitionOptions);
 
-  if (!metadataResult.ok) return { ok: false, reason: 'acquisition-failed' };
+  if (!metadataResult.ok) return acquisitionFailed(metadataResult);
 
   const eligibleScope = metadataResult.facts
     .filter((fact) => isLiveMarketUniverseInstrumentEligible(fact, options))
@@ -44,7 +44,7 @@ export async function acquireLiveMarketUniverseOnce(
     ? await baselineAcquisitionPort.acquireBaseline(eligibleScope)
     : await baselineAcquisitionPort.acquireBaseline(eligibleScope, acquisitionOptions);
 
-  if (!baselineResult.ok) return { ok: false, reason: 'acquisition-failed' };
+  if (!baselineResult.ok) return acquisitionFailed(baselineResult);
 
   return {
     ok: true,
@@ -54,4 +54,13 @@ export async function acquireLiveMarketUniverseOnce(
       options,
     ),
   };
+}
+
+/** The failure, carrying the port's typed reason when it gave one. */
+function acquisitionFailed(
+  failure: { readonly ok: false; readonly reason: 'acquisition-failed' } | MarketDataUnavailable,
+): LiveMarketUniverseAcquisitionResult {
+  return failure.reason === 'unavailable'
+    ? { ok: false, reason: 'acquisition-failed', unavailable: failure }
+    : { ok: false, reason: 'acquisition-failed' };
 }
