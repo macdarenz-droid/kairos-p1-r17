@@ -5,7 +5,7 @@
  */
 import type { RouteAnswer } from '../router';
 import type { UpstreamResult } from '../upstream';
-import { isAssetCode, isDecimalText, isMarketSymbol, isoFromEpochMs } from './marketValues';
+import { candleCloseMs, compareDecimalText, isAssetCode, isDecimalText, isMarketSymbol, isoFromEpochMs, type MarketInterval } from './marketValues';
 
 export const BINANCE_SPOT_HOST = 'data-api.binance.vision';
 export const BINANCE_USDM_HOST = 'fapi.binance.com';
@@ -131,4 +131,52 @@ export function decodeBinanceTickers(text: string, requested: readonly string[])
   }
   const tickers = requested.map((symbol) => bySymbol.get(symbol));
   return tickers.every((ticker): ticker is BinanceTicker => ticker !== undefined) ? Object.freeze(tickers) : null;
+}
+
+export interface MarketCandle {
+  readonly openTime: string;
+  readonly closeTime: string;
+  readonly open: string;
+  readonly high: string;
+  readonly low: string;
+  readonly close: string;
+  readonly volume: string;
+}
+
+/** The checked candles query: startMs and endMs are open times, inclusive, or null. */
+export interface CandleAsk {
+  readonly interval: MarketInterval;
+  readonly limit: number;
+  readonly startMs: number | null;
+  readonly endMs: number | null;
+}
+
+const KLINE_ROW_ITEMS = 12;
+
+/**
+ * Binance's klines (spot and USDⓈ-M share the row shape) as candles with volume, the same rules as the app's decoder
+ * (binanceSpotCandleHistoryResponse.ts) plus volume; null unless every row is whole, in order, inside the window and
+ * no more than the limit.
+ */
+export function decodeBinanceKlines(text: string, ask: CandleAsk): readonly MarketCandle[] | null {
+  const body = parseJson(text);
+  if (!Array.isArray(body) || body.length > ask.limit) return null;
+  const candles: MarketCandle[] = [];
+  let previousOpenMs = -1;
+  for (const row of body as unknown[]) {
+    if (!Array.isArray(row) || row.length !== KLINE_ROW_ITEMS) return null;
+    const [openMs, open, high, low, close, volume, closeMs] = row as unknown[];
+    const openTime = isoFromEpochMs(openMs);
+    const closeTime = isoFromEpochMs(closeMs);
+    if (openTime === null || closeTime === null) return null;
+    const openAt = openMs as number;
+    if (closeMs !== candleCloseMs(openAt, ask.interval) || openAt <= previousOpenMs) return null;
+    if ((ask.startMs !== null && openAt < ask.startMs) || (ask.endMs !== null && openAt > ask.endMs)) return null;
+    if (!isDecimalText(open, { positive: true }) || !isDecimalText(high, { positive: true }) || !isDecimalText(low, { positive: true })
+      || !isDecimalText(close, { positive: true }) || !isDecimalText(volume)) return null;
+    if (compareDecimalText(high, open) < 0 || compareDecimalText(high, close) < 0 || compareDecimalText(low, open) > 0 || compareDecimalText(low, close) > 0) return null;
+    previousOpenMs = openAt;
+    candles.push(Object.freeze({ openTime, closeTime, open, high, low, close, volume }));
+  }
+  return Object.freeze(candles);
 }

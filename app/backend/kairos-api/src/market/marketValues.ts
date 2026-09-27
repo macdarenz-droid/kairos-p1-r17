@@ -79,3 +79,11 @@ export function candleCloseMs(openMs: number, interval: MarketInterval): number 
 export function longestCandleMs(interval: MarketInterval): number {
   return interval === '1M' ? 31 * DAY : INTERVAL_MS[interval];
 }
+
+/**
+ * A page that ends at endMs holds only closed candles once a full candle has passed since endMs: the candle holding
+ * endMs began at or before it and lasts at most longestCandleMs, so this needs no knowledge of how a source aligns candles.
+ */
+export function isSettled(endMs: number | null, interval: MarketInterval, nowMs: number): boolean {
+  return endMs !== null && nowMs - endMs >= longestCandleMs(interval);
+}

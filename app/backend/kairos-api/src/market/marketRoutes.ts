@@ -4,7 +4,10 @@
  */
 import type { RouteCachePolicy } from '../cache';
 import type { KairosApiRoute } from '../router';
-import { BINANCE_SPOT_HOST, binanceFailure, decodeBinanceExchangeInfo, decodeBinanceTickers, failureAnswer } from './binance';
+import {
+  BINANCE_SPOT_HOST, BINANCE_USDM_HOST, binanceFailure, decodeBinanceExchangeInfo, decodeBinanceKlines, decodeBinanceTickers, failureAnswer,
+} from './binance';
+import { isMarketInterval, isSettled } from './marketValues';
 
 /** The market list changes a few times a day: 1 hour in Workers Cache and memory, 6 hours in KV. */
 export const MARKET_SYMBOLS_CACHE: RouteCachePolicy = Object.freeze({ version: 1, edgeSeconds: 3_600, memorySeconds: 3_600, kvSeconds: 21_600 });
@@ -56,4 +59,77 @@ const marketTickersRoute: KairosApiRoute = {
   },
 };
 
-export const MARKET_ROUTES: readonly KairosApiRoute[] = Object.freeze([marketSymbolsRoute, marketTickersRoute]);
+/** A candles page that may still move: 10 seconds in Workers Cache and memory, never in KV. */
+export const MARKET_CANDLES_OPEN_CACHE: RouteCachePolicy = Object.freeze({ version: 1, edgeSeconds: 10, memorySeconds: 10, kvSeconds: null });
+/** A settled page (only closed candles) never changes: 7 days in Workers Cache (and the browser), 1 hour in memory, never in KV. */
+export const MARKET_CANDLES_SETTLED_CACHE: RouteCachePolicy = Object.freeze({ version: 1, edgeSeconds: 604_800, memorySeconds: 3_600, kvSeconds: null });
+export const MAX_CANDLES = 1_000;
+
+const MARKET_TEXT_RULE = /^[A-Z0-9一-鿿]{1,20}$/u;
+const EPOCH_MS_RULE = /^[0-9]{1,13}$/;
+const ASSET_RULE = /^[A-Z0-9]{1,20}$/;
+
+/** Digits already checked by the query rules (at most 13), so the value is a safe integer. */
+function digits(text: string | null): number | null {
+  return text === null ? null : parseInt(text, 10);
+}
+
+const marketCandlesRoute: KairosApiRoute = {
+  id: 'market-candles',
+  path: '/market/candles',
+  access: 'public',
+  rateLimited: true,
+  query: {
+    market: { pattern: /^(?:binance-spot|binance-usdm)$/, required: true },
+    symbol: { pattern: MARKET_TEXT_RULE, required: true },
+    interval: { pattern: /^(?:1s|1m|3m|5m|15m|30m|1h|2h|4h|6h|8h|12h|1d|3d|1w|1M)$/, required: true },
+    limit: { pattern: /^[1-9][0-9]{0,3}$/, required: true },
+    start: { pattern: EPOCH_MS_RULE, required: false },
+    end: { pattern: EPOCH_MS_RULE, required: false },
+    // Used by the backup source (T-048c); accepted now so the app's query and the cache key never change.
+    base: { pattern: ASSET_RULE, required: false },
+    quote: { pattern: ASSET_RULE, required: false },
+  },
+  upstreamHosts: [BINANCE_SPOT_HOST, BINANCE_USDM_HOST],
+  cache: MARKET_CANDLES_OPEN_CACHE,
+  async handle({ query, upstream, now }) {
+    const market = query.get('market');
+    const symbol = query.get('symbol') ?? '';
+    const interval = query.get('interval');
+    const limit = digits(query.get('limit')) ?? 0;
+    const startMs = digits(query.get('start'));
+    const endMs = digits(query.get('end'));
+    const base = query.get('base');
+    const quote = query.get('quote');
+    if (!isMarketInterval(interval) || limit > MAX_CANDLES || (startMs !== null && endMs !== null && startMs > endMs)) return { ok: false, reason: 'bad-request' };
+    // USDⓈ-M lists no 1-second candles (Binance's docs).
+    if (interval === '1s' && market === 'binance-usdm') return { ok: false, reason: 'bad-request' };
+    if ((base === null) !== (quote === null) || (base !== null && base + quote !== symbol)) return { ok: false, reason: 'bad-request' };
+
+    const params = new URLSearchParams({ symbol, interval, limit: String(limit) });
+    if (startMs !== null) params.set('startTime', String(startMs));
+    if (endMs !== null) params.set('endTime', String(endMs));
+    if (market === 'binance-spot') params.set('timeZone', '0');
+    const url = market === 'binance-spot' ? `https://${BINANCE_SPOT_HOST}/api/v3/klines?${params}` : `https://${BINANCE_USDM_HOST}/fapi/v1/klines?${params}`;
+    const result = await upstream(url, { accept: 'application/json', readErrorBody: true });
+    if (!result.ok) return failureAnswer(binanceFailure(result));
+    const candles = decodeBinanceKlines(result.text, { interval, limit, startMs, endMs });
+    if (candles === null) return { ok: false, reason: 'source-unavailable' };
+
+    const nowMs = now.getTime();
+    const lastOpenMs = candles.length === 0 ? null : Date.parse(candles[candles.length - 1].openTime);
+    const next = lastOpenMs !== null && candles.length === limit && (endMs === null || lastOpenMs < endMs) ? lastOpenMs + 1 : null;
+    const data = {
+      source: { provider: 'binance', market: market === 'binance-spot' ? 'spot' : 'usdm-futures', symbol },
+      backup: null,
+      interval,
+      fetchedAt: now.toISOString(),
+      candles,
+      next,
+    };
+    const settled = isSettled(endMs, interval, nowMs) && candles.every((candle) => Date.parse(candle.closeTime) < nowMs);
+    return settled ? { ok: true, data, cache: MARKET_CANDLES_SETTLED_CACHE } : { ok: true, data };
+  },
+};
+
+export const MARKET_ROUTES: readonly KairosApiRoute[] = Object.freeze([marketSymbolsRoute, marketTickersRoute, marketCandlesRoute]);

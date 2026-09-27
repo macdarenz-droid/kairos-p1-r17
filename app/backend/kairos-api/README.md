@@ -149,13 +149,14 @@ never read ahead.
 ## Market data (P16.A1)
 
 Binance's public market data: `data-api.binance.vision` (market data only; answers from the US), terms UNVERIFIED.
-Both routes are `public` and rate-limited; `data` is rebuilt from checked values, with prices, sizes and volumes as
+The routes are `public` and rate-limited; `data` is rebuilt from checked values, with prices, sizes and volumes as
 decimal text and times as ISO 8601 UTC (`src/market/marketRoutes.ts`, `binance.ts`, `marketValues.ts`).
 
 | Route | Query | Source | Kept |
 |---|---|---|---|
 | `/market/symbols` | none (any query is 400) | Binance Spot `GET /api/v3/exchangeInfo?permissions=SPOT&symbolStatus=TRADING&showPermissionSets=false` | 1 h in Workers Cache and memory, 6 h in KV |
 | `/market/tickers` | `symbols`: 1 to 100 Binance Spot symbols, comma-separated, strictly ascending | Binance Spot `GET /api/v3/ticker/24hr?symbols=[…]&type=MINI` | 5 s in Workers Cache and memory, never KV |
+| `/market/candles` | `market` (`binance-spot` or `binance-usdm`), `symbol`, `interval`, `limit` (1–1000); optional `start`, `end` (epoch ms, open times, inclusive); optional `base` and `quote` together, spelling `symbol` | Binance Spot `GET /api/v3/klines` on `data-api.binance.vision`, USDⓈ-M `GET /fapi/v1/klines` on `fapi.binance.com` | a settled page 7 days in Workers Cache (and the browser), 1 h in memory; any other page 10 s; never KV |
 
 - `/market/symbols`: `{ source: 'binance-spot', fetchedAt, markets: [{ symbol, base, quote, tickSize, stepSize }], leftOut }`,
   ascending by symbol, only markets open for trading; a market without exactly one price step and one size step, or whose
@@ -163,6 +164,15 @@ decimal text and times as ISO 8601 UTC (`src/market/marketRoutes.ts`, `binance.t
 - `/market/tickers`: `{ source: 'binance-spot', fetchedAt, tickers: [{ symbol, lastPrice, openPrice, highPrice, lowPrice, volume, quoteVolume, openTime, closeTime }] }`,
   in the requested order, each requested symbol exactly once (anything else is `source-unavailable`). One order for the
   list means one cache key for every device.
+- `/market/candles`: `{ source: { provider, market, symbol }, backup, interval, fetchedAt, candles: [{ openTime, closeTime, open, high, low, close, volume }], next }`;
+  `provider` is `binance`, `market` is `spot` or `usdm-futures`, `backup` is `null`. Rows that are not whole, in order,
+  inside the window and within `limit` make the answer `source-unavailable`. 1-second candles are spot only.
+- Settled: a page is settled when `end` is given and at least one full candle (`1M`: 31 days) has passed since `end`,
+  and every candle has closed. The candle holding `end` began at or before it, so it has closed too; this needs no
+  knowledge of how a source aligns its candles. A settled page is kept 7 days; any other page 10 seconds.
+- Cursor: `next` is the `start` for the next page (the last open time + 1) when the page is full and the window goes
+  on, else `null`.
+- USDⓈ-M: `fapi.binance.com` answers 451 from the US (checked); T-048c's backup covers it.
 - Reasons: `unknown-market`, `source-busy` and `source-refused` (table above) say what Binance answered; everything
   else is `source-unavailable`.
 - CPU (D162): reading Binance's 2.48 MB market list takes about 8–14 ms of CPU, over the Free plan's 10 ms, so the
