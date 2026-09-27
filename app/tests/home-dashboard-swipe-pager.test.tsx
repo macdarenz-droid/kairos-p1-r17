@@ -28,8 +28,8 @@ describe('Home swipe pager', () => {
   it('swipes between Live Market and Your Trades while keeping a single mounted pane', async () => {
     const { container } = render(<HomeRoute />);
     expect(mount).toHaveBeenCalledTimes(1);
-    expect(container.querySelector('.kairos-home-switch__ink')).toBeTruthy();
-    expect(container.querySelector('.kairos-home-switch')?.getAttribute('data-view')).toBe('market');
+    expect(screen.getByRole('group', { name: 'Dashboard view' }).querySelector('[aria-hidden="true"]')).toBeTruthy();
+    expect(pressed('Live Market')).toBe('true');
     await swipe(pane(), [300, 200], [180, 204]);
     expect(unmount).toHaveBeenCalledTimes(1);
     expect(screen.getByText('saved-trade view')).toBeTruthy();
@@ -37,7 +37,7 @@ describe('Home swipe pager', () => {
     expect(pressed('Your Trades')).toBe('true');
     expect(pager().dataset.view).toBe('trades');
     expect(pane().dataset.enter).toBe('forward');
-    expect(container.querySelector('.kairos-home-switch')?.getAttribute('data-view')).toBe('trades');
+    expect(pressed('Your Trades')).toBe('true');
     await swipe(pane(), [100, 200], [240, 198]);
     expect(mount).toHaveBeenCalledTimes(2);
     expect(pressed('Live Market')).toBe('true');

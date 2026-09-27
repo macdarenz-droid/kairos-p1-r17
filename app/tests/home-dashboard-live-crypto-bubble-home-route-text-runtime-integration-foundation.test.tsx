@@ -26,7 +26,7 @@ describe('Home Live Crypto Bubble HomeRoute normalized-radius textual-runtime in
     const props = configuredRadiusRuntimeMock.mock.calls[0]![0] as Record<'configuration', unknown>;
     expect(props.configuration).toBe(defaultConfiguration);
     expect(markup).toContain('data-kairos-home-dashboard="live-crypto-text-runtime"');
-    expect(markup).toContain('Live Crypto Bubble');
+    expect(markup).toContain('Crypto prices now');
     expect(markup).not.toContain('No dashboard insights are connected yet.');
   });
 });

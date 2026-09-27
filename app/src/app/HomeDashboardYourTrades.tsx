@@ -6,6 +6,7 @@ import { GlassDecoration, GlassIcon } from './HomeDashboardGlassBubbleMap';
 import { layoutGlassViewportCircles } from './homeDashboardGlassViewportLayout';
 import { useHomeDashboardGlassMotion } from './useHomeDashboardGlassMotion';
 import { projectYourTradeBubbleSizes } from './homeDashboardYourTradesSizing';
+import { Button, EmptyState, ErrorState, Skeleton } from '../design-system/primitives';
 import './homeDashboardYourTrades.css';
 
 export function HomeDashboardYourTrades({load=loadHomeYourTrades,glance}:{readonly load?:()=>Promise<readonly HomeYourTrade[]>;readonly glance?:ReactNode}) {
@@ -43,10 +44,10 @@ export function HomeDashboardYourTrades({load=loadHomeYourTrades,glance}:{readon
     {glance}
     <p className="kairos-your-trades__caption">One bubble per trade · Bigger profits, smaller losses · Color shows result</p>
     <p className="kairos-your-trades__caption">Profit sizes compare the same recorded currency. Missing results stay neutral.</p>
-    <div className="kairos-your-trades__controls"><span>{trades.length} saved · Latest {YOUR_TRADES_HISTORY_LIMIT}</span><button type="button" onClick={refresh} disabled={loading}>Refresh</button></div>
-    <div className="kairos-your-trades__controls" aria-label="Trade pages"><button type="button" onClick={()=>{setPage(x=>x-1);setSelected(null);}} disabled={page===0||loading||error}>Previous</button><span>Page {page+1} of {pageCount}</span><button type="button" onClick={()=>{setPage(x=>x+1);setSelected(null);}} disabled={page+1>=pageCount||loading||error}>Next</button></div>
+    <div className="kairos-your-trades__controls"><span>{trades.length} saved · Latest {YOUR_TRADES_HISTORY_LIMIT}</span><Button variant="secondary" size="sm" onClick={refresh} disabled={loading}>Refresh</Button></div>
+    <div className="kairos-your-trades__controls" aria-label="Trade pages"><Button variant="secondary" size="sm" onClick={()=>{setPage(x=>x-1);setSelected(null);}} disabled={page===0||loading||error}>Previous</Button><span>Page {page+1} of {pageCount}</span><Button variant="secondary" size="sm" onClick={()=>{setPage(x=>x+1);setSelected(null);}} disabled={page+1>=pageCount||loading||error}>Next</Button></div>
     <div ref={field} className="kairos-glass-field kairos-your-trades__field" style={{height:layout.height||bounds.height}}>
-      {loading?<p role="status">Loading your saved trades…</p>:error?<p role="alert">Could not load your trades. Try Refresh.</p>:trades.length===0?<div className="kairos-your-trades__empty"><h3>Your trading story starts here</h3><p>Log a trade in your journal to see it here.</p><Link to="/journal">Log your first trade</Link></div>:rows.map(trade=>{
+      {loading?<Skeleton label="Loading your saved trades…"/>:error?<ErrorState message="Kairos could not load your saved trades. They are still on this device." onRetry={refresh}/>:trades.length===0?<EmptyState icon="bubbles" headingLevel={3} title="Your trading story starts here" message="Log a trade in your journal to see it here." action={<Link to="/journal" className="kairos-button kairos-button--primary kairos-button--md">Log your first trade</Link>}/>:rows.map(trade=>{
         const c=positions.get(trade.id);if(!c)return null;
         const base=trade.symbol.endsWith('USDT')?trade.symbol.slice(0,-4):trade.symbol;
         const movement=trade.outcome==='profit'?'positive':trade.outcome==='loss'?'negative':'neutral';
@@ -56,7 +57,7 @@ export function HomeDashboardYourTrades({load=loadHomeYourTrades,glance}:{readon
           <span className="kairos-glass-label"><span className="kairos-glass-icon" data-fallback={!(['BTC','ETH','SOL','BNB','XRP','LINK','SUI','ADA'].includes(base))} aria-hidden="true"><GlassIcon symbol={base}/></span><strong>{trade.symbol}</strong><span className="kairos-glass-movement">{trade.resultLabel}</span></span>
         </button>;
       })}
-      {detail&&!loading&&!error?<aside className="kairos-your-trades__detail" aria-label="Selected trade"><div className="kairos-your-trades__heading"><strong>{detail.symbol} · {detail.side}</strong><button type="button" onClick={()=>setSelected(null)}>Close details</button></div><p>{detail.status} · {detail.resultLabel}</p><p>{detail.amount===null?'Result not available':`${detail.amount}${detail.currency?' '+detail.currency:''}`}</p>{detail.amount!==null&&!detail.currency?<small>Currency not recorded</small>:null}<time dateTime={detail.timestamp}>{new Date(detail.timestamp).toLocaleString()}</time><ReviewTradeLink id={detail.id} /></aside>:null}
+      {detail&&!loading&&!error?<aside className="kairos-your-trades__detail" aria-label="Selected trade"><div className="kairos-your-trades__heading"><strong>{detail.symbol} · {detail.side}</strong><Button variant="ghost" size="sm" onClick={()=>setSelected(null)}>Close details</Button></div><p>{detail.status} · {detail.resultLabel}</p><p>{detail.amount===null?'Result not available':`${detail.amount}${detail.currency?' '+detail.currency:''}`}</p>{detail.amount!==null&&!detail.currency?<small>Currency not recorded</small>:null}<time dateTime={detail.timestamp}>{new Date(detail.timestamp).toLocaleString()}</time><ReviewTradeLink id={detail.id} /></aside>:null}
     </div>
   </section>;
 }

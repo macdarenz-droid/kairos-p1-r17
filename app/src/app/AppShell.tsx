@@ -96,7 +96,7 @@ export function AppShell({ loading = false }: { readonly loading?: boolean }) {
                 `kairos-shell__nav-link${isActive ? ' kairos-shell__nav-link--active' : ''}`
               }
             >
-              <Icon name={navigationIcons[item.to] ?? 'more'} size={24} className="kairos-shell__nav-icon" />
+              <Icon name={navigationIcons[item.to] ?? 'more'} size={20} className="kairos-shell__nav-icon" />
               {item.label}
             </NavLink>
           ))}
