@@ -1,4 +1,4 @@
-import { useId, useRef, type KeyboardEvent, type ReactNode } from 'react';
+import { useId, useLayoutEffect, useRef, type KeyboardEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from './Button';
 import { useModalFocus } from './modalFocus';
@@ -26,6 +26,15 @@ export function ConfirmDialog({ open, title, message, confirmLabel, cancelLabel,
   const busyRef = useRef(busy);
   busyRef.current = busy;
 
+  // While busy both buttons are disabled; the pressed one would drop focus to the page, so focus waits on the panel.
+  useLayoutEffect(() => {
+    const element = panel.current;
+    if (!open || !busy || element === null) return;
+    const active = document.activeElement;
+    const enabledInside = active instanceof HTMLElement && active !== element && element.contains(active) && !active.matches(':disabled');
+    if (!enabledInside) element.focus({ preventScroll: true });
+  }, [open, busy]);
+
   if (!open) return null;
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
@@ -33,16 +42,10 @@ export function ConfirmDialog({ open, title, message, confirmLabel, cancelLabel,
     keepFocusInside(event);
   }
 
-  // While busy both buttons are disabled; a browser would drop focus to the page, so it waits on the panel.
-  const holdFocus = (element: HTMLDivElement | null) => {
-    panel.current = element;
-    if (element !== null && busy && (document.activeElement === null || document.activeElement === document.body)) element.focus({ preventScroll: true });
-  };
-
   return createPortal(<div className="kairos-sheet kairos-confirm">
     <div className="kairos-sheet__backdrop" data-sheet-backdrop="" onClick={() => { if (!busy) onCancel(); }} />
     <div className="kairos-sheet__panel kairos-confirm__panel" role="alertdialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={messageId}
-      tabIndex={-1} ref={holdFocus} onKeyDown={handleKeyDown}>
+      tabIndex={-1} ref={panel} onKeyDown={handleKeyDown}>
       <h2 id={titleId} className="kairos-sheet__title">{title}</h2>
       <div id={messageId} className="kairos-confirm__message">{message}</div>
       <div className="kairos-confirm__actions">

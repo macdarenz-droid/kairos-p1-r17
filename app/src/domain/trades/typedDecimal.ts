@@ -66,8 +66,8 @@ export function readTypedDecimal(text: string): TypedDecimalReading {
   } else if (commas === 1) {
     decimalMark = ',';
     const [before, after] = body.split(',') as [string, string];
-    const beforeDigits = [...before].filter(character => /\d/.test(character)).join('');
-    unclear = /^\d{3}$/.test(after) && /[1-9]/.test(beforeDigits);
+    // Both readings must be real numbers (D186): "1234,567" or "1 234,567" cannot be a grouped 1234567, so the comma is the decimal mark.
+    unclear = /^\d{3}$/.test(after) && /^\d{1,3}$/.test(before) && /[1-9]/.test(before);
   }
 
   const groupMarks = new Set([...body].filter(character => GROUP_ONLY_MARKS.has(character)));

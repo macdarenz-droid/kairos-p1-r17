@@ -20,6 +20,9 @@ describe('T-049d readTypedDecimal', () => {
     ['007.50', '7.50', true],
     ['.5', '0.5', true],
     ['  42  ', '42', false],
+    ['1234,567', '1234.567', true],
+    ['1 234,567', '1234.567', true],
+    ["1'234,500", '1234.500', true],
   ])('reads %j as %s', (input, value, changed) => {
     expect(readTypedDecimal(input)).toEqual({ ok: true, value, changed });
   });
@@ -27,6 +30,8 @@ describe('T-049d readTypedDecimal', () => {
   it.each([
     ['1,234', ['1234', '1.234']],
     ['12,345', ['12345', '12.345']],
+    ['123,456', ['123456', '123.456']],
+    ['-1,234', ['-1234', '-1.234']],
   ])('asks about %j instead of guessing', (input, readings) => {
     expect(readTypedDecimal(input)).toEqual({ ok: false, reason: 'unclear-separator', readings });
   });

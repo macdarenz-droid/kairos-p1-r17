@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Button, ConfirmDialog, Field, PriceInput, Segmented, Select, TOAST_MS, TOAST_WITH_ACTION_MS, ToastProvider, useToast, type ToastInput } from '../src/design-system/primitives';
@@ -126,6 +126,14 @@ describe('T-049d ConfirmDialog', () => {
     expect(screen.getByRole('button', { name: 'Keep it' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Delete' })).toBeDisabled();
   });
+
+  it('moves focus to the panel when busy starts on the pressed confirm button', () => {
+    const props = { open: true, title: 'Delete this trade?', message: 'It is removed from your journal.', confirmLabel: 'Delete', cancelLabel: 'Keep it', onConfirm: () => {}, onCancel: () => {} };
+    const { rerender } = render(<ConfirmDialog {...props} />);
+    act(() => { screen.getByRole('button', { name: 'Delete' }).focus(); });
+    rerender(<ConfirmDialog {...props} busy />);
+    expect(document.activeElement).toBe(screen.getByRole('alertdialog'));
+  });
 });
 
 function ToastButton({ toast, name }: { toast: ToastInput; name: string }) {
@@ -141,7 +149,7 @@ describe('T-049d Toast', () => {
     expect(region).toBeEmptyDOMElement();
     fireEvent.click(screen.getByRole('button', { name: 'remove' }));
     expect(region).toHaveTextContent('Row removed.');
-    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    fireEvent.click(within(region).getByRole('button', { name: 'Undo' }));
     expect(undo).toHaveBeenCalledTimes(1);
     expect(region).not.toHaveTextContent('Row removed.');
   });
@@ -169,6 +177,45 @@ describe('T-049d Toast', () => {
     fireEvent.focus(screen.getByRole('button', { name: 'Undo' }));
     act(() => { vi.advanceTimersByTime(TOAST_WITH_ACTION_MS * 2); });
     expect(region).toHaveTextContent('Row removed.');
+  });
+
+  it('stays while focus is inside, even after the pointer leaves', () => {
+    vi.useFakeTimers();
+    render(<ToastProvider><ToastButton name="undoable" toast={{ message: 'Row removed.', action: { label: 'Undo', onAction: () => {} } }} /></ToastProvider>);
+    const region = screen.getByRole('status');
+    fireEvent.click(screen.getByRole('button', { name: 'undoable' }));
+    act(() => { within(region).getByRole('button', { name: 'Undo' }).focus(); });
+    const toast = region.firstElementChild!;
+    fireEvent.pointerEnter(toast);
+    fireEvent.pointerLeave(toast);
+    act(() => { vi.advanceTimersByTime(TOAST_WITH_ACTION_MS * 2); });
+    expect(region).toHaveTextContent('Row removed.');
+  });
+
+  it('stays while the pointer is over it, even after focus leaves', () => {
+    vi.useFakeTimers();
+    render(<ToastProvider><ToastButton name="undoable" toast={{ message: 'Row removed.', action: { label: 'Undo', onAction: () => {} } }} /></ToastProvider>);
+    const region = screen.getByRole('status');
+    const opener = screen.getByRole('button', { name: 'undoable' });
+    fireEvent.click(opener);
+    const toast = region.firstElementChild!;
+    fireEvent.pointerEnter(toast);
+    act(() => { within(region).getByRole('button', { name: 'Undo' }).focus(); });
+    act(() => { opener.focus(); });
+    act(() => { vi.advanceTimersByTime(TOAST_WITH_ACTION_MS * 2); });
+    expect(region).toHaveTextContent('Row removed.');
+  });
+
+  it('gives focus back to where it came from when closed from inside', () => {
+    render(<ToastProvider><ToastButton name="undoable" toast={{ message: 'Row removed.', action: { label: 'Undo', onAction: () => {} } }} /><button type="button">Outside</button></ToastProvider>);
+    fireEvent.click(screen.getByRole('button', { name: 'undoable' }));
+    const outside = screen.getByRole('button', { name: 'Outside' });
+    act(() => { outside.focus(); });
+    const dismiss = within(screen.getByRole('status')).getByRole('button', { name: 'Dismiss' });
+    act(() => { dismiss.focus(); });
+    fireEvent.keyDown(dismiss, { key: 'Escape' });
+    expect(screen.getByRole('status')).not.toHaveTextContent('Row removed.');
+    expect(document.activeElement).toBe(outside);
   });
 
   it('replaces the current toast, and closes on Escape and Dismiss', () => {
