@@ -184,6 +184,12 @@ export function economicCalendarWeekStart(dayKey: string): string {
   return shiftVisualPnlDayKey(dayKey, -visualPnlMondayFirstWeekday(dayKey));
 }
 
+/** The Monday of the week an instant falls in, in the saved zone; null when the instant or zone cannot be read. */
+export function economicCalendarWeekOf(instant: string, timeZone: string): string | null {
+  const day = projectVisualPnlDayKey(instant, timeZone);
+  return day.available ? economicCalendarWeekStart(day.dayKey) : null;
+}
+
 function byTime(a: EconomicEventRecord, b: EconomicEventRecord): number {
   return a.startsAt.localeCompare(b.startsAt) || a.title.localeCompare(b.title) || a.id.localeCompare(b.id);
 }

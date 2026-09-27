@@ -3,14 +3,17 @@
  * newsImpact.ts, dayBucket.ts). "Unavailable · Try again" stay U1's (online/onlineWords.ts).
  */
 import type { EconomicEventImpact, EconomicEventRecord } from '../../domain/economic-calendar/economicEvent';
-import { economicEventSize } from '../../domain/economic-calendar/newsImpact';
-import { NEWS_CALENDAR_SOURCE_IDS, NEWS_SOURCES, type NewsCalendarSourceId } from '../../domain/economic-calendar/newsSources';
+import { economicEventName, economicEventSize } from '../../domain/economic-calendar/newsImpact';
+import { NEWS_CALENDAR_SOURCE_IDS, NEWS_HEADLINE_SOURCE_IDS, NEWS_SOURCES, type NewsCalendarSourceId, type NewsHeadlineSourceId } from '../../domain/economic-calendar/newsSources';
 import { currencyDayLabel } from '../currency/currencyWords';
 import { describeUnavailable, type UnavailableWords } from '../online/onlineWords';
 import { projectVisualPnlClockTime, projectVisualPnlDayKey } from '../visual-pnl/dayBucket';
 import { visualPnlMondayFirstWeekday } from '../visual-pnl/dayKeyCalendar';
+import type { TypedEconomicEventField } from './economicEvents';
+import type { KairosApiFailure } from '../online/onlineWords';
 import type { RefreshNewsCalendarResult } from './fetchedNews';
-import { NEWS_NEAR_TRADE_MINUTES } from './newsNearTrades';
+import type { SavedNewsHeadline } from './newsHeadlines';
+import { NEWS_NEAR_TRADE_MINUTES, type NewsNearTrade } from './newsNearTrades';
 
 export const NEWS_CALENDAR_INTRO = `Some scheduled news, such as a central bank's rate decision or a country's inflation or jobs numbers, can move prices a lot and fast. Kairos gets the official schedules of central banks and statistics offices, and you can add your own news. Each closed trade's card says when big news was within ${NEWS_NEAR_TRADE_MINUTES} minutes of when it opened or closed, or while it was open. This calendar never predicts prices and never tells you when to trade.`;
 export const NEWS_CALENDAR_LIMITS = "Official schedules only, and only the releases on Kairos's own list. Some big news is not there, such as business surveys (PMIs), China's numbers and most speeches: add it yourself.";
@@ -114,11 +117,6 @@ export const NEWS_REFRESHING = 'Getting the latest news…';
 const line = (text: string, role: 'status' | 'alert', button: 'Refresh' | 'Try again' | null): NewsRefreshLine =>
   Object.freeze({ kind: 'line' as const, text, role, button, busy: false });
 
-/** "A", "A and B", "A, B and C". */
-function joinNames(names: readonly string[]): string {
-  return names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
-}
-
 /** "Showing news saved Thursday 24 September 2026 at 11:50." */
 export function describeSavedCopy(savedAt: string, timeZone: string): string {
   return `Showing news saved ${describeCalendarMoment(savedAt, timeZone)}.`;
@@ -140,7 +138,7 @@ export function describeNewsRefresh(state: NewsRefreshState, savedAt: string | n
         const failed = new Set(result.outcomes.filter((outcome) => !outcome.ok).map((outcome) => outcome.source));
         if (failed.size === 0) return line(updated, 'status', 'Refresh');
         const names = NEWS_CALENDAR_SOURCE_IDS.filter((source) => failed.has(source)).map((source) => NEWS_SOURCES[source].name);
-        return line(`${updated} Could not get news from ${joinNames(names)} this time.`, 'status', 'Try again');
+        return line(`${updated} Could not get news from ${listNames(names)} this time.`, 'status', 'Try again');
       }
       if (result.reason === 'unavailable') return Object.freeze({ kind: 'unavailable' as const, words: describeUnavailable(result.failure, 'News'), busy: false });
       return line('Kairos could not save the news. Nothing was changed.', 'alert', 'Try again');
@@ -150,3 +148,79 @@ export function describeNewsRefresh(state: NewsRefreshState, savedAt: string | n
 
 /** The sources card; restates newsImpact.ts's high rules, so it changes when they change. */
 export const NEWS_SOURCES_INTRO = "Kairos's server reads these official schedules for you. They give the name and date of each release, and most give the time. For Eurostat, the European Central Bank and the Reserve Bank of Australia, Kairos adds the release time each one publishes: 11:00 in Luxembourg, 14:15 in Frankfurt and 14:30 in Sydney. No schedule says how big a release is or what numbers are expected. Kairos shows only the releases on its own fixed list and sizes them itself. Big news: rate decisions and the US Fed's press conference; US and UK inflation, and the euro area's first inflation estimate; the US and UK jobs reports; and the first US growth (GDP), spending and retail sales numbers. Everything else on the list is medium or small news, and each release on the calendar shows its size.";
+
+/** The add form's words for each field it refuses (T-046l). */
+export const EVENT_FIELD_ERRORS: Readonly<Record<TypedEconomicEventField, string>> = Object.freeze({
+  title: 'Add a name of up to 80 characters, such as US CPI.',
+  startsAt: 'Add the date and time.',
+  currency: 'Use 3 letters, such as USD, or leave it empty.',
+  impact: 'Choose how big it is.',
+  expected: 'Use up to 16 characters, such as 3.1% or 21.5K.',
+  previous: 'Use up to 16 characters, such as 3.1% or 21.5K.',
+  actual: 'Use up to 16 characters, such as 3.1% or 21.5K.',
+});
+
+/** "1,000": a whole count with thousands commas. */
+function countWithCommas(count: number): string {
+  return String(count).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+/** "Saved: US CPI, Thursday 24 September 2026 at 20:30." */
+export function describeEventSaved(event: EconomicEventRecord, timeZone: string): string {
+  return `Saved: ${event.title}, ${describeCalendarMoment(event.startsAt, timeZone)}.`;
+}
+
+/** Said when the typed news cap is reached. */
+export function describeNewsLimit(limit: number): string {
+  return `You have added ${countWithCommas(limit)} news events, the most Kairos keeps. Delete some you no longer need, then save this one.`;
+}
+
+/** "Delete US CPI, Thursday 24 September 2026 at 20:30": the Delete button's name. */
+export function eventDeleteLabel(event: EconomicEventRecord, timeZone: string): string {
+  return `Delete ${event.title}, ${describeCalendarMoment(event.startsAt, timeZone)}`;
+}
+
+/** "Deleted US CPI." */
+export function describeEventDeleted(event: EconomicEventRecord): string {
+  return `Deleted ${event.title}.`;
+}
+
+/** "Yahoo Finance · Thursday 24 September 2026 at 12:00 · Reuters" in the saved zone. */
+export function describeHeadlineMeta(item: SavedNewsHeadline, timeZone: string): string {
+  const meta = `${NEWS_SOURCES[item.source].name} · ${describeCalendarMoment(item.publishedAt, timeZone)}`;
+  return item.publisher === null ? meta : `${meta} · ${item.publisher}`;
+}
+
+/** "Could not get headlines from European Central Bank this time." */
+export function describeHeadlineFailures(ids: readonly NewsHeadlineSourceId[]): string {
+  const names = NEWS_HEADLINE_SOURCE_IDS.filter((id) => ids.includes(id)).map((id) => NEWS_SOURCES[id].name);
+  return `Could not get headlines from ${listNames(names)} this time.`;
+}
+
+/** U1's words with the subject "Headlines". */
+export function describeHeadlinesUnavailable(failure: KairosApiFailure): string {
+  return describeUnavailable(failure, 'Headlines').message;
+}
+
+export const NEWS_NEAR_TRADE_LINES_SHOWN = 3;
+
+function minutesWord(minutes: number): string {
+  return minutes === 1 ? '1 minute' : `${minutes} minutes`;
+}
+
+function describeNearWhen(item: NewsNearTrade): string {
+  if (item.relation === 'while-open' || item.minutes === null) return 'scheduled while this trade was open';
+  if (item.relation === 'before-open') return item.minutes === 0 ? 'scheduled right when this trade opened' : `scheduled ${minutesWord(item.minutes)} before this trade opened`;
+  return item.minutes === 0 ? 'scheduled right when this trade closed' : `scheduled ${minutesWord(item.minutes)} after this trade closed`;
+}
+
+/** One line per big news near a trade (at most NEWS_NEAR_TRADE_LINES_SHOWN, then how many more); none for none. The size is never the source's. */
+export function describeNewsNearTrade(items: readonly NewsNearTrade[]): readonly string[] {
+  const lines = items.slice(0, NEWS_NEAR_TRADE_LINES_SHOWN).map(({ event, ...item }) => {
+    const origin = event.source === 'typed' ? 'Added by you.' : `Source: ${NEWS_SOURCES[event.source].name}. Big news by Kairos's rating.`;
+    return `${economicEventName(event)}: ${describeNearWhen({ event, ...item })}. ${origin}`;
+  });
+  const more = items.length - lines.length;
+  if (more > 0) lines.push(`And ${more} more big news ${more === 1 ? 'event' : 'events'} near this trade.`);
+  return Object.freeze(lines);
+}

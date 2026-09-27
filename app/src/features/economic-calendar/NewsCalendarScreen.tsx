@@ -10,23 +10,29 @@ import {
   describeAddedNewsCount,
   describeEmptyWeek,
   describeEventFacts,
+  describeEventDeleted,
   describeEventOrigin,
   describeEventValues,
   describeNewsRefresh,
   describeSavedCopy,
   describeWeekCoverage,
   eventClock,
+  eventDeleteLabel,
   type NewsRefreshState,
 } from '../../application/economic-calendar/calendarWords';
 import { isNewsRefreshDue, loadNewsCalendarCoverage, refreshNewsCalendar, type NewsApiPort } from '../../application/economic-calendar/fetchedNews';
-import { loadEconomicCalendarWeek, onlyBigNews, type EconomicCalendarWeekResult } from '../../application/economic-calendar/economicEvents';
+import { loadSavedNewsHeadlines, refreshNewsHeadlines, type SavedNewsHeadlines } from '../../application/economic-calendar/newsHeadlines';
+import type { KairosApiFailure } from '../../application/online/onlineWords';
+import { deleteEconomicEvent, economicCalendarWeekOf, loadEconomicCalendarWeek, onlyBigNews, type EconomicCalendarWeekResult } from '../../application/economic-calendar/economicEvents';
 import { shiftVisualPnlDayKey } from '../../application/visual-pnl/dayKeyCalendar';
 import type { KairosDatabase } from '../../data/database';
-import type { EconomicEventImpact } from '../../domain/economic-calendar/economicEvent';
+import type { EconomicEventImpact, EconomicEventRecord } from '../../domain/economic-calendar/economicEvent';
 import { NEWS_CALENDAR_SOURCE_IDS, NEWS_SOURCES } from '../../domain/economic-calendar/newsSources';
 import { economicEventName, economicEventSize } from '../../domain/economic-calendar/newsImpact';
 import { Button, Card, UnavailableNotice } from '../../design-system/primitives';
 import { GlossaryHint } from '../learn/GlossaryHint';
+import { NewsEventForm } from './NewsEventForm';
+import { NewsHeadlinesCard } from './NewsHeadlinesCard';
 import { WorldCalendarPanel } from './WorldCalendarPanel';
 import './newsCalendar.css';
 
@@ -53,9 +59,46 @@ function NewsSize({ size }: { readonly size: EconomicEventImpact | null }) {
 }
 
 const NOT_SET_UP: NewsRefreshState = Object.freeze({ kind: 'not-set-up' as const });
+const HEADLINES_NOT_SET_UP: KairosApiFailure = Object.freeze({ ok: false as const, reason: 'not-set-up' as const });
 
 /** The state a busy refresh started from, down to a settled one. */
 const settled = (state: NewsRefreshState): NewsRefreshState => (state.kind === 'busy' ? settled(state.previous) : state);
+
+/** "Delete" on news the trader added, with a confirm; official news has none (the next refresh replaces it). */
+function DeleteNews({ db, event, timeZone, onDeleted }: { readonly db: KairosDatabase; readonly event: EconomicEventRecord; readonly timeZone: string; readonly onDeleted: (event: EconomicEventRecord) => void }) {
+  const [confirming, setConfirming] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const deleteButton = useRef<HTMLButtonElement>(null);
+  const keepButton = useRef<HTMLButtonElement>(null);
+  const focusDelete = useRef(false);
+
+  useEffect(() => {
+    if (confirming) keepButton.current?.focus();
+    else if (focusDelete.current) { focusDelete.current = false; deleteButton.current?.focus(); }
+  }, [confirming]);
+
+  async function remove() {
+    setDeleting(true);
+    const result = await deleteEconomicEvent(db, event.id);
+    setDeleting(false);
+    if (result.ok) { onDeleted(event); return; }
+    focusDelete.current = true;
+    setFailed(true);
+    setConfirming(false);
+  }
+
+  return <div className="kairos-news-delete">
+    {confirming
+      ? <div role="group" aria-label={`Delete ${event.title}?`} className="kairos-news-delete">
+        <p>{`Delete ${event.title} for good?`}</p>
+        <Button variant="danger" size="sm" busy={deleting} onClick={() => { void remove(); }}>Yes, delete</Button>
+        <Button ref={keepButton} variant="secondary" size="sm" onClick={() => { focusDelete.current = true; setConfirming(false); }}>Keep it</Button>
+      </div>
+      : <Button ref={deleteButton} variant="ghost" size="sm" aria-label={eventDeleteLabel(event, timeZone)} onClick={() => { setFailed(false); setConfirming(true); }}>Delete</Button>}
+    {failed ? <p role="alert">Kairos could not delete this news. Nothing was changed.</p> : null}
+  </div>;
+}
 
 /** Where the news comes from: the nine official schedules with links, and the licence credits. */
 function NewsSourcesCard() {
@@ -85,6 +128,12 @@ export function NewsCalendarScreen({ db, now = wallClock, news }: NewsCalendarSc
   const tapped = useRef<HTMLElement | null>(null);
   const statusRef = useRef<HTMLDivElement>(null);
   const [settledByTap, setSettledByTap] = useState(0);
+  // Changes with every finished refresh, so the outcome line is a new live region and the same outcome is heard again.
+  const [attempt, setAttempt] = useState(0);
+  const [deleted, setDeleted] = useState<string | null>(null);
+  const [headlines, setHeadlines] = useState<SavedNewsHeadlines | null>(null);
+  const [headlineFailure, setHeadlineFailure] = useState<KairosApiFailure | null>(setUp ? null : HEADLINES_NOT_SET_UP);
+  const headlinesRunning = useRef<AbortController | null>(null);
   const [state, setState] = useState<ScreenState>({ kind: 'loading' });
   const weekId = useId();
   const idPrefix = useId();
@@ -100,6 +149,7 @@ export function NewsCalendarScreen({ db, now = wallClock, news }: NewsCalendarSc
 
   function startRefresh(from: NewsRefreshState, button: HTMLElement | null) {
     if (news === undefined || !news.setUp || from.kind === 'busy' || from.kind === 'not-set-up') return;
+    running.current?.abort();
     const controller = new AbortController();
     running.current = controller;
     tapped.current = button;
@@ -108,25 +158,50 @@ export function NewsCalendarScreen({ db, now = wallClock, news }: NewsCalendarSc
       if (controller.signal.aborted) return;
       running.current = null;
       setRefresh({ kind: 'done', result });
+      setAttempt((count) => count + 1);
       setReload((count) => count + 1);
       if (button !== null) setSettledByTap((count) => count + 1);
     });
   }
-  const refreshOnTap = (event: MouseEvent<HTMLElement>) => {
-    if (refreshRef.current !== null) startRefresh(refreshRef.current, event.currentTarget);
-  };
+  // The headlines' own refresh: it sets only the card's saved copy and failure, never the status block.
+  function startHeadlinesRefresh() {
+    if (news === undefined || !news.setUp) return;
+    headlinesRunning.current?.abort();
+    const controller = new AbortController();
+    headlinesRunning.current = controller;
+    void refreshNewsHeadlines(db, news, { now: now(), signal: controller.signal }).then(async (result) => {
+      if (controller.signal.aborted) return;
+      setHeadlineFailure(!result.ok && result.reason === 'unavailable' ? result.failure : null);
+      const saved = await loadSavedNewsHeadlines(db);
+      if (!controller.signal.aborted) setHeadlines(saved);
+    });
+  }
+  /** "Refresh" / "Try again": the calendar and the headlines together. */
+  function refreshBoth(from: NewsRefreshState | null, button: HTMLElement | null) {
+    if (from === null || from.kind === 'busy' || from.kind === 'not-set-up') return;
+    startRefresh(from, button);
+    startHeadlinesRefresh();
+  }
+  const refreshOnTap = (event: MouseEvent<HTMLElement>) => refreshBoth(refreshRef.current, event.currentTarget);
 
   // On open, once: read the coverage, then refresh when the saved copy is missing or 30 minutes old. Never from a timer.
+  // Each saved copy refreshes only when it is due.
   useEffect(() => {
-    if (news === undefined || !news.setUp) return;
     let ignore = false;
-    void loadNewsCalendarCoverage(db).then((coverage) => {
+    void loadSavedNewsHeadlines(db).then((saved) => {
       if (ignore) return;
-      const idle: NewsRefreshState = { kind: 'idle' };
-      setRefresh(idle);
-      if (isNewsRefreshDue(coverage.refreshedAt, now())) startRefresh(idle, null);
+      setHeadlines(saved);
+      if (setUp && isNewsRefreshDue(saved.refreshedAt, now())) startHeadlinesRefresh();
     });
-    return () => { ignore = true; running.current?.abort(); };
+    if (setUp) {
+      void loadNewsCalendarCoverage(db).then((coverage) => {
+        if (ignore) return;
+        const idle: NewsRefreshState = { kind: 'idle' };
+        setRefresh(idle);
+        if (isNewsRefreshDue(coverage.refreshedAt, now())) startRefresh(idle, null);
+      });
+    }
+    return () => { ignore = true; running.current?.abort(); headlinesRunning.current?.abort(); };
   }, []);
 
   // After a refresh the trader started: when the tapped button left the document, focus the block's new button, or the week heading.
@@ -162,8 +237,8 @@ export function NewsCalendarScreen({ db, now = wallClock, news }: NewsCalendarSc
       return <div className="kairos-news-calendar__status" ref={statusRef}>
         {refresh.kind === 'busy' ? <p role="status">{NEWS_REFRESHING}</p> : null}
         {line.kind === 'line'
-          ? <><p role={line.role}>{line.text}</p>{line.button === null ? null : <div><Button variant="secondary" size="sm" busy={line.busy} onClick={refreshOnTap}>{line.button}</Button></div>}</>
-          : <UnavailableNotice message={line.words.message} retryLabel={line.words.retryLabel} onRetry={() => { if (refreshRef.current !== null) startRefresh(refreshRef.current, statusRef.current?.querySelector('.kairos-unavailable button') ?? null); }} busy={line.busy} />}
+          ? <><p key={attempt} role={line.role}>{line.text}</p>{line.button === null ? null : <div><Button variant="secondary" size="sm" busy={line.busy} onClick={refreshOnTap}>{line.button}</Button></div>}</>
+          : <UnavailableNotice key={attempt} message={line.words.message} retryLabel={line.words.retryLabel} onRetry={() => refreshBoth(refreshRef.current, statusRef.current?.querySelector('.kairos-unavailable button') ?? null)} busy={line.busy} />}
         {showSaved && result.refreshedAt !== null ? <p>{describeSavedCopy(result.refreshedAt, result.timeZone)}</p> : null}
       </div>;
     })() : null}
@@ -173,11 +248,12 @@ export function NewsCalendarScreen({ db, now = wallClock, news }: NewsCalendarSc
       const allChecked = result.checkedSources.length === NEWS_CALENDAR_SOURCE_IDS.length;
       return <Card as="section" className="kairos-news-calendar-card" aria-labelledby={weekId}>
         <h2 id={weekId} tabIndex={-1}>{calendarWeekHeading(result.weekStartDayKey)}</h2>
+        {deleted === null ? null : <p role="status">{deleted}</p>}
         <p>{`Times in ${result.timeZone}.`}</p>
         <div className="kairos-news-calendar__controls">
-          <Button variant="secondary" size="sm" onClick={() => setWeekStart((current) => shiftVisualPnlDayKey(current ?? result.thisWeekStartDayKey, -7))}>Earlier week</Button>
-          <Button variant="secondary" size="sm" onClick={() => setWeekStart(null)}>This week</Button>
-          <Button variant="secondary" size="sm" onClick={() => setWeekStart((current) => shiftVisualPnlDayKey(current ?? result.thisWeekStartDayKey, 7))}>Later week</Button>
+          <Button variant="secondary" size="sm" onClick={() => { setDeleted(null); setWeekStart((current) => shiftVisualPnlDayKey(current ?? result.thisWeekStartDayKey, -7)); }}>Earlier week</Button>
+          <Button variant="secondary" size="sm" onClick={() => { setDeleted(null); setWeekStart(null); }}>This week</Button>
+          <Button variant="secondary" size="sm" onClick={() => { setDeleted(null); setWeekStart((current) => shiftVisualPnlDayKey(current ?? result.thisWeekStartDayKey, 7)); }}>Later week</Button>
         </div>
         <p>{describeWeekCoverage(result.checkedSources)}</p>
         <div className="kairos-news-calendar__filter">
@@ -198,6 +274,11 @@ export function NewsCalendarScreen({ db, now = wallClock, news }: NewsCalendarSc
                     <p>{describeEventFacts(event)}</p>
                     <p>{describeEventOrigin(event)}</p>
                     {values === null ? null : <p>{values}</p>}
+                    {event.source === 'typed' ? <DeleteNews db={db} event={event} timeZone={result.timeZone} onDeleted={(gone) => {
+                      setDeleted(describeEventDeleted(gone));
+                      setReload((count) => count + 1);
+                      document.getElementById(weekId)?.focus();
+                    }} /> : null}
                   </li>;
                 })}
               </ul>
@@ -206,6 +287,17 @@ export function NewsCalendarScreen({ db, now = wallClock, news }: NewsCalendarSc
         <p>{describeAddedNewsCount(result.savedCount)}</p>
       </Card>;
     })() : null}
+    {state.kind === 'ready' && state.result.kind === 'ready' ? (() => {
+      const timeZone = state.result.timeZone;
+      return <NewsEventForm db={db} timeZone={timeZone} now={now} onSaved={(event) => {
+        setDeleted(null);
+        setWeekStart(economicCalendarWeekOf(event.startsAt, timeZone));
+        setReload((count) => count + 1);
+      }} />;
+    })() : null}
+    {state.kind === 'ready' && state.result.kind === 'ready' && headlines !== null
+      ? <NewsHeadlinesCard headlines={headlines} timeZone={state.result.timeZone} failure={headlineFailure} />
+      : null}
     <NewsSourcesCard />
     <WorldCalendarPanel />
   </section>;
