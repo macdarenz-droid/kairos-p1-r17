@@ -7,15 +7,17 @@ import { TradePictureCard } from './TradePictureCard';
 import { TradePictureCandleLoaderContext } from './tradePictureCandleQueue';
 import { saveTradePictureImage, serializeTradePictureSvg, tradePictureFileName, type TradePictureSavePorts } from './tradePictureImage';
 
-type CandleState = { readonly kind: 'waiting' } | { readonly kind: 'done'; readonly result: TradePictureCandlesResult };
+/** `retrying`: "Try again" was tapped; the last answer stays on screen (its box and focused button) until the new one arrives. */
+type CandleState = { readonly kind: 'waiting' } | { readonly kind: 'done'; readonly result: TradePictureCandlesResult; readonly retrying?: boolean };
 
 const NO_CANDLE_SOURCE: TradePictureCandlesResult = Object.freeze({ ok: false, why: 'no-candle-source', retryAfterSeconds: null, note: null });
 const NO_CANDLES: TradePictureCandlesResult = Object.freeze({ ok: false, why: 'no-candles', retryAfterSeconds: null, note: null });
 const SOURCE_DOWN: TradePictureCandlesResult = Object.freeze({ ok: false, why: 'source-down', retryAfterSeconds: null, note: null });
 
 /** What the card shows for the loaded candles: the source line and note, or the words for why there are none. */
-function candleCardProps(state: CandleState): { candleSource: string | null; candleNote: string | null; candleFailure: UnavailableWords | null } {
+function candleCardProps(state: CandleState): { candleSource: string | null; candleNote: string | null; candleFailure: UnavailableWords | null; candleRetrying?: boolean } {
   if (state.kind === 'waiting') return { candleSource: null, candleNote: null, candleFailure: null };
+  if (state.retrying) return { ...candleCardProps({ kind: 'done', result: state.result }), candleRetrying: true };
   const { result } = state;
   if (result.ok) return { candleSource: result.source, candleNote: result.note, candleFailure: null };
   switch (result.why) {
@@ -33,7 +35,8 @@ function useTradePictureCandles(entry: JournalHistoryEntry, target: React.RefObj
   const [visible, setVisible] = useState(eager);
   const [state, setState] = useState<CandleState>({ kind: 'waiting' });
   const [revision, setRevision] = useState(0);
-  const reload = useCallback(() => setRevision(value => value + 1), []);
+  const retryRequested = useRef(false);
+  const reload = useCallback(() => { retryRequested.current = true; setRevision(value => value + 1); }, []);
   const hasSource = tradePictureHasCandleSource(entry.trade.marketType);
   useEffect(() => {
     if (visible) return;
@@ -49,7 +52,9 @@ function useTradePictureCandles(entry: JournalHistoryEntry, target: React.RefObj
     if (!hasSource) { setState({ kind: 'done', result: NO_CANDLE_SOURCE }); return; }
     if (!visible) return;
     let active = true;
-    setState({ kind: 'waiting' });
+    const retry = retryRequested.current;
+    retryRequested.current = false;
+    setState(current => (retry && current.kind === 'done' ? { ...current, retrying: true } : { kind: 'waiting' }));
     const load = contextLoader ?? (async () => NO_CANDLES);
     void load(entry.trade, entry.executions).catch(() => SOURCE_DOWN).then(result => { if (active) setState({ kind: 'done', result }); });
     return () => { active = false; };

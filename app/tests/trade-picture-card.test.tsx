@@ -251,3 +251,13 @@ describe('T-039d labels, wick arrows and times', () => {
     expect(open.container.querySelector('[data-info="closed"] dd')!.textContent).toBe('Not available');
   });
 });
+
+describe('T-048f fix r1 the no-candles sentences reach screen readers', () => {
+  it('draws the not-listed sentence outside the image', () => {
+    const model = projectTradePicture({ ...input, candles: null });
+    const note = "Binance doesn't list BTCUSDX. Check the spelling, for example BTCUSDT.";
+    render(<TradePictureCard model={model} candleNote={note} />);
+    const sentence = screen.getByText(note);
+    expect(screen.getByRole('img')).not.toContainElement(sentence);
+  });
+});

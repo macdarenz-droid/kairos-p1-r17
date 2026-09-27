@@ -95,6 +95,10 @@ describe('T-038b past candles for a replay', () => {
     expect(loaded.replay.source).toBe('Candles: Binance Spot · BTC/USDT');
     expect(loaded.replay.note).toBe('Matched btc/usdt to BTC/USDT on Binance.');
     expect(fake.requests[0]).toMatchObject({ instrument: { venue: 'binance-spot', symbol: 'BTCUSDT' }, pair: { base: 'BTC', quote: 'USDT' } });
+    // T-048f fix r1: Replay always shows spot candles, so a perpetual mark's note says nothing about futures.
+    const perpetual = await loadReplayCandles(request({ market: 'BTCUSDT.P' }), { ...fake.market, metadata: btc });
+    if (!perpetual.ok) throw new Error(perpetual.reason);
+    expect(perpetual.replay.note).toBe('Matched BTCUSDT.P to BTC/USDT on Binance.');
     const busy = { acquireHistory: async () => ({ ok: false as const, reason: 'unavailable' as const, why: 'busy' as const, retryAfterSeconds: 30 }) };
     expect(await loadReplayCandles(request(), { ...fake.market, metadata: btc, history: busy })).toEqual({ ok: false, reason: 'unavailable', why: 'busy', retryAfterSeconds: 30 });
   });

@@ -22,6 +22,7 @@ export type CryptoMarketMatchResult =
   | Readonly<{ ok: false; why: 'empty' | 'not-listed'; note: string }>;
 
 const LISTED_VENUE = 'binance-spot';
+const FUTURES_CANDLES = ' Futures candles.';
 /** Longest first, so ".PERP" wins over ".P". */
 const PERPETUAL_MARKS = ['.PERP', '-PERP', '_PERP', '.P'] as const;
 const SEPARATOR = /[/\-_:]/;
@@ -59,7 +60,7 @@ export function matchCryptoMarket(
   if (how[0] !== 'exact') {
     note = `Matched ${shown} to ${base}/${quote} on Binance.`;
     if (how.includes('usd-as-usdt')) note += ` Binance has no ${base}/USD market, so Kairos shows ${base}/USDT (USDT is a dollar stablecoin).`;
-    if (perpetual) note += ' Futures candles.';
+    if (perpetual) note += FUTURES_CANDLES;
   }
   return Object.freeze({
     ok: true,
@@ -152,6 +153,12 @@ export function describeFuturesOnlySource(symbol: string): string {
 /** The sentence when neither Binance Spot nor Binance Futures lists what was typed. */
 export function describeFuturesOnlyNotListed(typed: string): string {
   return `Binance Spot and Futures don't list ${typed.trim()}. Check the spelling, for example BTCUSDT.`;
+}
+
+/** The match note for the candles actually shown: no "Futures candles." under spot candles (Replay, or the spot fallback). */
+export function matchNoteFor(match: CryptoMarketMatch, shown: CryptoCandleMarket): string | null {
+  if (match.note === null || shown !== 'spot' || !match.note.endsWith(FUTURES_CANDLES)) return match.note;
+  return match.note.slice(0, -FUTURES_CANDLES.length);
 }
 
 /** The source line under a picture: where the candles came from, and why when it is not the usual place. */

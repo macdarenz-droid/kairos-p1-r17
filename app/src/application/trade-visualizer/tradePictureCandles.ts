@@ -2,7 +2,7 @@ import type { MarketType, TradeExecutionRecord, TradeRecord } from '../../domain
 import type { LiveMarketUniverseInstrumentMetadataAcquisitionPort } from '../../services/market-data/LiveMarketUniverseInstrumentMetadataAcquisitionPort';
 import type { MarketCandle, MarketCandleHistoryPort, MarketCandleHistoryResult } from '../../services/market-data/MarketCandleHistoryPort';
 import type { MarketDataUnavailableWhy } from '../../services/market-data/marketDataTypes';
-import { describeCandleSource, describeFuturesOnlyNotListed, describeFuturesOnlySource, futuresOnlyMarket, matchCryptoMarket } from '../market-reference/cryptoMarket';
+import { describeCandleSource, describeFuturesOnlyNotListed, describeFuturesOnlySource, futuresOnlyMarket, matchCryptoMarket, matchNoteFor } from '../market-reference/cryptoMarket';
 
 const MINUTE_MS = 60_000;
 const HOUR_MS = 60 * MINUTE_MS;
@@ -203,7 +203,7 @@ export async function loadTradePictureCandles(
       ok: true as const,
       candles: result.snapshot.candles,
       source: describeCandleSource(result.snapshot.origin, match, match.candles),
-      note: match.note,
+      note: matchNoteFor(match, result.snapshot.origin === undefined || result.snapshot.origin.market === 'spot' ? 'spot' : 'usdm-futures'),
     });
     cache.set(key, success);
     return success;

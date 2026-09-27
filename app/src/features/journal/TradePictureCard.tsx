@@ -146,7 +146,7 @@ function displayValue(model: TradePictureModel, key: string): string {
  * T-027a model only; every number shown comes from that model.
  * Box labels sit at the far edge and are drawn last; every edge a candle runs past gets an arrow (T-039d).
  */
-export function TradePictureCard({ model, candlesLoading = false, svgRef, compact = false, label, notes = true, candleSource = null, candleNote = null, candleFailure = null, onRetryCandles }: {
+export function TradePictureCard({ model, candlesLoading = false, svgRef, compact = false, label, notes = true, candleSource = null, candleNote = null, candleFailure = null, onRetryCandles, candleRetrying = false }: {
   readonly model: TradePictureModel;
   /** Candles are still on their way: say so instead of the connection note. */
   readonly candlesLoading?: boolean;
@@ -165,6 +165,8 @@ export function TradePictureCard({ model, candlesLoading = false, svgRef, compac
   /** Why the candles could not be had, in the application's words; null when there is no such failure. */
   readonly candleFailure?: UnavailableWords | null;
   readonly onRetryCandles?: () => void;
+  /** "Try again" is asking: the box and its button stay, busy, until the answer arrives. */
+  readonly candleRetrying?: boolean;
 }) {
   const pad = compact ? COMPACT_PAD : PAD;
   const clipId = `kairos-trade-picture-clip${useId()}`;
@@ -216,13 +218,14 @@ export function TradePictureCard({ model, candlesLoading = false, svgRef, compac
           {model.rewardBox ? <BoxLabel box={model.rewardBox} scale={scale} kind="reward" /> : null}
         </> : null}
       </svg>
-      {notes && noCandles && candleFailure === null ? <p className="kairos-trade-picture__note">{!model.marketHasCandles ? 'Candles are shown for crypto trades only for now.' : candlesLoading ? 'Loading candles…' : candleNote ?? 'No candles for this time.'}</p> : null}
       {notes && noPlan ? <p className="kairos-trade-picture__note">Add a stop and target to see your risk box.</p> : null}
     </div>
+    {/* Outside the image role, so screen readers hear why there are no candles. */}
+    {notes && noCandles && candleFailure === null ? <p className="kairos-trade-picture__note">{!model.marketHasCandles ? 'Candles are shown for crypto trades only for now.' : candlesLoading ? 'Loading candles…' : candleNote ?? 'No candles for this time.'}</p> : null}
     {/* Outside the image role, so its words and button reach screen readers. The thumbnail sits inside a button:
         it shows the reason and retries quietly; the full picture has "Try again". */}
     {notes && noCandles && model.marketHasCandles && !candlesLoading && candleFailure !== null
-      ? <UnavailableNotice live={false} message={candleFailure.message} retryLabel={compact ? null : candleFailure.retryLabel} onRetry={onRetryCandles} retryWhenOnline={candleFailure.retryWhenOnline} />
+      ? <UnavailableNotice live={false} message={candleFailure.message} retryLabel={compact ? null : candleFailure.retryLabel} onRetry={onRetryCandles} busy={candleRetrying} retryWhenOnline={candleFailure.retryWhenOnline} />
       : null}
     {notes && !noCandles && !compact && candleSource !== null ? <>
       <p className="kairos-trade-picture__source">{candleSource}</p>

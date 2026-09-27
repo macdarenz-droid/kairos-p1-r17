@@ -6,7 +6,7 @@ import { decimalNormalize } from '../../domain/calculations/decimalKernel';
 import type { LiveMarketUniverseInstrumentMetadataAcquisitionPort } from '../../services/market-data/LiveMarketUniverseInstrumentMetadataAcquisitionPort';
 import type { MarketCandle, MarketCandleHistoryPort } from '../../services/market-data/MarketCandleHistoryPort';
 import type { MarketDataUnavailableWhy } from '../../services/market-data/marketDataTypes';
-import { describeCandleSource, matchCryptoMarket } from '../market-reference/cryptoMarket';
+import { describeCandleSource, matchCryptoMarket, matchNoteFor } from '../market-reference/cryptoMarket';
 import { normalizeTradeSymbol } from '../trade-visualizer/tradePictureCandles';
 import { isPriceCurrencyInput } from '../trades/priceCurrencyInput';
 
@@ -111,7 +111,7 @@ export async function loadReplayCandles(request: ReplayRequest, deps: ReplayMark
     if (startIndex === candles.length) return fail('no-future');
     return Object.freeze({ ok: true as const, replay: Object.freeze({
       symbol, quoteAsset, candleSize: size, candles: Object.freeze(candles), startIndex,
-      source: describeCandleSource(history.snapshot.origin, match, 'spot'), note: match.note,
+      source: describeCandleSource(history.snapshot.origin, match, 'spot'), note: matchNoteFor(match, 'spot'),
     }) });
   } catch {
     return unavailable();

@@ -90,6 +90,29 @@ describe('T-027d trade picture on the cards', () => {
     await waitFor(() => expect(loader).toHaveBeenCalledTimes(3));
   });
 
+  it('T-048f fix r1: "Try again" in the picture sheet keeps focus inside the dialog while it asks, and Escape still closes it', async () => {
+    const db = await database();
+    await seedClosedTrade(db);
+    const [entry] = await listJournalHistory(db);
+    let answer: (value: Awaited<ReturnType<TradePictureCandleLoader>>) => void = () => undefined;
+    const loader = vi.fn<TradePictureCandleLoader>()
+      .mockResolvedValueOnce({ ok: false, why: 'source-down', retryAfterSeconds: null, note: null })
+      .mockImplementationOnce(() => new Promise(resolve => { answer = resolve; }));
+    render(<TradePictureCandleLoaderContext.Provider value={loader}><TradePicture entry={entry} variant="thumbnail" /></TradePictureCandleLoaderContext.Provider>);
+    await waitFor(() => expect(loader).toHaveBeenCalledTimes(1));
+    fireEvent.click(await screen.findByRole('button', { name: 'Open the BTCUSDT trade picture' }));
+    const dialog = screen.getByRole('dialog', { name: 'BTCUSDT trade' });
+    const retry = await within(dialog).findByRole('button', { name: 'Try again' });
+    retry.focus();
+    fireEvent.click(retry);
+    await waitFor(() => expect(loader).toHaveBeenCalledTimes(2));
+    expect(dialog).toContainElement(document.activeElement as HTMLElement);
+    expect(within(dialog).getByRole('button', { name: 'Try again' })).toHaveAttribute('aria-busy', 'true');
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await act(async () => answer({ ok: false, why: 'no-candles', retryAfterSeconds: null, note: null }));
+  });
+
   it('T-048f: loaded candles show where they came from', async () => {
     const db = await database();
     await seedClosedTrade(db);

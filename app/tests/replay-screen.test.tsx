@@ -81,7 +81,9 @@ describe('T-038d playing a replay', () => {
   });
 
   it('shows the future one candle at a time', async () => {
-    await mount();
+    const fake = fakeReplayMarket({ nowMs: NOW });
+    const metadata = { acquireInstrumentMetadata: async () => ({ ok: true as const, facts: [{ instrument: { venue: 'binance-spot', symbol: 'BTCUSDT' }, baseAsset: 'BTC', quoteAsset: 'USDT', tradingEnabled: true }] }) };
+    await mount({ ...fake, market: { ...fake.market, metadata } });
     await startReplay();
     const region = await stage();
     fireEvent.click(screen.getByRole('button', { name: 'Next candle' }));
@@ -162,6 +164,18 @@ describe('T-038d refusals and offline', () => {
     fake.state.metadataFails = false;
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(await stage()).toBeInTheDocument();
+  });
+});
+
+describe('T-048f fix r1 the replay names its source', () => {
+  it('shows "Candles: Binance Spot · BTC/USDT" under the chart', async () => {
+    const fake = fakeReplayMarket({ nowMs: NOW });
+    const metadata = { acquireInstrumentMetadata: async () => ({ ok: true as const, facts: [{ instrument: { venue: 'binance-spot', symbol: 'BTCUSDT' }, baseAsset: 'BTC', quoteAsset: 'USDT', tradingEnabled: true }] }) };
+    await mount({ ...fake, market: { ...fake.market, metadata } });
+    await startReplay();
+    const region = await stage();
+    expect(region).toBeInTheDocument();
+    expect(screen.getByText('Candles: Binance Spot · BTC/USDT')).toBeInTheDocument();
   });
 });
 

@@ -197,6 +197,22 @@ describe('T-048f the matching market, futures candles and the real reason', () =
     expect(result).toMatchObject({ ok: true, source: 'Candles: Binance Spot · BTC/USDT · no futures candles for this market' });
   });
 
+  it('T-048f fix r1: a BTCUSDT.P picture that falls back to spot has no "Futures candles." in its note, and its source line says why', async () => {
+    const { acquireHistory, deps } = ports(request => request.instrument.venue === 'binance-usdm'
+      ? { ok: false, reason: 'unavailable', why: 'unknown-market', retryAfterSeconds: null }
+      : answered(request, binance('spot')));
+    const result = await loadTradePictureCandles(trade({ symbol: 'BTCUSDT.P' }), fills, deps);
+    expect(acquireHistory).toHaveBeenCalledTimes(2);
+    expect(result).toMatchObject({ ok: true, source: 'Candles: Binance Spot · BTC/USDT · no futures candles for this market', note: 'Matched BTCUSDT.P to BTC/USDT on Binance.' });
+  });
+
+  it('T-048f fix r1: the futures-to-spot fallback asks spot exactly once, even when spot has no such market either', async () => {
+    const { acquireHistory, deps } = ports(() => ({ ok: false, reason: 'unavailable', why: 'unknown-market', retryAfterSeconds: null }));
+    const result = await loadTradePictureCandles(trade({ symbol: 'BTCUSDT', marketType: 'futures' }), fills, deps);
+    expect(acquireHistory.mock.calls.map(([request]) => request.instrument.venue)).toEqual(['binance-usdm', 'binance-spot']);
+    expect(result).toMatchObject({ ok: false, why: 'unknown-market' });
+  });
+
   it('BTC/USD loads BTCUSDT with the stablecoin note', async () => {
     const { acquireHistory, deps } = ports(request => answered(request, binance('spot')));
     const result = await loadTradePictureCandles(trade({ symbol: 'BTC/USD' }), fills, deps);
