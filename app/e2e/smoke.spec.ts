@@ -709,3 +709,125 @@ test('(p) News: official news from the Kairos server, then offline, then on the 
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   expect(errors).toEqual([]);
 });
+
+test('(q) Market data through the Kairos server: sources on the pictures, the real reason, a quiet retry, and Home', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  await activate(page);
+  const cors = { 'Access-Control-Allow-Origin': '*' };
+  const serverAnswer = (data: unknown) => JSON.stringify({ apiVersion: 1, ok: true, data });
+  const minute = 60_000;
+  const intervalMs: Record<string, number> = { '1m': minute, '3m': 3 * minute, '5m': 5 * minute, '15m': 15 * minute, '30m': 30 * minute, '1h': 60 * minute, '2h': 120 * minute, '4h': 240 * minute, '6h': 360 * minute, '8h': 480 * minute, '12h': 720 * minute, '1d': 1_440 * minute };
+  const candleCalls: string[] = [];
+  let busyOnce = true;
+  let offline = false; // page.route still answers while the context is offline, so the handler drops requests itself
+  // The QA build asks the Kairos server (VITE_KAIROS_API_URL); every answer uses the server's exact shapes.
+  await page.route(url => url.hostname === 'api.qa.invalid' && url.pathname.startsWith('/market/'), async route => {
+    if (offline) return route.abort('internetdisconnected');
+    const url = new URL(route.request().url());
+    const fetchedAt = new Date().toISOString();
+    if (url.pathname === '/market/symbols') {
+      return route.fulfill({ headers: cors, contentType: 'application/json', body: serverAnswer({ source: 'binance-spot', fetchedAt, leftOut: 0, markets: [
+        { symbol: 'BTCUSDT', base: 'BTC', quote: 'USDT', tickSize: '0.01', stepSize: '0.00001' },
+        { symbol: 'ETHUSDT', base: 'ETH', quote: 'USDT', tickSize: '0.01', stepSize: '0.0001' },
+      ] }) });
+    }
+    if (url.pathname === '/market/tickers') {
+      const now = Date.now();
+      const tickers = (url.searchParams.get('symbols') ?? '').split(',').map((symbol, index) => ({
+        symbol, lastPrice: index === 0 ? '61000' : '2450', openPrice: index === 0 ? '60000' : '2500', highPrice: index === 0 ? '61500' : '2520', lowPrice: index === 0 ? '59800' : '2440',
+        volume: '1000', quoteVolume: index === 0 ? '61000000' : '2450000', openTime: new Date(now - 86_400_000).toISOString(), closeTime: new Date(now).toISOString(),
+      }));
+      return route.fulfill({ headers: cors, contentType: 'application/json', body: serverAnswer({ source: 'binance-spot', fetchedAt, tickers }) });
+    }
+    if (url.pathname !== '/market/candles') return route.abort();
+    const market = url.searchParams.get('market'), symbol = url.searchParams.get('symbol') ?? '', interval = url.searchParams.get('interval') ?? '';
+    candleCalls.push(`${market} ${symbol}`);
+    if (symbol === 'ETHUSDT' && busyOnce) {
+      busyOnce = false;
+      return route.fulfill({ status: 503, headers: { ...cors, 'Retry-After': '60' }, contentType: 'application/json', body: JSON.stringify({ apiVersion: 1, ok: false, error: 'unavailable', reason: 'source-busy', retryAfter: 60 }) });
+    }
+    const step = intervalMs[interval];
+    if (step === undefined) return route.abort();
+    const limit = Number(url.searchParams.get('limit'));
+    const end = Math.min(Number(url.searchParams.get('end') ?? Date.now()), Date.now());
+    const start = Number(url.searchParams.get('start') ?? end - limit * step);
+    const candles: unknown[] = [];
+    for (let openMs = start; openMs <= end && candles.length < limit; openMs += step) {
+      const k = candles.length % 7;
+      candles.push({ openTime: new Date(openMs).toISOString(), closeTime: new Date(openMs + step - 1).toISOString(), open: String(100 + k), high: String(102 + k), low: String(99 + k), close: String(101 + k), volume: '3' });
+    }
+    const futures = market === 'binance-usdm';
+    const source = futures ? { provider: 'okx', market: 'perpetual-swap', symbol: `${url.searchParams.get('base')}-${url.searchParams.get('quote')}-SWAP` } : { provider: 'binance', market: 'spot', symbol };
+    return route.fulfill({ headers: cors, contentType: 'application/json', body: serverAnswer({ source, backup: futures ? 'refused' : null, interval, fetchedAt, candles, next: null }) });
+  });
+
+  await page.goto('/journal');
+  await page.getByRole('button', { name: 'Use Asia/Manila (this device)' }).click();
+  const quickLog = async (symbol: string, when?: { opened: string; closed: string }) => {
+    await page.getByRole('button', { name: 'Quick log' }).click();
+    await page.getByLabel(/^Market/).selectOption('crypto');
+    await page.getByLabel(/^Symbol/).fill(symbol);
+    await page.getByLabel(/^Direction/).selectOption('long');
+    await page.getByLabel(/^Entry price/).fill('100');
+    await page.getByLabel(/^Exit price/).fill('104');
+    await page.getByLabel(/^Quantity/).fill('1');
+    if (when === undefined) {
+      await page.getByRole('button', { name: 'Set opened time to now' }).click();
+      await page.getByRole('button', { name: 'Set closed time to now' }).click();
+    } else {
+      await page.locator('input[name="openedAt"]').fill(when.opened);
+      await page.locator('input[name="closedAt"]').fill(when.closed);
+    }
+    await page.getByLabel('Currency code').fill('USDT');
+    await page.getByRole('button', { name: 'Save trade' }).click();
+    await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+  };
+  const openPicture = async (symbol: string) => {
+    await page.getByRole('button', { name: `Open the ${symbol} trade picture` }).first().click();
+    const dialog = page.getByRole('dialog', { name: `${symbol} trade` });
+    await expect(dialog).toBeVisible();
+    return dialog;
+  };
+  const closePicture = async () => {
+    await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+  };
+
+  await quickLog('BTC/USDT');
+  let dialog = await openPicture('BTC/USDT');
+  await expect(dialog.locator('.kairos-trade-picture__source')).toHaveText('Candles: Binance Spot · BTC/USDT');
+  await closePicture();
+
+  await quickLog('BTCUSDT.P');
+  dialog = await openPicture('BTCUSDT.P');
+  await expect(dialog.locator('.kairos-trade-picture__source')).toHaveText("Candles: OKX Futures · BTC/USDT · Binance isn't available in your region");
+  await closePicture();
+  expect(candleCalls).toContain('binance-usdm BTCUSDT');
+
+  await quickLog('ETH/USDT');
+  dialog = await openPicture('ETH/USDT');
+  await expect(dialog.locator('.kairos-unavailable')).toContainText('too many requests');
+  await dialog.getByRole('button', { name: 'Try again' }).click();
+  await expect(dialog.locator('.kairos-trade-picture__source')).toHaveText('Candles: Binance Spot · ETH/USDT');
+  await closePicture();
+
+  offline = true;
+  await page.context().setOffline(true);
+  // Another day, so no copy of an earlier answer can stand in for the network.
+  await quickLog('ETHUSDT', { opened: '2026-09-20T09:00', closed: '2026-09-20T10:00' });
+  dialog = await openPicture('ETHUSDT');
+  await expect(dialog.locator('.kairos-unavailable')).toContainText("you're offline");
+  offline = false;
+  await page.context().setOffline(false);
+  // No tap: the picture asks again by itself when the connection comes back.
+  await expect(dialog.locator('.kairos-trade-picture__source')).toHaveText('Candles: Binance Spot · ETH/USDT');
+  await closePicture();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+
+  await page.goto('/');
+  await expect(page.locator('.kairos-glass-bubble[data-identity="BTC"]')).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('.kairos-glass-bubble[data-identity="ETH"]')).toBeVisible();
+  await expect(page.getByText('Unavailable · Live prices', { exact: false })).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
