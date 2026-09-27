@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { JOURNAL_HISTORY_SOURCES, type JournalHistoryEntry, type JournalHistoryScope } from '../application/journal';
 import { saveTradeDiscipline } from '../application/discipline';
 import { Button, EmptyState, ErrorState, Field, ResultText, Select, Skeleton } from '../design-system/primitives';
@@ -81,12 +82,39 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
   // Journal passes the real sources, Practice the paper one; the discipline writer needs the page's scope.
   const disciplineSaved = (record: Parameters<typeof discipline.remember>[0]) => { discipline.remember(record); onDisciplineSaved?.(); };
   const scope: JournalHistoryScope = allowedSources.some(source => (JOURNAL_HISTORY_SOURCES.practice as readonly TradeSource[]).includes(source)) ? 'practice' : 'real';
+  // "Try again" unmounts its own error box, so focus would fall to the page (WCAG 2.4.3). When it had focus, focus goes
+  // to what the retry settles on: the heading or the first new card after it works, the new "Try again" when it fails.
+  const section = useRef<HTMLElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const refocus = useRef<{ readonly kind: 'load' } | { readonly kind: 'older'; readonly shown: number } | null>(null);
+  const retryHadFocus = (): boolean => document.activeElement?.closest('.kairos-error-state') != null;
+  const retryLoad = onRetry === undefined ? undefined : () => { refocus.current = retryHadFocus() ? { kind: 'load' } : null; onRetry(); };
+  const retryOlder = onShowOlder === undefined ? undefined : () => { refocus.current = retryHadFocus() ? { kind: 'older', shown: entries.length } : null; onShowOlder(); };
+  const tradeDeleted = onTradeDeleted === undefined ? undefined : async (notice: string) => { await onTradeDeleted(notice); heading.current?.focus(); };
+
+  useEffect(() => {
+    const target = refocus.current;
+    if (target === null || (target.kind === 'load' ? isLoading : isLoadingOlder)) return;
+    refocus.current = null;
+    const root = section.current;
+    if (root === null) return;
+    const firstFocusable = (element: Element | null | undefined) => element?.querySelector<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled])');
+    if (target.kind === 'load') {
+      (errorMessage ? firstFocusable(root.querySelector('.kairos-history__load-error')) : heading.current)?.focus();
+      return;
+    }
+    const next = olderFailed
+      ? firstFocusable(root.querySelector('.kairos-history__older-error'))
+      : firstFocusable(root.querySelectorAll('.kairos-history-card')[target.shown]) ?? root.querySelector<HTMLElement>('.kairos-history__older:not([disabled])');
+    (next ?? heading.current)?.focus();
+  }, [isLoading, isLoadingOlder, errorMessage, olderFailed, entries.length]);
+
   return (
-    <section className="kairos-history" aria-labelledby="kairos-history-title" aria-busy={isLoading || undefined}>
+    <section ref={section} className="kairos-history" aria-labelledby="kairos-history-title" aria-busy={isLoading || undefined}>
       <div className="kairos-history__heading">
         <div>
           <p className="kairos-journal__eyebrow">Saved locally</p>
-          <h2 id="kairos-history-title">Trade history</h2>
+          <h2 id="kairos-history-title" ref={heading} tabIndex={-1}>Trade history</h2>
         </div>
         <span className="kairos-history__count">{entries.length} shown</span>
       </div>
@@ -98,7 +126,7 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
         </Field>
       </div>
 
-      {errorMessage ? <ErrorState message={errorMessage} onRetry={onRetry} /> : null}
+      {errorMessage ? <ErrorState className="kairos-history__load-error" message={errorMessage} onRetry={retryLoad} /> : null}
       {updateNotice ? <p className="kairos-history__state" role="status">{updateNotice}</p> : null}
       {isLoading ? <Skeleton label="Loading trade history…" live={false} /> : null}
       {!isLoading && !errorMessage && entries.length === 0 ? (
@@ -141,7 +169,7 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
                 {db && onTradeUpdated ? <JournalOpenTradeUpdate entry={entry} db={db} onCommitted={onTradeUpdated} allowedSources={allowedSources} /> : null}
                 {db && onTradeUpdated && allowedSources.includes(entry.trade.source) ? <EntriesAndExitsEditor entry={entry} save={input => updateTradeExecution(db, { ...input, allowedSources })} onSaved={onTradeUpdated} /> : null}
                 {db && onTradeOpened ? <JournalDraftTradeActivation entry={entry} db={db} onOpened={onTradeOpened} allowedSources={allowedSources} /> : null}
-                {db && onTradeDeleted ? <JournalTradeDeleteControl entry={entry} db={db} onDeleted={onTradeDeleted} /> : null}
+                {db && tradeDeleted ? <JournalTradeDeleteControl entry={entry} db={db} onDeleted={tradeDeleted} /> : null}
                 <ResultText outcome={entry.visualPnl.outcome} label={entry.visualPnl.label} amount={entry.visualPnl.amount} currency={entry.visualPnl.currency}
                   className={`kairos-history-card__outcome kairos-history-card__outcome--${entry.visualPnl.outcome}`} />
                 <TradePicture entry={entry} variant="thumbnail" />
@@ -168,7 +196,7 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
           {isLoadingOlder ? 'Loading older trades…' : 'Show older trades'}
         </button>
       ) : null}
-      {olderFailed ? <ErrorState message="Kairos could not load older trades. Your stored trades were not changed." onRetry={onShowOlder} /> : null}
+      {olderFailed ? <ErrorState className="kairos-history__older-error" message="Kairos could not load older trades. Your stored trades were not changed." onRetry={retryOlder} /> : null}
     </section>
   );
 }

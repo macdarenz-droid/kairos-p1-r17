@@ -147,6 +147,10 @@ export function AnalysisTimeAssistedSnapshotControls({ history = analysisHistory
   const handoff = useAnalysisHandoff();
   const handoffOpened = useRef(false);
   const [openRequest, setOpenRequest] = useState<string | null>(null);
+  const savedLabelField = useRef<HTMLInputElement>(null);
+  const deleteButton = useRef<HTMLButtonElement>(null);
+  // Set when a finished delete reloads the list: if nothing is left to select, focus moves from the disabled button to the label field.
+  const focusAfterDelete = useRef(false);
   useEffect(() => { setStatus({ kind: 'idle' }); return () => { controller.current?.abort(); controller.current = null; }; }, [marketKey]);
   useEffect(() => {
     if (instrument === null) { setSavedList([]); setSelectedSavedId(''); setSavedStatus({ kind: 'idle' }); return; }
@@ -158,6 +162,12 @@ export function AnalysisTimeAssistedSnapshotControls({ history = analysisHistory
     return () => { cancelled = true; };
     // The list follows the exact market and every completed save.
   }, [saved, marketKey, listRevision]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!focusAfterDelete.current) return;
+    focusAfterDelete.current = false;
+    const active = document.activeElement;
+    if (selectedSavedId === '' && (active === deleteButton.current || active === document.body || active === null)) savedLabelField.current?.focus();
+  }, [savedList]); // eslint-disable-line react-hooks/exhaustive-deps
   const loadSnapshotById = (id: string) => {
     setSavedStatus({ kind: 'loading' });
     saved.load(id).then(outcome => {
@@ -195,10 +205,12 @@ export function AnalysisTimeAssistedSnapshotControls({ history = analysisHistory
   const removeSnapshot = () => {
     if (selectedSavedId === '') return;
     setSavedStatus({ kind: 'deleting' });
+    // The dialog stays open and busy until the delete answers, so its focus return lands on an enabled "Delete snapshot".
     saved.remove(selectedSavedId).then(outcome => {
-      if (outcome.ok) { setSavedStatus({ kind: 'deleted', id: outcome.savedTimeAssistedSnapshotId }); setListRevision(value => value + 1); }
-      else { setSavedStatus({ kind: 'error', reason: savedErrorText(outcome.reason) }); if (outcome.type === 'not-found') setListRevision(value => value + 1); }
-    }, () => setSavedStatus({ kind: 'error', reason: savedErrorText('saved-time-assisted-snapshot-delete-failed') }));
+      setConfirmingDelete(false);
+      if (outcome.ok) { focusAfterDelete.current = true; setSavedStatus({ kind: 'deleted', id: outcome.savedTimeAssistedSnapshotId }); setListRevision(value => value + 1); }
+      else { setSavedStatus({ kind: 'error', reason: savedErrorText(outcome.reason) }); if (outcome.type === 'not-found') { focusAfterDelete.current = true; setListRevision(value => value + 1); } }
+    }, () => { setConfirmingDelete(false); setSavedStatus({ kind: 'error', reason: savedErrorText('saved-time-assisted-snapshot-delete-failed') }); });
   };
   const saveSnapshot = () => {
     if (result?.kind !== 'snapshot') return;
@@ -233,16 +245,16 @@ export function AnalysisTimeAssistedSnapshotControls({ history = analysisHistory
       </> : null}
     </div>
     <div className="kairos-time-assisted__saved" role="group" aria-label="Saved snapshot" data-saved-snapshot-status={savedStatus.kind} data-saved-snapshot-count={savedList.length}>
-      <label><span>Label</span><input aria-label="Snapshot label" type="text" maxLength={SAVED_RECORD_LABEL_MAX_LENGTH} placeholder="Optional name" value={savedLabelInput} disabled={savedBusy} onChange={event => setSavedLabelInput(event.target.value)} /></label>
+      <label><span>Label</span><input ref={savedLabelField} aria-label="Snapshot label" type="text" maxLength={SAVED_RECORD_LABEL_MAX_LENGTH} placeholder="Optional name" value={savedLabelInput} disabled={savedBusy} onChange={event => setSavedLabelInput(event.target.value)} /></label>
       <button type="button" disabled={savedBusy || result?.kind !== 'snapshot'} onClick={saveSnapshot}>Save snapshot</button>
       <label><span>Saved snapshots</span><select aria-label="Saved snapshots" value={selectedSavedId} disabled={savedBusy || savedList.length === 0} onChange={event => setSelectedSavedId(event.target.value)}>
         {savedList.length === 0 ? <option value="">None saved</option> : savedList.map(item => <option key={item.id} value={item.id}>{savedOption(item)}</option>)}
       </select></label>
       <button type="button" disabled={savedBusy || selectedSavedId === ''} onClick={loadSnapshot}>Load snapshot</button>
-      <button type="button" disabled={savedBusy || selectedSavedId === ''} onClick={() => setConfirmingDelete(true)}>Delete snapshot</button>
-      <ConfirmDialog open={confirmingDelete} tone="danger" title="Delete this saved estimate for good?"
+      <button ref={deleteButton} type="button" disabled={savedBusy || selectedSavedId === ''} onClick={() => setConfirmingDelete(true)}>Delete snapshot</button>
+      <ConfirmDialog open={confirmingDelete} tone="danger" busy={savedStatus.kind === 'deleting'} title="Delete this saved estimate for good?"
         message="It will be gone from this device. Your trades stay as they are." confirmLabel="Delete for good" cancelLabel="Keep it"
-        onConfirm={() => { setConfirmingDelete(false); removeSnapshot(); }} onCancel={() => setConfirmingDelete(false)} />
+        onConfirm={removeSnapshot} onCancel={() => setConfirmingDelete(false)} />
       <span className="kairos-analysis-chart__note" aria-live="polite" data-saved-snapshot-message="true">{savedMessage(savedStatus, savedList.length)}</span>
     </div>
   </section>;

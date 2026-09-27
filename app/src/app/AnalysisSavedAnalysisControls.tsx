@@ -82,6 +82,10 @@ export function AnalysisSavedAnalysisControls({ ports, market, drawingCount, get
   const handoff = useAnalysisHandoff();
   const handoffOpened = useRef(false);
   const [openRequest, setOpenRequest] = useState<string | null>(null);
+  const labelField = useRef<HTMLInputElement>(null);
+  const deleteButton = useRef<HTMLButtonElement>(null);
+  // Set when a finished delete reloads the list: if nothing is left to select, focus moves from the disabled button to the label field.
+  const focusAfterDelete = useRef(false);
 
   useEffect(() => {
     if (market === null) { setSaved([]); setSelectedId(''); setStatus({ kind: 'idle' }); return; }
@@ -93,6 +97,13 @@ export function AnalysisSavedAnalysisControls({ ports, market, drawingCount, get
     return () => { cancelled = true; };
     // The list follows the exact market and every completed save.
   }, [ports, marketKey, listRevision]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!focusAfterDelete.current) return;
+    focusAfterDelete.current = false;
+    const active = document.activeElement;
+    if (selectedId === '' && (active === deleteButton.current || active === document.body || active === null)) labelField.current?.focus();
+  }, [saved]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (openRequest === null) return;
@@ -128,25 +139,27 @@ export function AnalysisSavedAnalysisControls({ ports, market, drawingCount, get
   const remove = () => {
     if (selectedId === '') return;
     setStatus({ kind: 'deleting' });
+    // The dialog stays open and busy until the delete answers, so its focus return lands on an enabled "Delete analysis".
     ports.remove(selectedId).then(result => {
-      if (result.ok) { setStatus({ kind: 'deleted', id: result.savedAnalysisId }); setListRevision(value => value + 1); }
-      else { setStatus({ kind: 'error', reason: errorText(result.reason) }); if (result.type === 'not-found') setListRevision(value => value + 1); }
-    }, () => setStatus({ kind: 'error', reason: errorText('saved-analysis-delete-failed') }));
+      setConfirmingDelete(false);
+      if (result.ok) { focusAfterDelete.current = true; setStatus({ kind: 'deleted', id: result.savedAnalysisId }); setListRevision(value => value + 1); }
+      else { setStatus({ kind: 'error', reason: errorText(result.reason) }); if (result.type === 'not-found') { focusAfterDelete.current = true; setListRevision(value => value + 1); } }
+    }, () => { setConfirmingDelete(false); setStatus({ kind: 'error', reason: errorText('saved-analysis-delete-failed') }); });
   };
   const busy = status.kind === 'saving' || status.kind === 'loading' || status.kind === 'deleting';
 
   return <div className="kairos-analysis-chart__saved-analysis" role="group" aria-label="Saved analysis" data-saved-analysis-status={status.kind} data-saved-analysis-count={saved.length}>
-    <label><span>Label</span><input aria-label="Analysis label" type="text" maxLength={SAVED_RECORD_LABEL_MAX_LENGTH} placeholder="Optional name" value={labelInput} disabled={busy} onChange={event => setLabelInput(event.target.value)} /></label>
+    <label><span>Label</span><input ref={labelField} aria-label="Analysis label" type="text" maxLength={SAVED_RECORD_LABEL_MAX_LENGTH} placeholder="Optional name" value={labelInput} disabled={busy} onChange={event => setLabelInput(event.target.value)} /></label>
     <button type="button" disabled={busy || (drawingCount === 0 && riskBoxCount === 0)} onClick={save}>Save analysis</button>
     <label><span>Saved analyses</span><select aria-label="Saved analyses" value={selectedId} disabled={busy || saved.length === 0} onChange={event => setSelectedId(event.target.value)}>
       {saved.length === 0 ? <option value="">None saved</option> : saved.map(item => <option key={item.id} value={item.id}>{item.label === undefined ? '' : `${item.label} · `}{shortId(item.id)} · {drawingWords(item.drawingCount, item.zoneCount, item.riskBoxCount)}</option>)}
     </select></label>
     <button type="button" disabled={busy || selectedId === ''} onClick={load}>Load analysis</button>
-    <button type="button" disabled={busy || selectedId === ''} onClick={() => setConfirmingDelete(true)}>Delete analysis</button>
-    <ConfirmDialog open={confirmingDelete} tone="danger" title="Delete this saved analysis for good?"
+    <button ref={deleteButton} type="button" disabled={busy || selectedId === ''} onClick={() => setConfirmingDelete(true)}>Delete analysis</button>
+    <ConfirmDialog open={confirmingDelete} tone="danger" busy={status.kind === 'deleting'} title="Delete this saved analysis for good?"
       message={`${saved.find(item => item.id === selectedId)?.label ?? shortId(selectedId)} will be gone from this device. Your chart and your trades stay as they are.`}
       confirmLabel="Delete for good" cancelLabel="Keep it"
-      onConfirm={() => { setConfirmingDelete(false); remove(); }} onCancel={() => setConfirmingDelete(false)} />
+      onConfirm={remove} onCancel={() => setConfirmingDelete(false)} />
     <span className="kairos-analysis-chart__note" aria-live="polite" data-saved-analysis-message="true">{message(status, saved.length)}</span>
   </div>;
 }

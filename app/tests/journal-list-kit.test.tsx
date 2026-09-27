@@ -147,3 +147,130 @@ describe('T-049h a question before any saved record is deleted', () => {
     await waitFor(async () => expect(await db.savedTimeAssistedSnapshots.count()).toBe(0));
   });
 });
+
+describe('T-049h fix r1: focus stays on something usable', () => {
+  const market = analysisMarketReference({ venue: 'binance-spot', symbol: 'ETHUSDT' });
+  const line = (id: string): ChartDrawing => ({ id, kind: 'trend-line', start: { timestamp: '2026-09-10T02:00:00.000Z', price: '2100' as DecimalString }, end: { timestamp: '2026-09-10T03:00:00.000Z', price: '2300' as DecimalString } });
+  const click = async (name: string) => { await act(async () => { fireEvent.click(screen.getByRole('button', { name })); }); };
+  const deleteFromFocus = async (trigger: string) => {
+    screen.getByRole('button', { name: trigger }).focus();
+    await click(trigger);
+    await click('Delete for good');
+  };
+
+  it('after "Delete for good" on a saved analysis, focus is on "Delete analysis", or on the label field once none are left', async () => {
+    const db = await database();
+    const ports = createAnalysisSavedAnalysisPorts(db);
+    expect((await ports.save(market, [line('d1')])).ok).toBe(true);
+    expect((await ports.save(market, [line('d2')])).ok).toBe(true);
+    render(<AnalysisSavedAnalysisControls ports={ports} market={market} drawingCount={0} getDrawings={() => []} onLoad={noop} />);
+    await waitFor(() => expect(screen.getByRole('group', { name: 'Saved analysis' }).getAttribute('data-saved-analysis-count')).toBe('2'));
+    await deleteFromFocus('Delete analysis');
+    await waitFor(() => expect(screen.getByRole('group', { name: 'Saved analysis' }).getAttribute('data-saved-analysis-count')).toBe('1'));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Delete analysis' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Delete analysis' })).toHaveFocus();
+    await deleteFromFocus('Delete analysis');
+    await waitFor(() => expect(screen.getByRole('group', { name: 'Saved analysis' }).getAttribute('data-saved-analysis-count')).toBe('0'));
+    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Analysis label' })).toHaveFocus());
+  });
+
+  it('after "Delete for good" on a saved snapshot, focus is on "Delete snapshot", or on the label field once none are left', async () => {
+    const db = await database();
+    const instrument = { venue: 'binance-spot', symbol: 'ETHUSDT' } as const;
+    const snapshot: TimeAssistedTradeSnapshot = { kind: 'snapshot', isEstimate: true, source: 'market-reference', instrument, side: 'long', opening: { kind: 'unavailable', instrument, requestedAt: '2026-09-10T02:13:27Z', reason: 'no-candle' }, closing: null, durationMs: null };
+    const ports = createAnalysisSavedTimeAssistedSnapshotPorts(db);
+    expect((await ports.save(snapshot, 'UTC')).ok).toBe(true);
+    expect((await ports.save(snapshot, 'UTC')).ok).toBe(true);
+    render(<AnalysisTimeAssistedSnapshotControls history={{ acquireHistory: vi.fn(async () => { throw new Error('unused'); }) }} saved={ports} instrument={instrument} />);
+    const count = () => screen.getByRole('group', { name: 'Saved snapshot' }).getAttribute('data-saved-snapshot-count');
+    await waitFor(() => expect(count()).toBe('2'));
+    await deleteFromFocus('Delete snapshot');
+    await waitFor(() => expect(count()).toBe('1'));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Delete snapshot' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Delete snapshot' })).toHaveFocus();
+    await deleteFromFocus('Delete snapshot');
+    await waitFor(() => expect(count()).toBe('0'));
+    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Snapshot label' })).toHaveFocus());
+  });
+
+  const failed = 'Kairos could not load your saved trade history. Your stored trades were not changed.';
+  const base = { isLoading: false, errorMessage: null, statusFilter: '' as const, onStatusFilterChange: noop };
+  const retryIn = (text: string) => within(screen.getByText(text).closest('[role="alert"]') as HTMLElement).getByRole('button', { name: 'Try again' });
+
+  it('"Try again" on a failed list: focus goes to the new "Try again" when it fails again, and to "Trade history" when it loads', () => {
+    const onRetry = vi.fn();
+    const { rerender } = render(<JournalHistoryList {...base} entries={[]} errorMessage={failed} onRetry={onRetry} />);
+    retryIn(failed).focus();
+    fireEvent.click(retryIn(failed));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+    rerender(<JournalHistoryList {...base} entries={[]} isLoading onRetry={onRetry} />);
+    rerender(<JournalHistoryList {...base} entries={[]} errorMessage={failed} onRetry={onRetry} />);
+    expect(retryIn(failed)).toHaveFocus();
+    fireEvent.click(retryIn(failed));
+    rerender(<JournalHistoryList {...base} entries={[]} isLoading onRetry={onRetry} />);
+    rerender(<JournalHistoryList {...base} entries={[profit]} onRetry={onRetry} />);
+    expect(screen.getByRole('heading', { name: 'Trade history' })).toHaveFocus();
+  });
+
+  it('"Try again" on older trades: focus goes to the new "Try again" when it fails again, and into the first new card when it loads', () => {
+    const olderText = 'Kairos could not load older trades. Your stored trades were not changed.';
+    const onShowOlder = vi.fn();
+    const props = { ...base, hasOlder: true, onShowOlder };
+    const { rerender, container } = render(<JournalHistoryList {...props} entries={[profit]} olderFailed />);
+    retryIn(olderText).focus();
+    fireEvent.click(retryIn(olderText));
+    expect(onShowOlder).toHaveBeenCalledTimes(1);
+    rerender(<JournalHistoryList {...props} entries={[profit]} isLoadingOlder />);
+    rerender(<JournalHistoryList {...props} entries={[profit]} olderFailed />);
+    expect(retryIn(olderText)).toHaveFocus();
+    fireEvent.click(retryIn(olderText));
+    rerender(<JournalHistoryList {...props} entries={[profit]} isLoadingOlder />);
+    rerender(<JournalHistoryList {...props} entries={[profit, loss]} />);
+    const cards = container.querySelectorAll('.kairos-history-card');
+    expect(cards[1]!.contains(document.activeElement)).toBe(true);
+  });
+
+  it('after a trade is deleted, focus is on "Trade history"', async () => {
+    const db = await database();
+    await saveManualTrade(db, closed('ETHUSDT'));
+    await saveManualTrade(db, closed('BTCUSDT'));
+    render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
+    await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(2));
+    const trigger = screen.getAllByRole('button', { name: 'Delete trade' })[0]!;
+    trigger.focus();
+    fireEvent.click(trigger);
+    await act(async () => { fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Delete for good' })); });
+    await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(1));
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Trade history' })).toHaveFocus());
+  });
+
+  it('a delete that cannot be stored leaves no dialog and puts focus on the card\'s alert', async () => {
+    const db = await database();
+    await saveManualTrade(db, closed('ETHUSDT'));
+    render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
+    await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(1));
+    vi.spyOn(db, 'transaction').mockImplementation((() => Promise.reject(new Error('storage'))) as never);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete trade' }));
+    await act(async () => { fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Delete for good' })); });
+    const alert = await screen.findByText('Kairos could not delete ETHUSDT. Nothing was changed.');
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(alert).toHaveFocus();
+    vi.restoreAllMocks();
+    expect(await db.trades.count()).toBe(1);
+  });
+
+  it('"Keep trade" keeps the trade, its entries and exits, and its fees', async () => {
+    const db = await database();
+    await saveManualTrade(db, closed('ETHUSDT'));
+    render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
+    await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(1));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete trade' }));
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Keep trade' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(await db.trades.count()).toBe(1);
+    expect(await db.tradeExecutions.count()).toBe(2);
+    expect(await db.tradeFees.count()).toBe(1);
+  });
+});
