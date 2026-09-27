@@ -6,7 +6,7 @@ import { loadTradePatterns, TRADE_PATTERN_PERIOD_DAYS, type TradePatternsQueryRe
 import { describePatternGroupLabel, describePatternLeftOut, describePatternSummary, describeTradePattern } from '../../application/patterns/patternWords';
 import { PATTERN_BAR_STEPS, PATTERN_LEAST_TRADES, type PatternTradesSummary, type TradePattern } from '../../application/patterns/tradePatterns';
 import type { KairosDatabase } from '../../data/database';
-import { Card } from '../../design-system/primitives';
+import { Card, ErrorState, PageHeader, Skeleton } from '../../design-system/primitives';
 import './patterns.css';
 
 export interface PatternsScreenProps {
@@ -22,6 +22,10 @@ const wallClock = (): string => new Date().toISOString();
 const INTRO = {
   real: `Your patterns look back at the trades you closed in the last ${TRADE_PATTERN_PERIOD_DAYS} days and show what repeats. They describe your own past trades only: they never predict a price or tell you what to buy or sell. A trade is won when its result after fees is above zero. A group shows how it went only once it has ${PATTERN_LEAST_TRADES} trades with a result, so a few trades cannot mislead you. In the bars, grey means a trade with no result, or a group without enough trades yet.`,
   practice: `Your practice patterns look back at the practice trades you closed in the last ${TRADE_PATTERN_PERIOD_DAYS} days, replays included, and show what repeats. They describe your own past practice only: they never predict a price or tell you what to buy or sell. A group shows how it went only once it has ${PATTERN_LEAST_TRADES} trades with a result. In the bars, grey means a trade with no result, or a group without enough trades yet. Practice trades never count in your Journal.`,
+} as const;
+const SHORT_INTRO = {
+  real: `Your patterns show what repeats in the trades you closed in the last ${TRADE_PATTERN_PERIOD_DAYS} days.`,
+  practice: `Your practice patterns show what repeats in the practice trades you closed in the last ${TRADE_PATTERN_PERIOD_DAYS} days.`,
 } as const;
 
 /** SPA navigation inside the app, a plain link outside a router (features never import app). */
@@ -65,6 +69,8 @@ function PatternCard({ pattern }: { readonly pattern: TradePattern }) {
 export function PatternsScreen({ db, scope, now = wallClock }: PatternsScreenProps) {
   const overallId = useId();
   const [state, setState] = useState<ScreenState>({ kind: 'loading' });
+  // "Try again" after a failed load bumps this, which runs the load effect again.
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     let ignore = false;
     setState({ kind: 'loading' });
@@ -73,19 +79,19 @@ export function PatternsScreen({ db, scope, now = wallClock }: PatternsScreenPro
       () => { if (!ignore) setState({ kind: 'failed' }); },
     );
     return () => { ignore = true; };
-  }, [db, scope, now]);
+  }, [db, scope, now, attempt]);
 
   const practice = scope === 'practice';
   const result = state.kind === 'ready' ? state.result : null;
   const projection = result?.kind === 'ready' ? result.projection : null;
   const homeWords = result?.kind === 'ready' ? describeTotalsInHomeCurrency(result.inHomeCurrency) : null;
   return <section className="kairos-route kairos-patterns" aria-labelledby="kairos-patterns-title">
-    <p className="kairos-patterns__eyebrow">{practice ? 'Practice' : 'Your results'}</p>
-    <h1 id="kairos-patterns-title" tabIndex={-1}>{practice ? 'Your practice patterns' : 'Your patterns'}</h1>
-    <p>{practice ? INTRO.practice : INTRO.real}</p>
+    <PageHeader tone="insight" eyebrow={practice ? 'Practice' : 'Your results'} title={practice ? 'Your practice patterns' : 'Your patterns'} titleId="kairos-patterns-title"
+      intro={practice ? SHORT_INTRO.practice : SHORT_INTRO.real} howItWorks={<p>{practice ? INTRO.practice : INTRO.real}</p>} />
     {homeWords ? <p className="kairos-patterns__currency">{homeWords.text} <PatternsLink to="/currency">{homeWords.link}</PatternsLink></p> : null}
-    {state.kind === 'loading' ? <p>Loading your patterns…</p> : null}
-    {state.kind === 'failed' || result?.kind === 'unavailable' ? <p>Kairos could not load your patterns. Your trades are not affected.</p> : null}
+    {state.kind === 'loading' ? <Skeleton label="Loading your patterns…" /> : null}
+    {state.kind === 'failed' || result?.kind === 'unavailable'
+      ? <ErrorState live={false} message="Kairos could not load your patterns. Your trades are not affected." onRetry={() => setAttempt(current => current + 1)} /> : null}
     {result?.kind === 'time-zone-unconfigured' ? <p>Your patterns sort your trades by day and hour in your time zone, so they need your time zone first. <PatternsLink to="/settings">Open Settings</PatternsLink></p> : null}
     {projection && projection.overall.tradeCount === 0 ? <p>{practice
       ? `No closed practice trades in the last ${TRADE_PATTERN_PERIOD_DAYS} days yet. Your practice patterns appear here as you close practice trades.`

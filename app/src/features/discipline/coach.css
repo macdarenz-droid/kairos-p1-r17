@@ -1,5 +1,4 @@
 .kairos-coach { display:grid; gap:var(--kairos-space-5); min-width:0; }
-.kairos-coach .kairos-coach__eyebrow { margin:0; color:var(--kairos-accent-primary); font-size:var(--kairos-font-size-xs); font-weight:var(--kairos-font-weight-semibold); letter-spacing:.08em; text-transform:uppercase; }
 .kairos-coach__notes { display:grid; gap:var(--kairos-space-4); min-width:0; }
 .kairos-card.kairos-coach-note { display:grid; gap:var(--kairos-space-3); min-width:0; overflow-wrap:anywhere; }
 .kairos-coach-note.kairos-coach-note h2, .kairos-coach-note.kairos-coach-note p { margin:0; }
