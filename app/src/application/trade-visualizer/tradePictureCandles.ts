@@ -2,7 +2,7 @@ import type { MarketType, TradeExecutionRecord, TradeRecord } from '../../domain
 import type { LiveMarketUniverseInstrumentMetadataAcquisitionPort } from '../../services/market-data/LiveMarketUniverseInstrumentMetadataAcquisitionPort';
 import type { MarketCandle, MarketCandleHistoryPort, MarketCandleHistoryResult } from '../../services/market-data/MarketCandleHistoryPort';
 import type { MarketDataUnavailableWhy } from '../../services/market-data/marketDataTypes';
-import { describeCandleSource, matchCryptoMarket } from '../market-reference/cryptoMarket';
+import { describeCandleSource, describeFuturesOnlyNotListed, describeFuturesOnlySource, futuresOnlyMarket, matchCryptoMarket } from '../market-reference/cryptoMarket';
 
 const MINUTE_MS = 60_000;
 const HOUR_MS = 60 * MINUTE_MS;
@@ -125,6 +125,34 @@ const unavailable = (result: { readonly reason: string; readonly why?: MarketDat
   result.reason === 'unavailable' && result.why !== undefined ? failed(result.why, result.retryAfterSeconds ?? null, note) : failed('source-down', null, note);
 
 /**
+ * A futures market on no spot list (D171): its own name on USDⓈ-M, with no pair (so no backup source).
+ * Binance's "no such market" and a source without futures candles read as not listed, with the reason.
+ */
+async function loadFuturesOnlyCandles(
+  symbol: string, spotNote: string, typed: string, window: TradePictureCandleWindow, deps: TradePictureCandleDeps, options: { readonly signal?: AbortSignal } | undefined,
+): Promise<TradePictureCandlesResult> {
+  const key = [symbol, 'futures-only', window.interval, window.startTimeMs, window.endTimeMs].join('|');
+  const stored = cache.get(key);
+  if (stored) return stored;
+  const result = await deps.history.acquireHistory({
+    instrument: { venue: FUTURES_VENUE, symbol },
+    interval: window.interval,
+    limit: window.limit,
+    startTimeMs: window.startTimeMs,
+    endTimeMs: window.endTimeMs,
+  }, options);
+  if (!result.ok) {
+    if (result.reason === 'unavailable' && result.why === 'unknown-market') return failed('not-listed', null, describeFuturesOnlyNotListed(typed));
+    if (result.reason === 'invalid-request') return failed('not-listed', null, `${spotNote} Futures candles need the Kairos server.`);
+    return unavailable(result);
+  }
+  if (result.snapshot.candles.length === 0) return failed('no-candles');
+  const success: TradePictureCandlesSuccess = Object.freeze({ ok: true as const, candles: result.snapshot.candles, source: describeFuturesOnlySource(symbol), note: null });
+  cache.set(key, success);
+  return success;
+}
+
+/**
  * Candles around one trade for its picture, with the line that says where they came from, or why there are none:
  * no candle source for the market, no start time, a market Binance doesn't list, no candles for the time, or the
  * source's own reason. Futures trades ask futures candles, and spot candles once when there is no futures market. It never throws.
@@ -146,7 +174,11 @@ export async function loadTradePictureCandles(
     const metadata = await deps.metadata.acquireInstrumentMetadata(options);
     if (!metadata.ok) return unavailable(metadata);
     const match = matchCryptoMarket(trade.symbol, trade.marketType, metadata.facts);
-    if (!match.ok) return failed('not-listed', null, match.note);
+    if (!match.ok) {
+      const futuresOnly = match.why === 'not-listed' ? futuresOnlyMarket(trade.symbol, trade.marketType) : null;
+      if (futuresOnly === null) return failed('not-listed', null, match.note);
+      return loadFuturesOnlyCandles(futuresOnly, match.note, trade.symbol, window, deps, options);
+    }
 
     const key = [match.symbol, match.candles, window.interval, window.startTimeMs, window.endTimeMs].join('|');
     const stored = cache.get(key);

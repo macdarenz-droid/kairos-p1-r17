@@ -126,6 +126,34 @@ function resolveWithoutMark(text: string, listed: Listed): Resolved | null {
   return null;
 }
 
+const FUTURES_NAME = /^[A-Z0-9]{1,20}$/;
+
+/**
+ * A futures market that is on no spot list (such as 1000PEPEUSDT, D171): the typed text as matchCryptoMarket reads it,
+ * with a perpetual mark removed and one separator joined. The name only when the trade is futures (its market type,
+ * or a mark), else null.
+ */
+export function futuresOnlyMarket(typed: string, marketType: MarketType): string | null {
+  let text = typed.trim().toUpperCase().replace(/\s+/g, '');
+  const mark = PERPETUAL_MARKS.find((candidate) => text.length > candidate.length && text.endsWith(candidate));
+  if (mark) text = text.slice(0, -mark.length);
+  if (marketType !== 'futures' && mark === undefined) return null;
+  const parts = text.split(SEPARATOR);
+  if (parts.length > 2 || parts.some((part) => part === '')) return null;
+  const name = parts.join('');
+  return FUTURES_NAME.test(name) ? name : null;
+}
+
+/** The source line for a futures-only market: the name is never split into base and quote (D158). */
+export function describeFuturesOnlySource(symbol: string): string {
+  return `Candles: Binance Futures · ${symbol}`;
+}
+
+/** The sentence when neither Binance Spot nor Binance Futures lists what was typed. */
+export function describeFuturesOnlyNotListed(typed: string): string {
+  return `Binance Spot and Futures don't list ${typed.trim()}. Check the spelling, for example BTCUSDT.`;
+}
+
 /** The source line under a picture: where the candles came from, and why when it is not the usual place. */
 export function describeCandleSource(origin: MarketCandleOrigin | undefined, match: CryptoMarketMatch, asked: CryptoCandleMarket): string {
   const spot = origin === undefined || origin.market === 'spot';

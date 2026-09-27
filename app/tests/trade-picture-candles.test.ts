@@ -211,4 +211,34 @@ describe('T-048f the matching market, futures candles and the real reason', () =
     await expect(loadTradePictureCandles(trade({ symbol: 'BTCUSDT' }), fills, deps)).resolves.toMatchObject({ ok: false, why: 'region' });
     expect(acquireHistory).toHaveBeenCalledTimes(2);
   });
+
+  describe('D171 a futures market on no spot list', () => {
+    const pepe = (marketType: 'futures' | 'crypto') => trade({ symbol: '1000PEPEUSDT', marketType });
+
+    it('asks binance-usdm for its own name with no pair, and names Binance Futures', async () => {
+      const { acquireHistory, deps } = ports(request => answered(request, { provider: 'binance', market: 'usdm-futures', symbol: '1000PEPEUSDT', backup: null }));
+      const result = await loadTradePictureCandles(pepe('futures'), fills, deps);
+      expect(acquireHistory).toHaveBeenCalledTimes(1);
+      const asked = acquireHistory.mock.calls[0]![0];
+      expect(asked.instrument).toEqual({ venue: 'binance-usdm', symbol: '1000PEPEUSDT' });
+      expect(asked.pair).toBeUndefined();
+      expect(result).toMatchObject({ ok: true, source: 'Candles: Binance Futures · 1000PEPEUSDT', note: null });
+    });
+
+    it('Binance Futures does not list it either → not listed, with the Spot and Futures sentence', async () => {
+      const { deps } = ports(() => ({ ok: false, reason: 'unavailable', why: 'unknown-market', retryAfterSeconds: null }));
+      expect(await loadTradePictureCandles(pepe('futures'), fills, deps)).toEqual({ ok: false, why: 'not-listed', retryAfterSeconds: null, note: "Binance Spot and Futures don't list 1000PEPEUSDT. Check the spelling, for example BTCUSDT." });
+    });
+
+    it('a build without the Kairos server → not listed, and futures candles need the server', async () => {
+      const { deps } = ports(() => ({ ok: false, reason: 'invalid-request', detail: 'venue-mismatch' }));
+      expect(await loadTradePictureCandles(pepe('futures'), fills, deps)).toEqual({ ok: false, why: 'not-listed', retryAfterSeconds: null, note: "Binance doesn't list 1000PEPEUSDT. Check the spelling, for example BTCUSDT. Futures candles need the Kairos server." });
+    });
+
+    it('a spot trade stays not listed and asks nothing', async () => {
+      const { acquireHistory, deps } = ports(request => answered(request, binance('spot')));
+      expect(await loadTradePictureCandles(pepe('crypto'), fills, deps)).toMatchObject({ ok: false, why: 'not-listed' });
+      expect(acquireHistory).not.toHaveBeenCalled();
+    });
+  });
 });

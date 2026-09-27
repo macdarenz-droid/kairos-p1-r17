@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeCandleSource, matchCryptoMarket, type CryptoMarketMatch } from '../src/application/market-reference';
+import { describeCandleSource, describeFuturesOnlyNotListed, describeFuturesOnlySource, futuresOnlyMarket, matchCryptoMarket, type CryptoMarketMatch } from '../src/application/market-reference';
 import type { LiveMarketUniverseInstrumentMetadataFact } from '../src/services/market-data/liveMarketUniverseInstrumentMetadataFact';
 import type { MarketCandleOrigin } from '../src/services/market-data/MarketCandleHistoryPort';
 
@@ -74,5 +74,19 @@ describe('P16.A1.5 the candle source line', () => {
   it('says when futures candles were asked for but spot candles came', () => {
     expect(describeCandleSource(origin('binance', 'spot'), btc, 'usdm-futures')).toBe('Candles: Binance Spot · BTC/USDT · no futures candles for this market');
     expect(describeCandleSource(undefined, btc, 'usdm-futures')).toBe('Candles: Binance Spot · BTC/USDT · futures candles need the Kairos server');
+  });
+});
+
+describe('T-048f D171 futures markets on no spot list', () => {
+  it('reads the futures name only for a futures trade or a perpetual mark', () => {
+    expect(futuresOnlyMarket('1000PEPEUSDT.P', 'crypto')).toBe('1000PEPEUSDT');
+    expect(futuresOnlyMarket('1000pepe/usdt', 'futures')).toBe('1000PEPEUSDT');
+    expect(futuresOnlyMarket('1000PEPEUSDT', 'crypto')).toBeNull();
+    expect(futuresOnlyMarket('币安人生USDT', 'futures')).toBeNull();
+  });
+
+  it('names the futures market whole, and says when neither list has it', () => {
+    expect(describeFuturesOnlySource('1000PEPEUSDT')).toBe('Candles: Binance Futures · 1000PEPEUSDT');
+    expect(describeFuturesOnlyNotListed(' 1000pepeusdt ')).toBe("Binance Spot and Futures don't list 1000pepeusdt. Check the spelling, for example BTCUSDT.");
   });
 });
