@@ -9,6 +9,7 @@ import { openKairosDatabase } from './data/database';
 import { ActivationBootstrap } from './features/activation';
 import { registerKairosServiceWorker } from './pwa/serviceWorkerRegistration';
 import { inspectStorageDurability } from './pwa/storageDurability';
+import '@fontsource-variable/inter/wght.css';
 import './design-system/tokens.css';
 import './design-system/accessibility.css';
 import './shell.css';

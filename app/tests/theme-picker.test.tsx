@@ -47,7 +47,7 @@ describe('T-009 Kairos Depth in the vision colours', () => {
   it('is the default and uses Depth Black, Navy Layer, Cyan and Violet', () => {
     expect(defaultThemeId).toBe('kairos-depth');
     expect(depth['--kairos-background-base'].toLowerCase()).toBe('#0b0d14');
-    expect(depth['--kairos-surface-raised'].toLowerCase()).toBe('#131a2e');
+    expect(depth['--kairos-surface-card'].toLowerCase()).toBe('#131a2e');
     expect(depth['--kairos-accent-primary'].toLowerCase()).toBe('#35d6ff');
     expect(depth['--kairos-accent-secondary'].toLowerCase()).toBe('#9b6bff');
   });

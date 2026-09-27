@@ -8,9 +8,9 @@ describe('P3 theme engine active registry', () => {
     expect(Object.keys(themeRegistry)).toEqual(themeIds);
   });
 
-  it('resolves system preference to the certified default until a later preference policy owns it', () => {
-    expect(resolveTheme('system', false)).toBe('kairos-depth');
+  it('resolves "Match my phone": a dark phone gives Kairos Depth, a light phone Paper, and a theme id gives itself', () => {
     expect(resolveTheme('system', true)).toBe('kairos-depth');
+    expect(resolveTheme('system', false)).toBe('paper');
     expect(resolveTheme('paper', true)).toBe('paper');
     expect(resolveTheme('cosmic', true)).toBe('cosmic');
     expect(resolveTheme('ocean', false)).toBe('ocean');

@@ -6,6 +6,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  useSyncExternalStore,
 } from 'react';
 import { applyTheme, resolveTheme } from './themeEngine';
 import type { ThemeId, ThemePreference } from './themeEngine';
@@ -24,16 +25,31 @@ type ThemeContextValue = Readonly<{
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
+const PHONE_DARK_QUERY = '(prefers-color-scheme: dark)';
+
+/** Whether the phone is set to dark; a browser without `matchMedia` counts as dark (Kairos Depth, D5). */
+function readPhoneDark(): boolean {
+  return typeof window.matchMedia === 'function' ? window.matchMedia(PHONE_DARK_QUERY).matches : true;
+}
+
+function subscribePhoneDark(onChange: () => void): () => void {
+  if (typeof window.matchMedia !== 'function') return () => {};
+  const query = window.matchMedia(PHONE_DARK_QUERY);
+  query.addEventListener('change', onChange);
+  return () => query.removeEventListener('change', onChange);
+}
+
 export function applyInitialTheme(root: HTMLElement = document.documentElement): ThemeId {
   const preference = readThemePreference();
-  const themeId = resolveTheme(preference, true);
+  const themeId = resolveTheme(preference, readPhoneDark());
   applyTheme(root, themeId);
   return themeId;
 }
 
 export function ThemeProvider({ children }: PropsWithChildren) {
   const [preference, setPreferenceState] = useState<ThemePreference>(() => readThemePreference());
-  const themeId = resolveTheme(preference, true);
+  const phoneDark = useSyncExternalStore(subscribePhoneDark, readPhoneDark, () => true);
+  const themeId = resolveTheme(preference, phoneDark);
 
   const setPreference = useCallback((nextPreference: ThemePreference) => {
     writeThemePreference(nextPreference);

@@ -9,14 +9,14 @@ export const themeCanarySurfaces = [
 export type ThemeCanarySurface = (typeof themeCanarySurfaces)[number];
 
 export const themeCanaryTokenContract: Readonly<Record<ThemeCanarySurface, readonly string[]>> = Object.freeze({
-  card: ['--kairos-surface-card', '--kairos-border-default', '--kairos-text-primary'],
+  card: ['--kairos-surface-card', '--kairos-border-default', '--kairos-text-primary', '--kairos-elevation-1'],
   button: ['--kairos-accent-primary', '--kairos-text-primary', '--kairos-state-hover', '--kairos-state-pressed'],
-  input: ['--kairos-surface-input', '--kairos-border-default', '--kairos-text-primary', '--kairos-text-muted'],
-  tabs: ['--kairos-surface-raised', '--kairos-border-active', '--kairos-accent-primary', '--kairos-text-secondary'],
+  input: ['--kairos-surface-input', '--kairos-border-default', '--kairos-text-primary', '--kairos-text-muted', '--kairos-border-field'],
+  tabs: ['--kairos-surface-raised', '--kairos-border-active', '--kairos-accent-primary', '--kairos-text-secondary', '--kairos-elevation-2'],
   profit: ['--kairos-trade-profit'],
   loss: ['--kairos-trade-loss'],
   chart: ['--kairos-chart-background', '--kairos-chart-grid', '--kairos-chart-axis', '--kairos-chart-crosshair', '--kairos-chart-candle-up', '--kairos-chart-candle-down'],
-  modal: ['--kairos-surface-modal', '--kairos-background-overlay', '--kairos-border-default', '--kairos-text-primary'],
+  modal: ['--kairos-surface-modal', '--kairos-background-overlay', '--kairos-border-default', '--kairos-text-primary', '--kairos-elevation-3'],
   warning: ['--kairos-state-warning'],
   disabled: ['--kairos-state-disabled', '--kairos-text-disabled'],
   selected: ['--kairos-border-active', '--kairos-accent-primary'],
