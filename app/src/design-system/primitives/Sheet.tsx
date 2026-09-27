@@ -1,6 +1,7 @@
-import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode } from 'react';
+import { useId, useRef, type KeyboardEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from './Button';
+import { useModalFocus } from './modalFocus';
 import './primitives.css';
 
 export interface SheetProps {
@@ -10,12 +11,10 @@ export interface SheetProps {
   readonly children?: ReactNode;
 }
 
-const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
 /**
  * A modal panel: slides up from the bottom on phones, centred on wider screens.
  * Focus moves into it on open, stays inside while Tab cycles, and returns to
- * where it was on close. `<dialog>.showModal()` is not used because jsdom
+ * where it was on close (modalFocus.ts). `<dialog>.showModal()` is not used because jsdom
  * does not implement it.
  */
 export function Sheet({ open, title, onClose, children }: SheetProps) {
@@ -24,25 +23,13 @@ export function Sheet({ open, title, onClose, children }: SheetProps) {
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
-  useEffect(() => {
-    if (!open) return;
-    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    panel.current?.focus();
-    return () => { if (previous?.isConnected) previous.focus(); };
-  }, [open]);
+  const keepFocusInside = useModalFocus(open, panel);
 
   if (!open) return null;
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
     if (event.key === 'Escape') { event.stopPropagation(); onCloseRef.current(); return; }
-    if (event.key !== 'Tab' || !panel.current) return;
-    const focusable = [...panel.current.querySelectorAll<HTMLElement>(FOCUSABLE)];
-    if (focusable.length === 0) { event.preventDefault(); panel.current.focus(); return; }
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    const active = document.activeElement;
-    if (event.shiftKey && (active === first || active === panel.current)) { event.preventDefault(); last.focus(); }
-    else if (!event.shiftKey && active === last) { event.preventDefault(); first.focus(); }
+    keepFocusInside(event);
   }
 
   return createPortal(<div className="kairos-sheet">

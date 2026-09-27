@@ -1,0 +1,76 @@
+/* The kit's newer pieces: PageHeader, StatTile, ResultText, EmptyState, ErrorState, Skeleton, icons. Tokens only. */
+
+.kairos-icon { flex: none; display: inline-block; vertical-align: middle; }
+
+.kairos-page-header { display: grid; gap: var(--kairos-space-2); }
+.kairos-page-header__eyebrow { margin: 0; color: var(--kairos-text-muted); font-size: var(--kairos-font-size-xs); font-weight: var(--kairos-font-weight-semibold); letter-spacing: .06em; text-transform: uppercase; }
+.kairos-page-header[data-tone='insight'] .kairos-page-header__eyebrow { color: var(--kairos-accent-insight); }
+.kairos-page-header__row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--kairos-space-3); }
+.kairos-page-header__title { margin: 0; font-size: var(--kairos-font-size-xxl); line-height: var(--kairos-line-height-tight); }
+.kairos-page-header__title:focus { outline: none; }
+.kairos-page-header__title:focus-visible { outline: 2px solid var(--kairos-state-focus); outline-offset: 2px; }
+.kairos-page-header__bar { display: block; width: 2.5rem; height: .1875rem; border-radius: var(--kairos-radius-full); background: var(--kairos-accent-insight); box-shadow: var(--kairos-glow-emphasis); }
+.kairos-page-header__intro { margin: 0; color: var(--kairos-text-secondary); }
+.kairos-page-header__how { justify-self: start; }
+
+.kairos-stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); gap: var(--kairos-space-3); margin: 0; }
+.kairos-stat { display: grid; gap: var(--kairos-space-1); align-content: start; padding: var(--kairos-space-3) var(--kairos-space-4); border: 1px solid var(--kairos-border-hairline); border-radius: var(--kairos-radius-md); background-color: var(--kairos-surface-raised); box-shadow: var(--kairos-elevation-1); position: relative; }
+/* The glow is its own layer: a glow token is `none` in Ink and Paper, and `<shadow>, none` would drop the card shadow too. */
+.kairos-stat[data-kairos-emphasis] { box-shadow: var(--kairos-elevation-1); }
+.kairos-stat[data-kairos-emphasis]::after { content: ''; position: absolute; inset: -1px; border-radius: inherit; pointer-events: none; }
+.kairos-stat[data-kairos-emphasis='main']::after { box-shadow: var(--kairos-glow-active); }
+.kairos-stat[data-kairos-emphasis='insight']::after { box-shadow: var(--kairos-glow-emphasis); }
+.kairos-stat__label { display: flex; align-items: center; gap: var(--kairos-space-1); color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-sm); }
+.kairos-stat[data-mark='up'] .kairos-icon { color: var(--kairos-trade-profit); }
+.kairos-stat[data-mark='down'] .kairos-icon { color: var(--kairos-trade-loss); }
+.kairos-stat[data-mark='flat'] .kairos-icon, .kairos-stat[data-mark='unknown'] .kairos-icon { color: var(--kairos-trade-flat); }
+.kairos-stat__value { margin: 0; color: var(--kairos-text-primary); font-size: var(--kairos-font-size-xl); font-weight: var(--kairos-font-weight-semibold); }
+.kairos-stat__hint { margin: 0; color: var(--kairos-text-muted); font-size: var(--kairos-font-size-xs); }
+
+.kairos-result { display: inline-flex; align-items: center; gap: var(--kairos-space-1); }
+.kairos-result[data-outcome='profit'] { color: var(--kairos-trade-profit); }
+.kairos-result[data-outcome='loss'] { color: var(--kairos-trade-loss); }
+.kairos-result[data-outcome='breakeven'], .kairos-result[data-outcome='unavailable'] { color: var(--kairos-trade-flat); }
+.kairos-result .kairos-icon { width: .875em; height: .875em; }
+.kairos-result__amount { font-weight: var(--kairos-font-weight-semibold); }
+
+.kairos-empty-state { display: grid; justify-items: center; gap: var(--kairos-space-2); padding: var(--kairos-space-6) var(--kairos-space-4); text-align: center; }
+.kairos-empty-state__picture { display: grid; place-items: center; width: 4.5rem; height: 4.5rem; border-radius: var(--kairos-radius-full); background: var(--kairos-accent-soft); color: var(--kairos-accent-primary); }
+.kairos-empty-state__title { margin: var(--kairos-space-2) 0 0; font-size: var(--kairos-font-size-lg); }
+.kairos-empty-state__message { margin: 0; max-width: 28rem; color: var(--kairos-text-secondary); }
+.kairos-empty-state__action { margin-top: var(--kairos-space-2); }
+
+.kairos-error-state { display: flex; flex-wrap: wrap; align-items: center; gap: var(--kairos-space-3); padding: var(--kairos-space-3); border: 1px solid var(--kairos-state-error); border-radius: var(--kairos-radius-md); background-color: var(--kairos-surface-card); color: var(--kairos-text-secondary); }
+.kairos-error-state:focus:not(:focus-visible) { outline: none; }
+.kairos-error-state:focus-visible { outline: 2px solid var(--kairos-state-focus); outline-offset: 2px; }
+.kairos-error-state__icon { color: var(--kairos-state-error); }
+.kairos-error-state[data-tone='unavailable'] .kairos-error-state__icon { color: var(--kairos-state-warning); }
+.kairos-error-state__message { flex: 1 1 14rem; margin: 0; min-width: 0; }
+
+.kairos-skeleton__bars { display: grid; gap: var(--kairos-space-2); }
+.kairos-skeleton[data-variant='inline'] .kairos-skeleton__bars { display: inline-grid; min-width: 6rem; }
+.kairos-skeleton__bar { display: block; height: .75rem; border-radius: var(--kairos-radius-full); background: linear-gradient(90deg, var(--kairos-surface-raised) 0%, var(--kairos-border-hairline) 50%, var(--kairos-surface-raised) 100%); background-size: 200% 100%; animation: kairos-skeleton-shimmer 1.4s ease-in-out infinite; }
+.kairos-skeleton__bar:last-child:not(:first-child) { width: 62%; }
+@keyframes kairos-skeleton-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+
+.kairos-segmented { position: relative; display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr; padding: .1875rem; border: 1px solid var(--kairos-border-field); border-radius: var(--kairos-radius-md); background-color: var(--kairos-surface-input); background-image: var(--kairos-field-gradient); }
+.kairos-segmented__ink { position: absolute; inset-block: .1875rem; inset-inline-start: calc(.1875rem + (100% - .375rem) / var(--kairos-segment-count) * var(--kairos-segment-index)); width: calc((100% - .375rem) / var(--kairos-segment-count)); border-radius: calc(var(--kairos-radius-md) - .1875rem); background: var(--kairos-surface-raised); box-shadow: var(--kairos-elevation-2); transition: inset-inline-start var(--kairos-motion-normal) var(--kairos-ease-out); }
+.kairos-segmented__option.kairos-button { position: relative; border-color: transparent; background: transparent; color: var(--kairos-text-secondary); }
+.kairos-segmented__option.kairos-button[aria-pressed='true'] { border-color: transparent; background: transparent; color: var(--kairos-text-primary); }
+
+.kairos-select { position: relative; display: block; min-width: 0; }
+.kairos-select select { width: 100%; min-width: 0; min-block-size: var(--kairos-control-md); padding: 0 calc(var(--kairos-space-3) + 1.25rem) 0 var(--kairos-space-3); border: 1px solid var(--kairos-border-field); border-radius: var(--kairos-radius-md); background-color: var(--kairos-surface-input); background-image: var(--kairos-field-gradient); color: var(--kairos-text-primary); font: inherit; appearance: none; }
+.kairos-select__chevron { position: absolute; inset-inline-end: var(--kairos-space-3); top: 50%; transform: translateY(-50%); color: var(--kairos-text-secondary); pointer-events: none; }
+
+.kairos-price-input { font-variant-numeric: tabular-nums; }
+.kairos-price-input__note { color: var(--kairos-state-warning); }
+
+.kairos-confirm__panel { box-shadow: var(--kairos-elevation-3); }
+.kairos-confirm__message { color: var(--kairos-text-secondary); }
+.kairos-confirm__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--kairos-space-2); }
+
+.kairos-toast-region { position: fixed; inset-inline: var(--kairos-space-4); bottom: calc(var(--kairos-space-4) + env(safe-area-inset-bottom, 0px) + 4.5rem); z-index: 50; display: grid; justify-items: center; pointer-events: none; }
+.kairos-toast { display: flex; align-items: center; gap: var(--kairos-space-2); width: min(100%, 28rem); padding: var(--kairos-space-2) var(--kairos-space-2) var(--kairos-space-2) var(--kairos-space-4); border: 1px solid var(--kairos-border-default); border-radius: var(--kairos-radius-lg); background: var(--kairos-surface-raised); box-shadow: var(--kairos-elevation-2); color: var(--kairos-text-primary); pointer-events: auto; animation: kairos-toast-in var(--kairos-motion-normal) var(--kairos-ease-out); }
+.kairos-toast__message { flex: 1; margin: 0; }
+.kairos-toast__dismiss.kairos-button { padding: 0 var(--kairos-space-2); border-color: transparent; }
+@keyframes kairos-toast-in { from { transform: translateY(.75rem); opacity: 0; } to { transform: none; opacity: 1; } }

@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+import { expect, test, type Page } from '@playwright/test';
 import { contrastInPage, openKairos } from './qaSession';
 
 const THEMES = ['ink', 'paper', 'kairos-depth', 'cosmic', 'ocean'] as const;
@@ -90,4 +91,158 @@ test('(3) Match my phone follows the phone', async ({ browser }) => {
   await oceanPage.emulateMedia({ colorScheme: 'light' });
   await expect(oceanPage.locator('html')).toHaveAttribute('data-kairos-theme', 'ocean');
   await saved.close();
+});
+
+test('(4) An emphasised stat tile keeps its card shadow in all 5 themes', async ({ browser }) => {
+  for (const theme of THEMES) {
+    const context = await browser.newContext(test.info().project.use);
+    const page = await context.newPage();
+    await openKairos(page, { theme });
+    const shadows = await page.evaluate(() => (['main', 'insight'] as const).map(emphasis => {
+      const tile = document.createElement('div');
+      tile.className = 'kairos-stat';
+      tile.dataset.kairosEmphasis = emphasis;
+      document.querySelector('main')!.append(tile);
+      const shadow = getComputedStyle(tile).boxShadow;
+      tile.remove();
+      return shadow;
+    }));
+    for (const shadow of shadows) expect(shadow, `${theme} emphasised tile shadow`).not.toBe('none');
+    await context.close();
+  }
+});
+
+test('(5) The "Unavailable" box shows a focus ring and no card patch', async ({ browser }) => {
+  for (const theme of ['kairos-depth', 'paper']) {
+    const context = await browser.newContext(test.info().project.use);
+    const page = await context.newPage();
+    await openKairos(page, { theme });
+    await page.evaluate(() => {
+      const box = document.createElement('div');
+      box.className = 'kairos-error-state kairos-unavailable';
+      box.tabIndex = -1;
+      box.id = 'qa-unavailable';
+      box.textContent = 'Unavailable · test';
+      document.querySelector('main')!.append(box);
+    });
+    await page.keyboard.press('Tab');
+    const look = await page.evaluate(() => {
+      const box = document.getElementById('qa-unavailable')!;
+      box.focus();
+      const style = getComputedStyle(box);
+      return { outline: style.outlineStyle, background: style.backgroundColor };
+    });
+    expect(look.outline, `${theme} focus ring`).toBe('solid');
+    expect(look.background, `${theme} background`).toBe('rgba(0, 0, 0, 0)');
+    await context.close();
+  }
+});
+
+const EVERY_SCREEN = ['/', '/journal', '/analysis', '/library', '/more', '/practice', '/goals', '/strategies', '/coach', '/practice/coach', '/patterns', '/practice/patterns', '/news-calendar', '/currency', '/settings', '/profile', '/does-not-exist', '/library/words', '/library/calculators', '/library/lessons', '/practice/replay'];
+const KEY_SCREENS = ['/', '/journal', '/analysis', '/coach', '/settings'];
+const AXE_THEMES: ReadonlyArray<Readonly<{ theme: string; paths: readonly string[] }>> = [
+  { theme: 'kairos-depth', paths: EVERY_SCREEN }, { theme: 'paper', paths: EVERY_SCREEN },
+  { theme: 'ink', paths: KEY_SCREENS }, { theme: 'cosmic', paths: KEY_SCREENS }, { theme: 'ocean', paths: KEY_SCREENS },
+];
+const TEXT_FIELDS = 'input:not([type="radio"]):not([type="checkbox"]):not([type="file"]):not([type="hidden"]):not([type="range"]):not([type="color"]):visible, select:visible, textarea:visible';
+
+async function openScreen(page: Page, path: string): Promise<void> {
+  await page.goto(path);
+  await expect(page.locator('main h1').first(), path).toBeVisible();
+  // A screen fades in; colours measured mid-fade are blends, so wait for every animation that ends (not loops).
+  await page.evaluate(() => Promise.all(document.getAnimations()
+    .filter(animation => animation.effect?.getComputedTiming().iterations !== Infinity)
+    .map(animation => animation.finished.catch(() => undefined))));
+}
+
+async function axeProblems(page: Page, where: string): Promise<string[]> {
+  const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  return result.violations.map(violation => `${where}: ${violation.id} (${violation.impact ?? 'unknown'}) ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`);
+}
+
+/** Logs one closed crypto trade with Quick log, as smoke case (k) does, so a trade card, a result and a picture are checked. */
+async function logClosedTrade(page: Page): Promise<void> {
+  await page.goto('/journal');
+  await page.getByRole('button', { name: 'Use Asia/Manila (this device)' }).click();
+  await page.getByRole('button', { name: 'Quick log' }).click();
+  await page.getByLabel(/^Symbol/).fill('ETHUSDT');
+  await page.getByLabel(/^Market/).selectOption('crypto');
+  await page.getByLabel(/^Direction/).selectOption('short');
+  await page.getByLabel(/^Entry price/).fill('100');
+  await page.getByLabel(/^Exit price/).fill('90');
+  await page.getByLabel(/^Quantity/).fill('1');
+  await page.getByRole('button', { name: 'Set opened time to now' }).click();
+  await page.getByRole('button', { name: 'Set closed time to now' }).click();
+  await page.getByLabel('Currency code').fill('USDT');
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+}
+
+for (const { theme, paths } of AXE_THEMES) {
+  test(`(6) axe finds nothing on any screen · ${theme}`, async ({ page }) => {
+    test.setTimeout(180_000);
+    await openKairos(page, { theme });
+    const problems: string[] = [];
+    for (const path of paths) {
+      await openScreen(page, path);
+      problems.push(...await axeProblems(page, path));
+    }
+    if (theme === 'kairos-depth') {
+      await logClosedTrade(page);
+      for (const path of ['/journal', '/']) {
+        await openScreen(page, path);
+        problems.push(...await axeProblems(page, `${path} with a trade`));
+      }
+    }
+    expect(problems).toEqual([]);
+  });
+}
+
+for (const { theme, paths } of AXE_THEMES) {
+  test(`(7) every field edge is 3:1 in the real app · ${theme}`, async ({ page }) => {
+    test.setTimeout(180_000);
+    await openKairos(page, { theme });
+    const weak: string[] = [];
+    for (const path of paths) {
+      await openScreen(page, path);
+      const fields = page.locator(TEXT_FIELDS);
+      const count = await fields.count();
+      for (let index = 0; index < count; index += 1) {
+        const field = fields.nth(index);
+        const { againstFill, againstOutside } = await contrastInPage(page, field);
+        if (againstFill < 3 || againstOutside < 3) {
+          const name = await field.evaluate(element => element.getAttribute('aria-label') ?? element.id ?? element.tagName);
+          weak.push(`${path} ${name}: ${againstFill.toFixed(2)} on its fill, ${againstOutside.toFixed(2)} around it`);
+        }
+      }
+    }
+    expect(weak).toEqual([]);
+  });
+}
+
+test('(8) the keyboard way in', async ({ page }) => {
+  await openKairos(page);
+  await openScreen(page, '/journal');
+  await page.locator('body').focus();
+  await page.keyboard.press('Tab');
+  const skip = page.getByRole('link', { name: 'Skip to main content' });
+  await expect(skip).toBeFocused();
+  await expect(skip).toBeInViewport();
+  await page.keyboard.press('Enter');
+  expect(await page.evaluate(() => document.getElementById('kairos-main-content')!.contains(document.activeElement))).toBe(true);
+  await page.getByRole('navigation', { name: 'Primary navigation' }).getByRole('link', { name: 'Analysis' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Analysis' })).toBeFocused();
+  await expect(page).toHaveTitle('Analysis · Kairos');
+  await page.goto('/settings');
+  await expect(page.locator('main h1').first()).toBeVisible();
+  await expect(page).toHaveTitle('Settings · Kairos');
+});
+
+test('(9) one glow at most on every screen', async ({ page }) => {
+  test.setTimeout(120_000);
+  await openKairos(page, { theme: 'kairos-depth' });
+  for (const path of EVERY_SCREEN) {
+    await openScreen(page, path);
+    expect(await page.locator('[data-kairos-emphasis]').count(), path).toBeLessThanOrEqual(1);
+  }
 });

@@ -53,9 +53,6 @@ body {
   padding: var(--kairos-space-3) var(--kairos-layout-page-padding);
 }
 .kairos-shell__brand { font-size: var(--kairos-font-size-md); font-weight: var(--kairos-font-weight-semibold); letter-spacing: -0.02em; }
-.kairos-shell__version { display: inline-flex; align-items: center; gap: var(--kairos-space-2); color: var(--kairos-text-muted); font-family: var(--kairos-font-mono); font-size: var(--kairos-font-size-xs); letter-spacing: 0; }
-.kairos-shell__pulse { width: 6px; height: 6px; border-radius: var(--kairos-radius-full); background: var(--kairos-trade-profit); animation: kairos-shell-pulse 2.4s var(--kairos-ease-in-out) infinite; }
-@keyframes kairos-shell-pulse { 0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--kairos-trade-profit) 50%, transparent); } 70% { box-shadow: 0 0 0 6px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
 .kairos-shell__content {
   width: min(100%, 72rem);
   margin: 0 auto;
@@ -187,6 +184,33 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .kairos-shell__pulse, .kairos-shell__progress::after { animation: none; }
+  .kairos-shell__progress::after { animation: none; }
   .kairos-route { animation: none; }
+}
+
+/* The keyboard way in: off screen upwards (never sideways, the page must not scroll wider) until it has keyboard focus. */
+.kairos-skip-link {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + var(--kairos-space-2));
+  left: var(--kairos-space-3);
+  z-index: 60;
+  padding: var(--kairos-space-2) var(--kairos-space-4);
+  border-radius: var(--kairos-radius-md);
+  background: var(--kairos-accent-primary);
+  color: var(--kairos-accent-ink);
+  font-weight: var(--kairos-font-weight-semibold);
+  text-decoration: none;
+  transform: translateY(calc(-100% - 4rem));
+}
+.kairos-skip-link:focus-visible { transform: none; }
+.kairos-shell__content:focus { outline: none; }
+
+/* Toasts sit above the bottom bar, inside the page width and the safe area. */
+.kairos-toast-region {
+  right: max(var(--kairos-space-4), env(safe-area-inset-right, 0px));
+  bottom: calc(var(--kairos-layout-navigation-height) + env(safe-area-inset-bottom, 0px) + var(--kairos-space-3));
+  left: max(var(--kairos-space-4), env(safe-area-inset-left, 0px));
+}
+@media (min-width: 48rem) {
+  .kairos-toast-region { left: calc(13rem + var(--kairos-space-6)); right: var(--kairos-space-6); bottom: var(--kairos-space-6); }
 }
