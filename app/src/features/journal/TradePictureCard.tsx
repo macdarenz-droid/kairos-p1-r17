@@ -1,4 +1,4 @@
-import { useId, type Ref } from 'react';
+import { useId, useLayoutEffect, useRef, type Ref } from 'react';
 import type { UnavailableWords } from '../../application/online/onlineWords';
 import type { TradePictureBox, TradePictureInfoKey, TradePictureModel } from '../../application/trade-visualizer';
 import { decimalSubtract } from '../../domain/calculations';
@@ -176,11 +176,24 @@ export function TradePictureCard({ model, candlesLoading = false, svgRef, compac
   const plotHeight = TRADE_PICTURE_HEIGHT - pad.top - pad.bottom;
   const candleWidth = scale ? tradePictureCandleBodyWidth(model.candles.length, TRADE_PICTURE_WIDTH - pad.left - pad.right) : 0;
   const planned = (key: 'planned-entry' | 'stop' | 'target') => model.info.find(row => row.key === key)?.value ?? null;
+  // A "Try again" that had focus and ends without a box (candles came) sends focus to the chart, so it stays in the sheet
+  // and Escape still closes it. Ending with another failure keeps the box, whose button takes focus back itself.
+  const main = useRef<HTMLDivElement>(null);
+  const chart = useRef<HTMLDivElement>(null);
+  const retryHadFocus = useRef(false);
+  const boxShown = candleFailure !== null && candleFailure !== undefined;
+  useLayoutEffect(() => {
+    if (candleRetrying) { retryHadFocus.current = main.current?.contains(document.activeElement) ?? false; return; }
+    if (!retryHadFocus.current) return;
+    retryHadFocus.current = false;
+    const active = document.activeElement;
+    if (!boxShown && (active === null || active === document.body)) chart.current?.focus({ preventScroll: true });
+  }, [candleRetrying, boxShown]);
 
   // The image role sits on the chart only: children of role="img" are hidden from screen readers, and the info panel holds buttons.
   return <figure className="kairos-trade-picture" data-trade-picture={model.symbol}>
-    <div className="kairos-trade-picture__main">
-    <div className="kairos-trade-picture__chart" role="img" aria-label={label ?? describeTradePicture(model)}>
+    <div className="kairos-trade-picture__main" ref={main}>
+    <div className="kairos-trade-picture__chart" role="img" aria-label={label ?? describeTradePicture(model)} ref={chart} tabIndex={compact ? undefined : -1}>
       <svg ref={svgRef} viewBox={`0 0 ${TRADE_PICTURE_WIDTH} ${TRADE_PICTURE_HEIGHT}`} preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">
         <defs><clipPath id={clipId}><rect x="0" y={pad.top} width={TRADE_PICTURE_WIDTH} height={plotHeight} /></clipPath></defs>
         <rect className="kairos-trade-picture__background" x="0" y="0" width={TRADE_PICTURE_WIDTH} height={TRADE_PICTURE_HEIGHT} rx="8" />

@@ -125,6 +125,32 @@ describe('T-027d trade picture on the cards', () => {
     await act(async () => answer({ ok: false, why: 'no-candles', retryAfterSeconds: null, note: null }));
   });
 
+  it('T-048f fix r2: a "Try again" that brings candles leaves focus inside the dialog, and Escape closes it', async () => {
+    const db = await database();
+    await seedClosedTrade(db);
+    const [entry] = await listJournalHistory(db);
+    const candles = [{ openTime: opened, closeTime: '2026-09-20T09:59:59.999Z', open: '60000', high: '61600', low: '59900', close: '61500' }] as never;
+    let answer: (value: Awaited<ReturnType<TradePictureCandleLoader>>) => void = () => undefined;
+    const loader = vi.fn<TradePictureCandleLoader>()
+      .mockResolvedValueOnce({ ok: false, why: 'source-down', retryAfterSeconds: null, note: null })
+      .mockImplementationOnce(() => new Promise(resolve => { answer = resolve; }));
+    render(<TradePictureCandleLoaderContext.Provider value={loader}><TradePicture entry={entry} variant="thumbnail" /></TradePictureCandleLoaderContext.Provider>);
+    await waitFor(() => expect(loader).toHaveBeenCalledTimes(1));
+    fireEvent.click(await screen.findByRole('button', { name: 'Open the BTCUSDT trade picture' }));
+    const dialog = screen.getByRole('dialog', { name: 'BTCUSDT trade' });
+    const retry = await within(dialog).findByRole('button', { name: 'Try again' });
+    retry.focus();
+    fireEvent.click(retry);
+    await waitFor(() => expect(loader).toHaveBeenCalledTimes(2));
+    await act(async () => answer({ ok: true, candles, source: 'Candles: Binance Spot · BTC/USDT', note: null }));
+    expect(await within(dialog).findByText('Candles: Binance Spot · BTC/USDT')).toBeInTheDocument();
+    expect(within(dialog).queryByRole('button', { name: 'Try again' })).toBeNull();
+    expect(dialog).toContainElement(document.activeElement as HTMLElement);
+    expect(document.activeElement).toHaveAttribute('role', 'img');
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
   it('T-048f: loaded candles show where they came from', async () => {
     const db = await database();
     await seedClosedTrade(db);
