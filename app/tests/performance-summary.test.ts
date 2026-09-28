@@ -56,9 +56,14 @@ describe('T-050d your numbers for a period, part 1', () => {
     expect(Object.isFrozen(summary) && Object.isFrozen(summary.averageWin) && Object.isFrozen(summary.outcomes)).toBe(true);
 
     const without = summarizePerformance(five);
-    const { tradeCount: _a, outcomes: withOutcomes, bestTrade: bestWith, worstTrade: worstWith, averageTime: timeWith, ...restWith } = summary;
-    const { tradeCount: _b, outcomes: withoutOutcomes, bestTrade: bestWithout, worstTrade: worstWithout, averageTime: timeWithout, ...restWithout } = without;
+    const { tradeCount: _a, outcomes: withOutcomes, bestTrade: bestWith, worstTrade: worstWith, averageTime: timeWith, biggestDip: dipWith, longestWinStreak: winsWith, longestLossStreak: lossesWith, ...restWith } = summary;
+    const { tradeCount: _b, outcomes: withoutOutcomes, bestTrade: bestWithout, worstTrade: worstWithout, averageTime: timeWithout, biggestDip: dipWithout, longestWinStreak: winsWithout, longestLossStreak: lossesWithout, ...restWithout } = without;
     expect(restWith).toEqual(restWithout);
+    // T-050e (D189): the biggest dip needs every result, and the runs count the trade without a result apart.
+    expect(dipWith).toEqual({ available: false, reason: 'unavailable-trade-outcome', tradeCount: 6 });
+    expect(dipWithout).toMatchObject({ available: true, amount: '20', tradeCount: 5 });
+    expect([winsWith, lossesWith]).toMatchObject([{ available: true, length: 2, tradeCount: 6, tradesWithoutResult: 1 }, { available: true, length: 1, tradeCount: 6, tradesWithoutResult: 1 }]);
+    expect([winsWithout, lossesWithout]).toMatchObject([{ available: true, length: 2, tradeCount: 5, tradesWithoutResult: 0 }, { available: true, length: 1, tradeCount: 5, tradesWithoutResult: 0 }]);
     // Time is not a result: the partly closed trade has a start and an end, so it is one more timed trade of the same hour.
     expect([timeWith, timeWithout]).toMatchObject([{ averageMs: 3_600_000, tradeCount: 6 }, { averageMs: 3_600_000, tradeCount: 5 }]);
     expect({ ...withOutcomes, noResult: 0, tradeCount: 5 }).toEqual(withoutOutcomes);

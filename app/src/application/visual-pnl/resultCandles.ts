@@ -32,6 +32,19 @@ const DIRECTION = { profit: 'up', loss: 'down', breakeven: 'even' } as const;
 
 interface DayCandle { readonly dayKey: string; readonly open: DecimalString; readonly high: DecimalString; readonly low: DecimalString; readonly close: DecimalString; readonly direction: VisualPnlResultCandleDirection; readonly tradeCount: number }
 
+/** The running total after each amount, in order, from `start` (D58's running total); null when the kernel refuses one. */
+export function projectVisualPnlRunningTotals(start: DecimalString, amounts: readonly DecimalString[]): readonly DecimalString[] | null {
+  const totals: DecimalString[] = [];
+  let running = start;
+  for (const amount of amounts) {
+    const next = decimalAdd(running, amount);
+    if (!next.ok) return null;
+    running = next.value;
+    totals.push(running);
+  }
+  return Object.freeze(totals);
+}
+
 export function projectVisualPnlResultCandles(days: readonly VisualPnlDailySummaryDay[]): VisualPnlResultCandlesProjection {
   const cumulative = projectVisualPnlCumulativeRealizedPnl(projectVisualPnlProgressSeries(days));
   if (!cumulative.available) return Object.freeze({ available: false as const, reason: cumulative.reason });
@@ -45,18 +58,21 @@ export function projectVisualPnlResultCandles(days: readonly VisualPnlDailySumma
     const open = i === 0 ? ZERO : cumulative.points[i - 1].cumulativeAmount;
     const close = point.cumulativeAmount;
     if (day.tradeResults.length === 0) return invalidCandle;
-    let running = open, high = open, low = open;
+    const amounts: DecimalString[] = [];
     for (const result of day.tradeResults) {
       if (result.amount === null) return unavailableDay;
-      const next = decimalAdd(running, result.amount);
-      if (!next.ok) return invalidCandle;
-      running = next.value;
+      amounts.push(result.amount);
+    }
+    const totals = projectVisualPnlRunningTotals(open, amounts);
+    if (totals === null) return invalidCandle;
+    let high = open, low = open;
+    for (const running of totals) {
       const above = decimalCompare(running, high), below = decimalCompare(running, low);
       if (above === null || below === null) return invalidCandle;
       if (above > 0) high = running;
       if (below < 0) low = running;
     }
-    if (decimalCompare(running, close) !== 0) return invalidCandle;
+    if (decimalCompare(totals[totals.length - 1], close) !== 0) return invalidCandle;
     built.push({ dayKey: day.dayKey, open, high, low, close, direction: DIRECTION[day.summary.outcome], tradeCount: day.summary.tradeCount });
   }
 
