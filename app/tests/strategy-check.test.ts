@@ -52,7 +52,7 @@ describe('T-040e the rule check', () => {
     expect(uneven.kind === 'min-reward-to-risk' && uneven.ratio!.startsWith('2.333')).toBe(true);
     const short = { ...base, side: 'short' as const };
     expect(result(short, 'r2')).toMatchObject({ verdict: 'unknown', reason: 'levels-not-ordered' });
-    expect(result(short, 'r1')).toMatchObject({ risk: '50' });
+    expect(result(short, 'r1')).toMatchObject({ verdict: 'unknown', reason: 'levels-not-ordered', risk: null });
     expect(result({ ...base, side: null }, 'r2')).toMatchObject({ verdict: 'unknown', reason: 'plan-incomplete' });
   });
 
