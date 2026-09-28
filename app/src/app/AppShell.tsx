@@ -4,7 +4,7 @@ import { browserTradePictureCandleLoader } from './tradePictureCandleBrowserDeps
 import { useEffect, useRef, type CSSProperties } from 'react';
 import { Icon, type IconName } from '../design-system/icons/Icon';
 import { ToastProvider } from '../design-system/primitives';
-import { primaryNavigation } from './navigation';
+import { moreNavigation, primaryNavigation, type KairosNavigationItem } from './navigation';
 import { UpdatePrompt, type UpdatePromptPort } from '../features/shell/UpdatePrompt';
 import { activateWaitingServiceWorker, subscribeServiceWorkerStatus } from '../pwa/serviceWorkerRegistration';
 
@@ -51,11 +51,15 @@ function useScreenTitleAndFocus(pathname: string): void {
   }, [pathname]);
 }
 
-function activeNavigationIndex(pathname: string): number {
-  const index = primaryNavigation.findIndex((item) =>
-    item.end ? pathname === item.to : pathname === item.to || pathname.startsWith(`${item.to}/`),
-  );
-  return index < 0 ? 0 : index;
+const isAtOrUnder = (pathname: string, item: KairosNavigationItem) =>
+  item.end ? pathname === item.to : pathname === item.to || pathname.startsWith(`${item.to}/`);
+
+/** The bottom-bar tab to mark: a matching primary tab; "More" for a screen opened from More; otherwise none (null). */
+function activeNavigationIndex(pathname: string): number | null {
+  const index = primaryNavigation.findIndex((item) => isAtOrUnder(pathname, item));
+  if (index >= 0) return index;
+  if (moreNavigation.some((item) => isAtOrUnder(pathname, item))) return primaryNavigation.findIndex((item) => item.to === '/more');
+  return null;
 }
 
 /** Production data-router wrapper: the only place router loading state is read. */
@@ -67,7 +71,8 @@ export function AppShellRoute() {
 /** Presentation shell. Works inside any router; loading is supplied by the owner above. */
 export function AppShell({ loading = false }: { readonly loading?: boolean }) {
   const location = useLocation();
-  const inkStyle = { '--kairos-nav-index': activeNavigationIndex(location.pathname) } as CSSProperties;
+  const navIndex = activeNavigationIndex(location.pathname);
+  const inkStyle = (navIndex === null ? {} : { '--kairos-nav-index': navIndex }) as CSSProperties;
   useScreenTitleAndFocus(location.pathname);
   return (
     <div className="kairos-shell" data-app="kairos" data-loading={loading ? 'true' : 'false'}>
@@ -86,7 +91,7 @@ export function AppShell({ loading = false }: { readonly loading?: boolean }) {
       </ToastProvider>
       <nav className="kairos-shell__navigation" aria-label="Primary navigation">
         <div className="kairos-shell__navigation-inner" style={inkStyle}>
-          <span className="kairos-shell__nav-ink" aria-hidden="true" />
+          {navIndex === null ? null : <span className="kairos-shell__nav-ink" aria-hidden="true" />}
           {primaryNavigation.map((item) => (
             <NavLink
               key={item.to}

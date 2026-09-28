@@ -39,11 +39,19 @@ describe('Ink app shell presentation', () => {
     expect(inner.querySelector('.kairos-shell__nav-ink')).toHaveAttribute('aria-hidden', 'true');
   });
 
-  it('treats nested and secondary paths as their primary owner or Home', async () => {
+  it('treats nested and secondary paths as their primary owner, More, or no marker', async () => {
     const inner = () => screen.getByRole('navigation', { name: 'Primary navigation' }).querySelector('.kairos-shell__navigation-inner') as HTMLElement;
-    renderPath('/settings');
+    for (const [path, index] of [['/settings', '4'], ['/strategies/anything', '4'], ['/library/anything', '3']] as const) {
+      const { unmount } = render(<ThemeProvider><RouterProvider router={createMemoryRouter(appRoutes, { initialEntries: [path] })} /></ThemeProvider>);
+      await screen.findByRole('navigation', { name: 'Primary navigation' });
+      expect(inner().style.getPropertyValue('--kairos-nav-index'), path).toBe(index);
+      expect(inner().querySelector('.kairos-shell__nav-ink'), path).not.toBeNull();
+      unmount();
+    }
+    renderPath('/no-such-screen');
     await screen.findByRole('navigation', { name: 'Primary navigation' });
-    expect(inner().style.getPropertyValue('--kairos-nav-index')).toBe('0');
+    expect(inner().querySelector('.kairos-shell__nav-ink')).toBeNull();
+    expect(inner().style.getPropertyValue('--kairos-nav-index')).toBe('');
   });
 
   it('shows no version in the header, and an idle route loader', async () => {

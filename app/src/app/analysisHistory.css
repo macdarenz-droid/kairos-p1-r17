@@ -17,7 +17,7 @@
 .kairos-analysis-chart td, .kairos-analysis-chart th { padding: var(--kairos-space-2); border-bottom: 1px solid var(--kairos-border-subtle); text-align: right; white-space: nowrap; }
 .kairos-analysis-chart th:first-child { text-align: left; }
 .kairos-analysis-chart a { font-size: var(--kairos-font-size-xs); }
-@media (max-width: 359px) { .kairos-analysis-chart__selection { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 479px) { .kairos-analysis-chart__selection { grid-template-columns: minmax(0, 1fr); } }
 
 /* Ink amendment (Gate471). Appended with route-scoped specificity so every released rule above keeps its exact contract strings.
    Hairline card over the surface gradient, live-status pill with a state dot, segmented view tools, mono tabular numerals. */
