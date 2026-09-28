@@ -36,8 +36,8 @@ function workOut(input: TradeRiskInput): Worked {
   const traded = aggregate.ok ? aggregate.value.entry.quantity !== '0' : input.executions.some(fill => fill.type === 'entry');
   const basis: TradeRiskBasis = traded ? 'as-traded' : 'as-planned';
   if (stop === null) return { ok: false, basis, reason: 'no-stop' };
+  if (!aggregate.ok) return { ok: false, basis, reason: 'invalid-decimal' };
   if (traded) {
-    if (!aggregate.ok) return { ok: false, basis, reason: 'invalid-decimal' };
     const entry = aggregate.value.entry;
     if (entry.weightedAveragePrice === null) return { ok: false, basis, reason: 'no-entry' };
     const money = calculateMoneyAtRisk(input.trade.side, entry.notional, stop, entry.quantity);
