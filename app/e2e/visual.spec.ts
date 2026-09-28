@@ -9,6 +9,8 @@
  * 3. If CI alone differs (another machine): the job log names each failed case and its pixel count, and CI's
  *    `-actual.png` and `-diff.png` files are in the `playwright-report` artifact of the failed run. When the diff shows
  *    only text edges, replace the references with CI's `-actual.png` files. No helper workflow makes references.
+ *    The supervisor reads the log with the GitHub tool get_job_logs and fetches the artifact with actions_get
+ *    (download_workflow_run_artifact); if no agent can fetch it, owner action O13.
  */
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { openKairos } from './qaSession';

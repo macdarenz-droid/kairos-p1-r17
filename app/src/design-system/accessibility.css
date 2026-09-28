@@ -8,6 +8,17 @@
   outline-offset: 2px;
 }
 
+/* Links take the theme's colour; no weight, so a link with its own class rule keeps its look. The underline stays (WCAG 1.4.1). */
+:where(a[href]) {
+  color: var(--kairos-accent-primary);
+}
+
+/* A heading or panel given focus by script shows the theme's ring; one pseudo-class of weight, so shell and kit rules still win. */
+:where([tabindex='-1']):focus-visible {
+  outline: 2px solid var(--kairos-state-focus, currentColor);
+  outline-offset: 2px;
+}
+
 :where(button, [role='button'], input, select, textarea):disabled,
 :where([aria-disabled='true']) {
   cursor: not-allowed;

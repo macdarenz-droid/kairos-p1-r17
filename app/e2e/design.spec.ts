@@ -266,3 +266,70 @@ test('(10) a Market, Direction or Status list with a mistake has the red edge', 
     await context.close();
   }
 });
+
+test('(11) links, focus rings and the bottom-bar marker follow the theme, and lists show their whole text', async ({ browser }) => {
+  test.setTimeout(180_000);
+  const tokenColour = (page: Page, token: string) => page.evaluate(name => {
+    const probe = document.createElement('span');
+    probe.style.color = `var(${name})`;
+    document.body.append(probe);
+    const colour = getComputedStyle(probe).color;
+    probe.remove();
+    return colour;
+  }, token);
+  const inkOnMore = async (page: Page, path: string) => {
+    const ink = await page.locator('.kairos-shell__nav-ink').boundingBox();
+    const more = await page.getByRole('navigation', { name: 'Primary navigation' }).getByRole('link', { name: 'More' }).boundingBox();
+    expect(ink, `${path} marker`).not.toBeNull();
+    expect(Math.abs((ink!.x + ink!.width / 2) - (more!.x + more!.width / 2)), `${path} marker over More`).toBeLessThanOrEqual(2);
+  };
+  const listsFit = async (page: Page, path: string) => {
+    const cut = await page.evaluate(() => {
+      const context = document.createElement('canvas').getContext('2d')!;
+      return [...document.querySelectorAll('select')].filter(select => select.getClientRects().length > 0 && select.getBoundingClientRect().width > 0).flatMap(select => {
+        const style = getComputedStyle(select);
+        context.font = style.font;
+        const text = select.selectedOptions[0]?.textContent ?? '';
+        const room = select.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight) - (style.appearance === 'none' ? 0 : 20);
+        const width = context.measureText(text).width;
+        return width <= room ? [] : [`${select.getAttribute('aria-label') ?? select.id ?? select.name}: "${text}" needs ${Math.ceil(width)} px, has ${Math.floor(room)} px`];
+      });
+    });
+    expect(cut, `${path} lists`).toEqual([]);
+  };
+  for (const theme of ['paper', 'kairos-depth']) {
+    const context = await browser.newContext(test.info().project.use);
+    const page = await context.newPage();
+    await openKairos(page, { theme, fixedClock: '2026-09-20T04:00:00.000Z', server: 'fixed-market' });
+    await expect(page.locator('main h1')).toBeVisible();
+    await listsFit(page, `${theme} /`);
+
+    await page.goto('/coach');
+    await expect(page.locator('main .kairos-coach p').first()).toBeVisible();
+    const accent = await tokenColour(page, '--kairos-accent-primary');
+    const links = await page.locator('main a[href]').evaluateAll(anchors => anchors.map(anchor => getComputedStyle(anchor).color));
+    expect(links.length, `${theme} Coach links`).toBeGreaterThan(0);
+    for (const colour of links) expect(colour, `${theme} Coach link colour`).toBe(accent);
+    await inkOnMore(page, `${theme} /coach`);
+    await listsFit(page, `${theme} /coach`);
+
+    await page.goto('/analysis');
+    const heading = page.locator('main h1');
+    await expect(heading).toBeFocused();
+    await expect(page.locator('.kairos-symbol-picker [role="combobox"]').first()).toBeVisible();
+    const focus = await tokenColour(page, '--kairos-state-focus');
+    const ring = await heading.evaluate(element => ({ style: getComputedStyle(element).outlineStyle, colour: getComputedStyle(element).outlineColor }));
+    expect(ring, `${theme} Analysis heading ring`).toEqual({ style: 'solid', colour: focus });
+    await listsFit(page, `${theme} /analysis`);
+
+    await page.goto('/settings');
+    await expect(page.getByRole('heading', { name: 'Appearance' })).toBeVisible();
+    await inkOnMore(page, `${theme} /settings`);
+    await listsFit(page, `${theme} /settings`);
+
+    await page.goto('/journal');
+    await expect(page.getByRole('textbox', { name: /^Symbol/ })).toBeVisible();
+    await listsFit(page, `${theme} /journal`);
+    await context.close();
+  }
+});
