@@ -20,7 +20,8 @@ import type {
 import type { MarketCandle } from '../../services/market-data/MarketCandleHistoryPort';
 import { parseForexPair, projectForexPips, projectForexPipValue, projectForexSize } from '../markets/forexPair';
 import { projectStockResultPerShare } from '../markets/stockTicker';
-import { tradePictureHasCandleSource } from './tradePictureCandles';
+import { describeTradeDuration, projectTradeDurationMs } from '../performance/tradeDuration';
+import { tradePictureHasCandleSource, tradePictureTimes } from './tradePictureCandles';
 import { projectTradeVisualizerFacts } from './tradeVisualizerFacts';
 import { projectPlannedRewardToRisk } from '../risk-reward/plannedRewardToRisk';
 
@@ -186,15 +187,6 @@ function actualR(metrics: TradeMetrics | null, entry: DecimalString | null, stop
   return performance.ok ? performance.realizedR : null;
 }
 
-function durationText(durationMs: number): string {
-  const minutes = Math.round(durationMs / 60_000);
-  if (minutes < 60) return `${minutes} min`;
-  const hours = Math.floor(minutes / 60), restMinutes = minutes % 60;
-  if (hours < 48) return restMinutes === 0 ? `${hours} h` : `${hours} h ${restMinutes} min`;
-  const days = Math.floor(hours / 24), restHours = hours % 24;
-  return restHours === 0 ? `${days} days` : `${days} days ${restHours} h`;
-}
-
 /** A ratio rounded for reading; null when unknown or when the kernel refuses it. */
 function shownRatio(value: DecimalString | null): DecimalString | null {
   if (value === null) return null;
@@ -228,10 +220,8 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
   const metrics = metricsResult.ok ? metricsResult.value : null;
   const plannedQuantity = plans.find(plan => plan.plannedQuantity !== null)?.plannedQuantity ?? null;
 
-  const entryTimes = facts.executedEntries.map(fill => ms(fill.executedAt)).filter((value): value is number => value !== null);
-  const exitTimes = facts.executedExits.map(fill => ms(fill.executedAt)).filter((value): value is number => value !== null);
-  const startMs = entryTimes.length > 0 ? Math.min(...entryTimes) : ms(trade.openedAt);
-  const endMs = exitTimes.length > 0 ? Math.max(...exitTimes) : ms(trade.closedAt) ?? ms(now);
+  const { startMs, endMs: timesEndMs } = tradePictureTimes(trade, executions, Date.parse(now));
+  const endMs = Number.isFinite(timesEndMs) ? timesEndMs : null;
   const startAt = startMs === null ? null : iso(startMs);
   const endAt = iso(endMs ?? Date.parse(now));
 
@@ -285,7 +275,7 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
   const rewardShown = shownRatio(reward), realizedShown = shownRatio(realized);
   const rewardText = rewardShown === null ? null : `Reward is ${rewardShown}× the risk`;
   const realizedText = realizedShown === null ? null : `${signed(realizedShown)}× what you risked`;
-  const durationMs = startMs !== null && endMs !== null && (trade.status === 'closed' || trade.status === 'open') ? Math.max(0, endMs - startMs) : null;
+  const durationMs = projectTradeDurationMs(trade, executions, Date.parse(now));
   const size = metrics !== null && metrics.totalEnteredQuantity !== '0' ? metrics.totalEnteredQuantity : plannedQuantity;
   const currency = metrics?.netPnlCurrency ?? null;
   // P31: a forex trade's size is units of its base currency; lots and pips come from the one pair owner (D96, D98).
@@ -331,7 +321,7 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
     ...(stock ? [row('per-share', 'Won or lost per share', perShareText === null ? null : perShare, priceCurrency, () => perShareText ?? '')] : []),
     row('planned-reward', 'Planned reward', rewardText === null ? null : reward, null, () => rewardText ?? ''),
     row('actual-r', 'Actual result', realizedText === null ? null : realized, null, () => realizedText ?? ''),
-    row('duration', 'How long it lasted', durationMs === null ? null : String(durationMs), 'ms', value => durationText(Number(value))),
+    row('duration', 'How long it lasted', durationMs === null ? null : String(durationMs), 'ms', value => describeTradeDuration(Number(value))),
     row('status', 'Status', STATUS_WORDS[trade.status], null, value => value),
   ];
 
