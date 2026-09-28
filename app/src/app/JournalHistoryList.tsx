@@ -19,6 +19,9 @@ import type { KairosDatabase } from '../data/database';
 import { updateTradeExecution } from '../application/trades';
 import { EntriesAndExitsEditor } from '../features/journal/EntriesAndExitsEditor';
 import { GlossaryHint } from '../features/learn/GlossaryHint';
+import { describeClosedPart, describeMoneyAtRisk } from '../application/performance/performanceWords';
+import { projectTradeClosedPart } from '../application/performance/tradeClosedPart';
+import { projectTradeMoneyAtRisk } from '../application/performance/tradeRisk';
 import { useNewsNearTrades } from '../features/economic-calendar/useNewsNearTrades';
 import { describeNewsNearTrade } from '../application/economic-calendar/calendarWords';
 
@@ -142,6 +145,7 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
             const timestamp = entry.trade.closedAt ?? entry.trade.openedAt ?? entry.trade.updatedAt;
             const coach = entry.trade.status === 'closed' ? describeTradePlanVsExecution(projectTradePlanVsExecution(entry.trade, entry.plans, entry.metrics)) : [];
             const newsLines = describeNewsNearTrade(news.get(entry.trade.id) ?? []);
+            const closedPart = projectTradeClosedPart(entry);
             return (
               <li className="kairos-history-card" key={entry.trade.id}>
                 <div className="kairos-history-card__topline">
@@ -172,13 +176,15 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
                 {db && tradeDeleted ? <JournalTradeDeleteControl entry={entry} db={db} onDeleted={tradeDeleted} /> : null}
                 <ResultText outcome={entry.visualPnl.outcome} label={entry.visualPnl.label} amount={entry.visualPnl.amount} currency={entry.visualPnl.currency}
                   className={`kairos-history-card__outcome kairos-history-card__outcome--${entry.visualPnl.outcome}`} />
+                {closedPart.available ? <p className="kairos-history-card__closed-part"><ResultText outcome={closedPart.outcome} label="Closed part" amount={closedPart.resultBeforeFees} currency={closedPart.currency} /> <span>{describeClosedPart(closedPart)}</span></p> : null}
                 <TradePicture entry={entry} variant="thumbnail" />
-                {/* The four words are explained once per list (D69): only the first card has the "?" buttons. */}
+                {/* The five words are explained once per list (D69): only the first card has the "?" buttons. */}
                 <dl className="kairos-history-card__facts">
                   <div><dt><span>Entries and exits</span>{index === 0 ? <GlossaryHint termId="entries-and-exits" label="Entries and exits" /> : null}</dt><dd>{entry.executions.length}</dd></div>
                   <div><dt><span>Fees</span>{index === 0 ? <GlossaryHint termId="fees" label="Fees" /> : null}</dt><dd>{entry.fees.length}</dd></div>
                   <div><dt><span>Result before fees</span>{index === 0 ? <GlossaryHint termId="result-before-fees" label="Result before fees" /> : null}</dt><dd>{money(entry.metrics?.grossPnl, entry.trade.grossPnlCurrency)}</dd></div>
                   <div><dt><span>Result after fees</span>{index === 0 ? <GlossaryHint termId="result-after-fees" label="Result after fees" /> : null}</dt><dd>{entry.metrics?.netPnl != null && entry.metrics.netPnlCurrency ? money(entry.metrics.netPnl, entry.metrics.netPnlCurrency) : entry.metrics?.netPnl ?? 'Not available'}</dd></div>
+                  <div><dt><span>Money at risk</span>{index === 0 ? <GlossaryHint termId="money-at-risk" label="Money at risk" /> : null}</dt><dd>{describeMoneyAtRisk(projectTradeMoneyAtRisk(entry))}</dd></div>
                 </dl>
                 {coach.length > 0 ? <p className="kairos-history-card__coach"><span>Your coach</span>{coach.map(line => <span key={line}>{line}</span>)}</p> : null}
                 {newsLines.length > 0 ? <p className="kairos-history-card__news"><span>Big news near this trade</span>{newsLines.map((line, index) => <span key={index}>{line}</span>)}</p> : null}
