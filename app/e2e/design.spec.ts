@@ -278,6 +278,7 @@ test('(11) links, focus rings and the bottom-bar marker follow the theme, and li
     return colour;
   }, token);
   const inkOnMore = async (page: Page, path: string) => {
+    await expect(page.locator('.kairos-shell__nav-ink'), `${path} marker`).toHaveCount(1);
     const ink = await page.locator('.kairos-shell__nav-ink').boundingBox();
     const more = await page.getByRole('navigation', { name: 'Primary navigation' }).getByRole('link', { name: 'More' }).boundingBox();
     expect(ink, `${path} marker`).not.toBeNull();
