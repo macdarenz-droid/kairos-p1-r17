@@ -1,4 +1,4 @@
-import { useEffect, useId, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Link, useInRouterContext } from 'react-router';
 import { describeTotalsInHomeCurrency } from '../../application/currency/currencyWords';
 import type { JournalHistoryScope } from '../../application/journal';
@@ -19,6 +19,7 @@ export interface PatternsScreenProps {
 type ScreenState = Readonly<{ kind: 'loading' }> | Readonly<{ kind: 'failed' }> | Readonly<{ kind: 'ready'; result: TradePatternsQueryResult }>;
 
 const wallClock = (): string => new Date().toISOString();
+const TITLE = 'kairos-patterns-title';
 const INTRO = {
   real: `Your patterns look back at the trades you closed in the last ${TRADE_PATTERN_PERIOD_DAYS} days and show what repeats. They describe your own past trades only: they never predict a price or tell you what to buy or sell. A trade is won when its result after fees is above zero. A group shows how it went only once it has ${PATTERN_LEAST_TRADES} trades with a result, so a few trades cannot mislead you. In the bars, grey means a trade with no result, or a group without enough trades yet.`,
   practice: `Your practice patterns look back at the practice trades you closed in the last ${TRADE_PATTERN_PERIOD_DAYS} days, replays included, and show what repeats. They describe your own past practice only: they never predict a price or tell you what to buy or sell. A group shows how it went only once it has ${PATTERN_LEAST_TRADES} trades with a result. In the bars, grey means a trade with no result, or a group without enough trades yet. Practice trades never count in your Journal.`,
@@ -80,18 +81,29 @@ export function PatternsScreen({ db, scope, now = wallClock }: PatternsScreenPro
     );
     return () => { ignore = true; };
   }, [db, scope, now, attempt]);
+  // "Try again" unmounts its own error box while loading, so focus would fall to the page (WCAG 2.4.3). When it had focus,
+  // focus goes to the first link or button of what loaded (the new "Try again" when it failed again), else the h1.
+  const retryHadFocus = useRef(false);
+  const loaded = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (state.kind === 'loading' || !retryHadFocus.current) return;
+    retryHadFocus.current = false;
+    (loaded.current?.querySelector<HTMLElement>('a[href], button:not([disabled])') ?? document.getElementById(TITLE))?.focus();
+  }, [state]);
+  const retry = () => { retryHadFocus.current = document.activeElement?.closest('.kairos-error-state') != null; setAttempt(current => current + 1); };
 
   const practice = scope === 'practice';
   const result = state.kind === 'ready' ? state.result : null;
   const projection = result?.kind === 'ready' ? result.projection : null;
   const homeWords = result?.kind === 'ready' ? describeTotalsInHomeCurrency(result.inHomeCurrency) : null;
   return <section className="kairos-route kairos-patterns" aria-labelledby="kairos-patterns-title">
-    <PageHeader tone="insight" eyebrow={practice ? 'Practice' : 'Your results'} title={practice ? 'Your practice patterns' : 'Your patterns'} titleId="kairos-patterns-title"
+    <PageHeader tone="insight" eyebrow={practice ? 'Practice' : 'Your results'} title={practice ? 'Your practice patterns' : 'Your patterns'} titleId={TITLE}
       intro={practice ? SHORT_INTRO.practice : SHORT_INTRO.real} howItWorks={<p>{practice ? INTRO.practice : INTRO.real}</p>} />
+    <div ref={loaded} className="kairos-patterns__loaded">
     {homeWords ? <p className="kairos-patterns__currency">{homeWords.text} <PatternsLink to="/currency">{homeWords.link}</PatternsLink></p> : null}
     {state.kind === 'loading' ? <Skeleton label="Loading your patterns…" /> : null}
     {state.kind === 'failed' || result?.kind === 'unavailable'
-      ? <ErrorState live={false} message="Kairos could not load your patterns. Your trades are not affected." onRetry={() => setAttempt(current => current + 1)} /> : null}
+      ? <ErrorState live={false} message="Kairos could not load your patterns. Your trades are not affected." onRetry={retry} /> : null}
     {result?.kind === 'time-zone-unconfigured' ? <p>Your patterns sort your trades by day and hour in your time zone, so they need your time zone first. <PatternsLink to="/settings">Open Settings</PatternsLink></p> : null}
     {projection && projection.overall.tradeCount === 0 ? <p>{practice
       ? `No closed practice trades in the last ${TRADE_PATTERN_PERIOD_DAYS} days yet. Your practice patterns appear here as you close practice trades.`
@@ -105,6 +117,7 @@ export function PatternsScreen({ db, scope, now = wallClock }: PatternsScreenPro
       {projection.patterns.map(pattern => <PatternCard key={pattern.kind} pattern={pattern} />)}
     </div> : null}
     {result?.kind === 'ready' ? <p className="kairos-patterns__zone">Time zone: {result.timeZone}</p> : null}
+    </div>
     <p><PatternsLink to={practice ? '/practice' : '/journal'}>{practice ? 'Back to Practice' : 'Back to your Journal'}</PatternsLink></p>
   </section>;
 }

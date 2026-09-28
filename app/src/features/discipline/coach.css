@@ -13,3 +13,4 @@
 .kairos-coach-card__heading { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:var(--kairos-space-2); }
 .kairos-coach-card.kairos-coach-card .kairos-coach-card__heading p, .kairos-coach-card.kairos-coach-card .kairos-coach-card__count { color:var(--kairos-text-secondary); font-size:var(--kairos-font-size-sm); }
 .kairos-coach-card.kairos-coach-card .kairos-coach-card__title { color:var(--kairos-text-primary); font-weight:var(--kairos-font-weight-semibold); }
+.kairos-coach__loaded { display:contents; }

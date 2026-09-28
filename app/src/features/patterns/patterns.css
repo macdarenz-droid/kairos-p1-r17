@@ -14,3 +14,4 @@
 .kairos-pattern-bar [data-part="even"] { background:var(--kairos-trade-flat); }
 .kairos-pattern-bar [data-part="lost"] { background:var(--kairos-trade-loss); }
 .kairos-pattern-bar [data-part="none"] { background:var(--kairos-text-secondary); }
+.kairos-patterns__loaded { display:contents; }

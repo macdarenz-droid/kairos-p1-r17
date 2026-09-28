@@ -74,8 +74,11 @@ describe('T-049i Coach and Patterns on the kit', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Loading your coach…');
     const message = await screen.findByText('Kairos could not load your coach. Your trades are not affected.');
     expect(screen.queryByRole('alert')).toBeNull();
-    fireEvent.click(within(message.parentElement!).getByRole('button', { name: 'Try again' }));
+    const retry = within(message.parentElement!).getByRole('button', { name: 'Try again' });
+    retry.focus();
+    fireEvent.click(retry);
     expect(await screen.findByRole('heading', { level: 2, name: '1 trade this month was bigger than you planned.' })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getAllByRole('link', { name: 'View trade' })[0]).toHaveFocus());
     expect(screen.queryByText('Kairos could not load your coach. Your trades are not affected.')).toBeNull();
     expect(loadCoachNotes).toHaveBeenCalledTimes(2);
   });
@@ -89,8 +92,31 @@ describe('T-049i Coach and Patterns on the kit', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Loading your patterns…');
     const message = await screen.findByText('Kairos could not load your patterns. Your trades are not affected.');
     expect(screen.queryByRole('alert')).toBeNull();
-    fireEvent.click(within(message.parentElement!).getByRole('button', { name: 'Try again' }));
+    const retry = within(message.parentElement!).getByRole('button', { name: 'Try again' });
+    retry.focus();
+    fireEvent.click(retry);
     expect(await screen.findByRole('heading', { name: 'All your trades' })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'Your patterns' })).toHaveFocus());
     expect(loadTradePatterns).toHaveBeenCalledTimes(2);
+  });
+
+  it('a "Try again" that fails again puts focus on the new "Try again", on Coach and on Patterns', async () => {
+    const db = await database();
+    await withZone(db);
+    vi.mocked(loadCoachNotes).mockRejectedValueOnce(new Error('storage')).mockRejectedValueOnce(new Error('storage'));
+    vi.mocked(loadTradePatterns).mockRejectedValueOnce(new Error('storage')).mockRejectedValueOnce(new Error('storage'));
+    for (const [open, text, calls] of [
+      [() => coach(db, 'practice'), 'Kairos could not load your coach. Your trades are not affected.', () => loadCoachNotes],
+      [() => patterns(db, 'practice'), 'Kairos could not load your patterns. Your trades are not affected.', () => loadTradePatterns],
+    ] as const) {
+      open();
+      const retry = () => within((screen.getByText(text)).parentElement!).getByRole('button', { name: 'Try again' });
+      await screen.findByText(text);
+      retry().focus();
+      fireEvent.click(retry());
+      await waitFor(() => expect(calls()).toHaveBeenCalledTimes(2));
+      await waitFor(() => expect(retry()).toHaveFocus());
+      cleanup();
+    }
   });
 });
