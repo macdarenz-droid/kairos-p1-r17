@@ -84,6 +84,12 @@ export function decimalSum(values: readonly (DecimalString | string)[]): Decimal
   return output(total);
 }
 
+/** Decimal places of the value's shortest exact form ('10.50' → 1, '3' → 0, '-0.001' → 3); null when it is not a decimal. */
+export function decimalPlaces(value: DecimalString | string): number | null {
+  const decimal = read(value);
+  return decimal ? decimal.decimalPlaces() : null;
+}
+
 /** Orders two decimal strings exactly; null when either is not a decimal string. */
 export function decimalCompare(left: DecimalString | string, right: DecimalString | string): -1 | 0 | 1 | null {
   const a = read(left);

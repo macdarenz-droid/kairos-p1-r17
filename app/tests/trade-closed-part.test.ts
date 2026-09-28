@@ -62,6 +62,10 @@ describe('T-050c a trade\'s closed part', () => {
     expect(projectTradeClosedPart({ trade: trade('closed'), executions: partly, fees: [fee('0.3', 'USDT'), fee('0.001', 'BNB')] })).toMatchObject({ available: true, resultBeforeFees: '10', feesSoFar: null });
   });
 
+  it('gives no fees so far when the fees add up to 0, and still gives the closed part', () => {
+    expect(projectTradeClosedPart({ trade: trade('closed'), executions: partly, fees: [fee('0', 'USDT')] })).toMatchObject({ available: true, resultBeforeFees: '10', feesSoFar: null });
+  });
+
   it('keeps an unknown currency unknown', () => {
     expect(projectTradeClosedPart({ trade: trade('closed', null), executions: partly, fees: [] })).toMatchObject({ available: true, currency: null });
   });
