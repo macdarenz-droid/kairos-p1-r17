@@ -3,7 +3,7 @@
  */
 
 import { decimalCompare, decimalRound, decimalScaleToSteps } from '../../domain/calculations/decimalKernel';
-import { calculateInitialRiskAmount, calculateRiskPriceDistance } from '../../domain/calculations/riskCalculator';
+import { calculateMoneyAtRiskFromPrice } from '../../domain/calculations/riskCalculator';
 import type { Strategy, StrategyRule, StrategyRuleAnswer, StrategyRuleId, TradeDisciplineRecord } from '../../domain/discipline';
 import { parsePositiveDecimalString, type DecimalString, type TradePlanRecord, type TradeRecord, type TradeSide, type TradeStatus } from '../../domain/trades';
 import { projectPlannedRewardToRisk } from '../risk-reward/plannedRewardToRisk';
@@ -32,7 +32,7 @@ export interface TradeStrategyCheckInput {
   readonly checklist: TradeChecklistSummary | null;
 }
 export type StrategyRuleResult =
-  | Readonly<{ kind: 'max-risk'; ruleId: StrategyRuleId; verdict: StrategyRuleVerdict; reason: 'within' | 'over' | 'plan-incomplete' | 'no-currency' | 'other-currency'; risk: DecimalString | null; limit: DecimalString; currency: string; tradeCurrency: string | null; bars: StrategyRuleBars | null }>
+  | Readonly<{ kind: 'max-risk'; ruleId: StrategyRuleId; verdict: StrategyRuleVerdict; reason: 'within' | 'over' | 'plan-incomplete' | 'levels-not-ordered' | 'no-currency' | 'other-currency'; risk: DecimalString | null; limit: DecimalString; currency: string; tradeCurrency: string | null; bars: StrategyRuleBars | null }>
   | Readonly<{ kind: 'min-reward-to-risk'; ruleId: StrategyRuleId; verdict: StrategyRuleVerdict; reason: 'at-least' | 'below' | 'plan-incomplete' | 'levels-not-ordered'; ratio: DecimalString | null; shownRatio: DecimalString | null; least: DecimalString; bars: StrategyRuleBars | null }>
   | Readonly<{ kind: 'stop-planned'; ruleId: StrategyRuleId; verdict: StrategyRuleVerdict; reason: 'planned' | 'no-stop'; stop: DecimalString | null }>
   | Readonly<{ kind: 'checklist-complete'; ruleId: StrategyRuleId; verdict: StrategyRuleVerdict; reason: 'every-step' | 'steps-missed' | 'no-checklist' | 'cancelled' | 'not-yet'; ticked: number | null; asked: number | null }>
@@ -63,12 +63,11 @@ function checkRule(rule: StrategyRule, input: TradeStrategyCheckInput): Strategy
   switch (rule.kind) {
     case 'max-risk': {
       const base = { kind: 'max-risk' as const, ruleId: rule.id, limit: rule.amount, currency: rule.currency, tradeCurrency: input.priceCurrency };
-      const unknown = (reason: 'plan-incomplete' | 'no-currency' | 'other-currency', risk: DecimalString | null) => ({ ...base, verdict: 'unknown' as const, reason, risk, bars: null });
-      if (entry === null || stop === null || quantity === null) return unknown('plan-incomplete', null);
-      const distance = calculateRiskPriceDistance(entry, stop);
-      const amount = distance.ok ? calculateInitialRiskAmount(distance.value, quantity) : null;
-      if (amount === null || !amount.ok) return unknown('plan-incomplete', null);
-      const risk = amount.value;
+      const unknown = (reason: 'plan-incomplete' | 'levels-not-ordered' | 'no-currency' | 'other-currency', risk: DecimalString | null) => ({ ...base, verdict: 'unknown' as const, reason, risk, bars: null });
+      if (input.side === null || entry === null || stop === null || quantity === null) return unknown('plan-incomplete', null);
+      const money = calculateMoneyAtRiskFromPrice(input.side, entry, stop, quantity);
+      if (!money.ok) return unknown(money.reason === 'stop-at-entry' || money.reason === 'stop-not-on-loss-side' ? 'levels-not-ordered' : 'plan-incomplete', null);
+      const risk = money.amount;
       if (input.priceCurrency === null) return unknown('no-currency', risk);
       if (input.priceCurrency !== rule.currency) return unknown('other-currency', risk);
       const order = decimalCompare(risk, rule.amount);

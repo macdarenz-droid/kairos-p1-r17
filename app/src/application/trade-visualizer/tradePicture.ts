@@ -1,13 +1,10 @@
 import {
-  calculateRiskPerformance,
-  calculateRiskPriceDistance,
   calculateTradeMetrics,
   decimalAbs,
   decimalAdd,
   decimalMultiply,
   decimalRound,
   decimalSubtract,
-  type TradeMetrics,
 } from '../../domain/calculations';
 import type {
   DecimalString,
@@ -21,14 +18,15 @@ import type { MarketCandle } from '../../services/market-data/MarketCandleHistor
 import { parseForexPair, projectForexPips, projectForexPipValue, projectForexSize } from '../markets/forexPair';
 import { projectStockResultPerShare } from '../markets/stockTicker';
 import { describeTradeDuration, projectTradeDurationMs } from '../performance/tradeDuration';
+import { describeTimesRisked, projectTradeTimesRisked, signedText, TIMES_RISKED_PLACES } from '../performance/tradeRisk';
 import { tradePictureHasCandleSource, tradePictureTimes } from './tradePictureCandles';
-import { projectTradeVisualizerFacts } from './tradeVisualizerFacts';
+import { latestTradePlan, projectTradeVisualizerFacts } from './tradeVisualizerFacts';
 import { projectPlannedRewardToRisk } from '../risk-reward/plannedRewardToRisk';
 
 /** Space above the highest and below the lowest price, as a share of the price span. */
 export const TRADE_PICTURE_PRICE_PADDING = '0.08';
 /** The planned reward and the actual result are shown to this many places, half up. */
-export const TRADE_PICTURE_RATIO_PLACES = 2;
+export const TRADE_PICTURE_RATIO_PLACES = TIMES_RISKED_PLACES;
 /** Pips are shown to this many places (tenths of a pip), half up; the row's value keeps the exact owner value. */
 export const TRADE_PICTURE_PIP_PLACES = 1;
 /** Won or lost per share is shown to this many places, half up; the row's value keeps the exact owner value. */
@@ -178,25 +176,11 @@ function plannedRewardToRisk(side: TradeSide, entry: DecimalString | null, stop:
   return planned.ok ? planned.value.ratio : null;
 }
 
-/** Actual result in R: result after fees ÷ (|entry − stop| × entered size). */
-function actualR(metrics: TradeMetrics | null, entry: DecimalString | null, stop: DecimalString | null): DecimalString | null {
-  if (metrics === null || metrics.netPnl === null || entry === null || stop === null || metrics.totalEnteredQuantity === '0') return null;
-  const riskPerUnit = calculateRiskPriceDistance(entry, stop);
-  if (!riskPerUnit.ok) return null;
-  const performance = calculateRiskPerformance(metrics.netPnl, riskPerUnit.value, metrics.totalEnteredQuantity);
-  return performance.ok ? performance.realizedR : null;
-}
-
 /** A ratio rounded for reading; null when unknown or when the kernel refuses it. */
 function shownRatio(value: DecimalString | null): DecimalString | null {
   if (value === null) return null;
   const rounded = decimalRound(value, TRADE_PICTURE_RATIO_PLACES, 'half-up');
   return rounded.ok ? rounded.value : null;
-}
-
-/** "+1.95", "-0.11", and "0" for a rounded zero (never "+0"). */
-function signed(value: DecimalString): string {
-  return value.startsWith('-') || value === '0' ? value : `+${value}`;
 }
 
 const STATUS_WORDS: Readonly<Record<TradeRecord['status'], string>> = { draft: 'Planned', open: 'Open', closed: 'Closed', cancelled: 'Cancelled' };
@@ -218,7 +202,7 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
     ? calculateTradeMetrics(trade.side, executions, undefined, fees, { grossPnlCurrency: trade.grossPnlCurrency })
     : calculateTradeMetrics(trade.side, executions, undefined, fees);
   const metrics = metricsResult.ok ? metricsResult.value : null;
-  const plannedQuantity = plans.find(plan => plan.plannedQuantity !== null)?.plannedQuantity ?? null;
+  const plannedQuantity = latestTradePlan(plans)?.plannedQuantity ?? null;
 
   const { startMs, endMs: timesEndMs } = tradePictureTimes(trade, executions, Date.parse(now));
   const endMs = Number.isFinite(timesEndMs) ? timesEndMs : null;
@@ -271,10 +255,11 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
   const timeRange = times.length === 0 ? null : Object.freeze({ from: iso(Math.min(...times)), to: iso(Math.max(...times)) });
 
   const reward = plannedRewardToRisk(trade.side, entry, stop, target);
-  const realized = actualR(metrics, entry, stop);
-  const rewardShown = shownRatio(reward), realizedShown = shownRatio(realized);
+  const timesRisked = projectTradeTimesRisked({ trade, plans, executions, metrics });
+  const realized = timesRisked.available ? timesRisked.value : null;
+  const rewardShown = shownRatio(reward);
   const rewardText = rewardShown === null ? null : `Reward is ${rewardShown}× the risk`;
-  const realizedText = realizedShown === null ? null : `${signed(realizedShown)}× what you risked`;
+  const realizedText = realized === null ? null : describeTimesRisked(realized);
   const durationMs = projectTradeDurationMs(trade, executions, Date.parse(now));
   const size = metrics !== null && metrics.totalEnteredQuantity !== '0' ? metrics.totalEnteredQuantity : plannedQuantity;
   const currency = metrics?.netPnlCurrency ?? null;
@@ -286,7 +271,7 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
   const pips = pair !== null && metrics !== null && metrics.state === 'realized' && metrics.averageEntryPrice !== null && metrics.averageExitPrice !== null
     ? projectForexPips(pair, trade.side, metrics.averageEntryPrice, metrics.averageExitPrice) : null;
   const pipsShown = pips === null ? null : decimalRound(pips, TRADE_PICTURE_PIP_PLACES, 'half-up');
-  const pipsText = pipsShown !== null && pipsShown.ok ? `${signed(pipsShown.value)} ${pipsShown.value === '1' || pipsShown.value === '-1' ? 'pip' : 'pips'}` : null;
+  const pipsText = pipsShown !== null && pipsShown.ok ? `${signedText(pipsShown.value)} ${pipsShown.value === '1' || pipsShown.value === '-1' ? 'pip' : 'pips'}` : null;
   const pipValue = pair !== null && size !== null ? projectForexPipValue(pair, size) : null;
   const unitWord = (value: string) => (value === '1' ? 'unit' : 'units');
   // P32: a stock trade's size is shares; what it won or lost per share comes from the one ticker owner (D105).
@@ -295,7 +280,7 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
   const perShareShown = perShare === null ? null : decimalRound(perShare, TRADE_PICTURE_PER_SHARE_PLACES, 'half-up');
   const priceCurrency = trade.grossPnlCurrency || null;
   const perShareText = perShareShown !== null && perShareShown.ok
-    ? `${signed(perShareShown.value)}${priceCurrency ? ` ${priceCurrency}` : ''} before fees` : null;
+    ? `${signedText(perShareShown.value)}${priceCurrency ? ` ${priceCurrency}` : ''} before fees` : null;
 
   const info: TradePictureInfoRow[] = [
     row('market', 'Market', trade.symbol, null, value => (pair?.quoteKnown ? pair.label : value)),
@@ -332,7 +317,14 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
   if (stop === null) missing.push({ part: 'stop', message: 'No stop, so no risk box.' });
   if (target === null) missing.push({ part: 'target', message: 'No target, so no reward box.' });
   if (metrics?.netPnl == null) missing.push({ part: 'result', message: 'No result after fees yet.' });
-  if (realizedText === null) missing.push({ part: 'actual-r', message: 'No result in R: it needs a result, a planned entry and a stop.' });
+  if (realizedText === null) {
+    const reason = timesRisked.available ? 'invalid-decimal' : timesRisked.reason;
+    const message = reason === 'no-result' ? 'No × what you risked yet: it needs a result after fees.'
+      : reason === 'no-stop' ? 'No × what you risked: it needs a stop.'
+        : reason === 'stop-at-entry' || reason === 'stop-not-on-loss-side' ? 'No × what you risked: the stop is not on the losing side of your entry.'
+          : 'No × what you risked: it needs your entries.';
+    missing.push({ part: 'actual-r', message });
+  }
 
   return Object.freeze({
     symbol: trade.symbol,

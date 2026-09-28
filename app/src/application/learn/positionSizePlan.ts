@@ -4,7 +4,7 @@
 
 import { decimalCompare, decimalMultiply, decimalRound } from '../../domain/calculations/decimalKernel';
 import { calculatePositionSize } from '../../domain/calculations/positionSizeCalculator';
-import { calculateInitialRiskAmount, calculateRiskBudget, calculateRiskPriceDistance } from '../../domain/calculations/riskCalculator';
+import { calculateMoneyAtRiskFromPrice, calculateRiskBudget, calculateRiskPriceDistance } from '../../domain/calculations/riskCalculator';
 import type { LearnPictureSpec } from '../../domain/learn/learnPicture';
 import { parseDecimalString, parsePositiveDecimalString, type DecimalString } from '../../domain/trades';
 
@@ -37,7 +37,7 @@ export interface PositionSizePlan {
   readonly size: DecimalString;
   /** The exact quotient differs from size. */
   readonly sizeWasRounded: boolean;
-  /** calculateInitialRiskAmount(riskPerUnit, size); never above riskBudget */
+  /** calculateMoneyAtRiskFromPrice(side, entry, stop, size); never above riskBudget */
   readonly amountAtRisk: DecimalString;
   /** size × entry: what the trade is worth at the entry price */
   readonly positionValue: DecimalString;
@@ -81,7 +81,7 @@ export function projectPositionSizePlan(input: Readonly<Record<PositionSizeField
   const size = decimalRound(exact.value, POSITION_SIZE_DECIMAL_PLACES, 'down');
   if (!size.ok) return failed();
   if (size.value === '0') return refuse({ field: null, reason: 'too-small' });
-  const amountAtRisk = calculateInitialRiskAmount(riskPerUnit, size.value);
+  const amountAtRisk = calculateMoneyAtRiskFromPrice(side, entryPrice, stopPrice, size.value);
   const positionValue = decimalMultiply(size.value, entryPrice);
   if (!amountAtRisk.ok || !positionValue.ok) return failed();
   const valueOrder = decimalCompare(positionValue.value, accountSize);
@@ -96,7 +96,7 @@ export function projectPositionSizePlan(input: Readonly<Record<PositionSizeField
       riskPerUnit,
       size: size.value,
       sizeWasRounded: roundedOrder !== 0,
-      amountAtRisk: amountAtRisk.value,
+      amountAtRisk: amountAtRisk.amount,
       positionValue: positionValue.value,
       needsBorrowedMoney: valueOrder === 1,
       picture: Object.freeze({ kind: 'risk-box', side, target: false, highlight: 'risk' } as const),
