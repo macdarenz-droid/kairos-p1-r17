@@ -81,6 +81,15 @@ describe('T-050d your numbers for a period, part 1', () => {
     expect(summarizePerformance([win, roundedLoss]).profitFactor).toEqual({ available: false, reason: 'no-losses', tradeCount: 2 });
   });
 
+  it('on a tie picks the best and the worst trade that closed first', async () => {
+    const entries = await entriesFor(results(['120', '85', '120', '85']));
+    const firstClosed = (amount: string) => entries.filter(entry => entry.visualPnl.amount === amount)
+      .reduce((a, b) => (Date.parse(a.trade.closedAt ?? '') <= Date.parse(b.trade.closedAt ?? '') ? a : b));
+    const summary = summarizePerformance(entries);
+    expect(summary.bestTrade).toMatchObject({ available: true, amount: '20', tradeId: firstClosed('20').trade.id });
+    expect(summary.worstTrade).toMatchObject({ available: true, amount: '-15', tradeId: firstClosed('-15').trade.id });
+  });
+
   it('works from one trade', async () => {
     const summary = summarizePerformance(await entriesFor(results(['107'])));
     expect(summary.averageWin).toMatchObject({ available: true, amount: '7', tradeCount: 1 });
