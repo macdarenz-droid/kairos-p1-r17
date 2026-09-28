@@ -79,6 +79,31 @@ describe('T-050f how far price went for and against you', () => {
     expect(move.forYou.startsWith('11.666')).toBe(true);
     expect(move.shownForYou).toBe('11.7');
   });
+
+  it('needs a start time', () => {
+    expect(projectPriceMove(long({ startMs: null }))).toEqual({ available: false, reason: 'no-start' });
+  });
+
+  it('says so when the trade happened after the last candle', () => {
+    expect(projectPriceMove(long({ startMs: ms('15:00'), endMs: ms('16:00') }))).toEqual({ available: false, reason: 'no-candles-in-trade' });
+  });
+
+  it('counts only the candle of the minute when entry and exit are on the same minute, as "about"', () => {
+    const move = projectPriceMove(long({ executions: [fill('e1', 'entry', '105', '1', at('11:00'))], startMs: ms('11:00'), endMs: ms('11:00') }));
+    expect(move).toMatchObject({ available: true, highest: '112', lowest: '101', forYou: '7', againstYou: '4', forYouIsAbout: true, againstYouIsAbout: true, candleCount: 1 });
+  });
+
+  it('on equal extremes picks the candle inside the trade first, then the earlier one', () => {
+    const candles = [candle('09:30', '10:29', '120', '100'), candle('11:00', '11:59', '120', '98'), candle('12:00', '12:59', '110', '98')];
+    expect(projectPriceMove(long({ candles }))).toMatchObject({
+      available: true, highest: '120', highestAt: at('11:00'), lowest: '98', lowestAt: at('11:00'), forYouIsAbout: false, againstYouIsAbout: false, candleCount: 3,
+    });
+  });
+
+  it('skips a candle whose time cannot be read', () => {
+    const unreadable: MarketCandle = { ...candle('11:00', '11:59', '999', '1'), openTime: 'not a time' };
+    expect(projectPriceMove(long({ candles: [...hourly, unreadable] }))).toMatchObject({ available: true, highest: '112', lowest: '98', candleCount: 3 });
+  });
 });
 
 describe('T-050f the price move on the trade picture', () => {
