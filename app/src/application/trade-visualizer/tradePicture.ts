@@ -17,6 +17,7 @@ import type {
 import type { MarketCandle } from '../../services/market-data/MarketCandleHistoryPort';
 import { parseForexPair, projectForexPips, projectForexPipValue, projectForexSize } from '../markets/forexPair';
 import { projectStockResultPerShare } from '../markets/stockTicker';
+import { projectPriceMove, type PriceMove } from '../performance/priceMove';
 import { describeTradeDuration, projectTradeDurationMs } from '../performance/tradeDuration';
 import { describeTimesRisked, projectTradeTimesRisked, signedText, TIMES_RISKED_PLACES } from '../performance/tradeRisk';
 import { tradePictureHasCandleSource, tradePictureTimes } from './tradePictureCandles';
@@ -112,6 +113,8 @@ export interface TradePictureModel {
   readonly markers: readonly TradePictureMarker[];
   readonly info: readonly TradePictureInfoRow[];
   readonly missing: readonly TradePictureMissing[];
+  /** How far price went for and against you while in the trade (D192); not an info row, U6 draws it. */
+  readonly priceMove: PriceMove;
 }
 
 type Sign = -1 | 0 | 1;
@@ -339,5 +342,7 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
     markers: Object.freeze(markers),
     info: Object.freeze(info),
     missing: Object.freeze(missing.map(item => Object.freeze(item))),
+    // An open trade is still in the market after a partial exit, so its move runs to now (D192 "so far").
+    priceMove: projectPriceMove({ side: trade.side, executions, startMs, endMs: trade.status === 'open' ? Date.parse(now) : timesEndMs, stillOpen: trade.status === 'open', candles }),
   });
 }

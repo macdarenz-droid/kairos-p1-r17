@@ -2,13 +2,15 @@
  * U4 (P11.A1): the one owner of the period numbers, starting with how a group of closed trades went (moved from patterns, D188). Imported by path; this folder has no index barrel (D187). Counts, never money: money is added up only through the visual-pnl aggregation owner, in one currency.
  */
 
-import { decimalAbs, decimalCompare, decimalDivide, decimalPlaces, decimalRound, decimalSum } from '../../domain/calculations/decimalKernel';
+import { decimalAbs, decimalCompare, decimalDivide, decimalPlaces, decimalRound, decimalSubtract, decimalSum } from '../../domain/calculations/decimalKernel';
 import type { DecimalString, TradeId } from '../../domain/trades';
 import type { JournalHistoryEntry } from '../journal/historyQuery';
 import { tradePictureTimes } from '../trade-visualizer/tradePictureCandles';
-import type { VisualPnlAggregationBlockReason } from '../visual-pnl/aggregationEligibility';
+import { assessVisualPnlAggregationEligibility, type VisualPnlAggregationBlockReason } from '../visual-pnl/aggregationEligibility';
 import { summarizeVisualPnlAggregation } from '../visual-pnl/aggregationSummary';
 import type { VisualPnlOutcomeProjection } from '../visual-pnl/outcomeProjection';
+import { projectVisualPnlRunningTotals } from '../visual-pnl/resultCandles';
+import { projectVisualPnlLongestTradeStreaks, type VisualPnlTradeStreak } from '../visual-pnl/tradeStreaks';
 import { projectTradeDurationMs } from './tradeDuration';
 import { TIMES_RISKED_PLACES, projectTradeTimesRisked } from './tradeRisk';
 
@@ -74,6 +76,12 @@ export type PerformanceTrade =
 export type PerformanceTime =
   | Readonly<{ available: true; averageMs: number; tradeCount: number; tradesWithBadTimes: number }>
   | Readonly<{ available: false; reason: 'no-trades'; tradeCount: 0; tradesWithBadTimes: number }>;
+export type PerformanceDip =
+  | Readonly<{ available: true; amount: DecimalString; currency: string; fromTradeId: TradeId | null; toTradeId: TradeId | null; tradeCount: number }>
+  | Readonly<{ available: false; reason: VisualPnlAggregationBlockReason | 'invalid-decimal'; tradeCount: number }>;
+export type PerformanceStreak =
+  | Readonly<{ available: true; length: number; firstTradeId: TradeId | null; lastTradeId: TradeId | null; tradeCount: number; tradesWithoutResult: number }>
+  | Readonly<{ available: false; reason: 'no-trades'; tradeCount: number; tradesWithoutResult: number }>;
 export interface PerformanceSummary {
   readonly tradeCount: number;
   readonly outcomes: TradeOutcomeSummary;
@@ -85,6 +93,9 @@ export interface PerformanceSummary {
   readonly worstTrade: PerformanceTrade;
   readonly averageTimesRisked: PerformanceRatio;
   readonly averageTime: PerformanceTime;
+  readonly biggestDip: PerformanceDip;
+  readonly longestWinStreak: PerformanceStreak;
+  readonly longestLossStreak: PerformanceStreak;
 }
 
 /** Money averages are shown to the most decimal places among the averaged results, at most this many (D193). */
@@ -189,6 +200,39 @@ function averageTime(entries: readonly JournalHistoryEntry[]): PerformanceTime {
     : Object.freeze({ available: true, averageMs: Math.round(totalMs / tradeCount), tradeCount, tradesWithBadTimes });
 }
 
+/** The biggest fall of the running total from a high point, over every trade in closing order; the period starts as a high point of 0 (fromTradeId null). */
+function biggestDip(entries: readonly JournalHistoryEntry[]): PerformanceDip {
+  const tradeCount = entries.length;
+  const invalid: PerformanceDip = Object.freeze({ available: false, reason: 'invalid-decimal', tradeCount });
+  const gate = assessVisualPnlAggregationEligibility(entries.map(entry => entry.visualPnl));
+  if (!gate.eligible) return Object.freeze({ available: false, reason: gate.reason, tradeCount });
+  const totals = projectVisualPnlRunningTotals('0' as DecimalString, gate.amounts);
+  if (totals === null) return invalid;
+  let high = '0' as DecimalString;
+  let highId: TradeId | null = null;
+  let dip = '0' as DecimalString;
+  let fromTradeId: TradeId | null = null;
+  let toTradeId: TradeId | null = null;
+  for (let i = 0; i < totals.length; i += 1) {
+    const total = totals[i];
+    const above = decimalCompare(total, high);
+    if (above === null) return invalid;
+    if (above > 0) { high = total; highId = entries[i].trade.id; continue; }
+    const fall = decimalSubtract(high, total);
+    if (!fall.ok) return invalid;
+    const bigger = decimalCompare(fall.value, dip);
+    if (bigger === null) return invalid;
+    if (bigger > 0) { dip = fall.value; fromTradeId = highId; toTradeId = entries[i].trade.id; }
+  }
+  return Object.freeze({ available: true, amount: dip, currency: gate.currency, fromTradeId, toTradeId, tradeCount });
+}
+
+function streak(run: VisualPnlTradeStreak, outcomes: TradeOutcomeSummary): PerformanceStreak {
+  const counts = { tradeCount: outcomes.tradeCount, tradesWithoutResult: outcomes.noResult };
+  if (outcomes.resultCount === 0) return Object.freeze({ available: false, reason: 'no-trades', ...counts });
+  return Object.freeze({ available: true, length: run.length, firstTradeId: run.firstId as TradeId | null, lastTradeId: run.lastId as TradeId | null, ...counts });
+}
+
 /** Entries are closed trades in closing order (the period query's order), after the home-currency step when there is one. */
 export function summarizePerformance(entries: readonly JournalHistoryEntry[]): PerformanceSummary {
   const outcomes = summarizeTradeOutcomes(entries);
@@ -225,5 +269,10 @@ export function summarizePerformance(entries: readonly JournalHistoryEntry[]): P
     ...money,
     averageTimesRisked: averageTimesRisked(entries),
     averageTime: averageTime(entries),
+    biggestDip: biggestDip(entries),
+    ...(() => {
+      const runs = projectVisualPnlLongestTradeStreaks(entries.map(entry => ({ id: entry.trade.id, outcome: entry.visualPnl.outcome })));
+      return { longestWinStreak: streak(runs.win, outcomes), longestLossStreak: streak(runs.loss, outcomes) };
+    })(),
   });
 }
