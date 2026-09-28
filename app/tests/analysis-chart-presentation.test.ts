@@ -1,0 +1,26 @@
+import { afterEach, expect, it, vi } from 'vitest';
+import { createLightweightChartsV5ProductionRendererFactory } from '../src/features/chart/lightweightChartsV5ProductionRenderer';
+import { lightweightChartsV5Package } from '../src/features/chart/lightweightChartsV5Package';
+import { getChartTheme } from '../src/design-system/themes/chartThemeAdapter';
+import type { ChartRenderModel } from '../src/features/chart/chartRenderContract';
+import type { DecimalString } from '../src/domain/trades';
+afterEach(() => vi.restoreAllMocks());
+it('keeps one chart and viewport through theme changes, exposes viewport controls and destroys exactly once', () => {
+  let range = { from: 0, to: 99 };
+  const scale = { getVisibleLogicalRange: () => range, setVisibleLogicalRange: vi.fn(next => { range = next; }), fitContent: vi.fn(), subscribeVisibleLogicalRangeChange: vi.fn(), unsubscribeVisibleLogicalRangeChange: vi.fn() };
+  const series = { setData: vi.fn(), update: vi.fn(), applyOptions: vi.fn() };
+  const chart = { addSeries: vi.fn(() => series), removeSeries: vi.fn(), remove: vi.fn(), applyOptions: vi.fn(), timeScale: () => scale };
+  const create = vi.spyOn(lightweightChartsV5Package, 'createChart').mockReturnValue(chart);
+  const session = createLightweightChartsV5ProductionRendererFactory().create(document.createElement('div'));
+  const model: ChartRenderModel = { market: { venue: 'source', instrument: 'EXACT', source: 'market-reference' }, series: { kind: 'price-line', points: [{ timestamp: '2026-09-12T00:00:00.000Z', price: '0.00000001' as DecimalString }] }, journalExecutions: [] };
+  session.render(model); expect(series.setData).toHaveBeenCalledWith([{ time: 1789171200, value: .00000001 }]);
+  session.setTheme(getChartTheme('cosmic')); session.setTheme(getChartTheme('ocean'));
+  expect(create).toHaveBeenCalledTimes(1); expect(series.setData).toHaveBeenCalledTimes(1); expect(range).toEqual({ from: 0, to: 99 });
+  session.zoom(.5); expect(range.to - range.from).toBe(49.5);
+  session.pan(.2); expect(range.from).toBeCloseTo(34.65);
+  session.resetView(); expect(scale.fitContent).toHaveBeenCalledTimes(1);
+  expect(() => session.render({ ...model, series: { kind: 'price-line', points: [{ timestamp: '2026-09-12T00:00:00.000Z', price: '0.0000000000001' as DecimalString }] } })).toThrow('chart-price-resolution-unavailable');
+  session.destroy(); session.destroy(); session.setTheme(getChartTheme('cosmic')); session.zoom(2); session.pan(1); session.resetView();
+  expect(chart.remove).toHaveBeenCalledTimes(1); expect(chart.applyOptions).toHaveBeenCalledTimes(2); expect(scale.fitContent).toHaveBeenCalledTimes(1);
+  expect(() => session.render(model)).toThrow('chart-renderer-destroyed');
+});

@@ -1,0 +1,208 @@
+import { useEffect, useRef } from 'react';
+import { JOURNAL_HISTORY_SOURCES, type JournalHistoryEntry, type JournalHistoryScope } from '../application/journal';
+import { saveTradeDiscipline } from '../application/discipline';
+import { Button, EmptyState, ErrorState, Field, ResultText, Select, Skeleton } from '../design-system/primitives';
+import { TradeChecklistControl } from '../features/discipline/TradeChecklistControl';
+import { TradeReviewControl } from '../features/discipline/TradeReviewControl';
+import { TradeStrategyControl } from '../features/discipline/TradeStrategyControl';
+import { checkSavedTradeStrategy } from '../application/discipline/strategyCheck';
+import { projectTradePlanVsExecution } from '../application/trades/planVsExecution';
+import { describeTradePlanVsExecution } from '../application/coach/coachWords';
+import { useTradeDisciplineCards } from '../features/discipline/useTradeDisciplineCards';
+import type { TradeSource, TradeStatus } from '../domain/trades';
+import { TradePicture } from '../features/journal/TradePicture';
+import { ReviewTradeLink } from './ReviewTradeLink';
+import { JournalOpenTradeUpdate } from './JournalOpenTradeUpdate';
+import { JournalDraftTradeActivation } from './JournalDraftTradeActivation';
+import { JournalTradeDeleteControl } from './JournalTradeDeleteControl';
+import type { KairosDatabase } from '../data/database';
+import { updateTradeExecution } from '../application/trades';
+import { EntriesAndExitsEditor } from '../features/journal/EntriesAndExitsEditor';
+import { GlossaryHint } from '../features/learn/GlossaryHint';
+import { describeClosedPart, describeMoneyAtRisk } from '../application/performance/performanceWords';
+import { projectTradeClosedPart } from '../application/performance/tradeClosedPart';
+import { projectTradeMoneyAtRisk } from '../application/performance/tradeRisk';
+import { useNewsNearTrades } from '../features/economic-calendar/useNewsNearTrades';
+import { describeNewsNearTrade } from '../application/economic-calendar/calendarWords';
+
+interface JournalHistoryListProps {
+  readonly entries: readonly JournalHistoryEntry[];
+  readonly isLoading: boolean;
+  readonly errorMessage: string | null;
+  readonly statusFilter: TradeStatus | '';
+  readonly onStatusFilterChange: (status: TradeStatus | '') => void;
+  /** "Try again" after a failed load: loads the list again. */
+  readonly onRetry?: () => void;
+  readonly db?: KairosDatabase;
+  readonly onTradeUpdated?: () => Promise<void>;
+  readonly updateNotice?: string;
+  /** P30.2: mounts the confirmed delete control on each card; receives the notice to show after the store changed. */
+  readonly onTradeDeleted?: (notice: string) => Promise<void>;
+  /** P31.2: mounts the draft activation control on manual draft cards; receives the notice to show after the draft became open. */
+  readonly onTradeOpened?: (notice: string) => Promise<void>;
+  /** P35.2: which trade sources the update and activation controls may touch. Defaults to `['manual']`, so the Journal is unchanged; the Practice route names `['paper']`. */
+  readonly allowedSources?: readonly TradeSource[];
+  /** P12.A1 paging: another page of older trades can be loaded. */
+  readonly hasOlder?: boolean;
+  readonly isLoadingOlder?: boolean;
+  readonly olderFailed?: boolean;
+  readonly onShowOlder?: () => void;
+  /** Called after a checklist or review is saved on a card. */
+  readonly onDisciplineSaved?: () => void;
+  /** P27: which sources get the "Before you trade" and "After the trade" controls. Defaults to `allowedSources`. Practice adds `'replay'`, whose entries and exits come from past candles and stay read-only. */
+  readonly disciplineSources?: readonly TradeSource[];
+}
+
+const STATUS_FILTERS = [
+  { value: '', label: 'All trades' }, { value: 'draft', label: 'Draft' }, { value: 'open', label: 'Open' },
+  { value: 'closed', label: 'Closed' }, { value: 'cancelled', label: 'Cancelled' },
+] as const;
+
+function statusLabel(status: JournalHistoryEntry['trade']['status']): string {
+  if (status === 'draft') return 'Draft';
+  if (status === 'open') return 'Open';
+  if (status === 'closed') return 'Closed';
+  return 'Cancelled';
+}
+
+function sideLabel(side: JournalHistoryEntry['trade']['side']): string {
+  return side === 'long' ? 'Long' : 'Short';
+}
+
+function money(value: string | null | undefined, currency: string | null | undefined): string {
+  return value == null ? 'Not available' : currency ? `${value} ${currency}` : value;
+}
+
+function formatTimestamp(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
+}
+
+export function JournalHistoryList({ entries, isLoading, errorMessage, statusFilter, onStatusFilterChange, onRetry, db, onTradeUpdated, updateNotice, onTradeDeleted, onTradeOpened, allowedSources = ['manual'], hasOlder = false, isLoadingOlder = false, olderFailed = false, onShowOlder, onDisciplineSaved, disciplineSources = allowedSources }: JournalHistoryListProps) {
+  const discipline = useTradeDisciplineCards(db, entries.map(entry => entry.trade.id));
+  const news = useNewsNearTrades(db, entries.map(entry => entry.trade));
+  // Journal passes the real sources, Practice the paper one; the discipline writer needs the page's scope.
+  const disciplineSaved = (record: Parameters<typeof discipline.remember>[0]) => { discipline.remember(record); onDisciplineSaved?.(); };
+  const scope: JournalHistoryScope = allowedSources.some(source => (JOURNAL_HISTORY_SOURCES.practice as readonly TradeSource[]).includes(source)) ? 'practice' : 'real';
+  // "Try again" unmounts its own error box, so focus would fall to the page (WCAG 2.4.3). When it had focus, focus goes
+  // to what the retry settles on: the heading or the first new card after it works, the new "Try again" when it fails.
+  const section = useRef<HTMLElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const refocus = useRef<{ readonly kind: 'load' } | { readonly kind: 'older'; readonly shown: number } | null>(null);
+  const retryHadFocus = (): boolean => document.activeElement?.closest('.kairos-error-state') != null;
+  const retryLoad = onRetry === undefined ? undefined : () => { refocus.current = retryHadFocus() ? { kind: 'load' } : null; onRetry(); };
+  const retryOlder = onShowOlder === undefined ? undefined : () => { refocus.current = retryHadFocus() ? { kind: 'older', shown: entries.length } : null; onShowOlder(); };
+  const tradeDeleted = onTradeDeleted === undefined ? undefined : async (notice: string) => { await onTradeDeleted(notice); heading.current?.focus(); };
+
+  useEffect(() => {
+    const target = refocus.current;
+    if (target === null || (target.kind === 'load' ? isLoading : isLoadingOlder)) return;
+    refocus.current = null;
+    const root = section.current;
+    if (root === null) return;
+    const firstFocusable = (element: Element | null | undefined) => element?.querySelector<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled])');
+    if (target.kind === 'load') {
+      (errorMessage ? firstFocusable(root.querySelector('.kairos-history__load-error')) : heading.current)?.focus();
+      return;
+    }
+    const next = olderFailed
+      ? firstFocusable(root.querySelector('.kairos-history__older-error'))
+      : firstFocusable(root.querySelectorAll('.kairos-history-card')[target.shown]) ?? root.querySelector<HTMLElement>('.kairos-history__older:not([disabled])');
+    (next ?? heading.current)?.focus();
+  }, [isLoading, isLoadingOlder, errorMessage, olderFailed, entries.length]);
+
+  return (
+    <section ref={section} className="kairos-history" aria-labelledby="kairos-history-title" aria-busy={isLoading || undefined}>
+      <div className="kairos-history__heading">
+        <div>
+          <p className="kairos-journal__eyebrow">Saved locally</p>
+          <h2 id="kairos-history-title" ref={heading} tabIndex={-1}>Trade history</h2>
+        </div>
+        <span className="kairos-history__count">{entries.length} shown</span>
+      </div>
+
+      <div className="kairos-history__controls">
+        <Field label="Show trades" id="kairos-history-status-filter" className="kairos-history__filter">
+          {control => <Select {...control} name="historyStatusFilter" value={statusFilter} options={STATUS_FILTERS}
+            onChange={(event) => onStatusFilterChange(event.target.value as TradeStatus | '')} />}
+        </Field>
+      </div>
+
+      {errorMessage ? <ErrorState className="kairos-history__load-error" message={errorMessage} onRetry={retryLoad} /> : null}
+      {updateNotice ? <p className="kairos-history__state" role="status">{updateNotice}</p> : null}
+      {isLoading ? <Skeleton label="Loading trade history…" live={false} /> : null}
+      {!isLoading && !errorMessage && entries.length === 0 ? (
+        statusFilter === ''
+          ? <EmptyState icon="journal" headingLevel={3} title="No saved trades yet" message="Your first saved trade will appear here." />
+          : <EmptyState icon="journal" headingLevel={3} title={`No ${statusLabel(statusFilter).toLowerCase()} trades found.`}
+            action={<Button variant="secondary" size="sm" onClick={() => onStatusFilterChange('')}>Show all trades</Button>} />
+      ) : null}
+
+      {!isLoading && !errorMessage && entries.length > 0 ? (
+        <ol className="kairos-history__list">
+          {entries.map((entry, index) => {
+            const timestamp = entry.trade.closedAt ?? entry.trade.openedAt ?? entry.trade.updatedAt;
+            const coach = entry.trade.status === 'closed' ? describeTradePlanVsExecution(projectTradePlanVsExecution(entry.trade, entry.plans, entry.metrics)) : [];
+            const newsLines = describeNewsNearTrade(news.get(entry.trade.id) ?? []);
+            const closedPart = projectTradeClosedPart(entry);
+            return (
+              <li className="kairos-history-card" key={entry.trade.id}>
+                <div className="kairos-history-card__topline">
+                  <strong>{entry.trade.symbol}</strong>
+                  <span>{sideLabel(entry.trade.side)}</span>
+                  <span>{statusLabel(entry.trade.status)}</span>
+                  {entry.trade.source === 'replay' ? <span className="kairos-history-card__source">From replay</span> : null}
+                </div>
+                <time dateTime={timestamp}>{formatTimestamp(timestamp)}</time>
+                <ReviewTradeLink id={entry.trade.id} className="kairos-history-card__review" />
+                {db && (entry.trade.status === 'draft' || entry.trade.status === 'open') && disciplineSources.includes(entry.trade.source)
+                  ? discipline.state.kind === 'ready'
+                    ? <TradeChecklistControl symbol={entry.trade.symbol} tradeId={entry.trade.id} scope={scope} items={discipline.state.lists.checklist} record={discipline.state.records.get(entry.trade.id) ?? null} save={input => saveTradeDiscipline(db, input)} onSaved={disciplineSaved} />
+                    : discipline.state.kind === 'failed' ? <Button variant="secondary" size="sm" disabled>Before you trade: could not load</Button> : null
+                  : null}
+                {db && entry.trade.status === 'closed' && disciplineSources.includes(entry.trade.source)
+                  ? discipline.state.kind === 'ready'
+                    ? <TradeReviewControl symbol={entry.trade.symbol} tradeId={entry.trade.id} scope={scope} reviewItems={discipline.state.lists.review} mistakeItems={discipline.state.lists.mistakes} record={discipline.state.records.get(entry.trade.id) ?? null} save={input => saveTradeDiscipline(db, input)} onSaved={disciplineSaved} />
+                    : discipline.state.kind === 'failed' ? <Button variant="secondary" size="sm" disabled>After the trade: could not load</Button> : null
+                  : null}
+                {db && disciplineSources.includes(entry.trade.source) && discipline.state.kind === 'ready'
+                  ? <TradeStrategyControl symbol={entry.trade.symbol} tradeId={entry.trade.id} scope={scope} strategies={discipline.state.strategies} record={discipline.state.records.get(entry.trade.id) ?? null}
+                    check={checkSavedTradeStrategy(entry.trade, entry.plans, discipline.state.records.get(entry.trade.id) ?? null)} save={input => saveTradeDiscipline(db, input)} onSaved={disciplineSaved} />
+                  : null}
+                {db && onTradeUpdated ? <JournalOpenTradeUpdate entry={entry} db={db} onCommitted={onTradeUpdated} allowedSources={allowedSources} /> : null}
+                {db && onTradeUpdated && allowedSources.includes(entry.trade.source) ? <EntriesAndExitsEditor entry={entry} save={input => updateTradeExecution(db, { ...input, allowedSources })} onSaved={onTradeUpdated} /> : null}
+                {db && onTradeOpened ? <JournalDraftTradeActivation entry={entry} db={db} onOpened={onTradeOpened} allowedSources={allowedSources} /> : null}
+                {db && tradeDeleted ? <JournalTradeDeleteControl entry={entry} db={db} onDeleted={tradeDeleted} /> : null}
+                <ResultText outcome={entry.visualPnl.outcome} label={entry.visualPnl.label} amount={entry.visualPnl.amount} currency={entry.visualPnl.currency}
+                  className={`kairos-history-card__outcome kairos-history-card__outcome--${entry.visualPnl.outcome}`} />
+                {closedPart.available ? <p className="kairos-history-card__closed-part"><ResultText outcome={closedPart.outcome} label="Closed part" amount={closedPart.resultBeforeFees} currency={closedPart.currency} /> <span>{describeClosedPart(closedPart)}</span></p> : null}
+                <TradePicture entry={entry} variant="thumbnail" />
+                {/* The five words are explained once per list (D69): only the first card has the "?" buttons. */}
+                <dl className="kairos-history-card__facts">
+                  <div><dt><span>Entries and exits</span>{index === 0 ? <GlossaryHint termId="entries-and-exits" label="Entries and exits" /> : null}</dt><dd>{entry.executions.length}</dd></div>
+                  <div><dt><span>Fees</span>{index === 0 ? <GlossaryHint termId="fees" label="Fees" /> : null}</dt><dd>{entry.fees.length}</dd></div>
+                  <div><dt><span>Result before fees</span>{index === 0 ? <GlossaryHint termId="result-before-fees" label="Result before fees" /> : null}</dt><dd>{money(entry.metrics?.grossPnl, entry.trade.grossPnlCurrency)}</dd></div>
+                  <div><dt><span>Result after fees</span>{index === 0 ? <GlossaryHint termId="result-after-fees" label="Result after fees" /> : null}</dt><dd>{entry.metrics?.netPnl != null && entry.metrics.netPnlCurrency ? money(entry.metrics.netPnl, entry.metrics.netPnlCurrency) : entry.metrics?.netPnl ?? 'Not available'}</dd></div>
+                  <div><dt><span>Money at risk</span>{index === 0 ? <GlossaryHint termId="money-at-risk" label="Money at risk" /> : null}</dt><dd>{describeMoneyAtRisk(projectTradeMoneyAtRisk(entry))}</dd></div>
+                </dl>
+                {coach.length > 0 ? <p className="kairos-history-card__coach"><span>Your coach</span>{coach.map(line => <span key={line}>{line}</span>)}</p> : null}
+                {newsLines.length > 0 ? <p className="kairos-history-card__news"><span>Big news near this trade</span>{newsLines.map((line, index) => <span key={index}>{line}</span>)}</p> : null}
+                {entry.fees.length > 0 && entry.metrics?.grossPnl != null && entry.metrics.netPnl == null ? <p className="kairos-history-card__notice">
+                  {entry.trade.grossPnlCurrency ? 'Result after fees needs fees in the same currency as your recorded prices, or in pounds (GBP) for prices in pence (GBX). Kairos does not convert a trade\'s fees with exchange rates.' : 'The price currency is not recorded, so fees cannot be taken off yet.'}
+                </p> : null}
+                {entry.metricsError ? <p className="kairos-history-card__notice">Some results are not available for this trade.</p> : null}
+              </li>
+            );
+          })}
+        </ol>
+      ) : null}
+      {!isLoading && !errorMessage && entries.length > 0 && hasOlder && onShowOlder ? (
+        <button type="button" className="kairos-history__older" onClick={onShowOlder} disabled={isLoadingOlder}>
+          {isLoadingOlder ? 'Loading older trades…' : 'Show older trades'}
+        </button>
+      ) : null}
+      {olderFailed ? <ErrorState className="kairos-history__older-error" message="Kairos could not load older trades. Your stored trades were not changed." onRetry={retryOlder} /> : null}
+    </section>
+  );
+}

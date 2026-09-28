@@ -1,0 +1,12 @@
+.kairos-entries-exits { display: grid; gap: var(--kairos-space-2); }
+.kairos-entries-exits__toggle { justify-self: start; min-block-size: var(--kairos-control-sm); padding: 0 var(--kairos-space-3); border: 1px solid var(--kairos-border-default); border-radius: var(--kairos-radius-md); background: transparent; color: var(--kairos-text-secondary); font: inherit; font-size: var(--kairos-font-size-sm); }
+.kairos-entries-exits__toggle[aria-expanded='true'] { border-color: var(--kairos-accent-primary); color: var(--kairos-text-primary); }
+.kairos-entries-exits__body { display: grid; gap: var(--kairos-space-3); }
+.kairos-entries-exits__list { display: grid; gap: var(--kairos-space-2); margin: 0; padding: 0; list-style: none; }
+.kairos-entries-exits__row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--kairos-space-2) var(--kairos-space-3); padding: var(--kairos-space-2) var(--kairos-space-3); border: 1px solid var(--kairos-border-hairline); border-radius: var(--kairos-radius-md); color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-sm); }
+.kairos-entries-exits__row strong { color: var(--kairos-text-primary); }
+.kairos-entries-exits__row time { color: var(--kairos-text-muted); }
+.kairos-entries-exits__form { display: grid; flex: 1 1 100%; gap: var(--kairos-space-3); }
+.kairos-entries-exits__fields { display: grid; gap: var(--kairos-space-3); margin: 0; padding: 0; border: 0; min-width: 0; }
+.kairos-entries-exits__actions { display: flex; flex-wrap: wrap; gap: var(--kairos-space-2); }
+.kairos-entries-exits__error { margin: 0; color: var(--kairos-state-error); }

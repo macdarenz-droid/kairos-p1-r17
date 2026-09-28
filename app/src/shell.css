@@ -1,0 +1,3 @@
+*, *::before, *::after { box-sizing: border-box; }
+html, body, #root, [data-app="kairos"] { min-height: 100%; margin: 0; }
+[data-app="kairos"] { min-height: 100dvh; }

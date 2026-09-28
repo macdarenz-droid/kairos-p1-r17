@@ -1,0 +1,58 @@
+.kairos-results-calendar-block { display: grid; gap: var(--kairos-space-3); margin-top: var(--kairos-space-4); }
+.kairos-results-calendar__bar { display: flex; align-items: center; justify-content: space-between; gap: var(--kairos-space-3); }
+.kairos-results-calendar__bar h3 { margin: 0; font-size: var(--kairos-font-size-md); }
+.kairos-results-calendar__nav { min-inline-size: var(--kairos-control-md); min-block-size: var(--kairos-control-md); border: 1px solid var(--kairos-border-default); border-radius: var(--kairos-radius-md); background: transparent; color: var(--kairos-text-primary); font: inherit; font-size: var(--kairos-font-size-lg); }
+.kairos-results-calendar__nav:disabled { opacity: .4; }
+.kairos-results-calendar { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: var(--kairos-space-1); }
+.kairos-results-calendar th { color: var(--kairos-text-muted); font-size: var(--kairos-font-size-xs); font-weight: var(--kairos-font-weight-medium); }
+.kairos-results-calendar td { height: 2.75rem; padding: 0; border: 1px solid transparent; border-radius: var(--kairos-radius-sm); text-align: center; vertical-align: middle; }
+.kairos-results-calendar td > button { display: grid; place-items: center; gap: 0; width: 100%; height: 100%; min-block-size: 2.75rem; padding: 0; border: 0; border-radius: inherit; background: transparent; color: var(--kairos-text-primary); font: inherit; font-size: var(--kairos-font-size-sm); font-variant-numeric: tabular-nums; }
+.kairos-results-calendar td > button[aria-pressed='true'] { outline: 2px solid var(--kairos-state-focus); outline-offset: 1px; }
+.kairos-results-calendar__mark { font-size: var(--kairos-font-size-xs); line-height: 1; }
+.kairos-results-calendar__number { color: var(--kairos-text-muted); font-size: var(--kairos-font-size-sm); }
+.kairos-results-calendar td[data-day-result='profit'] { background: color-mix(in oklab, var(--kairos-trade-profit) 45%, transparent); }
+.kairos-results-calendar td[data-day-result='loss'] { background: color-mix(in oklab, var(--kairos-trade-loss) 45%, transparent); }
+.kairos-results-calendar td[data-day-result='profit'][data-day-strength='1'] { background: color-mix(in oklab, var(--kairos-trade-profit) 20%, transparent); }
+.kairos-results-calendar td[data-day-result='profit'][data-day-strength='2'] { background: color-mix(in oklab, var(--kairos-trade-profit) 40%, transparent); }
+.kairos-results-calendar td[data-day-result='profit'][data-day-strength='3'] { background: color-mix(in oklab, var(--kairos-trade-profit) 62%, transparent); }
+.kairos-results-calendar td[data-day-result='profit'][data-day-strength='4'] { background: color-mix(in oklab, var(--kairos-trade-profit) 85%, transparent); }
+.kairos-results-calendar td[data-day-result='loss'][data-day-strength='1'] { background: color-mix(in oklab, var(--kairos-trade-loss) 20%, transparent); }
+.kairos-results-calendar td[data-day-result='loss'][data-day-strength='2'] { background: color-mix(in oklab, var(--kairos-trade-loss) 40%, transparent); }
+.kairos-results-calendar td[data-day-result='loss'][data-day-strength='3'] { background: color-mix(in oklab, var(--kairos-trade-loss) 62%, transparent); }
+.kairos-results-calendar td[data-day-result='loss'][data-day-strength='4'] { background: color-mix(in oklab, var(--kairos-trade-loss) 85%, transparent); }
+.kairos-results-calendar td[data-day-result='breakeven'] { background: color-mix(in oklab, var(--kairos-trade-flat) 30%, transparent); }
+.kairos-results-calendar td[data-day-result='unavailable'] { border: 1px dashed var(--kairos-border-strong); }
+.kairos-results-calendar td[data-day-today] { border: 1px solid var(--kairos-border-active); }
+.kairos-results-calendar__legend { margin: 0; color: var(--kairos-text-muted); font-size: var(--kairos-font-size-xs); }
+.kairos-results-day-trades { display: grid; gap: var(--kairos-space-2); margin-top: var(--kairos-space-3); padding: var(--kairos-space-3); border: 1px solid var(--kairos-border-subtle); border-radius: var(--kairos-radius-md); }
+.kairos-results-day-trades__heading { display: flex; align-items: center; justify-content: space-between; gap: var(--kairos-space-3); }
+.kairos-results-day-trades__heading h3 { margin: 0; font-size: var(--kairos-font-size-sm); }
+.kairos-results-day-trades__close { min-block-size: var(--kairos-control-sm); padding: 0 var(--kairos-space-3); border: 1px solid var(--kairos-border-default); border-radius: var(--kairos-radius-md); background: transparent; color: var(--kairos-text-secondary); font: inherit; }
+.kairos-results-day-trades__list { display: grid; gap: var(--kairos-space-2); margin: 0; padding: 0; list-style: none; }
+.kairos-results-day-trades__list li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--kairos-space-2) var(--kairos-space-3); color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-sm); }
+.kairos-results-day-trades__list strong { color: var(--kairos-text-primary); }
+.kairos-results-day-trades__converted { flex-basis: 100%; min-width: 0; overflow-wrap: anywhere; color: var(--kairos-text-secondary); }
+.kairos-results-candles { display: grid; gap: var(--kairos-space-2); margin-block: var(--kairos-space-3); padding: var(--kairos-space-3); border: 1px solid var(--kairos-border-subtle); border-radius: var(--kairos-radius-lg); background: var(--kairos-surface-raised); min-width: 0; }
+.kairos-results-candles__heading { display: flex; align-items: end; justify-content: space-between; gap: var(--kairos-space-3); }
+.kairos-results-candles__heading h3 { margin: 0; font-size: var(--kairos-font-size-md); }
+.kairos-results-candles__heading strong { font-family: var(--kairos-font-mono); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; text-align: end; }
+.kairos-results-candles[data-outcome='profit'] .kairos-results-candles__heading strong { color: var(--kairos-trade-profit); }
+.kairos-results-candles[data-outcome='loss'] .kairos-results-candles__heading strong { color: var(--kairos-trade-loss); }
+.kairos-results-candles__picture { display: block; width: 100%; height: auto; }
+.kairos-results-candles__picture { max-width: calc(15rem * 360 / 176); margin-inline: auto; width: 100%; }
+.kairos-results-candles__background { fill: var(--kairos-chart-background); }
+.kairos-results-candles__zero { stroke: var(--kairos-border-strong); stroke-width: 1; stroke-dasharray: 4 4; }
+.kairos-results-candles__zero-label, .kairos-results-candles__value { fill: var(--kairos-chart-axis); font-size: 9px; font-family: var(--kairos-font-mono); }
+.kairos-results-candles__candle line { stroke-width: 1; }
+.kairos-results-candles__candle--up line, .kairos-results-candles__candle--up rect, .kairos-results-candles__candle--up polygon { stroke: var(--kairos-chart-wick-up); fill: var(--kairos-chart-candle-up); }
+.kairos-results-candles__candle--down line, .kairos-results-candles__candle--down rect, .kairos-results-candles__candle--down polygon { stroke: var(--kairos-chart-wick-down); fill: var(--kairos-chart-candle-down); }
+.kairos-results-candles__candle--even line, .kairos-results-candles__candle--even rect { stroke: var(--kairos-trade-flat); fill: var(--kairos-trade-flat); }
+.kairos-results-candles__date { fill: var(--kairos-chart-axis); font-size: 9px; }
+.kairos-results-candles__numbers summary { cursor: pointer; color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-sm); }
+.kairos-results-candles__numbers table { width: 100%; table-layout: fixed; border-collapse: collapse; margin-block-start: var(--kairos-space-2); font-size: var(--kairos-font-size-xs); color: var(--kairos-text-secondary); }
+.kairos-results-candles__numbers caption { text-align: start; padding-block-end: var(--kairos-space-1); }
+.kairos-results-candles__numbers th, .kairos-results-candles__numbers td { padding: var(--kairos-space-1); text-align: end; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; border-bottom: 1px solid var(--kairos-border-subtle); }
+.kairos-results-candles__numbers td { font-family: var(--kairos-font-mono); color: var(--kairos-text-primary); }
+.kairos-results-candles__numbers th:first-child { width: 27%; text-align: start; }
+.kairos-results-candles__state { margin: 0; color: var(--kairos-text-muted); font-size: var(--kairos-font-size-sm); }
+.kairos-results-candles__numbers th { overflow-wrap: normal; }

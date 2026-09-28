@@ -1,0 +1,13 @@
+.kairos-practice-money { display: grid; gap: var(--kairos-space-3); min-width: 0; overflow-wrap: anywhere; }
+.kairos-practice-money h2 { margin: 0; font-size: var(--kairos-font-size-lg); }
+.kairos-practice .kairos-practice-money p { margin: 0; }
+.kairos-practice-money__bars { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--kairos-space-2) var(--kairos-space-3); }
+.kairos-practice-money__bar { display: block; block-size: 12px; border-radius: var(--kairos-radius-full); background: var(--kairos-surface-input); overflow: hidden; }
+.kairos-practice-money__bar > span { display: block; block-size: 100%; background: var(--kairos-accent-primary); }
+/* The words "Started with" and "Now" and the ▲/▼ mark carry the meaning; the colour only repeats it. */
+.kairos-practice-money__bar[data-outcome="profit"] > span { background: var(--kairos-trade-profit); }
+.kairos-practice-money__bar[data-outcome="loss"] > span { background: var(--kairos-trade-loss); }
+.kairos-practice .kairos-practice-money__now { font-size: var(--kairos-font-size-lg); color: var(--kairos-text-primary); }
+.kairos-practice .kairos-practice-money__notice { font-size: var(--kairos-font-size-sm); }
+.kairos-practice-money__form { display: grid; gap: var(--kairos-space-3); }
+.kairos-practice-money__actions { display: flex; flex-wrap: wrap; gap: var(--kairos-space-2); }

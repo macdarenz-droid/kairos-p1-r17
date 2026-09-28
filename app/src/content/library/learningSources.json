@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "id": "kairos-library-sample",
+      "title": "How the Library works",
+      "covers": "A one-page sample: what a learning source is, why it is not a lesson, and how Kairos checks a file before saving it for offline reading.",
+      "author": "Kairos",
+      "origin": "Written for Kairos as the Library's sample file",
+      "rights": "Made for Kairos. Free to share with the app.",
+      "language": "en",
+      "revision": {
+        "number": 1,
+        "fileName": "kairos-library-sample.pdf",
+        "bytes": 1212,
+        "sha256": "46b31007ebb63e86174b9e114b17cae86cf2c23384d1d2b0aecfaf71085ba9b7",
+        "pages": 1,
+        "addedOn": "2026-09-24"
+      }
+    }
+  ]
+}

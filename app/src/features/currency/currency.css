@@ -1,0 +1,8 @@
+.kairos-currency { display: grid; gap: var(--kairos-space-5); min-width: 0; }
+.kairos-currency .kairos-currency__eyebrow { margin: 0; color: var(--kairos-accent-primary); font-size: var(--kairos-font-size-xs); font-weight: var(--kairos-font-weight-semibold); letter-spacing: .08em; text-transform: uppercase; }
+.kairos-card.kairos-currency-card { display: grid; gap: var(--kairos-space-3); min-width: 0; overflow-wrap: anywhere; }
+.kairos-currency-card.kairos-currency-card h2, .kairos-currency-card.kairos-currency-card p { margin: 0; }
+.kairos-currency-coins { display: grid; gap: var(--kairos-space-2); min-width: 0; margin: 0; padding: 0; border: 0; }
+.kairos-currency-coins label { display: flex; align-items: center; gap: var(--kairos-space-2); min-block-size: var(--kairos-control-sm); }
+.kairos-currency-rates { display: grid; gap: var(--kairos-space-2); margin: 0; padding: 0; list-style: none; }
+.kairos-currency-rates li { padding-top: var(--kairos-space-2); border-top: 1px solid var(--kairos-border-subtle); min-width: 0; }

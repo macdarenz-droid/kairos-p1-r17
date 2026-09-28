@@ -1,0 +1,12 @@
+# Hides the ZIP-era archive from search tools (ripgrep reads this file).
+# The app lives in app/. These files stay until the owner removes them.
+/*.zip
+/*.txt
+/docs/
+/src/
+/tests/
+/scripts/
+/package.json
+/.github/kairos-helper-payloads/
+/.github/workflows/*
+!/.github/workflows/ci.yml
