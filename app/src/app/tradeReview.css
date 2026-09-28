@@ -11,6 +11,8 @@
 .kairos-review__card { margin: 0; min-width: 0; padding: var(--kairos-space-4); border: 1px solid var(--kairos-border-subtle); border-radius: var(--kairos-radius-lg); background: var(--kairos-surface-card); overflow-wrap: anywhere; }
 .kairos-review__topline > span, .kairos-review__note { font-size: var(--kairos-font-size-sm); color: var(--kairos-text-secondary); }
 .kairos-review__note { margin: var(--kairos-space-3) 0 0; }
+.kairos-review__closed-part { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--kairos-space-2); margin: var(--kairos-space-2) 0 0; font-size: var(--kairos-font-size-sm); overflow-wrap: anywhere; }
+.kairos-review__closed-part > span:last-child { color: var(--kairos-text-secondary); }
 .kairos-review__facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--kairos-space-4); margin: var(--kairos-space-4) 0 0; }
 .kairos-review__facts div { min-width: 0; }
 .kairos-review__facts dt { color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-xs); }

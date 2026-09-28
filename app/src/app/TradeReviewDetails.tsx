@@ -1,4 +1,8 @@
 import type { JournalHistoryEntry } from '../application/journal';
+import { describeClosedPart, describeMoneyAtRisk } from '../application/performance/performanceWords';
+import { projectTradeClosedPart } from '../application/performance/tradeClosedPart';
+import { projectTradeMoneyAtRisk } from '../application/performance/tradeRisk';
+import { ResultText } from '../design-system/primitives';
 
 export function reviewTimestamp(value: string | null): string {
   if (value === null) return 'Not recorded';
@@ -15,6 +19,7 @@ function title(value: string): string { return value.charAt(0).toUpperCase() + v
 /** Read-only presentation. P12/P11/P13 retain hydration, calculation and result semantics. */
 export function TradeReviewDetails({ entry }: { readonly entry: JournalHistoryEntry }) {
   const { trade, plans, executions, fees, metrics, visualPnl } = entry;
+  const closedPart = projectTradeClosedPart(entry);
   return <div className="kairos-review__detail" data-review-trade-id={trade.id}>
     <section className="kairos-review__card" aria-label="Trade overview">
       <div className="kairos-review__topline"><h2>{trade.symbol}</h2><span>{title(trade.side)} · {title(trade.status)}</span></div>
@@ -29,7 +34,8 @@ export function TradeReviewDetails({ entry }: { readonly entry: JournalHistoryEn
     <section className="kairos-review__card" aria-label="Recorded result">
       <h2>Recorded result</h2>
       <p className={`kairos-review__result kairos-review__result--${visualPnl.outcome}`}><span>{visualPnl.label}</span><strong>{amount(visualPnl.amount, visualPnl.currency)}</strong></p>
-      <dl className="kairos-review__facts"><div><dt>Result before fees</dt><dd>{amount(metrics?.grossPnl, trade.grossPnlCurrency)}</dd></div><div><dt>Result after fees</dt><dd>{amount(metrics?.netPnl, metrics?.netPnlCurrency)}</dd></div></dl>
+      {closedPart.available ? <p className="kairos-review__closed-part"><ResultText outcome={closedPart.outcome} label="Closed part" amount={closedPart.resultBeforeFees} currency={closedPart.currency} /> <span>{describeClosedPart(closedPart)}</span></p> : null}
+      <dl className="kairos-review__facts"><div><dt>Result before fees</dt><dd>{amount(metrics?.grossPnl, trade.grossPnlCurrency)}</dd></div><div><dt>Result after fees</dt><dd>{amount(metrics?.netPnl, metrics?.netPnlCurrency)}</dd></div><div><dt>Money at risk</dt><dd>{describeMoneyAtRisk(projectTradeMoneyAtRisk(entry))}</dd></div></dl>
       {executions.length === 0 ? <p className="kairos-review__note">No entries or exits are recorded. Planned prices alone do not make a result.</p> : null}
       {entry.metricsError ? <p className="kairos-review__note">Some results are not available for this trade.</p> : null}
       {fees.length > 0 && metrics?.grossPnl != null && metrics.netPnl == null ? <p className="kairos-review__note">Result after fees needs a recorded price currency and fees in that same currency, or in pounds (GBP) for prices in pence (GBX). Kairos does not convert a trade's fees with exchange rates.</p> : null}
