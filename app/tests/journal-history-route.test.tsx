@@ -25,7 +25,8 @@ describe('P12.3R1 journal history route presentation', () => {
   it('shows an empty state and refreshes history after a successful manual save without stealing the existing save status role', async () => {
     const db=createKairosDatabase(dbName()); await openKairosDatabase(db);
     render(<JournalRoute db={db} />);
-    expect(await screen.findByText('No saved trades yet. Your first saved trade will appear here.')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'No saved trades yet' })).toBeInTheDocument();
+    expect(screen.getByText('Your first saved trade will appear here.')).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText(/Symbol/),{target:{value:'AAPL'}});
     fireEvent.change(screen.getByLabelText(/Market/),{target:{value:'stock'}});
     fireEvent.change(screen.getByLabelText(/Direction/),{target:{value:'long'}});

@@ -21,6 +21,7 @@ const names: string[] = [];
 async function database() { const name = `kairos-saved-record-delete-${names.length}`; names.push(name); const db = createKairosDatabase(name); await openKairosDatabase(db); return db; }
 afterEach(async () => { for (const name of names.splice(0)) await Dexie.delete(name); });
 const click = async (name: string) => { await act(async () => { fireEvent.click(screen.getByRole('button', { name })); }); };
+const deleteAndConfirm = async (name: string) => { await click(name); await click('Delete for good'); };
 
 describe('P24.2 saved record delete controls over the released P24.1 commands', () => {
   it('deletes the selected Saved Analysis from the Saved analysis group and leaves the chart and the journal alone', async () => {
@@ -34,7 +35,7 @@ describe('P24.2 saved record delete controls over the released P24.1 commands', 
     const group = () => screen.getByRole('group', { name: 'Saved analysis' });
     await waitFor(() => expect(group().getAttribute('data-saved-analysis-count')).toBe('2'));
     fireEvent.change(screen.getByLabelText('Saved analyses'), { target: { value: second.savedAnalysisId } });
-    await click('Delete analysis');
+    await deleteAndConfirm('Delete analysis');
     await waitFor(() => expect(group().getAttribute('data-saved-analysis-status')).toBe('deleted'));
     await waitFor(() => expect(group().getAttribute('data-saved-analysis-count')).toBe('1'));
     expect(screen.getByText(`Deleted analysis ${second.savedAnalysisId.slice(0, 8)}. The chart is unchanged.`)).toBeTruthy();
@@ -42,7 +43,7 @@ describe('P24.2 saved record delete controls over the released P24.1 commands', 
     expect((screen.getByLabelText('Saved analyses') as HTMLSelectElement).value).toBe(first.savedAnalysisId);
     expect(onLoad).not.toHaveBeenCalled();
     expect(await db.trades.count()).toBe(0);
-    await click('Delete analysis');
+    await deleteAndConfirm('Delete analysis');
     await waitFor(() => expect(group().getAttribute('data-saved-analysis-count')).toBe('0'));
     expect((screen.getByRole('button', { name: 'Delete analysis' }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByText(`Deleted analysis ${first.savedAnalysisId.slice(0, 8)}. The chart is unchanged.`)).toBeTruthy();
@@ -60,7 +61,7 @@ describe('P24.2 saved record delete controls over the released P24.1 commands', 
     const group = () => screen.getByRole('group', { name: 'Saved snapshot' });
     await waitFor(() => expect(group().getAttribute('data-saved-snapshot-count')).toBe('1'));
     expect((screen.getByRole('button', { name: 'Delete snapshot' }) as HTMLButtonElement).disabled).toBe(false);
-    await click('Delete snapshot');
+    await deleteAndConfirm('Delete snapshot');
     await waitFor(() => expect(group().getAttribute('data-saved-snapshot-status')).toBe('deleted'));
     await waitFor(() => expect(group().getAttribute('data-saved-snapshot-count')).toBe('0'));
     expect(screen.getByText(`Deleted snapshot ${saved.savedTimeAssistedSnapshotId.slice(0, 8)}. The shown estimate is unchanged.`)).toBeTruthy();
@@ -80,7 +81,7 @@ describe('P24.2 saved record delete controls over the released P24.1 commands', 
     };
     render(<AnalysisSavedAnalysisControls ports={analysisPorts} market={market} drawingCount={0} getDrawings={() => []} onLoad={vi.fn()} />);
     await waitFor(() => expect(screen.getByRole('group', { name: 'Saved analysis' }).getAttribute('data-saved-analysis-count')).toBe('1'));
-    await click('Delete analysis');
+    await deleteAndConfirm('Delete analysis');
     await waitFor(() => expect(screen.getByText('That saved analysis no longer exists.')).toBeTruthy());
     expect(analysisPorts.list).toHaveBeenCalledTimes(2);
     const snapshotPorts: AnalysisSavedTimeAssistedSnapshotPorts = {
@@ -91,7 +92,7 @@ describe('P24.2 saved record delete controls over the released P24.1 commands', 
     };
     render(<AnalysisTimeAssistedSnapshotControls history={history} saved={snapshotPorts} instrument={instrument} />);
     await waitFor(() => expect(screen.getByRole('group', { name: 'Saved snapshot' }).getAttribute('data-saved-snapshot-count')).toBe('1'));
-    await click('Delete snapshot');
+    await deleteAndConfirm('Delete snapshot');
     await waitFor(() => expect(screen.getByText('The saved snapshot could not be deleted. It is still saved.')).toBeTruthy());
     expect(snapshotPorts.list).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('group', { name: 'Saved snapshot' }).getAttribute('data-saved-snapshot-count')).toBe('1');

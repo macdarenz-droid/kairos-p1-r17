@@ -19,14 +19,14 @@ describe('P13.3 Journal Visual P&L presentation', () => {
     const outcome=screen.getByText('Profit').closest('[data-outcome]');
     expect(outcome).toHaveAttribute('data-outcome','profit');
     expect(outcome).toHaveClass('kairos-history-card__outcome--profit');
-    expect(outcome).toHaveTextContent('▲');
+    expect(outcome?.querySelector('[data-icon="result-up"]')).not.toBeNull();
     expect(outcome).toHaveTextContent('10 USD');
   });
 
   it.each([
-    ['loss','Loss','▼','-4'],
-    ['breakeven','Break-even','—','0'],
-    ['unavailable','Not available','·','Not available'],
+    ['loss','Loss','result-down','-4'],
+    ['breakeven','Break-even','result-flat','0'],
+    ['unavailable','Not available','result-unknown','Not available'],
   ] as const)('keeps %s understandable without relying on color', (kind,label,mark,amount) => {
     const projection = kind === 'unavailable'
       ? {outcome:kind,label,amount:null,currency:null,source:'none' as const}
@@ -35,7 +35,7 @@ describe('P13.3 Journal Visual P&L presentation', () => {
     const outcome = container.querySelector(`[data-outcome="${kind}"]`);
     expect(outcome).toHaveTextContent(label);
     expect(outcome).toHaveAttribute('data-outcome',kind);
-    expect(outcome).toHaveTextContent(mark);
+    expect(outcome?.querySelector(`[data-icon="${mark}"]`)).not.toBeNull();
     expect(outcome).toHaveTextContent(amount);
   });
 });

@@ -200,7 +200,8 @@ test('(g) Practice: pretend money, a plan from the calculator, and a practice tr
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 
   await page.goto('/journal');
-  await expect(page.getByText('No saved trades yet. Your first saved trade will appear here.')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'No saved trades yet' })).toBeVisible();
+  await expect(page.getByText('Your first saved trade will appear here.')).toBeVisible();
 });
 
 test('(h) Replay: a practice trade on past prices, judged candle by candle', async ({ page }) => {
@@ -256,7 +257,8 @@ test('(h) Replay: a practice trade on past prices, judged candle by candle', asy
   await expect(card.locator('[data-outcome="profit"]')).toContainText('20 USDT');
 
   await page.goto('/journal');
-  await expect(page.getByText('No saved trades yet. Your first saved trade will appear here.')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'No saved trades yet' })).toBeVisible();
+  await expect(page.getByText('Your first saved trade will appear here.')).toBeVisible();
   expect(errors).toEqual([]);
 });
 

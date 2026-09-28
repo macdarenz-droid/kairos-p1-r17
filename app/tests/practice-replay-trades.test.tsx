@@ -59,6 +59,7 @@ describe('T-038e replay trades on the Practice page', () => {
 
     cleanup();
     render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
-    expect(await screen.findByText('No saved trades yet. Your first saved trade will appear here.')).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'No saved trades yet' })).toBeTruthy();
+    expect(screen.getByText('Your first saved trade will appear here.')).toBeTruthy();
   });
 });

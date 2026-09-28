@@ -1,4 +1,4 @@
-import { useEffect, useId, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Link, useInRouterContext } from 'react-router';
 import type { CoachNote } from '../../application/coach/coachNotes';
 import { describeCoachNote, describeCoachTradeFacts } from '../../application/coach/coachWords';
@@ -6,7 +6,7 @@ import { loadCoachNotes, type CoachNotesQueryResult } from '../../application/co
 import { projectStrategyRuleBars, STRATEGY_RULE_BAR_STEPS } from '../../application/discipline/strategyCheck';
 import type { JournalHistoryScope } from '../../application/journal';
 import type { KairosDatabase } from '../../data/database';
-import { Card } from '../../design-system/primitives';
+import { Card, ErrorState, PageHeader, Skeleton } from '../../design-system/primitives';
 import './disciplineScore.css';
 import './tradeDisciplineControls.css';
 import './coach.css';
@@ -23,9 +23,14 @@ export interface CoachScreenProps {
 type ScreenState = Readonly<{ kind: 'loading' }> | Readonly<{ kind: 'failed' }> | Readonly<{ kind: 'ready'; result: CoachNotesQueryResult }>;
 
 const wallClock = (): string => new Date().toISOString();
+const TITLE = 'kairos-coach-title';
 const INTRO = {
   real: 'Your coach reads your trades on this device: the ones you closed this month, and for your daily limit the ones you opened today. It points out where they went against your plan, your strategy, your goals or your reviews, with the trades and one next step for each. It never tells you what to buy or sell, and it never guesses: when a plan, a stop or a price is missing, it says nothing about that trade.',
   practice: 'Your practice coach reads the practice trades you closed this month on this device, replays included. It points out where they went against your plan, your strategy or your reviews, with one next step for each. It never tells you what to buy or sell. Practice trades never count in your Journal.',
+} as const;
+const SHORT_INTRO = {
+  real: "Your coach points out where this month's trades went against your own plan, rules or goals.",
+  practice: "Your practice coach points out where this month's practice trades went against your plan, strategy or reviews.",
 } as const;
 
 /** SPA navigation inside the app, a plain link outside a router (features never import app). */
@@ -69,6 +74,8 @@ function CoachNoteCard({ note, renderTradeLink }: { readonly note: CoachNote; re
 /** P29 "Your coach": this month's notes for one scope, their trades and one next step each. It only reads. */
 export function CoachScreen({ db, scope, renderTradeLink, now = wallClock }: CoachScreenProps) {
   const [state, setState] = useState<ScreenState>({ kind: 'loading' });
+  // "Try again" after a failed load bumps this, which runs the load effect again.
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     let ignore = false;
     setState({ kind: 'loading' });
@@ -77,16 +84,27 @@ export function CoachScreen({ db, scope, renderTradeLink, now = wallClock }: Coa
       () => { if (!ignore) setState({ kind: 'failed' }); },
     );
     return () => { ignore = true; };
-  }, [db, scope, now]);
+  }, [db, scope, now, attempt]);
+  // "Try again" unmounts its own error box while loading, so focus would fall to the page (WCAG 2.4.3). When it had focus,
+  // focus goes to the first link or button of what loaded (the new "Try again" when it failed again), else the h1.
+  const retryHadFocus = useRef(false);
+  const loaded = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (state.kind === 'loading' || !retryHadFocus.current) return;
+    retryHadFocus.current = false;
+    (loaded.current?.querySelector<HTMLElement>('a[href], button:not([disabled])') ?? document.getElementById(TITLE))?.focus();
+  }, [state]);
+  const retry = () => { retryHadFocus.current = document.activeElement?.closest('.kairos-error-state') != null; setAttempt(current => current + 1); };
 
   const practice = scope === 'practice';
   const result = state.kind === 'ready' ? state.result : null;
   return <section className="kairos-route kairos-coach" aria-labelledby="kairos-coach-title">
-    <p className="kairos-coach__eyebrow">{practice ? 'Practice' : 'Discipline'}</p>
-    <h1 id="kairos-coach-title" tabIndex={-1}>{practice ? 'Your practice coach' : 'Your coach'}</h1>
-    <p>{practice ? INTRO.practice : INTRO.real}</p>
-    {state.kind === 'loading' ? <p>Loading your coach…</p> : null}
-    {state.kind === 'failed' || result?.kind === 'unavailable' ? <p>Kairos could not load your coach. Your trades are not affected.</p> : null}
+    <PageHeader tone="insight" eyebrow={practice ? 'Practice' : 'Discipline'} title={practice ? 'Your practice coach' : 'Your coach'} titleId={TITLE}
+      intro={practice ? SHORT_INTRO.practice : SHORT_INTRO.real} howItWorks={<p>{practice ? INTRO.practice : INTRO.real}</p>} />
+    <div ref={loaded} className="kairos-coach__loaded">
+    {state.kind === 'loading' ? <Skeleton label="Loading your coach…" /> : null}
+    {state.kind === 'failed' || result?.kind === 'unavailable'
+      ? <ErrorState live={false} message="Kairos could not load your coach. Your trades are not affected." onRetry={retry} /> : null}
     {result?.kind === 'time-zone-unconfigured' ? <p>Your coach reads the trades you closed this month, so it needs your time zone first. <CoachLink to="/settings">Open Settings</CoachLink></p> : null}
     {result?.kind === 'ready' && result.notes.length === 0 ? <p>Nothing to point out this month. Your coach speaks up only when your own trades, plans or rules show something to work on.</p> : null}
     {result?.kind === 'ready' && result.notes.length > 0 ? <>
@@ -96,6 +114,7 @@ export function CoachScreen({ db, scope, renderTradeLink, now = wallClock }: Coa
       </div>
     </> : null}
     {result?.kind === 'ready' ? <p className="kairos-coach__zone">Time zone: {result.timeZone}</p> : null}
+    </div>
     <p><CoachLink to={practice ? '/practice/patterns' : '/patterns'}>{practice ? 'See your practice patterns' : 'See your patterns'}</CoachLink></p>
     <p><CoachLink to={practice ? '/practice' : '/journal'}>{practice ? 'Back to Practice' : 'Back to your Journal'}</CoachLink></p>
   </section>;
