@@ -1,6 +1,7 @@
 export * from './decimalKernel';
 export * from './executionAggregation';
 export * from './executionBalance';
+export * from './closedPartResult';
 export * from './grossRealizedPnl';
 export * from './tradeMetrics';
 export * from './percentageCalculator';
