@@ -96,6 +96,11 @@ describe('T-050b money at risk and × what you risked (one owner)', () => {
     expect(projectTradeTimesRisked(futures)).toEqual(projectTradeTimesRisked(crypto));
   });
 
+  it('refuses fills it cannot add up, even with no entry fill', () => {
+    const broken = input(trade(), [plan('100', '90', '2')], [{ ...fill('x1', 'exit', '110', '2'), price: 'abc' as DecimalString }]);
+    expect(projectTradeMoneyAtRisk(broken)).toMatchObject({ available: false, reason: 'invalid-decimal' });
+  });
+
   it('an open trade has no result yet', () => {
     const open = input(trade({ status: 'open', closedAt: null }), [plan('100', '90')], [fill('e1', 'entry', '100', '2')]);
     expect(projectTradeTimesRisked(open)).toEqual({ available: false, reason: 'no-result' });
