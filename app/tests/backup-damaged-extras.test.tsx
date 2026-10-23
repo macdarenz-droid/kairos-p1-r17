@@ -4,7 +4,7 @@ import Dexie from 'dexie';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ProfileRoute } from '../src/app/ProfileRoute';
+import { BackupScreen } from '../src/features/backup/BackupScreen';
 import { commitBackupRestore, exportKairosBackup, prepareBackupRestore, type BackupDownloadPorts } from '../src/application/backup';
 import { createKairosBackupEnvelope, serializeKairosBackup } from '../src/data/backup';
 import {
@@ -124,16 +124,16 @@ describe('T-030 restore with damaged current data', () => {
   });
 });
 
-describe('T-030 Profile messages', () => {
+describe('T-030 backup messages (on Backup and restore since T-054a)', () => {
   const downloads: BackupDownloadPorts = { createObjectUrl: () => 'blob:kairos/1', revokeObjectUrl: () => undefined, triggerDownload: () => undefined };
-  const mount = (db: KairosDatabase) => render(<MemoryRouter><ProfileRoute db={db} now={() => '2026-09-20T10:00:00.000Z'} downloads={downloads} readBackupFile={file => file.text()} /></MemoryRouter>);
+  const mount = (db: KairosDatabase) => render(<MemoryRouter><BackupScreen db={db} now={() => '2026-09-20T10:00:00.000Z'} downloads={downloads} readBackupFile={file => file.text()} /></MemoryRouter>);
 
   it('says how many damaged items a backup left out', async () => {
     const db = await database();
     await seedTrade(db);
     await damageExtras(db);
     mount(db);
-    fireEvent.click(await screen.findByRole('button', { name: 'Download backup' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Back up now' }));
     expect(await screen.findByText('Backup saved. 2 saved items were damaged and left out; they are still on this device.')).toBeInTheDocument();
   });
 

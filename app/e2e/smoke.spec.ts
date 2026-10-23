@@ -41,7 +41,7 @@ test('(b) every route renders inside the phone width without page errors', async
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
   await activate(page);
-  for (const path of ['/', '/journal', '/analysis', '/library', '/more', '/practice', '/goals', '/strategies', '/coach', '/practice/coach', '/patterns', '/practice/patterns', '/news-calendar', '/currency', '/settings', '/profile', '/does-not-exist']) {
+  for (const path of ['/', '/journal', '/analysis', '/library', '/more', '/practice', '/goals', '/strategies', '/coach', '/practice/coach', '/patterns', '/practice/patterns', '/news-calendar', '/currency', '/settings', '/profile', '/backup', '/does-not-exist']) {
     await page.goto(path);
     await expect(page.locator('.kairos-shell'), path).toBeVisible();
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
@@ -1403,3 +1403,64 @@ test('(x) Log a trade from anywhere: "+ Log trade", the log address and Getting 
   await expect(logTrade).toHaveCount(0);
   expect(errors).toEqual([]);
 });
+
+test('(y) Back up when it is due: the reminder on Home and the Journal, "Back up now", and "Remind me"', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  const axeOk = async (where: string) => {
+    const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+    expect(axe.violations.map(violation => `${where} ${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  };
+  const reminder = page.getByRole('region', { name: 'Back up your journal' });
+  await activate(page);
+  // A fresh journal has nothing to lose: no reminder.
+  await expect(page.getByRole('region', { name: 'Getting started' })).toBeVisible();
+  await expect(reminder).toHaveCount(0);
+
+  // One trade, never backed up: the reminder is on the Journal and on Home.
+  await page.goto('/journal');
+  await page.getByLabel(/^Symbol/).fill('BTCUSDT');
+  await page.getByLabel(/^Market/).selectOption('crypto');
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Status/).selectOption('open');
+  await page.locator('#kairos-trade-opened-at').fill('2026-09-20T09:00');
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.getByText(/BTCUSDT/).first()).toBeVisible();
+  await page.reload();
+  await expect(reminder).toBeVisible();
+  await expect(reminder.getByText('No backup yet. Save a copy of your journal so you never lose it.')).toBeVisible();
+  await page.goto('/');
+  await expect(reminder).toBeVisible();
+  await axeOk('Home with the reminder');
+
+  // "Remind me: Never" keeps it away; "Every week" brings it back.
+  await page.goto('/backup');
+  await expect(page.getByRole('heading', { level: 1, name: 'Backup and restore' })).toBeVisible();
+  await expect(page.getByText('No backup yet on this device.')).toBeVisible();
+  await axeOk('Backup and restore');
+  await page.getByLabel('How often').selectOption('never');
+  await expect(page.getByText('Saved.')).toBeVisible();
+  await page.goto('/');
+  await expect(page.getByRole('region', { name: 'Getting started' })).toBeVisible();
+  await expect(reminder).toHaveCount(0);
+  await page.goto('/backup');
+  await page.getByLabel('How often').selectOption('7');
+  await expect(page.getByText('Saved.')).toBeVisible();
+
+  // "Back up now" on Home downloads a backup Kairos can read back; the reminder goes away.
+  await page.goto('/');
+  const [download] = await Promise.all([page.waitForEvent('download'), reminder.getByRole('button', { name: 'Back up now' }).click()]);
+  expect(download.suggestedFilename()).toMatch(/^kairos-backup-.*Z\.json$/);
+  const saved = JSON.parse(readFileSync((await download.path())!, 'utf8')) as { formatName: string; payload: { trades: unknown[] } };
+  expect(saved.formatName).toBe('kairos-full-backup');
+  expect(saved.payload.trades).toHaveLength(1);
+  await expect(reminder.getByText('Backup saved.')).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('region', { name: 'Getting started' })).toBeVisible();
+  await expect(reminder).toHaveCount(0);
+  await page.goto('/backup');
+  await expect(page.getByText(/^Last backup today · /)).toBeVisible();
+  expect(errors).toEqual([]);
+});
+

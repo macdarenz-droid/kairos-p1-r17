@@ -10,6 +10,7 @@ import { HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTextEvidenceRu
 import { createHomeDashboardLiveCryptoBubbleDefaultRuntimeProductConfiguration } from './homeDashboardLiveCryptoBubbleRuntimeProductPolicy';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
 import { HomeDisciplineCard } from '../features/discipline/HomeDisciplineCard';
+import { BackupReminderCard } from '../features/backup/BackupReminderCard';
 import { GettingStartedCard } from '../features/setup/GettingStartedCard';
 import { PageHeader, Segmented } from '../design-system/primitives';
 
@@ -47,6 +48,7 @@ export function HomeRoute({ db = kairosDatabase, now = wallClock }: { readonly d
     >
       <PageHeader title="Home" titleId="kairos-route-home" intro="Your markets and your trades at a glance." />
       {openSetup && inRouter ? <Navigate to="/setup" replace /> : null}
+      <BackupReminderCard db={db} now={now} />
       {/* D224: after "Hide", focus goes to the dashboard control, the next thing on the page. */}
       <GettingStartedCard db={db} now={now} onHidden={() => control.current?.querySelector<HTMLElement>('button[aria-pressed="true"]')?.focus()} />
       <div ref={control}>

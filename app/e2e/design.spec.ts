@@ -138,7 +138,7 @@ test('(5) The "Unavailable" box shows a focus ring and no card patch', async ({ 
   }
 });
 
-const EVERY_SCREEN = ['/', '/journal', '/analysis', '/analysis?view=chart', '/library', '/more', '/practice', '/goals', '/strategies', '/coach', '/practice/coach', '/patterns', '/practice/patterns', '/news-calendar', '/currency', '/settings', '/profile', '/does-not-exist', '/library/words', '/library/calculators', '/library/lessons', '/practice/replay'];
+const EVERY_SCREEN = ['/', '/journal', '/analysis', '/analysis?view=chart', '/library', '/more', '/practice', '/goals', '/strategies', '/coach', '/practice/coach', '/patterns', '/practice/patterns', '/news-calendar', '/currency', '/settings', '/profile', '/backup', '/does-not-exist', '/library/words', '/library/calculators', '/library/lessons', '/practice/replay'];
 const KEY_SCREENS = ['/', '/journal', '/analysis', '/analysis?view=chart', '/coach', '/settings'];
 const AXE_THEMES: ReadonlyArray<Readonly<{ theme: string; paths: readonly string[] }>> = [
   { theme: 'kairos-depth', paths: EVERY_SCREEN }, { theme: 'paper', paths: EVERY_SCREEN },

@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react';
 
 export const ICON_NAMES = ['home', 'journal', 'analysis', 'library', 'more', 'plus', 'check', 'close', 'info', 'alert', 'retry', 'undo', 'trash', 'chevron-down', 'result-up', 'result-down', 'result-flat', 'result-unknown', 'insight', 'bubbles',
-  'goal', 'strategy', 'calendar', 'practice', 'replay', 'currency', 'calculator', 'settings', 'profile', 'setup'] as const;
+  'goal', 'strategy', 'calendar', 'practice', 'replay', 'currency', 'calculator', 'settings', 'profile', 'setup', 'backup'] as const;
 export type IconName = (typeof ICON_NAMES)[number];
 export interface IconProps { readonly name: IconName; readonly label?: string; readonly size?: 16 | 20 | 24 | 40; readonly className?: string }
 
@@ -41,6 +41,7 @@ const drawings: Readonly<Record<IconName, ReactElement>> = Object.freeze({
   settings: <><path d="M5 7h8M17 7h2M5 12h2M11 12h8M5 17h10" /><circle cx="15" cy="7" r="2" /><circle cx="9" cy="12" r="2" /><circle cx="17" cy="17" r="2" /></>,
   profile: <><circle cx="12" cy="8.5" r="3.5" /><path d="M5 20a7 7 0 0 1 14 0" /></>,
   setup: <><circle cx="12" cy="12" r="8.5" /><path d="m15.5 8.5-2.2 4.8-4.8 2.2 2.2-4.8z" /></>,
+  backup: <><path d="M3.5 4.5h17v4h-17z" /><path d="M5 8.5v10A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5v-10" /><path d="M12 11v5.5M9.5 14l2.5 2.5 2.5-2.5" /></>,
 });
 
 /** One icon. Without a label it is decoration and hidden from screen readers; with a label it is an image with that name. */

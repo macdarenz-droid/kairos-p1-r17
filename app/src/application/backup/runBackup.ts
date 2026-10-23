@@ -1,0 +1,35 @@
+/**
+ * T-054a (D226): one backup run, for every "Back up now" (the page, the reminder card, and later the crash screen):
+ * export, hand the file to where it goes, and record the last backup only when it was saved.
+ */
+
+import type { KairosDatabase } from '../../data/database';
+import { createKairosRepositories } from '../../data/repositories';
+import { exportKairosBackup, type ExportKairosBackupResult, type KairosBackupFile } from './exportBackup';
+import { recordLastBackup, type LastBackupRecord } from './lastBackup';
+
+/** What the browser side did with the file. */
+export type BackupDeliveryOutcome = 'saved' | 'cancelled' | 'failed';
+/** Where a backup goes (download, share sheet or folder): the browser side, supplied by the screen. */
+export type BackupDeliver = (file: KairosBackupFile) => Promise<BackupDeliveryOutcome>;
+
+export type RunBackupResult =
+  | { readonly ok: true; readonly file: KairosBackupFile; /** Damaged saved items left out; they stay on the device. */ readonly skippedCount: number; readonly record: LastBackupRecord }
+  | { readonly ok: false; readonly reason: 'cancelled' | 'delivery-failed' | 'record-failed' }
+  | { readonly ok: false; readonly reason: 'export-failed'; readonly export: Exclude<ExportKairosBackupResult, { ok: true }> };
+
+const wallClock = (): string => new Date().toISOString();
+
+export async function runBackup(db: KairosDatabase, deliver: BackupDeliver, dependencies: { readonly now?: () => string } = {}): Promise<RunBackupResult> {
+  const exported = await exportKairosBackup(db, new Date((dependencies.now ?? wallClock)()));
+  if (!exported.ok) return { ok: false, reason: 'export-failed', export: exported };
+  let outcome: BackupDeliveryOutcome;
+  try { outcome = await deliver(exported.file); } catch { outcome = 'failed'; }
+  if (outcome === 'cancelled') return { ok: false, reason: 'cancelled' };
+  if (outcome === 'failed') return { ok: false, reason: 'delivery-failed' };
+  const recorded = await recordLastBackup(createKairosRepositories(db).metadata, exported.file);
+  if (!recorded.ok) return { ok: false, reason: 'record-failed' };
+  const { skipped } = exported;
+  const skippedCount = skipped.savedAnalyses + skipped.savedTimeAssistedSnapshots + skipped.tradeDiscipline + skipped.exchangeRates + skipped.economicEvents;
+  return { ok: true, file: exported.file, skippedCount, record: recorded.record };
+}

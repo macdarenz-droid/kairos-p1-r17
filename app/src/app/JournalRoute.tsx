@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { loadTradedMarkets } from '../application/setup/tradedMarkets';
 import { Link, useInRouterContext, useSearchParams } from 'react-router';
 import { SCROLL_CLAIMED_EVENT } from './AppShell';
+import { BackupReminderCard } from '../features/backup/BackupReminderCard';
 import { JOURNAL_HISTORY_SOURCES } from '../application/journal';
 import { JournalHistoryList } from './JournalHistoryList';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
@@ -69,6 +70,7 @@ export function JournalRoute({ db = kairosDatabase, now }: JournalRouteProps) {
         action={<span className="kairos-journal__badge">Saved on this device</span>} />
 
       {inRouter ? <LogAddress /> : null}
+      <BackupReminderCard db={db} now={now ?? wallClock} />
       <TradeForm db={db} kind="journal" defaultMarket={firstMarket} onSaved={async () => { await pages.refresh(); setJournalRevision(current => current + 1); }} />
 
       <Card className="kairos-journal__results-link">
