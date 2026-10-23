@@ -138,8 +138,8 @@ test('(5) The "Unavailable" box shows a focus ring and no card patch', async ({ 
   }
 });
 
-const EVERY_SCREEN = ['/', '/journal', '/analysis', '/library', '/more', '/practice', '/goals', '/strategies', '/coach', '/practice/coach', '/patterns', '/practice/patterns', '/news-calendar', '/currency', '/settings', '/profile', '/does-not-exist', '/library/words', '/library/calculators', '/library/lessons', '/practice/replay'];
-const KEY_SCREENS = ['/', '/journal', '/analysis', '/coach', '/settings'];
+const EVERY_SCREEN = ['/', '/journal', '/analysis', '/analysis?view=chart', '/library', '/more', '/practice', '/goals', '/strategies', '/coach', '/practice/coach', '/patterns', '/practice/patterns', '/news-calendar', '/currency', '/settings', '/profile', '/does-not-exist', '/library/words', '/library/calculators', '/library/lessons', '/practice/replay'];
+const KEY_SCREENS = ['/', '/journal', '/analysis', '/analysis?view=chart', '/coach', '/settings'];
 const AXE_THEMES: ReadonlyArray<Readonly<{ theme: string; paths: readonly string[] }>> = [
   { theme: 'kairos-depth', paths: EVERY_SCREEN }, { theme: 'paper', paths: EVERY_SCREEN },
   { theme: 'ink', paths: KEY_SCREENS }, { theme: 'cosmic', paths: KEY_SCREENS }, { theme: 'ocean', paths: KEY_SCREENS },
@@ -162,8 +162,9 @@ async function axeProblems(page: Page, where: string): Promise<string[]> {
 
 /** Logs one closed crypto trade with Quick log, as smoke case (k) does, so a trade card, a result and a picture are checked. */
 async function logClosedTrade(page: Page): Promise<void> {
+  await page.goto('/analysis');
+  await expect(page.getByText('Time zone: Asia/Manila')).toBeVisible();
   await page.goto('/journal');
-  await page.getByRole('button', { name: 'Use Asia/Manila (this device)' }).click();
   await page.getByRole('button', { name: 'Quick log' }).click();
   await page.getByLabel(/^Symbol/).fill('ETHUSDT');
   await page.getByLabel(/^Market/).selectOption('crypto');
@@ -189,7 +190,7 @@ for (const { theme, paths } of AXE_THEMES) {
     }
     if (theme === 'kairos-depth') {
       await logClosedTrade(page);
-      for (const path of ['/journal', '/']) {
+      for (const path of ['/journal', '/', '/analysis']) {
         await openScreen(page, path);
         problems.push(...await axeProblems(page, `${path} with a trade`));
       }
@@ -315,6 +316,10 @@ test('(11) links, focus rings and the bottom-bar marker follow the theme, and li
     await listsFit(page, `${theme} /coach`);
 
     await page.goto('/analysis');
+    await expect(page.getByRole('combobox', { name: 'Period' })).toBeVisible();
+    await listsFit(page, `${theme} /analysis`);
+
+    await page.goto('/analysis?view=chart');
     const heading = page.locator('main h1');
     await expect(heading).toBeFocused();
     await expect(page.locator('.kairos-symbol-picker [role="combobox"]').first()).toBeVisible();

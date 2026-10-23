@@ -89,7 +89,7 @@ it('treats A, another trade, then A again as a new selection', async () => {
   await analysisIdle();
 
   hold = true;
-  await act(async () => { await router.navigate('/analysis'); });
+  await act(async () => { await router.navigate('/analysis?view=chart'); });
   await act(async () => { await router.navigate(tradeReviewHref(tradeId)); });
   expect(pending).toHaveLength(2);
   expect(screen.queryByRole('button', { name: /What does/ })).toBeNull();

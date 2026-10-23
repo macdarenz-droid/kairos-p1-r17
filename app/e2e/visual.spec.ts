@@ -1,5 +1,5 @@
 /*
- * Screenshots of 5 key screens in the 5 themes (T-049j, D184), compared on every pull request.
+ * Screenshots of 6 key screens (D207) in the 5 themes (T-049j, D184), compared on every pull request.
  *
  * Updating the references (never to make an unexplained change pass):
  * 1. On Linux x64, in app/: `npx playwright install chromium`, then
@@ -23,7 +23,8 @@ const THEMES = ['ink', 'paper', 'kairos-depth', 'cosmic', 'ocean'] as const;
 const SCREENS: readonly Readonly<{ name: string; path: string; firstContent: (page: Page) => Locator[] }>[] = [
   { name: 'home', path: '/', firstContent: page => ['BTC', 'ETH'].map(symbol => page.locator(`.kairos-glass-bubble[data-identity="${symbol}"] canvas[data-glass-ready="true"]`)) },
   { name: 'journal', path: '/journal', firstContent: page => [page.getByRole('textbox', { name: /^Symbol/ })] },
-  { name: 'analysis', path: '/analysis', firstContent: page => [page.locator('.kairos-symbol-picker [role="combobox"]').first()] },
+  { name: 'analysis', path: '/analysis', firstContent: page => [page.getByRole('combobox', { name: 'Period' }), page.getByRole('heading', { name: 'No closed trades in September 2026' })] },
+  { name: 'analysis-chart', path: '/analysis?view=chart', firstContent: page => [page.locator('.kairos-symbol-picker [role="combobox"]').first()] },
   { name: 'coach', path: '/coach', firstContent: page => [page.locator('main .kairos-coach p').first()] },
   { name: 'settings', path: '/settings', firstContent: page => [page.getByRole('heading', { name: 'Appearance' })] },
 ];

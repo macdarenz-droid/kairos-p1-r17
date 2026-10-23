@@ -2,20 +2,46 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { loadTradeReview, type TradeReviewResult } from '../application/journal/loadTradeReview';
 import { DEFAULT_JOURNAL_HISTORY_LIMIT } from '../application/journal/historyQuery';
+import { readVisualPnlPeriodChoice, writeVisualPnlPeriodChoice } from '../application/visual-pnl';
+import { kairosDatabase, type KairosDatabase } from '../data/database';
+import { Button, PageHeader, Segmented } from '../design-system/primitives';
 import { TradeReviewDetails, reviewTimestamp } from './TradeReviewDetails';
 import './tradeReview.css';
 import { AnalysisHistoryWorkspace } from './AnalysisHistoryWorkspace';
 import { AnalysisHandoffContext, parseAnalysisHandoff } from './analysisHandoff';
+import { ReviewTradeLink } from './ReviewTradeLink';
 import { TradePicture } from '../features/journal/TradePicture';
+import { ResultsDashboard } from '../features/results/ResultsDashboard';
 
 type State = { readonly key: string | null; readonly result: TradeReviewResult | null; readonly error: boolean };
 type TradeEntry = Extract<TradeReviewResult, { kind: 'trade' }>['entry'];
 /** The last trade picture loaded for one selection (its counter n); a refresh of that selection keeps it mounted so an open hint sheet survives. */
 type Shown = { readonly n: number; readonly entry: TradeEntry } | null;
 
-/** Route selection and async read lifecycle only; all saved facts come from P12. */
-export function AnalysisRoute({ load = loadTradeReview }: { readonly load?: (id: string | null) => Promise<TradeReviewResult> }) {
+type AnalysisView = 'results' | 'chart';
+const VIEW_OPTIONS = [{ value: 'results', label: 'Your results' }, { value: 'chart', label: 'Chart' }] as const;
+/** The keys "Your results" keeps from the address: the period's own (D198). */
+const PERIOD_KEYS = ['period', 'at', 'first', 'last'] as const;
+const TITLE = 'kairos-review-title';
+/** A stable default clock, as in GoalsRoute. */
+const wallClock = (): string => new Date().toISOString();
+
+/** "Chart" for its own address, a trade link or a Library handoff; otherwise "Your results" (D197). */
+function analysisView(params: URLSearchParams): AnalysisView {
+  return params.get('view') === 'chart' || params.get('trade') !== null || parseAnalysisHandoff(params) !== null ? 'chart' : 'results';
+}
+
+export interface AnalysisRouteProps {
+  readonly load?: (id: string | null) => Promise<TradeReviewResult>;
+  readonly db?: KairosDatabase;
+  /** The current instant as a canonical UTC ISO string; tests inject a fixed one. */
+  readonly now?: () => string;
+}
+
+/** "Your results" (U5) and the chart with the trade review: route selection and async read lifecycle only; all saved facts come from their owners. */
+export function AnalysisRoute({ load = loadTradeReview, db = kairosDatabase, now = wallClock }: AnalysisRouteProps) {
   const [params, setParams] = useSearchParams();
+  const view = analysisView(params);
   const selectedId = params.get('trade');
   const [revision, setRevision] = useState(0);
   const [state, setState] = useState<State>({ key: selectedId, result: null, error: false });
@@ -25,12 +51,16 @@ export function AnalysisRoute({ load = loadTradeReview }: { readonly load?: (id:
   const selectionN = selection.id === selectedId ? selection.n : selection.n + 1;
   const [shown, setShown] = useState<Shown>(null);
   const focusedFor = useRef<number | null>(null);
-  const heading = useRef<HTMLHeadingElement>(null);
+  /** The heading took focus once in this visit (the first settled state of either part). */
+  const visitFocused = useRef(false);
+  /** A press on the switch: the part it opens leaves focus on the pressed option (D177, N10). */
+  const switching = useRef(false);
   const refresh = useCallback(() => setRevision(value => value + 1), []);
   const current = state.key === selectedId ? state : null;
-  const loading = current === null || (current.result === null && !current.error);
+  const loading = view === 'chart' && (current === null || (current.result === null && !current.error));
 
   useEffect(() => {
+    if (view !== 'chart') return;
     let active = true;
     setState({ key: selectedId, result: null, error: false });
     void load(selectedId).then(result => {
@@ -43,7 +73,7 @@ export function AnalysisRoute({ load = loadTradeReview }: { readonly load?: (id:
       setShown(null);
     });
     return () => { active = false; };
-  }, [load, selectedId, selectionN, revision]);
+  }, [load, selectedId, selectionN, revision, view]);
 
   useEffect(() => {
     const visible = () => { if (!document.hidden) refresh(); };
@@ -52,31 +82,67 @@ export function AnalysisRoute({ load = loadTradeReview }: { readonly load?: (id:
     return () => { window.removeEventListener('focus', refresh); document.removeEventListener('visibilitychange', visible); };
   }, [refresh]);
 
-  // The heading takes focus once per selection after its first load, and again whenever focus was lost to the page
-  // (a removed "Try again"). A refresh never takes focus from an open sheet.
+  // In the chart part the heading takes focus once per selection after its first load, and again whenever focus was lost
+  // to the page (a removed "Try again"). A refresh never takes focus from an open sheet, and a switch press never moves it.
   useEffect(() => {
-    if (loading) return;
+    if (view !== 'chart' || loading) return;
     const lost = document.activeElement === null || document.activeElement === document.body;
+    if (switching.current) {
+      switching.current = false;
+      focusedFor.current = selectionN;
+      visitFocused.current = true;
+      if (!lost) return;
+    }
     if (focusedFor.current === selectionN && !lost) return;
     focusedFor.current = selectionN;
-    heading.current?.focus();
-  }, [selectionN, loading]);
+    visitFocused.current = true;
+    document.getElementById(TITLE)?.focus();
+  }, [selectionN, loading, view]);
+
+  // "Your results": the heading takes focus after the dashboard's first settled state, once per visit; the dashboard places focus after its own retries.
+  const resultsFirstLoad = useCallback(() => {
+    if (switching.current) { switching.current = false; visitFocused.current = true; return; }
+    if (visitFocused.current) return;
+    visitFocused.current = true;
+    focusedFor.current = selectionN;
+    document.getElementById(TITLE)?.focus();
+  }, [selectionN]);
+
+  function changeView(next: AnalysisView): void {
+    if (next === view) return;
+    switching.current = true;
+    if (next === 'chart') {
+      const kept = new URLSearchParams(params);
+      kept.set('view', 'chart');
+      setParams(kept);
+      return;
+    }
+    const kept = new URLSearchParams();
+    for (const key of PERIOD_KEYS) { const value = params.get(key); if (value !== null) kept.set(key, value); }
+    setParams(kept);
+  }
 
   const result = current?.result;
   const selectedEntry = result?.kind === 'trade' ? result.entry : null;
   const pictureEntry = selectedEntry ?? (shown !== null && shown.n === selectionN && loading ? shown.entry : null);
   const savedTradePending = selectedId !== null && loading;
   const handoff = parseAnalysisHandoff(params);
-  return <section className="kairos-route kairos-review" aria-labelledby="kairos-review-title" aria-busy={loading || undefined}>
-    <header className="kairos-review__heading"><div><p className="kairos-review__eyebrow">Charts & trade review</p><h1 id="kairos-review-title" tabIndex={-1} ref={heading}>Analysis</h1></div><button type="button" onClick={refresh} disabled={loading}>Refresh</button></header>
+  return <section className="kairos-route kairos-review" aria-labelledby={TITLE} aria-busy={loading || undefined}>
+    <PageHeader eyebrow="Your results and charts" title="Analysis" titleId={TITLE}
+      action={<Button variant="secondary" size="sm" onClick={refresh} disabled={view === 'chart' && loading}>Refresh</Button>} />
+    <Segmented label="Analysis view" options={VIEW_OPTIONS} value={view} onChange={changeView} />
+    {view === 'results' ? <ResultsDashboard db={db} scope="real" now={now}
+      choice={readVisualPnlPeriodChoice(params)} onChoiceChange={choice => setParams(writeVisualPnlPeriodChoice(choice, params))}
+      renderTradeLink={id => <ReviewTradeLink id={id} />} refreshRevision={revision} onFirstLoad={resultsFirstLoad} /> : <>
     {pictureEntry ? <TradePicture key={pictureEntry.trade.id} entry={pictureEntry} variant="full" /> : null}
     <AnalysisHandoffContext.Provider value={handoff}>
     <AnalysisHistoryWorkspace entry={selectedEntry} savedTradePending={savedTradePending} />
     </AnalysisHandoffContext.Provider>
-    <nav className="kairos-review__navigation" aria-label="Trade review navigation">{selectedId !== null ? <Link to="/analysis">Choose another trade</Link> : null}<Link to="/journal">Back to Journal</Link></nav>
+    <nav className="kairos-review__navigation" aria-label="Trade review navigation">{selectedId !== null ? <Link to="/analysis?view=chart">Choose another trade</Link> : null}<Link to="/journal">Back to Journal</Link></nav>
     {loading ? <p role="status" className="kairos-review__card">Loading your saved trade…</p> : current?.error ? <div role="alert" className="kairos-review__card"><p>Could not load this view. Your saved trades have not changed.</p><button type="button" onClick={refresh}>Try again</button></div> : result?.kind === 'missing' ? <div className="kairos-review__card"><h2>Trade not found</h2><p>This trade is not available on this device. Choose another saved trade to continue.</p></div> : result?.kind === 'selection' ? <section className="kairos-review__card" aria-label="Choose a saved trade">
       <h2>Choose a saved trade</h2>
       {result.entries.length === 0 ? <><p>No saved trades yet.</p><Link to="/journal">Log your first trade</Link></> : <><p className="kairos-review__note">Review the latest {DEFAULT_JOURNAL_HISTORY_LIMIT} updated trades. You can also open a trade from Journal or Your Trades.</p><label className="kairos-review__picker"><span>Saved trade</span><select value="" onChange={event => { if (event.target.value) setParams({ trade: event.target.value }); }}><option value="">Select a trade</option>{result.entries.map(({ trade }) => <option key={trade.id} value={trade.id}>{trade.symbol} · {trade.side} · {trade.status} · {reviewTimestamp(trade.openedAt ?? trade.updatedAt)}</option>)}</select></label></>}
     </section> : result?.kind === 'trade' ? <TradeReviewDetails entry={result.entry} /> : null}
+    </>}
   </section>;
 }

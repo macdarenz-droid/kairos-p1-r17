@@ -101,7 +101,7 @@ export function SettingsRoute({ db = kairosDatabase }: SettingsRouteProps) {
       }
       setSavedTimeZone(result.timeZone);
       setLoadFailed(false);
-      setFeedback({ kind: 'success', message: 'Daily-results time zone saved.' });
+      setFeedback({ kind: 'success', message: 'Time zone saved.' });
     } catch {
       setFeedback({ kind: 'error', message: 'Kairos could not save your time zone. Your stored setting was not changed.' });
     } finally {
@@ -115,8 +115,8 @@ export function SettingsRoute({ db = kairosDatabase }: SettingsRouteProps) {
 
       <form ref={form} className="kairos-settings-card" onSubmit={handleSubmit} noValidate>
         <div>
-          <h2>Daily results time zone</h2>
-          <p>Choose which calendar day Kairos should use when grouping closed trades. Kairos never changes this by itself.</p>
+          <h2>Time zone for your results</h2>
+          <p>Choose which calendar day Kairos uses when grouping closed trades. The first time you open your results, Kairos starts with this device's time zone and never changes it after that.</p>
         </div>
 
         <Field label="Time zone" id="kairos-daily-results-time-zone" wide
@@ -143,9 +143,9 @@ export function SettingsRoute({ db = kairosDatabase }: SettingsRouteProps) {
           </Button>
           <span>{savedTimeZone === null ? 'Not configured' : `Current: ${savedTimeZone}`}</span>
         </div>
-        {!isLoading && !loadFailed && savedTimeZone === null ? <DeviceTimeZoneButton metadata={repositories.metadata} onSaved={(zone) => { setSavedTimeZone(zone); setTimeZone(zone); setFeedback({ kind: 'success', message: 'Daily-results time zone saved.' }); }} /> : null}
+        {!isLoading && !loadFailed && savedTimeZone === null ? <DeviceTimeZoneButton metadata={repositories.metadata} onSaved={(zone) => { setSavedTimeZone(zone); setTimeZone(zone); setFeedback({ kind: 'success', message: 'Time zone saved.' }); }} /> : null}
 
-        {loadFailed ? <ErrorState message="Kairos could not load your daily-results time zone." onRetry={retryLoad} /> : null}
+        {loadFailed ? <ErrorState message="Kairos could not load your time zone." onRetry={retryLoad} /> : null}
         {feedback ? (
           <p className={`kairos-settings-card__feedback kairos-settings-card__feedback--${feedback.kind}`} role={feedback.kind === 'error' ? 'alert' : 'status'}>
             {feedback.message}

@@ -72,7 +72,7 @@ describe('T-008 time zone in one tap', () => {
     const db = await database();
     vi.spyOn(db.metadata, 'get').mockRejectedValue(new Error('storage'));
     render(<ThemeProvider><SettingsRoute db={db} /></ThemeProvider>);
-    expect(await screen.findByText('Kairos could not load your daily-results time zone.')).toBeInTheDocument();
+    expect(await screen.findByText('Kairos could not load your time zone.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /this device/ })).toBeNull();
   });
 
