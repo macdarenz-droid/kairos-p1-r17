@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { describePriceMove } from '../src/application/performance/performanceWords';
 import type { PriceMove } from '../src/application/performance/priceMove';
-import { TRADE_PICTURE_MAX_TICKS, tradePictureTimeTicks } from '../src/features/journal/tradePictureAxis';
+import { placeTradePictureAxisLabels, TRADE_PICTURE_MAX_TICKS, tradePictureTimeTicks } from '../src/features/journal/tradePictureAxis';
 
 const HOUR = 3_600_000, DAY = 24 * HOUR;
 const at = (iso: string) => Date.parse(iso);
@@ -148,5 +148,19 @@ describe('T-052b fix r2 skipped hours, years and midnight', () => {
     expect(midnight.label).toBe(format({ timeZone: 'UTC', day: 'numeric', month: 'short' }, midnight.ms));
     const noon = ticks.find(tick => tick.ms === at('2026-09-20T12:00:00.000Z'))!;
     expect(noon.label).toBe(format({ timeZone: 'UTC', timeStyle: 'short' }, noon.ms));
+  });
+});
+
+describe('T-052b fix r3 labels stay inside the drawing', () => {
+  const width = (label: string) => label.length * 9 * 0.6;
+  it('moves a long label in from either edge, keeps short ones on their tick, and leaves out one that would touch the one before', () => {
+    const left = 6, right = 302;
+    const placed = placeTradePictureAxisLabels([
+      { x: 22, label: 'июль 2025 г.' }, { x: 60, label: 'авг. 2025 г.' }, { x: 150, label: '12:00' }, { x: 290, label: 'дек. 2025 г.' },
+    ], left, right);
+    expect(placed[0]! - width('июль 2025 г.') / 2).toBeGreaterThanOrEqual(left);
+    expect(placed[1]).toBeNull();
+    expect(placed[2]).toBe(150);
+    expect(placed[3]! + width('дек. 2025 г.') / 2).toBeLessThanOrEqual(right);
   });
 });

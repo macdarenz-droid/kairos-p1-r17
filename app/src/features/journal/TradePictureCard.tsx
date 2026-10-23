@@ -1,4 +1,4 @@
-import { useCallback, useId, useLayoutEffect, useRef, useState, type PointerEvent, type Ref } from 'react';
+import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState, type PointerEvent, type Ref } from 'react';
 import type { UnavailableWords } from '../../application/online/onlineWords';
 import { describePriceMove } from '../../application/performance/performanceWords';
 import type { TradePictureBox, TradePictureCandle, TradePictureInfoKey, TradePictureModel } from '../../application/trade-visualizer';
@@ -6,7 +6,7 @@ import { decimalSubtract } from '../../domain/calculations';
 import { UnavailableNotice } from '../../design-system/primitives';
 import { projectChartDecimal } from '../chart';
 import { GlossaryHint } from '../learn/GlossaryHint';
-import { tradePictureTimeTicks } from './tradePictureAxis';
+import { placeTradePictureAxisLabels, tradePictureTimeTicks } from './tradePictureAxis';
 import './tradePictureCard.css';
 
 /** Drawing area of the picture, in SVG units; the card scales it to its width. */
@@ -108,15 +108,21 @@ function BoxLabel({ box, scale, kind }: { readonly box: TradePictureBox; readonl
 /** Time labels under the plot (D217: the device's time zone). A label too near an edge to fit is left out. */
 const AXIS_EDGE_ROOM = 16;
 function TimeAxis({ model, scale, pad }: { readonly model: TradePictureModel; readonly scale: Scale; readonly pad: Pad }) {
-  if (model.timeRange === null) return null;
+  const from = model.timeRange?.from ?? null, to = model.timeRange?.to ?? null;
+  // Worked out once per time range: the slider and a drag re-render the card on every move.
+  const found = useMemo(() => (from === null || to === null ? [] : tradePictureTimeTicks(toMs(from), toMs(to))), [from, to]);
+  if (from === null || to === null) return null;
   const bottom = TRADE_PICTURE_HEIGHT - pad.bottom;
-  const ticks = tradePictureTimeTicks(toMs(model.timeRange.from), toMs(model.timeRange.to))
+  const left = pad.left, right = TRADE_PICTURE_WIDTH - pad.right;
+  const ticks = found
     .map(tick => ({ ...tick, x: scale.x(new Date(tick.ms).toISOString()) }))
-    .filter(tick => tick.x >= pad.left + AXIS_EDGE_ROOM && tick.x <= TRADE_PICTURE_WIDTH - pad.right - AXIS_EDGE_ROOM);
+    .filter(tick => tick.x >= left + AXIS_EDGE_ROOM && tick.x <= right - AXIS_EDGE_ROOM);
+  // Each label stays inside the drawing, however long its words; one that would touch the one before it is left out.
+  const placed = placeTradePictureAxisLabels(ticks, left, right);
   return <g className="kairos-trade-picture__axis">
-    {ticks.map(tick => <g key={tick.ms} data-axis-tick={new Date(tick.ms).toISOString()}>
+    {ticks.map((tick, index) => <g key={tick.ms} data-axis-tick={new Date(tick.ms).toISOString()}>
       <line x1={tick.x} x2={tick.x} y1={bottom} y2={bottom + 3} />
-      <text x={tick.x} y={bottom + 12} textAnchor="middle">{tick.label}</text>
+      {placed[index] === null ? null : <text x={placed[index]!} y={bottom + 12} textAnchor="middle">{tick.label}</text>}
     </g>)}
   </g>;
 }

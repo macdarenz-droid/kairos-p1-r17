@@ -106,3 +106,22 @@ export function tradePictureTimeTicks(fromMs: number, toMs: number, timeZone?: s
   }
   return [];
 }
+
+/** Axis labels are 9 units high; a letter is about this share of that wide (the label's width is estimated, never measured). */
+const LABEL_LETTER_WIDTH = 9 * 0.6;
+const LABEL_GAP = 4;
+
+/**
+ * Where each label goes on a plot from `left` to `right` (picture units): centred on its tick, moved in to stay inside,
+ * and left out (null) when it would run into the label before it. The tick marks stay where they are.
+ */
+export function placeTradePictureAxisLabels(ticks: readonly Readonly<{ x: number; label: string }>[], left: number, right: number): readonly (number | null)[] {
+  let lastRight = -Infinity;
+  return ticks.map(tick => {
+    const half = (tick.label.length * LABEL_LETTER_WIDTH) / 2;
+    const x = Math.min(Math.max(tick.x, left + half), right - half);
+    if (x - half < lastRight + LABEL_GAP || x - half < left - 0.01 || x + half > right + 0.01) return null;
+    lastRight = x + half;
+    return x;
+  });
+}
