@@ -43,6 +43,7 @@ export const moreNavigationGroups: readonly KairosMoreGroup[] = Object.freeze([
   { title: 'App', items: [
     { label: 'Settings', to: '/settings', icon: 'settings', line: 'How Kairos looks, and your time zone' },
     { label: 'Profile', to: '/profile', icon: 'profile', line: 'This device, backups and online services' },
+    { label: 'Set up Kairos', to: '/setup', icon: 'setup', line: 'Your setup, step by step' },
   ] },
 ] satisfies readonly KairosMoreGroup[]);
 

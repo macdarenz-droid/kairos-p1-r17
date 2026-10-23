@@ -1,4 +1,5 @@
-import type { MetadataRepository } from '../../data/repositories';
+import { runKairosAtomicWrite, type KairosDatabase } from '../../data/database';
+import { createKairosRepositories, type MetadataRepository } from '../../data/repositories';
 import type { DecimalString } from '../../domain/trades/tradeTypes';
 import { parsePositiveDecimalString } from '../../domain/trades/tradeValidation';
 
@@ -111,4 +112,15 @@ export async function writeGoalsPreference(metadata: MetadataRepository, input: 
 
 export async function clearGoalsPreference(metadata: MetadataRepository): Promise<void> {
   await metadata.delete(goalsPreferenceMetadataKey);
+}
+
+/** For screens, which never import data/repositories: the stored goals (none when missing or damaged). */
+export function loadGoalsPreference(db: KairosDatabase): Promise<GoalsPreference> {
+  return readGoalsPreference(createKairosRepositories(db).metadata);
+}
+
+/** For screens: save the goals as typed, as one atomic write; an invalid input saves nothing (T-053d, the setup's first goal). */
+export function saveGoalsPreference(db: KairosDatabase, input: GoalsPreferenceInput, dependencies: { readonly now?: () => string } = {}): Promise<GoalsPreferenceWriteResult> {
+  const updatedAt = (dependencies.now ?? (() => new Date().toISOString()))();
+  return runKairosAtomicWrite(db, ['metadata'], ({ repositories }) => writeGoalsPreference(repositories.metadata, input, updatedAt));
 }

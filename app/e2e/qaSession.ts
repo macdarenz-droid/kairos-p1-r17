@@ -25,7 +25,8 @@ const FIXED_MARKET: Readonly<Record<string, string>> = {
  * `fixedClock` freezes the page's clock before the first load; `server: 'fixed-market'` answers the market list and
  * the two 24-hour prices with fixed values (anything else still aborted), so screenshots never change with the time.
  */
-export async function openKairos(page: Page, options: Readonly<{ theme?: string; fixedClock?: string; server?: 'offline' | 'fixed-market' }> = {}): Promise<void> {
+/** T-053d: a fresh install opens the setup (D222); `setup: 'show'` leaves it open, otherwise "Skip for now" is tapped. */
+export async function openKairos(page: Page, options: Readonly<{ theme?: string; fixedClock?: string; server?: 'offline' | 'fixed-market'; setup?: 'skip' | 'show' }> = {}): Promise<void> {
   if (options.fixedClock !== undefined) await page.clock.setFixedTime(new Date(options.fixedClock));
   const fixedMarket = options.server === 'fixed-market';
   if (options.theme !== undefined) {
@@ -52,6 +53,9 @@ export async function openKairos(page: Page, options: Readonly<{ theme?: string;
   await page.getByLabel('Invite code').fill('QA-INVITE-001');
   await page.locator('button[type="submit"]').click();
   await expect(page.locator('.kairos-shell')).toBeVisible();
+  if (options.setup === 'show') return;
+  await page.getByRole('button', { name: 'Skip for now' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Home' })).toBeVisible();
 }
 
 export type EdgeContrast = Readonly<{ againstFill: number; againstOutside: number }>;

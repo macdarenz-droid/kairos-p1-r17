@@ -1,0 +1,14 @@
+/* T-053d: the setup, one step at a time. */
+.kairos-setup__step { display: grid; gap: var(--kairos-space-4); margin-top: var(--kairos-space-6); }
+.kairos-setup__step > h2 { margin: 0; }
+.kairos-setup__step > h2:focus { outline: none; }
+.kairos-setup__step > h2:focus-visible { outline: 2px solid var(--kairos-state-focus); outline-offset: 2px; }
+.kairos-setup__choices { display: grid; gap: var(--kairos-space-2); margin: 0; padding: 0; border: 0; }
+.kairos-setup__choices legend { margin-bottom: var(--kairos-space-2); font-weight: var(--kairos-font-weight-semibold); }
+.kairos-setup__choice { min-height: var(--kairos-control-md); display: flex; align-items: center; gap: var(--kairos-space-3); padding: 0 var(--kairos-space-3); border: 1px solid var(--kairos-border-subtle); border-radius: var(--kairos-radius-md); background: var(--kairos-surface-card); }
+.kairos-setup__choice input { inline-size: 1.25rem; block-size: 1.25rem; accent-color: var(--kairos-accent-primary); }
+.kairos-setup__pair { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: var(--kairos-space-3); }
+.kairos-setup__actions { display: flex; flex-wrap: wrap; gap: var(--kairos-space-3); }
+.kairos-setup__finish { display: flex; flex-wrap: wrap; gap: var(--kairos-space-3); }
+.kairos-setup__finish a { text-decoration: none; }
+.kairos-setup__problem { color: var(--kairos-state-danger); }

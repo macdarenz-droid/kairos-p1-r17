@@ -21,12 +21,16 @@ async function routeNetwork(page: Page): Promise<void> {
   });
 }
 
-async function activate(page: Page): Promise<void> {
+/** A fresh install opens the setup (T-053d, D222): `setup: 'show'` leaves it open, otherwise "Skip for now" is tapped. */
+async function activate(page: Page, setup: 'skip' | 'show' = 'skip'): Promise<void> {
   await routeNetwork(page);
   await page.goto('/');
   await page.getByLabel('Invite code').fill('QA-INVITE-001');
   await page.locator('button[type="submit"]').click();
   await expect(page.locator('.kairos-shell')).toBeVisible();
+  if (setup === 'show') return;
+  await page.getByRole('button', { name: 'Skip for now' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Home' })).toBeVisible();
 }
 
 test('(a) an invite code opens the app shell', async ({ page }) => {
@@ -1165,5 +1169,94 @@ test('(v) Where am I: back to your place, the tab you are in, and the top of a n
   await expect(more).toHaveClass(/kairos-shell__nav-link--active/);
   const background = (name: string) => page.getByRole('link', { name, exact: true }).evaluate(element => getComputedStyle(element).backgroundColor);
   expect(await background('More')).not.toBe(await background('Home'));
+  expect(errors).toEqual([]);
+});
+
+test('(w) First run: the setup step by step, then the Journal; it can be opened again', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  const axeOk = async (where: string) => {
+    const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+    expect(axe.violations.map(violation => `${where} ${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  };
+  const next = () => page.getByRole('button', { name: 'Next' }).click();
+  const stepTitle = (name: string) => page.getByRole('heading', { level: 2, name });
+
+  // A fresh install opens the setup in Home's place.
+  await activate(page, 'show');
+  await expect(page).toHaveURL(/\/setup$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Set up Kairos' })).toBeVisible();
+  await expect(stepTitle('Your time zone')).toBeVisible();
+  await expect(page.getByText('Step 1 of 6')).toBeVisible();
+  await expect(page.getByText(/time zone: Asia\/Manila/)).toBeVisible();
+  await axeOk('step 1');
+  await next();
+
+  // The home currency starts on the browser region's currency.
+  await expect(stepTitle('Your home currency')).toBeFocused();
+  await expect(page.getByLabel('Home currency', { exact: true })).toHaveValue('USD');
+  await expect(page.getByText("USD, from this phone's region")).toBeVisible();
+  await axeOk('step 2');
+  await next();
+
+  await expect(stepTitle('What you trade')).toBeFocused();
+  await next();
+  await expect(page.getByText('Choose at least one market.')).toBeVisible();
+  await page.getByLabel('Forex').check();
+  await axeOk('step 3');
+  await next();
+
+  await expect(stepTitle('Your checklist')).toBeFocused();
+  const steps = page.getByRole('group', { name: 'Before you trade: your steps' }).getByRole('checkbox');
+  const kept = await steps.count();
+  await steps.nth(0).uncheck();
+  await steps.nth(1).uncheck();
+  await axeOk('step 4');
+  await next();
+
+  await expect(stepTitle('Your first goal')).toBeFocused();
+  await page.getByLabel('Trades a month').fill('20');
+  await axeOk('step 5');
+  await next();
+
+  await expect(stepTitle("You're set")).toBeFocused();
+  await axeOk('step 6');
+  await page.getByRole('link', { name: 'Log your first trade' }).click();
+  await expect(page).toHaveURL(/\/journal$/);
+  // The trade form starts on the market chosen first.
+  await expect(page.getByLabel(/^Market/)).toHaveValue('forex');
+
+  // What was chosen is saved: the coach needs no time zone, the checklist lost two steps, the goal shows.
+  await page.goto('/coach');
+  await expect(page.getByText('Nothing to point out this month.')).toBeVisible();
+  await page.goto('/analysis?view=discipline');
+  await expect(page.getByRole('form', { name: 'Your checklist' }).getByRole('group', { name: 'Before you trade: your steps' }).getByRole('textbox')).toHaveCount(kept - 2);
+  await expect(page.getByText(/Closed trades this month/)).toBeVisible();
+
+  // More › Set up Kairos opens it again at step 1, showing what is saved.
+  await page.goto('/more');
+  await page.getByRole('link', { name: 'Set up Kairos' }).click();
+  await expect(page).toHaveURL(/\/setup$/);
+  await expect(stepTitle('Your time zone')).toBeVisible();
+  await next();
+  await next();
+  await expect(page.getByLabel('Forex')).toBeChecked();
+  // Home opens Home now: the setup was finished.
+  await page.goto('/');
+  await expect(page.getByRole('heading', { level: 1, name: 'Home' })).toBeVisible();
+  await expect(page).toHaveURL(/\/$/);
+  expect(errors).toEqual([]);
+});
+
+test('(w2) First run skipped: Home, and never the setup again', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  await activate(page);
+  await expect(page).toHaveURL(/\/$/);
+  await page.reload();
+  await expect(page.getByRole('heading', { level: 1, name: 'Home' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Dashboard view' })).toBeVisible();
+  await expect(page).toHaveURL(/\/$/);
   expect(errors).toEqual([]);
 });

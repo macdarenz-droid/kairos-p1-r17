@@ -1,9 +1,10 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { loadTradedMarkets } from '../application/setup/tradedMarkets';
 import { Link, useInRouterContext } from 'react-router';
 import { JOURNAL_HISTORY_SOURCES } from '../application/journal';
 import { JournalHistoryList } from './JournalHistoryList';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
-import type { TradeStatus } from '../domain/trades';
+import type { MarketType as TradeMarket, TradeStatus } from '../domain/trades';
 import './journalRoute.css';
 import { TradeForm } from '../features/journal/TradeForm';
 import { Card, PageHeader } from '../design-system/primitives';
@@ -29,6 +30,13 @@ export function JournalRoute({ db = kairosDatabase, now }: JournalRouteProps) {
   const [historyStatus, setHistoryStatus] = useState<TradeStatus | ''>('');
   const [journalRevision, setJournalRevision] = useState(0);
   const [disciplineRevision, setDisciplineRevision] = useState(0);
+  // D223: the trade form starts on the first market the trader trades (none saved: blank, as before).
+  const [firstMarket, setFirstMarket] = useState<TradeMarket | null>(null);
+  useEffect(() => {
+    let ignore = false;
+    loadTradedMarkets(db).then(markets => { if (!ignore) setFirstMarket(markets?.[0] ?? null); }, () => undefined);
+    return () => { ignore = true; };
+  }, [db]);
   const pages = useJournalHistoryPages(db, 'real', historyStatus);
 
   return (
@@ -36,7 +44,7 @@ export function JournalRoute({ db = kairosDatabase, now }: JournalRouteProps) {
       <PageHeader eyebrow="Manual trade" title="Journal" titleId="kairos-journal-title" intro="Log what you know now; plan numbers are optional."
         action={<span className="kairos-journal__badge">Saved on this device</span>} />
 
-      <TradeForm db={db} kind="journal" onSaved={async () => { await pages.refresh(); setJournalRevision(current => current + 1); }} />
+      <TradeForm db={db} kind="journal" defaultMarket={firstMarket} onSaved={async () => { await pages.refresh(); setJournalRevision(current => current + 1); }} />
 
       <Card className="kairos-journal__results-link">
         <h2>Your results</h2>

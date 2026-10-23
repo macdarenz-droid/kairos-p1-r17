@@ -7,6 +7,10 @@ import { ToastProvider } from '../design-system/primitives';
 import { isNavigationTabPage, navigationTabOf, normalizePathname, pageParentOf, primaryNavigation } from './navigation';
 import { backStepOf, backTrailEntryId, EMPTY_BACK_TRAIL, recordBackTrailNavigation, recordBackTrailTitle, type BackTrail } from './backTrail';
 import { UpdatePrompt, type UpdatePromptPort } from '../features/shell/UpdatePrompt';
+import { readDeviceTimeZone } from '../features/settings/DeviceTimeZoneButton';
+import { startVisualPnlTimeZoneFromDevice } from '../application/visual-pnl';
+import { loadTradedMarkets } from '../application/setup/tradedMarkets';
+import { kairosDatabase, type KairosDatabase } from '../data/database';
 import { activateWaitingServiceWorker, subscribeServiceWorkerStatus } from '../pwa/serviceWorkerRegistration';
 
 const updatePromptPort: UpdatePromptPort = Object.freeze({ subscribe: subscribeServiceWorkerStatus, activate: activateWaitingServiceWorker });
@@ -172,9 +176,19 @@ function BackControl({ step }: { readonly step: NonNullable<ReturnType<typeof ba
   </div>;
 }
 
-/** Production data-router wrapper: the only place router loading state is read. */
-export function AppShellRoute() {
+/**
+ * Production data-router wrapper: the only place router loading state is read. Once per app start (activation is
+ * done when it shows), it saves this phone's time zone if none is saved, never over a saved one (D221), so no screen
+ * waits for a time zone on a fresh install.
+ */
+export function AppShellRoute({ db = kairosDatabase, now = () => new Date().toISOString() }: { readonly db?: KairosDatabase; readonly now?: () => string } = {}) {
   const navigation = useNavigation();
+  useEffect(() => {
+    void startVisualPnlTimeZoneFromDevice(db, readDeviceTimeZone(), now()).catch(() => undefined);
+    // Read once, so Home starts on the right view (D223).
+    void loadTradedMarkets(db).catch(() => undefined);
+    // Once per start: the database and clock are the app's own.
+  }, []);
   return <AppShell loading={navigation.state !== 'idle'} />;
 }
 

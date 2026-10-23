@@ -83,6 +83,10 @@ export const appRoutes = [
         return { Component: function CurrencyRoute() { return <CurrencyScreen db={kairosDatabase} rates={rates} />; } };
       } },
       { path: 'settings', lazy: async () => ({ Component: (await import('./SettingsRoute')).SettingsRoute }) },
+      { path: 'setup', lazy: async () => {
+        const [{ SetupScreen }, { readDeviceTimeZone }] = await Promise.all([import('../features/setup/SetupScreen'), import('../features/settings/DeviceTimeZoneButton')]);
+        return { Component: function SetupRoute() { return <SetupScreen db={kairosDatabase} deviceTimeZone={readDeviceTimeZone()} languages={navigator.languages} />; } };
+      } },
       { path: 'profile', lazy: async () => {
         const [{ ProfileRoute }, kairosApi] = await Promise.all([import('./ProfileRoute'), import('../services/kairos-api/kairosApi')]);
         const client = kairosApiClientFrom(kairosApi);

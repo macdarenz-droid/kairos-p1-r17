@@ -58,6 +58,7 @@ const ROUTE_HOMES: Readonly<Record<string, readonly [tab: string | null, parent:
   '/practice': ['/more', '/more'], '/practice/replay': ['/more', '/practice'], '/practice/coach': ['/more', '/practice'], '/practice/patterns': ['/more', '/practice'],
   '/goals': ['/more', '/more'], '/strategies': ['/more', '/more'], '/coach': ['/analysis', '/analysis?view=discipline'], '/patterns': ['/analysis', '/analysis?view=patterns'],
   '/news-calendar': ['/more', '/more'], '/currency': ['/more', '/more'], '/settings': ['/more', '/more'], '/profile': ['/more', '/more'],
+  '/setup': ['/more', '/more'],
   '/*': [null, '/'],
 };
 
@@ -151,7 +152,7 @@ describe('T-053b More in four groups', () => {
     ['Your plan', [['Goals', '/goals', 'Targets and limits for the month', 'goal'], ['Strategies', '/strategies', 'Your setups and their rules', 'strategy'], ['News calendar', '/news-calendar', 'Big news this week', 'calendar']]],
     ['Practice', [['Practice', '/practice', 'Trade with pretend money', 'practice'], ['Replay', '/practice/replay', 'Trade past candles, one at a time', 'replay']]],
     ['Money', [['Currency', '/currency', 'Your home currency and exchange rates', 'currency'], ['Calculators', '/library/calculators', 'How much can I buy, and what do I risk?', 'calculator']]],
-    ['App', [['Settings', '/settings', 'How Kairos looks, and your time zone', 'settings'], ['Profile', '/profile', 'This device, backups and online services', 'profile']]],
+    ['App', [['Settings', '/settings', 'How Kairos looks, and your time zone', 'settings'], ['Profile', '/profile', 'This device, backups and online services', 'profile'], ['Set up Kairos', '/setup', 'Your setup, step by step', 'setup']]],
   ] as const;
 
   it('shows each group under its heading, each item with its icon, its name and its line', () => {

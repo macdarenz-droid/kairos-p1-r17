@@ -6,7 +6,7 @@ import {
 } from '../application/visual-pnl';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
 import { createKairosRepositories } from '../data/repositories';
-import { DeviceTimeZoneButton } from '../features/settings/DeviceTimeZoneButton';
+import { DeviceTimeZoneButton, readDeviceTimeZone } from '../features/settings/DeviceTimeZoneButton';
 import { ThemePicker } from '../features/settings/ThemePicker';
 import { Button, ErrorState, Field, PageHeader } from '../design-system/primitives';
 import './settingsRoute.css';
@@ -153,7 +153,8 @@ export function SettingsRoute({ db = kairosDatabase }: SettingsRouteProps) {
           </Button>
           <span>{savedTimeZone === null ? 'Not configured' : `Current: ${savedTimeZone}`}</span>
         </div>
-        {!isLoading && !loadFailed && savedTimeZone === null ? <DeviceTimeZoneButton metadata={repositories.metadata} onSaved={(zone) => { setSavedTimeZone(zone); setTimeZone(zone); setFeedback({ kind: 'success', message: 'Time zone saved.' }); }} /> : null}
+        {/* T-053d (D221): offered whenever the saved zone is not this device's (the shell saves it at first open). */}
+        {!isLoading && !loadFailed && savedTimeZone !== readDeviceTimeZone() ? <DeviceTimeZoneButton metadata={repositories.metadata} onSaved={(zone) => { setSavedTimeZone(zone); setTimeZone(zone); setFeedback({ kind: 'success', message: 'Time zone saved.' }); }} /> : null}
 
         {loadFailed ? <ErrorState message="Kairos could not load your time zone." onRetry={retryLoad} /> : null}
         {feedback ? (

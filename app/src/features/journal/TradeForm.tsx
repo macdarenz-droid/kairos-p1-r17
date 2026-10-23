@@ -36,6 +36,8 @@ interface TradeFormProps {
   readonly now?: () => Date;
   /** The draft the form opens with, read once when it mounts (Practice passes a plan from the calculator); later changes are ignored. */
   readonly initialDraft?: ManualTradeDraft;
+  /** The market the form starts on while none is chosen: the first one the trader trades (D223); null keeps it blank. */
+  readonly defaultMarket?: ManualTradeDraft['marketType'] | null;
 }
 
 type TradeFormMode = 'quick' | 'full';
@@ -188,10 +190,14 @@ function fieldHasError(feedback: Feedback, field: string): boolean {
 }
 
 /** The one trade form for Journal (real trades) and Practice (paper trades); only the save command and wording differ. */
-export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft }: TradeFormProps) {
+export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, defaultMarket = null }: TradeFormProps) {
   const text = TRADE_FORM_TEXT[kind];
   const { idPrefix, planIdPrefix } = text;
   const [draft, setDraft] = useState<ManualTradeDraft>(() => initialDraft ?? createEmptyManualTradeDraft());
+  // The trader's first market arrives after the form shows; it fills the market only while none is chosen.
+  useEffect(() => {
+    if (defaultMarket !== null) setDraft(current => (current.marketType === '' ? { ...current, marketType: defaultMarket } : current));
+  }, [defaultMarket]);
   const [planShown, setPlanShown] = useState(() => initialDraft !== undefined && Object.values(initialDraft.plan).some(value => value.trim() !== ''));
   const [executions, setExecutions] = useState<readonly ManualExecutionRow[]>([]);
   const [fees, setFees] = useState<readonly ManualFeeRow[]>([]);
@@ -297,7 +303,7 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft }: 
 
     // Commit the reset and the success banner before the page refreshes its lists.
     flushSync(() => {
-      setDraft(createEmptyManualTradeDraft());
+      setDraft({ ...createEmptyManualTradeDraft(), marketType: defaultMarket ?? '' });
       setPlanShown(false);
       setExecutions([]);
       setFees([]);
