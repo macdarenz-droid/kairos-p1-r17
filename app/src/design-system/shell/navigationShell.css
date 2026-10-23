@@ -250,8 +250,9 @@ body {
 }
 
 /* D225: "+ Log trade" floats above the bottom bar, on the right, inside the safe area (on a wide screen, at the bottom
-   right of the content). The page keeps room under it, and toasts rise above it. */
-.kairos-shell { --kairos-log-trade-bottom: calc(var(--kairos-layout-navigation-height) + env(safe-area-inset-bottom, 0px) + var(--kairos-space-3)); }
+   right of the content). The page keeps room under it; toasts and the update prompt rise above it, and a part of the
+   page brought into view stops above it. */
+:root { --kairos-log-trade-bottom: calc(var(--kairos-layout-navigation-height) + env(safe-area-inset-bottom, 0px) + var(--kairos-space-3)); }
 .kairos-log-trade {
   position: fixed;
   z-index: 25;
@@ -271,9 +272,10 @@ body {
 }
 .kairos-log-trade:focus-visible { outline: 2px solid var(--kairos-state-focus); outline-offset: 3px; }
 .kairos-shell__content[data-log-trade='true'] { padding-bottom: calc(var(--kairos-log-trade-bottom) + var(--kairos-control-lg) + var(--kairos-space-6)); }
-.kairos-log-trade ~ .kairos-toast-region { bottom: calc(var(--kairos-log-trade-bottom) + var(--kairos-control-lg) + var(--kairos-space-2)); }
+.kairos-shell:has(.kairos-log-trade) :is(.kairos-toast-region, .kairos-update-prompt) { bottom: calc(var(--kairos-log-trade-bottom) + var(--kairos-control-lg) + var(--kairos-space-2)); }
+html:has(.kairos-log-trade) { scroll-padding-bottom: calc(var(--kairos-log-trade-bottom) + var(--kairos-control-lg) + var(--kairos-space-2)); }
 @media (min-width: 48rem) {
-  .kairos-shell { --kairos-log-trade-bottom: var(--kairos-space-6); }
+  :root { --kairos-log-trade-bottom: var(--kairos-space-6); }
   /* The content is at most 72rem wide, centred beside the 13rem side list; the button lines up with its inner edge. */
   .kairos-log-trade { right: max(var(--kairos-space-6), calc((100vw - 13rem - 72rem) / 2 + var(--kairos-space-8))); }
 }

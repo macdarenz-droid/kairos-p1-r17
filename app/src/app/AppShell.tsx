@@ -250,8 +250,9 @@ export function AppShell({ loading = false }: { readonly loading?: boolean }) {
               entry of the same page (a changed period, a step) keeps it, so focus never falls to the page. */}
           {back.step === null ? null : <BackControl key={page} step={back.step} />}
           <TradePictureCandleLoaderContext.Provider value={browserTradePictureCandleLoader()}><Outlet /></TradePictureCandleLoaderContext.Provider>
+          {/* Last in main, so it is inside the page's landmark and comes after the page in the tab order. */}
+          {logTrade ? <LogTradeButton onJournal={page === '/journal'} /> : null}
         </main>
-        {logTrade ? <LogTradeButton onJournal={page === '/journal'} /> : null}
       </ToastProvider>
       <nav className="kairos-shell__navigation" aria-label="Primary navigation">
         <div className="kairos-shell__navigation-inner" style={inkStyle}>

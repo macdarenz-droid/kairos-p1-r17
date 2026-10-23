@@ -1315,9 +1315,32 @@ test('(x) Log a trade from anywhere: "+ Log trade", the log address and Getting 
   await logTrade.click();
   await formReady();
   await axeOk('Journal');
+  // T-053e fix r1: the button is inside the page's landmark (axe's "region" rule, not in the WCAG tags above).
+  const inLandmarks = async (where: string) => {
+    const axe = await new AxeBuilder({ page }).withRules(['region']).analyze();
+    expect(axe.violations.map(violation => `${where} ${violation.id}: ${violation.nodes.map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+  };
+  await inLandmarks('Journal');
+  // A part of the page brought into view at the bottom stops above the button.
+  const save = page.getByRole('button', { name: 'Save trade' });
+  await save.evaluate(element => element.scrollIntoView({ block: 'end' }));
+  expect(((await save.boundingBox())!.y + (await save.boundingBox())!.height)).toBeLessThanOrEqual((await logTrade.boundingBox())!.y);
+  // The update prompt (its markup as UpdatePrompt draws it; a waiting update cannot be made here) rises above the button.
+  await page.evaluate(() => {
+    const prompt = document.createElement('div');
+    prompt.className = 'kairos-update-prompt';
+    prompt.setAttribute('role', 'status');
+    prompt.innerHTML = '<p>A new version is ready.</p><button type="button">Update</button>';
+    document.querySelector('.kairos-shell')!.append(prompt);
+  });
+  const update = page.getByRole('button', { name: 'Update' });
+  expect((await update.boundingBox())!.y + (await update.boundingBox())!.height).toBeLessThanOrEqual((await logTrade.boundingBox())!.y);
+  await update.click({ trial: true });
+  await page.evaluate(() => document.querySelector('.kairos-shell > .kairos-update-prompt')?.remove());
 
   await page.goto('/analysis');
   await expect(page.getByRole('heading', { level: 1, name: 'Analysis' })).toBeVisible();
+  await inLandmarks('Analysis');
   await logTrade.click();
   await formReady();
 
