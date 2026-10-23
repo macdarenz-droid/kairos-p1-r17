@@ -35,7 +35,7 @@
 .kairos-results-candles__heading { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: var(--kairos-space-1) var(--kairos-space-3); }
 .kairos-results-candles__heading h3 { margin: 0; font-size: var(--kairos-font-size-md); }
 /* The total keeps one line and drops under the title; only a total wider than the whole card breaks. */
-.kairos-results-candles__heading strong { flex: none; max-inline-size: 100%; font-family: var(--kairos-font-mono); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; text-align: end; }
+.kairos-results-candles__heading strong { flex: none; max-inline-size: 100%; font-family: var(--kairos-font-mono); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; text-align: start; }
 .kairos-results-candles[data-outcome='profit'] .kairos-results-candles__heading strong { color: var(--kairos-trade-profit); }
 .kairos-results-candles[data-outcome='loss'] .kairos-results-candles__heading strong { color: var(--kairos-trade-loss); }
 .kairos-results-candles__picture { display: block; width: 100%; height: auto; }
