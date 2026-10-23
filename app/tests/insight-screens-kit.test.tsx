@@ -119,4 +119,41 @@ describe('T-049i Coach and Patterns on the kit', () => {
       cleanup();
     }
   });
+
+  /** Tap "Try again" the moment it is put on screen, before React has run that screen's effects (CI saw this race, T-051j fix ci). */
+  function tapWhenShown(root: HTMLElement): Promise<void> {
+    return new Promise(resolve => {
+      const observer = new MutationObserver(() => {
+        const retry = root.querySelector<HTMLElement>('.kairos-error-state button');
+        if (retry === null) return;
+        observer.disconnect();
+        retry.focus();
+        fireEvent.click(retry);
+        resolve();
+      });
+      observer.observe(root, { childList: true, subtree: true });
+    });
+  }
+
+  it('patterns: a "Try again" tapped as soon as it shows still gives focus to the screen that loads', async () => {
+    const db = await database();
+    await withZone(db);
+    await saveManualTrade(db, oversized);
+    vi.mocked(loadTradePatterns).mockRejectedValueOnce(new Error('storage'));
+    const view = patterns(db, 'real');
+    await tapWhenShown(view.container);
+    expect(await screen.findByRole('heading', { name: 'All your trades' })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'Your patterns' })).toHaveFocus());
+  });
+
+  it('coach: a "Try again" tapped as soon as it shows still gives focus to the notes that load', async () => {
+    const db = await database();
+    await withZone(db);
+    await saveManualTrade(db, oversized);
+    vi.mocked(loadCoachNotes).mockRejectedValueOnce(new Error('storage'));
+    const view = coach(db, 'real');
+    await tapWhenShown(view.container);
+    expect(await screen.findByRole('heading', { level: 2, name: '1 trade this month was bigger than you planned.' })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getAllByRole('link', { name: 'View trade' })[0]).toHaveFocus());
+  });
 });

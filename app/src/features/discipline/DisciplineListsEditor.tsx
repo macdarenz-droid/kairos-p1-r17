@@ -51,8 +51,9 @@ export function DisciplineListsEditor({ db }: DisciplineListsEditorProps) {
   // True while this editor's "Undo" toast may be up; a new draft generation closes it, so no Undo does nothing (D178).
   const undoShown = useRef(false);
   const form = useRef<HTMLFormElement>(null);
-  // Set when "Try again" had focus: once the load settles, focus the first step's field, or the new "Try again" (WCAG 2.4.3).
-  const refocusAfterRetry = useRef(false);
+  // Set to the load the tap was made on when "Try again" had focus: once a newer load settles, focus the first step's field,
+  // or the new "Try again" (WCAG 2.4.3). React may run the effect for the tapped screen after the tap, so that one is skipped.
+  const refocusAfterRetry = useRef<typeof load | null>(null);
   // The row just removed: focus then goes to the next row's "Remove", or to "Add a {noun}" after the last row.
   const removedAt = useRef<Readonly<{ group: number; noun: string; index: number }> | null>(null);
 
@@ -78,12 +79,13 @@ export function DisciplineListsEditor({ db }: DisciplineListsEditorProps) {
   }, [db, loadAttempt]);
 
   useEffect(() => {
-    if (load.kind === 'loading' || !refocusAfterRetry.current) return;
-    refocusAfterRetry.current = false;
+    const tapped = refocusAfterRetry.current;
+    if (load.kind === 'loading' || tapped === null || load === tapped) return;
+    refocusAfterRetry.current = null;
     const first = form.current?.querySelector('fieldset');
     const target = load.kind === 'failed' ? form.current?.querySelector<HTMLElement>('.kairos-error-state button') : first?.querySelector<HTMLElement>('input, button');
     target?.focus();
-  }, [load.kind]);
+  }, [load]);
 
   useLayoutEffect(() => {
     const removed = removedAt.current;
@@ -145,7 +147,7 @@ export function DisciplineListsEditor({ db }: DisciplineListsEditorProps) {
       <p>These are the steps and questions Kairos asks on your trade cards. Changes apply to answers you give from now on; answers you already saved keep their words.</p>
     </div>
     {loading ? <Skeleton label="Loading your checklist…" /> : null}
-    {load.kind === 'failed' ? <ErrorState message="Kairos could not load your checklist." onRetry={() => { refocusAfterRetry.current = document.activeElement?.closest('.kairos-error-state') != null; setLoadAttempt(current => current + 1); }} /> : <>
+    {load.kind === 'failed' ? <ErrorState message="Kairos could not load your checklist." onRetry={() => { refocusAfterRetry.current = document.activeElement?.closest('.kairos-error-state') != null ? load : null; setLoadAttempt(current => current + 1); }} /> : <>
       {GROUPS.map(group => <fieldset key={group.kind} disabled={loading || saving}>
         <legend>{group.legend}</legend>
         {draft[group.kind].map((item, index) => <div className="kairos-discipline-lists__row" key={item.id}>

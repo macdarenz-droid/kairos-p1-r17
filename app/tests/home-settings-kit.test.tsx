@@ -133,6 +133,31 @@ describe('T-049f checklist Undo and "Try again"', () => {
     expect(await within(card()).findByRole('textbox', { name: 'Step 1' })).toBeInTheDocument();
     expect(within(card()).queryByText('Kairos could not load your checklist.')).toBeNull();
   });
+
+  it('a "Try again" tapped as soon as it shows still gives focus to the first step that loads (T-051j fix ci)', async () => {
+    const db = await database();
+    const read = db.metadata.get.bind(db.metadata);
+    let failed = false;
+    vi.spyOn(db.metadata, 'get').mockImplementation(((key: string) => {
+      if (key !== visualPnlTimeZonePreferenceMetadataKey && !failed) { failed = true; return Promise.reject(new Error('storage')); }
+      return read(key);
+    }) as typeof db.metadata.get);
+    const view = render(<ThemeProvider><ToastProvider><SettingsRoute db={db} /></ToastProvider></ThemeProvider>);
+    // Tap the moment the error is put on screen, before React has run that screen's effects.
+    await new Promise<void>(resolve => {
+      const observer = new MutationObserver(() => {
+        const retry = view.container.querySelector<HTMLElement>('form .kairos-error-state button');
+        if (retry === null) return;
+        observer.disconnect();
+        retry.focus();
+        fireEvent.click(retry);
+        resolve();
+      });
+      observer.observe(view.container, { childList: true, subtree: true });
+    });
+    const first = await within(card()).findByRole('textbox', { name: 'Step 1' });
+    await waitFor(() => expect(first).toHaveFocus());
+  });
 });
 
 describe('T-049f fix r1', () => {
