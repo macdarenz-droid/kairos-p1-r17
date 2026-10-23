@@ -199,8 +199,9 @@ export function AppShell({ loading = false }: { readonly loading?: boolean }) {
       <UpdatePrompt port={updatePromptPort} />
       <ToastProvider>
         <main className="kairos-shell__content" id={MAIN_ID} tabIndex={-1}>
-          {/* A new control for each entry: the one that had focus goes away, so focus moves to the new heading (D179). */}
-          {back.step === null ? null : <BackControl key={back.id} step={back.step} />}
+          {/* A new control for each page: the one that had focus goes away, so focus moves to the new heading (D179). Another
+              entry of the same page (a changed period, a step) keeps it, so focus never falls to the page. */}
+          {back.step === null ? null : <BackControl key={normalizePathname(location.pathname)} step={back.step} />}
           <TradePictureCandleLoaderContext.Provider value={browserTradePictureCandleLoader()}><Outlet /></TradePictureCandleLoaderContext.Provider>
         </main>
       </ToastProvider>

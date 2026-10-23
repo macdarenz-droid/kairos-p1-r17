@@ -114,6 +114,16 @@ describe('T-053a where am I', () => {
     expect(screen.getByRole('button', { name: 'Back to Library' })).not.toHaveFocus();
   });
 
+  it('T-053a fix r2: another entry of the same page keeps the back control, and its focus', async () => {
+    const router = renderPath('/library/lessons');
+    const back = await screen.findByRole('link', { name: 'Back to Library' });
+    back.focus();
+    await act(async () => { await router.navigate('/library/lessons?from=list'); });
+    expect(router.state.location.search).toBe('?from=list');
+    expect(screen.getByRole('link', { name: 'Back to Library' })).toBe(back);
+    expect(back).toHaveFocus();
+  });
+
   it('a tab has no back control', async () => {
     renderPath('/analysis');
     await screen.findByRole('heading', { level: 1, name: 'Analysis' });
