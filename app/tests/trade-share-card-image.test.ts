@@ -52,9 +52,9 @@ describe('T-052c the share card image', () => {
       }
       const shown = texts(shape).map(step => step.text);
       expect(shown).toEqual(expect.arrayContaining(['BTCUSDT', 'Long · Won', '+39 USDT', '15-minute candles', '× what you risked', '+1.95× what you risked', 'Made with Kairos', '20 Sept 2026']));
-      // A tall card has room for all six facts; a square one shows the first two.
+      // A tall card has room for all six facts; a square one shows the first four (how long it lasted and the strategy among them).
       const facts = card().facts.map(fact => fact.text);
-      expect(facts.filter(fact => shown.includes(fact))).toEqual(shape === 'tall' ? facts : facts.slice(0, 2));
+      expect(facts.filter(fact => shown.includes(fact))).toEqual(shape === 'tall' ? facts : facts.slice(0, 4));
       expect(layout.steps.filter(step => step.kind === 'chart')).toHaveLength(1);
     });
   }
@@ -104,5 +104,15 @@ describe('T-052c the share card image', () => {
     expect(text).not.toContain('kairos-trade-picture__picked');
     expect(text).not.toContain('data-picked');
     expect(text).not.toContain('aria-hidden');
+  });
+
+  it('keeps a long fact readable: it shrinks to 80% at most, then is cut (fix r1)', () => {
+    const long = 'London opening range breakout at the first candle';
+    for (const shape of ['tall', 'square'] as const) {
+      const steps = texts(shape, card({ facts: [{ key: 'strategy', label: 'Strategy', text: long }] }));
+      const fact = steps.find(step => step.text.startsWith('London'))!;
+      expect(fact.text.endsWith('…')).toBe(true);
+      expect(fact.size).toBeGreaterThanOrEqual((shape === 'tall' ? 36 : 32) * 0.8);
+    }
   });
 });

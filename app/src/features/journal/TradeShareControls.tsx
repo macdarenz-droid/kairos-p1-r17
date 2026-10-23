@@ -13,8 +13,9 @@ function cardDate(iso: string | null): string | null {
   return Number.isNaN(date.getTime()) ? null : new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date);
 }
 
-/** A card made for one choice; `blob` null when it could not be made. */
-type Made = Readonly<{ key: string; blob: Blob | null; url: string | null }>;
+/** A card made by one run of `make` (so a newer model, shape or choice never counts it as current); `blob` null when it could not be made. */
+type Make = () => Promise<Made>;
+type Made = Readonly<{ by: Make; blob: Blob | null; url: string | null }>;
 
 /**
  * U6 (D214, D215): the share card under a full trade picture: its shape, "Hide money amounts", a preview,
@@ -34,27 +35,29 @@ export function TradeShareControls({ model, svg, strategyName = null, ports }: {
   const hideId = useId();
   const savePorts = useMemo(() => ports ?? browserTradePictureSavePorts(), [ports]);
   const card = useMemo(() => projectTradeShareCard(model, { hideMoney, strategyName }), [model, hideMoney, strategyName]);
-  const key = `${shape}|${hideMoney}|${strategyName ?? ''}`;
   const dateIso = model.info.find(row => row.key === 'opened')?.value ?? null;
   const fileName = tradePictureFileName(model.symbol, dateIso);
-  const working = useRef<Promise<Made> | null>(null);
+  const working = useRef<Readonly<{ by: Make; run: Promise<Made> }> | null>(null);
   const shownUrl = useRef<string | null>(null);
 
-  const make = useMemo(() => async (): Promise<Made> => {
-    const element = svg.current;
-    try {
-      const blob = await makeTradeShareImage(card, shape, element === null ? null : (width, height) => serializeTradeShareChart(element, width, height), cardDate(card.closed ?? card.opened), savePorts);
-      return { key, blob, url: typeof URL.createObjectURL === 'function' ? URL.createObjectURL(blob) : null };
-    } catch {
-      return { key, blob: null, url: null };
-    }
-  }, [card, shape, key, svg, savePorts]);
+  const make = useMemo(() => {
+    const run: Make = async () => {
+      const element = svg.current;
+      try {
+        const blob = await makeTradeShareImage(card, shape, element === null ? null : (width, height) => serializeTradeShareChart(element, width, height), cardDate(card.closed ?? card.opened), savePorts);
+        return { by: run, blob, url: typeof URL.createObjectURL === 'function' ? URL.createObjectURL(blob) : null };
+      } catch {
+        return { by: run, blob: null, url: null };
+      }
+    };
+    return run;
+  }, [card, shape, svg, savePorts]);
 
   // The preview follows every change; an answer for an older choice is thrown away.
   useEffect(() => {
     let current = true;
     const run = make();
-    working.current = run;
+    working.current = { by: make, run };
     void run.then(result => {
       if (!current) { if (result.url) URL.revokeObjectURL(result.url); return; }
       if (shownUrl.current) URL.revokeObjectURL(shownUrl.current);
@@ -68,7 +71,8 @@ export function TradeShareControls({ model, svg, strategyName = null, ports }: {
   const share = async () => {
     if (status === 'saving') return;
     setStatus('saving');
-    const ready = made !== null && made.key === key ? made : await (working.current ?? make());
+    // Only the card for what is on screen now: an older picture or choice is never shared.
+    const ready = made !== null && made.by === make ? made : await (working.current !== null && working.current.by === make ? working.current.run : make());
     const result = ready.blob === null ? 'failed' : await saveTradePictureImage(ready.blob, fileName, savePorts);
     setStatus(result === 'failed' ? 'failed' : 'idle');
   };
@@ -79,7 +83,7 @@ export function TradeShareControls({ model, svg, strategyName = null, ports }: {
     <label className="kairos-trade-share__hide" htmlFor={hideId}>
       <input id={hideId} type="checkbox" checked={hideMoney} onChange={event => setHideMoney(event.target.checked)} /> <span>Hide money amounts</span>
     </label>
-    {made === null || made.key !== key
+    {made === null || made.by !== make
       ? <p className="kairos-trade-share__making">Making the image…</p>
       : made.url !== null
         ? <img className="kairos-trade-share__preview" data-shape={shape} src={made.url} alt={alt} />

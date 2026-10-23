@@ -39,7 +39,7 @@ export interface TradePictureSavePorts extends TradeShareImagePorts {
   download(blob: Blob, fileName: string): void;
 }
 
-export type TradePictureSaveResult = 'shared' | 'downloaded' | 'failed';
+export type TradePictureSaveResult = 'shared' | 'downloaded' | 'cancelled' | 'failed';
 
 /** Hands the share card's PNG to the share sheet when the device offers one, else downloads it (D214). */
 export async function saveTradePictureImage(image: Blob, fileName: string, ports: TradePictureSavePorts = browserTradePictureSavePorts()): Promise<TradePictureSaveResult> {
@@ -51,8 +51,9 @@ export async function saveTradePictureImage(image: Blob, fileName: string, ports
     }
     ports.download(image, fileName);
     return 'downloaded';
-  } catch {
-    return 'failed';
+  } catch (error) {
+    // Closing the phone's share sheet is the trader's choice, not a failure.
+    return typeof error === 'object' && error !== null && (error as { name?: unknown }).name === 'AbortError' ? 'cancelled' : 'failed';
   }
 }
 

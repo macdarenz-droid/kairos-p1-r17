@@ -43,7 +43,6 @@ export interface AnalysisRouteProps {
   readonly rates?: EcbReferenceRatesPort | null;
 }
 
-/** "Your results" (U5) and the chart with the trade review: route selection and async read lifecycle only; all saved facts come from their owners. */
 /** The strategy the trader chose for the shown trade, for its share card (P28); null without one or when the read fails. */
 function useTradeStrategyName(db: KairosDatabase, tradeId: TradeId | null): string | null {
   const [found, setFound] = useState<{ readonly id: TradeId; readonly name: string | null } | null>(null);
@@ -58,6 +57,7 @@ function useTradeStrategyName(db: KairosDatabase, tradeId: TradeId | null): stri
   return found !== null && found.id === tradeId ? found.name : null;
 }
 
+/** "Your results" (U5) and the chart with the trade review: route selection and async read lifecycle only; all saved facts come from their owners. */
 export function AnalysisRoute({ load = loadTradeReview, db = kairosDatabase, now = wallClock, rates = null }: AnalysisRouteProps) {
   const [params, setParams] = useSearchParams();
   const view = analysisView(params);

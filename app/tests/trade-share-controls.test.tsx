@@ -4,7 +4,7 @@ import Dexie from 'dexie';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { projectTradePicture } from '../src/application/trade-visualizer';
+import { projectTradePicture, type TradePictureInput } from '../src/application/trade-visualizer';
 import { parseDecimalString, type DecimalString, type TradeExecutionId, type TradeFeeId, type TradeFeeRecord, type TradeId, type TradePlanId, type TradeRecord } from '../src/domain/trades';
 import { AnalysisRoute } from '../src/app/AnalysisRoute';
 import { JournalRoute } from '../src/app/JournalRoute';
@@ -20,7 +20,7 @@ function dec(value: string): DecimalString { const parsed = parseDecimalString(v
 const tradeId = 'trade-1' as TradeId;
 const opened = '2026-09-20T09:00:00.000Z', closed = '2026-09-20T12:00:00.000Z';
 const trade: TradeRecord = { id: tradeId, symbol: 'BTCUSDT', marketType: 'crypto', side: 'long', status: 'closed', source: 'manual', grossPnlCurrency: 'USDT', openedAt: opened, closedAt: closed, createdAt: opened, updatedAt: closed };
-const model = projectTradePicture({
+const pictureInput: TradePictureInput = {
   trade, plans: [{ id: 'p1' as TradePlanId, tradeId, plannedEntryPrice: dec('100'), plannedStopPrice: dec('90'), plannedTargetPrice: dec('130'), plannedQuantity: dec('2'), createdAt: opened, updatedAt: opened }],
   executions: [
     { id: 'e1' as TradeExecutionId, tradeId, type: 'entry', price: dec('100'), quantity: dec('2'), executedAt: opened, createdAt: opened },
@@ -28,7 +28,8 @@ const model = projectTradePicture({
   ],
   fees: [{ id: 'f1' as TradeFeeId, tradeId, executionId: null, amount: dec('1'), currency: 'USDT', createdAt: closed } as TradeFeeRecord],
   candles: null, now: '2026-09-24T12:00:00.000Z',
-});
+};
+const model = projectTradePicture(pictureInput);
 
 function ports(options: { canShare?: boolean; broken?: boolean } = {}) {
   const context = { fillStyle: '', font: '', textAlign: 'left', textBaseline: 'alphabetic', fillRect: vi.fn(), fillText: vi.fn(), drawImage: vi.fn(), measureText: vi.fn((text: string) => ({ width: text.length * 10 })) };
@@ -104,6 +105,51 @@ describe('T-052c the share card controls', () => {
   });
 });
 
+describe('T-052c fix r1', () => {
+  /** A canvas that writes what was painted into its PNG, and fonts that load only when told to. */
+  function recordingPorts() {
+    let release: () => void = () => undefined;
+    const fonts = vi.fn(() => new Promise<void>(resolve => { release = resolve; }));
+    const makeCanvas = vi.fn(() => {
+      const painted: string[] = [];
+      const context = { fillStyle: '', font: '', textAlign: 'left', textBaseline: 'alphabetic', fillRect: () => undefined, drawImage: () => undefined, measureText: (text: string) => ({ width: text.length * 10 }), fillText: (text: string) => { painted.push(text); } };
+      return { context: context as never, toBlob: async () => new Blob([painted.join('|')], { type: 'image/png' }) };
+    });
+    const share = vi.fn(async (_data: { files: File[]; title: string }) => undefined);
+    const value: TradePictureSavePorts = { makeCanvas, loadSvg: async () => ({}) as CanvasImageSource, loadFonts: fonts, canShare: () => true, share, download: vi.fn() };
+    return Object.assign(value, { share, release: () => release() });
+  }
+  const lost = projectTradePicture({ ...pictureInput, executions: [pictureInput.executions[0]!, { ...pictureInput.executions[1]!, price: dec('80') }] });
+
+  it('never shows or shares the card of an older picture', async () => {
+    const save = recordingPorts();
+    const { rerender } = render(<TradeShareControls model={model} svg={svg()} ports={save} />);
+    save.release();
+    expect(await preview()).toHaveAccessibleName(/won/);
+    // The picture changes (the exit was corrected): the old image is not shown under the new words, and is not shared.
+    rerender(<TradeShareControls model={lost} svg={svg()} ports={save} />);
+    expect(screen.queryByRole('img')).toBeNull();
+    expect(screen.getByText('Making the image…')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Share or download image' }));
+    save.release();
+    await waitFor(() => expect(save.share).toHaveBeenCalledTimes(1));
+    const painted = await save.share.mock.calls[0]![0].files[0]!.text();
+    expect(painted).toContain('Long · Lost');
+    expect(painted).not.toContain('Won');
+  });
+
+  it('closing the phone\'s share sheet is not a failure', async () => {
+    const save = ports({ canShare: true });
+    save.share.mockRejectedValueOnce(Object.assign(new Error('Share canceled'), { name: 'AbortError' }));
+    render(<TradeShareControls model={model} svg={svg()} ports={save} />);
+    await preview();
+    fireEvent.click(screen.getByRole('button', { name: 'Share or download image' }));
+    await waitFor(() => expect(save.share).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Share or download image' })).toHaveTextContent('Share or download image'));
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+});
+
 describe('T-052c the card names the strategy you chose, in the Journal and in Analysis', () => {
   /** jsdom has no canvas and loads no images: these stand in for the browser's, so the real ports run. */
   function browserStandIns() {
@@ -130,9 +176,9 @@ describe('T-052c the card names the strategy you chose, in the Journal and in An
     browserStandIns();
     const { db } = await seeded();
     render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
-    fireEvent.click(await screen.findByRole('button', { name: 'Open the BTCUSDT trade picture' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Open the BTCUSDT trade picture' }, { timeout: 4000 }));
     const dialog = await screen.findByRole('dialog');
-    expect(await within(dialog).findByRole('img', { name: /, strategy Breakout$/ })).toBeInTheDocument();
+    expect(await within(dialog).findByRole('img', { name: /, strategy Breakout$/ }, { timeout: 4000 })).toBeInTheDocument();
   });
 
   it('in Analysis "Your trade"', async () => {

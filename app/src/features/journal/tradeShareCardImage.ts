@@ -14,7 +14,6 @@ const TOKENS = themeRegistry['kairos-depth'].tokens;
 const color = (name: string): string => TOKENS[name] ?? '#000000';
 const PALETTE = Object.freeze({
   page: color('--kairos-background-base'),
-  panel: color('--kairos-surface-card'),
   text: color('--kairos-text-primary'),
   quiet: color('--kairos-text-secondary'),
   accent: color('--kairos-accent-primary'),
@@ -46,12 +45,10 @@ export type TradeShareMeasure = (text: string, size: number, weight: number) => 
 /** The chart's own drawing is 360×220 (the picture's viewBox). */
 const CHART_RATIO = 220 / 360;
 const MARGIN = 72;
-const SMALLEST_SHARE = 0.6;
-
-/** Fits text to a width: the size shrinks to 60% at most, then the end is cut with "…". */
-function fitted(text: string, size: number, weight: number, width: number, measure: TradeShareMeasure): { text: string; size: number } {
+/** Fits text to a width: the size shrinks to `smallest` of itself at most, then the end is cut with "…". */
+function fitted(text: string, size: number, weight: number, width: number, measure: TradeShareMeasure, smallest: number): { text: string; size: number } {
   let shown = size;
-  while (shown > size * SMALLEST_SHARE && measure(text, shown, weight) > width) shown -= 2;
+  while (shown - 2 >= size * smallest && measure(text, shown, weight) > width) shown -= 2;
   if (measure(text, shown, weight) <= width) return { text, size: shown };
   let cut = text;
   while (cut.length > 1 && measure(`${cut}…`, shown, weight) > width) cut = cut.slice(0, -1);
@@ -66,8 +63,9 @@ export function layoutTradeShareCard(card: TradeShareCard, shape: TradeShareShap
   const { width, height } = TRADE_SHARE_CARD_SHAPES[shape];
   const steps: TradeShareStep[] = [{ kind: 'rect', x: 0, y: 0, width, height, fill: PALETTE.page }];
   const inner = width - 2 * MARGIN;
-  const text = (value: string, x: number, y: number, size: number, weight: number, fill: string, room: number, align: 'left' | 'right' = 'left') => {
-    const fit = fitted(value, size, weight, room, measure);
+  // Big lines may shrink to 60% to fit; facts keep 80%, so they still read beside each other, and are cut sooner.
+  const text = (value: string, x: number, y: number, size: number, weight: number, fill: string, room: number, align: 'left' | 'right' = 'left', smallest = 0.6) => {
+    const fit = fitted(value, size, weight, room, measure, smallest);
     steps.push({ kind: 'text', x, y, text: fit.text, size: fit.size, weight, color: fill, align });
   };
   const tall = shape === 'tall';
@@ -79,23 +77,22 @@ export function layoutTradeShareCard(card: TradeShareCard, shape: TradeShareShap
   text(card.headline.text === card.verdict ? card.side : `${card.side} · ${card.verdict}`, MARGIN, tall ? 188 : 160, tall ? 38 : 34, 600, decided ? verdictColor : PALETTE.quiet, inner);
   text(card.headline.text, MARGIN, tall ? 288 : 240, tall ? 84 : 68, 700, verdictColor, inner);
 
-  // The picture on a panel, then the candle size under it.
-  const chartTop = tall ? 320 : 272;
-  const chartWidth = tall ? inner : 900;
+  // The picture (it brings its own rounded background), centred, then the candle size under it.
+  const chartTop = tall ? 324 : 276;
+  const chartWidth = tall ? inner : 760;
   const chartHeight = Math.round(chartWidth * CHART_RATIO);
-  steps.push({ kind: 'rect', x: MARGIN - 12, y: chartTop - 12, width: chartWidth + 24, height: chartHeight + 24, fill: PALETTE.panel });
-  steps.push({ kind: 'chart', x: MARGIN, y: chartTop, width: chartWidth, height: chartHeight });
-  if (card.candleWords !== null) text(card.candleWords, MARGIN, chartTop + chartHeight + (tall ? 44 : 38), tall ? 26 : 24, 500, PALETTE.quiet, chartWidth);
+  steps.push({ kind: 'chart', x: Math.round((width - chartWidth) / 2), y: chartTop, width: chartWidth, height: chartHeight });
+  if (card.candleWords !== null) text(card.candleWords, MARGIN, chartTop + chartHeight + (tall ? 44 : 38), tall ? 26 : 24, 500, PALETTE.quiet, inner);
 
-  // The facts in two columns: all of them on a tall card, the first two on a square one.
+  // The facts in two columns: all six on a tall card, the first four on a square one.
   const factWidth = (inner - 48) / 2;
-  const shown = tall ? card.facts : card.facts.slice(0, 2);
+  const shown = tall ? card.facts : card.facts.slice(0, 4);
   shown.forEach((fact, index) => {
     const x = MARGIN + (index % 2) * (factWidth + 48);
-    const y = tall ? chartTop + chartHeight + 100 + Math.floor(index / 2) * 96 : chartTop + chartHeight + 90;
-    if (y + 46 > height - 110) return;
-    text(fact.label, x, y, 26, 500, PALETTE.quiet, factWidth);
-    text(fact.text, x, y + 44, tall ? 36 : 32, 600, PALETTE.text, factWidth);
+    const y = chartTop + chartHeight + (tall ? 100 : 88) + Math.floor(index / 2) * (tall ? 96 : 88);
+    if (y + 44 > height - (tall ? 110 : 80)) return;
+    text(fact.label, x, y, tall ? 26 : 24, 500, PALETTE.quiet, factWidth, 'left', 0.8);
+    text(fact.text, x, y + (tall ? 44 : 40), tall ? 36 : 32, 600, PALETTE.text, factWidth, 'left', 0.8);
   });
 
   // The footer: who made it, and when the trade was.
