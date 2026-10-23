@@ -159,3 +159,13 @@
 .kairos-results-numbers__legend [data-key='won'] .kairos-icon { color: var(--kairos-trade-profit); }
 .kairos-results-numbers__legend [data-key='lost'] .kairos-icon { color: var(--kairos-trade-loss); }
 .kairos-results-numbers__legend [data-key='breakEven'] .kairos-icon { color: var(--kairos-trade-flat); }
+
+/* T-051i: candles you can tap, the row buttons under "Show the numbers", and the biggest dip (D205). */
+.kairos-results-candles__candle .kairos-results-candles__hit { fill: transparent; stroke: none; cursor: pointer; }
+.kairos-results-candles__dip line { stroke: var(--kairos-text-secondary); stroke-width: 1; stroke-dasharray: 4 3; }
+.kairos-results-candles__dip path { fill: none; stroke: var(--kairos-text-secondary); stroke-width: 1.5; }
+.kairos-results-candles__dip-label { fill: var(--kairos-text-secondary); font-size: 9px; }
+.kairos-results-candles__numbers th .kairos-icon { vertical-align: middle; }
+.kairos-results-candles__row-button { min-block-size: 24px; padding: 0; border: 0; background: none; color: var(--kairos-accent-primary); font: inherit; text-align: start; text-decoration: underline; cursor: pointer; }
+.kairos-results-candles__heading h3:focus { outline: none; }
+.kairos-results-candles__heading h3:focus-visible { outline: 2px solid var(--kairos-state-focus); outline-offset: 2px; }

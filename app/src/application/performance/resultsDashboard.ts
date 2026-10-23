@@ -6,8 +6,9 @@
  */
 
 import type { KairosDatabase } from '../../data/database';
+import { decimalCompare } from '../../domain/calculations/decimalKernel';
 import { createKairosRepositories } from '../../data/repositories';
-import type { TradeId } from '../../domain/trades';
+import type { DecimalString, TradeId } from '../../domain/trades';
 import { summarizeResultsInHomeCurrency, type ResultsInHomeCurrencySummary, type TradeResultInHomeCurrency } from '../currency/resultsInHomeCurrency';
 import { projectDisciplineScore, type DisciplineScoreProjection } from '../discipline/disciplineScore';
 import { loadTradeDiscipline } from '../discipline/tradeDiscipline';
@@ -18,6 +19,7 @@ import { summarizeVisualPnlByDay, type VisualPnlDailySummaryProjection } from '.
 import { projectVisualPnlDayKey } from '../visual-pnl/dayBucket';
 import { shiftVisualPnlMonthKey } from '../visual-pnl/dayKeyCalendar';
 import { projectVisualPnlPeriod, type VisualPnlPeriod, type VisualPnlPeriodChoice, type VisualPnlPeriodProblem } from '../visual-pnl/resultsPeriod';
+import { projectVisualPnlRunningTotals, type VisualPnlResultCandleMark } from '../visual-pnl/resultCandles';
 import { readVisualPnlTimeZonePreference } from '../visual-pnl/timeZonePreference';
 import { loadPerformancePeriod } from './loadPerformanceSummary';
 import { summarizePerformance, type PerformanceSummary } from './performanceSummary';
@@ -160,4 +162,40 @@ export function selectResultsEntries(dashboard: ResultsDashboardProjection, pick
     const day = dashboard.tradeDays[entry.trade.id];
     return day !== null && day !== undefined && day >= pick.fromDayKey && day < pick.toDayKey;
   }));
+}
+
+/** Each close day's trade ids, in close order, from tradeDays (trades that can't be placed on a day are left out). */
+export function projectResultsTradeIdsByDay(dashboard: ResultsDashboardProjection): Readonly<Record<string, readonly string[]>> {
+  const byDay: Record<string, string[]> = {};
+  for (const entry of dashboard.entries) {
+    const day = dashboard.tradeDays[entry.trade.id];
+    if (day === null || day === undefined) continue;
+    (byDay[day] ??= []).push(entry.trade.id);
+  }
+  return Object.freeze(Object.fromEntries(Object.entries(byDay).map(([day, ids]) => [day, Object.freeze(ids)])));
+}
+
+/**
+ * D205: the dip's high point and low point as marks for the candles; empty when the dip is unavailable or 0. The totals
+ * after each trade are the running totals of the period's results from 0, as the candles draw them; a trade that can't be
+ * placed on a day leaves the candles short of it, so then nothing is marked.
+ */
+export function projectResultsDipMarks(dashboard: ResultsDashboardProjection): readonly VisualPnlResultCandleMark[] {
+  const dip = dashboard.summary.biggestDip;
+  if (!dip.available || decimalCompare(dip.amount, '0') !== 1 || dip.toTradeId === null || dashboard.days.blockedTrades.length > 0) return Object.freeze([]);
+  const amounts: DecimalString[] = [];
+  for (const entry of dashboard.entries) {
+    if (entry.visualPnl.amount === null) return Object.freeze([]);
+    amounts.push(entry.visualPnl.amount);
+  }
+  const totals = projectVisualPnlRunningTotals('0' as DecimalString, amounts);
+  if (totals === null) return Object.freeze([]);
+  const after = (id: TradeId): DecimalString | null => totals[dashboard.entries.findIndex((entry) => entry.trade.id === id)] ?? null;
+  const high = dip.fromTradeId === null ? '0' as DecimalString : after(dip.fromTradeId);
+  const low = after(dip.toTradeId);
+  if (high === null || low === null) return Object.freeze([]);
+  return Object.freeze([
+    Object.freeze({ key: 'dip-high', afterTradeId: dip.fromTradeId, amount: high }),
+    Object.freeze({ key: 'dip-low', afterTradeId: dip.toTradeId, amount: low }),
+  ]);
 }

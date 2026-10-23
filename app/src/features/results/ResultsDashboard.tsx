@@ -4,24 +4,26 @@ import { describeRatesFetchedOnTheirOwn, describeTotalsInHomeCurrency, RATES_NEE
 import { ecbRatesToFetchOnItsOwn, fetchMissingEcbRates, missingRateKey, type EcbReferenceRatesPort, type FetchEcbRatesResult } from '../../application/currency/ecbRates';
 import type { MissingExchangeRate } from '../../application/currency/resultsInHomeCurrency';
 import type { JournalHistoryScope } from '../../application/journal';
-import { describePeriodMoneyUnavailable, describeTradeCount } from '../../application/performance/periodWords';
-import { loadResultsDashboard, selectResultsEntries, type ResultsDashboardProjection, type ResultsDashboardQueryResult } from '../../application/performance/resultsDashboard';
+import { describeBiggestDip, describePeriodMoneyUnavailable, describeTradeCount } from '../../application/performance/periodWords';
+import { loadResultsDashboard, projectResultsDipMarks, projectResultsTradeIdsByDay, selectResultsEntries, type ResultsDashboardProjection, type ResultsDashboardQueryResult } from '../../application/performance/resultsDashboard';
 import {
   describeVisualPnlPeriodProblem,
+  pickVisualPnlResultCandleUnit,
   projectVisualPnlMonthGrid,
   projectVisualPnlMonthTotals,
-  projectVisualPnlResultCandles,
+  projectVisualPnlResultCandlesBy,
   shiftVisualPnlDayKey,
   startVisualPnlTimeZoneFromDevice,
   summarizeVisualPnlDailyPerformance,
   VISUAL_PNL_DEFAULT_PERIOD,
   writeVisualPnlPeriodChoice,
   type VisualPnlMonthWeek,
+  type VisualPnlResultCandleUnit,
   type VisualPnlPeriodChoice,
   type VisualPnlTimeZoneStart,
 } from '../../application/visual-pnl';
 import type { KairosDatabase } from '../../data/database';
-import { Button, EmptyState, ErrorState, ResultText, Skeleton, StatTile, UnavailableNotice } from '../../design-system/primitives';
+import { Button, EmptyState, ErrorState, ResultText, Segmented, Skeleton, StatTile, UnavailableNotice } from '../../design-system/primitives';
 import { DisciplineScorePanel } from '../discipline/DisciplineScorePanel';
 import { readDeviceTimeZone } from '../settings/DeviceTimeZoneButton';
 import { PERIOD_LIST_ID, PeriodChooser } from './PeriodChooser';
@@ -118,15 +120,24 @@ function RatesLine({ state, live, onRetry }: { readonly state: RatesFetch; reado
   return null;
 }
 
-/** The one trade list open under the calendar: a day, a week (by its first counted day) or the month (T-051h). */
-type OpenList = Readonly<{ kind: 'day'; dayKey: string }> | Readonly<{ kind: 'week'; week: VisualPnlMonthWeek }> | Readonly<{ kind: 'month' }>;
-const listKey = (list: OpenList | null): string | null => list === null ? null : list.kind === 'day' ? `day:${list.dayKey}` : list.kind === 'week' ? `week:${list.week.fromDayKey}` : 'month';
-/** The button that opened a list, as the calendar marks it. */
-function openerSelector(key: string): string {
-  if (key === 'month') return '.kairos-results-calendar__month-total';
-  const [kind, dayKey] = key.split(':');
-  return kind === 'day' ? `[data-day-key="${dayKey}"] button` : `[data-week-key="${dayKey}"] button`;
+/** The one trade list open under the calendar: a day, a week (by its first counted day), the month (T-051h) or a candle (T-051i). */
+type OpenList =
+  | Readonly<{ kind: 'day'; dayKey: string }> | Readonly<{ kind: 'week'; week: VisualPnlMonthWeek }> | Readonly<{ kind: 'month' }>
+  | Readonly<{ kind: 'candle'; unit: VisualPnlResultCandleUnit; fromDayKey: string; toDayKey: string }>;
+function listKey(list: OpenList | null): string | null {
+  if (list === null) return null;
+  if (list.kind === 'day') return `day:${list.dayKey}`;
+  if (list.kind === 'week') return `week:${list.week.fromDayKey}`;
+  return list.kind === 'month' ? 'month' : `candle:${list.fromDayKey}:${list.unit}`;
 }
+/** The control that opened a list, as the calendar and the candles' numbers mark it, then where focus goes when it is gone or hidden. */
+function openerSelectors(key: string): readonly [string, string] {
+  if (key === 'month') return ['.kairos-results-calendar__month-total', '.kairos-results-calendar__bar h3'];
+  const [kind, dayKey] = key.split(':');
+  if (kind === 'candle') return [`[data-candle-row="${dayKey}"] button`, '.kairos-results-candles h3'];
+  return [kind === 'day' ? `[data-day-key="${dayKey}"] button` : `[data-week-key="${dayKey}"] button`, '.kairos-results-calendar__bar h3'];
+}
+const CANDLE_UNITS = Object.freeze([{ value: 'day', label: 'Day' }, { value: 'week', label: 'Week' }, { value: 'month', label: 'Month' }] as const);
 
 /**
  * The streak, the result days, the total as candles, and the calendar with a day's, a week's or the month's trades, for
@@ -138,6 +149,8 @@ function ResultsDays({ dashboard, renderTradeLink }: { readonly dashboard: Resul
   const box = useRef<HTMLDivElement>(null);
   const [month, setMonth] = useState<string | null>(null);
   const [open, setOpen] = useState<OpenList | null>(null);
+  const [unit, setUnit] = useState<VisualPnlResultCandleUnit>(() => pickVisualPnlResultCandleUnit(days.days));
+  const candles = projectVisualPnlResultCandlesBy(days.days, { unit, tradeIdsByDay: projectResultsTradeIdsByDay(dashboard), marks: projectResultsDipMarks(dashboard) });
   /** The list that just opened (its heading takes focus) or closed (its opener takes focus back, else the month heading). */
   const focusAfter = useRef<Readonly<{ kind: 'opened' | 'closed'; key: string }> | null>(null);
   const lastMonth = calendarMonths[calendarMonths.length - 1]!;
@@ -152,9 +165,12 @@ function ResultsDays({ dashboard, renderTradeLink }: { readonly dashboard: Resul
     // Only once the state matches the press: a run that comes before the new list is shown must not use up the target.
     if (target === null || (target.kind === 'opened' ? openKey !== target.key : openKey !== null)) return;
     focusAfter.current = null;
+    const [opener, fallback] = openerSelectors(target.key);
+    const back = box.current?.querySelector<HTMLElement>(opener);
+    // A row button inside the closed "Show the numbers" can't take focus.
     const element = target.kind === 'opened'
       ? box.current?.querySelector<HTMLElement>('.kairos-results-day-trades h3')
-      : box.current?.querySelector<HTMLElement>(openerSelector(target.key)) ?? box.current?.querySelector<HTMLElement>('.kairos-results-calendar__bar h3');
+      : back !== null && back !== undefined && back.closest('details:not([open])') === null ? back : box.current?.querySelector<HTMLElement>(fallback);
     element?.focus();
   }, [openKey]);
 
@@ -182,6 +198,12 @@ function ResultsDays({ dashboard, renderTradeLink }: { readonly dashboard: Resul
   }, [shownMonth]);
   const changeMonth = (next: string, pressed: 'previous' | 'next') => { pressedNav.current = pressed; setMonth(next); setOpen(null); };
   const outside = grid?.days.some(day => !day.inPeriod) ?? false;
+  const changeUnit = (next: VisualPnlResultCandleUnit) => { setUnit(next); if (open?.kind === 'candle') setOpen(null); };
+  const selectCandle = (index: number) => {
+    if (!candles.available) return;
+    const candle = candles.candles[index];
+    if (candle !== undefined) toggle({ kind: 'candle', unit, fromDayKey: candle.fromDayKey, toDayKey: candle.toDayKey });
+  };
   const list = (() => {
     if (open === null) return null;
     if (open.kind === 'day') return { dayKey: open.dayKey, title: undefined, entries: selectResultsEntries(dashboard, { fromDayKey: open.dayKey, toDayKey: shiftVisualPnlDayKey(open.dayKey, 1) }) };
@@ -192,13 +214,25 @@ function ResultsDays({ dashboard, renderTradeLink }: { readonly dashboard: Resul
       const title = fromDayKey === last ? `Trades closed on ${dayLabel(fromDayKey)}` : `Trades closed from ${dayLabel(fromDayKey).split(' ')[0]} to ${dayLabel(last)}`;
       return { dayKey: fromDayKey, title, entries: selectResultsEntries(dashboard, { fromDayKey, toDayKey }) };
     }
+    if (open.kind === 'candle') {
+      const title = open.unit === 'day' ? `Trades closed on ${dayLabel(open.fromDayKey)}` : open.unit === 'week' ? `Trades closed in the week of ${dayLabel(open.fromDayKey)}` : `Trades closed in ${monthLabel(open.fromDayKey.slice(0, 7))}`;
+      return { dayKey: open.fromDayKey, title, entries: selectResultsEntries(dashboard, { fromDayKey: open.fromDayKey, toDayKey: open.toDayKey }) };
+    }
     if (totals === null || totals.monthFromDayKey === null || totals.monthToDayKey === null) return null;
     return { dayKey: totals.monthFromDayKey, title: `Trades closed in ${monthLabel(shownMonth)}`, entries: selectResultsEntries(dashboard, { fromDayKey: totals.monthFromDayKey, toDayKey: totals.monthToDayKey }) };
   })();
   return <div ref={box} className="kairos-results__days">
     {dashboard.currentStreak !== null ? <VisualPnlStreak projection={dashboard.currentStreak} /> : null}
     <VisualPnlPerformanceSummary summary={summarizeVisualPnlDailyPerformance(days.days)} />
-    <ResultsCandles eyebrow={dashboard.scope === 'real' ? 'Your results over time' : 'Your practice results over time'} projection={projectVisualPnlResultCandles(days.days)} />
+    <ResultsCandles
+      eyebrow={dashboard.scope === 'real' ? 'Your results over time' : 'Your practice results over time'}
+      title={period.kind === 'all' ? 'Total result so far' : `Your total in ${period.label}`}
+      projection={candles}
+      onSelectCandle={selectCandle}
+      dip={describeBiggestDip(dashboard.summary.biggestDip, dashboard.inHomeCurrency)}
+      controls={<Segmented label="Candles" options={CANDLE_UNITS} value={unit} onChange={changeUnit} />}
+      note={period.kind === 'all' || period.fromDayKey === null ? null : `It starts at 0 on ${dayLabel(period.fromDayKey)}.`}
+    />
     {grid ? <ResultsCalendar
       grid={grid}
       totals={totals}

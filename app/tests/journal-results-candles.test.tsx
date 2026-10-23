@@ -62,7 +62,7 @@ describe('P13.A3 ResultsCandles', () => {
     expect(zeroY).toBeCloseTo(Number(upBody.getAttribute('y')) + Number(upBody.getAttribute('height')));
     expect(candle(container, 2).querySelector('rect')!.getAttribute('height')).toBe('2');
     const heading = container.querySelector('.kairos-results-candles__heading')!;
-    expect(heading).toHaveTextContent('▼');
+    expect(heading.querySelector('[data-icon="result-down"]')).not.toBeNull();
     expect(heading).toHaveTextContent('-60 USD');
     expect(container.querySelector('.kairos-results-candles')!.getAttribute('data-outcome')).toBe('loss');
     expect([...container.querySelectorAll('.kairos-results-candles__date')].map((date) => date.textContent)).toEqual(['1 Sep', '2 Sep', '3 Sep']);
@@ -81,7 +81,7 @@ describe('P13.A3 ResultsCandles', () => {
     expect(groups[0].getAttribute('data-direction')).toBe('down');
     expect(groups[0].querySelector('[data-mark="down"]')).not.toBeNull();
     expect([...container.querySelectorAll('.kairos-results-candles__date')].map((date) => date.textContent)).toEqual(['25 Sep']);
-    expect(container.querySelector('.kairos-results-candles__heading')).toHaveTextContent('▼');
+    expect(container.querySelector('.kairos-results-candles__heading')!.querySelector('[data-icon="result-down"]')).not.toBeNull();
   });
 
   it('says when only the last 30 days are drawn', () => {
@@ -126,7 +126,7 @@ describe('P13.A3 the candles on the pages', () => {
     expect((await saveManualTrade(db, closed('BTCUSDT', '2026-09-02', '150'))).ok).toBe(true);
     expect((await saveManualTrade(db, closed('ETHUSDT', '2026-09-03', '90'))).ok).toBe(true);
     const { container } = render(<MemoryRouter><Results db={db} now={now} /></MemoryRouter>);
-    expect(await screen.findByRole('img', { name: /^Total result so far: 40 USDT/ })).toBeInTheDocument();
+    expect(await screen.findByRole('img', { name: /^Your total in September 2026: 40 USDT/ })).toBeInTheDocument();
     expect(container.querySelectorAll('[data-candle-day]')).toHaveLength(2);
   });
 
@@ -137,7 +137,7 @@ describe('P13.A3 the candles on the pages', () => {
     expect((await saveManualTrade(db, closed('BTCUSDT', '2026-09-02', '70', '11:00'))).ok).toBe(true);
     expect((await saveManualTrade(db, closed('ETHUSDT', '2026-09-02', '150', '10:30'))).ok).toBe(true);
     const { container } = render(<MemoryRouter><Results db={db} now={now} /></MemoryRouter>);
-    await screen.findByRole('img', { name: /^Total result so far: 20 USDT/ });
+    await screen.findByRole('img', { name: /^Your total in September 2026: 20 USDT/ });
     const numbers = container.querySelector('.kairos-results-candles__numbers')!;
     const row = within(numbers as HTMLElement).getByRole('rowheader', { name: /2 September 2026/ }).closest('tr')!;
     expect(within(row).getAllByRole('cell').map((cell) => cell.textContent)).toEqual(['0', '50', '0', '20']);

@@ -59,7 +59,7 @@ describe('P26.1 practice results', () => {
     expect(day(region, '2026-09-18')).toBe('loss');
     expect(day(region, '2026-09-17')).toBe('no-trades');
     expect(within(region).getByText('Your practice results over time')).toBeTruthy();
-    expect(within(region).getByRole('img', { name: /^Total result so far: -70 USDT/ })).toBeTruthy();
+    expect(within(region).getByRole('img', { name: /^Your total in September 2026: -70 USDT/ })).toBeTruthy();
     expect(within(region).getByRole('heading', { name: 'Your practice discipline' })).toBeTruthy();
     await waitFor(() => expect(within(region).getByRole('img', { name: 'Discipline score: 0 out of 100' })).toBeTruthy());
     fireEvent.click(within(region).getByRole('button', { name: /^18 September 2026/ }));

@@ -121,7 +121,7 @@ describe('T-051d the calendar, a day\'s trades, candles, streak and result days 
     await save(db, '2026-09-02T10:00:00.000Z', '150');
     await save(db, '2026-09-03T10:00:00.000Z', '90');
     const found = await show(db);
-    expect(within(found).getByRole('img', { name: /^Total result so far: 40 USDT/ })).toBeInTheDocument();
+    expect(within(found).getByRole('img', { name: /^Your total in September 2026: 40 USDT/ })).toBeInTheDocument();
     expect(found.querySelectorAll('[data-candle-day]')).toHaveLength(2);
     const days = within(found).getByRole('region', { name: 'Result day summary' });
     expect(within(days).getByText('Profit days').closest('.kairos-stat')).toHaveTextContent('1');
