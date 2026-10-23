@@ -1507,3 +1507,31 @@ test('(y) Back up when it is due: the reminder on Home and the Journal, "Back up
   expect(errors).toEqual([]);
 });
 
+
+test('(z) Install help: the Home Screen guide on iPhone Safari, and "Not now" kept', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  // Only iPhone and iPad Safari have `navigator.standalone` (D228); here it says "not on the Home Screen".
+  await page.addInitScript(() => { Object.defineProperty(navigator, 'standalone', { configurable: true, value: false }); });
+  await activate(page);
+  const help = page.getByRole('region', { name: 'Add Kairos to your Home Screen' });
+  await expect(help).toBeVisible();
+  // Below Getting started.
+  expect(await page.getByRole('region', { name: 'Getting started' }).evaluate((started, card) => (started.compareDocumentPosition(card!) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0, await help.elementHandle())).toBe(true);
+  const steps = help.getByRole('list', { name: 'How to add Kairos' }).getByRole('listitem');
+  await expect(steps).toHaveText(['1Tap Share.', '2Choose "Add to Home Screen".', '3Tap "Add". Kairos is now on your Home Screen.']);
+  for (const [index, icon] of ['share', 'plus', 'home'].entries()) await expect(steps.nth(index).locator(`svg[data-icon="${icon}"]`)).toBeVisible();
+  await expect(help.getByRole('button', { name: 'Install' })).toHaveCount(0);
+  const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(axe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+
+  await help.getByRole('button', { name: 'Not now' }).click();
+  await expect(help).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Live Market' })).toBeFocused();
+  await page.reload();
+  await expect(page.getByRole('group', { name: 'Dashboard view' })).toBeVisible();
+  await page.waitForTimeout(500);
+  await expect(help).toHaveCount(0);
+  expect(errors).toEqual([]);
+});

@@ -1,15 +1,16 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { loadTradedMarkets } from '../application/setup/tradedMarkets';
 import { Link, useInRouterContext, useSearchParams } from 'react-router';
 import { SCROLL_CLAIMED_EVENT } from './AppShell';
 import { BackupReminderCard } from '../features/backup/BackupReminderCard';
+import { askToKeepDataOnce } from '../application/setup/deviceKeeping';
 import { JOURNAL_HISTORY_SOURCES } from '../application/journal';
 import { JournalHistoryList } from './JournalHistoryList';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
 import type { MarketType as TradeMarket, TradeStatus } from '../domain/trades';
 import './journalRoute.css';
 import { TradeForm } from '../features/journal/TradeForm';
-import { Card, PageHeader } from '../design-system/primitives';
+import { Card, PageHeader, useToast } from '../design-system/primitives';
 import { CoachCard } from '../features/discipline/CoachCard';
 import { useJournalHistoryPages } from '../features/journal/useJournalHistoryPages';
 
@@ -63,6 +64,16 @@ export function JournalRoute({ db = kairosDatabase, now }: JournalRouteProps) {
     return () => { ignore = true; };
   }, [db]);
   const pages = useJournalHistoryPages(db, 'real', historyStatus);
+  const toast = useToast();
+  // D228: "Keep my data" is asked once, after a trade is saved here (never in Practice); one ask at a time.
+  const asking = useRef(false);
+  const keepMyData = () => {
+    if (asking.current) return;
+    asking.current = true;
+    void askToKeepDataOnce(db, undefined, { now: now ?? wallClock }).then(result => {
+      if (result === 'kept') toast.show({ message: 'Kairos will keep your journal on this device.' });
+    }).finally(() => { asking.current = false; });
+  };
 
   return (
     <section className="kairos-route kairos-journal" aria-labelledby="kairos-journal-title">
@@ -71,7 +82,7 @@ export function JournalRoute({ db = kairosDatabase, now }: JournalRouteProps) {
 
       {inRouter ? <LogAddress /> : null}
       <BackupReminderCard db={db} now={now ?? wallClock} />
-      <TradeForm db={db} kind="journal" defaultMarket={firstMarket} onSaved={async () => { await pages.refresh(); setJournalRevision(current => current + 1); }} />
+      <TradeForm db={db} kind="journal" defaultMarket={firstMarket} onSaved={async () => { keepMyData(); await pages.refresh(); setJournalRevision(current => current + 1); }} />
 
       <Card className="kairos-journal__results-link">
         <h2>Your results</h2>
