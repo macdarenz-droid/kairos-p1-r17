@@ -6,6 +6,8 @@
 
 import { decimalAbs, decimalCompare } from '../../domain/calculations/decimalKernel';
 import type { VisualPnlAggregationBlockReason } from '../visual-pnl/aggregationEligibility';
+import { VISUAL_PNL_HOUR_BLOCK_NAMES, VISUAL_PNL_WEEKDAY_NAMES, type VisualPnlAggregationSummary, type VisualPnlHeatmapCell } from '../visual-pnl';
+import type { MarketTile } from './marketTiles';
 import type { PerformanceDip, PerformanceMoneyReason, PerformanceRatio, PerformanceStreak, PerformanceTime, TradeOutcomeSummary } from './performanceSummary';
 import { describeTradeDuration } from './tradeDuration';
 
@@ -95,4 +97,37 @@ export function describeBiggestDip(dip: PerformanceDip, context?: PeriodMoneyCon
 /** "3 in a row". */
 export function describeStreakLength(streak: PerformanceStreak): string {
   return streak.available ? `${streak.length} in a row` : 'Needs a trade with a result';
+}
+
+/** Why a total of the calendar, the heatmap or a market is not available, in a few words (moved from ResultsCalendar, T-051j). */
+export function describeUnavailableWhy(reason: string): string {
+  if (reason === 'mixed-currencies') return 'trades in different currencies';
+  if (reason === 'unavailable-trade-outcome') return 'a trade has no result yet';
+  if (reason === 'missing-currency-evidence') return 'a trade has no currency';
+  return 'it could not be worked out';
+}
+
+const OUTCOME_LABEL = Object.freeze({ profit: 'Profit', loss: 'Loss', breakeven: 'Break-even' } as const);
+/** "Profit, 45 USDT, 3 trades" or "Result unavailable, a trade has no result yet, 3 trades". */
+function describeTotal(total: VisualPnlAggregationSummary): string {
+  const what = total.available ? `${OUTCOME_LABEL[total.outcome]}, ${total.total} ${total.currency}` : `Result unavailable, ${describeUnavailableWhy(total.reason)}`;
+  return `${what}, ${trades(total.tradeCount)}`;
+}
+
+/** "Monday, Morning (08:00 to 11:59): Profit, 45 USDT, 3 trades". A cell with no trade has nothing to say. */
+export function describeHeatmapCell(cell: VisualPnlHeatmapCell): string {
+  const when = `${VISUAL_PNL_WEEKDAY_NAMES[cell.weekday]}, ${VISUAL_PNL_HOUR_BLOCK_NAMES[cell.block]}`;
+  return cell.summary === null ? `${when}: no trades` : `${when}: ${describeTotal(cell.summary)}`;
+}
+
+/** "BTCUSDT: Profit, 120 USDT, 5 trades, won 3 of 5"; "Other markets (4): …". */
+export function describeMarketTile(tile: MarketTile): string {
+  const name = tile.symbol ?? `Other markets (${tile.marketCount})`;
+  const won = tile.outcomes.resultCount === 0 ? 'none with a result yet' : `won ${tile.outcomes.won} of ${tile.outcomes.resultCount}`;
+  return `${name}: ${describeTotal(tile.total)}, ${won}`;
+}
+
+/** "1 trade has no opening time, so it is left out." */
+export function describeHeatmapLeftOut(count: number): string {
+  return count === 1 ? '1 trade has no opening time, so it is left out.' : `${count} trades have no opening time, so they are left out.`;
 }

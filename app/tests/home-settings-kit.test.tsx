@@ -133,6 +133,31 @@ describe('T-049f checklist Undo and "Try again"', () => {
     expect(await within(card()).findByRole('textbox', { name: 'Step 1' })).toBeInTheDocument();
     expect(within(card()).queryByText('Kairos could not load your checklist.')).toBeNull();
   });
+
+  it('a "Try again" tapped as soon as it shows still gives focus to the first step that loads (T-051j fix ci)', async () => {
+    const db = await database();
+    const read = db.metadata.get.bind(db.metadata);
+    let failed = false;
+    vi.spyOn(db.metadata, 'get').mockImplementation(((key: string) => {
+      if (key !== visualPnlTimeZonePreferenceMetadataKey && !failed) { failed = true; return Promise.reject(new Error('storage')); }
+      return read(key);
+    }) as typeof db.metadata.get);
+    const view = render(<ThemeProvider><ToastProvider><SettingsRoute db={db} /></ToastProvider></ThemeProvider>);
+    // Tap the moment the error is put on screen, before React has run that screen's effects.
+    await new Promise<void>(resolve => {
+      const observer = new MutationObserver(() => {
+        const retry = view.container.querySelector<HTMLElement>('form .kairos-error-state button');
+        if (retry === null) return;
+        observer.disconnect();
+        retry.focus();
+        fireEvent.click(retry);
+        resolve();
+      });
+      observer.observe(view.container, { childList: true, subtree: true });
+    });
+    const first = await within(card()).findByRole('textbox', { name: 'Step 1' });
+    await waitFor(() => expect(first).toHaveFocus());
+  });
 });
 
 describe('T-049f fix r1', () => {
@@ -196,5 +221,39 @@ describe('T-049f fix r1', () => {
     fireEvent.click(within(card()).getByRole('button', { name: 'Save your checklist' }));
     expect(await within(card()).findByText('Your checklist is saved.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+  });
+
+  /** Tap "Try again" the moment it is put on screen, before React has run that screen's effects (the race CI run 290 hit). */
+  function tapWhenShown(root: HTMLElement, selector = '.kairos-error-state button'): Promise<void> {
+    return new Promise(resolve => {
+      const observer = new MutationObserver(() => {
+        const retry = root.querySelector<HTMLElement>(selector);
+        if (retry === null) return;
+        observer.disconnect();
+        retry.focus();
+        fireEvent.click(retry);
+        resolve();
+      });
+      observer.observe(root, { childList: true, subtree: true });
+    });
+  }
+
+  it('Settings: a "Try again" tapped as soon as it shows still gives focus to the Time zone field that loads (T-051j fix ci 3)', async () => {
+    const db = await database();
+    await writeVisualPnlTimeZonePreference(createKairosRepositories(db).metadata, 'Asia/Manila', '2026-09-27T00:00:00.000Z');
+    failZoneReads(db, 1);
+    const view = render(<ThemeProvider><ToastProvider><SettingsRoute db={db} /></ToastProvider></ThemeProvider>);
+    await tapWhenShown(view.container, 'form .kairos-error-state button');
+    expect(await screen.findByText('Current: Asia/Manila')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Time zone' })).toHaveFocus());
+  });
+
+  it('Your Trades: a "Try again" tapped as soon as it shows still gives focus to the heading once the trades load (T-051j fix ci 3)', async () => {
+    const load = vi.fn<() => Promise<readonly HomeYourTrade[]>>().mockRejectedValueOnce(new Error('read')).mockResolvedValue([trade]);
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(390);
+    const view = render(<MemoryRouter><HomeDashboardYourTrades load={load} /></MemoryRouter>);
+    await tapWhenShown(view.container);
+    expect(await screen.findByRole('button', { name: /^BTCUSDT, long, Profit/ })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Your Trades' })).toHaveFocus());
   });
 });

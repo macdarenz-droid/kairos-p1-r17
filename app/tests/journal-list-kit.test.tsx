@@ -8,7 +8,7 @@ import { AnalysisSavedAnalysisControls } from '../src/app/AnalysisSavedAnalysisC
 import { AnalysisTimeAssistedSnapshotControls } from '../src/app/AnalysisTimeAssistedSnapshotControls';
 import { JournalHistoryList } from '../src/app/JournalHistoryList';
 import { JournalRoute } from '../src/app/JournalRoute';
-import { VisualPnlPerformanceSummary } from '../src/app/VisualPnlPerformanceSummary';
+import { VisualPnlPerformanceSummary } from '../src/features/results/VisualPnlPerformanceSummary';
 import { analysisMarketReference, createAnalysisSavedAnalysisPorts } from '../src/app/analysisSavedAnalysisRoundTrip';
 import { createAnalysisSavedTimeAssistedSnapshotPorts } from '../src/app/analysisSavedTimeAssistedSnapshotRoundTrip';
 import type { JournalHistoryEntry } from '../src/application/journal';
@@ -230,6 +230,36 @@ describe('T-049h fix r1: focus stays on something usable', () => {
     rerender(<JournalHistoryList {...props} entries={[profit, loss]} />);
     const cards = container.querySelectorAll('.kairos-history-card');
     expect(cards[1]!.contains(document.activeElement)).toBe(true);
+  });
+
+  for (const failures of [1, 2]) it(`"Try again" tapped the moment it shows, after ${failures} failed read${failures === 1 ? '' : 's'}: focus still reaches "Trade history" (T-051j fix ci 3)`, async () => {
+    const db = await database();
+    expect((await saveManualTrade(db, { symbol: 'ETHUSDT', marketType: 'crypto', side: 'long', status: 'closed', openedAt: '2026-09-10T09:00:00.000Z', closedAt: '2026-09-10T10:00:00.000Z', grossPnlCurrency: 'USDT',
+      executions: [{ type: 'entry', price: '100', quantity: '1', executedAt: '2026-09-10T09:00:00.000Z' }, { type: 'exit', price: '110', quantity: '1', executedAt: '2026-09-10T10:00:00.000Z' }] } as Parameters<typeof saveManualTrade>[1])).ok).toBe(true);
+    // The first reads fail; the next one loads.
+    const real = db.transaction.bind(db) as (...args: unknown[]) => unknown;
+    let left = failures;
+    vi.spyOn(db, 'transaction').mockImplementation(((...args: unknown[]) => {
+      if (left > 0 && args[0] === 'r') { left -= 1; return Promise.reject(new Error('storage')); }
+      return real(...args);
+    }) as never);
+    const { container } = render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
+    const retry = () => container.querySelector<HTMLElement>('.kairos-history__load-error button');
+    // Tap before React has run the effects of the screen that shows it.
+    await new Promise<void>(resolve => {
+      const observer = new MutationObserver(() => {
+        const button = retry();
+        if (button === null) return;
+        observer.disconnect(); button.focus(); fireEvent.click(button); resolve();
+      });
+      observer.observe(container, { childList: true, subtree: true });
+    });
+    if (failures === 2) {
+      await waitFor(() => expect(retry()).toHaveFocus());
+      fireEvent.click(retry()!);
+    }
+    await waitFor(() => expect(screen.getAllByRole('listitem').length).toBeGreaterThan(0));
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Trade history' })).toHaveFocus());
   });
 
   it('after a trade is deleted, focus is on "Trade history"', async () => {

@@ -1,3 +1,4 @@
+import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { createPrivateKey, sign } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -320,8 +321,9 @@ test('(j) Coach: a trade that broke its plan, on its card, in the Journal and on
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
   await activate(page);
+  await page.goto('/analysis');
+  await expect(page.getByText('Time zone: Asia/Manila')).toBeVisible();
   await page.goto('/journal');
-  await page.getByRole('button', { name: 'Use Asia/Manila (this device)' }).click();
   const coach = page.getByRole('region', { name: 'Your coach' });
   await expect(coach).toContainText('Nothing to point out this month.');
 
@@ -364,8 +366,9 @@ test('(k) Patterns: a closed trade, then your patterns and your practice pattern
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
   await activate(page);
+  await page.goto('/analysis');
+  await expect(page.getByText('Time zone: Asia/Manila')).toBeVisible();
   await page.goto('/journal');
-  await page.getByRole('button', { name: 'Use Asia/Manila (this device)' }).click();
 
   await page.getByRole('button', { name: 'Quick log' }).click();
   await page.getByLabel(/^Symbol/).fill('ETHUSDT');
@@ -531,8 +534,9 @@ test('(n) Currency: totals in your currency, with the bank\'s rates and a rate y
     return route.fulfill({ status: 200, contentType: 'text/csv', headers: { 'access-control-allow-origin': '*' }, body: lines.join('\n') });
   });
 
+  await page.goto('/analysis');
+  await expect(page.getByText('Time zone: Asia/Manila')).toBeVisible();
   await page.goto('/journal');
-  await page.getByRole('button', { name: 'Use Asia/Manila (this device)' }).click();
   const quickLog = async (symbol: string, side: 'long' | 'short', entry: string, exit: string, quantity: string, currency: string) => {
     await page.getByRole('button', { name: 'Quick log' }).click();
     await page.getByLabel(/^Market/).selectOption('stock');
@@ -569,8 +573,8 @@ test('(n) Currency: totals in your currency, with the bank\'s rates and a rate y
   await expect(saved).toContainText('1 EUR = 1.146 USD');
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 
-  await page.goto('/journal');
-  const results = page.getByRole('region', { name: 'Daily results' });
+  await page.goto('/analysis');
+  const results = page.getByRole('region', { name: 'Your results' });
   await expect(results).toContainText('Totals in EUR. 2 trades in other currencies were converted to EUR.');
   const today = page.locator('td[data-day-today] button');
   await expect(today).toHaveAttribute('aria-label', /Profit, 80\.04 EUR, today, 2 trades/);
@@ -580,7 +584,9 @@ test('(n) Currency: totals in your currency, with the bank\'s rates and a rate y
   await expect(dayTrades).toContainText('In EUR: 21.82');
 
   bankOnline = false;
+  await page.goto('/journal');
   await quickLog('7203.t', 'short', '2500', '2487.5', '100', 'JPY');
+  await page.goto('/analysis');
   await expect(results).toContainText('Totals in EUR. 1 trade still needs an exchange rate');
   await results.getByRole('link', { name: 'Add the missing rates' }).click();
   await expect(page).toHaveURL(/\/currency$/);
@@ -593,7 +599,7 @@ test('(n) Currency: totals in your currency, with the bank\'s rates and a rate y
   await expect(page.getByText(/^Saved your rate: 1 JPY = 0\.0055 EUR/)).toBeVisible();
   await expect(needed).toContainText('No rates missing');
 
-  await page.goto('/journal');
+  await page.goto('/analysis');
   await expect(results).toContainText('Totals in EUR. 3 trades in other currencies were converted to EUR.');
   await expect(today).toHaveAttribute('aria-label', /86\.92 EUR, today, 3 trades/);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
@@ -642,8 +648,9 @@ test('(p) News: official news from the Kairos server, then offline, then on the 
     return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ apiVersion: 1, ok: true, data }) });
   });
 
+  await page.goto('/analysis');
+  await expect(page.getByText('Time zone: Asia/Manila')).toBeVisible();
   await page.goto('/journal');
-  await page.getByRole('button', { name: 'Use Asia/Manila (this device)' }).click();
   await page.getByRole('button', { name: 'Quick log' }).click();
   await page.getByLabel(/^Market/).selectOption('stock');
   await page.getByLabel(/^Symbol/).fill('aapl');
@@ -765,8 +772,9 @@ test('(q) Market data through the Kairos server: sources on the pictures, the re
     return route.fulfill({ headers: cors, contentType: 'application/json', body: serverAnswer({ source, backup: futures ? 'refused' : null, interval, fetchedAt, candles, next: null }) });
   });
 
+  await page.goto('/analysis');
+  await expect(page.getByText('Time zone: Asia/Manila')).toBeVisible();
   await page.goto('/journal');
-  await page.getByRole('button', { name: 'Use Asia/Manila (this device)' }).click();
   const quickLog = async (symbol: string, when?: { opened: string; closed: string }) => {
     await page.getByRole('button', { name: 'Quick log' }).click();
     await page.getByLabel(/^Market/).selectOption('crypto');
@@ -832,5 +840,163 @@ test('(q) Market data through the Kairos server: sources on the pictures, the re
   await expect(page.locator('.kairos-glass-bubble[data-identity="BTC"]')).toBeVisible({ timeout: 15_000 });
   await expect(page.locator('.kairos-glass-bubble[data-identity="ETH"]')).toBeVisible();
   await expect(page.getByText('Unavailable · Live prices', { exact: false })).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test('(r) Your results fetch a missing bank rate on their own', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  await activate(page);
+  const bankRequests: string[] = [];
+  let bankOnline = true;
+  const BANK_RATES: Record<string, string> = { USD: '1.146', JPY: '162.5' };
+  await page.route(url => url.hostname === 'data-api.ecb.europa.eu', async route => {
+    const url = new URL(route.request().url());
+    bankRequests.push(`${url.pathname}${url.search}`);
+    if (!bankOnline) return route.abort('internetdisconnected');
+    const currencies = url.pathname.split('/')[4].split('.')[1].split('+');
+    const start = url.searchParams.get('startPeriod')!, end = url.searchParams.get('endPeriod')!;
+    const lines = ['KEY,FREQ,CURRENCY,CURRENCY_DENOM,EXR_TYPE,EXR_SUFFIX,TIME_PERIOD,OBS_VALUE'];
+    for (let time = Date.parse(`${start}T00:00:00Z`); new Date(time).toISOString().slice(0, 10) <= end; time += 86_400_000) {
+      const day = new Date(time).toISOString().slice(0, 10);
+      for (const currency of currencies) if (BANK_RATES[currency]) lines.push(`EXR.D.${currency}.EUR.SP00.A,D,${currency},EUR,SP00,A,${day},${BANK_RATES[currency]}`);
+    }
+    return route.fulfill({ status: 200, contentType: 'text/csv', headers: { 'access-control-allow-origin': '*' }, body: lines.join('\n') });
+  });
+
+  await page.goto('/analysis');
+  await expect(page.getByText('Time zone: Asia/Manila')).toBeVisible();
+  await page.goto('/currency');
+  await page.getByLabel('Show my totals in').selectOption('EUR');
+  await page.getByRole('button', { name: 'Save my currency' }).click();
+  await expect(page.getByText('Saved. Your totals are shown in EUR (Euro).')).toBeVisible();
+
+  await page.goto('/journal');
+  const quickLog = async (symbol: string, entry: string, exit: string, quantity: string, currency: string) => {
+    await page.getByRole('button', { name: 'Quick log' }).click();
+    await page.getByLabel(/^Market/).selectOption('stock');
+    await page.getByLabel(/^Symbol/).fill(symbol);
+    await page.getByLabel(/^Direction/).selectOption('long');
+    await page.getByLabel(/^Entry price/).fill(entry);
+    await page.getByLabel(/^Exit price/).fill(exit);
+    await page.getByLabel(/^Quantity/).fill(quantity);
+    await page.getByRole('button', { name: 'Set opened time to now' }).click();
+    await page.getByRole('button', { name: 'Set closed time to now' }).click();
+    await page.getByLabel('Currency code').fill(currency);
+    await page.getByRole('button', { name: 'Save trade' }).click();
+    await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+  };
+  await quickLog('aapl', '187.5', '190', '10', 'USD');
+
+  await page.goto('/analysis');
+  const results = page.getByRole('region', { name: 'Your results' });
+  await expect(results).toContainText('Totals in EUR. 1 trade in another currency was converted to EUR.');
+  const resultTile = results.locator('.kairos-stat').filter({ hasText: 'Result after fees' });
+  await expect(resultTile).toContainText('EUR');
+  await expect(resultTile).not.toContainText('Not available');
+  expect(bankRequests).toHaveLength(1);
+  await page.reload();
+  await expect(results).toContainText('Totals in EUR. 1 trade in another currency was converted to EUR.');
+  expect(bankRequests).toHaveLength(1);
+
+  bankOnline = false;
+  await page.goto('/journal');
+  await quickLog('7203.t', '2500', '2510', '100', 'JPY');
+  await page.goto('/analysis');
+  await expect(results.getByText('The missing exchange rates could not be fetched.', { exact: false })).toBeVisible();
+  await expect(results).toContainText('Unavailable');
+  bankOnline = true;
+  await results.getByRole('button', { name: 'Try again' }).click();
+  await expect(results.getByText('Got 1 exchange rate from the European Central Bank.')).toBeVisible();
+  await expect(results.getByText('Unavailable', { exact: false })).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  expect(errors).toEqual([]);
+});
+
+test('(s) Your results: a large day and its week fit the calendar at phone width, in their own colours', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  await activate(page);
+  await page.goto('/analysis');
+  await expect(page.getByText('Time zone: Asia/Manila')).toBeVisible();
+  await page.goto('/journal');
+  await page.getByRole('button', { name: 'Quick log' }).click();
+  await page.getByLabel(/^Symbol/).fill('BTCUSDT');
+  await page.getByLabel(/^Market/).selectOption('crypto');
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Entry price/).fill('100');
+  await page.getByLabel(/^Exit price/).fill('123556');
+  await page.getByLabel(/^Quantity/).fill('1');
+  await page.getByRole('button', { name: 'Set opened time to now' }).click();
+  await page.getByRole('button', { name: 'Set closed time to now' }).click();
+  await page.getByLabel('Currency code').fill('USDT');
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+
+  await page.goto('/analysis');
+  const results = page.getByRole('region', { name: 'Your results' });
+  const calendar = results.locator('.kairos-results-calendar');
+  await expect(calendar.locator('[data-cell-amount]').first()).toHaveText('+123.5K');
+  await expect(calendar.locator('.kairos-results-calendar__week [data-cell-amount]')).toHaveText('+123.5K');
+  const fit = await calendar.evaluate(table => ({
+    table: [table.scrollWidth, table.clientWidth],
+    cells: [...table.querySelectorAll<HTMLElement>('[data-cell-amount]')].map(amount => [amount.scrollWidth, (amount.closest('button') as HTMLElement).clientWidth]),
+    page: [document.documentElement.scrollWidth, document.documentElement.clientWidth],
+    background: getComputedStyle(table.querySelector('td > button')!).backgroundImage,
+  }));
+  expect(fit.table[0]).toBeLessThanOrEqual(fit.table[1]!);
+  for (const [amount, button] of fit.cells) expect(amount).toBeLessThanOrEqual(button!);
+  expect(fit.page[0]).toBeLessThanOrEqual(fit.page[1]!);
+  // The day's colour is the cell's, not the field look Analysis gives other buttons.
+  expect(fit.background).toBe('none');
+  expect(errors).toEqual([]);
+});
+
+test('(t) Your results with trades, at phone width', async ({ page }) => {
+  test.setTimeout(120_000);
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  await activate(page);
+  await page.goto('/analysis');
+  await expect(page.getByText('Time zone: Asia/Manila')).toBeVisible();
+  await page.goto('/journal');
+  for (const [symbol, exit] of [['BTCUSDT', '110'], ['BTCUSDT', '120'], ['BTCUSDT', '95'], ['ETHUSDT', '105'], ['ETHUSDT', '85']] as const) {
+    await page.getByRole('button', { name: 'Quick log' }).click();
+    await page.getByLabel(/^Symbol/).fill(symbol);
+    await page.getByLabel(/^Market/).selectOption('crypto');
+    await page.getByLabel(/^Direction/).selectOption('long');
+    await page.getByLabel(/^Entry price/).fill('100');
+    await page.getByLabel(/^Exit price/).fill(exit);
+    await page.getByLabel(/^Quantity/).fill('1');
+    await page.getByRole('button', { name: 'Set opened time to now' }).click();
+    await page.getByRole('button', { name: 'Set closed time to now' }).click();
+    await page.getByLabel('Currency code').fill('USDT');
+    await page.getByRole('button', { name: 'Save trade' }).click();
+    await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+  }
+
+  await page.goto('/analysis');
+  const results = page.getByRole('region', { name: 'Your results' });
+  await expect(results.locator('.kairos-stat').filter({ hasText: 'Result after fees' })).toContainText('+15 USDT');
+  await expect(results.getByRole('region', { name: 'Your numbers' })).toContainText('Won 3 of 5');
+  await expect(results.locator('.kairos-results-calendar [data-cell-amount]').first()).toBeVisible();
+  await expect(results.getByRole('columnheader', { name: 'Week' })).toBeVisible();
+  await expect(results.getByRole('heading', { name: /^Your total in / })).toBeVisible();
+  const heatmap = results.getByRole('region', { name: 'When you trade' });
+  await expect(heatmap.locator('td > button').first()).toBeVisible();
+  const markets = results.getByRole('region', { name: 'Your markets' });
+  await expect(markets.locator('.kairos-results-markets__tile')).toHaveCount(2);
+  await expect(results.getByRole('region', { name: 'Your discipline' })).toBeVisible();
+
+  await heatmap.locator('td > button').first().click();
+  await expect(results.getByRole('heading', { name: /^Trades opened on / })).toBeVisible();
+  await expect(results.locator('.kairos-results-day-trades li')).toHaveCount(5);
+  await markets.locator('.kairos-results-markets__tile').first().click();
+  await expect(results.getByRole('heading', { name: 'Trades in BTCUSDT' })).toBeVisible();
+  await expect(results.locator('.kairos-results-day-trades li')).toHaveCount(3);
+
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  const axe = await new AxeBuilder({ page }).include('.kairos-results').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(axe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
   expect(errors).toEqual([]);
 });

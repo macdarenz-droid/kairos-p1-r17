@@ -77,6 +77,8 @@ async function settled(name = 'Your results', status?: string) {
   await waitFor(() => expect(found).not.toHaveAttribute('aria-busy'));
   return found;
 }
+/** "Result after fees" and its line; "Your numbers" (T-051g) repeats the same words for its own numbers. */
+const resultTile = (found: HTMLElement) => within(found).getByText('Result after fees').closest('.kairos-stat') as HTMLElement;
 const periodLabel = (found: HTMLElement) => found.querySelector('.kairos-period-chooser__label')?.textContent;
 
 describe('T-051c the time zone on first use', () => {
@@ -156,9 +158,9 @@ describe("T-051c the period's result after fees", () => {
     const partly = await save(db, trade('2026-09-10T10:00:00.000Z', '110', { quantity: '2', exitQuantity: '1' }));
     show({ db });
     const found = await settled('Your results', 'ready');
-    expect(within(found).getByText('Not available: a trade has no result yet.')).toBeInTheDocument();
+    expect(within(resultTile(found)).getByText('Not available: a trade has no result yet.')).toBeInTheDocument();
     expect(within(found).getByText('1 trade has no result yet:')).toBeInTheDocument();
-    expect(within(found).getByRole('link', { name: 'View trade' })).toHaveAttribute('href', `/analysis?trade=${partly}`);
+    expect(within(found.querySelector('.kairos-results__fix') as HTMLElement).getByRole('link', { name: 'View trade' })).toHaveAttribute('href', `/analysis?trade=${partly}`);
   });
 
   it('asks for a home currency when the trades are in different currencies', async () => {
@@ -167,7 +169,7 @@ describe("T-051c the period's result after fees", () => {
     await save(db, trade('2026-09-11T10:00:00.000Z', '1.1', { currency: 'EUR', symbol: 'BTCEUR', entry: '1' }));
     show({ db });
     const found = await settled('Your results', 'ready');
-    expect(within(found).getByText('Not available: your trades are in different currencies. Choose a home currency to add them up.')).toBeInTheDocument();
+    expect(within(resultTile(found)).getByText('Not available: your trades are in different currencies. Choose a home currency to add them up.')).toBeInTheDocument();
     expect(within(found).getByRole('link', { name: 'Choose a home currency' })).toHaveAttribute('href', '/currency');
   });
 
@@ -180,7 +182,7 @@ describe("T-051c the period's result after fees", () => {
     expect((await saveHomeCurrency(db, { currency: 'EUR', usdStablecoins: [] }, { now })).ok).toBe(true);
     show({ db });
     const found = await settled('Your results', 'ready');
-    expect(within(found).getByText('Not available: 1 trade still needs an exchange rate to count in EUR.')).toBeInTheDocument();
+    expect(within(resultTile(found)).getByText('Not available: 1 trade still needs an exchange rate to count in EUR.')).toBeInTheDocument();
     expect(within(found).getAllByRole('link', { name: 'Add the missing rates' })).toHaveLength(1);
     expect(found.querySelector('[data-home-currency="EUR"]')).not.toBeNull();
   });
@@ -333,5 +335,31 @@ describe('T-051c practice results', () => {
     expect(within(empty).getByRole('heading', { name: 'No closed practice trades yet' })).toBeInTheDocument();
     expect(within(empty).getByText('A practice trade counts here once it is closed. Save one with the form above.')).toBeInTheDocument();
     expect(within(empty).queryAllByRole('link').filter(link => link.textContent !== 'Change')).toHaveLength(0);
+  });
+});
+
+describe('T-051j fix ci: a dashboard that is gone changes nothing', () => {
+  it('ignores its read when the answer comes after it closed and its page is gone', async () => {
+    const db = await database();
+    let answer: ((result: Awaited<ReturnType<typeof loadResultsDashboard>>) => void) | null = null;
+    const load: typeof loadResultsDashboard = () => new Promise(resolve => { answer = resolve; });
+    const view = show({ db, load });
+    await waitFor(() => expect(answer).not.toBeNull());
+    view.unmount();
+    // CI saw this: the read answered after the test page was torn down, and React's update needed `window`.
+    const late: unknown[] = [];
+    const onLate = (reason: unknown) => { late.push(reason); };
+    // Node's own process (the tests' types leave Node out): it hears a promise that fails with nobody waiting.
+    const node = (globalThis as unknown as { process: { on(event: 'unhandledRejection', listener: (reason: unknown) => void): void; off(event: 'unhandledRejection', listener: (reason: unknown) => void): void } }).process;
+    node.on('unhandledRejection', onLate);
+    vi.stubGlobal('window', undefined);
+    try {
+      answer!({ kind: 'time-zone-unconfigured' });
+      await new Promise(resolve => setTimeout(resolve, 20));
+    } finally {
+      vi.unstubAllGlobals();
+      node.off('unhandledRejection', onLate);
+    }
+    expect(late).toEqual([]);
   });
 });

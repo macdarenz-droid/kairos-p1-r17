@@ -1,22 +1,45 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useInRouterContext } from 'react-router';
-import { describeTotalsInHomeCurrency } from '../../application/currency/currencyWords';
+import { describeRatesFetchedOnTheirOwn, describeTotalsInHomeCurrency, RATES_NEED_A_CONNECTION } from '../../application/currency/currencyWords';
+import { ecbRatesToFetchOnItsOwn, fetchMissingEcbRates, missingRateKey, type EcbReferenceRatesPort, type FetchEcbRatesResult } from '../../application/currency/ecbRates';
+import type { MissingExchangeRate } from '../../application/currency/resultsInHomeCurrency';
 import type { JournalHistoryScope } from '../../application/journal';
-import { describePeriodMoneyUnavailable, describeTradeCount } from '../../application/performance/periodWords';
-import { loadResultsDashboard, type ResultsDashboardProjection, type ResultsDashboardQueryResult } from '../../application/performance/resultsDashboard';
+import { projectMarketTiles, type MarketTile } from '../../application/performance/marketTiles';
+import { describeBiggestDip, describePeriodMoneyUnavailable, describeTradeCount } from '../../application/performance/periodWords';
+import { loadResultsDashboard, projectResultsDipMarks, projectResultsTradeIdsByDay, selectResultsEntries, type ResultsDashboardProjection, type ResultsDashboardQueryResult } from '../../application/performance/resultsDashboard';
 import {
   describeVisualPnlPeriodProblem,
+  pickVisualPnlResultCandleUnit,
+  projectVisualPnlMonthGrid,
+  projectVisualPnlMonthTotals,
+  projectVisualPnlResultCandlesBy,
+  projectVisualPnlWeekdayTimeHeatmap,
+  shiftVisualPnlDayKey,
   startVisualPnlTimeZoneFromDevice,
+  summarizeVisualPnlDailyPerformance,
+  VISUAL_PNL_HOUR_BLOCK_NAMES,
+  VISUAL_PNL_WEEKDAY_NAMES,
   VISUAL_PNL_DEFAULT_PERIOD,
   writeVisualPnlPeriodChoice,
+  type VisualPnlHeatmapCell,
+  type VisualPnlMonthWeek,
+  type VisualPnlResultCandleUnit,
   type VisualPnlPeriodChoice,
   type VisualPnlTimeZoneStart,
 } from '../../application/visual-pnl';
 import type { KairosDatabase } from '../../data/database';
-import { Button, EmptyState, ErrorState, ResultText, Skeleton, StatTile } from '../../design-system/primitives';
+import { Button, EmptyState, ErrorState, ResultText, Segmented, Skeleton, StatTile, UnavailableNotice } from '../../design-system/primitives';
 import { DisciplineScorePanel } from '../discipline/DisciplineScorePanel';
 import { readDeviceTimeZone } from '../settings/DeviceTimeZoneButton';
 import { PERIOD_LIST_ID, PeriodChooser } from './PeriodChooser';
+import { dayLabel, monthLabel, ResultsCalendar } from './ResultsCalendar';
+import { ResultsCandles } from './ResultsCandles';
+import { ResultsDayTrades } from './ResultsDayTrades';
+import { ResultsHeatmap } from './ResultsHeatmap';
+import { ResultsMarketTiles } from './ResultsMarketTiles';
+import { ResultsNumbers } from './ResultsNumbers';
+import { VisualPnlPerformanceSummary } from './VisualPnlPerformanceSummary';
+import { VisualPnlStreak } from './VisualPnlStreak';
 import './resultsDashboard.css';
 
 export interface ResultsDashboardProps {
@@ -30,11 +53,18 @@ export interface ResultsDashboardProps {
   readonly onFirstLoad?: () => void;
   /** D183: true (the default) gives "Result after fees" the screen's one glow; Practice passes false, because its trade form's Save button already glows (`TradeForm.tsx:474`). */
   readonly glow?: boolean;
+  /** false: the dashboard's loading and first-use lines are read politely without the status role, for a page whose form's save line is its status (Practice), as Skeleton's `live`. */
+  readonly live?: boolean;
+  /** D201: the bank-rates port; with it, missing rates the bank publishes are fetched once per visit. null: never fetched here. */
+  readonly rates?: EcbReferenceRatesPort | null;
   /** Tests inject a loader that fails; the app uses loadResultsDashboard. */
   readonly load?: typeof loadResultsDashboard;
 }
 
 type Answer = Readonly<{ kind: 'answer'; result: ResultsDashboardQueryResult }> | Readonly<{ kind: 'failed' }>;
+/** The rates fetched on their own (D201): whether a request runs, and the last outcome (kept on screen while a retry runs). */
+type RatesFetch = Readonly<{ fetching: boolean; outcome: Readonly<{ kind: 'none' }> | Readonly<{ kind: 'offline' }> | Readonly<{ kind: 'answered'; result: FetchEcbRatesResult }> }>;
+const NO_RATES_FETCH: RatesFetch = Object.freeze({ fetching: false, outcome: Object.freeze({ kind: 'none' as const }) });
 type Status = 'loading' | 'ready' | 'empty' | 'error' | 'unconfigured' | 'invalid-period';
 
 const wallClock = (): string => new Date().toISOString();
@@ -84,12 +114,198 @@ function PeriodResult({ dashboard, glow, renderTradeLink }: { readonly dashboard
   </>;
 }
 
+/** D201: the missing rates fetched on their own, beside the currency note: "Getting…", what came back, or "Unavailable · Try again". */
+function RatesLine({ state, live, onRetry }: { readonly state: RatesFetch; readonly live: boolean; readonly onRetry: () => void }) {
+  const { fetching, outcome } = state;
+  const statusProps = live ? { role: 'status' } : { 'aria-live': 'polite' as const };
+  if (outcome.kind === 'offline') return <div className="kairos-results__rates"><UnavailableNotice message={RATES_NEED_A_CONNECTION} retryLabel="Try again" onRetry={onRetry} busy={fetching} retryWhenOnline /></div>;
+  const words = outcome.kind === 'answered' ? describeRatesFetchedOnTheirOwn(outcome.result) : null;
+  if (words?.tone === 'unavailable') return <div className="kairos-results__rates"><UnavailableNotice message={words.text} retryLabel="Try again" onRetry={onRetry} busy={fetching} retryWhenOnline /></div>;
+  if (words?.tone === 'error') return <div className="kairos-results__rates"><ErrorState message={words.text} onRetry={onRetry} busy={fetching} /></div>;
+  if (fetching) return <div className="kairos-results__rates"><p className="kairos-results__notice" {...statusProps}>Getting the missing exchange rates…</p></div>;
+  if (words?.tone === 'status') return <div className="kairos-results__rates"><p className="kairos-results__notice" {...statusProps}>{words.text}</p></div>;
+  return null;
+}
+
+/** The one trade list open under the calendar: a day, a week (by its first counted day), the month (T-051h) or a candle (T-051i). */
+type OpenList =
+  | Readonly<{ kind: 'day'; dayKey: string }> | Readonly<{ kind: 'week'; week: VisualPnlMonthWeek }> | Readonly<{ kind: 'month' }>
+  | Readonly<{ kind: 'candle'; unit: VisualPnlResultCandleUnit; fromDayKey: string; toDayKey: string }>
+  | Readonly<{ kind: 'cell'; cell: VisualPnlHeatmapCell }> | Readonly<{ kind: 'tile'; tile: MarketTile }>;
+function listKey(list: OpenList | null): string | null {
+  if (list === null) return null;
+  switch (list.kind) {
+    case 'day': return `day:${list.dayKey}`;
+    case 'week': return `week:${list.week.fromDayKey}`;
+    case 'month': return 'month';
+    case 'candle': return `candle:${list.fromDayKey}:${list.unit}`;
+    case 'cell': return `cell:${list.cell.weekday}-${list.cell.block}`;
+    case 'tile': return `tile:${list.tile.key}`;
+  }
+}
+type Opener = Readonly<{ find: (box: HTMLElement) => HTMLElement | null; fallback: string }>;
+const bySelector = (selector: string, fallback: string): Opener => ({ find: box => box.querySelector<HTMLElement>(selector), fallback });
+/** The control that opened a list, as the calendar, the candles' numbers, the heatmap and the tiles mark it, then where focus goes when it is gone or hidden. */
+function openerOf(list: OpenList): Opener {
+  switch (list.kind) {
+    case 'day': return bySelector(`[data-day-key="${list.dayKey}"] button`, '.kairos-results-calendar__bar h3');
+    case 'week': return bySelector(`[data-week-key="${list.week.fromDayKey}"] button`, '.kairos-results-calendar__bar h3');
+    case 'month': return bySelector('.kairos-results-calendar__month-total', '.kairos-results-calendar__bar h3');
+    case 'candle': return bySelector(`[data-candle-row="${list.fromDayKey}"] button`, '.kairos-results-candles h3');
+    case 'cell': return bySelector(`[data-heatmap-cell="${list.cell.weekday}-${list.cell.block}"] button`, '.kairos-results-heatmap h3');
+    // A symbol is the trader's own text, so its tile is found by comparing keys, never by building a selector from it.
+    case 'tile': return { find: box => [...box.querySelectorAll<HTMLElement>('[data-tile-key]')].find(tile => tile.dataset.tileKey === list.tile.key) ?? null, fallback: '.kairos-results-markets h3' };
+  }
+}
+/** The lists that belong to the calendar's shown month; a month change closes them only. */
+const CALENDAR_LISTS: ReadonlySet<OpenList['kind']> = new Set(['day', 'week', 'month']);
+const CANDLE_UNITS = Object.freeze([{ value: 'day', label: 'Day' }, { value: 'week', label: 'Week' }, { value: 'month', label: 'Month' }] as const);
+
+/**
+ * The streak, the result days, the total as candles, the calendar, when you trade and your markets, each opening its trades
+ * in the one list (T-051d, T-051h–j). Keyed by the period, so a new period starts on its last month with no list open. The
+ * trades of a list come from memory.
+ */
+function ResultsDays({ dashboard, renderTradeLink }: { readonly dashboard: ResultsDashboardProjection; readonly renderTradeLink: (id: string) => ReactNode }) {
+  const { calendarMonths, period, days, todayKey, timeZone } = dashboard;
+  const box = useRef<HTMLDivElement>(null);
+  const [month, setMonth] = useState<string | null>(null);
+  const [open, setOpen] = useState<OpenList | null>(null);
+  const [unit, setUnit] = useState<VisualPnlResultCandleUnit>(() => pickVisualPnlResultCandleUnit(days.days));
+  // Worked out once per answer (or unit), not on every tap: with thousands of trades each takes a while.
+  const heatmap = useMemo(() => projectVisualPnlWeekdayTimeHeatmap(dashboard.entries, timeZone), [dashboard.entries, timeZone]);
+  const markets = useMemo(() => projectMarketTiles(dashboard.entries), [dashboard.entries]);
+  const candleInputs = useMemo(() => ({ tradeIdsByDay: projectResultsTradeIdsByDay(dashboard), marks: projectResultsDipMarks(dashboard) }), [dashboard]);
+  const candles = useMemo(() => projectVisualPnlResultCandlesBy(days.days, { unit, ...candleInputs }), [days.days, unit, candleInputs]);
+  /** The list that just opened (its heading takes focus) or closed (its opener takes focus back, else the month heading). */
+  const focusAfter = useRef<Readonly<{ kind: 'opened' | 'closed'; key: string; opener: Opener }> | null>(null);
+  const lastMonth = calendarMonths[calendarMonths.length - 1]!;
+  const shownMonth = month !== null && calendarMonths.includes(month) ? month : lastMonth;
+  const bounds = { fromDayKey: period.fromDayKey, toDayKey: period.toDayKey };
+  const grid = useMemo(() => projectVisualPnlMonthGrid({ monthKey: shownMonth, days: days.days, todayKey, period: bounds }), [shownMonth, days.days, todayKey, period.fromDayKey, period.toDayKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const totals = useMemo(() => projectVisualPnlMonthTotals({ monthKey: shownMonth, days: days.days, period: bounds }), [shownMonth, days.days, period.fromDayKey, period.toDayKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const openKey = listKey(open);
+
+  useEffect(() => {
+    const target = focusAfter.current;
+    // Only once the state matches the press: a run that comes before the new list is shown must not use up the target.
+    if (target === null || (target.kind === 'opened' ? openKey !== target.key : openKey !== null)) return;
+    focusAfter.current = null;
+    const { find, fallback } = target.opener;
+    const back = box.current ? find(box.current) : null;
+    // A row button inside the closed "Show the numbers" can't take focus.
+    const element = target.kind === 'opened'
+      ? box.current?.querySelector<HTMLElement>('.kairos-results-day-trades h3')
+      : back !== null && back !== undefined && back.closest('details:not([open])') === null ? back : box.current?.querySelector<HTMLElement>(fallback);
+    element?.focus();
+  }, [openKey]);
+
+  function toggle(list: OpenList): void {
+    const key = listKey(list)!;
+    const closing = key === openKey;
+    focusAfter.current = { kind: closing ? 'closed' : 'opened', key, opener: openerOf(list) };
+    setOpen(closing ? null : list);
+  }
+  function close(): void {
+    if (open === null) return;
+    focusAfter.current = { kind: 'closed', key: openKey!, opener: openerOf(open) };
+    setOpen(null);
+  }
+  /** The month button just pressed: when the new month disables it, focus goes to the other one, else the month heading (WCAG 2.4.3). */
+  const pressedNav = useRef<'previous' | 'next' | null>(null);
+  useEffect(() => {
+    const pressed = pressedNav.current;
+    pressedNav.current = null;
+    if (pressed === null) return;
+    const [previous, next] = [...(box.current?.querySelectorAll<HTMLButtonElement>('.kairos-results-calendar__nav') ?? [])];
+    if (!(pressed === 'previous' ? previous : next)?.disabled) return;
+    const other = pressed === 'previous' ? next : previous;
+    (other !== undefined && !other.disabled ? other : box.current?.querySelector<HTMLElement>('.kairos-results-calendar__bar h3'))?.focus();
+  }, [shownMonth]);
+  const changeMonth = (next: string, pressed: 'previous' | 'next') => { pressedNav.current = pressed; setMonth(next); if (open !== null && CALENDAR_LISTS.has(open.kind)) setOpen(null); };
+  const outside = grid?.days.some(day => !day.inPeriod) ?? false;
+  const changeUnit = (next: VisualPnlResultCandleUnit) => { setUnit(next); if (open?.kind === 'candle') setOpen(null); };
+  const selectCandle = (index: number) => {
+    if (!candles.available) return;
+    const candle = candles.candles[index];
+    if (candle !== undefined) toggle({ kind: 'candle', unit, fromDayKey: candle.fromDayKey, toDayKey: candle.toDayKey });
+  };
+  const list = (() => {
+    if (open === null) return null;
+    if (open.kind === 'day') return { dayKey: open.dayKey, title: undefined, entries: selectResultsEntries(dashboard, { fromDayKey: open.dayKey, toDayKey: shiftVisualPnlDayKey(open.dayKey, 1) }) };
+    if (open.kind === 'week') {
+      const { fromDayKey, toDayKey, dayKeys } = open.week;
+      if (fromDayKey === null || toDayKey === null) return null;
+      const last = dayKeys[dayKeys.length - 1]!;
+      const title = fromDayKey === last ? `Trades closed on ${dayLabel(fromDayKey)}` : `Trades closed from ${dayLabel(fromDayKey).split(' ')[0]} to ${dayLabel(last)}`;
+      return { dayKey: fromDayKey, title, entries: selectResultsEntries(dashboard, { fromDayKey, toDayKey }) };
+    }
+    if (open.kind === 'cell') {
+      const { weekday, block, tradeIds } = open.cell;
+      return { dayKey: '', title: `Trades opened on ${VISUAL_PNL_WEEKDAY_NAMES[weekday]}, ${VISUAL_PNL_HOUR_BLOCK_NAMES[block]}`, entries: selectResultsEntries(dashboard, { tradeIds }) };
+    }
+    if (open.kind === 'tile') {
+      const { symbol, tradeIds } = open.tile;
+      return { dayKey: '', title: symbol === null ? 'Trades in other markets' : `Trades in ${symbol}`, entries: selectResultsEntries(dashboard, { tradeIds }) };
+    }
+    if (open.kind === 'candle') {
+      const title = open.unit === 'day' ? `Trades closed on ${dayLabel(open.fromDayKey)}` : open.unit === 'week' ? `Trades closed in the week of ${dayLabel(open.fromDayKey)}` : `Trades closed in ${monthLabel(open.fromDayKey.slice(0, 7))}`;
+      return { dayKey: open.fromDayKey, title, entries: selectResultsEntries(dashboard, { fromDayKey: open.fromDayKey, toDayKey: open.toDayKey }) };
+    }
+    if (totals === null || totals.monthFromDayKey === null || totals.monthToDayKey === null) return null;
+    return { dayKey: totals.monthFromDayKey, title: `Trades closed in ${monthLabel(shownMonth)}`, entries: selectResultsEntries(dashboard, { fromDayKey: totals.monthFromDayKey, toDayKey: totals.monthToDayKey }) };
+  })();
+  // One list at a time on the whole dashboard, shown under the section it came from.
+  const listView = list === null ? null : <ResultsDayTrades
+    dayKey={list.dayKey}
+    title={list.title}
+    showDay={open?.kind !== 'day' && !(open?.kind === 'candle' && open.unit === 'day')}
+    timeZone={timeZone}
+    state={{ kind: 'ready', entries: list.entries, conversions: dashboard.conversions }}
+    renderTradeLink={renderTradeLink}
+    onClose={close}
+  />;
+  return <div ref={box} className="kairos-results__days">
+    {dashboard.currentStreak !== null ? <VisualPnlStreak projection={dashboard.currentStreak} /> : null}
+    <VisualPnlPerformanceSummary summary={summarizeVisualPnlDailyPerformance(days.days)} />
+    <ResultsCandles
+      eyebrow={dashboard.scope === 'real' ? 'Your results over time' : 'Your practice results over time'}
+      title={period.kind === 'all' ? 'Total result so far' : `Your total in ${period.label}`}
+      projection={candles}
+      onSelectCandle={selectCandle}
+      dip={describeBiggestDip(dashboard.summary.biggestDip, dashboard.inHomeCurrency)}
+      controls={<Segmented label="Candles" options={CANDLE_UNITS} value={unit} onChange={changeUnit} />}
+      note={period.kind === 'all' || period.fromDayKey === null ? null : `It starts at 0 on ${dayLabel(period.fromDayKey)}.`}
+    />
+    {grid ? <ResultsCalendar
+      grid={grid}
+      totals={totals}
+      selectedDayKey={open?.kind === 'day' ? open.dayKey : null}
+      selectedWeekKey={open?.kind === 'week' ? open.week.fromDayKey : null}
+      monthSelected={open?.kind === 'month'}
+      canShowPreviousMonth={shownMonth > calendarMonths[0]!}
+      canShowNextMonth={shownMonth < lastMonth}
+      outsideNote={outside ? `Days outside ${period.label} are dimmed.` : null}
+      onSelectDay={dayKey => toggle({ kind: 'day', dayKey })}
+      onSelectWeek={week => toggle({ kind: 'week', week })}
+      onSelectMonth={() => toggle({ kind: 'month' })}
+      onPreviousMonth={() => changeMonth(grid.previousMonthKey, 'previous')}
+      onNextMonth={() => changeMonth(grid.nextMonthKey, 'next')}
+    /> : null}
+    {list !== null && open?.kind !== 'cell' && open?.kind !== 'tile' ? listView : null}
+    <ResultsHeatmap heatmap={heatmap} timeZone={timeZone} selectedKey={open?.kind === 'cell' ? `${open.cell.weekday}-${open.cell.block}` : null} onSelectCell={cell => toggle({ kind: 'cell', cell })} />
+    {list !== null && open?.kind === 'cell' ? listView : null}
+    <ResultsMarketTiles markets={markets} selectedKey={open?.kind === 'tile' ? open.tile.key : null} onSelectTile={tile => toggle({ kind: 'tile', tile })} />
+    {list !== null && open?.kind === 'tile' ? listView : null}
+  </div>;
+}
+
 /**
  * U5 (P13.A4, D197–D201): "Your results" for one scope and period: the period chooser, the time zone (saved from this
  * device on first use, D199), the period's result after fees, and the discipline ring. Every amount and word comes from
  * an owner; this screen only shows them and never touches storage itself.
  */
-export function ResultsDashboard({ db, scope, choice, onChoiceChange, renderTradeLink, refreshRevision, now = wallClock, onFirstLoad, glow = true, load = loadResultsDashboard }: ResultsDashboardProps) {
+export function ResultsDashboard({ db, scope, choice, onChoiceChange, renderTradeLink, refreshRevision, now = wallClock, onFirstLoad, glow = true, live = true, rates = null, load = loadResultsDashboard }: ResultsDashboardProps) {
   const titleId = useId();
   const region = useRef<HTMLElement>(null);
   const [answer, setAnswer] = useState<Answer | null>(null);
@@ -107,6 +323,21 @@ export function ResultsDashboard({ db, scope, choice, onChoiceChange, renderTrad
   const nowRef = useRef(now);
   nowRef.current = now;
   const choiceKey = writeVisualPnlPeriodChoice(choice, new URLSearchParams()).toString();
+  /** The missing rates already asked for during this visit (one request per missing rate, D201). */
+  const asked = useRef(new Set<string>());
+  const [ratesFetch, setRatesFetch] = useState<RatesFetch>(NO_RATES_FETCH);
+  /** Bumped after rates were saved: reloads the dashboard with the same choice. */
+  const [ratesRevision, setRatesRevision] = useState(0);
+  /** The running request and the rates it asks for; a newer request takes them over, so a period change never drops them. */
+  const ratesRunning = useRef<Readonly<{ controller: AbortController; pairs: readonly MissingExchangeRate[] }> | null>(null);
+  /** Set by a tap on the rates' "Try again" to the state it was tapped in: after a newer answer, focus goes to the currency note's link, or the new "Try again". */
+  const ratesFocus = useRef<RatesFetch | null>(null);
+  /** False once the dashboard is gone: an answer that comes later changes nothing (its page may be closed by then). */
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; request.current += 1; ratesRunning.current?.controller.abort(); };
+  }, []);
 
   useEffect(() => {
     const mine = ++request.current;
@@ -115,7 +346,7 @@ export function ResultsDashboard({ db, scope, choice, onChoiceChange, renderTrad
       // A second load (a refresh, focus, or StrictMode's second effect) waits for the same start, so its
       // 'started-from-device' answer is never replaced by a later 'saved' (D199's first-use line).
       started.current ??= startVisualPnlTimeZoneFromDevice(db, readDeviceTimeZone(), nowRef.current()).then(
-        start => { setZoneStart(start); return start; },
+        start => { if (mounted.current) setZoneStart(start); return start; },
         (error: unknown) => { started.current = null; throw error; },
       );
       await started.current;
@@ -124,7 +355,56 @@ export function ResultsDashboard({ db, scope, choice, onChoiceChange, renderTrad
       result => { if (mine === request.current) { setAnswer({ kind: 'answer', result }); setBusy(false); } },
       () => { if (mine === request.current) { setAnswer({ kind: 'failed' }); setBusy(false); } },
     );
-  }, [db, scope, choiceKey, refreshRevision, attempt, load]);
+  }, [db, scope, choiceKey, refreshRevision, attempt, ratesRevision, load]);
+
+  // D201: after a ready answer, ask the bank once for the missing rates it publishes; offline, wait for a tap or for "online".
+  function fetchRates(missing: readonly MissingExchangeRate[]): void {
+    if (rates === null) return;
+    const running = ratesRunning.current;
+    if (running === null && ecbRatesToFetchOnItsOwn(missing, new Set()).length === 0) {
+      // Nothing on screen comes from the bank: a line about other rates goes, except "Got N", which told of this reload.
+      setRatesFetch(current => (current.outcome.kind === 'offline' || (current.outcome.kind === 'answered' && !(current.outcome.result.ok && current.outcome.result.saved > 0)) ? NO_RATES_FETCH : current));
+      return;
+    }
+    const fresh = ecbRatesToFetchOnItsOwn(missing, asked.current);
+    if (fresh.length === 0) return;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) { setRatesFetch({ fetching: false, outcome: { kind: 'offline' } }); return; }
+    for (const pair of fresh) asked.current.add(missingRateKey(pair));
+    const pairs = running === null ? fresh : [...running.pairs, ...fresh];
+    running?.controller.abort();
+    const controller = new AbortController();
+    ratesRunning.current = { controller, pairs };
+    setRatesFetch(current => ({ fetching: true, outcome: current.outcome }));
+    void fetchMissingEcbRates(db, rates, pairs, { now: nowRef.current(), signal: controller.signal }).then(result => {
+      if (controller.signal.aborted) return;
+      ratesRunning.current = null;
+      setRatesFetch({ fetching: false, outcome: { kind: 'answered', result } });
+      if (result.ok && result.saved > 0) setRatesRevision(current => current + 1);
+    });
+  }
+  const missingRates = answer?.kind === 'answer' && answer.result.kind === 'ready' ? answer.result.dashboard.inHomeCurrency.missing : null;
+  useEffect(() => {
+    if (busy || missingRates === null) return;
+    fetchRates(missingRates);
+  }, [busy, missingRates]); // eslint-disable-line react-hooks/exhaustive-deps
+  function retryRates(): void {
+    // The notice's "online" listener calls this too: never while a request runs, and focus moves only from the notice itself.
+    if (missingRates === null || ratesRunning.current !== null) return;
+    const active = typeof document === 'undefined' ? null : document.activeElement;
+    ratesFocus.current = active !== null && (region.current?.querySelector('.kairos-results__rates')?.contains(active) ?? false) ? ratesFetch : null;
+    for (const pair of missingRates) asked.current.delete(missingRateKey(pair));
+    fetchRates(missingRates);
+  }
+  // After the rates' "Try again", focus goes to the currency note's link, or to the new "Try again" (WCAG 2.4.3).
+  useEffect(() => {
+    // React may run this for the screen the tap was made on, after the tap: only a newer answer moves focus.
+    const tapped = ratesFocus.current;
+    if (tapped === null || ratesFetch === tapped || ratesFetch.fetching || busy) return;
+    ratesFocus.current = null;
+    const link = region.current?.querySelector<HTMLElement>('.kairos-results__notice a[href]');
+    const retry = region.current?.querySelector<HTMLElement>('.kairos-results__rates .kairos-error-state button:not([disabled])');
+    (retry ?? link)?.focus();
+  }, [ratesFetch, busy]);
 
   const status = busy && answer === null ? 'loading' : statusOf(answer);
 
@@ -144,19 +424,21 @@ export function ResultsDashboard({ db, scope, choice, onChoiceChange, renderTrad
   const result = answer?.kind === 'answer' ? answer.result : null;
   const dashboard = result?.kind === 'ready' ? result.dashboard : null;
   const zone = dashboard?.timeZone ?? (result?.kind === 'invalid-period' ? result.timeZone : null) ?? (zoneStart !== null && zoneStart.kind !== 'unconfigured' ? zoneStart.timeZone : null);
+  // The zone line comes with the first answer, never alone above the loading placeholder.
+  const showZone = zone !== null && status !== 'loading' && status !== 'unconfigured';
   const practice = scope === 'practice';
   const homeWords = dashboard !== null && status === 'ready' ? describeTotalsInHomeCurrency(dashboard.inHomeCurrency) : null;
   const periodLabel = dashboard === null ? '' : dashboard.period.kind === 'all' ? (practice ? 'Practice' : 'your whole journal') : dashboard.period.label;
 
-  return <section ref={region} className="kairos-results" aria-labelledby={titleId} data-results-status={status} aria-busy={busy || undefined}>
+  return <section ref={region} className="kairos-results" aria-labelledby={titleId} data-scope={scope} data-results-status={status} aria-busy={busy || undefined}>
     <div className="kairos-results__heading">
       <p className="kairos-results__eyebrow">{practice ? 'Practice trades only' : 'Your trades'}</p>
       <h2 id={titleId}>{practice ? 'Your practice results' : 'Your results'}</h2>
     </div>
     {dashboard !== null ? <PeriodChooser period={dashboard.period} todayKey={dashboard.todayKey} onChoiceChange={onChoiceChange} /> : null}
-    {zoneStart?.kind === 'started-from-device' && zone !== null ? <p role="status" className="kairos-results__started">Kairos set your time zone to {zoneStart.timeZone}, this device's time zone.</p> : null}
-    {zone !== null && status !== 'unconfigured' ? <p className="kairos-results__zone"><span>Time zone: {zone}</span> <ResultsLink to="/settings" aria-label="Change your time zone">Change</ResultsLink></p> : null}
-    {status === 'loading' ? <Skeleton label="Loading your results" /> : null}
+    {zoneStart?.kind === 'started-from-device' && showZone ? <p role={live ? 'status' : undefined} aria-live={live ? undefined : 'polite'} className="kairos-results__started">Kairos set your time zone to {zoneStart.timeZone}, this device's time zone.</p> : null}
+    {showZone ? <p className="kairos-results__zone"><span>Time zone: {zone}</span> <ResultsLink to="/settings" aria-label="Change your time zone">Change</ResultsLink></p> : null}
+    {status === 'loading' ? <Skeleton label="Loading your results" live={live} /> : null}
     {status === 'error' ? <ErrorState message={ERROR} onRetry={retry} busy={busy} /> : null}
     {status === 'unconfigured' ? <EmptyState icon="info" headingLevel={3} title="Choose your time zone"
       message="Kairos needs your time zone to put each trade on the right day, and this device did not report one."
@@ -170,8 +452,12 @@ export function ResultsDashboard({ db, scope, choice, onChoiceChange, renderTrad
         : <EmptyState icon="analysis" headingLevel={3} title="No closed trades yet" message="A trade counts here once it is closed." action={<ResultsLink to="/journal">Log a trade</ResultsLink>} />) : null}
     {status === 'ready' && dashboard !== null ? <>
       {homeWords ? <p className="kairos-results__notice" data-home-currency={dashboard.inHomeCurrency.homeCurrency}>{homeWords.text} <ResultsLink to="/currency">{homeWords.link}</ResultsLink></p> : null}
+      <RatesLine state={ratesFetch} live={live} onRetry={retryRates} />
       <PeriodResult dashboard={dashboard} glow={glow} renderTradeLink={renderTradeLink} />
+      <ResultsNumbers summary={dashboard.summary} context={dashboard.inHomeCurrency} renderTradeLink={renderTradeLink} />
+      <ResultsDays key={`${dashboard.period.kind}:${dashboard.period.fromDayKey ?? ''}:${dashboard.period.toDayKey ?? ''}`} dashboard={dashboard} renderTradeLink={renderTradeLink} />
       <DisciplineScorePanel title={practice ? 'Your practice discipline' : 'Your discipline'} state={dashboard.discipline} periodLabel={periodLabel} />
+      {dashboard.days.blockedTrades.length > 0 ? <p className="kairos-results__notice">{dashboard.days.blockedTrades.length === 1 ? '1 closed trade could not be placed on a day.' : `${dashboard.days.blockedTrades.length} closed trades could not be placed on a day.`}</p> : null}
     </> : null}
   </section>;
 }

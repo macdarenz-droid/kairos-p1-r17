@@ -87,14 +87,16 @@ export function CoachScreen({ db, scope, renderTradeLink, now = wallClock }: Coa
   }, [db, scope, now, attempt]);
   // "Try again" unmounts its own error box while loading, so focus would fall to the page (WCAG 2.4.3). When it had focus,
   // focus goes to the first link or button of what loaded (the new "Try again" when it failed again), else the h1.
-  const retryHadFocus = useRef(false);
+  // Holds the screen the tap was made on: React may run the effect for that screen after the tap, so only a newer one moves focus.
+  const retryHadFocus = useRef<typeof state | null>(null);
   const loaded = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (state.kind === 'loading' || !retryHadFocus.current) return;
-    retryHadFocus.current = false;
+    const tapped = retryHadFocus.current;
+    if (state.kind === 'loading' || tapped === null || state === tapped) return;
+    retryHadFocus.current = null;
     (loaded.current?.querySelector<HTMLElement>('a[href], button:not([disabled])') ?? document.getElementById(TITLE))?.focus();
   }, [state]);
-  const retry = () => { retryHadFocus.current = document.activeElement?.closest('.kairos-error-state') != null; setAttempt(current => current + 1); };
+  const retry = () => { retryHadFocus.current = document.activeElement?.closest('.kairos-error-state') != null ? state : null; setAttempt(current => current + 1); };
 
   const practice = scope === 'practice';
   const result = state.kind === 'ready' ? state.result : null;

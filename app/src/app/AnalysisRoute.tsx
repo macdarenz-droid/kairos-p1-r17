@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { loadTradeReview, type TradeReviewResult } from '../application/journal/loadTradeReview';
 import { DEFAULT_JOURNAL_HISTORY_LIMIT } from '../application/journal/historyQuery';
+import type { EcbReferenceRatesPort } from '../application/currency/ecbRates';
 import { readVisualPnlPeriodChoice, writeVisualPnlPeriodChoice } from '../application/visual-pnl';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
 import { Button, PageHeader, Segmented } from '../design-system/primitives';
@@ -36,10 +37,12 @@ export interface AnalysisRouteProps {
   readonly db?: KairosDatabase;
   /** The current instant as a canonical UTC ISO string; tests inject a fixed one. */
   readonly now?: () => string;
+  /** The bank-rates port for missing rates fetched on their own (D201); the route passes it, null fetches nothing. */
+  readonly rates?: EcbReferenceRatesPort | null;
 }
 
 /** "Your results" (U5) and the chart with the trade review: route selection and async read lifecycle only; all saved facts come from their owners. */
-export function AnalysisRoute({ load = loadTradeReview, db = kairosDatabase, now = wallClock }: AnalysisRouteProps) {
+export function AnalysisRoute({ load = loadTradeReview, db = kairosDatabase, now = wallClock, rates = null }: AnalysisRouteProps) {
   const [params, setParams] = useSearchParams();
   const view = analysisView(params);
   const selectedId = params.get('trade');
@@ -134,7 +137,7 @@ export function AnalysisRoute({ load = loadTradeReview, db = kairosDatabase, now
     <Segmented label="Analysis view" options={VIEW_OPTIONS} value={view} onChange={changeView} />
     {view === 'results' ? <ResultsDashboard db={db} scope="real" now={now}
       choice={readVisualPnlPeriodChoice(params)} onChoiceChange={choice => setParams(writeVisualPnlPeriodChoice(choice, params))}
-      renderTradeLink={id => <ReviewTradeLink id={id} />} refreshRevision={revision} onFirstLoad={resultsFirstLoad} /> : <>
+      renderTradeLink={id => <ReviewTradeLink id={id} />} refreshRevision={revision} onFirstLoad={resultsFirstLoad} rates={rates} /> : <>
     {pictureEntry ? <TradePicture key={pictureEntry.trade.id} entry={pictureEntry} variant="full" /> : null}
     <AnalysisHandoffContext.Provider value={handoff}>
     <AnalysisHistoryWorkspace entry={selectedEntry} savedTradePending={savedTradePending} />

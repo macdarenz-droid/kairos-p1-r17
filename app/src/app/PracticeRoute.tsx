@@ -1,24 +1,36 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
+import type { EcbReferenceRatesPort } from '../application/currency/ecbRates';
 import { practicePlanDraft, readPracticePlanStart } from '../application/practice/practicePlanStart';
+import { readVisualPnlPeriodChoice, writeVisualPnlPeriodChoice } from '../application/visual-pnl';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
 import type { TradeStatus } from '../domain/trades';
 import { TradeForm } from '../features/journal/TradeForm';
 import { useJournalHistoryPages } from '../features/journal/useJournalHistoryPages';
+import { CoachCard } from '../features/discipline/CoachCard';
 import { PracticeMoneyCard } from '../features/practice/PracticeMoneyCard';
-import { JournalDailyResults } from './JournalDailyResults';
+import { ResultsDashboard } from '../features/results/ResultsDashboard';
 import { JournalHistoryList } from './JournalHistoryList';
+import { ReviewTradeLink } from './ReviewTradeLink';
 import './journalRoute.css';
 import './practiceRoute.css';
 
 interface PracticeRouteProps {
   readonly db?: KairosDatabase;
-  /** The current instant as a canonical UTC ISO string, for Daily results; tests inject a fixed one. */
+  /** The current instant as a canonical UTC ISO string, for the results and the coach; tests inject a fixed one. */
   readonly now?: () => string;
+  /** The bank-rates port for rates fetched on their own (D201); null until the composition root passes it (T-051f). */
+  readonly rates?: EcbReferenceRatesPort | null;
 }
 
+/** A stable default clock, as in GoalsRoute. */
+const wallClock = (): string => new Date().toISOString();
+/** The calculator plan's keys (practicePlanStart.ts); saving its trade removes only these, so the chosen period stays. */
+const PLAN_KEYS = ['side', 'entry', 'stop', 'quantity'] as const;
+
 /** Practice: paper trades, saved with the Journal's form and listed and pictured with the practice scope; nothing here reaches the Journal's real results, goals, discipline score or Home. */
-export function PracticeRoute({ db = kairosDatabase, now }: PracticeRouteProps) {
+export function PracticeRoute({ db = kairosDatabase, now, rates = null }: PracticeRouteProps) {
+  const clock = now ?? wallClock;
   const [historyStatus, setHistoryStatus] = useState<TradeStatus | ''>('');
   const [listNotice, setListNotice] = useState('');
   const pages = useJournalHistoryPages(db, 'practice', historyStatus);
@@ -46,9 +58,12 @@ export function PracticeRoute({ db = kairosDatabase, now }: PracticeRouteProps) 
       <p className="kairos-practice__patterns-link">See what repeats in your practice trades: <Link to="/practice/patterns">Your practice patterns</Link>.</p>
       {planStart ? <p className="kairos-practice__plan-note">From the calculator: {planStart.side === 'long' ? 'buy' : 'sell'} up to {planStart.quantity}, entry {planStart.entryPrice}, stop {planStart.stopPrice}. It is filled in under Trade plan. Add the symbol, the market and the rest, then save.</p> : null}
 
-      <TradeForm db={db} kind="practice" initialDraft={planStart ? practicePlanDraft(planStart) : undefined} onSaved={async () => { if (planStart) setSearchParams(new URLSearchParams(), { replace: true }); setListNotice(''); await pages.refresh(); changed(); }} />
+      <TradeForm db={db} kind="practice" initialDraft={planStart ? practicePlanDraft(planStart) : undefined} onSaved={async () => { if (planStart) { const kept = new URLSearchParams(searchParams); for (const key of PLAN_KEYS) kept.delete(key); setSearchParams(kept, { replace: true }); } setListNotice(''); await pages.refresh(); changed(); }} />
 
-      <JournalDailyResults db={db} scope="practice" refreshRevision={practiceRevision} now={now} disciplineRevision={disciplineRevision} />
+      <ResultsDashboard db={db} scope="practice" now={clock}
+        choice={readVisualPnlPeriodChoice(searchParams)} onChoiceChange={choice => setSearchParams(writeVisualPnlPeriodChoice(choice, searchParams))}
+        renderTradeLink={id => <ReviewTradeLink id={id} />} refreshRevision={practiceRevision + disciplineRevision} glow={false} live={false} rates={rates} />
+      <CoachCard db={db} scope="practice" now={clock} refreshRevision={practiceRevision} disciplineRevision={disciplineRevision} />
 
       <JournalHistoryList db={db} updateNotice={listNotice} onTradeDeleted={async notice => { await pages.refresh(); changed(); setListNotice(notice); }} onTradeUpdated={async () => { await pages.refresh(); changed(); setListNotice('Practice trade updated. Your saved details are below.'); }} onTradeOpened={async notice => { await pages.refresh(); changed(); setListNotice(notice); }} onDisciplineSaved={() => setDisciplineRevision(value => value + 1)} allowedSources={['paper']} disciplineSources={['paper', 'replay']} entries={pages.entries} isLoading={pages.isLoading} errorMessage={pages.failed ? 'Kairos could not load your practice trades. Your stored trades were not changed.' : null} hasOlder={pages.hasOlder} isLoadingOlder={pages.isLoadingOlder} olderFailed={pages.olderFailed} onShowOlder={pages.showOlder} onRetry={pages.refresh} statusFilter={historyStatus} onStatusFilterChange={setHistoryStatus} />
     </section>

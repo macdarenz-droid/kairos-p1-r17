@@ -74,6 +74,9 @@ export function describeEcbFetchResult(result: FetchEcbRatesResult): Readonly<{ 
   return Object.freeze({ tone: 'success' as const, lines: Object.freeze(lines) });
 }
 
+/** D201: the results screen is offline with rates the bank publishes still missing. */
+export const RATES_NEED_A_CONNECTION = 'The missing exchange rates need a connection.';
+
 /** D201: what fetching the missing rates on their own did, in one line; null when there was nothing to fetch. */
 export function describeRatesFetchedOnTheirOwn(result: FetchEcbRatesResult): Readonly<{ tone: 'status' | 'unavailable' | 'error'; text: string }> | null {
   if (!result.ok) {

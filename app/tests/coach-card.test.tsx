@@ -39,8 +39,7 @@ describe('T-041e the coach card under "Your discipline"', () => {
     expect(within(region()).getByText('1 trade this month closed beyond its stop.')).toBeTruthy();
     expect(within(region()).getByText(/^Decide your stop before you enter, /)).toBeTruthy();
     expect(within(region()).getByRole('link', { name: 'See all your coach notes' }).getAttribute('href')).toBe('/coach');
-    const discipline = screen.getByRole('region', { name: 'Your discipline' });
-    expect(discipline.compareDocumentPosition(region()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByRole('region', { name: 'Your discipline' })).toBeNull();
     for (const role of ['listitem', 'status', 'alert']) expect(within(region()).queryAllByRole(role)).toHaveLength(0);
 
     const card = await waitFor(() => screen.getAllByRole('listitem').find(item => within(item).queryByText('BTCUSDT') !== null)!);

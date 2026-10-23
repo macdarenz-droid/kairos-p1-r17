@@ -1,8 +1,10 @@
 .kairos-results { display:grid; gap:var(--kairos-space-4); min-width:0; overflow-wrap:anywhere; }
 .kairos-results__heading { display:grid; gap:var(--kairos-space-1); }
-.kairos-results__heading h2, .kairos-results p { margin:0; }
+/* The dashboard's own paragraphs sit on its grid gap; the moved pieces inside __days keep the route's margins, as in the Journal. */
+.kairos-results__heading h2, .kairos-results p:not(.kairos-results__days p) { margin:0; }
+.kairos-results__days { display:block; min-width:0; }
 .kairos-results__heading h2 { font-size:var(--kairos-font-size-lg); }
-.kairos-results__eyebrow { color:var(--kairos-text-secondary); font-size:var(--kairos-font-size-sm); font-weight:var(--kairos-font-weight-semibold); }
+.kairos-results[data-scope='practice'] .kairos-results__eyebrow { color: var(--kairos-state-warning) !important; }
 .kairos-results__zone, .kairos-results__started, .kairos-results__notice, .kairos-results__fix { color:var(--kairos-text-secondary); font-size:var(--kairos-font-size-sm); }
 .kairos-results__zone { display:flex; flex-wrap:wrap; gap:var(--kairos-space-2); align-items:baseline; }
 .kairos-results__fix { display:flex; flex-wrap:wrap; gap:var(--kairos-space-2); align-items:baseline; }

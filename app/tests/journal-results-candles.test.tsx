@@ -1,22 +1,23 @@
 import 'fake-indexeddb/auto';
 import '@testing-library/jest-dom/vitest';
 import Dexie from 'dexie';
+import { useState } from 'react';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it } from 'vitest';
-import { JournalRoute } from '../src/app/JournalRoute';
 import { PracticeRoute } from '../src/app/PracticeRoute';
 import type { JournalHistoryEntry } from '../src/application/journal';
 import { savePracticeTrade } from '../src/application/practice';
 import { saveManualTrade } from '../src/application/trades';
 import {
   projectVisualPnlResultCandles, summarizeVisualPnlByDay, writeVisualPnlTimeZonePreference,
-  type VisualPnlOutcomeProjection, type VisualPnlResultCandlesProjection,
+  type VisualPnlOutcomeProjection, type VisualPnlPeriodChoice, type VisualPnlResultCandlesProjection,
 } from '../src/application/visual-pnl';
 import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
 import { createKairosRepositories } from '../src/data/repositories';
 import { parseDecimalString, type TradeRecord } from '../src/domain/trades';
-import { ResultsCandles } from '../src/features/journal/ResultsCandles';
+import { ResultsCandles } from '../src/features/results/ResultsCandles';
+import { ResultsDashboard } from '../src/features/results/ResultsDashboard';
 
 function dec(value: string) {
   const parsed = parseDecimalString(value);
@@ -61,7 +62,7 @@ describe('P13.A3 ResultsCandles', () => {
     expect(zeroY).toBeCloseTo(Number(upBody.getAttribute('y')) + Number(upBody.getAttribute('height')));
     expect(candle(container, 2).querySelector('rect')!.getAttribute('height')).toBe('2');
     const heading = container.querySelector('.kairos-results-candles__heading')!;
-    expect(heading).toHaveTextContent('▼');
+    expect(heading.querySelector('[data-icon="result-down"]')).not.toBeNull();
     expect(heading).toHaveTextContent('-60 USD');
     expect(container.querySelector('.kairos-results-candles')!.getAttribute('data-outcome')).toBe('loss');
     expect([...container.querySelectorAll('.kairos-results-candles__date')].map((date) => date.textContent)).toEqual(['1 Sep', '2 Sep', '3 Sep']);
@@ -80,7 +81,7 @@ describe('P13.A3 ResultsCandles', () => {
     expect(groups[0].getAttribute('data-direction')).toBe('down');
     expect(groups[0].querySelector('[data-mark="down"]')).not.toBeNull();
     expect([...container.querySelectorAll('.kairos-results-candles__date')].map((date) => date.textContent)).toEqual(['25 Sep']);
-    expect(container.querySelector('.kairos-results-candles__heading')).toHaveTextContent('▼');
+    expect(container.querySelector('.kairos-results-candles__heading')!.querySelector('[data-icon="result-down"]')).not.toBeNull();
   });
 
   it('says when only the last 30 days are drawn', () => {
@@ -109,6 +110,12 @@ async function database(): Promise<KairosDatabase> {
 }
 const closed = (symbol: string, dayKey: string, exitPrice: string, closeTime = '10:00') => ({ symbol, marketType: 'crypto', side: 'long', status: 'closed', grossPnlCurrency: 'USDT', openedAt: `${dayKey}T09:00:00.000Z`, closedAt: `${dayKey}T${closeTime}:00.000Z`, executions: [{ type: 'entry', price: '100', quantity: '1', executedAt: `${dayKey}T09:00:00.000Z` }, { type: 'exit', price: exitPrice, quantity: '1', executedAt: `${dayKey}T${closeTime}:00.000Z` }] } as const);
 
+/** "Your results" for real trades, as Analysis hosts it (T-051e). */
+function Results({ db, now }: { readonly db: KairosDatabase; readonly now: () => string }) {
+  const [choice, setChoice] = useState<VisualPnlPeriodChoice>({ kind: 'month', at: null });
+  return <ResultsDashboard db={db} scope="real" now={now} choice={choice} onChoiceChange={setChoice} renderTradeLink={() => null} refreshRevision={0} />;
+}
+
 describe('P13.A3 the candles on the pages', () => {
   afterEach(async () => { cleanup(); for (const name of names.splice(0)) await Dexie.delete(name); });
 
@@ -118,8 +125,8 @@ describe('P13.A3 the candles on the pages', () => {
     await writeVisualPnlTimeZonePreference(createKairosRepositories(db).metadata, 'UTC', now());
     expect((await saveManualTrade(db, closed('BTCUSDT', '2026-09-02', '150'))).ok).toBe(true);
     expect((await saveManualTrade(db, closed('ETHUSDT', '2026-09-03', '90'))).ok).toBe(true);
-    const { container } = render(<MemoryRouter><JournalRoute db={db} now={now} /></MemoryRouter>);
-    expect(await screen.findByRole('img', { name: /^Total result so far: 40 USDT/ })).toBeInTheDocument();
+    const { container } = render(<MemoryRouter><Results db={db} now={now} /></MemoryRouter>);
+    expect(await screen.findByRole('img', { name: /^Your total in September 2026: 40 USDT/ })).toBeInTheDocument();
     expect(container.querySelectorAll('[data-candle-day]')).toHaveLength(2);
   });
 
@@ -129,8 +136,8 @@ describe('P13.A3 the candles on the pages', () => {
     await writeVisualPnlTimeZonePreference(createKairosRepositories(db).metadata, 'UTC', now());
     expect((await saveManualTrade(db, closed('BTCUSDT', '2026-09-02', '70', '11:00'))).ok).toBe(true);
     expect((await saveManualTrade(db, closed('ETHUSDT', '2026-09-02', '150', '10:30'))).ok).toBe(true);
-    const { container } = render(<MemoryRouter><JournalRoute db={db} now={now} /></MemoryRouter>);
-    await screen.findByRole('img', { name: /^Total result so far: 20 USDT/ });
+    const { container } = render(<MemoryRouter><Results db={db} now={now} /></MemoryRouter>);
+    await screen.findByRole('img', { name: /^Your total in September 2026: 20 USDT/ });
     const numbers = container.querySelector('.kairos-results-candles__numbers')!;
     const row = within(numbers as HTMLElement).getByRole('rowheader', { name: /2 September 2026/ }).closest('tr')!;
     expect(within(row).getAllByRole('cell').map((cell) => cell.textContent)).toEqual(['0', '50', '0', '20']);

@@ -89,27 +89,28 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
   // to what the retry settles on: the heading or the first new card after it works, the new "Try again" when it fails.
   const section = useRef<HTMLElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
-  const refocus = useRef<{ readonly kind: 'load' } | { readonly kind: 'older'; readonly shown: number } | null>(null);
-  const retryHadFocus = (): boolean => document.activeElement?.closest('.kairos-error-state') != null;
-  const retryLoad = onRetry === undefined ? undefined : () => { refocus.current = retryHadFocus() ? { kind: 'load' } : null; onRetry(); };
-  const retryOlder = onShowOlder === undefined ? undefined : () => { refocus.current = retryHadFocus() ? { kind: 'older', shown: entries.length } : null; onShowOlder(); };
+  // `tapped` is the "Try again" itself: React may run the effect for the screen the tap was made on after the tap, and that
+  // run, which would focus the tapped button, is skipped.
+  const refocus = useRef<{ readonly kind: 'load'; readonly tapped: Element } | { readonly kind: 'older'; readonly shown: number; readonly tapped: Element } | null>(null);
+  const tappedRetry = (): Element | null => { const active = document.activeElement; return active?.closest('.kairos-error-state') != null ? active : null; };
+  const retryLoad = onRetry === undefined ? undefined : () => { const tapped = tappedRetry(); refocus.current = tapped ? { kind: 'load', tapped } : null; onRetry(); };
+  const retryOlder = onShowOlder === undefined ? undefined : () => { const tapped = tappedRetry(); refocus.current = tapped ? { kind: 'older', shown: entries.length, tapped } : null; onShowOlder(); };
   const tradeDeleted = onTradeDeleted === undefined ? undefined : async (notice: string) => { await onTradeDeleted(notice); heading.current?.focus(); };
 
   useEffect(() => {
     const target = refocus.current;
     if (target === null || (target.kind === 'load' ? isLoading : isLoadingOlder)) return;
-    refocus.current = null;
     const root = section.current;
     if (root === null) return;
     const firstFocusable = (element: Element | null | undefined) => element?.querySelector<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled])');
-    if (target.kind === 'load') {
-      (errorMessage ? firstFocusable(root.querySelector('.kairos-history__load-error')) : heading.current)?.focus();
-      return;
-    }
-    const next = olderFailed
-      ? firstFocusable(root.querySelector('.kairos-history__older-error'))
-      : firstFocusable(root.querySelectorAll('.kairos-history-card')[target.shown]) ?? root.querySelector<HTMLElement>('.kairos-history__older:not([disabled])');
-    (next ?? heading.current)?.focus();
+    const next = target.kind === 'load'
+      ? (errorMessage ? firstFocusable(root.querySelector('.kairos-history__load-error')) : heading.current)
+      : (olderFailed
+        ? firstFocusable(root.querySelector('.kairos-history__older-error'))
+        : firstFocusable(root.querySelectorAll('.kairos-history-card')[target.shown]) ?? root.querySelector<HTMLElement>('.kairos-history__older:not([disabled])')) ?? heading.current;
+    if (next === target.tapped) return;
+    refocus.current = null;
+    next?.focus();
   }, [isLoading, isLoadingOlder, errorMessage, olderFailed, entries.length]);
 
   return (

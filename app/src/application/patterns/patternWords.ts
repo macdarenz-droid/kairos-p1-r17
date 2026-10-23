@@ -2,6 +2,7 @@
  * P30: the plain words of the patterns. Every number is shown exactly as its owner gives it; nothing is worked out here except which sentence to use. The words describe past trades and never predict or advise.
  */
 
+import { VISUAL_PNL_HOUR_BLOCK_NAMES, VISUAL_PNL_WEEKDAY_NAMES } from '../visual-pnl';
 import { PATTERN_LEAST_TRADES, type PatternTradesSummary, type TradePattern, type TradePatternGroup, type TradePatternKind } from './tradePatterns';
 
 const trades = (count: number) => (count === 1 ? '1 trade' : `${count} trades`);
@@ -19,8 +20,8 @@ export function describeTradePattern(kind: TradePatternKind): Readonly<{ title: 
   return PATTERN_WORDS[kind];
 }
 
-const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const;
-const HOUR_BLOCKS = ['Night (00:00 to 03:59)', 'Early morning (04:00 to 07:59)', 'Morning (08:00 to 11:59)', 'Afternoon (12:00 to 15:59)', 'Evening (16:00 to 19:59)', 'Late evening (20:00 to 23:59)'] as const;
+const WEEKDAYS = VISUAL_PNL_WEEKDAY_NAMES;
+const HOUR_BLOCKS = VISUAL_PNL_HOUR_BLOCK_NAMES;
 const FIXED_LABELS: Readonly<Record<string, string>> = Object.freeze({
   kept: 'You kept your plan',
   broken: 'You went against your plan',

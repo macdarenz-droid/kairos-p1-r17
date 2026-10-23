@@ -6,8 +6,9 @@
  */
 
 import type { KairosDatabase } from '../../data/database';
+import { decimalCompare } from '../../domain/calculations/decimalKernel';
 import { createKairosRepositories } from '../../data/repositories';
-import type { TradeId } from '../../domain/trades';
+import type { DecimalString, TradeId } from '../../domain/trades';
 import { summarizeResultsInHomeCurrency, type ResultsInHomeCurrencySummary, type TradeResultInHomeCurrency } from '../currency/resultsInHomeCurrency';
 import { projectDisciplineScore, type DisciplineScoreProjection } from '../discipline/disciplineScore';
 import { loadTradeDiscipline } from '../discipline/tradeDiscipline';
@@ -18,6 +19,7 @@ import { summarizeVisualPnlByDay, type VisualPnlDailySummaryProjection } from '.
 import { projectVisualPnlDayKey } from '../visual-pnl/dayBucket';
 import { shiftVisualPnlMonthKey } from '../visual-pnl/dayKeyCalendar';
 import { projectVisualPnlPeriod, type VisualPnlPeriod, type VisualPnlPeriodChoice, type VisualPnlPeriodProblem } from '../visual-pnl/resultsPeriod';
+import { projectVisualPnlRunningTotals, type VisualPnlResultCandleMark } from '../visual-pnl/resultCandles';
 import { readVisualPnlTimeZonePreference } from '../visual-pnl/timeZonePreference';
 import { loadPerformancePeriod } from './loadPerformanceSummary';
 import { summarizePerformance, type PerformanceSummary } from './performanceSummary';
@@ -27,8 +29,10 @@ export interface ResultsDashboardProjection {
   readonly timeZone: string;
   readonly todayKey: string;
   readonly period: VisualPnlPeriod;
-  /** The period's closed trades, oldest close first, with results in the home currency when one is set (copies, D116). */
+  /** The period's closed trades, oldest close first, with results in the home currency when one is set (copies, D116): for totals and numbers. */
   readonly entries: readonly JournalHistoryEntry[];
+  /** The same trades as recorded, in their own currency: for trade lists, which add the "In EUR: …" line from `conversions`. */
+  readonly recordedEntries: readonly JournalHistoryEntry[];
   /** Each trade's close day in the saved zone (null when its close time can't be read). */
   readonly tradeDays: Readonly<Record<string, string | null>>;
   /** Per trade, for the "In EUR: …" lines; null when no home currency is chosen. */
@@ -133,6 +137,7 @@ export async function loadResultsDashboard(db: KairosDatabase, options: Readonly
     todayKey,
     period,
     entries,
+    recordedEntries: Object.freeze(read.recorded),
     tradeDays: Object.freeze(tradeDays),
     conversions,
     inHomeCurrency: summarizeResultsInHomeCurrency(inHome),
@@ -147,14 +152,50 @@ export async function loadResultsDashboard(db: KairosDatabase, options: Readonly
   return Object.freeze({ kind: 'ready' as const, dashboard });
 }
 
-/** The dashboard's trades for a tap: those that closed from `fromDayKey` (included) to `toDayKey` (not included), or those ids, in close order. Never a new read. */
+/** The dashboard's trades for a tap, as recorded: those that closed from `fromDayKey` (included) to `toDayKey` (not included), or those ids, in close order. Never a new read. */
 export function selectResultsEntries(dashboard: ResultsDashboardProjection, pick: Readonly<{ fromDayKey: string; toDayKey: string }> | Readonly<{ tradeIds: readonly string[] }>): readonly JournalHistoryEntry[] {
   if ('tradeIds' in pick) {
     const wanted = new Set(pick.tradeIds);
-    return Object.freeze(dashboard.entries.filter((entry) => wanted.has(entry.trade.id)));
+    return Object.freeze(dashboard.recordedEntries.filter((entry) => wanted.has(entry.trade.id)));
   }
-  return Object.freeze(dashboard.entries.filter((entry) => {
+  return Object.freeze(dashboard.recordedEntries.filter((entry) => {
     const day = dashboard.tradeDays[entry.trade.id];
     return day !== null && day !== undefined && day >= pick.fromDayKey && day < pick.toDayKey;
   }));
+}
+
+/** Each close day's trade ids, in close order, from tradeDays (trades that can't be placed on a day are left out). */
+export function projectResultsTradeIdsByDay(dashboard: ResultsDashboardProjection): Readonly<Record<string, readonly string[]>> {
+  const byDay: Record<string, string[]> = {};
+  for (const entry of dashboard.entries) {
+    const day = dashboard.tradeDays[entry.trade.id];
+    if (day === null || day === undefined) continue;
+    (byDay[day] ??= []).push(entry.trade.id);
+  }
+  return Object.freeze(Object.fromEntries(Object.entries(byDay).map(([day, ids]) => [day, Object.freeze(ids)])));
+}
+
+/**
+ * D205: the dip's high point and low point as marks for the candles; empty when the dip is unavailable or 0. The totals
+ * after each trade are the running totals of the period's results from 0, as the candles draw them; a trade that can't be
+ * placed on a day leaves the candles short of it, so then nothing is marked.
+ */
+export function projectResultsDipMarks(dashboard: ResultsDashboardProjection): readonly VisualPnlResultCandleMark[] {
+  const dip = dashboard.summary.biggestDip;
+  if (!dip.available || decimalCompare(dip.amount, '0') !== 1 || dip.toTradeId === null || dashboard.days.blockedTrades.length > 0) return Object.freeze([]);
+  const amounts: DecimalString[] = [];
+  for (const entry of dashboard.entries) {
+    if (entry.visualPnl.amount === null) return Object.freeze([]);
+    amounts.push(entry.visualPnl.amount);
+  }
+  const totals = projectVisualPnlRunningTotals('0' as DecimalString, amounts);
+  if (totals === null) return Object.freeze([]);
+  const after = (id: TradeId): DecimalString | null => totals[dashboard.entries.findIndex((entry) => entry.trade.id === id)] ?? null;
+  const high = dip.fromTradeId === null ? '0' as DecimalString : after(dip.fromTradeId);
+  const low = after(dip.toTradeId);
+  if (high === null || low === null) return Object.freeze([]);
+  return Object.freeze([
+    Object.freeze({ key: 'dip-high', afterTradeId: dip.fromTradeId, amount: high }),
+    Object.freeze({ key: 'dip-low', afterTradeId: dip.toTradeId, amount: low }),
+  ]);
 }

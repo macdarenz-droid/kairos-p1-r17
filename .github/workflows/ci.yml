@@ -51,7 +51,8 @@ jobs:
   e2e:
     name: real-app smoke (Playwright)
     needs: check
-    runs-on: ubuntu-latest
+    # Playwright 1.56.1 has no Chromium for ubuntu-26.04, which ubuntu-latest now gives.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5

@@ -14,11 +14,13 @@ export function HomeDashboardYourTrades({load=loadHomeYourTrades,glance}:{readon
   const [page,setPage]=useState(0),[selected,setSelected]=useState<string|null>(null),[revision,setRevision]=useState(0);
   const field=useRef<HTMLDivElement>(null),[bounds,setBounds]=useState({width:0,height:320}),[hidden,setHidden]=useState(false);
   const refresh=useCallback(()=>setRevision(x=>x+1),[]);
-  // Set when "Try again" had focus: once the load settles, focus the heading, or the new "Try again" (WCAG 2.4.3).
-  const heading=useRef<HTMLHeadingElement>(null),refocusAfterRetry=useRef(false);
-  const retry=()=>{refocusAfterRetry.current=document.activeElement?.closest('.kairos-error-state')!=null;refresh();};
-  useEffect(()=>{if(loading||!refocusAfterRetry.current)return;refocusAfterRetry.current=false;
-    (error?field.current?.querySelector<HTMLElement>('.kairos-error-state button'):heading.current)?.focus();
+  // The "Try again" tapped with focus: once the load settles, focus the heading, or the new "Try again" (WCAG 2.4.3).
+  // React may run the effect for the screen the tap was made on after the tap: that run finds the tapped button and is skipped.
+  const heading=useRef<HTMLHeadingElement>(null),refocusAfterRetry=useRef<Element|null>(null);
+  const retry=()=>{const active=document.activeElement;refocusAfterRetry.current=active?.closest('.kairos-error-state')!=null?active:null;refresh();};
+  useEffect(()=>{const tapped=refocusAfterRetry.current;if(loading||tapped===null)return;
+    const target=error?field.current?.querySelector<HTMLElement>('.kairos-error-state button'):heading.current;
+    if(target===tapped)return;refocusAfterRetry.current=null;target?.focus();
   },[loading,error]);
   useEffect(()=>{let active=true;setLoading(true);setError(false);
     void load().then(rows=>{if(active){setTrades(rows);setPage(0);setSelected(null);}}).catch(()=>{if(active)setError(true);}).finally(()=>{if(active)setLoading(false);});

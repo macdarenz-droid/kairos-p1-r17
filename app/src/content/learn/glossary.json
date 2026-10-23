@@ -72,6 +72,18 @@
       "picture": null, "related": ["big-news"] },
     { "id": "big-news", "plainWords": "Big news", "tradingTerm": "High-impact event", "alsoCalled": ["high-impact news", "market-moving news", "major news"],
       "explanation": "Scheduled news that often moves prices a lot and fast, such as a central bank's rate decision or US inflation and jobs numbers. Kairos sizes official releases with its own list; you size the news you add. Trade cards show big news within 30 minutes.",
-      "picture": null, "related": ["news-calendar"] }
+      "picture": null, "related": ["news-calendar"] },
+    { "id": "average-result-per-trade", "plainWords": "Average result per trade", "tradingTerm": "Expectancy", "alsoCalled": ["expected value", "average trade"],
+      "explanation": "Your results after fees added up and shared out over your trades with a result. Above 0 means your trades made money on average, even if you lost more often than you won.",
+      "picture": null, "related": ["result-after-fees", "for-every-1-you-lost", "times-what-you-risked"] },
+    { "id": "for-every-1-you-lost", "plainWords": "For every 1 you lost", "tradingTerm": "Profit factor", "alsoCalled": ["gross profit ÷ gross loss"],
+      "explanation": "What your winning trades made after fees, divided by what your losing trades lost. 1.5 means you made 1.5 for every 1 you lost. Below 1 means you lost more than you made.",
+      "picture": null, "related": ["average-result-per-trade", "result-after-fees", "biggest-dip"] },
+    { "id": "biggest-dip", "plainWords": "Biggest dip", "tradingTerm": "Maximum drawdown", "alsoCalled": ["max drawdown", "drawdown"],
+      "explanation": "The largest fall of your total result from a high point to a later low, counting closed trades in the order they closed. It is the worst stretch you had to sit through.",
+      "picture": null, "related": ["total-result-so-far", "result-after-fees", "for-every-1-you-lost"] },
+    { "id": "share-won", "plainWords": "Share of trades won", "tradingTerm": "Win rate", "alsoCalled": ["hit rate", "strike rate"],
+      "explanation": "How many of your trades with a result ended above 0 after fees, as a share. Kairos shows it from 10 trades, because a few trades swing it a lot. A high share can still lose money when the losses are big.",
+      "picture": null, "related": ["average-result-per-trade", "for-every-1-you-lost"] }
   ]
 }
