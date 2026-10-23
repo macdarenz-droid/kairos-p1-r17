@@ -326,7 +326,12 @@ export function ResultsDashboard({ db, scope, choice, onChoiceChange, renderTrad
   const ratesRunning = useRef<Readonly<{ controller: AbortController; pairs: readonly MissingExchangeRate[] }> | null>(null);
   /** Set by a tap on the rates' "Try again" to the state it was tapped in: after a newer answer, focus goes to the currency note's link, or the new "Try again". */
   const ratesFocus = useRef<RatesFetch | null>(null);
-  useEffect(() => () => ratesRunning.current?.controller.abort(), []);
+  /** False once the dashboard is gone: an answer that comes later changes nothing (its page may be closed by then). */
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; request.current += 1; ratesRunning.current?.controller.abort(); };
+  }, []);
 
   useEffect(() => {
     const mine = ++request.current;
@@ -335,7 +340,7 @@ export function ResultsDashboard({ db, scope, choice, onChoiceChange, renderTrad
       // A second load (a refresh, focus, or StrictMode's second effect) waits for the same start, so its
       // 'started-from-device' answer is never replaced by a later 'saved' (D199's first-use line).
       started.current ??= startVisualPnlTimeZoneFromDevice(db, readDeviceTimeZone(), nowRef.current()).then(
-        start => { setZoneStart(start); return start; },
+        start => { if (mounted.current) setZoneStart(start); return start; },
         (error: unknown) => { started.current = null; throw error; },
       );
       await started.current;

@@ -337,3 +337,29 @@ describe('T-051c practice results', () => {
     expect(within(empty).queryAllByRole('link').filter(link => link.textContent !== 'Change')).toHaveLength(0);
   });
 });
+
+describe('T-051j fix ci: a dashboard that is gone changes nothing', () => {
+  it('ignores its read when the answer comes after it closed and its page is gone', async () => {
+    const db = await database();
+    let answer: ((result: Awaited<ReturnType<typeof loadResultsDashboard>>) => void) | null = null;
+    const load: typeof loadResultsDashboard = () => new Promise(resolve => { answer = resolve; });
+    const view = show({ db, load });
+    await waitFor(() => expect(answer).not.toBeNull());
+    view.unmount();
+    // CI saw this: the read answered after the test page was torn down, and React's update needed `window`.
+    const late: unknown[] = [];
+    const onLate = (reason: unknown) => { late.push(reason); };
+    // Node's own process (the tests' types leave Node out): it hears a promise that fails with nobody waiting.
+    const node = (globalThis as unknown as { process: { on(event: 'unhandledRejection', listener: (reason: unknown) => void): void; off(event: 'unhandledRejection', listener: (reason: unknown) => void): void } }).process;
+    node.on('unhandledRejection', onLate);
+    vi.stubGlobal('window', undefined);
+    try {
+      answer!({ kind: 'time-zone-unconfigured' });
+      await new Promise(resolve => setTimeout(resolve, 20));
+    } finally {
+      vi.unstubAllGlobals();
+      node.off('unhandledRejection', onLate);
+    }
+    expect(late).toEqual([]);
+  });
+});
