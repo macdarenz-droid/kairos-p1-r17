@@ -109,3 +109,19 @@ describe('T-052a a planned trade drawn from now', () => {
     expect(row(open, 'price-now')).toBeUndefined();
   });
 });
+
+describe('T-052b fix r1 an open trade asks the market up to now', () => {
+  it('after a partial exit, its candles run to now and are asked again each time', async () => {
+    stubFetch();
+    const open = trade({ status: 'open', openedAt: '2026-09-24T08:00:00.000Z' });
+    const fills = [
+      { id: 'e1' as never, tradeId, type: 'entry' as const, price: dec('100'), quantity: dec('2'), executedAt: '2026-09-24T08:00:00.000Z', createdAt: NOW },
+      { id: 'x1' as never, tradeId, type: 'exit' as const, price: dec('105'), quantity: dec('1'), executedAt: '2026-09-24T09:00:00.000Z', createdAt: NOW },
+    ];
+    await loadTradePictureCandles(open, fills, deps());
+    const window = planTradePictureCandleWindow(Date.parse('2026-09-24T08:00:00.000Z'), nowMs)!;
+    expect(Number(klineUrls[0]!.searchParams.get('endTime'))).toBe(window.endTimeMs);
+    await loadTradePictureCandles(open, fills, deps());
+    expect(klineUrls).toHaveLength(2);
+  });
+});

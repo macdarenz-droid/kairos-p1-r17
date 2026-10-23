@@ -205,10 +205,12 @@ export async function loadTradePictureCandles(
     } else {
       const times = tradePictureTimes(trade, executions, nowMs);
       if (times.startMs === null) return failed('no-start');
-      window = planTradePictureCandleWindow(times.startMs, times.endMs);
+      // An open trade is still in the market after a partial exit, so its candles run to now (D192 "so far").
+      window = planTradePictureCandleWindow(times.startMs, trade.status === 'open' ? nowMs : times.endMs);
     }
     if (window === null) return failed('no-start');
-    const keep = !planned;
+    // Windows that end now are never kept: the next look must see the newer candles.
+    const keep = !planned && trade.status !== 'open';
     const options = deps.signal ? { signal: deps.signal } : undefined;
 
     const metadata = await deps.metadata.acquireInstrumentMetadata(options);

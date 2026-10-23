@@ -1,4 +1,4 @@
-import { useId, useLayoutEffect, useRef, useState, type PointerEvent, type Ref } from 'react';
+import { useCallback, useId, useLayoutEffect, useRef, useState, type PointerEvent, type Ref } from 'react';
 import type { UnavailableWords } from '../../application/online/onlineWords';
 import { describePriceMove } from '../../application/performance/performanceWords';
 import type { TradePictureBox, TradePictureCandle, TradePictureInfoKey, TradePictureModel } from '../../application/trade-visualizer';
@@ -221,8 +221,12 @@ export function TradePictureCard({ model, candlesLoading = false, svgRef, compac
   const candleWidth = scale ? tradePictureCandleBodyWidth(model.candles.length, TRADE_PICTURE_WIDTH - pad.left - pad.right) : 0;
   const planned = (key: 'planned-entry' | 'stop' | 'target') => model.info.find(row => row.key === key)?.value ?? null;
   // D216: look at one candle with the slider, or by tapping or holding the drawing. Presentation only.
-  const [pickedIndex, setPickedIndex] = useState<number | null>(null);
-  const picked = pickedIndex === null ? null : model.candles[pickedIndex] ?? null;
+  // The pick is kept by the candle's time, so a sliding window (Replay) keeps the same candle, and drops it once it leaves.
+  const [pickedTime, setPickedTime] = useState<string | null>(null);
+  const found = pickedTime === null ? -1 : model.candles.findIndex(candle => candle.time === pickedTime);
+  const pickedIndex = found === -1 ? null : found;
+  const picked = pickedIndex === null ? null : model.candles[pickedIndex]!;
+  const setPickedIndex = (index: number | null) => setPickedTime(index === null ? null : model.candles[index]?.time ?? null);
   const svgElement = useRef<SVGSVGElement | null>(null);
   const pressed = useRef(false);
   const lookable = !compact && scale !== null && model.candles.length > 0;
@@ -245,13 +249,14 @@ export function TradePictureCard({ model, candlesLoading = false, svgRef, compac
   };
   const onPointerMove = (event: PointerEvent<HTMLDivElement>) => { if (lookable && pressed.current) pickAt(event.clientX); };
   const onPointerEnd = () => { pressed.current = false; };
-  const setSvg = (element: SVGSVGElement | null) => {
+  const setSvg = useCallback((element: SVGSVGElement | null) => {
     svgElement.current = element;
     if (typeof svgRef === 'function') svgRef(element);
     else if (svgRef) (svgRef as { current: SVGSVGElement | null }).current = element;
-  };
+  }, [svgRef]);
   const readout = picked === null ? NO_CANDLE_PICKED : describeCandle(picked);
-  const moveWords = !compact && notes ? describePriceMove(model.priceMove) : null;
+  // The lines are drawn on every full picture (Replay too), so their words are always there with them.
+  const moveWords = compact ? null : describePriceMove(model.priceMove);
   // A "Try again" that had focus and ends without a box (candles came) sends focus to the chart, so it stays in the sheet
   // and Escape still closes it. Ending with another failure keeps the box, whose button takes focus back itself.
   const main = useRef<HTMLDivElement>(null);
@@ -320,7 +325,8 @@ export function TradePictureCard({ model, candlesLoading = false, svgRef, compac
       <label htmlFor={lookupId}>Look at a candle</label>
       <input id={lookupId} type="range" min={0} max={model.candles.length} step={1} value={pickedIndex === null ? 0 : pickedIndex + 1}
         aria-valuetext={picked === null ? 'No candle picked' : readout} onChange={event => { const value = Number(event.target.value); setPickedIndex(value === 0 ? null : value - 1); }} />
-      <p className="kairos-trade-picture__readout" aria-live="polite">{readout}</p>
+      {/* Not a live region: the slider already says each candle, and a drag would queue a sentence per candle. */}
+      <p className="kairos-trade-picture__readout">{readout}</p>
     </div> : null}
     {/* Outside the image role, so screen readers hear why there are no candles. */}
     {notes && noCandles && candleFailure === null ? <p className="kairos-trade-picture__note">{!model.marketHasCandles ? 'Candles are shown for crypto trades only for now.' : candlesLoading ? 'Loading candles…' : candleNote ?? 'No candles for this time.'}</p> : null}

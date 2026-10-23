@@ -254,7 +254,8 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
   const drawsBox = facts.planned.entry !== null && (facts.planned.stop !== null || facts.planned.target !== null);
   const roomMs = drawsBox ? TRADE_PICTURE_PLANNED_ROOM_CANDLES * tradePictureIntervalMs(input.candleInterval ?? TRADE_PICTURE_PLANNED_INTERVAL) : 0;
   const startMs = planned ? (Number.isFinite(nowMs) ? nowMs : null) : tradeStartMs;
-  const endMs = planned ? (startMs === null ? null : startMs + roomMs) : Number.isFinite(timesEndMs) ? timesEndMs : null;
+  // An open trade is still in the market after a partial exit, so its boxes and price range run to now, as its price move does.
+  const endMs = planned ? (startMs === null ? null : startMs + roomMs) : trade.status === 'open' ? nowMs : Number.isFinite(timesEndMs) ? timesEndMs : null;
   const startAt = startMs === null ? null : iso(startMs);
   const endAt = iso(endMs ?? nowMs);
 

@@ -68,3 +68,49 @@ describe('T-052b how far price went, in words (D192)', () => {
     expect(describePriceMove({ available: false, reason: 'no-candles' })).toBeNull();
   });
 });
+
+describe('T-052b fix r1 the axis follows clock changes, every language, and long ranges', () => {
+  const localClock = (ms: number, timeZone: string) => new Intl.DateTimeFormat('en-GB', { timeZone, weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(ms);
+
+  it('puts day labels at local midnight across the October clock change in London, with no day twice', () => {
+    const ticks = tradePictureTimeTicks(at('2026-10-23T12:00:00.000Z'), at('2026-10-27T12:00:00.000Z'), 'Europe/London');
+    expect(ticks.map(tick => tick.label)).toEqual(['24', '25', '26', '27'].map(day => format({ timeZone: 'Europe/London', day: 'numeric', month: 'short' }, at(`2026-10-${day}T12:00:00.000Z`))));
+    expect(ticks.every(tick => localClock(tick.ms, 'Europe/London').endsWith('00:00'))).toBe(true);
+  });
+
+  it('starts months on the 1st, and weeks on Monday, after the clock change', () => {
+    const months = tradePictureTimeTicks(at('2026-08-15T00:00:00.000Z'), at('2026-12-15T00:00:00.000Z'), 'Europe/London');
+    expect(months.map(tick => format({ timeZone: 'Europe/London', day: 'numeric' }, tick.ms))).toEqual(['1', '1', '1', '1']);
+    expect(months.map(tick => format({ timeZone: 'Europe/London', month: 'numeric' }, tick.ms))).toEqual(['9', '10', '11', '12']);
+    const weeks = tradePictureTimeTicks(at('2026-10-10T00:00:00.000Z'), at('2026-11-20T00:00:00.000Z'), 'Europe/London');
+    expect(weeks.length).toBeGreaterThan(1);
+    expect(weeks.every(tick => localClock(tick.ms, 'Europe/London') === 'Mon 00:00')).toBe(true);
+  });
+
+  it('reads the clock the same in a language with its own digits or calendar, and labels in that language', () => {
+    const Real = Intl.DateTimeFormat;
+    const intl = Intl as { DateTimeFormat: typeof Intl.DateTimeFormat };
+    for (const [locale, zone] of [['ar-EG', 'Africa/Cairo'], ['th-TH', 'Asia/Bangkok']] as const) {
+      class Local extends Real { constructor(locales?: string | string[], options?: Intl.DateTimeFormatOptions) { super(locales ?? locale, options); } }
+      intl.DateTimeFormat = Local as typeof Intl.DateTimeFormat;
+      try {
+        const hours = tradePictureTimeTicks(at('2026-09-20T09:00:00.000Z'), at('2026-09-20T12:00:00.000Z'), zone);
+        expect(hours.length).toBeGreaterThanOrEqual(3);
+        expect(hours.map(tick => tick.label)).toEqual(hours.map(tick => new Real(locale, { timeZone: zone, timeStyle: 'short' }).format(tick.ms)));
+        const weeks = tradePictureTimeTicks(at('2026-09-01T00:00:00.000Z'), at('2026-10-20T00:00:00.000Z'), zone);
+        // 49 days: the two-week step wins, so every label is a Monday at midnight.
+        expect(weeks.length).toBeGreaterThan(1);
+        expect(weeks.every(tick => localClock(tick.ms, zone) === 'Mon 00:00')).toBe(true);
+      } finally {
+        intl.DateTimeFormat = Real;
+      }
+    }
+  });
+
+  it('labels long and middling ranges too: 11 days, 7 months, a year, two years', () => {
+    const from = at('2026-01-10T00:00:00.000Z');
+    for (const [span, least] of [[11 * DAY, 3], [214 * DAY, 2], [365 * DAY, 2], [730 * DAY, 2]] as const) {
+      expect(tradePictureTimeTicks(from, from + span, 'UTC').length).toBeGreaterThanOrEqual(least);
+    }
+  });
+});

@@ -2,6 +2,7 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { projectTradePicture, type TradePictureInput } from '../src/application/trade-visualizer';
+import { decimalCompare } from '../src/domain/calculations';
 import { parseDecimalString, type DecimalString, type TradeExecutionId, type TradeFeeId, type TradeFeeRecord, type TradeId, type TradePlanId, type TradeRecord } from '../src/domain/trades';
 import { TradePictureCard, tradePictureCandleBodyWidth } from '../src/features/journal/TradePictureCard';
 
@@ -400,5 +401,42 @@ describe('T-052b a time axis, how far price went, and a look at any candle', () 
     expect(readout.textContent).toMatch(/close 121$/);
     cleanup();
     expect(render(<TradePictureCard model={model} compact />).container.querySelector('input[type="range"]')).toBeNull();
+  });
+});
+
+describe('T-052b fix r1', () => {
+  const hour = (h: number, close: string) => ({ openTime: `2026-09-20T${String(h).padStart(2, '0')}:00:00.000Z`, closeTime: `2026-09-20T${String(h).padStart(2, '0')}:59:59.999Z`, open: dec('100'), high: dec('105'), low: dec('95'), close: dec(close) });
+
+  it('keeps the picked candle when the candles slide (Replay), and lets it go when it leaves', () => {
+    const at = (hours: readonly number[]) => projectTradePicture({ ...input, candles: hours.map(h => hour(h, String(100 + h))) });
+    const { container, rerender } = render(<TradePictureCard model={at([8, 9, 10, 11])} />);
+    const readout = () => container.querySelector('.kairos-trade-picture__readout')!.textContent;
+    fireEvent.change(screen.getByRole('slider', { name: 'Look at a candle' }), { target: { value: '3' } });
+    expect(readout()).toMatch(/close 110$/);
+    rerender(<TradePictureCard model={at([9, 10, 11, 12])} />);
+    expect(readout()).toMatch(/close 110$/);
+    expect(container.querySelectorAll('.kairos-trade-picture__candle')[1]).toHaveAttribute('data-picked');
+    expect(screen.getByRole('slider', { name: 'Look at a candle' })).toHaveValue('2');
+    rerender(<TradePictureCard model={at([11, 12, 13, 14])} />);
+    expect(readout()).toBe('Tap or hold a candle to see its time and prices.');
+  });
+
+  it('says how far price went on every full picture, Replay\'s too, and the readout does not repeat the slider', () => {
+    const { container } = render(<TradePictureCard model={projectTradePicture(input)} notes={false} />);
+    expect(container.querySelector('.kairos-trade-picture__move')).toHaveTextContent(/^From your average entry, price went /);
+    expect(container.querySelector('.kairos-trade-picture__readout')).not.toHaveAttribute('aria-live');
+  });
+
+  it('an open trade after a partial exit runs to now: its boxes, its price range and its move', () => {
+    const now = '2026-09-20T13:30:00.000Z';
+    const open = projectTradePicture({
+      ...input, now, trade: { ...trade, status: 'open', closedAt: null },
+      executions: [input.executions[0]!, { ...input.executions[1]!, quantity: dec('1'), executedAt: '2026-09-20T10:30:00.000Z' }],
+      candles: [hour(9, '101'), hour(10, '102'), hour(11, '103'), { ...hour(12, '104'), high: dec('160') }],
+    });
+    expect(open.riskBox?.endAt).toBe(now);
+    expect(open.priceMove).toMatchObject({ available: true, highest: '160', soFar: true });
+    // The high after the last exit is inside the picture, so its line is on the drawing.
+    expect(decimalCompare(open.priceRange!.high, '160')).toBe(1);
   });
 });
