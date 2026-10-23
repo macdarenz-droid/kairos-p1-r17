@@ -193,6 +193,6 @@ describe('T-038d trade picture label and notes', () => {
     cleanup();
     render(<TradePictureCard model={empty} />);
     expect(screen.getByText('No candles for this time.')).toBeInTheDocument();
-    expect(screen.getByText('Add a stop and target to see your risk box.')).toBeInTheDocument();
+    expect(screen.getByText('Add a planned entry, stop and target to see your risk and reward boxes.')).toBeInTheDocument();
   });
 });

@@ -205,24 +205,28 @@ describe('T-027d save image', () => {
   });
 
   function ports(canShare: boolean) {
-    const rasterize = vi.fn(async (_svg: string, _width: number, _height: number, _scale: number) => new Blob(['png'], { type: 'image/png' }));
+    // U6 (T-052c): the card is painted on a canvas; this one only records, and measures every letter as half its size.
+    const context = { fillStyle: '', font: '24px', textAlign: 'left', textBaseline: 'alphabetic', fillRect: vi.fn(), fillText: vi.fn(), drawImage: vi.fn(),
+      measureText: vi.fn(function (this: { font: string }, text: string) { return { width: text.length * parseInt(this.font.split(' ')[1] ?? '24', 10) * 0.5 }; }) };
+    const makeCanvas = vi.fn((_width: number, _height: number) => ({ context: context as never, toBlob: async () => new Blob(['png'], { type: 'image/png' }) }));
+    const loadSvg = vi.fn(async (_svg: string) => ({}) as CanvasImageSource);
     const share = vi.fn(async (_data: { files: File[]; title: string }) => undefined);
     const download = vi.fn((_blob: Blob, _fileName: string) => undefined);
-    const value: TradePictureSavePorts = { rasterize, canShare: () => canShare, share, download };
-    return Object.assign(value, { rasterize, share, download });
+    const value: TradePictureSavePorts = { makeCanvas, loadSvg, loadFonts: async () => undefined, canShare: () => canShare, share, download };
+    return Object.assign(value, { makeCanvas, loadSvg, share, download });
   }
 
   it('shares when the device can share files, else downloads, with the kairos-<symbol>-<date>.png name', async () => {
     const fileName = tradePictureFileName('btc/usdt', opened);
     expect(fileName).toBe('kairos-BTCUSDT-2026-09-20.png');
     const sharing = ports(true);
-    await expect(saveTradePictureImage('<svg/>', fileName, sharing)).resolves.toBe('shared');
+    const image = new Blob(['png'], { type: 'image/png' });
+    await expect(saveTradePictureImage(image, fileName, sharing)).resolves.toBe('shared');
     expect(sharing.share).toHaveBeenCalledWith(expect.objectContaining({ files: [expect.objectContaining({ name: fileName, type: 'image/png' })] }));
     expect(sharing.download).not.toHaveBeenCalled();
     const downloading = ports(false);
-    await expect(saveTradePictureImage('<svg/>', fileName, downloading)).resolves.toBe('downloaded');
-    expect(downloading.download).toHaveBeenCalledWith(expect.any(Blob), fileName);
-    expect(downloading.rasterize).toHaveBeenCalledWith('<svg/>', 360, 220, 2);
+    await expect(saveTradePictureImage(image, fileName, downloading)).resolves.toBe('downloaded');
+    expect(downloading.download).toHaveBeenCalledWith(image, fileName);
   });
 
   it('the button in the full picture hands the serialized picture to the save ports', async () => {
@@ -233,6 +237,8 @@ describe('T-027d save image', () => {
     render(<TradePictureCandleLoaderContext.Provider value={offline}><TradePicture entry={entry} variant="full" savePorts={save} /></TradePictureCandleLoaderContext.Provider>);
     fireEvent.click(screen.getByRole('button', { name: 'Share or download image' }));
     await waitFor(() => expect(save.download).toHaveBeenCalledWith(expect.any(Blob), 'kairos-BTCUSDT-2026-09-20.png'));
-    expect(save.rasterize.mock.calls[0][0]).toContain('data-box="risk"');
+    // The card is 1080×1350 and its chart is the picture itself.
+    expect(save.makeCanvas).toHaveBeenCalledWith(1080, 1350);
+    expect(save.loadSvg.mock.calls[0]![0]).toContain('data-box="risk"');
   });
 });

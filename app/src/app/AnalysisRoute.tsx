@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
+import { loadTradeDiscipline } from '../application/discipline';
 import { loadTradeReview, type TradeReviewResult } from '../application/journal/loadTradeReview';
 import { DEFAULT_JOURNAL_HISTORY_LIMIT } from '../application/journal/historyQuery';
 import type { EcbReferenceRatesPort } from '../application/currency/ecbRates';
 import { readVisualPnlPeriodChoice, writeVisualPnlPeriodChoice } from '../application/visual-pnl';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
+import type { TradeId } from '../domain/trades';
 import { Button, PageHeader, Segmented } from '../design-system/primitives';
 import { TradeReviewDetails, reviewTimestamp } from './TradeReviewDetails';
 import './tradeReview.css';
@@ -39,6 +41,20 @@ export interface AnalysisRouteProps {
   readonly now?: () => string;
   /** The bank-rates port for missing rates fetched on their own (D201); the route passes it, null fetches nothing. */
   readonly rates?: EcbReferenceRatesPort | null;
+}
+
+/** The strategy the trader chose for the shown trade, for its share card (P28); null without one or when the read fails. */
+function useTradeStrategyName(db: KairosDatabase, tradeId: TradeId | null): string | null {
+  const [found, setFound] = useState<{ readonly id: TradeId; readonly name: string | null } | null>(null);
+  useEffect(() => {
+    if (tradeId === null) return;
+    let active = true;
+    void loadTradeDiscipline(db, [tradeId]).then(result => {
+      if (active) setFound({ id: tradeId, name: result.ok ? result.records.get(tradeId)?.strategy?.name ?? null : null });
+    }, () => { if (active) setFound({ id: tradeId, name: null }); });
+    return () => { active = false; };
+  }, [db, tradeId]);
+  return found !== null && found.id === tradeId ? found.name : null;
 }
 
 /** "Your results" (U5) and the chart with the trade review: route selection and async read lifecycle only; all saved facts come from their owners. */
@@ -130,6 +146,7 @@ export function AnalysisRoute({ load = loadTradeReview, db = kairosDatabase, now
   const selectedEntry = result?.kind === 'trade' ? result.entry : null;
   const pictureEntry = selectedEntry ?? (shown !== null && shown.n === selectionN && loading ? shown.entry : null);
   const savedTradePending = selectedId !== null && loading;
+  const strategyName = useTradeStrategyName(db, pictureEntry?.trade.id ?? null);
   const handoff = parseAnalysisHandoff(params);
   return <section className="kairos-route kairos-review" aria-labelledby={TITLE} aria-busy={loading || undefined}>
     <PageHeader eyebrow="Your results and charts" title="Analysis" titleId={TITLE}
@@ -138,7 +155,7 @@ export function AnalysisRoute({ load = loadTradeReview, db = kairosDatabase, now
     {view === 'results' ? <ResultsDashboard db={db} scope="real" now={now}
       choice={readVisualPnlPeriodChoice(params)} onChoiceChange={choice => setParams(writeVisualPnlPeriodChoice(choice, params))}
       renderTradeLink={id => <ReviewTradeLink id={id} />} refreshRevision={revision} onFirstLoad={resultsFirstLoad} rates={rates} /> : <>
-    {pictureEntry ? <TradePicture key={pictureEntry.trade.id} entry={pictureEntry} variant="full" /> : null}
+    {pictureEntry ? <TradePicture key={pictureEntry.trade.id} entry={pictureEntry} variant="full" strategyName={strategyName} /> : null}
     <AnalysisHandoffContext.Provider value={handoff}>
     <AnalysisHistoryWorkspace entry={selectedEntry} savedTradePending={savedTradePending} />
     </AnalysisHandoffContext.Provider>

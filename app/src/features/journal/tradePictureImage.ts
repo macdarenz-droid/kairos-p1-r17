@@ -1,4 +1,5 @@
 import { TRADE_PICTURE_HEIGHT, TRADE_PICTURE_WIDTH } from './TradePictureCard';
+import { browserTradeShareImagePorts, type TradeShareImagePorts } from './tradeShareCardImage';
 
 /** Style properties copied onto each element so the saved image looks like the screen without the page's CSS. */
 const INLINED_STYLES = ['fill', 'stroke', 'stroke-width', 'stroke-dasharray', 'opacity', 'font-size', 'font-family', 'font-weight'] as const;
@@ -32,49 +33,33 @@ export function tradePictureFileName(symbol: string, dateIso: string | null, now
   return `kairos-${safe}-${date.toISOString().slice(0, 10)}.png`;
 }
 
-export interface TradePictureSavePorts {
-  /** SVG text → PNG at the given scale. */
-  rasterize(svgText: string, width: number, height: number, scale: number): Promise<Blob>;
+export interface TradePictureSavePorts extends TradeShareImagePorts {
   canShare(data: { files: File[] }): boolean;
   share(data: { files: File[]; title: string }): Promise<void>;
   download(blob: Blob, fileName: string): void;
 }
 
-export type TradePictureSaveResult = 'shared' | 'downloaded' | 'failed';
+export type TradePictureSaveResult = 'shared' | 'downloaded' | 'cancelled' | 'failed';
 
-/** Draws the picture at 2× and hands it to the share sheet when the device offers one, else downloads it. */
-export async function saveTradePictureImage(svgText: string, fileName: string, ports: TradePictureSavePorts = browserTradePictureSavePorts()): Promise<TradePictureSaveResult> {
+/** Hands the share card's PNG to the share sheet when the device offers one, else downloads it (D214). */
+export async function saveTradePictureImage(image: Blob, fileName: string, ports: TradePictureSavePorts = browserTradePictureSavePorts()): Promise<TradePictureSaveResult> {
   try {
-    const blob = await ports.rasterize(svgText, TRADE_PICTURE_WIDTH, TRADE_PICTURE_HEIGHT, 2);
-    const file = new File([blob], fileName, { type: 'image/png' });
+    const file = new File([image], fileName, { type: 'image/png' });
     if (ports.canShare({ files: [file] })) {
       await ports.share({ files: [file], title: fileName });
       return 'shared';
     }
-    ports.download(blob, fileName);
+    ports.download(image, fileName);
     return 'downloaded';
-  } catch {
-    return 'failed';
+  } catch (error) {
+    // Closing the phone's share sheet is the trader's choice, not a failure.
+    return typeof error === 'object' && error !== null && (error as { name?: unknown }).name === 'AbortError' ? 'cancelled' : 'failed';
   }
 }
 
 export function browserTradePictureSavePorts(): TradePictureSavePorts {
   return {
-    rasterize: (svgText, width, height, scale) => new Promise((resolve, reject) => {
-      const image = new Image();
-      image.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = width * scale;
-        canvas.height = height * scale;
-        const context = canvas.getContext('2d');
-        if (!context) { reject(new Error('canvas-unavailable')); return; }
-        context.scale(scale, scale);
-        context.drawImage(image, 0, 0, width, height);
-        canvas.toBlob(blob => (blob ? resolve(blob) : reject(new Error('png-unavailable'))), 'image/png');
-      };
-      image.onerror = () => reject(new Error('svg-unreadable'));
-      image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`;
-    }),
+    ...browserTradeShareImagePorts(),
     canShare: data => typeof navigator.canShare === 'function' && navigator.canShare(data),
     share: data => navigator.share(data),
     download: (blob, fileName) => {

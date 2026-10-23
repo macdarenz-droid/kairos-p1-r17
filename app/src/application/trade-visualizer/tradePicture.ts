@@ -18,9 +18,13 @@ import type { MarketCandle } from '../../services/market-data/MarketCandleHistor
 import { parseForexPair, projectForexPips, projectForexPipValue, projectForexSize } from '../markets/forexPair';
 import { projectStockResultPerShare } from '../markets/stockTicker';
 import { projectPriceMove, type PriceMove } from '../performance/priceMove';
+import { describeMoneyAtRisk } from '../performance/performanceWords';
 import { describeTradeDuration, projectTradeDurationMs } from '../performance/tradeDuration';
-import { describeTimesRisked, projectTradeTimesRisked, signedText, TIMES_RISKED_PLACES } from '../performance/tradeRisk';
-import { tradePictureHasCandleSource, tradePictureTimes } from './tradePictureCandles';
+import { describeTimesRisked, projectTradeMoneyAtRisk, projectTradeTimesRisked, signedText, TIMES_RISKED_PLACES } from '../performance/tradeRisk';
+import {
+  describeTradePictureInterval, TRADE_PICTURE_PLANNED_INTERVAL, TRADE_PICTURE_PLANNED_ROOM_CANDLES, tradePictureHasCandleSource, tradePictureIntervalMs, tradePictureTimes,
+  type TradePictureInterval,
+} from './tradePictureCandles';
 import { latestTradePlan, projectTradeVisualizerFacts } from './tradeVisualizerFacts';
 import { projectPlannedRewardToRisk } from '../risk-reward/plannedRewardToRisk';
 
@@ -40,8 +44,10 @@ export interface TradePictureInput {
   readonly fees: readonly TradeFeeRecord[];
   /** Market candles for the trade window, or null when none could be loaded. */
   readonly candles: readonly MarketCandle[] | null;
-  /** The current instant (UTC ISO); an open trade's boxes end here. */
+  /** The current instant (UTC ISO); an open trade's boxes end here, and a planned trade's start here (D212). */
   readonly now: string;
+  /** The candles' size, when known: the picture says it in words. */
+  readonly candleInterval?: TradePictureInterval | null;
 }
 
 export interface TradePictureCandle {
@@ -75,8 +81,8 @@ export interface TradePictureMarker {
 }
 
 export type TradePictureInfoKey =
-  | 'market' | 'direction' | 'opened' | 'closed' | 'planned-entry' | 'stop' | 'target' | 'average-exit'
-  | 'size' | 'result' | 'planned-reward' | 'actual-r' | 'duration' | 'status' | 'pips' | 'pip-value' | 'per-share';
+  | 'market' | 'direction' | 'opened' | 'closed' | 'planned-entry' | 'average-entry' | 'stop' | 'target' | 'average-exit' | 'price-now'
+  | 'size' | 'money-at-risk' | 'result-before-fees' | 'fees' | 'result' | 'planned-reward' | 'actual-r' | 'duration' | 'status' | 'pips' | 'pip-value' | 'per-share';
 
 export interface TradePictureInfoRow {
   readonly key: TradePictureInfoKey;
@@ -86,7 +92,7 @@ export interface TradePictureInfoRow {
   readonly value: string | null;
   /** Unit of `value` when it has one (currency, "ms"). */
   readonly unit: string | null;
-  /** Plain-word sentence for this row, or null when the value is unknown. The two ratios are rounded here to TRADE_PICTURE_RATIO_PLACES; `value` keeps the exact owner value. */
+  /** Plain-word sentence for this row, or why it is not available; null when the value is unknown and there is nothing more to say. The two ratios are rounded here to TRADE_PICTURE_RATIO_PLACES; `value` keeps the exact owner value. */
   readonly text: string | null;
 }
 
@@ -115,6 +121,12 @@ export interface TradePictureModel {
   readonly missing: readonly TradePictureMissing[];
   /** How far price went for and against you while in the trade (D192); not an info row, U6 draws it. */
   readonly priceMove: PriceMove;
+  /** "15-minute candles", when there are candles and their size is known. */
+  readonly candleWords: string | null;
+  /** A planned trade's price now: the last candle's close and that candle's open time (D212); null otherwise. */
+  readonly priceNow: Readonly<{ price: DecimalString; at: string }> | null;
+  /** What to add to see the risk and reward boxes, naming the missing part (D213); null when both are drawn. */
+  readonly planNote: string | null;
 }
 
 type Sign = -1 | 0 | 1;
@@ -192,6 +204,33 @@ function row(key: TradePictureInfoKey, label: string, value: string | null, unit
   return Object.freeze({ key, label, value, unit, text: value === null ? null : text(value) });
 }
 
+/** A row whose value is unknown but whose reason is known ("None saved", "Not available: no stop"). */
+function reasonRow(key: TradePictureInfoKey, label: string, reason: string): TradePictureInfoRow {
+  return Object.freeze({ key, label, value: null, unit: null, text: reason });
+}
+
+const withUnit = (unit: string | null) => (value: string) => (unit ? `${value} ${unit}` : value);
+
+/** D213: the missing part that keeps a box off the picture, first match wins; null when both boxes are drawn. */
+function describePlanNote(input: {
+  readonly bothDrawn: boolean; readonly noStart: boolean; readonly cancelled: boolean; readonly entry: boolean; readonly stop: boolean; readonly target: boolean;
+}): string | null {
+  if (input.bothDrawn) return null;
+  // A cancelled trade has no opening time to add (the form hides it), so the note says why instead.
+  if (input.noStart && input.cancelled) return 'This trade was cancelled before it opened, so there are no risk or reward boxes.';
+  if (input.noStart) return 'Add when the trade opened to see your risk and reward boxes.';
+  if (!input.entry) {
+    const others = [input.stop ? null : 'stop', input.target ? null : 'target'].filter((part): part is string => part !== null);
+    const parts = others.length === 0 ? 'a planned entry' : others.length === 1 ? `a planned entry and ${others[0]}` : 'a planned entry, stop and target';
+    return `Add ${parts} to see your risk and reward boxes.`;
+  }
+  if (!input.stop && !input.target) return 'Add a stop and target to see your risk and reward boxes.';
+  if (!input.stop) return 'Add a stop to see your risk box.';
+  if (!input.target) return 'Add a target to see your reward box.';
+  // Every part is there, so a box was refused because a planned price could not be read.
+  return 'Kairos could not read the planned prices, so there is no risk or reward box.';
+}
+
 /**
  * The trade picture model: candles, risk and reward boxes, fill markers and an
  * info panel, with no DOM. Every number comes from its owner (trade facts,
@@ -207,10 +246,18 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
   const metrics = metricsResult.ok ? metricsResult.value : null;
   const plannedQuantity = latestTradePlan(plans)?.plannedQuantity ?? null;
 
-  const { startMs, endMs: timesEndMs } = tradePictureTimes(trade, executions, Date.parse(now));
-  const endMs = Number.isFinite(timesEndMs) ? timesEndMs : null;
+  const { startMs: tradeStartMs, endMs: timesEndMs } = tradePictureTimes(trade, executions, Date.parse(now));
+  // D212: a planned trade has no time of its own; its boxes start now, with room for 12 candles on the right.
+  const planned = trade.status === 'draft';
+  const nowMs = Date.parse(now);
+  // The room on the right is for the boxes, so a plan with no box gets none.
+  const drawsBox = facts.planned.entry !== null && (facts.planned.stop !== null || facts.planned.target !== null);
+  const roomMs = drawsBox ? TRADE_PICTURE_PLANNED_ROOM_CANDLES * tradePictureIntervalMs(input.candleInterval ?? TRADE_PICTURE_PLANNED_INTERVAL) : 0;
+  const startMs = planned ? (Number.isFinite(nowMs) ? nowMs : null) : tradeStartMs;
+  // An open trade is still in the market after a partial exit, so its boxes and price range run to now, as its price move does.
+  const endMs = planned ? (startMs === null ? null : startMs + roomMs) : trade.status === 'open' ? nowMs : Number.isFinite(timesEndMs) ? timesEndMs : null;
   const startAt = startMs === null ? null : iso(startMs);
-  const endAt = iso(endMs ?? Date.parse(now));
+  const endAt = iso(endMs ?? nowMs);
 
   const baseCandles = (candles ?? []).map(candle => ({ time: candle.openTime, open: candle.open, high: candle.high, low: candle.low, close: candle.close }));
   const markers = [
@@ -223,8 +270,9 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
   const rewardBox = box(entry, target, startAt, endAt);
 
   // The range is the trade itself: candles it overlaps, the plan and the fills. Candles before or after it never stretch it.
-  const tradeEnd = endMs ?? Date.parse(now);
-  const during = startMs === null ? [] : (candles ?? []).filter(candle => {
+  // A planned trade's candles are the recent market it is planned against, so all of them count.
+  const tradeEnd = endMs ?? nowMs;
+  const during = planned ? (candles ?? []) : startMs === null ? [] : (candles ?? []).filter(candle => {
     const open = ms(candle.openTime), close = ms(candle.closeTime);
     return open !== null && close !== null && open <= tradeEnd && close >= startMs;
   });
@@ -250,7 +298,7 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
   const pictureCandles = baseCandles.map(candle => Object.freeze({ ...candle, beyond: beyondOf(candle), cut: cutOf(candle) }));
 
   const times = [
-    ...(startMs === null ? [] : [startMs]), ...(startMs === null ? [] : [endMs ?? Date.parse(now)]),
+    ...(startMs === null ? [] : [startMs]), ...(startMs === null ? [] : [endMs ?? nowMs]),
     ...pictureCandles.map(candle => ms(candle.time)).filter((value): value is number => value !== null),
     ...(candles ?? []).map(candle => ms(candle.closeTime)).filter((value): value is number => value !== null),
     ...markers.map(marker => ms(marker.at)).filter((value): value is number => value !== null),
@@ -263,7 +311,7 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
   const rewardShown = shownRatio(reward);
   const rewardText = rewardShown === null ? null : `Reward is ${rewardShown}× the risk`;
   const realizedText = realized === null ? null : describeTimesRisked(realized);
-  const durationMs = projectTradeDurationMs(trade, executions, Date.parse(now));
+  const durationMs = projectTradeDurationMs(trade, executions, nowMs);
   const size = metrics !== null && metrics.totalEnteredQuantity !== '0' ? metrics.totalEnteredQuantity : plannedQuantity;
   const currency = metrics?.netPnlCurrency ?? null;
   // P31: a forex trade's size is units of its base currency; lots and pips come from the one pair owner (D96, D98).
@@ -284,6 +332,9 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
   const priceCurrency = trade.grossPnlCurrency || null;
   const perShareText = perShareShown !== null && perShareShown.ok
     ? `${signedText(perShareShown.value)}${priceCurrency ? ` ${priceCurrency}` : ''} before fees` : null;
+  const moneyAtRisk = projectTradeMoneyAtRisk({ trade, plans, executions, metrics });
+  const lastCandle = candles && candles.length > 0 ? candles[candles.length - 1]! : null;
+  const priceNow = planned && lastCandle !== null ? Object.freeze({ price: lastCandle.close, at: lastCandle.openTime }) : null;
 
   const info: TradePictureInfoRow[] = [
     row('market', 'Market', trade.symbol, null, value => (pair?.quoteKnown ? pair.label : value)),
@@ -291,9 +342,11 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
     row('opened', 'Opened', trade.openedAt, null, value => value),
     row('closed', 'Closed', trade.closedAt, null, value => value),
     row('planned-entry', 'Planned entry', entry, null, value => value),
+    row('average-entry', 'Average entry', metrics?.averageEntryPrice ?? null, null, value => value),
     row('stop', 'Stop', stop, null, value => value),
     row('target', 'Target', target, null, value => value),
     row('average-exit', 'Average exit', metrics?.averageExitPrice ?? null, null, value => value),
+    ...(planned ? [row('price-now', 'Price now', priceNow?.price ?? null, priceCurrency, withUnit(priceCurrency))] : []),
     forex
       ? row('size', 'Size', size, 'units', value => (lots === null
         ? `${value} ${unitWord(value)}`
@@ -301,6 +354,13 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
       : stock
         ? row('size', 'Size', size, 'shares', value => `${value} ${value === '1' ? 'share' : 'shares'}`)
         : row('size', 'Size', size, null, value => value),
+    moneyAtRisk.available
+      ? row('money-at-risk', 'Money at risk', moneyAtRisk.amount, moneyAtRisk.currency, () => describeMoneyAtRisk(moneyAtRisk))
+      : reasonRow('money-at-risk', 'Money at risk', describeMoneyAtRisk(moneyAtRisk)),
+    row('result-before-fees', 'Result before fees', metrics?.grossPnl ?? null, priceCurrency, withUnit(priceCurrency)),
+    fees.length === 0
+      ? reasonRow('fees', 'Fees', 'None saved')
+      : row('fees', 'Fees', metrics?.totalFees ?? null, metrics?.totalFeesCurrency ?? null, withUnit(metrics?.totalFeesCurrency ?? null)),
     row('result', 'Result after fees', metrics?.netPnl ?? null, currency, value => (currency ? `${value} ${currency}` : value)),
     ...(forex ? [
       row('pips', 'Pips won or lost', pipsText === null ? null : pips, 'pips', () => pipsText ?? ''),
@@ -315,7 +375,7 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
 
   const missing: TradePictureMissing[] = [];
   if (candles === null || candles.length === 0) missing.push({ part: 'candles', message: forex ? 'No forex candles yet, so only your plan, entries and exits are shown.' : stock ? 'No stock candles yet, so only your plan, entries and exits are shown.' : 'No candles, so only your plan and fills are shown.' });
-  if (startAt === null) missing.push({ part: 'start-time', message: 'No start time, so no risk or reward box.' });
+  if (startAt === null && !planned) missing.push({ part: 'start-time', message: 'No start time, so no risk or reward box.' });
   if (entry === null) missing.push({ part: 'planned-entry', message: 'No planned entry, so no risk or reward box.' });
   if (stop === null) missing.push({ part: 'stop', message: 'No stop, so no risk box.' });
   if (target === null) missing.push({ part: 'target', message: 'No target, so no reward box.' });
@@ -343,6 +403,9 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
     info: Object.freeze(info),
     missing: Object.freeze(missing.map(item => Object.freeze(item))),
     // An open trade is still in the market after a partial exit, so its move runs to now (D192 "so far").
-    priceMove: projectPriceMove({ side: trade.side, executions, startMs, endMs: trade.status === 'open' ? Date.parse(now) : timesEndMs, stillOpen: trade.status === 'open', candles }),
+    priceMove: projectPriceMove({ side: trade.side, executions, startMs: tradeStartMs, endMs: trade.status === 'open' ? nowMs : timesEndMs, stillOpen: trade.status === 'open', candles }),
+    candleWords: pictureCandles.length > 0 && input.candleInterval ? describeTradePictureInterval(input.candleInterval) : null,
+    priceNow,
+    planNote: describePlanNote({ bothDrawn: riskBox !== null && rewardBox !== null, noStart: startAt === null, cancelled: trade.status === 'cancelled', entry: entry !== null, stop: stop !== null, target: target !== null }),
   });
 }

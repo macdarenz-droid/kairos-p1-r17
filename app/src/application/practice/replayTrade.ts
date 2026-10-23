@@ -42,6 +42,7 @@ export function projectReplayPicture(replay: LoadedReplay, cursor: number, order
     executions: prepared.executions,
     fees: prepared.fees,
     candles: view.window,
+    candleInterval: replay.candleSize.interval,
     now: view.replayTime,
   });
 }

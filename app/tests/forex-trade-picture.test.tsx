@@ -67,7 +67,7 @@ describe('T-043c the forex trade picture', () => {
     expect(value(model, 'result')?.text).toBe('49.3 USD');
     expect(value(model, 'pips')).toMatchObject({ label: 'Pips won or lost', value: '50', unit: 'pips', text: '+50 pips' });
     expect(value(model, 'pip-value')).toMatchObject({ label: 'Value of 1 pip', value: '1', unit: 'USD', text: '1 USD' });
-    expect(model.info.map(row => row.key)).toEqual(['market', 'direction', 'opened', 'closed', 'planned-entry', 'stop', 'target', 'average-exit', 'size', 'result', 'pips', 'pip-value', 'planned-reward', 'actual-r', 'duration', 'status']);
+    expect(model.info.map(row => row.key)).toEqual(['market', 'direction', 'opened', 'closed', 'planned-entry', 'average-entry', 'stop', 'target', 'average-exit', 'size', 'money-at-risk', 'result-before-fees', 'fees', 'result', 'pips', 'pip-value', 'planned-reward', 'actual-r', 'duration', 'status']);
     expect(model.marketHasCandles).toBe(false);
     expect(model.missing.map(item => item.part)).toContain('candles');
     const metrics = calculateTradeMetrics('long', eurUsd.executions, undefined, eurUsd.fees, { grossPnlCurrency: 'USD' });
@@ -116,7 +116,7 @@ describe('T-043c the forex trade picture', () => {
       now,
     };
     const model = projectTradePicture(btc);
-    expect(model.info.map(row => row.key)).toEqual(['market', 'direction', 'opened', 'closed', 'planned-entry', 'stop', 'target', 'average-exit', 'size', 'result', 'planned-reward', 'actual-r', 'duration', 'status']);
+    expect(model.info.map(row => row.key)).toEqual(['market', 'direction', 'opened', 'closed', 'planned-entry', 'average-entry', 'stop', 'target', 'average-exit', 'size', 'money-at-risk', 'result-before-fees', 'fees', 'result', 'planned-reward', 'actual-r', 'duration', 'status']);
     expect(value(model, 'size')).toMatchObject({ unit: null, text: '2' });
     expect(model.marketHasCandles).toBe(true);
     expect(tradePictureHasCandleSource('forex')).toBe(false);

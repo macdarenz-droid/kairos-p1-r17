@@ -1000,3 +1000,102 @@ test('(t) Your results with trades, at phone width', async ({ page }) => {
   expect(axe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
   expect(errors).toEqual([]);
 });
+
+test('(u) Share a trade as an image, and a planned trade drawn from now', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  await activate(page);
+  const cors = { 'Access-Control-Allow-Origin': '*' };
+  const serverAnswer = (data: unknown) => JSON.stringify({ apiVersion: 1, ok: true, data });
+  const intervalMs: Record<string, number> = { '1m': 60_000, '3m': 180_000, '5m': 300_000, '15m': 900_000, '30m': 1_800_000, '1h': 3_600_000 };
+  // The QA build asks the Kairos server for the market list and the candles (as (q) does).
+  await page.route(url => url.hostname === 'api.qa.invalid' && url.pathname.startsWith('/market/'), async route => {
+    const url = new URL(route.request().url());
+    const fetchedAt = new Date().toISOString();
+    if (url.pathname === '/market/symbols') {
+      return route.fulfill({ headers: cors, contentType: 'application/json', body: serverAnswer({ source: 'binance-spot', fetchedAt, leftOut: 0, markets: [{ symbol: 'BTCUSDT', base: 'BTC', quote: 'USDT', tickSize: '0.01', stepSize: '0.00001' }] }) });
+    }
+    if (url.pathname !== '/market/candles') return route.abort();
+    const interval = url.searchParams.get('interval') ?? '';
+    const step = intervalMs[interval];
+    if (step === undefined) return route.abort();
+    const limit = Number(url.searchParams.get('limit'));
+    const end = Math.min(Number(url.searchParams.get('end') ?? Date.now()), Date.now());
+    const start = Number(url.searchParams.get('start') ?? end - limit * step);
+    const candles: unknown[] = [];
+    for (let openMs = Math.ceil(start / step) * step; openMs <= end && candles.length < limit; openMs += step) {
+      const k = candles.length % 7;
+      candles.push({ openTime: new Date(openMs).toISOString(), closeTime: new Date(openMs + step - 1).toISOString(), open: String(100 + k), high: String(102 + k), low: String(99 + k), close: String(101 + k), volume: '3' });
+    }
+    return route.fulfill({ headers: cors, contentType: 'application/json', body: serverAnswer({ source: { provider: 'binance', market: 'spot', symbol: 'BTCUSDT' }, backup: null, interval, fetchedAt, candles, next: null }) });
+  });
+
+  // A planned trade: entry, stop and target, no time of its own (D212).
+  await page.goto('/journal');
+  await page.getByLabel(/^Symbol/).fill('BTCUSDT');
+  await page.getByLabel(/^Market/).selectOption('crypto');
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Status/).selectOption('draft');
+  await page.getByLabel('Currency code').fill('USDT');
+  await page.getByText('Trade plan · Optional').click();
+  await page.getByLabel('Planned entry').fill('103');
+  await page.getByLabel('Planned stop').fill('98');
+  await page.getByLabel('Planned target').fill('113');
+  await page.getByLabel('Planned quantity').fill('2');
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+  await page.getByRole('button', { name: 'Open the BTCUSDT trade picture' }).first().click();
+  let dialog = page.getByRole('dialog', { name: 'BTCUSDT trade' });
+  await expect(dialog.locator('.kairos-trade-picture__candle').first()).toBeVisible();
+  await expect(dialog.locator('[data-box]')).toHaveCount(2);
+  await expect(dialog.locator('[data-info="price-now"] dd')).toHaveText(/^\d+ USDT \(last candle, .+\)$/);
+  await expect(dialog.locator('.kairos-trade-picture__candle-size')).toHaveText('15-minute candles');
+  await expect(dialog.locator('.kairos-trade-picture__note')).toHaveCount(0);
+  await dialog.getByRole('button', { name: 'Close' }).click();
+
+  // A closed trade: its time axis, one candle looked at, and the share card in both shapes.
+  await page.getByRole('button', { name: 'Quick log' }).click();
+  await page.getByLabel(/^Market/).selectOption('crypto');
+  await page.getByLabel(/^Symbol/).fill('BTC/USDT');
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Entry price/).fill('100');
+  await page.getByLabel(/^Exit price/).fill('104');
+  await page.getByLabel(/^Quantity/).fill('1');
+  const opened = new Date(Date.now() - 3 * 3_600_000), closed = new Date(Date.now() - 3_600_000);
+  const local = (date: Date) => new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+  await page.locator('input[name="openedAt"]').fill(local(opened));
+  await page.locator('input[name="closedAt"]').fill(local(closed));
+  await page.getByLabel('Currency code').fill('USDT');
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+  await page.getByRole('button', { name: 'Open the BTC/USDT trade picture' }).first().click();
+  dialog = page.getByRole('dialog', { name: 'BTC/USDT trade' });
+  await expect(dialog.locator('.kairos-trade-picture__candle').first()).toBeVisible();
+  expect(await dialog.locator('[data-axis-tick]').count()).toBeGreaterThan(0);
+  const slider = dialog.getByRole('slider', { name: 'Look at a candle' });
+  await slider.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(dialog.locator('.kairos-trade-picture__readout')).toHaveText(/: open \d+, high \d+, low \d+, close \d+$/);
+
+  const pngSize = async (shape: 'Tall' | 'Square') => {
+    await dialog.getByRole('button', { name: shape }).click();
+    await expect(dialog.locator(`img.kairos-trade-share__preview[data-shape="${shape.toLowerCase()}"]`)).toBeVisible();
+    const [download] = await Promise.all([page.waitForEvent('download'), dialog.getByRole('button', { name: 'Share or download image' }).click()]);
+    expect(download.suggestedFilename()).toMatch(/^kairos-BTCUSDT-\d{4}-\d{2}-\d{2}\.png$/);
+    const png = readFileSync((await download.path())!);
+    return [png.readUInt32BE(16), png.readUInt32BE(20)];
+  };
+  expect(await pngSize('Tall')).toEqual([1080, 1350]);
+  expect(await pngSize('Square')).toEqual([1080, 1080]);
+  await expect(dialog.getByRole('button', { name: 'Share or download image' })).toBeFocused();
+  const preview = dialog.locator('img.kairos-trade-share__preview');
+  await expect(preview).toHaveAttribute('alt', /\d USDT/);
+  await dialog.getByRole('checkbox', { name: 'Hide money amounts' }).check();
+  await expect(preview).not.toHaveAttribute('alt', /\d USDT/);
+  await expect(preview).toHaveAttribute('alt', /^BTC\/USDT long, won/);
+
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  const axe = await new AxeBuilder({ page }).include('[role="dialog"]').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(axe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+  expect(errors).toEqual([]);
+});

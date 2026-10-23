@@ -1,7 +1,8 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { projectTradePicture, type TradePictureInput } from '../src/application/trade-visualizer';
+import { decimalCompare } from '../src/domain/calculations';
 import { parseDecimalString, type DecimalString, type TradeExecutionId, type TradeFeeId, type TradeFeeRecord, type TradeId, type TradePlanId, type TradeRecord } from '../src/domain/trades';
 import { TradePictureCard, tradePictureCandleBodyWidth } from '../src/features/journal/TradePictureCard';
 
@@ -44,7 +45,7 @@ describe('T-027c trade picture card', () => {
     expect(within(info).getByText(infoText(model, 'actual-r'))).toBeInTheDocument();
     expect(within(info).getByText('3 h')).toBeInTheDocument();
     expect(screen.queryByText('No candles for this time.')).toBeNull();
-    expect(screen.queryByText('Add a stop and target to see your risk box.')).toBeNull();
+    expect(screen.queryByText(/to see your (risk|reward)/)).toBeNull();
   });
 
   it('shows the connection note without candles, and still draws the boxes', () => {
@@ -56,7 +57,7 @@ describe('T-027c trade picture card', () => {
 
   it('asks for a stop and target when the plan has none', () => {
     const { container } = render(<TradePictureCard model={projectTradePicture({ ...input, plans: plan(null, null) })} />);
-    expect(screen.getByText('Add a stop and target to see your risk box.')).toBeInTheDocument();
+    expect(screen.getByText('Add a stop and target to see your risk and reward boxes.')).toBeInTheDocument();
     expect(container.querySelector('[data-box]')).toBeNull();
   });
 
@@ -259,5 +260,183 @@ describe('T-048f fix r1 the no-candles sentences reach screen readers', () => {
     render(<TradePictureCard model={model} candleNote={note} />);
     const sentence = screen.getByText(note);
     expect(screen.getByRole('img')).not.toContainElement(sentence);
+  });
+});
+
+describe('T-052a the rows that were missing, and a note that names what is missing', () => {
+  const planWith = (entry: string | null, stop: string | null, target: string | null) => [{ ...plan(stop, target)[0]!, plannedEntryPrice: entry === null ? null : dec(entry) }];
+  const noteFor = (overrides: Partial<TradePictureInput>) => projectTradePicture({ ...input, ...overrides }).planNote;
+
+  it('shows your average entry, result before fees, fees and money at risk', () => {
+    const model = projectTradePicture(input);
+    const { container } = render(<TradePictureCard model={model} />);
+    const shown = (key: string) => container.querySelector(`[data-info="${key}"] dd`)?.textContent;
+    expect(shown('average-entry')).toBe('100');
+    expect(shown('result-before-fees')).toBe('40 USDT');
+    expect(shown('fees')).toBe('1 USDT');
+    expect(shown('money-at-risk')).toBe('20 USDT');
+    expect([...container.querySelectorAll('[data-info]')].map(item => item.getAttribute('data-info'))).toEqual(
+      ['opened', 'closed', 'planned-entry', 'average-entry', 'stop', 'target', 'average-exit', 'size', 'money-at-risk', 'result-before-fees', 'fees', 'result', 'planned-reward', 'actual-r', 'duration']);
+    cleanup();
+    const noFees = render(<TradePictureCard model={projectTradePicture({ ...input, fees: [] })} />);
+    expect(noFees.container.querySelector('[data-info="fees"] dd')).toHaveTextContent(/^None saved$/);
+    cleanup();
+    const noStop = render(<TradePictureCard model={projectTradePicture({ ...input, plans: plan(null, '130') })} />);
+    expect(noStop.container.querySelector('[data-info="money-at-risk"] dd')).toHaveTextContent(/^Not available: no stop$/);
+  });
+
+  it('names what is missing for the boxes, and says nothing when both are drawn', () => {
+    expect(noteFor({})).toBeNull();
+    expect(noteFor({ plans: [] })).toBe('Add a planned entry, stop and target to see your risk and reward boxes.');
+    expect(noteFor({ plans: planWith(null, '90', '130') })).toBe('Add a planned entry to see your risk and reward boxes.');
+    expect(noteFor({ plans: planWith(null, null, '130') })).toBe('Add a planned entry and stop to see your risk and reward boxes.');
+    expect(noteFor({ plans: planWith(null, '90', null) })).toBe('Add a planned entry and target to see your risk and reward boxes.');
+    expect(noteFor({ plans: plan(null, null) })).toBe('Add a stop and target to see your risk and reward boxes.');
+    expect(noteFor({ plans: plan(null, '130') })).toBe('Add a stop to see your risk box.');
+    expect(noteFor({ plans: plan('90', null) })).toBe('Add a target to see your reward box.');
+    expect(noteFor({ trade: { ...trade, status: 'open', openedAt: null, closedAt: null }, executions: [] })).toBe('Add when the trade opened to see your risk and reward boxes.');
+    expect(noteFor({ plans: [{ ...plan('90', '130')[0]!, plannedStopPrice: 'not a price' as DecimalString }] })).toBe('Kairos could not read the planned prices, so there is no risk or reward box.');
+    const { container } = render(<TradePictureCard model={projectTradePicture({ ...input, plans: plan('90', null) })} />);
+    expect(container.querySelector('.kairos-trade-picture__note')).toHaveTextContent('Add a target to see your reward box.');
+  });
+
+  it('a planned trade shows its price now, both boxes from now and no note; a full picture says its candle size', () => {
+    const now = input.now;
+    const candle = (openMs: number, close: string) => ({ openTime: new Date(openMs).toISOString(), closeTime: new Date(openMs + 899_999).toISOString(), open: dec('100'), high: dec('104'), low: dec('96'), close: dec(close) });
+    const last = Date.parse(now) - 900_000;
+    const model = projectTradePicture({ ...input, trade: { ...trade, status: 'draft', openedAt: null, closedAt: null }, executions: [], fees: [], candles: [candle(last - 900_000, '101'), candle(last, '102.25')], candleInterval: '15m' });
+    const { container } = render(<TradePictureCard model={model} candleSource="Candles: Binance Spot · BTC/USDT" />);
+    const priceNow = container.querySelector('[data-info="price-now"] dd')!.textContent!;
+    expect(priceNow.startsWith('102.25 USDT (last candle, ')).toBe(true);
+    expect(container.querySelectorAll('[data-box]')).toHaveLength(2);
+    expect(container.querySelector('.kairos-trade-picture__note')).toBeNull();
+    expect(container.querySelector('.kairos-trade-picture__candle-size')).toHaveTextContent(/^15-minute candles$/);
+    cleanup();
+    const compact = render(<TradePictureCard model={model} compact />);
+    expect(compact.container.querySelector('.kairos-trade-picture__candle-size')).toBeNull();
+  });
+});
+
+describe('T-052a fix r1', () => {
+  it('a cancelled trade with no time says why it has no boxes, instead of asking for a time it cannot have', () => {
+    const model = projectTradePicture({ ...input, trade: { ...trade, status: 'cancelled', openedAt: null, closedAt: null }, executions: [], fees: [] });
+    expect(model.planNote).toBe('This trade was cancelled before it opened, so there are no risk or reward boxes.');
+    expect(projectTradePicture({ ...input, trade: { ...trade, status: 'open', openedAt: null, closedAt: null }, executions: [] }).planNote).toBe('Add when the trade opened to see your risk and reward boxes.');
+  });
+
+  it('the note is outside the image, so screen readers hear it', () => {
+    const { container } = render(<TradePictureCard model={projectTradePicture({ ...input, plans: plan('90', null) })} />);
+    const note = container.querySelector('.kairos-trade-picture__note') as HTMLElement;
+    expect(note).toHaveTextContent('Add a target to see your reward box.');
+    expect(screen.getByRole('img')).not.toContainElement(note);
+  });
+
+  it('a planned trade with no box gets no empty room on the right', () => {
+    const now = input.now;
+    const last = Date.parse(now) - 900_000;
+    const candles = [0, 1].map(index => ({ openTime: new Date(last - (1 - index) * 900_000).toISOString(), closeTime: new Date(last - (1 - index) * 900_000 + 899_999).toISOString(), open: dec('100'), high: dec('104'), low: dec('96'), close: dec('101') }));
+    const draft = { ...trade, status: 'draft' as const, openedAt: null, closedAt: null };
+    const noPlan = projectTradePicture({ ...input, trade: draft, plans: [], executions: [], fees: [], candles, candleInterval: '15m' });
+    expect(noPlan.timeRange?.to).toBe(now);
+    const withPlan = projectTradePicture({ ...input, trade: draft, executions: [], fees: [], candles, candleInterval: '15m' });
+    expect(withPlan.timeRange?.to).toBe(new Date(Date.parse(now) + 12 * 900_000).toISOString());
+  });
+});
+
+describe('T-052b a time axis, how far price went, and a look at any candle', () => {
+  it('draws time labels under a full picture, and none on the thumbnail', () => {
+    const model = projectTradePicture(input);
+    const { container } = render(<TradePictureCard model={model} />);
+    const ticks = [...container.querySelectorAll('[data-axis-tick]')];
+    expect(ticks.length).toBeGreaterThan(0);
+    for (const tick of ticks) {
+      const x = Number(tick.querySelector('text')!.getAttribute('x'));
+      expect(x).toBeGreaterThan(0);
+      expect(x).toBeLessThan(360);
+    }
+    cleanup();
+    expect(render(<TradePictureCard model={model} compact />).container.querySelector('[data-axis-tick]')).toBeNull();
+  });
+
+  it('marks the highest and lowest price while you were in, the one in your favour first, and says it in words', () => {
+    const long = projectTradePicture(input);
+    expect(long.priceMove.available).toBe(true);
+    const { container } = render(<TradePictureCard model={long} />);
+    const y = (move: string) => Number(container.querySelector(`[data-move="${move}"]`)!.getAttribute('y1'));
+    // A long is helped by the highest price, which sits higher (a smaller y).
+    expect(y('for-you')).toBeLessThan(y('against-you'));
+    expect(container.querySelector('.kairos-trade-picture__move')).toHaveTextContent(/^From your average entry, price went .+ for you and .+ against you\.$/);
+    expect(screen.getByRole('img')).not.toContainElement(container.querySelector('.kairos-trade-picture__move') as HTMLElement);
+    cleanup();
+    const short = render(<TradePictureCard model={projectTradePicture({ ...input, trade: { ...trade, side: 'short' } })} />);
+    const shortY = (move: string) => Number(short.container.querySelector(`[data-move="${move}"]`)!.getAttribute('y1'));
+    expect(shortY('for-you')).toBeGreaterThan(shortY('against-you'));
+    cleanup();
+    const none = render(<TradePictureCard model={projectTradePicture({ ...input, candles: null })} />);
+    expect(none.container.querySelector('[data-move]')).toBeNull();
+    expect(none.container.querySelector('.kairos-trade-picture__move')).toBeNull();
+  });
+
+  it('a slider and a tap show one candle\'s time and exact prices', () => {
+    const model = projectTradePicture(input);
+    const { container } = render(<TradePictureCard model={model} />);
+    const slider = screen.getByRole('slider', { name: 'Look at a candle' });
+    const readout = container.querySelector('.kairos-trade-picture__readout')!;
+    expect(readout).toHaveTextContent('Tap or hold a candle to see its time and prices.');
+    expect(slider).toHaveAttribute('aria-valuetext', 'No candle picked');
+    fireEvent.change(slider, { target: { value: '2' } });
+    expect(readout.textContent).toMatch(/: open 104, high 125, low 103, close 121$/);
+    expect(slider).toHaveAttribute('aria-valuetext', readout.textContent);
+    expect(container.querySelectorAll('.kairos-trade-picture__candle')[1]).toHaveAttribute('data-picked');
+    // A tap on the left edge of the drawing picks the first candle.
+    const svg = container.querySelector('svg')!;
+    svg.getBoundingClientRect = () => ({ left: 0, top: 0, width: 360, height: 220, right: 360, bottom: 220, x: 0, y: 0, toJSON: () => ({}) });
+    const chart = container.querySelector('.kairos-trade-picture__chart')!;
+    fireEvent.pointerDown(chart, { clientX: 1, pointerId: 1 });
+    expect(readout.textContent).toMatch(/: open 98, high 105, low 95, close 104$/);
+    fireEvent.pointerMove(chart, { clientX: 300, pointerId: 1 });
+    expect(readout.textContent).toMatch(/: open 104, high 125, low 103, close 121$/);
+    fireEvent.pointerUp(chart, { pointerId: 1 });
+    fireEvent.pointerMove(chart, { clientX: 1, pointerId: 1 });
+    expect(readout.textContent).toMatch(/close 121$/);
+    cleanup();
+    expect(render(<TradePictureCard model={model} compact />).container.querySelector('input[type="range"]')).toBeNull();
+  });
+});
+
+describe('T-052b fix r1', () => {
+  const hour = (h: number, close: string) => ({ openTime: `2026-09-20T${String(h).padStart(2, '0')}:00:00.000Z`, closeTime: `2026-09-20T${String(h).padStart(2, '0')}:59:59.999Z`, open: dec('100'), high: dec('105'), low: dec('95'), close: dec(close) });
+
+  it('keeps the picked candle when the candles slide (Replay), and lets it go when it leaves', () => {
+    const at = (hours: readonly number[]) => projectTradePicture({ ...input, candles: hours.map(h => hour(h, String(100 + h))) });
+    const { container, rerender } = render(<TradePictureCard model={at([8, 9, 10, 11])} />);
+    const readout = () => container.querySelector('.kairos-trade-picture__readout')!.textContent;
+    fireEvent.change(screen.getByRole('slider', { name: 'Look at a candle' }), { target: { value: '3' } });
+    expect(readout()).toMatch(/close 110$/);
+    rerender(<TradePictureCard model={at([9, 10, 11, 12])} />);
+    expect(readout()).toMatch(/close 110$/);
+    expect(container.querySelectorAll('.kairos-trade-picture__candle')[1]).toHaveAttribute('data-picked');
+    expect(screen.getByRole('slider', { name: 'Look at a candle' })).toHaveValue('2');
+    rerender(<TradePictureCard model={at([11, 12, 13, 14])} />);
+    expect(readout()).toBe('Tap or hold a candle to see its time and prices.');
+  });
+
+  it('says how far price went on every full picture, Replay\'s too, and the readout does not repeat the slider', () => {
+    const { container } = render(<TradePictureCard model={projectTradePicture(input)} notes={false} />);
+    expect(container.querySelector('.kairos-trade-picture__move')).toHaveTextContent(/^From your average entry, price went /);
+    expect(container.querySelector('.kairos-trade-picture__readout')).not.toHaveAttribute('aria-live');
+  });
+
+  it('an open trade after a partial exit runs to now: its boxes, its price range and its move', () => {
+    const now = '2026-09-20T13:30:00.000Z';
+    const open = projectTradePicture({
+      ...input, now, trade: { ...trade, status: 'open', closedAt: null },
+      executions: [input.executions[0]!, { ...input.executions[1]!, quantity: dec('1'), executedAt: '2026-09-20T10:30:00.000Z' }],
+      candles: [hour(9, '101'), hour(10, '102'), hour(11, '103'), { ...hour(12, '104'), high: dec('160') }],
+    });
+    expect(open.riskBox?.endAt).toBe(now);
+    expect(open.priceMove).toMatchObject({ available: true, highest: '160', soFar: true });
+    // The high after the last exit is inside the picture, so its line is on the drawing.
+    expect(decimalCompare(open.priceRange!.high, '160')).toBe(1);
   });
 });

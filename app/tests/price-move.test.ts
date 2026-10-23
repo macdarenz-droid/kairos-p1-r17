@@ -108,7 +108,7 @@ describe('T-050f how far price went for and against you', () => {
 
 describe('T-050f the price move on the trade picture', () => {
   /** The picture's rows before T-050f: the price move adds none. */
-  const INFO_KEYS = ['market', 'direction', 'opened', 'closed', 'planned-entry', 'stop', 'target', 'average-exit', 'size', 'result', 'planned-reward', 'actual-r', 'duration', 'status'];
+  const INFO_KEYS = ['market', 'direction', 'opened', 'closed', 'planned-entry', 'average-entry', 'stop', 'target', 'average-exit', 'size', 'money-at-risk', 'result-before-fees', 'fees', 'result', 'planned-reward', 'actual-r', 'duration', 'status'];
   const opened = '2026-09-20T09:00:00.000Z', closed = '2026-09-20T12:00:00.000Z', now = '2026-09-24T12:00:00.000Z';
   const trade = (overrides: Partial<TradeRecord> = {}): TradeRecord => ({ id: tradeId, symbol: 'BTCUSDT', marketType: 'crypto', side: 'long', status: 'closed', source: 'manual', grossPnlCurrency: 'USDT', openedAt: opened, closedAt: closed, createdAt: opened, updatedAt: closed, ...overrides });
   const plans = [{ id: 'plan-1' as TradePlanId, tradeId, plannedEntryPrice: dec('100'), plannedStopPrice: dec('90'), plannedTargetPrice: dec('130'), plannedQuantity: dec('2'), createdAt: opened, updatedAt: opened }];

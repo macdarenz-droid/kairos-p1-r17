@@ -178,7 +178,7 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
                 <ResultText outcome={entry.visualPnl.outcome} label={entry.visualPnl.label} amount={entry.visualPnl.amount} currency={entry.visualPnl.currency}
                   className={`kairos-history-card__outcome kairos-history-card__outcome--${entry.visualPnl.outcome}`} />
                 {closedPart.available ? <p className="kairos-history-card__closed-part"><ResultText outcome={closedPart.outcome} label="Closed part" amount={closedPart.resultBeforeFees} currency={closedPart.currency} /> <span>{describeClosedPart(closedPart)}</span></p> : null}
-                <TradePicture entry={entry} variant="thumbnail" />
+                <TradePicture entry={entry} variant="thumbnail" strategyName={discipline.state.kind === 'ready' ? discipline.state.records.get(entry.trade.id)?.strategy?.name ?? null : null} />
                 {/* The five words are explained once per list (D69): only the first card has the "?" buttons. */}
                 <dl className="kairos-history-card__facts">
                   <div><dt><span>Entries and exits</span>{index === 0 ? <GlossaryHint termId="entries-and-exits" label="Entries and exits" /> : null}</dt><dd>{entry.executions.length}</dd></div>

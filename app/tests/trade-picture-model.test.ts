@@ -127,12 +127,12 @@ describe('T-027a trade picture model', () => {
     expect(model.missing.map(item => item.part)).toEqual(expect.arrayContaining(['candles', 'result', 'actual-r']));
   });
 
-  it('a draft with no start time gets no boxes but keeps its plan in the price range', () => {
+  it('a draft with no start time gets its boxes from now (D212) and keeps its plan in the price range', () => {
     const model = projectTradePicture({ ...longInput, trade: trade({ status: 'draft', openedAt: null, closedAt: null }), executions: [], fees: [], candles: null });
-    expect(model.riskBox).toBeNull();
-    expect(model.rewardBox).toBeNull();
+    expect(model.riskBox).toMatchObject({ startAt: now, endAt: new Date(Date.parse(now) + 3 * 3_600_000).toISOString() });
+    expect(model.rewardBox).toMatchObject({ startAt: now });
     expect(model.priceRange).toEqual({ low: '86.8', high: '133.2' });
-    expect(model.missing.map(item => item.part)).toContain('start-time');
+    expect(model.missing.map(item => item.part)).not.toContain('start-time');
     expect(value(model, 'status')?.value).toBe('Planned');
   });
 });
@@ -239,7 +239,7 @@ describe('T-039d cut edges and the trade\'s own times', () => {
 
   it('shows Opened and Closed from the trade itself', () => {
     const model = projectTradePicture(longInput);
-    expect(model.info.map(row => row.key)).toEqual(['market', 'direction', 'opened', 'closed', 'planned-entry', 'stop', 'target', 'average-exit', 'size', 'result', 'planned-reward', 'actual-r', 'duration', 'status']);
+    expect(model.info.map(row => row.key)).toEqual(['market', 'direction', 'opened', 'closed', 'planned-entry', 'average-entry', 'stop', 'target', 'average-exit', 'size', 'money-at-risk', 'result-before-fees', 'fees', 'result', 'planned-reward', 'actual-r', 'duration', 'status']);
     expect(value(model, 'opened')).toMatchObject({ label: 'Opened', value: opened, text: opened });
     expect(value(model, 'closed')).toMatchObject({ label: 'Closed', value: closed });
     const open = projectTradePicture({ ...longInput, trade: trade({ status: 'open', closedAt: null }) });
