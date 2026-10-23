@@ -1,4 +1,4 @@
-import type { VisualPnlDailyStreakProjection } from '../application/visual-pnl';
+import type { VisualPnlDailyStreakProjection } from '../../application/visual-pnl';
 
 interface VisualPnlStreakProps {
   readonly projection: VisualPnlDailyStreakProjection;

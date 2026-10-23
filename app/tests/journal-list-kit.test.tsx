@@ -8,7 +8,7 @@ import { AnalysisSavedAnalysisControls } from '../src/app/AnalysisSavedAnalysisC
 import { AnalysisTimeAssistedSnapshotControls } from '../src/app/AnalysisTimeAssistedSnapshotControls';
 import { JournalHistoryList } from '../src/app/JournalHistoryList';
 import { JournalRoute } from '../src/app/JournalRoute';
-import { VisualPnlPerformanceSummary } from '../src/app/VisualPnlPerformanceSummary';
+import { VisualPnlPerformanceSummary } from '../src/features/results/VisualPnlPerformanceSummary';
 import { analysisMarketReference, createAnalysisSavedAnalysisPorts } from '../src/app/analysisSavedAnalysisRoundTrip';
 import { createAnalysisSavedTimeAssistedSnapshotPorts } from '../src/app/analysisSavedTimeAssistedSnapshotRoundTrip';
 import type { JournalHistoryEntry } from '../src/application/journal';

@@ -1,7 +1,7 @@
 import { useId } from 'react';
 import type { VisualPnlResultCandlesProjection } from '../../application/visual-pnl';
 import { dayLabel, shortDayLabel } from './ResultsCalendar';
-import './journalResults.css';
+import './results.css';
 
 type Unavailable = Extract<VisualPnlResultCandlesProjection, { available: false }>['reason'];
 
@@ -43,7 +43,7 @@ function countsText(candles: readonly { readonly direction: 'up' | 'down' | 'eve
 export function ResultsCandles({ projection, eyebrow = 'Your results over time' }: { readonly projection: VisualPnlResultCandlesProjection; readonly eyebrow?: string }) {
   const titleId = useId();
   const heading = <div>
-    <p className="kairos-journal__eyebrow">{eyebrow}</p>
+    <p className="kairos-journal__eyebrow kairos-results__eyebrow">{eyebrow}</p>
     <h3 id={titleId}>Total result so far</h3>
   </div>;
   if (!projection.available) {

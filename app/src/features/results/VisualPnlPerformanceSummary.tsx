@@ -1,5 +1,5 @@
-import type { VisualPnlDailyPerformanceSummary } from '../application/visual-pnl';
-import { StatTile } from '../design-system/primitives';
+import type { VisualPnlDailyPerformanceSummary } from '../../application/visual-pnl';
+import { StatTile } from '../../design-system/primitives';
 
 interface VisualPnlPerformanceSummaryProps {
   readonly summary: VisualPnlDailyPerformanceSummary;

@@ -16,7 +16,7 @@ import {
 import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
 import { createKairosRepositories } from '../src/data/repositories';
 import { parseDecimalString, type TradeRecord } from '../src/domain/trades';
-import { ResultsCandles } from '../src/features/journal/ResultsCandles';
+import { ResultsCandles } from '../src/features/results/ResultsCandles';
 
 function dec(value: string) {
   const parsed = parseDecimalString(value);

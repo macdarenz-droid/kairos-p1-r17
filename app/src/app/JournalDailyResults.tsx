@@ -14,17 +14,17 @@ import {
 } from '../application/visual-pnl';
 import type { KairosDatabase } from '../data/database';
 import { createKairosRepositories } from '../data/repositories';
-import { VisualPnlStreak } from './VisualPnlStreak';
-import { VisualPnlPerformanceSummary } from './VisualPnlPerformanceSummary';
+import { VisualPnlStreak } from '../features/results/VisualPnlStreak';
+import { VisualPnlPerformanceSummary } from '../features/results/VisualPnlPerformanceSummary';
 import { DeviceTimeZoneButton } from '../features/settings/DeviceTimeZoneButton';
-import { ResultsCalendar } from '../features/journal/ResultsCalendar';
-import { ResultsCandles } from '../features/journal/ResultsCandles';
-import { ResultsDayTrades, type ResultsDayTradesState } from '../features/journal/ResultsDayTrades';
+import { ResultsCalendar } from '../features/results/ResultsCalendar';
+import { ResultsCandles } from '../features/results/ResultsCandles';
+import { ResultsDayTrades, type ResultsDayTradesState } from '../features/results/ResultsDayTrades';
 import { ReviewTradeLink } from './ReviewTradeLink';
 import { loadDisciplineScore } from '../application/discipline';
 import { DisciplineScorePanel, type DisciplineScorePanelState } from '../features/discipline/DisciplineScorePanel';
 import { CoachCard } from '../features/discipline/CoachCard';
-import { monthLabel } from '../features/journal/ResultsCalendar';
+import { monthLabel } from '../features/results/ResultsCalendar';
 
 interface JournalDailyResultsProps {
   readonly db: KairosDatabase;

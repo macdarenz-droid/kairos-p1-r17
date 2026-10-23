@@ -39,7 +39,7 @@ export function ResultsDayTrades({ dayKey, timeZone, state, renderTradeLink, onC
   const time = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit', timeZone });
   return <div className="kairos-results-day-trades">
     <div className="kairos-results-day-trades__heading">
-      <h3>Trades closed on {dayLabel(dayKey)}</h3>
+      <h3 tabIndex={-1}>Trades closed on {dayLabel(dayKey)}</h3>
       <button type="button" className="kairos-results-day-trades__close" onClick={onClose}>Close</button>
     </div>
     {state.kind === 'loading' ? <p className="kairos-pnl-calendar__notice">Loading this day's trades…</p> : null}

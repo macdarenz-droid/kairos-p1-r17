@@ -3,10 +3,14 @@ import { Link, useInRouterContext } from 'react-router';
 import { describeTotalsInHomeCurrency } from '../../application/currency/currencyWords';
 import type { JournalHistoryScope } from '../../application/journal';
 import { describePeriodMoneyUnavailable, describeTradeCount } from '../../application/performance/periodWords';
-import { loadResultsDashboard, type ResultsDashboardProjection, type ResultsDashboardQueryResult } from '../../application/performance/resultsDashboard';
+import { loadResultsDashboard, selectResultsEntries, type ResultsDashboardProjection, type ResultsDashboardQueryResult } from '../../application/performance/resultsDashboard';
 import {
   describeVisualPnlPeriodProblem,
+  projectVisualPnlMonthGrid,
+  projectVisualPnlResultCandles,
+  shiftVisualPnlDayKey,
   startVisualPnlTimeZoneFromDevice,
+  summarizeVisualPnlDailyPerformance,
   VISUAL_PNL_DEFAULT_PERIOD,
   writeVisualPnlPeriodChoice,
   type VisualPnlPeriodChoice,
@@ -17,6 +21,11 @@ import { Button, EmptyState, ErrorState, ResultText, Skeleton, StatTile } from '
 import { DisciplineScorePanel } from '../discipline/DisciplineScorePanel';
 import { readDeviceTimeZone } from '../settings/DeviceTimeZoneButton';
 import { PERIOD_LIST_ID, PeriodChooser } from './PeriodChooser';
+import { ResultsCalendar } from './ResultsCalendar';
+import { ResultsCandles } from './ResultsCandles';
+import { ResultsDayTrades } from './ResultsDayTrades';
+import { VisualPnlPerformanceSummary } from './VisualPnlPerformanceSummary';
+import { VisualPnlStreak } from './VisualPnlStreak';
 import './resultsDashboard.css';
 
 export interface ResultsDashboardProps {
@@ -85,6 +94,62 @@ function PeriodResult({ dashboard, glow, renderTradeLink }: { readonly dashboard
 }
 
 /**
+ * The streak, the result days, the total as candles, and the calendar with a day's trades, for one period (T-051d).
+ * Keyed by the period, so a new period starts on its last month with no day open. A day's trades come from memory.
+ */
+function ResultsDays({ dashboard, renderTradeLink }: { readonly dashboard: ResultsDashboardProjection; readonly renderTradeLink: (id: string) => ReactNode }) {
+  const { calendarMonths, period, days, todayKey, timeZone } = dashboard;
+  const box = useRef<HTMLDivElement>(null);
+  const [month, setMonth] = useState<string | null>(null);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  /** The day whose list just opened (its heading takes focus) or closed (its button takes focus back). */
+  const focusAfter = useRef<Readonly<{ kind: 'opened' | 'closed'; day: string }> | null>(null);
+  const lastMonth = calendarMonths[calendarMonths.length - 1]!;
+  const shownMonth = month !== null && calendarMonths.includes(month) ? month : lastMonth;
+  const grid = projectVisualPnlMonthGrid({ monthKey: shownMonth, days: days.days, todayKey, period: { fromDayKey: period.fromDayKey, toDayKey: period.toDayKey } });
+
+  useEffect(() => {
+    const target = focusAfter.current;
+    if (target === null) return;
+    focusAfter.current = null;
+    const element = target.kind === 'opened'
+      ? box.current?.querySelector<HTMLElement>('.kairos-results-day-trades h3')
+      : box.current?.querySelector<HTMLElement>(`[data-day-key="${target.day}"] button`);
+    element?.focus();
+  }, [selectedDay]);
+
+  function toggleDay(day: string): void {
+    const closing = day === selectedDay;
+    focusAfter.current = { kind: closing ? 'closed' : 'opened', day };
+    setSelectedDay(closing ? null : day);
+  }
+  const changeMonth = (next: string) => { setMonth(next); setSelectedDay(null); };
+  const outside = grid?.days.some(day => !day.inPeriod) ?? false;
+  return <div ref={box} className="kairos-results__days">
+    {dashboard.currentStreak !== null ? <VisualPnlStreak projection={dashboard.currentStreak} /> : null}
+    <VisualPnlPerformanceSummary summary={summarizeVisualPnlDailyPerformance(days.days)} />
+    <ResultsCandles eyebrow={dashboard.scope === 'real' ? 'Your results over time' : 'Your practice results over time'} projection={projectVisualPnlResultCandles(days.days)} />
+    {grid ? <ResultsCalendar
+      grid={grid}
+      selectedDayKey={selectedDay}
+      canShowPreviousMonth={shownMonth > calendarMonths[0]!}
+      canShowNextMonth={shownMonth < lastMonth}
+      outsideNote={outside ? `Days outside ${period.label} are dimmed.` : null}
+      onSelectDay={toggleDay}
+      onPreviousMonth={() => changeMonth(grid.previousMonthKey)}
+      onNextMonth={() => changeMonth(grid.nextMonthKey)}
+    /> : null}
+    {selectedDay !== null ? <ResultsDayTrades
+      dayKey={selectedDay}
+      timeZone={timeZone}
+      state={{ kind: 'ready', entries: selectResultsEntries(dashboard, { fromDayKey: selectedDay, toDayKey: shiftVisualPnlDayKey(selectedDay, 1) }), conversions: dashboard.conversions }}
+      renderTradeLink={renderTradeLink}
+      onClose={() => toggleDay(selectedDay)}
+    /> : null}
+  </div>;
+}
+
+/**
  * U5 (P13.A4, D197–D201): "Your results" for one scope and period: the period chooser, the time zone (saved from this
  * device on first use, D199), the period's result after fees, and the discipline ring. Every amount and word comes from
  * an owner; this screen only shows them and never touches storage itself.
@@ -148,7 +213,7 @@ export function ResultsDashboard({ db, scope, choice, onChoiceChange, renderTrad
   const homeWords = dashboard !== null && status === 'ready' ? describeTotalsInHomeCurrency(dashboard.inHomeCurrency) : null;
   const periodLabel = dashboard === null ? '' : dashboard.period.kind === 'all' ? (practice ? 'Practice' : 'your whole journal') : dashboard.period.label;
 
-  return <section ref={region} className="kairos-results" aria-labelledby={titleId} data-results-status={status} aria-busy={busy || undefined}>
+  return <section ref={region} className="kairos-results" aria-labelledby={titleId} data-scope={scope} data-results-status={status} aria-busy={busy || undefined}>
     <div className="kairos-results__heading">
       <p className="kairos-results__eyebrow">{practice ? 'Practice trades only' : 'Your trades'}</p>
       <h2 id={titleId}>{practice ? 'Your practice results' : 'Your results'}</h2>
@@ -171,7 +236,9 @@ export function ResultsDashboard({ db, scope, choice, onChoiceChange, renderTrad
     {status === 'ready' && dashboard !== null ? <>
       {homeWords ? <p className="kairos-results__notice" data-home-currency={dashboard.inHomeCurrency.homeCurrency}>{homeWords.text} <ResultsLink to="/currency">{homeWords.link}</ResultsLink></p> : null}
       <PeriodResult dashboard={dashboard} glow={glow} renderTradeLink={renderTradeLink} />
+      <ResultsDays key={`${dashboard.period.kind}:${dashboard.period.fromDayKey ?? ''}:${dashboard.period.toDayKey ?? ''}`} dashboard={dashboard} renderTradeLink={renderTradeLink} />
       <DisciplineScorePanel title={practice ? 'Your practice discipline' : 'Your discipline'} state={dashboard.discipline} periodLabel={periodLabel} />
+      {dashboard.days.blockedTrades.length > 0 ? <p className="kairos-results__notice">{dashboard.days.blockedTrades.length === 1 ? '1 closed trade could not be placed on a day.' : `${dashboard.days.blockedTrades.length} closed trades could not be placed on a day.`}</p> : null}
     </> : null}
   </section>;
 }

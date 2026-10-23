@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { VisualPnlPerformanceSummary } from '../src/app/VisualPnlPerformanceSummary';
+import { VisualPnlPerformanceSummary } from '../src/features/results/VisualPnlPerformanceSummary';
 
 describe('P13.16 Visual P&L performance summary presentation', () => {
   it('presents semantic result-day counts without percentages', () => {

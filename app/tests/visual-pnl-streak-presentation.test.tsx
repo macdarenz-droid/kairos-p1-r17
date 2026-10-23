@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { VisualPnlStreak } from '../src/app/VisualPnlStreak';
+import { VisualPnlStreak } from '../src/features/results/VisualPnlStreak';
 
 describe('P13.14 Visual P&L streak presentation', () => {
   it('presents profit with text, mark and result-day count', () => {

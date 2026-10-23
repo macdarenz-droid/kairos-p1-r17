@@ -9,7 +9,7 @@ import { projectVisualPnlMonthGrid, writeVisualPnlTimeZonePreference, type Visua
 import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
 import { createKairosRepositories } from '../src/data/repositories';
 import type { DecimalString, TradeId } from '../src/domain/trades';
-import { ResultsCalendar } from '../src/features/journal/ResultsCalendar';
+import { ResultsCalendar } from '../src/features/results/ResultsCalendar';
 
 function day(dayKey: string, total: string, currency = 'USD', tradeCount = 1): VisualPnlDailySummary {
   const outcome = total === '0' ? 'breakeven' : total.startsWith('-') ? 'loss' : 'profit';

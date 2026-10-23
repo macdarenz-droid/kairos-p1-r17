@@ -1,10 +1,14 @@
 import type { VisualPnlMonthGridDay, VisualPnlMonthGridProjection } from '../../application/visual-pnl';
-import './journalResults.css';
+import './results.css';
 
 interface ResultsCalendarProps {
   readonly grid: VisualPnlMonthGridProjection;
   readonly selectedDayKey: string | null;
   readonly canShowNextMonth: boolean;
+  /** U5: false at the first month the results period allows (default true). */
+  readonly canShowPreviousMonth?: boolean;
+  /** U5: shown under the legend, e.g. "Days outside September 2026 are dimmed." */
+  readonly outsideNote?: string | null;
   readonly onSelectDay: (dayKey: string) => void;
   readonly onPreviousMonth: () => void;
   readonly onNextMonth: () => void;
@@ -57,26 +61,26 @@ function dayAriaLabel(day: VisualPnlMonthGridDay): string {
 }
 
 /** The month calendar heatmap: presentational only, from a projected month grid. */
-export function ResultsCalendar({ grid, selectedDayKey, canShowNextMonth, onSelectDay, onPreviousMonth, onNextMonth }: ResultsCalendarProps) {
+export function ResultsCalendar({ grid, selectedDayKey, canShowNextMonth, canShowPreviousMonth = true, outsideNote = null, onSelectDay, onPreviousMonth, onNextMonth }: ResultsCalendarProps) {
   const cells: (VisualPnlMonthGridDay | null)[] = [...Array.from({ length: grid.leadingEmptyCells }, () => null), ...grid.days];
   while (cells.length % 7 !== 0) cells.push(null);
   const weeks = Array.from({ length: cells.length / 7 }, (_, index) => cells.slice(index * 7, index * 7 + 7));
   const hasResults = grid.days.some(day => day.summary !== null);
 
   return <div className="kairos-results-calendar-block">
-    <div className="kairos-results-calendar__bar">
-      <button type="button" className="kairos-results-calendar__nav" aria-label="Previous month" onClick={onPreviousMonth}>‹</button>
+    {canShowPreviousMonth || canShowNextMonth ? <div className="kairos-results-calendar__bar">
+      <button type="button" className="kairos-results-calendar__nav" aria-label="Previous month" disabled={!canShowPreviousMonth} onClick={onPreviousMonth}>‹</button>
       <h3>{monthLabel(grid.monthKey)}</h3>
       <button type="button" className="kairos-results-calendar__nav" aria-label="Next month" disabled={!canShowNextMonth} onClick={onNextMonth}>›</button>
-    </div>
+    </div> : <div className="kairos-results-calendar__bar"><h3>{monthLabel(grid.monthKey)}</h3></div>}
     <table className="kairos-results-calendar">
       <thead><tr>{WEEKDAYS.map(([short, long]) => <th key={short} scope="col" abbr={long}>{short}</th>)}</tr></thead>
       <tbody>
         {weeks.map((week, weekIndex) => <tr key={weekIndex}>
           {week.map((day, dayIndex) => day === null
             ? <td key={`empty-${dayIndex}`} className="kairos-results-calendar__empty" />
-            : <td key={day.dayKey} data-day-key={day.dayKey} data-day-result={day.result} data-day-strength={day.strength ?? undefined} data-day-today={day.isToday || undefined}>
-              {day.summary ? <button type="button" aria-pressed={selectedDayKey === day.dayKey} aria-label={dayAriaLabel(day)} onClick={() => onSelectDay(day.dayKey)}>
+            : <td key={day.dayKey} data-day-key={day.dayKey} data-day-result={day.result} data-day-strength={day.strength ?? undefined} data-day-today={day.isToday || undefined} data-day-outside={day.inPeriod === false || undefined}>
+              {day.summary && day.inPeriod !== false ? <button type="button" aria-pressed={selectedDayKey === day.dayKey} aria-label={dayAriaLabel(day)} onClick={() => onSelectDay(day.dayKey)}>
                 <span>{day.dayOfMonth}</span>
                 <span className="kairos-results-calendar__mark" aria-hidden="true">{mark(day.result)}</span>
               </button> : <span className="kairos-results-calendar__number">{day.dayOfMonth}</span>}
@@ -87,5 +91,6 @@ export function ResultsCalendar({ grid, selectedDayKey, canShowNextMonth, onSele
     <p className="kairos-results-calendar__legend">▲ Profit · ▼ Loss · — Break-even · · Not available. Stronger colour means a bigger result in this month.</p>
     {grid.scale.kind === 'none' && grid.scale.reason === 'mixed-currencies' ? <p className="kairos-results-calendar__legend">Colour strength is off this month because your days use different currencies.</p> : null}
     {!hasResults ? <p className="kairos-results-calendar__legend">No closed trades in {monthLabel(grid.monthKey)}.</p> : null}
+    {outsideNote ? <p className="kairos-results-calendar__legend">{outsideNote}</p> : null}
   </div>;
 }

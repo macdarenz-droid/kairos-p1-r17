@@ -14,6 +14,8 @@ export interface VisualPnlMonthGridDay {
   /** 1–4 against the month's largest profit or loss day; null when there is no size to show. */
   readonly strength: 1 | 2 | 3 | 4 | null;
   readonly isToday: boolean;
+  /** U5: inside the chosen results period; a day outside it shows no result. True when no period is given. */
+  readonly inPeriod: boolean;
 }
 export type VisualPnlMonthScale =
   | Readonly<{ kind: 'one-currency'; currency: string; largestAbsolute: DecimalString }>
@@ -52,12 +54,14 @@ function monthScale(summaries: readonly VisualPnlAggregationSummary[]): VisualPn
  * The month calendar model: every calendar day of `monthKey`, Monday first,
  * each with its P13.7 day result and a 1–4 colour strength against the
  * month's largest profit or loss day. It adds up no money and never chooses
- * a time zone: the day summaries already carry both decisions.
+ * a time zone: the day summaries already carry both decisions. With a
+ * `period` (U5), days outside it are marked and show no result.
  */
-export function projectVisualPnlMonthGrid(input: { readonly monthKey: string; readonly days: readonly VisualPnlDailySummary[]; readonly todayKey: string | null }): VisualPnlMonthGridProjection | null {
-  const { monthKey, todayKey } = input;
+export function projectVisualPnlMonthGrid(input: { readonly monthKey: string; readonly days: readonly VisualPnlDailySummary[]; readonly todayKey: string | null; readonly period?: Readonly<{ fromDayKey: string | null; toDayKey: string | null }> }): VisualPnlMonthGridProjection | null {
+  const { monthKey, todayKey, period } = input;
   if (!isVisualPnlMonthKey(monthKey)) return null;
-  const byDay = new Map(input.days.filter(day => day.dayKey.startsWith(`${monthKey}-`)).map(day => [day.dayKey, day.summary]));
+  const inPeriod = (dayKey: string): boolean => period === undefined || ((period.fromDayKey === null || dayKey >= period.fromDayKey) && (period.toDayKey === null || dayKey < period.toDayKey));
+  const byDay = new Map(input.days.filter(day => day.dayKey.startsWith(`${monthKey}-`) && inPeriod(day.dayKey)).map(day => [day.dayKey, day.summary]));
   const scale = monthScale([...byDay.values()]);
   const count = visualPnlDaysInMonth(monthKey);
   const days: VisualPnlMonthGridDay[] = [];
@@ -71,7 +75,7 @@ export function projectVisualPnlMonthGrid(input: { readonly monthKey: string; re
       const steps = absolute.ok ? decimalScaleToSteps(absolute.value, scale.largestAbsolute, 4) : null;
       strength = steps === null ? null : Math.max(1, steps) as 1 | 2 | 3 | 4;
     }
-    days.push(Object.freeze({ dayKey, dayOfMonth, result, summary, strength, isToday: dayKey === todayKey }));
+    days.push(Object.freeze({ dayKey, dayOfMonth, result, summary, strength, isToday: dayKey === todayKey, inPeriod: inPeriod(dayKey) }));
   }
   return Object.freeze({
     monthKey,

@@ -56,3 +56,62 @@
 .kairos-results-candles__numbers th:first-child { width: 27%; text-align: start; }
 .kairos-results-candles__state { margin: 0; color: var(--kairos-text-muted); font-size: var(--kairos-font-size-sm); }
 .kairos-results-candles__numbers th { overflow-wrap: normal; }
+
+.kairos-pnl-calendar { margin-top:var(--kairos-space-8); border-top:1px solid var(--kairos-border-subtle); padding-top:var(--kairos-space-6); }
+.kairos-pnl-calendar__heading { display:flex; align-items:flex-end; justify-content:space-between; gap:var(--kairos-space-4); margin-bottom:var(--kairos-space-4); }
+.kairos-pnl-calendar__heading h2 { margin:0; }
+.kairos-pnl-calendar__state { margin:0; padding:var(--kairos-space-4); border:1px solid var(--kairos-border-subtle); border-radius:var(--kairos-radius-md); color:var(--kairos-text-muted); }
+.kairos-pnl-calendar__notice { margin:var(--kairos-space-3) 0 0; color:var(--kairos-text-muted); font-size:var(--kairos-font-size-sm); }
+@media (max-width:420px) { .kairos-pnl-calendar__heading { align-items:flex-start; } }
+
+.kairos-pnl-streak {
+  display: grid;
+  gap: var(--kairos-space-1);
+  margin-block-end: var(--kairos-space-3);
+  padding: var(--kairos-space-3);
+  border: 1px solid var(--kairos-border-subtle);
+  border-radius: var(--kairos-radius-lg);
+  background: var(--kairos-surface-raised);
+}
+
+.kairos-pnl-streak__label,
+.kairos-pnl-streak small {
+  color: var(--kairos-text-muted);
+}
+
+.kairos-pnl-streak--profit strong {
+  color: var(--kairos-trade-profit);
+}
+
+.kairos-pnl-streak--loss strong {
+  color: var(--kairos-trade-loss);
+}
+
+.kairos-pnl-streak--breakeven strong,
+.kairos-pnl-streak--empty strong {
+  color: var(--kairos-text-secondary);
+}
+
+.kairos-pnl-performance-summary {
+  display: grid;
+  gap: var(--kairos-space-2);
+  margin-block-end: var(--kairos-space-3);
+  padding: var(--kairos-space-3);
+  border: 1px solid var(--kairos-border-subtle);
+  border-radius: var(--kairos-radius-lg);
+  background: var(--kairos-surface-raised);
+}
+
+.kairos-pnl-performance-summary__label {
+  color: var(--kairos-text-muted);
+}
+
+/* "Your results" (U5): the eyebrow like the Journal's (journalRoute.css .kairos-journal__eyebrow), and the streak and result
+   days with the hairline edge, raised surface, lined-up digits and coloured left edge the Journal gives them. */
+.kairos-results__eyebrow { margin: 0 !important; color: var(--kairos-accent-primary) !important; font-size: var(--kairos-font-size-xs); font-weight: var(--kairos-font-weight-semibold); letter-spacing: .08em; text-transform: uppercase; }
+.kairos-results :is(.kairos-pnl-streak, .kairos-pnl-performance-summary) { border-color: var(--kairos-border-hairline); background-color: var(--kairos-surface-raised); background-image: var(--kairos-surface-gradient); }
+.kairos-results :is(.kairos-pnl-streak strong, .kairos-pnl-performance-summary strong) { font-family: var(--kairos-font-mono); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.kairos-results .kairos-pnl-streak { border-inline-start: 3px solid var(--kairos-border-strong); }
+.kairos-results .kairos-pnl-streak--profit { border-inline-start-color: var(--kairos-trade-profit); }
+.kairos-results .kairos-pnl-streak--loss { border-inline-start-color: var(--kairos-trade-loss); }
+.kairos-results-calendar td[data-day-outside] { opacity: .45; }
