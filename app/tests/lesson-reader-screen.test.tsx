@@ -150,6 +150,7 @@ describe('P25.5 the lesson reader', () => {
     render(<ThemeProvider><RouterProvider router={router} /></ThemeProvider>);
     expect(await screen.findByRole('heading', { level: 1, name: first.title })).toBeTruthy();
     expect(screen.getByText(`Step 1 of ${first.steps.length}`)).toBeTruthy();
-    expect(within(document.body).getAllByRole('link', { name: 'Library' }).some((link) => link.getAttribute('aria-current') === 'page')).toBe(true);
+    // T-053a (D219): the Library tab is marked as the part you are in ("true"); "page" is for the Library page itself.
+    expect(within(document.body).getAllByRole('link', { name: 'Library' }).some((link) => link.getAttribute('aria-current') === 'true')).toBe(true);
   });
 });

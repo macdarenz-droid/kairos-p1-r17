@@ -5,7 +5,7 @@ import { describeTotalsInHomeCurrency } from '../application/currency/currencyWo
 import type { ResultsInHomeCurrencySummary } from '../application/currency/resultsInHomeCurrency';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
 import { createKairosRepositories } from '../data/repositories';
-import { Button, Card, Field } from '../design-system/primitives';
+import { Button, Card, Field, PageHeader } from '../design-system/primitives';
 import { DeviceTimeZoneButton } from '../features/settings/DeviceTimeZoneButton';
 import './goalsRoute.css';
 
@@ -113,7 +113,7 @@ export function GoalsRoute({ db = kairosDatabase, now = wallClock }: GoalsRouteP
   const busy = state.kind === 'loading' || isSaving;
 
   return <section className="kairos-route kairos-goals" aria-labelledby="kairos-goals-title" data-goals-status={state.kind === 'ready' ? state.result.kind : state.kind}>
-    <div className="kairos-goals__heading"><div><p className="kairos-goals__eyebrow">Discipline</p><h1 id="kairos-goals-title">Goals</h1></div></div>
+    <PageHeader eyebrow="Discipline" title="Goals" titleId="kairos-goals-title" />
     {state.kind === 'loading' ? <p className="kairos-goals__note">Loading your goals…</p> : null}
     {state.kind === 'error' ? <p role="alert">Kairos could not load your goals.</p> : null}
     {state.kind === 'ready' && state.result.kind === 'time-zone-unconfigured' ? <p className="kairos-goals__unconfigured" role="status">Goals follow your daily-results calendar. <Link to="/settings">Set your time zone in Settings</Link> first.</p> : null}

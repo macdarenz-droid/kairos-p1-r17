@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { findLesson, findLessonAfter, readLessonCatalog } from '../../application/learn/lessons';
 import type { Lesson, LessonCatalog } from '../../domain/learn/lessons';
-import { Button, Card } from '../../design-system/primitives';
+import { Button, Card, PageHeader } from '../../design-system/primitives';
 import { LessonStepBlocks } from './LessonBlocks';
 import { lessonHref } from './LessonListScreen';
 import './learn.css';
@@ -47,8 +47,7 @@ function LessonReader({ lesson, next }: { readonly lesson: Lesson; readonly next
 
   return (
     <section className="kairos-route kairos-learn kairos-lesson" aria-labelledby="kairos-lesson-title">
-      <Link className="kairos-learn__back" to="/library/lessons">All lessons</Link>
-      <h1 id="kairos-lesson-title">{lesson.title}</h1>
+      <PageHeader title={lesson.title} titleId="kairos-lesson-title" />
       <p className="kairos-lesson__progress">{position === 'done' ? `All ${count} steps done` : `Step ${position} of ${count}`}</p>
       <ol className="kairos-lesson__dots" aria-hidden="true">
         {lesson.steps.map((item, index) => (
@@ -86,9 +85,8 @@ export function LessonReaderScreen({ catalog }: { readonly catalog?: LessonCatal
   if (lesson === null) {
     return (
       <section className="kairos-route kairos-learn" aria-labelledby="kairos-lesson-title">
-        <Link className="kairos-learn__back" to="/library/lessons">All lessons</Link>
-        <h1 id="kairos-lesson-title">Lessons</h1>
-        <p>That lesson is not in the list yet.</p>
+        <PageHeader title="Lessons" titleId="kairos-lesson-title" intro="That lesson is not in the list yet." />
+        <p><Link to="/library/lessons">All lessons</Link></p>
       </section>
     );
   }

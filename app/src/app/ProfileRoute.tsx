@@ -24,6 +24,7 @@ import {
   type PrepareSavedRecordImportResult,
   type PrepareTradeImportResult,
 } from '../application/backup';
+import { PageHeader } from '../design-system/primitives';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
 import { createKairosRepositories } from '../data/repositories';
 import { inspectStorageDurability, requestPersistentStorage, subscribeStorageDurabilityStatus, type StorageDurabilityStatus } from '../pwa/storageDurability';
@@ -270,7 +271,7 @@ export function ProfileRoute({ db = kairosDatabase, now = wallClock, downloads, 
   const preview = restoreState.kind === 'preview' || restoreState.kind === 'committing' ? restoreState.restore.preview : null;
 
   return <section className="kairos-route kairos-profile" aria-labelledby="kairos-profile-title" data-profile-export={exportState.kind} data-profile-restore={restoreState.kind} data-profile-import={importState.kind}>
-    <div className="kairos-profile__heading"><div><p className="kairos-profile__eyebrow">Your data</p><h1 id="kairos-profile-title">Profile</h1></div></div>
+    <PageHeader eyebrow="Your data" title="Profile" titleId="kairos-profile-title" />
 
     <article className="kairos-profile-card" aria-labelledby="kairos-profile-device-title">
       <h2 id="kairos-profile-device-title">This device</h2>

@@ -29,7 +29,7 @@ import type { KairosDatabase } from '../../data/database';
 import type { EconomicEventImpact, EconomicEventRecord } from '../../domain/economic-calendar/economicEvent';
 import { NEWS_CALENDAR_SOURCE_IDS, NEWS_SOURCES } from '../../domain/economic-calendar/newsSources';
 import { economicEventName, economicEventSize } from '../../domain/economic-calendar/newsImpact';
-import { Button, Card, UnavailableNotice } from '../../design-system/primitives';
+import { Button, Card, PageHeader, UnavailableNotice } from '../../design-system/primitives';
 import { GlossaryHint } from '../learn/GlossaryHint';
 import { NewsEventForm } from './NewsEventForm';
 import { NewsHeadlinesCard } from './NewsHeadlinesCard';
@@ -218,8 +218,7 @@ export function NewsCalendarScreen({ db, now = wallClock, news }: NewsCalendarSc
   }, [settledByTap, weekId]);
 
   return <section className="kairos-route kairos-news-calendar" aria-labelledby="kairos-news-calendar-title">
-    <p className="kairos-news-calendar__eyebrow">Scheduled news</p>
-    <h1 id="kairos-news-calendar-title" tabIndex={-1}>News calendar</h1>
+    <PageHeader eyebrow="Scheduled news" title="News calendar" titleId="kairos-news-calendar-title" />
     <p>{NEWS_CALENDAR_INTRO} <GlossaryHint termId="news-calendar" label="News calendar" /></p>
     <p>{NEWS_CALENDAR_LIMITS}</p>
     {state.kind === 'loading' ? <p>Loading your news calendar…</p> : null}

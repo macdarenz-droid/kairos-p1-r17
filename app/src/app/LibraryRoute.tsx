@@ -5,6 +5,7 @@ import { kairosDatabase, type KairosDatabase } from '../data/database';
 import { LearningSources } from '../features/library/LearningSources';
 import { analysisHandoffHref } from './analysisHandoff';
 import './libraryRoute.css';
+import { PageHeader } from '../design-system/primitives';
 
 interface LibraryRouteProps {
   readonly db?: KairosDatabase;
@@ -45,7 +46,7 @@ export function LibraryRoute({ db = kairosDatabase, learningSourceDevice }: Libr
   }, [state, kind, market]);
 
   return <section className="kairos-route kairos-library" aria-labelledby="kairos-library-title" data-library-status={state.kind} data-library-count={state.kind === 'ready' ? entries.length : undefined}>
-    <div className="kairos-library__heading"><div><h1 id="kairos-library-title">Library</h1></div></div>
+    <PageHeader title="Library" titleId="kairos-library-title" />
     <section className="kairos-library__section" aria-labelledby="kairos-library-learn-title">
       <h2 id="kairos-library-learn-title">Learn the basics</h2>
       <ul className="kairos-library__learn">

@@ -1,4 +1,9 @@
-html { background: var(--kairos-background-depth); }
+html {
+  background: var(--kairos-background-depth);
+  /* D218: a focused element is never under the sticky header or the bottom bar (P40's overlap). */
+  scroll-padding-top: calc(var(--kairos-control-lg) + (var(--kairos-space-3) * 2) + env(safe-area-inset-top, 0px) + 1px + var(--kairos-space-2));
+  scroll-padding-bottom: calc(var(--kairos-layout-navigation-height) + env(safe-area-inset-bottom, 0px) + var(--kairos-space-2));
+}
 body {
   min-width: 20rem;
   background: var(--kairos-background-base);
@@ -62,6 +67,26 @@ body {
     calc(var(--kairos-layout-navigation-height) + var(--kairos-space-8) + env(safe-area-inset-bottom, 0px));
 }
 .kairos-route { width: 100%; max-width: 48rem; margin: 0 auto; animation: kairos-route-in var(--kairos-motion-slow) var(--kairos-ease-out); }
+.kairos-shell__back-row { width: 100%; max-width: 48rem; margin: calc(var(--kairos-space-4) * -1) auto var(--kairos-space-2); }
+.kairos-shell__back {
+  min-height: var(--kairos-control-md);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--kairos-space-1);
+  margin-left: calc(var(--kairos-space-2) * -1);
+  padding: 0 var(--kairos-space-2);
+  border: 0;
+  border-radius: var(--kairos-radius-md);
+  background: none;
+  color: var(--kairos-accent-primary);
+  font: inherit;
+  font-weight: var(--kairos-font-weight-semibold);
+  text-decoration: none;
+  cursor: pointer;
+}
+.kairos-shell__back:hover { background: var(--kairos-accent-soft); }
+.kairos-shell__back:focus-visible { outline: 2px solid var(--kairos-state-focus); outline-offset: 2px; }
+.kairos-shell__back-icon { transform: rotate(90deg); }
 @keyframes kairos-route-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .kairos-route h1 { margin: 0; font-size: var(--kairos-font-size-xxl); line-height: var(--kairos-line-height-tight); }
 .kairos-route p { margin: var(--kairos-space-3) 0 0; color: var(--kairos-text-secondary); line-height: var(--kairos-line-height-relaxed); }
@@ -181,6 +206,7 @@ body {
   }
   .kairos-shell__nav-link--active { background: var(--kairos-accent-soft); }
   .kairos-shell__content { padding: var(--kairos-space-10) var(--kairos-space-8); }
+  html { scroll-padding-bottom: var(--kairos-space-2); }
 }
 
 @media (prefers-reduced-motion: reduce) {

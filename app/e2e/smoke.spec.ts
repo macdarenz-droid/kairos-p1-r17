@@ -1099,3 +1099,64 @@ test('(u) Share a trade as an image, and a planned trade drawn from now', async 
   expect(axe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
   expect(errors).toEqual([]);
 });
+
+test('(v) Where am I: back to your place, the tab you are in, and the top of a new page', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  // A short window, so the Journal and the coach page are both taller than the view.
+  await page.setViewportSize({ width: 390, height: 560 });
+  await activate(page);
+  await page.goto('/analysis');
+  await expect(page.getByText('Time zone: Asia/Manila')).toBeVisible();
+  await page.goto('/journal');
+  const openCoach = page.getByRole('link', { name: 'Open your coach' });
+  await expect(openCoach).toBeVisible();
+  await openCoach.scrollIntoViewIfNeeded();
+  const place = await page.evaluate(() => window.scrollY);
+  expect(place).toBeGreaterThan(100);
+
+  // Bringing a field above the view to the top puts it below the sticky header, never under it (Chromium centres a
+  // focused field anyway; a jump to a part of the page, as the log address does, lines it up with the top).
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await expect(page.getByLabel(/^Symbol/)).not.toBeInViewport();
+  await page.getByLabel(/^Symbol/).evaluate(element => element.scrollIntoView({ block: 'start' }));
+  const header = (await page.locator('.kairos-shell__header').boundingBox())!;
+  expect((await page.getByLabel(/^Symbol/).boundingBox())!.y).toBeGreaterThanOrEqual(header.y + header.height);
+  await openCoach.scrollIntoViewIfNeeded();
+  const left = await page.evaluate(() => window.scrollY);
+
+  // A new page opens at its top, with focus on its heading.
+  await openCoach.click();
+  const title = page.getByRole('heading', { level: 1, name: 'Your coach' });
+  await expect(title).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollHeight > window.innerHeight)).toBe(true);
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+  await expect(title).toBeFocused();
+  expect((await title.boundingBox())!.y).toBeGreaterThanOrEqual(header.y + header.height);
+  // Coach is opened from More, so More is marked as the part you are in.
+  await expect(page.getByRole('link', { name: 'More', exact: true })).toHaveAttribute('aria-current', 'true');
+
+  // Back returns to the Journal, at the place you left it.
+  await page.getByRole('button', { name: 'Back to Journal' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Journal' })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThanOrEqual(left - 2);
+  expect(Math.abs(await page.evaluate(() => window.scrollY) - left)).toBeLessThanOrEqual(2);
+
+  // Opened directly, a page goes up to its parent.
+  await page.goto('/goals');
+  const up = page.getByRole('link', { name: 'Back to More' });
+  await expect(up).toBeVisible();
+  await expect(page.getByRole('link', { name: 'More', exact: true })).toHaveAttribute('aria-current', 'true');
+  await up.click();
+  await expect(page.getByRole('heading', { level: 1, name: 'More' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'More', exact: true })).toHaveAttribute('aria-current', 'page');
+
+  // On a wide screen, where the bottom bar is a side list, More is marked too.
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/goals');
+  const more = page.getByRole('link', { name: 'More', exact: true });
+  await expect(more).toHaveClass(/kairos-shell__nav-link--active/);
+  const background = (name: string) => page.getByRole('link', { name, exact: true }).evaluate(element => getComputedStyle(element).backgroundColor);
+  expect(await background('More')).not.toBe(await background('Home'));
+  expect(errors).toEqual([]);
+});

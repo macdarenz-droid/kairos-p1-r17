@@ -43,7 +43,8 @@ describe('P24.5 Trading words page', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Trading words' })).toBeTruthy();
     const count = readGlossary().terms.length;
     expect(screen.getByText(`${count} words`)).toBeTruthy();
-    expect(screen.getAllByRole('link', { name: 'Library' }).some((link) => link.getAttribute('aria-current') === 'page')).toBe(true);
+    // T-053a (D219): the Library tab is marked as the part you are in ("true"); "page" is for the Library page itself.
+    expect(screen.getAllByRole('link', { name: 'Library' }).some((link) => link.getAttribute('aria-current') === 'true')).toBe(true);
   });
 
   it('searches as you type', () => {
