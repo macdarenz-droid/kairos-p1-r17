@@ -1266,3 +1266,101 @@ test('(w2) First run skipped: Home, and never the setup again', async ({ page })
   await expect(page).toHaveURL(/\/$/);
   expect(errors).toEqual([]);
 });
+
+test('(x) Log a trade from anywhere: "+ Log trade", the log address and Getting started', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  const axeOk = async (where: string) => {
+    const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+    expect(axe.violations.map(violation => `${where} ${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  };
+  const logTrade = page.getByRole('link', { name: 'Log trade' });
+  const symbol = page.getByLabel(/^Symbol/);
+  // Symbol has focus, and the form is in view: below the sticky header and above the button.
+  const formReady = async () => {
+    await expect(page).toHaveURL(/\/journal$/);
+    await expect(symbol).toBeFocused();
+    const header = (await page.locator('.kairos-shell__header').boundingBox())!;
+    const field = (await symbol.boundingBox())!;
+    const button = (await logTrade.boundingBox())!;
+    expect(field.y).toBeGreaterThanOrEqual(header.y + header.height);
+    expect(field.y + field.height).toBeLessThanOrEqual(button.y);
+  };
+  await activate(page);
+
+  // A skipped setup still shows Getting started on Home, with the button.
+  const gettingStarted = page.getByRole('region', { name: 'Getting started' });
+  await expect(gettingStarted).toBeVisible();
+  await expect(gettingStarted.getByText(/^\d of 6 done$/)).toBeVisible();
+  await expect(gettingStarted.getByRole('link', { name: 'Your first trade' })).toBeVisible();
+  await expect(logTrade).toBeVisible();
+  await axeOk('Home');
+  await logTrade.click();
+  await formReady();
+  await axeOk('Journal');
+
+  await page.goto('/analysis');
+  await expect(page.getByRole('heading', { level: 1, name: 'Analysis' })).toBeVisible();
+  await logTrade.click();
+  await formReady();
+
+  // A trade saved, then the Journal scrolled to its end: the button covers no card.
+  await page.getByLabel(/^Market/).selectOption('crypto');
+  await symbol.fill('BTCUSDT');
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Status/).selectOption('closed');
+  await page.locator('#kairos-trade-opened-at').fill('2026-09-20T09:00');
+  await page.locator('#kairos-trade-closed-at').fill('2026-09-20T10:00');
+  await page.getByLabel('Currency code').fill('USDT');
+  await page.getByRole('button', { name: 'Add entry' }).click();
+  await page.getByLabel('Entry 1 price').fill('60000');
+  await page.getByLabel('Entry 1 quantity').fill('0.1');
+  await page.getByLabel('Entry 1 date and time').fill('2026-09-20T09:00');
+  await page.getByRole('button', { name: 'Add exit' }).click();
+  await page.getByLabel('Exit 2 price').fill('61500');
+  await page.getByLabel('Exit 2 quantity').fill('0.1');
+  await page.getByLabel('Exit 2 date and time').fill('2026-09-20T10:00');
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.locator('[data-outcome="profit"]').first()).toContainText('150 USDT');
+  // The card's picture arrives after the save and the page grows, so the end is reached again until the page settles.
+  const lastCardClear = async () => {
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    return page.evaluate(() => {
+      const card = [...document.querySelectorAll('.kairos-history-card')].at(-1)!.getBoundingClientRect();
+      const button = document.querySelector('.kairos-log-trade')!.getBoundingClientRect();
+      return window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 1 && card.bottom <= button.top;
+    });
+  };
+  await expect.poll(lastCardClear).toBe(true);
+  await expect(symbol).not.toBeInViewport();
+  // On the Journal the button brings the form back, without a step added to Back.
+  await logTrade.click();
+  await formReady();
+  await page.goBack();
+  await expect(page.getByRole('heading', { level: 1, name: 'Analysis' })).toBeVisible();
+
+  // Opened directly (the app shortcut's address).
+  await page.goto('/journal?log=1');
+  await formReady();
+
+  // Getting started ticks the first trade; the button is not on Practice.
+  await page.goto('/');
+  await expect(gettingStarted.getByText('Your first trade (done)')).toBeVisible();
+  await expect(gettingStarted.getByRole('link', { name: 'Your first trade' })).toHaveCount(0);
+  // Home's bubbles end above the button, with Getting started above them (at the page's end when they do not fit).
+  await page.getByRole('button', { name: 'Your Trades' }).click();
+  const fieldClear = async () => {
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    return page.evaluate(() => {
+      const field = document.querySelector('.kairos-your-trades__field')?.getBoundingClientRect();
+      const button = document.querySelector('.kairos-log-trade')?.getBoundingClientRect();
+      return field !== undefined && button !== undefined && field.height >= 240 && field.bottom <= button.top;
+    });
+  };
+  await expect.poll(fieldClear).toBe(true);
+  await page.goto('/practice');
+  await expect(page.getByRole('heading', { level: 1, name: 'Practice' })).toBeVisible();
+  await expect(logTrade).toHaveCount(0);
+  expect(errors).toEqual([]);
+});

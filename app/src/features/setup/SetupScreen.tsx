@@ -12,6 +12,7 @@ import { ECB_REFERENCE_CURRENCIES } from '../../domain/calculations/currencyConv
 import type { DisciplineListItem, DisciplineListKind, DisciplineLists } from '../../domain/discipline';
 import type { MarketType } from '../../domain/trades';
 import { Button, Card, Field, PageHeader, Select } from '../../design-system/primitives';
+import { LOG_TRADE_ADDRESS } from './GettingStartedCard';
 import './setup.css';
 
 export interface SetupScreenProps {
@@ -246,7 +247,7 @@ export function SetupScreen({ db, deviceTimeZone, languages, now = wallClock }: 
       body: <>
         <p>Your setup is saved. Log a trade when you make one, or practise first with pretend money.</p>
         <p className="kairos-setup__finish">
-          <Link className="kairos-button kairos-button--primary kairos-button--lg" to="/journal">Log your first trade</Link>
+          <Link className="kairos-button kairos-button--primary kairos-button--lg" to={LOG_TRADE_ADDRESS}>Log your first trade</Link>
           <Link className="kairos-button kairos-button--secondary kairos-button--lg" to="/practice">Try Practice first</Link>
         </p>
       </>,

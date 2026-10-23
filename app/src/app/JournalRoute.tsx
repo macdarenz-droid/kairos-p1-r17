@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { loadTradedMarkets } from '../application/setup/tradedMarkets';
-import { Link, useInRouterContext } from 'react-router';
+import { Link, useInRouterContext, useSearchParams } from 'react-router';
+import { SCROLL_CLAIMED_EVENT } from './AppShell';
 import { JOURNAL_HISTORY_SOURCES } from '../application/journal';
 import { JournalHistoryList } from './JournalHistoryList';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
@@ -25,11 +26,34 @@ function JournalLink({ to, children }: { readonly to: string; readonly children:
   return useInRouterContext() ? <Link to={to}>{children}</Link> : <a href={to}>{children}</a>;
 }
 
+/**
+ * D225: `/journal?log=1` (the "+ Log trade" button, the app shortcut, Getting started) brings the trade form into
+ * view and focuses its first field, then takes `log` out of the address so Back does not do it again.
+ */
+function LogAddress() {
+  const [params, setParams] = useSearchParams();
+  const asked = params.get('log') === '1';
+  useEffect(() => {
+    if (!asked) return;
+    const symbol = document.getElementById('kairos-trade-symbol');
+    if (symbol !== null) {
+      window.dispatchEvent(new Event(SCROLL_CLAIMED_EVENT));
+      symbol.scrollIntoView({ block: 'start' });
+      symbol.focus({ preventScroll: true });
+    }
+    const kept = new URLSearchParams(params);
+    kept.delete('log');
+    setParams(kept, { replace: true });
+  }, [asked, params, setParams]);
+  return null;
+}
+
 export function JournalRoute({ db = kairosDatabase, now }: JournalRouteProps) {
   const [updateNotice, setUpdateNotice] = useState('');
   const [historyStatus, setHistoryStatus] = useState<TradeStatus | ''>('');
   const [journalRevision, setJournalRevision] = useState(0);
   const [disciplineRevision, setDisciplineRevision] = useState(0);
+  const inRouter = useInRouterContext();
   // D223: the trade form starts on the first market the trader trades (none saved: blank, as before).
   const [firstMarket, setFirstMarket] = useState<TradeMarket | null>(null);
   useEffect(() => {
@@ -44,6 +68,7 @@ export function JournalRoute({ db = kairosDatabase, now }: JournalRouteProps) {
       <PageHeader eyebrow="Manual trade" title="Journal" titleId="kairos-journal-title" intro="Log what you know now; plan numbers are optional."
         action={<span className="kairos-journal__badge">Saved on this device</span>} />
 
+      {inRouter ? <LogAddress /> : null}
       <TradeForm db={db} kind="journal" defaultMarket={firstMarket} onSaved={async () => { await pages.refresh(); setJournalRevision(current => current + 1); }} />
 
       <Card className="kairos-journal__results-link">

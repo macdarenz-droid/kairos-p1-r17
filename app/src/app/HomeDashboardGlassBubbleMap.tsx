@@ -35,6 +35,19 @@ function glassMaterial(): Promise<HTMLCanvasElement> {
   return materialPromise;
 }
 
+/**
+ * Where Home's bubble field may end on screen: above the phone's bottom bar, and above the page's bottom room, which on
+ * Home is the room under "+ Log trade" (D225), so no bubble sits under the button.
+ */
+export function glassFieldBottom(element: HTMLElement): number {
+  const viewport = window.visualViewport?.height ?? window.innerHeight;
+  const nav = document.querySelector('.kairos-shell__navigation')?.getBoundingClientRect();
+  const bar = nav && nav.width > window.innerWidth * .7 && nav.top > 0 ? Math.min(viewport, nav.top) : viewport;
+  const main = element.closest('main');
+  const room = main === null ? 0 : Number.parseFloat(getComputedStyle(main).paddingBottom) || 0;
+  return Math.min(bar, viewport - room);
+}
+
 export function GlassDecoration() {
   const ref = useRef<HTMLCanvasElement>(null);
   const [ready, setReady] = useState(false);
@@ -117,14 +130,14 @@ export function HomeDashboardGlassBubbleMap({ model, onRetry }: HomeDashboardGla
     if (!element) return;
     const measure = () => {
       setWidth(element.clientWidth);
-      const viewport = window.visualViewport?.height ?? window.innerHeight;
-      const nav = document.querySelector('.kairos-shell__navigation')?.getBoundingClientRect();
-      const bottom = nav && nav.width > window.innerWidth * .7 && nav.top > 0 ? Math.min(viewport,nav.top) : viewport;
-      setHeight(Math.max(240, bottom - element.getBoundingClientRect().top - 16));
+      setHeight(Math.max(240, glassFieldBottom(element) - element.getBoundingClientRect().top - 16));
     };
     measure();
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
     observer?.observe(element);
+    // What shows above the field (Getting started) moves it down; the page around it changes size then.
+    const main = element.closest('main');
+    if (main !== null) observer?.observe(main);
     window.addEventListener('resize', measure);
     window.visualViewport?.addEventListener('resize', measure);
     return () => { observer?.disconnect(); window.removeEventListener('resize', measure); window.visualViewport?.removeEventListener('resize', measure); };

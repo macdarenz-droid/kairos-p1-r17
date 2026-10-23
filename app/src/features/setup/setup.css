@@ -11,4 +11,17 @@
 .kairos-setup__actions { display: flex; flex-wrap: wrap; gap: var(--kairos-space-3); }
 .kairos-setup__finish { display: flex; flex-wrap: wrap; gap: var(--kairos-space-3); }
 .kairos-setup__finish a { text-decoration: none; }
-.kairos-setup__problem { color: var(--kairos-state-danger); }
+.kairos-setup__problem { color: var(--kairos-state-error); }
+
+/* T-053e (D224): Home's Getting started card. */
+.kairos-getting-started { display: grid; gap: var(--kairos-space-3); margin-block: var(--kairos-space-4); }
+.kairos-getting-started__heading { display: flex; align-items: center; justify-content: space-between; gap: var(--kairos-space-3); }
+.kairos-getting-started__heading h2 { margin: 0; font-size: var(--kairos-font-size-lg); }
+.kairos-getting-started .kairos-getting-started__count { margin: 0; }
+.kairos-getting-started__bar { display: block; block-size: .375rem; border-radius: var(--kairos-radius-full); background: var(--kairos-border-subtle); overflow: hidden; }
+.kairos-getting-started__bar > span { display: block; block-size: 100%; background: var(--kairos-accent-primary); }
+.kairos-getting-started__steps { display: grid; gap: var(--kairos-space-2); margin: 0; padding: 0; list-style: none; }
+.kairos-getting-started__steps li { min-height: var(--kairos-control-md); display: flex; align-items: center; gap: var(--kairos-space-3); }
+.kairos-getting-started__steps li[data-done='true'] { color: var(--kairos-text-secondary); }
+.kairos-getting-started__tick { flex: none; color: var(--kairos-state-success); }
+.kairos-getting-started__circle { flex: none; inline-size: 1.25rem; block-size: 1.25rem; border: 2px solid var(--kairos-border-default); border-radius: var(--kairos-radius-full); }

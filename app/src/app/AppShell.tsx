@@ -1,9 +1,10 @@
 import { Link, Outlet, useLocation, useNavigate, useNavigation, useNavigationType, type Location } from 'react-router';
 import { TradePictureCandleLoaderContext } from '../features/journal/tradePictureCandleQueue';
 import { browserTradePictureCandleLoader } from './tradePictureCandleBrowserDeps';
-import { useEffect, useLayoutEffect, useRef, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { Icon, type IconName } from '../design-system/icons/Icon';
 import { ToastProvider } from '../design-system/primitives';
+import { LOG_TRADE_ADDRESS } from '../features/setup/GettingStartedCard';
 import { isNavigationTabPage, navigationTabOf, normalizePathname, pageParentOf, primaryNavigation } from './navigation';
 import { backStepOf, backTrailEntryId, EMPTY_BACK_TRAIL, recordBackTrailNavigation, recordBackTrailTitle, type BackTrail } from './backTrail';
 import { UpdatePrompt, type UpdatePromptPort } from '../features/shell/UpdatePrompt';
@@ -60,6 +61,8 @@ function useScreenTitleAndFocus(pathname: string, onTitle: (title: string) => vo
 }
 
 const SCROLL_PLACES_KEY = 'kairos.scroll-places.v1';
+/** A page that brings part of itself into view (the Journal's log address) says so, and the shell stops reaching for its place. */
+export const SCROLL_CLAIMED_EVENT = 'kairos:scroll-claimed';
 /** Places kept across a reload (sessionStorage, this tab only); the newest are kept. */
 const SCROLL_PLACES_KEPT = 50;
 /** How long a returning page keeps reaching for its place while its data arrives. */
@@ -130,6 +133,7 @@ function useScrollPlaces(location: Location): void {
     const stop = () => {
       cancelAnimationFrame(frame);
       for (const name of stopEvents) window.removeEventListener(name, stop);
+      window.removeEventListener(SCROLL_CLAIMED_EVENT, stop);
     };
     // Kept for the whole second, not only until first reached: what loads above the place can still move it.
     const reach = () => {
@@ -138,6 +142,7 @@ function useScrollPlaces(location: Location): void {
       frame = requestAnimationFrame(reach);
     };
     for (const name of stopEvents) window.addEventListener(name, stop, { passive: true });
+    window.addEventListener(SCROLL_CLAIMED_EVENT, stop);
     frame = requestAnimationFrame(reach);
     return stop;
   }, [location.key, location.pathname]);
@@ -164,6 +169,35 @@ function useBackTrail(location: Location) {
 
 /** Marks a navigation made by the "up" link, so the parent page does not offer to go back down (D218). */
 const BACK_UP_STATE = 'kairosBackUp';
+
+/** The pages that offer "+ Log trade" (D225): Home, the Journal and Analysis. Practice has its own form. */
+const LOG_TRADE_PAGES: ReadonlySet<string> = new Set(['/', '/journal', '/analysis']);
+
+/**
+ * Whether a sheet or dialog is open. The kit's Sheet and ConfirmDialog are the app's only modals, and each is put
+ * straight into body while open, so only body's own children are watched (not every change on a live page).
+ */
+function useModalOpen(): boolean {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const check = () => setOpen(document.querySelector('body > .kairos-sheet') !== null);
+    check();
+    const observer = new MutationObserver(check);
+    observer.observe(document.body, { childList: true });
+    return () => observer.disconnect();
+  }, []);
+  return open;
+}
+
+/**
+ * D225: the floating "+ Log trade", above the bottom bar, hidden while a sheet or dialog is open. On the Journal it
+ * replaces the entry, so the form is brought into view without a step added to Back.
+ */
+function LogTradeButton({ onJournal }: { readonly onJournal: boolean }) {
+  const modalOpen = useModalOpen();
+  if (modalOpen) return null;
+  return <Link className="kairos-log-trade" to={LOG_TRADE_ADDRESS} replace={onJournal}><Icon name="plus" size={20} />Log trade</Link>;
+}
 
 /** The back control above a page that isn't a tab: back to where you came from, or up to the page's parent. */
 function BackControl({ step }: { readonly step: NonNullable<ReturnType<typeof backStepOf>> }) {
@@ -199,6 +233,8 @@ export function AppShell({ loading = false }: { readonly loading?: boolean }) {
   const navIndex = tab === null ? null : primaryNavigation.indexOf(tab);
   const inkStyle = (navIndex === null ? {} : { '--kairos-nav-index': navIndex }) as CSSProperties;
   const back = useBackTrail(location);
+  const page = normalizePathname(location.pathname);
+  const logTrade = LOG_TRADE_PAGES.has(page);
   useScreenTitleAndFocus(location.pathname, back.onTitle);
   useScrollPlaces(location);
   return (
@@ -212,12 +248,13 @@ export function AppShell({ loading = false }: { readonly loading?: boolean }) {
       </header>
       <UpdatePrompt port={updatePromptPort} />
       <ToastProvider>
-        <main className="kairos-shell__content" id={MAIN_ID} tabIndex={-1}>
+        <main className="kairos-shell__content" id={MAIN_ID} tabIndex={-1} data-log-trade={logTrade ? 'true' : undefined}>
           {/* A new control for each page: the one that had focus goes away, so focus moves to the new heading (D179). Another
               entry of the same page (a changed period, a step) keeps it, so focus never falls to the page. */}
-          {back.step === null ? null : <BackControl key={normalizePathname(location.pathname)} step={back.step} />}
+          {back.step === null ? null : <BackControl key={page} step={back.step} />}
           <TradePictureCandleLoaderContext.Provider value={browserTradePictureCandleLoader()}><Outlet /></TradePictureCandleLoaderContext.Provider>
         </main>
+        {logTrade ? <LogTradeButton onJournal={page === '/journal'} /> : null}
       </ToastProvider>
       <nav className="kairos-shell__navigation" aria-label="Primary navigation">
         <div className="kairos-shell__navigation-inner" style={inkStyle}>
@@ -228,7 +265,7 @@ export function AppShell({ loading = false }: { readonly loading?: boolean }) {
               key={item.to}
               to={item.to}
               className={`kairos-shell__nav-link${item === tab ? ' kairos-shell__nav-link--active' : ''}`}
-              aria-current={item === tab ? (normalizePathname(location.pathname) === item.to ? 'page' : 'true') : undefined}
+              aria-current={item === tab ? (page === item.to ? 'page' : 'true') : undefined}
             >
               <Icon name={navigationIcons[item.to] ?? 'more'} size={20} className="kairos-shell__nav-icon" />
               {item.label}

@@ -10,6 +10,7 @@ import { HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTextEvidenceRu
 import { createHomeDashboardLiveCryptoBubbleDefaultRuntimeProductConfiguration } from './homeDashboardLiveCryptoBubbleRuntimeProductPolicy';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
 import { HomeDisciplineCard } from '../features/discipline/HomeDisciplineCard';
+import { GettingStartedCard } from '../features/setup/GettingStartedCard';
 import { PageHeader, Segmented } from '../design-system/primitives';
 
 /** A stable default clock, as in GoalsRoute: a new function each render would reload the card. */
@@ -23,6 +24,7 @@ export function HomeRoute({ db = kairosDatabase, now = wallClock }: { readonly d
   // Home shows at once, on the markets last known in this visit (the shell reads them at start).
   const [view,setViewState] = useState<'market'|'trades'>(() => viewFor(knownTradedMarkets(db)));
   const chosen = useRef(false);
+  const control = useRef<HTMLDivElement>(null);
   const setView = (next: 'market' | 'trades') => { chosen.current = true; setViewState(next); };
   // D222: a fresh journal opens the setup in Home's place once the read answers (only ever on a first run).
   const inRouter = useInRouterContext();
@@ -45,8 +47,12 @@ export function HomeRoute({ db = kairosDatabase, now = wallClock }: { readonly d
     >
       <PageHeader title="Home" titleId="kairos-route-home" intro="Your markets and your trades at a glance." />
       {openSetup && inRouter ? <Navigate to="/setup" replace /> : null}
+      {/* D224: after "Hide", focus goes to the dashboard control, the next thing on the page. */}
+      <GettingStartedCard db={db} now={now} onHidden={() => control.current?.querySelector<HTMLElement>('button[aria-pressed="true"]')?.focus()} />
+      <div ref={control}>
       <Segmented label="Dashboard view" value={view} onChange={setView}
         options={[{ value: 'market', label: 'Live Market' }, { value: 'trades', label: 'Your Trades' }]} />
+      </div>
       <HomeDashboardSwipePager view={view} onViewChange={setView}>
       {view==='market'?<section aria-labelledby="kairos-home-dashboard-heading">
         <h2 id="kairos-home-dashboard-heading">Crypto prices now</h2>
