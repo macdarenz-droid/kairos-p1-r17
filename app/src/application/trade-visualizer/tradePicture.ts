@@ -213,9 +213,11 @@ const withUnit = (unit: string | null) => (value: string) => (unit ? `${value} $
 
 /** D213: the missing part that keeps a box off the picture, first match wins; null when both boxes are drawn. */
 function describePlanNote(input: {
-  readonly bothDrawn: boolean; readonly noStart: boolean; readonly entry: boolean; readonly stop: boolean; readonly target: boolean;
+  readonly bothDrawn: boolean; readonly noStart: boolean; readonly cancelled: boolean; readonly entry: boolean; readonly stop: boolean; readonly target: boolean;
 }): string | null {
   if (input.bothDrawn) return null;
+  // A cancelled trade has no opening time to add (the form hides it), so the note says why instead.
+  if (input.noStart && input.cancelled) return 'This trade was cancelled before it opened, so there are no risk or reward boxes.';
   if (input.noStart) return 'Add when the trade opened to see your risk and reward boxes.';
   if (!input.entry) {
     const others = [input.stop ? null : 'stop', input.target ? null : 'target'].filter((part): part is string => part !== null);
@@ -248,7 +250,9 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
   // D212: a planned trade has no time of its own; its boxes start now, with room for 12 candles on the right.
   const planned = trade.status === 'draft';
   const nowMs = Date.parse(now);
-  const roomMs = TRADE_PICTURE_PLANNED_ROOM_CANDLES * tradePictureIntervalMs(input.candleInterval ?? TRADE_PICTURE_PLANNED_INTERVAL);
+  // The room on the right is for the boxes, so a plan with no box gets none.
+  const drawsBox = facts.planned.entry !== null && (facts.planned.stop !== null || facts.planned.target !== null);
+  const roomMs = drawsBox ? TRADE_PICTURE_PLANNED_ROOM_CANDLES * tradePictureIntervalMs(input.candleInterval ?? TRADE_PICTURE_PLANNED_INTERVAL) : 0;
   const startMs = planned ? (Number.isFinite(nowMs) ? nowMs : null) : tradeStartMs;
   const endMs = planned ? (startMs === null ? null : startMs + roomMs) : Number.isFinite(timesEndMs) ? timesEndMs : null;
   const startAt = startMs === null ? null : iso(startMs);
@@ -401,6 +405,6 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
     priceMove: projectPriceMove({ side: trade.side, executions, startMs: tradeStartMs, endMs: trade.status === 'open' ? nowMs : timesEndMs, stillOpen: trade.status === 'open', candles }),
     candleWords: pictureCandles.length > 0 && input.candleInterval ? describeTradePictureInterval(input.candleInterval) : null,
     priceNow,
-    planNote: describePlanNote({ bothDrawn: riskBox !== null && rewardBox !== null, noStart: startAt === null, entry: entry !== null, stop: stop !== null, target: target !== null }),
+    planNote: describePlanNote({ bothDrawn: riskBox !== null && rewardBox !== null, noStart: startAt === null, cancelled: trade.status === 'cancelled', entry: entry !== null, stop: stop !== null, target: target !== null }),
   });
 }

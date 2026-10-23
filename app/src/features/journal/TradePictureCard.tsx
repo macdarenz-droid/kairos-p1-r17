@@ -235,8 +235,9 @@ export function TradePictureCard({ model, candlesLoading = false, svgRef, compac
           {model.rewardBox ? <BoxLabel box={model.rewardBox} scale={scale} kind="reward" /> : null}
         </> : null}
       </svg>
-      {notes && model.planNote !== null ? <p className="kairos-trade-picture__note">{model.planNote}</p> : null}
     </div>
+    {/* Outside the image role, so screen readers hear what is missing (D213). */}
+    {notes && model.planNote !== null ? <p className="kairos-trade-picture__note">{model.planNote}</p> : null}
     {/* Outside the image role, so screen readers hear why there are no candles. */}
     {notes && noCandles && candleFailure === null ? <p className="kairos-trade-picture__note">{!model.marketHasCandles ? 'Candles are shown for crypto trades only for now.' : candlesLoading ? 'Loading candles…' : candleNote ?? 'No candles for this time.'}</p> : null}
     {/* Outside the image role, so its words and button reach screen readers. The thumbnail sits inside a button:

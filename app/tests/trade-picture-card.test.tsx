@@ -315,3 +315,29 @@ describe('T-052a the rows that were missing, and a note that names what is missi
     expect(compact.container.querySelector('.kairos-trade-picture__candle-size')).toBeNull();
   });
 });
+
+describe('T-052a fix r1', () => {
+  it('a cancelled trade with no time says why it has no boxes, instead of asking for a time it cannot have', () => {
+    const model = projectTradePicture({ ...input, trade: { ...trade, status: 'cancelled', openedAt: null, closedAt: null }, executions: [], fees: [] });
+    expect(model.planNote).toBe('This trade was cancelled before it opened, so there are no risk or reward boxes.');
+    expect(projectTradePicture({ ...input, trade: { ...trade, status: 'open', openedAt: null, closedAt: null }, executions: [] }).planNote).toBe('Add when the trade opened to see your risk and reward boxes.');
+  });
+
+  it('the note is outside the image, so screen readers hear it', () => {
+    const { container } = render(<TradePictureCard model={projectTradePicture({ ...input, plans: plan('90', null) })} />);
+    const note = container.querySelector('.kairos-trade-picture__note') as HTMLElement;
+    expect(note).toHaveTextContent('Add a target to see your reward box.');
+    expect(screen.getByRole('img')).not.toContainElement(note);
+  });
+
+  it('a planned trade with no box gets no empty room on the right', () => {
+    const now = input.now;
+    const last = Date.parse(now) - 900_000;
+    const candles = [0, 1].map(index => ({ openTime: new Date(last - (1 - index) * 900_000).toISOString(), closeTime: new Date(last - (1 - index) * 900_000 + 899_999).toISOString(), open: dec('100'), high: dec('104'), low: dec('96'), close: dec('101') }));
+    const draft = { ...trade, status: 'draft' as const, openedAt: null, closedAt: null };
+    const noPlan = projectTradePicture({ ...input, trade: draft, plans: [], executions: [], fees: [], candles, candleInterval: '15m' });
+    expect(noPlan.timeRange?.to).toBe(now);
+    const withPlan = projectTradePicture({ ...input, trade: draft, executions: [], fees: [], candles, candleInterval: '15m' });
+    expect(withPlan.timeRange?.to).toBe(new Date(Date.parse(now) + 12 * 900_000).toISOString());
+  });
+});
