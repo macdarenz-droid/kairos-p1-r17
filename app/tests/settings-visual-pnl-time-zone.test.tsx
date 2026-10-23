@@ -59,7 +59,7 @@ describe('P13.12R2 explicit Visual P&L timezone settings accessible-name contrac
     fireEvent.change(input, { target: { value: 'Australia/Sydney' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save time zone' }));
 
-    expect(await screen.findByText('Daily-results time zone saved.')).toBeInTheDocument();
+    expect(await screen.findByText('Time zone saved.')).toBeInTheDocument();
     await waitFor(async () =>
       expect(await readVisualPnlTimeZonePreference(repositories.metadata)).toBe('Australia/Sydney'),
     );

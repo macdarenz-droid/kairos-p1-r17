@@ -74,7 +74,7 @@ it('offers the recent selector and follows the chosen ID when two symbols are id
   const first = await start();
   const second = await saveManualTrade(db, { ...input, status: 'draft', openedAt: null, closedAt: null, executions: [], fees: [] });
   if (!second.ok) throw new Error('fixture save failed');
-  const router = route('/analysis');
+  const router = route('/analysis?view=chart');
   const select = await screen.findByRole('combobox', { name: 'Saved trade' });
   expect(within(select).getAllByRole('option')).toHaveLength(3);
   fireEvent.change(select, { target: { value: first } });
@@ -86,7 +86,7 @@ it('shows missing and empty states without silently choosing a different trade',
   await start(); route('/analysis?trade=missing');
   await screen.findByRole('heading', { name: 'Trade not found' });
   expect(document.querySelector('[data-review-trade-id]')).toBeNull();
-  cleanup(); route('/analysis', async () => ({ kind: 'selection', entries: [] }));
+  cleanup(); route('/analysis?view=chart', async () => ({ kind: 'selection', entries: [] }));
   expect(await screen.findByRole('link', { name: 'Log your first trade' })).toHaveAttribute('href', '/journal');
 });
 it('supports retry after a read failure', async () => {

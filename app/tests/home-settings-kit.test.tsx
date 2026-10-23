@@ -87,11 +87,11 @@ describe('T-049f Settings on the kit', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Settings' })).toBeInTheDocument();
     const input = screen.getByRole('combobox', { name: 'Time zone' });
     expect(input).toHaveAccessibleDescription('Pick your place from the list, for example Australia/Sydney, America/New_York, Europe/London, or UTC.');
-    const alert = await screen.findByText('Kairos could not load your daily-results time zone.');
+    const alert = await screen.findByText('Kairos could not load your time zone.');
     fireEvent.click(within(alert.closest('[role="alert"]') as HTMLElement).getByRole('button', { name: 'Try again' }));
     expect(await screen.findByText('Current: Asia/Manila')).toBeInTheDocument();
     expect(input).toHaveValue('Asia/Manila');
-    expect(screen.queryByText('Kairos could not load your daily-results time zone.')).toBeNull();
+    expect(screen.queryByText('Kairos could not load your time zone.')).toBeNull();
     await waitFor(() => expect(screen.getByRole('textbox', { name: 'Step 1' })).toBeInTheDocument());
     expect(await axeViolations(document.body)).toEqual([]);
   });
@@ -145,17 +145,17 @@ describe('T-049f fix r1', () => {
       return read(key);
     }) as typeof db.metadata.get);
   }
-  const loadAlert = () => screen.queryByText('Kairos could not load your daily-results time zone.');
+  const loadAlert = () => screen.queryByText('Kairos could not load your time zone.');
 
   it('Settings: a zone saved after a failed read removes the "could not load" alert', async () => {
     const db = await database();
     failZoneReads(db, 1);
     render(<ThemeProvider><ToastProvider><SettingsRoute db={db} /></ToastProvider></ThemeProvider>);
-    await screen.findByText('Kairos could not load your daily-results time zone.');
+    await screen.findByText('Kairos could not load your time zone.');
     const input = screen.getByRole('combobox', { name: 'Time zone' });
     fireEvent.change(input, { target: { value: 'UTC' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save time zone' }));
-    expect(await screen.findByText('Daily-results time zone saved.')).toBeInTheDocument();
+    expect(await screen.findByText('Time zone saved.')).toBeInTheDocument();
     expect(loadAlert()).toBeNull();
   });
 
@@ -165,7 +165,7 @@ describe('T-049f fix r1', () => {
     failZoneReads(db, 2);
     render(<ThemeProvider><ToastProvider><SettingsRoute db={db} /></ToastProvider></ThemeProvider>);
     const retry = () => within(loadAlert()!.closest('[role="alert"]') as HTMLElement).getByRole('button', { name: 'Try again' });
-    await screen.findByText('Kairos could not load your daily-results time zone.');
+    await screen.findByText('Kairos could not load your time zone.');
     retry().focus();
     fireEvent.click(retry());
     await waitFor(() => expect(loadAlert()).not.toBeNull());

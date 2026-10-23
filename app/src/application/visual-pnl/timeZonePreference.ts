@@ -1,3 +1,4 @@
+import { runKairosAtomicWrite, type KairosDatabase } from '../../data/database';
 import type { MetadataRepository } from '../../data/repositories';
 import { projectVisualPnlDayKey } from './dayBucket';
 
@@ -19,7 +20,9 @@ function isValidTimeZone(timeZone: string): boolean {
 /**
  * Reads the explicit Visual P&L calendar timezone preference through the
  * authoritative metadata repository. Missing or invalid evidence is treated as
- * unconfigured; no browser/device timezone is inferred.
+ * unconfigured; no device time zone is inferred by reading.
+ * `startVisualPnlTimeZoneFromDevice` saves the device's zone once, on first
+ * use (D199).
  */
 export async function readVisualPnlTimeZonePreference(
   metadata: MetadataRepository,
@@ -56,4 +59,25 @@ export async function clearVisualPnlTimeZonePreference(
   metadata: MetadataRepository,
 ): Promise<void> {
   await metadata.delete(visualPnlTimeZonePreferenceMetadataKey);
+}
+
+export type VisualPnlTimeZoneStart =
+  | Readonly<{ kind: 'saved'; timeZone: string }>
+  | Readonly<{ kind: 'started-from-device'; timeZone: string }>
+  | Readonly<{ kind: 'unconfigured' }>;
+
+/** D199: when no valid zone is saved and this device reports a valid one, save it (first use). A saved zone is never changed here. */
+export async function startVisualPnlTimeZoneFromDevice(
+  db: KairosDatabase,
+  deviceTimeZone: string | null,
+  updatedAt: string,
+): Promise<VisualPnlTimeZoneStart> {
+  // The read and the write share one transaction, so a zone saved meanwhile (Settings in another tab) is never overwritten.
+  return runKairosAtomicWrite(db, ['metadata'], async ({ repositories }) => {
+    const stored = await repositories.metadata.get(visualPnlTimeZonePreferenceMetadataKey);
+    if (stored && isValidTimeZone(stored.value)) return Object.freeze({ kind: 'saved' as const, timeZone: stored.value });
+    if (deviceTimeZone === null || !isValidTimeZone(deviceTimeZone)) return Object.freeze({ kind: 'unconfigured' as const });
+    await repositories.metadata.put({ key: visualPnlTimeZonePreferenceMetadataKey, value: deviceTimeZone, updatedAt });
+    return Object.freeze({ kind: 'started-from-device' as const, timeZone: deviceTimeZone });
+  });
 }

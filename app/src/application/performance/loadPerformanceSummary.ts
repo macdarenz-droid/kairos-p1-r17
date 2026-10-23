@@ -4,7 +4,7 @@
 
 import type { KairosDatabase } from '../../data/database';
 import { createKairosRepositories } from '../../data/repositories';
-import { loadResultsInHomeCurrency, summarizeResultsInHomeCurrency, type ResultsInHomeCurrencySummary } from '../currency/resultsInHomeCurrency';
+import { loadResultsInHomeCurrency, summarizeResultsInHomeCurrency, type ResultsInHomeCurrency, type ResultsInHomeCurrencySummary } from '../currency/resultsInHomeCurrency';
 import { listJournalClosedTradesInPeriod } from '../journal/closedTradePeriodQuery';
 import type { JournalHistoryScope } from '../journal/historyQuery';
 import { readVisualPnlTimeZonePreference } from '../visual-pnl/timeZonePreference';
@@ -15,14 +15,25 @@ export type PerformanceSummaryQueryResult =
   | Readonly<{ kind: 'unavailable'; reason: 'invalid-day-key' | 'invalid-time-zone' | 'empty-period' }>
   | Readonly<{ kind: 'ready'; timeZone: string | null; fromDayKey: string | null; toDayKey: string | null; summary: PerformanceSummary; inHomeCurrency: ResultsInHomeCurrencySummary }>;
 
+export type PerformancePeriodRead =
+  | Readonly<{ kind: 'unavailable'; reason: 'invalid-day-key' | 'invalid-time-zone' | 'empty-period' }>
+  | Readonly<{ kind: 'ready'; inHome: ResultsInHomeCurrency }>;
+
+/** The period query, then the home-currency step: the one read both the U4 loader and the dashboard use. Writes nothing. */
+export async function loadPerformancePeriod(db: KairosDatabase, options: Readonly<{ timeZone: string; fromDayKey: string | null; toDayKey: string | null; scope?: JournalHistoryScope }>): Promise<PerformancePeriodRead> {
+  const { timeZone, fromDayKey, toDayKey } = options;
+  const closed = await listJournalClosedTradesInPeriod(db, { timeZone, fromDayKey, toDayKey, scope: options.scope ?? 'real' });
+  if (!closed.ok) return Object.freeze({ kind: 'unavailable' as const, reason: closed.reason });
+  return Object.freeze({ kind: 'ready' as const, inHome: await loadResultsInHomeCurrency(db, closed.entries) });
+}
+
 /** `fromDayKey` is included and `toDayKey` is not (the period query's rule); both null = all time, which needs no time zone. */
 export async function loadPerformanceSummary(db: KairosDatabase, options: Readonly<{ fromDayKey: string | null; toDayKey: string | null; scope?: JournalHistoryScope }>): Promise<PerformanceSummaryQueryResult> {
   const { fromDayKey, toDayKey } = options;
   const timeZone = await readVisualPnlTimeZonePreference(createKairosRepositories(db).metadata);
   if (timeZone === null && (fromDayKey !== null || toDayKey !== null)) return Object.freeze({ kind: 'time-zone-unconfigured' as const });
   // An all-time read never checks the zone, so 'UTC' only fills the field.
-  const closed = await listJournalClosedTradesInPeriod(db, { timeZone: timeZone ?? 'UTC', fromDayKey, toDayKey, scope: options.scope ?? 'real' });
-  if (!closed.ok) return Object.freeze({ kind: 'unavailable' as const, reason: closed.reason });
-  const inHome = await loadResultsInHomeCurrency(db, closed.entries);
-  return Object.freeze({ kind: 'ready' as const, timeZone, fromDayKey, toDayKey, summary: summarizePerformance(inHome.entries), inHomeCurrency: summarizeResultsInHomeCurrency(inHome) });
+  const read = await loadPerformancePeriod(db, { timeZone: timeZone ?? 'UTC', fromDayKey, toDayKey, scope: options.scope });
+  if (read.kind === 'unavailable') return Object.freeze({ kind: 'unavailable' as const, reason: read.reason });
+  return Object.freeze({ kind: 'ready' as const, timeZone, fromDayKey, toDayKey, summary: summarizePerformance(read.inHome.entries), inHomeCurrency: summarizeResultsInHomeCurrency(read.inHome) });
 }
