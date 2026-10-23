@@ -9,12 +9,14 @@ import { loadResultsDashboard, selectResultsEntries, type ResultsDashboardProjec
 import {
   describeVisualPnlPeriodProblem,
   projectVisualPnlMonthGrid,
+  projectVisualPnlMonthTotals,
   projectVisualPnlResultCandles,
   shiftVisualPnlDayKey,
   startVisualPnlTimeZoneFromDevice,
   summarizeVisualPnlDailyPerformance,
   VISUAL_PNL_DEFAULT_PERIOD,
   writeVisualPnlPeriodChoice,
+  type VisualPnlMonthWeek,
   type VisualPnlPeriodChoice,
   type VisualPnlTimeZoneStart,
 } from '../../application/visual-pnl';
@@ -23,7 +25,7 @@ import { Button, EmptyState, ErrorState, ResultText, Skeleton, StatTile, Unavail
 import { DisciplineScorePanel } from '../discipline/DisciplineScorePanel';
 import { readDeviceTimeZone } from '../settings/DeviceTimeZoneButton';
 import { PERIOD_LIST_ID, PeriodChooser } from './PeriodChooser';
-import { ResultsCalendar } from './ResultsCalendar';
+import { dayLabel, monthLabel, ResultsCalendar } from './ResultsCalendar';
 import { ResultsCandles } from './ResultsCandles';
 import { ResultsDayTrades } from './ResultsDayTrades';
 import { ResultsNumbers } from './ResultsNumbers';
@@ -116,59 +118,109 @@ function RatesLine({ state, live, onRetry }: { readonly state: RatesFetch; reado
   return null;
 }
 
+/** The one trade list open under the calendar: a day, a week (by its first counted day) or the month (T-051h). */
+type OpenList = Readonly<{ kind: 'day'; dayKey: string }> | Readonly<{ kind: 'week'; week: VisualPnlMonthWeek }> | Readonly<{ kind: 'month' }>;
+const listKey = (list: OpenList | null): string | null => list === null ? null : list.kind === 'day' ? `day:${list.dayKey}` : list.kind === 'week' ? `week:${list.week.fromDayKey}` : 'month';
+/** The button that opened a list, as the calendar marks it. */
+function openerSelector(key: string): string {
+  if (key === 'month') return '.kairos-results-calendar__month-total';
+  const [kind, dayKey] = key.split(':');
+  return kind === 'day' ? `[data-day-key="${dayKey}"] button` : `[data-week-key="${dayKey}"] button`;
+}
+
 /**
- * The streak, the result days, the total as candles, and the calendar with a day's trades, for one period (T-051d).
- * Keyed by the period, so a new period starts on its last month with no day open. A day's trades come from memory.
+ * The streak, the result days, the total as candles, and the calendar with a day's, a week's or the month's trades, for
+ * one period (T-051d, T-051h). Keyed by the period, so a new period starts on its last month with no list open. The
+ * trades of a list come from memory.
  */
 function ResultsDays({ dashboard, renderTradeLink }: { readonly dashboard: ResultsDashboardProjection; readonly renderTradeLink: (id: string) => ReactNode }) {
   const { calendarMonths, period, days, todayKey, timeZone } = dashboard;
   const box = useRef<HTMLDivElement>(null);
   const [month, setMonth] = useState<string | null>(null);
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
-  /** The day whose list just opened (its heading takes focus) or closed (its button takes focus back). */
-  const focusAfter = useRef<Readonly<{ kind: 'opened' | 'closed'; day: string }> | null>(null);
+  const [open, setOpen] = useState<OpenList | null>(null);
+  /** The list that just opened (its heading takes focus) or closed (its opener takes focus back, else the month heading). */
+  const focusAfter = useRef<Readonly<{ kind: 'opened' | 'closed'; key: string }> | null>(null);
   const lastMonth = calendarMonths[calendarMonths.length - 1]!;
   const shownMonth = month !== null && calendarMonths.includes(month) ? month : lastMonth;
-  const grid = projectVisualPnlMonthGrid({ monthKey: shownMonth, days: days.days, todayKey, period: { fromDayKey: period.fromDayKey, toDayKey: period.toDayKey } });
+  const bounds = { fromDayKey: period.fromDayKey, toDayKey: period.toDayKey };
+  const grid = projectVisualPnlMonthGrid({ monthKey: shownMonth, days: days.days, todayKey, period: bounds });
+  const totals = projectVisualPnlMonthTotals({ monthKey: shownMonth, days: days.days, period: bounds });
+  const openKey = listKey(open);
 
   useEffect(() => {
     const target = focusAfter.current;
-    // Only once the state matches the press: a run that comes before the new day is shown must not use up the target.
-    if (target === null || (target.kind === 'opened' ? selectedDay !== target.day : selectedDay !== null)) return;
+    // Only once the state matches the press: a run that comes before the new list is shown must not use up the target.
+    if (target === null || (target.kind === 'opened' ? openKey !== target.key : openKey !== null)) return;
     focusAfter.current = null;
     const element = target.kind === 'opened'
       ? box.current?.querySelector<HTMLElement>('.kairos-results-day-trades h3')
-      : box.current?.querySelector<HTMLElement>(`[data-day-key="${target.day}"] button`);
+      : box.current?.querySelector<HTMLElement>(openerSelector(target.key)) ?? box.current?.querySelector<HTMLElement>('.kairos-results-calendar__bar h3');
     element?.focus();
-  }, [selectedDay]);
+  }, [openKey]);
 
-  function toggleDay(day: string): void {
-    const closing = day === selectedDay;
-    focusAfter.current = { kind: closing ? 'closed' : 'opened', day };
-    setSelectedDay(closing ? null : day);
+  function toggle(list: OpenList): void {
+    const key = listKey(list)!;
+    const closing = key === openKey;
+    focusAfter.current = { kind: closing ? 'closed' : 'opened', key };
+    setOpen(closing ? null : list);
   }
-  const changeMonth = (next: string) => { setMonth(next); setSelectedDay(null); };
+  function close(): void {
+    if (open === null) return;
+    focusAfter.current = { kind: 'closed', key: openKey! };
+    setOpen(null);
+  }
+  /** The month button just pressed: when the new month disables it, focus goes to the other one, else the month heading (WCAG 2.4.3). */
+  const pressedNav = useRef<'previous' | 'next' | null>(null);
+  useEffect(() => {
+    const pressed = pressedNav.current;
+    pressedNav.current = null;
+    if (pressed === null) return;
+    const [previous, next] = [...(box.current?.querySelectorAll<HTMLButtonElement>('.kairos-results-calendar__nav') ?? [])];
+    if (!(pressed === 'previous' ? previous : next)?.disabled) return;
+    const other = pressed === 'previous' ? next : previous;
+    (other !== undefined && !other.disabled ? other : box.current?.querySelector<HTMLElement>('.kairos-results-calendar__bar h3'))?.focus();
+  }, [shownMonth]);
+  const changeMonth = (next: string, pressed: 'previous' | 'next') => { pressedNav.current = pressed; setMonth(next); setOpen(null); };
   const outside = grid?.days.some(day => !day.inPeriod) ?? false;
+  const list = (() => {
+    if (open === null) return null;
+    if (open.kind === 'day') return { dayKey: open.dayKey, title: undefined, entries: selectResultsEntries(dashboard, { fromDayKey: open.dayKey, toDayKey: shiftVisualPnlDayKey(open.dayKey, 1) }) };
+    if (open.kind === 'week') {
+      const { fromDayKey, toDayKey, dayKeys } = open.week;
+      if (fromDayKey === null || toDayKey === null) return null;
+      const last = dayKeys[dayKeys.length - 1]!;
+      const title = fromDayKey === last ? `Trades closed on ${dayLabel(fromDayKey)}` : `Trades closed from ${dayLabel(fromDayKey).split(' ')[0]} to ${dayLabel(last)}`;
+      return { dayKey: fromDayKey, title, entries: selectResultsEntries(dashboard, { fromDayKey, toDayKey }) };
+    }
+    if (totals === null || totals.monthFromDayKey === null || totals.monthToDayKey === null) return null;
+    return { dayKey: totals.monthFromDayKey, title: `Trades closed in ${monthLabel(shownMonth)}`, entries: selectResultsEntries(dashboard, { fromDayKey: totals.monthFromDayKey, toDayKey: totals.monthToDayKey }) };
+  })();
   return <div ref={box} className="kairos-results__days">
     {dashboard.currentStreak !== null ? <VisualPnlStreak projection={dashboard.currentStreak} /> : null}
     <VisualPnlPerformanceSummary summary={summarizeVisualPnlDailyPerformance(days.days)} />
     <ResultsCandles eyebrow={dashboard.scope === 'real' ? 'Your results over time' : 'Your practice results over time'} projection={projectVisualPnlResultCandles(days.days)} />
     {grid ? <ResultsCalendar
       grid={grid}
-      selectedDayKey={selectedDay}
+      totals={totals}
+      selectedDayKey={open?.kind === 'day' ? open.dayKey : null}
+      selectedWeekKey={open?.kind === 'week' ? open.week.fromDayKey : null}
+      monthSelected={open?.kind === 'month'}
       canShowPreviousMonth={shownMonth > calendarMonths[0]!}
       canShowNextMonth={shownMonth < lastMonth}
       outsideNote={outside ? `Days outside ${period.label} are dimmed.` : null}
-      onSelectDay={toggleDay}
-      onPreviousMonth={() => changeMonth(grid.previousMonthKey)}
-      onNextMonth={() => changeMonth(grid.nextMonthKey)}
+      onSelectDay={dayKey => toggle({ kind: 'day', dayKey })}
+      onSelectWeek={week => toggle({ kind: 'week', week })}
+      onSelectMonth={() => toggle({ kind: 'month' })}
+      onPreviousMonth={() => changeMonth(grid.previousMonthKey, 'previous')}
+      onNextMonth={() => changeMonth(grid.nextMonthKey, 'next')}
     /> : null}
-    {selectedDay !== null ? <ResultsDayTrades
-      dayKey={selectedDay}
+    {list !== null ? <ResultsDayTrades
+      dayKey={list.dayKey}
+      title={list.title}
       timeZone={timeZone}
-      state={{ kind: 'ready', entries: selectResultsEntries(dashboard, { fromDayKey: selectedDay, toDayKey: shiftVisualPnlDayKey(selectedDay, 1) }), conversions: dashboard.conversions }}
+      state={{ kind: 'ready', entries: list.entries, conversions: dashboard.conversions }}
       renderTradeLink={renderTradeLink}
-      onClose={() => toggleDay(selectedDay)}
+      onClose={close}
     /> : null}
   </div>;
 }

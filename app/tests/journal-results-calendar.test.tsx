@@ -38,20 +38,20 @@ describe('ResultsCalendar', () => {
     const second = cell(container, '2026-09-02');
     expect(second).toHaveAttribute('data-day-result', 'profit');
     expect(second).toHaveAttribute('data-day-strength', '4');
-    expect(second).toHaveTextContent('▲');
+    expect(second.querySelector('[data-cell-amount]')).toHaveTextContent('+100');
     expect(within(second).getByRole('button')).toHaveAccessibleName('2 September 2026: Profit, 100 USD, 1 trade');
 
     const third = cell(container, '2026-09-03');
     expect(third).toHaveAttribute('data-day-result', 'loss');
     expect(third).toHaveAttribute('data-day-strength', '1');
-    expect(third).toHaveTextContent('▼');
+    expect(third.querySelector('[data-cell-amount]')).toHaveTextContent('-25');
 
     const fourth = cell(container, '2026-09-04');
     expect(fourth).toHaveAttribute('data-day-result', 'unavailable');
     expect(fourth).not.toHaveAttribute('data-day-strength');
     expect(within(fourth).getByRole('button').getAttribute('aria-label')).toContain('Result unavailable');
 
-    expect(cell(container, '2026-09-05')).toHaveTextContent('—');
+    expect(cell(container, '2026-09-05').querySelector('[data-cell-amount]')).toHaveTextContent(/^0$/);
     expect(within(cell(container, '2026-09-06')).queryByRole('button')).toBeNull();
     expect(screen.queryAllByRole('listitem')).toHaveLength(0);
   });
