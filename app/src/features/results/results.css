@@ -127,15 +127,16 @@
 .kairos-results-numbers [data-part='won'] { background: var(--kairos-trade-profit); }
 .kairos-results-numbers [data-part='lost'] { background: var(--kairos-trade-loss); }
 .kairos-results-numbers [data-part='breakEven'] { background: var(--kairos-trade-flat); }
-.kairos-results-numbers [data-part='noResult'] { box-sizing: border-box; border: 1px dashed var(--kairos-border-strong); background: transparent; }
+/* The outline and the dash use a text token (4.5:1 on every surface, themeContrast.ts) so they read as graphics (WCAG 1.4.11). */
+.kairos-results-numbers [data-part='noResult'] { box-sizing: border-box; border: 1px dashed var(--kairos-text-muted); background: transparent; }
 .kairos-results-numbers__legend { display: flex; flex-wrap: wrap; gap: var(--kairos-space-1) var(--kairos-space-3); margin: 0; padding: 0; list-style: none; }
 .kairos-results-numbers__legend li { display: inline-flex; align-items: center; gap: var(--kairos-space-1); }
 .kairos-results-numbers__risk { display: grid; gap: var(--kairos-space-1); }
 .kairos-results-numbers__risk-bar { display: block; block-size: 0.75rem; }
-.kairos-results-numbers [data-part='one-risk'] { box-sizing: border-box; border: 1px solid var(--kairos-border-strong); }
+.kairos-results-numbers [data-part='one-risk'] { box-sizing: border-box; border: 1px solid var(--kairos-text-muted); }
 .kairos-results-numbers [data-part='average-risk'][data-direction='up'] { background: var(--kairos-trade-profit); }
 .kairos-results-numbers [data-part='average-risk'][data-direction='down'] { background: var(--kairos-trade-loss); }
-.kairos-results-numbers [data-part='average-risk'][data-direction='flat'] { background: var(--kairos-trade-flat); }
+.kairos-results-numbers [data-part='average-risk'][data-direction='flat'] { min-inline-size: 0.25rem; background: var(--kairos-trade-flat); }
 .kairos-results-numbers .kairos-stat__value { overflow-wrap: anywhere; }
 
 /* T-051h: each day's short amount and trade count, the week column and the month total (D203, D204). */
@@ -149,3 +150,12 @@
 .kairos-results-calendar__month-total[aria-pressed='true'] { outline: 2px solid var(--kairos-state-focus); outline-offset: 1px; }
 .kairos-results-calendar__key { display: flex; flex-wrap: wrap; gap: var(--kairos-space-1) var(--kairos-space-3); }
 .kairos-results-calendar__key span { display: inline-flex; align-items: center; gap: var(--kairos-space-1); }
+.kairos-results-numbers__why { color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-sm); font-weight: var(--kairos-font-weight-regular); }
+.kairos-results-numbers__swatch { display: inline-block; inline-size: 0.75rem; block-size: 0.75rem; border-radius: var(--kairos-radius-full); }
+.kairos-results-numbers__legend [data-key='won'] .kairos-results-numbers__swatch { background: var(--kairos-trade-profit); }
+.kairos-results-numbers__legend [data-key='lost'] .kairos-results-numbers__swatch { background: var(--kairos-trade-loss); }
+.kairos-results-numbers__legend [data-key='breakEven'] .kairos-results-numbers__swatch { background: var(--kairos-trade-flat); }
+.kairos-results-numbers__legend [data-key='noResult'] .kairos-results-numbers__swatch { box-sizing: border-box; border: 1px dashed var(--kairos-text-muted); }
+.kairos-results-numbers__legend [data-key='won'] .kairos-icon { color: var(--kairos-trade-profit); }
+.kairos-results-numbers__legend [data-key='lost'] .kairos-icon { color: var(--kairos-trade-loss); }
+.kairos-results-numbers__legend [data-key='breakEven'] .kairos-icon { color: var(--kairos-trade-flat); }

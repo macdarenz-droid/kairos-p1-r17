@@ -90,6 +90,9 @@ describe('T-051g your numbers as pictures', () => {
     expect([...bar.querySelectorAll('[data-part]')].map(span => [span.getAttribute('data-part'), (span as HTMLElement).style.inlineSize]))
       .toEqual([['won', '33%'], ['lost', '33%'], ['breakEven', '17%'], ['noResult', '17%']]);
     expect([...numbers.querySelectorAll('.kairos-results-numbers__legend [data-icon]')].map(icon => icon.getAttribute('data-icon'))).toEqual(['result-up', 'result-down', 'result-flat', 'result-unknown']);
+    // Each key carries the swatch of its part, so the legend matches the bar (fix r1).
+    expect([...numbers.querySelectorAll('.kairos-results-numbers__legend li')].map(item => [item.getAttribute('data-key'), item.querySelector('.kairos-results-numbers__swatch') !== null]))
+      .toEqual([['won', true], ['lost', true], ['breakEven', true], ['noResult', true]]);
     expect(number(numbers, 'average-win')).toHaveTextContent(/Average win.*\+15 USDT.*from 2 trades/);
     expect(number(numbers, 'average-loss')).toHaveTextContent(/Average loss.*-10 USDT.*from 2 trades/);
     expect(part(numbers, 'won')).not.toBeNull();
@@ -112,7 +115,9 @@ describe('T-051g your numbers as pictures', () => {
     const { numbers } = await showNumbers(db);
     const risk = number(numbers, 'times-risked');
     expect(risk).toHaveTextContent(/On average you make 0\.5× what you risk.*from 2 trades/);
-    expect(within(risk).getByRole('img', { name: 'On average you make 0.5× what you risk' })).toBeInTheDocument();
+    // The sentence says it once; the picture is for the eye only (fix r1).
+    expect(within(risk).queryByRole('img')).toBeNull();
+    expect(risk.querySelector('.kairos-results-numbers__risk')).toHaveAttribute('aria-hidden', 'true');
     expect((risk.querySelector('[data-part="one-risk"]') as HTMLElement).style.inlineSize).toBe('100%');
     const average = risk.querySelector('[data-part="average-risk"]') as HTMLElement;
     expect(average.style.inlineSize).toBe('50%');
@@ -130,6 +135,14 @@ describe('T-051g your numbers as pictures', () => {
     expect(tile(numbers, 'Average time in a trade')).toHaveTextContent(/1 h.*from 5 trades/);
   });
 
+  it('tells the longest win run from the longest loss run (fix r1)', async () => {
+    const db = await database();
+    await saveAll(db, exits('110', '120', '105', '95'));
+    const { numbers } = await showNumbers(db);
+    expect(tile(numbers, 'Most wins in a row')).toHaveTextContent('3 in a row');
+    expect(tile(numbers, 'Most losses in a row')).toHaveTextContent('1 in a row');
+  });
+
   it('never shows a 0 for money it cannot add up: a EUR trade among USDT with no home currency', async () => {
     const db = await database();
     await saveAll(db, [...exits('110', '95'), { exit: '1.1', entry: '1', currency: 'EUR' }]);
@@ -140,6 +153,21 @@ describe('T-051g your numbers as pictures', () => {
     expect(within(numbers).getByRole('img', { name: 'Won 2 of 3' })).toBeInTheDocument();
     expect(numbers.querySelector('[data-number="win-loss"] [data-part]')).toBeNull();
     expect(numbers.querySelectorAll('.kairos-result__amount')).toHaveLength(0);
+    // As "Result after fees": "Not available" as the value, the reason in the small line under it (fix r1).
+    for (const label of ['Best trade', 'Worst trade', 'Biggest dip']) {
+      expect(tile(numbers, label).querySelector('.kairos-stat__value')).toHaveTextContent(/^Not available( \?)?$/);
+      expect(tile(numbers, label).querySelector('.kairos-stat__hint')).toHaveTextContent(words);
+    }
+    expect(number(numbers, 'profit-factor')).toHaveTextContent(/^For every 1 you lost: Not available/);
+    expect(number(numbers, 'average-win').querySelector('.kairos-results-numbers__why')).toHaveTextContent(words);
+  });
+
+  it('says no trade has a result yet, never that there was no win or no loss (fix r1)', async () => {
+    const db = await database();
+    await saveAll(db, [{ exit: '110', entered: '2', exited: '1' }]);
+    const { numbers } = await showNumbers(db);
+    for (const name of ['average-win', 'average-loss', 'average-result']) expect(number(numbers, name)).toHaveTextContent('No trade with a result yet');
+    expect(numbers).not.toHaveTextContent(/No winning trade|No losing trade/);
   });
 
   it('works from one trade', async () => {
