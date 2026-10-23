@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { loadHomeCurrency, saveHomeCurrency, type HomeCurrencyPreference } from '../../application/currency/homeCurrency';
 import { suggestHomeCurrency } from '../../application/currency/homeCurrencySuggestion';
@@ -119,12 +119,13 @@ export function SetupScreen({ db, deviceTimeZone, languages, now = wallClock }: 
     // The phone's zone and languages are read once by the route; a retry reads the saved values again.
   }, [db, attempt]);
 
-  useEffect(() => {
+  // Focus moves in the same commit that shows the new step, so it is never left on the old one for a moment.
+  useLayoutEffect(() => {
     if (titleFocus > 0) document.getElementById(STEP_TITLE)?.focus();
   }, [titleFocus]);
 
   // "Change" gives way to the time zone field, which takes the focus.
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!changingZone || !zoneAsked.current) return;
     zoneAsked.current = false;
     document.getElementById(ZONE_FIELD)?.focus();
