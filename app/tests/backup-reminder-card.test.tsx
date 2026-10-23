@@ -126,4 +126,35 @@ describe('T-054a the backup reminder card', () => {
     const onJournal = await card();
     expect(onJournal.compareDocumentPosition(screen.getByRole('textbox', { name: /^Symbol/ })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
+
+  it('T-054a fix r1: a failed "Later" says so and keeps the card, with focus on "Later"', async () => {
+    const db = await database();
+    await saveManualTrade(db, trade, { now });
+    harness(db, async () => 'saved');
+    const later = within(await card()).getByRole('button', { name: 'Later' });
+    later.focus();
+    vi.spyOn(db, 'transaction').mockRejectedValue(new Error('quota'));
+    await act(async () => { fireEvent.click(later); });
+    expect(await screen.findByRole('alert')).toHaveTextContent('Kairos could not save "Later". Nothing was changed; press it again to try once more.');
+    expect(screen.getByRole('region', { name: 'Back up your journal' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Later' })).toHaveFocus();
+  });
+
+  it('T-054a fix r1: leaves focus alone when the trader moved on while the backup was saving', async () => {
+    const db = await database();
+    await saveManualTrade(db, trade, { now });
+    let finish: (() => void) | null = null;
+    harness(db, () => new Promise(resolve => { finish = () => resolve('saved'); }));
+    const button = within(await card()).getByRole('button', { name: 'Back up now' });
+    button.focus();
+    await act(async () => { fireEvent.click(button); });
+    // The file is being saved (the delivery has it) when the trader moves on.
+    await waitFor(() => expect(finish).not.toBeNull());
+    screen.getByRole('button', { name: 'Before' }).focus();
+    await act(async () => { finish!(); });
+    expect(await screen.findByText('Backup saved.')).toBeInTheDocument();
+    await new Promise(resolve => setTimeout(resolve, 20));
+    expect(screen.getByRole('button', { name: 'Before' })).toHaveFocus();
+  });
 });
+

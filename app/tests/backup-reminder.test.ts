@@ -14,6 +14,7 @@ import {
 } from '../src/application/backup';
 import { savePracticeTrade } from '../src/application/practice';
 import { saveManualTrade } from '../src/application/trades';
+import { saveVisualPnlTimeZone } from '../src/application/visual-pnl';
 import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
 import { createKairosRepositories } from '../src/data/repositories';
 
@@ -108,4 +109,14 @@ describe('T-054a when a backup is due', () => {
     vi.restoreAllMocks();
     expect(await readBackupReminderSetting(createKairosRepositories(db).metadata)).toBe(7);
   });
+
+  it('T-054a fix r1: counts calendar days in the saved time zone for the words', async () => {
+    const db = await database();
+    await saveVisualPnlTimeZone(db, 'Asia/Manila', { now: at('2026-10-20T10:00:00.000Z') });
+    await addTrades(db, 1, '2026-10-20T10:00:00.000Z');
+    // 23:30 on 22 October in Manila, read at 10:00 on 23 October: under a day, but yesterday there.
+    await backedUpAt(db, '2026-10-22T15:30:00.000Z');
+    expect(await loadBackupReminder(db, { now: at('2026-10-23T02:00:00.000Z') })).toMatchObject({ daysSince: 0, calendarDaysSince: 1 });
+  });
 });
+

@@ -58,4 +58,17 @@ describe('T-054a one backup run', () => {
     expect(describeBackupFailure(result)).toBe('Kairos could not read your data. Nothing was saved.');
     expect(files).toHaveLength(0);
   });
+
+  it('T-054a fix r1: records the last backup inside one atomic write', async () => {
+    const db = await database();
+    const transaction = db.transaction.bind(db) as (...args: unknown[]) => unknown;
+    // Reads still work; every write transaction is refused.
+    vi.spyOn(db, 'transaction').mockImplementation(((mode: string, ...rest: unknown[]) => (mode === 'rw' ? Promise.reject(new Error('refused')) : transaction(mode, ...rest))) as typeof db.transaction);
+    const { files, deliver } = port('saved');
+    expect(await runBackup(db, deliver, { now })).toEqual({ ok: false, reason: 'record-failed' });
+    expect(files).toHaveLength(1);
+    vi.restoreAllMocks();
+    expect(await readLastBackup(createKairosRepositories(db).metadata)).toBeNull();
+  });
 });
+

@@ -19,6 +19,7 @@ type CardState =
   | Readonly<{ kind: 'shown'; reminder: BackupReminder }>
   | Readonly<{ kind: 'busy'; reminder: BackupReminder }>
   | Readonly<{ kind: 'failed'; reminder: BackupReminder; message: string }>
+  | Readonly<{ kind: 'later-failed'; reminder: BackupReminder }>
   | Readonly<{ kind: 'saved' }>
   | Readonly<{ kind: 'gone' }>;
 
@@ -56,8 +57,13 @@ export function BackupReminderCard({ db, now = wallClock, downloads, deliver }: 
     return () => { ignore = true; };
   }, [db, now]);
 
-  // Found while the card is there, focused after the commit that removes its buttons.
-  useEffect(() => { if (moveFocus > 0) next.current?.focus(); }, [moveFocus]);
+  // Found while the card is there, focused after the commit that removes its buttons; only when focus was still in the
+  // card (or fell to the page), never when the trader moved on during the save.
+  useEffect(() => {
+    if (moveFocus === 0 || next.current === null) return;
+    const active = document.activeElement;
+    if (active === null || active === document.body || card.current?.contains(active)) next.current.focus();
+  }, [moveFocus]);
   const leave = () => { next.current = nextControlAfter(card.current); setMoveFocus(value => value + 1); };
 
   async function backUp(reminder: BackupReminder): Promise<void> {
@@ -68,9 +74,9 @@ export function BackupReminderCard({ db, now = wallClock, downloads, deliver }: 
     setState(message === null ? { kind: 'shown', reminder } : { kind: 'failed', reminder, message });
   }
 
-  async function later(): Promise<void> {
+  async function later(reminder: BackupReminder): Promise<void> {
     const result = await remindBackupLater(db, { now });
-    if (!result.ok) return;
+    if (!result.ok) { setState({ kind: 'later-failed', reminder }); return; }
     leave();
     setState({ kind: 'gone' });
   }
@@ -90,10 +96,11 @@ export function BackupReminderCard({ db, now = wallClock, downloads, deliver }: 
     {heading}
     <p>{describeBackupReminder(reminder)}</p>
     {state.kind === 'failed' ? <p role="alert" className="kairos-backup-reminder__problem">{state.message}</p> : null}
+    {state.kind === 'later-failed' ? <p role="alert" className="kairos-backup-reminder__problem">Kairos could not save "Later". Nothing was changed; press it again to try once more.</p> : null}
     <div className="kairos-backup-reminder__actions">
       {/* One button whose words change, so a retry keeps the focus. */}
       <Button onClick={() => { if (!busy) void backUp(reminder); }} aria-disabled={busy || undefined}>{busy ? 'Saving…' : state.kind === 'failed' ? 'Try again' : 'Back up now'}</Button>
-      <Button variant="ghost" onClick={() => { if (!busy) void later(); }} aria-disabled={busy || undefined}>Later</Button>
+      <Button variant="ghost" onClick={() => { if (!busy) void later(reminder); }} aria-disabled={busy || undefined}>Later</Button>
     </div>
   </Card></div>;
 }

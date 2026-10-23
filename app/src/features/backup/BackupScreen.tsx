@@ -1,4 +1,4 @@
-import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { type ChangeEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   BACKUP_REMINDER_EVERY_CHOICES,
   clearBackupFolder,
@@ -170,15 +170,16 @@ export function BackupScreen({ db, now = wallClock, downloads, deliver, readBack
   // A chosen file's preview takes the focus from the file field, which is disabled while it shows.
   const importPreviewShown = importState.kind === 'preview';
   const restorePreviewShown = restoreState.kind === 'preview';
-  useEffect(() => { if (importPreviewShown) importAdd.current?.focus(); }, [importPreviewShown]);
-  useEffect(() => { if (restorePreviewShown) restoreFirst.current?.focus(); }, [restorePreviewShown]);
+  // In the commit that shows the preview, so focus never sits on the disabled field for a moment.
+  useLayoutEffect(() => { if (importPreviewShown) importAdd.current?.focus(); }, [importPreviewShown]);
+  useLayoutEffect(() => { if (restorePreviewShown) restoreFirst.current?.focus(); }, [restorePreviewShown]);
 
   const download = (file: KairosBackupFile): boolean => {
     try { handBackupFileToBrowser(file, ports); return true; } catch { return false; }
   };
 
   async function handleBackup(): Promise<void> {
-    if (backup.kind === 'busy') return;
+    if (backup.kind === 'busy' || restoreBusy) return;
     setBackup({ kind: 'busy' });
     const result = await runBackup(db, send, { now });
     if (!result.ok) {
@@ -213,7 +214,7 @@ export function BackupScreen({ db, now = wallClock, downloads, deliver, readBack
 
   async function handleFile(event: ChangeEvent<HTMLInputElement>): Promise<void> {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file || restoreBusy) return;
     setRestoreState({ kind: 'reading' });
     let text: string;
     try { text = await readBackupFile(file); } catch { setRestoreState({ kind: 'refused', message: 'That file could not be read. Nothing was changed.' }); return; }
@@ -238,7 +239,7 @@ export function BackupScreen({ db, now = wallClock, downloads, deliver, readBack
 
   async function handleImportFile(event: ChangeEvent<HTMLInputElement>): Promise<void> {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file || importBusy) return;
     setImportState({ kind: 'reading' });
     let text: string;
     try { text = await readBackupFile(file); } catch { setImportState({ kind: 'refused', message: 'That file could not be read. Nothing was changed.' }); return; }
@@ -283,7 +284,7 @@ export function BackupScreen({ db, now = wallClock, downloads, deliver, readBack
         {status.kind === 'loading' ? 'Reading when this device was last backed up…'
           : status.kind === 'error' ? 'Kairos could not read when this device was last backed up.'
             : reminder!.lastBackupAt === null ? 'No backup yet on this device.'
-              : `Last backup ${describeDaysAgo(reminder!.daysSince ?? 0)} · ${localMoment(reminder!.lastBackupAt, status.timeZone)}`}
+              : `Last backup ${describeDaysAgo(reminder!.calendarDaysSince ?? 0)} · ${localMoment(reminder!.lastBackupAt, status.timeZone)}`}
       </p>
       <p>Saves one file with your journal, saved analyses, saved snapshots and preferences. Your data is not changed.</p>
       <div className="kairos-backup-card__actions">
@@ -321,7 +322,7 @@ export function BackupScreen({ db, now = wallClock, downloads, deliver, readBack
     <Card as="article" className="kairos-backup-card" aria-labelledby="kairos-backup-import-title">
       <h2 id="kairos-backup-import-title" tabIndex={-1} ref={importHeading}>Add trades from a backup</h2>
       <p>Add the trades, saved analyses and saved snapshots from another Kairos backup that this device does not have yet. Records already here are left exactly as they are.</p>
-      <label className="kairos-backup-field" htmlFor="kairos-backup-import-file"><span>Backup file to import from</span><input key={importPickerKey} id="kairos-backup-import-file" type="file" accept="application/json,.json" onChange={event => { void handleImportFile(event); }} disabled={importBusy || importState.kind === 'preview'} /></label>
+      <label className="kairos-backup-field" htmlFor="kairos-backup-import-file"><span>Backup file to import from</span><input key={importPickerKey} id="kairos-backup-import-file" type="file" accept="application/json,.json" onChange={event => { void handleImportFile(event); }} disabled={importState.kind === 'preview' || importState.kind === 'committing'} /></label>
       {importState.kind === 'reading' ? <p className="kairos-backup__note" role="status">Reading the backup…</p> : null}
       {importState.kind === 'refused' || importState.kind === 'failed' ? <p className="kairos-backup-card__feedback kairos-backup-card__feedback--error" role="alert">{importState.message}</p> : null}
       {importPreview && recordsPreview && (importState.kind === 'preview' || importState.kind === 'committing') ? <div className="kairos-backup-preview" data-backup-import-new={importNew}>
@@ -338,7 +339,7 @@ export function BackupScreen({ db, now = wallClock, downloads, deliver, readBack
     <Card as="article" className="kairos-backup-card" aria-labelledby="kairos-backup-restore-title">
       <h2 id="kairos-backup-restore-title" tabIndex={-1} ref={restoreHeading}>Replace everything with a backup</h2>
       <p>Choose a Kairos backup file. You will see what it holds before anything is replaced.</p>
-      <label className="kairos-backup-field" htmlFor="kairos-backup-backup-file"><span>Backup file</span><input key={pickerKey} id="kairos-backup-backup-file" type="file" accept="application/json,.json" onChange={event => { void handleFile(event); }} disabled={restoreBusy || restoreState.kind === 'preview'} /></label>
+      <label className="kairos-backup-field" htmlFor="kairos-backup-backup-file"><span>Backup file</span><input key={pickerKey} id="kairos-backup-backup-file" type="file" accept="application/json,.json" onChange={event => { void handleFile(event); }} disabled={restoreState.kind === 'preview' || restoreState.kind === 'committing'} /></label>
       {restoreState.kind === 'reading' ? <p className="kairos-backup__note" role="status">Reading the backup…</p> : null}
       {restoreState.kind === 'refused' ? <p className="kairos-backup-card__feedback kairos-backup-card__feedback--error" role="alert">{restoreState.message}</p> : null}
       {preview && (restoreState.kind === 'preview' || restoreState.kind === 'committing') ? <div className="kairos-backup-preview" data-backup-preview-records={preview.totalRecords}>

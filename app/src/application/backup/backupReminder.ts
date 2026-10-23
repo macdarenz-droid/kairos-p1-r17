@@ -5,6 +5,8 @@
 
 import { runKairosAtomicWrite, type KairosDatabase } from '../../data/database';
 import { createKairosRepositories, type MetadataRepository } from '../../data/repositories';
+import { projectVisualPnlDayKey } from '../visual-pnl/dayBucket';
+import { readVisualPnlTimeZonePreference } from '../visual-pnl/timeZonePreference';
 import { readLastBackup } from './lastBackup';
 
 export const backupReminderMetadataKey = 'preferences.backup-reminder.v1';
@@ -26,8 +28,10 @@ export interface BackupReminder {
   /** Why it is due: never backed up on this device, too long ago, or many trades since; null when not due. */
   readonly reason: 'never' | 'old' | 'many-trades' | null;
   readonly lastBackupAt: string | null;
-  /** Whole days since the last backup; null when there was none. */
+  /** Whole days (24 hours each) since the last backup, for the rules; null when there was none. */
   readonly daysSince: number | null;
+  /** Calendar days since the last backup in the saved time zone (24-hour days without one), for the words. */
+  readonly calendarDaysSince: number | null;
   /** Trades (any source) created after the last backup; every trade when there was none. */
   readonly tradesSince: number;
   readonly every: BackupReminderEvery;
@@ -58,6 +62,15 @@ async function readLaterAt(metadata: MetadataRepository): Promise<string | null>
   return record !== null && isInstant(record.laterAt) ? record.laterAt : null;
 }
 
+/** Calendar days from one instant to another in a time zone; null without a zone or a readable day. */
+function calendarDaysBetween(from: string, to: string, timeZone: string | null): number | null {
+  if (timeZone === null) return null;
+  const start = projectVisualPnlDayKey(from, timeZone);
+  const end = projectVisualPnlDayKey(to, timeZone);
+  if (!start.available || !end.available) return null;
+  return Math.max(0, Math.round((Date.parse(`${end.dayKey}T00:00:00Z`) - Date.parse(`${start.dayKey}T00:00:00Z`)) / DAY_MS));
+}
+
 /** Reads the last backup, the setting, "Later" and the trades, and says whether a backup is due now. */
 export async function loadBackupReminder(db: KairosDatabase, dependencies: { readonly now?: () => string } = {}): Promise<BackupReminder> {
   const now = Date.parse((dependencies.now ?? wallClock)());
@@ -68,13 +81,14 @@ export async function loadBackupReminder(db: KairosDatabase, dependencies: { rea
   const trades = await repositories.trades.count();
   const tradesSince = last === null ? trades : await repositories.trades.countCreatedAfter(last.exportedAt);
   const daysSince = last === null ? null : Math.max(0, Math.floor((now - Date.parse(last.exportedAt)) / DAY_MS));
+  const calendarDaysSince = last === null ? null : calendarDaysBetween(last.exportedAt, new Date(now).toISOString(), await readVisualPnlTimeZonePreference(repositories.metadata)) ?? daysSince;
   const held = laterAt !== null && now - Date.parse(laterAt) < BACKUP_REMINDER_LATER_MS;
   const reason: BackupReminder['reason'] = trades === 0 || every === null || held ? null
     : last === null ? 'never'
       : daysSince !== null && daysSince >= every ? 'old'
         : tradesSince >= BACKUP_REMINDER_TRADES ? 'many-trades'
           : null;
-  return Object.freeze({ due: reason !== null, reason, lastBackupAt: last?.exportedAt ?? null, daysSince, tradesSince, every });
+  return Object.freeze({ due: reason !== null, reason, lastBackupAt: last?.exportedAt ?? null, daysSince, calendarDaysSince, tradesSince, every });
 }
 
 export type BackupReminderWriteResult = { readonly ok: true } | { readonly ok: false; readonly type: 'storage-error'; readonly reason: 'backup-reminder-save-failed' };

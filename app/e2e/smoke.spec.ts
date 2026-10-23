@@ -1452,7 +1452,8 @@ test('(y) Back up when it is due: the reminder on Home and the Journal, "Back up
   await page.goto('/');
   const [download] = await Promise.all([page.waitForEvent('download'), reminder.getByRole('button', { name: 'Back up now' }).click()]);
   expect(download.suggestedFilename()).toMatch(/^kairos-backup-.*Z\.json$/);
-  const saved = JSON.parse(readFileSync((await download.path())!, 'utf8')) as { formatName: string; payload: { trades: unknown[] } };
+  const backupPath = (await download.path())!;
+  const saved = JSON.parse(readFileSync(backupPath, 'utf8')) as { formatName: string; payload: { trades: unknown[] } };
   expect(saved.formatName).toBe('kairos-full-backup');
   expect(saved.payload.trades).toHaveLength(1);
   await expect(reminder.getByText('Backup saved.')).toBeVisible();
@@ -1461,6 +1462,20 @@ test('(y) Back up when it is due: the reminder on Home and the Journal, "Back up
   await expect(reminder).toHaveCount(0);
   await page.goto('/backup');
   await expect(page.getByText(/^Last backup today · /)).toBeVisible();
+
+  // T-054a fix r1: a refused file leaves focus on its field; a button that can't be used looks it (aria-disabled, dimmed).
+  // A tap on the field gives it focus before the phone's file picker opens.
+  const restoreField = page.getByLabel('Backup file', { exact: true });
+  await restoreField.focus();
+  await restoreField.setInputFiles({ name: 'notes.json', mimeType: 'application/json', buffer: Buffer.from('{"hello":true}') });
+  await expect(page.getByRole('alert')).toContainText('That file is not a Kairos backup');
+  expect(await page.evaluate(() => document.activeElement?.id)).toBe('kairos-backup-backup-file');
+  await page.getByLabel('Backup file to import from').setInputFiles(backupPath);
+  const add = page.getByRole('button', { name: 'Add these records' });
+  await expect(add).toBeFocused();
+  await expect(add).toHaveAttribute('aria-disabled', 'true');
+  expect(await add.evaluate(element => getComputedStyle(element).opacity)).toBe('0.58');
+  await page.getByRole('button', { name: 'Cancel' }).click();
 
   // T-054b: on a phone the share sheet takes the backup (stubbed here: Playwright has no share sheet); a closed sheet saves nothing.
   await page.addInitScript(() => {

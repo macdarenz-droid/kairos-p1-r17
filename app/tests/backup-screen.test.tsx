@@ -141,7 +141,9 @@ describe('T-054a the backup page', () => {
     expect(lastLine().textContent).toBe(`Last backup today · ${local(now())}`);
     expect(button).toHaveFocus();
     expect(downloaded).toHaveLength(1);
-    expect(await readLastBackup(createKairosRepositories(db).metadata)).toMatchObject({ exportedAt: now() });
+    // The whole record, as Profile's test checked it before the move (T-054a fix r1).
+    const total = parseKairosBackup(await downloaded[0]!.contents).recordCounts.total;
+    expect(await readLastBackup(createKairosRepositories(db).metadata)).toEqual({ exportedAt: now(), fileName: 'kairos-backup-2026-09-18T14-30-00Z.json', totalRecords: total });
   });
 
   it('reads a stored last backup and says how long ago it was', async () => {
@@ -231,3 +233,63 @@ describe('T-054b the backup folder and where a backup went', () => {
     }
   });
 });
+
+describe('T-054a fix r1', () => {
+  const lastLine = () => route().querySelector('[data-backup-last]')!;
+  function slowReader() {
+    let finish: (text: string) => void = () => undefined;
+    const read = () => new Promise<string>(resolve => { finish = resolve; });
+    return { read, finish: (text: string) => finish(text) };
+  }
+
+  it('the file fields stay usable while a file is read, so a refused file leaves focus on them', async () => {
+    const db = await database();
+    const reader = slowReader();
+    render(<MemoryRouter><BackupScreen db={db} now={now} downloads={fakeDownloads().ports} readBackupFile={reader.read} /></MemoryRouter>);
+    choose(backupFile('notes.json', '{}'));
+    await waitFor(() => expect(route().getAttribute('data-backup-restore')).toBe('reading'));
+    expect(screen.getByLabelText('Backup file')).not.toBeDisabled();
+    reader.finish('{"hello":true}');
+    await waitFor(() => expect(route().getAttribute('data-backup-restore')).toBe('refused'));
+    expect(screen.getByLabelText('Backup file')).not.toBeDisabled();
+    fireEvent.change(screen.getByLabelText('Backup file to import from'), { target: { files: [backupFile('notes.json', '{}')] } });
+    await waitFor(() => expect(route().getAttribute('data-backup-import')).toBe('reading'));
+    expect(screen.getByLabelText('Backup file to import from')).not.toBeDisabled();
+    reader.finish('{"hello":true}');
+    await waitFor(() => expect(route().getAttribute('data-backup-import')).toBe('refused'));
+  });
+
+  it('"Back up now" does nothing while a restore reads its file', async () => {
+    const db = await database();
+    const reader = slowReader();
+    const { ports, downloaded } = fakeDownloads();
+    render(<MemoryRouter><BackupScreen db={db} now={now} downloads={ports} readBackupFile={reader.read} /></MemoryRouter>);
+    await waitFor(() => expect(lastLine().getAttribute('data-backup-last')).toBe('never'));
+    choose(backupFile('journal.json', incomingBackup()));
+    await waitFor(() => expect(route().getAttribute('data-backup-restore')).toBe('reading'));
+    fireEvent.click(screen.getByRole('button', { name: 'Back up now' }));
+    await new Promise(resolve => setTimeout(resolve, 50));
+    expect(route().getAttribute('data-backup-export')).toBe('idle');
+    expect(downloaded).toHaveLength(0);
+  });
+
+  it('says "yesterday" by the saved time zone\'s calendar, as the date beside it does', async () => {
+    const db = await database();
+    await saveVisualPnlTimeZone(db, 'Asia/Manila', { now });
+    // 23:30 on 17 September in Manila, read at 22:30 on 18 September there (now is 14:30 UTC).
+    await db.metadata.put({ key: 'device.backup.last-export.v1', value: JSON.stringify({ version: 1, exportedAt: '2026-09-17T15:30:00.000Z', fileName: 'kairos-backup-2026-09-17T15-30-00Z.json', totalRecords: 3 }), updatedAt: '2026-09-17T15:30:00.000Z' });
+    mount(db, fakeDownloads().ports);
+    await waitFor(() => expect(lastLine().getAttribute('data-backup-last')).toBe('recorded'));
+    expect(lastLine().textContent).toMatch(/^Last backup yesterday · /);
+  });
+
+  it('"Remind me" says so when the choice could not be saved', async () => {
+    const db = await database();
+    mount(db, fakeDownloads().ports);
+    const every = await screen.findByLabelText('How often');
+    vi.spyOn(db, 'transaction').mockRejectedValue(new Error('quota'));
+    fireEvent.change(every, { target: { value: '30' } });
+    expect(await screen.findByRole('alert')).toHaveTextContent('Kairos could not save this. Nothing was changed.');
+  });
+});
+

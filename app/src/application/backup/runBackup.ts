@@ -3,8 +3,7 @@
  * export, hand the file to where it goes, and record the last backup only when it was saved.
  */
 
-import type { KairosDatabase } from '../../data/database';
-import { createKairosRepositories } from '../../data/repositories';
+import { runKairosAtomicWrite, type KairosDatabase } from '../../data/database';
 import { exportKairosBackup, type ExportKairosBackupResult, type KairosBackupFile } from './exportBackup';
 import { recordLastBackup, type LastBackupRecord } from './lastBackup';
 
@@ -30,7 +29,13 @@ export async function runBackup(db: KairosDatabase, deliver: BackupDeliver, depe
   try { delivered = await deliver(exported.file); } catch { delivered = 'failed'; }
   if (delivered === 'cancelled') return { ok: false, reason: 'cancelled' };
   if (delivered === 'failed') return { ok: false, reason: 'delivery-failed' };
-  const recorded = await recordLastBackup(createKairosRepositories(db).metadata, exported.file);
+  let recorded: Awaited<ReturnType<typeof recordLastBackup>>;
+  try {
+    // One atomic write, like every write (T-054a fix r1).
+    recorded = await runKairosAtomicWrite(db, ['metadata'], ({ repositories }) => recordLastBackup(repositories.metadata, exported.file));
+  } catch {
+    return { ok: false, reason: 'record-failed' };
+  }
   if (!recorded.ok) return { ok: false, reason: 'record-failed' };
   const { skipped } = exported;
   const skippedCount = skipped.savedAnalyses + skipped.savedTimeAssistedSnapshots + skipped.tradeDiscipline + skipped.exchangeRates + skipped.economicEvents;
