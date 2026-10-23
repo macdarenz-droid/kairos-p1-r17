@@ -37,7 +37,10 @@ async function database(zone: string | null = 'UTC'): Promise<KairosDatabase> {
   if (zone !== null) expect((await writeVisualPnlTimeZonePreference(createKairosRepositories(db).metadata, zone, '2026-09-01T00:00:00.000Z')).ok).toBe(true);
   return db;
 }
-function trade(closedAt: string, exit: string, { currency = 'USDT', symbol = 'BTCUSDT', marketType = 'crypto', quantity = '1', exitQuantity = quantity, entry = '100' } = {}): SaveManualTradeInput {
+interface TradeOptions { readonly currency?: string; readonly symbol?: string; readonly marketType?: string; readonly quantity?: string; readonly exitQuantity?: string; readonly entry?: string }
+function trade(closedAt: string, exit: string, options: TradeOptions = {}): SaveManualTradeInput {
+  const { currency = 'USDT', symbol = 'BTCUSDT', marketType = 'crypto', quantity = '1', entry = '100' } = options;
+  const exitQuantity = options.exitQuantity ?? quantity;
   const openedAt = new Date(Date.parse(closedAt) - 3_600_000).toISOString();
   return {
     symbol, marketType, side: 'long', status: 'closed', openedAt, closedAt, grossPnlCurrency: currency,
