@@ -383,8 +383,8 @@ test('(k) Patterns: a closed trade, then your patterns and your practice pattern
   await page.getByRole('button', { name: 'Save trade' }).click();
   await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
 
-  await page.goto('/more');
-  await page.getByRole('link', { name: 'Patterns', exact: true }).click();
+  // T-053b: Patterns left More for Analysis; T-053c opens it as Analysis › Patterns.
+  await page.goto('/patterns');
   await expect(page).toHaveURL(/\/patterns$/);
   await expect(page.getByRole('heading', { name: 'Your patterns', level: 1 })).toBeVisible();
   const overall = page.getByRole('region', { name: 'All your trades' });
@@ -1133,8 +1133,8 @@ test('(v) Where am I: back to your place, the tab you are in, and the top of a n
   expect(await page.evaluate(() => window.scrollY)).toBe(0);
   await expect(title).toBeFocused();
   expect((await title.boundingBox())!.y).toBeGreaterThanOrEqual(header.y + header.height);
-  // Coach is opened from More, so More is marked as the part you are in.
-  await expect(page.getByRole('link', { name: 'More', exact: true })).toHaveAttribute('aria-current', 'true');
+  // Coach belongs to Analysis (D220), so Analysis is marked as the part you are in.
+  await expect(page.getByRole('link', { name: 'Analysis', exact: true })).toHaveAttribute('aria-current', 'true');
 
   // Back returns to the Journal, at the place you left it.
   await page.getByRole('button', { name: 'Back to Journal' }).click();

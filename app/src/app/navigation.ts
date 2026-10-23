@@ -1,3 +1,5 @@
+import type { IconName } from '../design-system/icons/Icon';
+
 export interface KairosNavigationItem {
   readonly label: string;
   readonly to: string;
@@ -12,17 +14,43 @@ export const primaryNavigation = Object.freeze([
   { label: 'More', to: '/more' },
 ] satisfies readonly KairosNavigationItem[]);
 
-export const moreNavigation = Object.freeze([
-  { label: 'Practice', to: '/practice' },
-  { label: 'Goals', to: '/goals' },
-  { label: 'Strategies', to: '/strategies' },
-  { label: 'Coach', to: '/coach' },
-  { label: 'Patterns', to: '/patterns' },
-  { label: 'News calendar', to: '/news-calendar' },
-  { label: 'Currency', to: '/currency' },
-  { label: 'Settings', to: '/settings' },
-  { label: 'Profile', to: '/profile' },
-] satisfies readonly KairosNavigationItem[]);
+/** An item on the More page (D219): its icon and one plain line that says what it is for. */
+export interface KairosMoreItem extends KairosNavigationItem {
+  readonly icon: IconName;
+  readonly line: string;
+}
+
+export interface KairosMoreGroup {
+  readonly title: string;
+  readonly items: readonly KairosMoreItem[];
+}
+
+/** The More page in its four groups (D219). Coach and Patterns are Analysis parts (D220), so they are not here. */
+export const moreNavigationGroups: readonly KairosMoreGroup[] = Object.freeze([
+  { title: 'Your plan', items: [
+    { label: 'Goals', to: '/goals', icon: 'goal', line: 'Targets and limits for the month' },
+    { label: 'Strategies', to: '/strategies', icon: 'strategy', line: 'Your setups and their rules' },
+    { label: 'News calendar', to: '/news-calendar', icon: 'calendar', line: 'Big news this week' },
+  ] },
+  { title: 'Practice', items: [
+    { label: 'Practice', to: '/practice', icon: 'practice', line: 'Trade with pretend money' },
+    { label: 'Replay', to: '/practice/replay', icon: 'replay', line: 'Trade past candles, one at a time' },
+  ] },
+  { title: 'Money', items: [
+    { label: 'Currency', to: '/currency', icon: 'currency', line: 'Your home currency and exchange rates' },
+    { label: 'Calculators', to: '/library/calculators', icon: 'calculator', line: 'How much can I buy, and what do I risk?' },
+  ] },
+  { title: 'App', items: [
+    { label: 'Settings', to: '/settings', icon: 'settings', line: 'How Kairos looks, and your time zone' },
+    { label: 'Profile', to: '/profile', icon: 'profile', line: 'This device, backups and online services' },
+  ] },
+] satisfies readonly KairosMoreGroup[]);
+
+/** Every More item, in the page's order. */
+export const moreNavigation: readonly KairosMoreItem[] = Object.freeze(moreNavigationGroups.flatMap((group) => group.items));
+
+/** Pages that belong to a tab without sitting under its address (D220): the tab is named by its address. */
+const PAGES_FILED_UNDER: Readonly<Record<string, string>> = Object.freeze({ '/coach': '/analysis', '/patterns': '/analysis' });
 
 const isAtOrUnder = (pathname: string, item: KairosNavigationItem) =>
   item.end ? pathname === item.to : pathname === item.to || pathname.startsWith(`${item.to}/`);
@@ -30,12 +58,15 @@ const isAtOrUnder = (pathname: string, item: KairosNavigationItem) =>
 export type KairosNavigationTab = (typeof primaryNavigation)[number];
 
 /**
- * The bottom-bar tab a page belongs to (D218, D219): a tab's own page and the pages under it name that tab; a page
- * listed under More, or under such a page, names More; a page with no home (not found) gives null.
+ * The bottom-bar tab a page belongs to (D218, D219): a tab's own page and the pages under it name that tab; Coach
+ * and Patterns name Analysis (D220); a page listed under More, or under such a page, names More; a page with no home
+ * (not found) gives null.
  */
 export function navigationTabOf(pathname: string): KairosNavigationTab | null {
   const tab = primaryNavigation.find((item) => isAtOrUnder(pathname, item));
   if (tab !== undefined) return tab;
+  const filed = Object.entries(PAGES_FILED_UNDER).find(([page]) => pathname === page || pathname.startsWith(`${page}/`));
+  if (filed !== undefined) return primaryNavigation.find((item) => item.to === filed[1]) ?? null;
   if (moreNavigation.some((item) => isAtOrUnder(pathname, item))) return primaryNavigation.find((item) => item.to === '/more') ?? null;
   return null;
 }
@@ -58,11 +89,12 @@ const PARENT_PAGES: Readonly<Record<string, string>> = Object.freeze({
   '/library/lessons': 'Lessons',
   '/practice': 'Practice',
   '/more': 'More',
+  '/analysis': 'Analysis',
 });
 
 /**
- * Where "up" goes from a page that isn't a tab (D218): the nearest page above it in its address; a page listed under
- * More goes to More; any other page goes Home. Null for a tab.
+ * Where "up" goes from a page that isn't a tab (D218): the nearest page above it in its address; Coach and Patterns
+ * go to Analysis; a page listed under More goes to More; any other page goes Home. Null for a tab.
  */
 export function pageParentOf(pathname: string): KairosPageParent | null {
   const path = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
@@ -73,6 +105,8 @@ export function pageParentOf(pathname: string): KairosPageParent | null {
     const label = PARENT_PAGES[candidate];
     if (label !== undefined) return Object.freeze({ to: candidate, label });
   }
+  const filed = PAGES_FILED_UNDER[path];
+  if (filed !== undefined) return Object.freeze({ to: filed, label: PARENT_PAGES[filed]! });
   if (moreNavigation.some((item) => item.to === path)) return Object.freeze({ to: '/more', label: PARENT_PAGES['/more']! });
   return Object.freeze({ to: '/', label: PARENT_PAGES['/']! });
 }

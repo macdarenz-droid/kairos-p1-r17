@@ -5,7 +5,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { moreNavigation } from '../src/app/navigation';
+import { moreNavigationGroups } from '../src/app/navigation';
 import { appRoutes } from '../src/app/routes';
 import { NEWS_COVERAGE_KEY } from '../src/application/economic-calendar/fetchedNews';
 import { readGlossary } from '../src/application/learn/glossary';
@@ -146,12 +146,12 @@ describe('T-046j the clock time, the words and the route', () => {
     expect(projectVisualPnlClockTime('2026-09-24T12:30:00Z', 'Asia/Manila')).toBeNull();
   });
 
-  it('adds the two trading words, and opens at /news-calendar right before Currency in More', async () => {
+  it('adds the two trading words, and opens at /news-calendar in More’s Your plan group', async () => {
     expect(readGlossary().problems).toEqual([]);
     const router = createMemoryRouter(appRoutes, { initialEntries: ['/news-calendar'] });
     render(<ThemeProvider><RouterProvider router={router} /></ThemeProvider>);
     expect(await screen.findByRole('heading', { level: 1, name: 'News calendar' }, { timeout: 10_000 })).toBeInTheDocument();
-    const labels = moreNavigation.map((item) => item.label);
-    expect(labels[labels.indexOf('Currency') - 1]).toBe('News calendar');
+    // T-053b (D219): More is grouped; the News calendar is in "Your plan".
+    expect(moreNavigationGroups.find((group) => group.title === 'Your plan')?.items.map((item) => item.label)).toContain('News calendar');
   });
 });

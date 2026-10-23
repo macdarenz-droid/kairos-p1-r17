@@ -24,6 +24,22 @@ describe('T-049c Icon', () => {
     render(<Icon name="result-up" label="Profit" />);
     expect(screen.getByRole('img', { name: 'Profit' })).toHaveAttribute('data-icon', 'result-up');
   });
+
+  it('T-053b has the More page\'s drawings, at every size', () => {
+    const more = ['goal', 'strategy', 'calendar', 'practice', 'replay', 'currency', 'calculator', 'settings', 'profile', 'setup'] as const;
+    expect(ICON_NAMES).toEqual(expect.arrayContaining([...more]));
+    for (const name of more) {
+      for (const size of [16, 20, 24, 40] as const) {
+        const { container, unmount } = render(<Icon name={name} size={size} />);
+        const svg = container.querySelector('svg')!;
+        expect(svg.getAttribute('data-icon'), name).toBe(name);
+        expect([svg.getAttribute('width'), svg.getAttribute('height')], name).toEqual([String(size), String(size)]);
+        expect(svg.children.length, name).toBeGreaterThan(0);
+        expect(svg).toHaveAttribute('aria-hidden', 'true');
+        unmount();
+      }
+    }
+  });
 });
 
 describe('T-049c PageHeader', () => {

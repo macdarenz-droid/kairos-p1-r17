@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { navigationTabOf, pageParentOf } from '../src/app/navigation';
+import { moreNavigation, navigationTabOf, pageParentOf } from '../src/app/navigation';
 import { appRoutes } from '../src/app/routes';
 
 function renderPath(path: string) {
@@ -51,7 +51,7 @@ const ROUTE_HOMES: Readonly<Record<string, readonly [tab: string | null, parent:
   '/library/words': ['/library', '/library'], '/library/calculators': ['/library', '/library'], '/library/lessons': ['/library', '/library'],
   '/library/lessons/:lessonId': ['/library', '/library/lessons'],
   '/practice': ['/more', '/more'], '/practice/replay': ['/more', '/practice'], '/practice/coach': ['/more', '/practice'], '/practice/patterns': ['/more', '/practice'],
-  '/goals': ['/more', '/more'], '/strategies': ['/more', '/more'], '/coach': ['/more', '/more'], '/patterns': ['/more', '/more'],
+  '/goals': ['/more', '/more'], '/strategies': ['/more', '/more'], '/coach': ['/analysis', '/analysis'], '/patterns': ['/analysis', '/analysis'],
   '/news-calendar': ['/more', '/more'], '/currency': ['/more', '/more'], '/settings': ['/more', '/more'], '/profile': ['/more', '/more'],
   '/*': [null, '/'],
 };
@@ -112,5 +112,46 @@ describe('T-053a where am I', () => {
     unmount();
     renderPath('/more');
     expect(await screen.findByRole('link', { name: 'More' })).toHaveAttribute('aria-current', 'page');
+  });
+});
+
+describe('T-053b More in four groups', () => {
+  const GROUPS = [
+    ['Your plan', [['Goals', '/goals', 'Targets and limits for the month', 'goal'], ['Strategies', '/strategies', 'Your setups and their rules', 'strategy'], ['News calendar', '/news-calendar', 'Big news this week', 'calendar']]],
+    ['Practice', [['Practice', '/practice', 'Trade with pretend money', 'practice'], ['Replay', '/practice/replay', 'Trade past candles, one at a time', 'replay']]],
+    ['Money', [['Currency', '/currency', 'Your home currency and exchange rates', 'currency'], ['Calculators', '/library/calculators', 'How much can I buy, and what do I risk?', 'calculator']]],
+    ['App', [['Settings', '/settings', 'How Kairos looks, and your time zone', 'settings'], ['Profile', '/profile', 'This device, backups and online services', 'profile']]],
+  ] as const;
+
+  it('shows each group under its heading, each item with its icon, its name and its line', () => {
+    renderPath('/more');
+    const nav = screen.getByRole('navigation', { name: 'More destinations' });
+    expect(Array.from(nav.querySelectorAll('h2')).map(heading => heading.textContent)).toEqual(GROUPS.map(([title]) => title));
+    for (const [title, items] of GROUPS) {
+      const group = screen.getByRole('region', { name: title });
+      const links = Array.from(group.querySelectorAll('a'));
+      expect(links.map(link => link.getAttribute('href'))).toEqual(items.map(([, to]) => to));
+      for (const [label, to, line, icon] of items) {
+        const link = screen.getByRole('link', { name: label });
+        expect(link).toHaveAttribute('href', to);
+        expect(link).toHaveAccessibleDescription(line);
+        expect(link.querySelector('svg')).toHaveAttribute('data-icon', icon);
+        expect(link.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+      }
+    }
+  });
+
+  it('no longer lists Coach and Patterns, which belong to Analysis', () => {
+    renderPath('/more');
+    expect(screen.queryByRole('link', { name: 'Coach' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Patterns' })).toBeNull();
+    expect(navigationTabOf('/coach')?.to).toBe('/analysis');
+    expect(pageParentOf('/patterns')).toEqual({ to: '/analysis', label: 'Analysis' });
+  });
+
+  it('opens a route for every item', () => {
+    const children = (appRoutes[0]!.children ?? []) as readonly { index?: boolean; path?: string }[];
+    const paths = new Set(children.map(route => (route.index ? '/' : `/${route.path}`)));
+    for (const item of moreNavigation) expect(paths.has(item.to), item.to).toBe(true);
   });
 });

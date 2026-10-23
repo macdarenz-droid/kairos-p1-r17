@@ -278,12 +278,13 @@ test('(11) links, focus rings and the bottom-bar marker follow the theme, and li
     probe.remove();
     return colour;
   }, token);
-  const inkOnMore = async (page: Page, path: string) => {
+  // T-053b: Coach belongs to Analysis (D220), Settings to More.
+  const inkOn = async (page: Page, path: string, tab: 'More' | 'Analysis') => {
     await expect(page.locator('.kairos-shell__nav-ink'), `${path} marker`).toHaveCount(1);
     const ink = await page.locator('.kairos-shell__nav-ink').boundingBox();
-    const more = await page.getByRole('navigation', { name: 'Primary navigation' }).getByRole('link', { name: 'More' }).boundingBox();
+    const link = await page.getByRole('navigation', { name: 'Primary navigation' }).getByRole('link', { name: tab }).boundingBox();
     expect(ink, `${path} marker`).not.toBeNull();
-    expect(Math.abs((ink!.x + ink!.width / 2) - (more!.x + more!.width / 2)), `${path} marker over More`).toBeLessThanOrEqual(2);
+    expect(Math.abs((ink!.x + ink!.width / 2) - (link!.x + link!.width / 2)), `${path} marker over ${tab}`).toBeLessThanOrEqual(2);
   };
   const listsFit = async (page: Page, path: string) => {
     const cut = await page.evaluate(() => {
@@ -312,7 +313,7 @@ test('(11) links, focus rings and the bottom-bar marker follow the theme, and li
     const links = await page.locator('main a[href]').evaluateAll(anchors => anchors.map(anchor => getComputedStyle(anchor).color));
     expect(links.length, `${theme} Coach links`).toBeGreaterThan(0);
     for (const colour of links) expect(colour, `${theme} Coach link colour`).toBe(accent);
-    await inkOnMore(page, `${theme} /coach`);
+    await inkOn(page, `${theme} /coach`, 'Analysis');
     await listsFit(page, `${theme} /coach`);
 
     await page.goto('/analysis');
@@ -330,7 +331,7 @@ test('(11) links, focus rings and the bottom-bar marker follow the theme, and li
 
     await page.goto('/settings');
     await expect(page.getByRole('heading', { name: 'Appearance' })).toBeVisible();
-    await inkOnMore(page, `${theme} /settings`);
+    await inkOn(page, `${theme} /settings`, 'More');
     await listsFit(page, `${theme} /settings`);
 
     await page.goto('/journal');
