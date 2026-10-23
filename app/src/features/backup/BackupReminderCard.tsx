@@ -1,6 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
-  createBrowserBackupDownloadPorts,
   describeBackupFailure,
   describeBackupReminder,
   loadBackupReminder,
@@ -13,7 +12,7 @@ import {
 import type { KairosDatabase } from '../../data/database';
 import { Icon } from '../../design-system/icons/Icon';
 import { Button, Card } from '../../design-system/primitives';
-import { createBackupDelivery } from './backupDelivery';
+import { createBrowserBackupDelivery } from './backupDelivery';
 import './backup.css';
 
 type CardState =
@@ -46,7 +45,7 @@ export function BackupReminderCard({ db, now = wallClock, downloads, deliver }: 
 }) {
   const titleId = useId();
   const card = useRef<HTMLDivElement>(null);
-  const send = useMemo(() => deliver ?? createBackupDelivery({ downloads: downloads ?? createBrowserBackupDownloadPorts(window) }), [deliver, downloads]);
+  const send = useMemo(() => deliver ?? createBrowserBackupDelivery(db, downloads), [db, deliver, downloads]);
   const [state, setState] = useState<CardState>({ kind: 'gone' });
   const [moveFocus, setMoveFocus] = useState(0);
   const next = useRef<HTMLElement | null>(null);

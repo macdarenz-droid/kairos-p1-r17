@@ -1461,6 +1461,34 @@ test('(y) Back up when it is due: the reminder on Home and the Journal, "Back up
   await expect(reminder).toHaveCount(0);
   await page.goto('/backup');
   await expect(page.getByText(/^Last backup today · /)).toBeVisible();
+
+  // T-054b: on a phone the share sheet takes the backup (stubbed here: Playwright has no share sheet); a closed sheet saves nothing.
+  await page.addInitScript(() => {
+    const kept: Array<[string, string]> = [];
+    (window as unknown as { kairosShared: typeof kept }).kairosShared = kept;
+    Object.defineProperty(navigator, 'canShare', { configurable: true, value: () => true });
+    Object.defineProperty(navigator, 'share', { configurable: true, value: async ({ files }: { files: File[] }) => {
+      sessionStorage.setItem('kairos-qa-share-calls', String(Number(sessionStorage.getItem('kairos-qa-share-calls') ?? '0') + 1));
+      if (sessionStorage.getItem('kairos-qa-share') === 'cancel') throw new DOMException('closed', 'AbortError');
+      for (const shared of files) kept.push([shared.name, shared.type]);
+    } });
+  });
+  await page.reload();
+  await page.getByRole('button', { name: 'Back up now' }).click();
+  await expect(page.getByText("Shared. Kairos can't see where you shared it; keep it somewhere you can find.")).toBeVisible();
+  const shared = await page.evaluate(() => (window as unknown as { kairosShared: Array<[string, string]> }).kairosShared);
+  expect(shared).toHaveLength(1);
+  expect(shared[0]![0]).toMatch(/^kairos-backup-.*Z\.json$/);
+  expect(shared[0]![1]).toBe('application/json');
+  await page.evaluate(() => sessionStorage.setItem('kairos-qa-share', 'cancel'));
+  await page.reload();
+  const lastBefore = await page.getByText(/^Last backup today · /).textContent();
+  await page.getByRole('button', { name: 'Back up now' }).click();
+  await expect.poll(() => page.evaluate(() => sessionStorage.getItem('kairos-qa-share-calls'))).toBe('2');
+  await expect(page.locator('[data-backup-export]')).toHaveAttribute('data-backup-export', 'idle');
+  await expect(page.getByText(/^Backup saved:/)).toHaveCount(0);
+  expect(await page.getByText(/^Last backup today · /).textContent()).toBe(lastBefore);
+  await expect(page.getByRole('alert')).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 

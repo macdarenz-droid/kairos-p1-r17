@@ -1,5 +1,6 @@
 import { kairosDatabase } from '../database/databaseLifecycle';
 import type { KairosDatabase } from '../database/KairosDatabase';
+import { DeviceHandleRepository } from './DeviceHandleRepository';
 import { EconomicEventRepository } from './EconomicEventRepository';
 import { ExchangeRateRepository } from './ExchangeRateRepository';
 import { MetadataRepository } from './MetadataRepository';
@@ -19,11 +20,13 @@ export interface KairosRepositories {
   readonly tradeDiscipline: TradeDisciplineRepository;
   readonly exchangeRates: ExchangeRateRepository;
   readonly economicEvents: EconomicEventRepository;
+  readonly deviceHandles: DeviceHandleRepository;
 }
 export function createKairosRepositories(db: KairosDatabase): KairosRepositories {
-  return Object.freeze({ metadata: new MetadataRepository(db), trades: new TradeRepository(db), tradePlans: new TradePlanRepository(db), tradeExecutions: new TradeExecutionRepository(db), tradeFees: new TradeFeeRepository(db), savedAnalyses: new SavedAnalysisRepository(db), savedTimeAssistedSnapshots: new SavedTimeAssistedSnapshotRepository(db), tradeDiscipline: new TradeDisciplineRepository(db), exchangeRates: new ExchangeRateRepository(db), economicEvents: new EconomicEventRepository(db) });
+  return Object.freeze({ metadata: new MetadataRepository(db), trades: new TradeRepository(db), tradePlans: new TradePlanRepository(db), tradeExecutions: new TradeExecutionRepository(db), tradeFees: new TradeFeeRepository(db), savedAnalyses: new SavedAnalysisRepository(db), savedTimeAssistedSnapshots: new SavedTimeAssistedSnapshotRepository(db), tradeDiscipline: new TradeDisciplineRepository(db), exchangeRates: new ExchangeRateRepository(db), economicEvents: new EconomicEventRepository(db), deviceHandles: new DeviceHandleRepository(db) });
 }
 export const kairosRepositories = createKairosRepositories(kairosDatabase);
+export { DeviceHandleRepository } from './DeviceHandleRepository';
 export { EconomicEventRepository } from './EconomicEventRepository';
 export { ExchangeRateRepository } from './ExchangeRateRepository';
 export { MetadataRepository } from './MetadataRepository';

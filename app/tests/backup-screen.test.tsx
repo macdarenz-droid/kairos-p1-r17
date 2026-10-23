@@ -1,11 +1,11 @@
 import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router';
 import { BackupScreen } from '../src/features/backup/BackupScreen';
 import { defineSavedAnalysis } from '../src/domain/saved-records/savedAnalysisContract';
-import { readBackupReminderSetting, readLastBackup, type BackupDownloadPorts } from '../src/application/backup';
+import { loadBackupFolder, readBackupReminderSetting, readLastBackup, type BackupDownloadPorts } from '../src/application/backup';
 import { saveVisualPnlTimeZone } from '../src/application/visual-pnl';
 import { createKairosBackupEnvelope, parseKairosBackup, serializeKairosBackup } from '../src/data/backup';
 import { createKairosDatabase, openKairosDatabase } from '../src/data/database';
@@ -185,5 +185,49 @@ describe('T-054a the backup page', () => {
     await waitFor(() => expect(route().getAttribute('data-backup-export')).toBe('idle'));
     expect(screen.queryByRole('alert')).toBeNull();
     expect(await readLastBackup(createKairosRepositories(db).metadata)).toBeNull();
+  });
+});
+
+describe('T-054b the backup folder and where a backup went', () => {
+  const picked = { name: 'Kairos backups' } as never;
+
+  it('has no folder block where the browser cannot keep a folder', async () => {
+    const db = await database();
+    mount(db, fakeDownloads().ports);
+    await screen.findByRole('button', { name: 'Back up now' });
+    expect(screen.queryByRole('heading', { name: 'Backup folder' })).toBeNull();
+  });
+
+  it('chooses a folder, shows it, changes it and stops using it, keeping the focus on the block', async () => {
+    const db = await database();
+    let next: unknown = picked;
+    render(<MemoryRouter><BackupScreen db={db} now={now} downloads={fakeDownloads().ports} readBackupFile={readBackupFile} pickFolder={async () => next as never} /></MemoryRouter>);
+    expect(await screen.findByText('Choose a folder on this computer, and "Back up now" saves each backup there.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Choose a backup folder' }));
+    expect(await screen.findByText('Kairos backups')).toBeInTheDocument();
+    expect(screen.getByText(/^Backups go to:/)).toHaveTextContent('Backups go to: Kairos backups');
+    expect(screen.getByRole('button', { name: 'Change' })).toHaveFocus();
+    expect(await loadBackupFolder(db)).toEqual({ name: 'Kairos backups', handle: { name: 'Kairos backups' } });
+    // A closed picker changes nothing.
+    next = Promise.reject(new DOMException('closed', 'AbortError'));
+    fireEvent.click(screen.getByRole('button', { name: 'Change' }));
+    await waitFor(() => expect(screen.getByText(/^Backups go to:/)).toHaveTextContent('Kairos backups'));
+    fireEvent.click(screen.getByRole('button', { name: 'Stop using this folder' }));
+    expect(await screen.findByRole('button', { name: 'Choose a backup folder' })).toHaveFocus();
+    expect(await loadBackupFolder(db)).toBeNull();
+  });
+
+  it('says where a backup went: the folder, the share sheet or a download', async () => {
+    for (const [delivered, words] of [
+      [{ outcome: 'saved', via: 'folder', place: 'Kairos backups' }, 'Saved to Kairos backups.'],
+      [{ outcome: 'saved', via: 'share', place: null }, "Shared. Kairos can't see where you shared it; keep it somewhere you can find."],
+      [{ outcome: 'saved', via: 'download', place: null }, 'Downloaded.'],
+    ] as const) {
+      const db = await database();
+      render(<MemoryRouter><BackupScreen db={db} now={now} deliver={async () => delivered} readBackupFile={readBackupFile} /></MemoryRouter>);
+      fireEvent.click(await screen.findByRole('button', { name: 'Back up now' }));
+      expect(await screen.findByText(words)).toBeInTheDocument();
+      cleanup();
+    }
   });
 });

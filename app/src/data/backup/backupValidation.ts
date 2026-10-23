@@ -322,7 +322,8 @@ function validateV9(input: Record<string, unknown>): KairosBackupEnvelopeV9 {
 }
 
 function validateV10(input: Record<string, unknown>): KairosBackupEnvelopeV10 {
-  if (input.databaseSchemaVersion !== 11) throw new KairosBackupValidationError('INVALID_HEADER', 'Backup format V10 must describe database schema V11.');
+  // Schema v12 (U8) adds only a device-only store that no backup carries, so format V10 describes schema 11 or 12 (D26, D227).
+  if (input.databaseSchemaVersion !== 11 && input.databaseSchemaVersion !== 12) throw new KairosBackupValidationError('INVALID_HEADER', 'Backup format V10 must describe database schema V11 or V12.');
   if (!isRecord(input.payload)) throw new KairosBackupValidationError('INVALID_PAYLOAD', 'Backup V10 payload is invalid.');
   const payload=input.payload;
   const validators:Array<[string,(value:unknown)=>boolean]>=[['metadata',isMetadataRecord],['trades',isTradeRecord],['tradePlans',isTradePlanRecord],['tradeExecutions',isTradeExecutionRecord],['tradeFees',isTradeFeeRecord],['savedAnalyses',isSavedAnalysisRecord],['savedTimeAssistedSnapshots',isSavedTimeAssistedSnapshotRecord],['tradeDiscipline',isTradeDisciplineRecord],['exchangeRates',isExchangeRateRecordShape],['economicEvents',isEconomicEventRecordShape]];

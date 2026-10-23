@@ -6,7 +6,7 @@ import type { ExchangeRateRecord } from '../../domain/calculations/currencyConve
 import type { EconomicEventRecord } from '../../domain/economic-calendar/economicEvent';
 
 export const KAIROS_DATABASE_NAME = 'kairos';
-export const KAIROS_DB_SCHEMA_VERSION = 11 as const;
+export const KAIROS_DB_SCHEMA_VERSION = 12 as const;
 
 /** Immutable released V1 contract. Never edit. */
 export const KAIROS_V1_STORES = Object.freeze({
@@ -62,6 +62,13 @@ export const KAIROS_V10_STORES = Object.freeze({ exchangeRates: '&id,day' });
 /** V11 appends the P34 news store: one row per saved news event, indexed by the instant it is scheduled (D124). Nothing to convert. */
 export const KAIROS_V11_STORES = Object.freeze({ economicEvents: '&id,startsAt' });
 
+/**
+ * V12 appends a device-only store for things that are not text, such as the backup folder a browser lets Kairos write
+ * to (U8, D227). It is never in a backup, and a restore keeps it: the snapshot and the restore name their stores. Nothing
+ * to convert.
+ */
+export const KAIROS_V12_STORES = Object.freeze({ deviceHandles: '&key' });
+
 /** Current complete store authority used by transactions/integrity only. */
 export const KAIROS_CURRENT_STORES = Object.freeze({
   ...KAIROS_V2_STORES,
@@ -74,6 +81,7 @@ export const KAIROS_CURRENT_STORES = Object.freeze({
   ...KAIROS_V9_STORES,
   ...KAIROS_V10_STORES,
   ...KAIROS_V11_STORES,
+  ...KAIROS_V12_STORES,
 });
 
 export interface DatabaseMetadataRecord {
@@ -88,6 +96,14 @@ export type DatabaseTradeExecutionRecord = TradeExecutionRecord;
 export type DatabaseTradeFeeRecord = TradeFeeRecord;
 export type DatabaseExchangeRateRecord = ExchangeRateRecord;
 export type DatabaseEconomicEventRecord = EconomicEventRecord;
+
+/** One device-only handle (D227): `handle` is whatever the browser gave (a folder handle), kept by structured clone. */
+export interface DatabaseDeviceHandleRecord {
+  readonly key: string;
+  readonly name: string;
+  readonly handle: unknown;
+  readonly savedAt: string;
+}
 
 export type DatabaseSavedAnalysisRecord = SavedAnalysis;
 export type DatabaseSavedTimeAssistedSnapshotRecord = SavedTimeAssistedSnapshot;

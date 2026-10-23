@@ -10,11 +10,14 @@ import { recordLastBackup, type LastBackupRecord } from './lastBackup';
 
 /** What the browser side did with the file. */
 export type BackupDeliveryOutcome = 'saved' | 'cancelled' | 'failed';
-/** Where a backup goes (download, share sheet or folder): the browser side, supplied by the screen. */
-export type BackupDeliver = (file: KairosBackupFile) => Promise<BackupDeliveryOutcome>;
+/** Where a saved backup went (T-054b, D227): into a folder (its name), to the share sheet, or as a download. */
+export type BackupDeliveryWay = 'folder' | 'share' | 'download';
+export interface BackupDelivered { readonly outcome: 'saved'; readonly via: BackupDeliveryWay; readonly place: string | null }
+/** Where a backup goes: the browser side, supplied by the screen. A plain 'saved' says nothing of where. */
+export type BackupDeliver = (file: KairosBackupFile) => Promise<BackupDeliveryOutcome | BackupDelivered>;
 
 export type RunBackupResult =
-  | { readonly ok: true; readonly file: KairosBackupFile; /** Damaged saved items left out; they stay on the device. */ readonly skippedCount: number; readonly record: LastBackupRecord }
+  | { readonly ok: true; readonly file: KairosBackupFile; /** Damaged saved items left out; they stay on the device. */ readonly skippedCount: number; readonly record: LastBackupRecord; readonly via: BackupDeliveryWay | null; readonly place: string | null }
   | { readonly ok: false; readonly reason: 'cancelled' | 'delivery-failed' | 'record-failed' }
   | { readonly ok: false; readonly reason: 'export-failed'; readonly export: Exclude<ExportKairosBackupResult, { ok: true }> };
 
@@ -23,13 +26,14 @@ const wallClock = (): string => new Date().toISOString();
 export async function runBackup(db: KairosDatabase, deliver: BackupDeliver, dependencies: { readonly now?: () => string } = {}): Promise<RunBackupResult> {
   const exported = await exportKairosBackup(db, new Date((dependencies.now ?? wallClock)()));
   if (!exported.ok) return { ok: false, reason: 'export-failed', export: exported };
-  let outcome: BackupDeliveryOutcome;
-  try { outcome = await deliver(exported.file); } catch { outcome = 'failed'; }
-  if (outcome === 'cancelled') return { ok: false, reason: 'cancelled' };
-  if (outcome === 'failed') return { ok: false, reason: 'delivery-failed' };
+  let delivered: BackupDeliveryOutcome | BackupDelivered;
+  try { delivered = await deliver(exported.file); } catch { delivered = 'failed'; }
+  if (delivered === 'cancelled') return { ok: false, reason: 'cancelled' };
+  if (delivered === 'failed') return { ok: false, reason: 'delivery-failed' };
   const recorded = await recordLastBackup(createKairosRepositories(db).metadata, exported.file);
   if (!recorded.ok) return { ok: false, reason: 'record-failed' };
   const { skipped } = exported;
   const skippedCount = skipped.savedAnalyses + skipped.savedTimeAssistedSnapshots + skipped.tradeDiscipline + skipped.exchangeRates + skipped.economicEvents;
-  return { ok: true, file: exported.file, skippedCount, record: recorded.record };
+  const way = delivered === 'saved' ? { via: null, place: null } : { via: delivered.via, place: delivered.place };
+  return { ok: true, file: exported.file, skippedCount, record: recorded.record, ...way };
 }

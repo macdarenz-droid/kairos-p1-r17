@@ -73,7 +73,7 @@ describe('schema v8: one discipline record per trade, answers by item', () => {
     old.close();
 
     const db = createKairosDatabase(name); opened.push(db);
-    expect(await openKairosDatabase(db)).toEqual({ state: 'ready', schemaVersion: 11 });
+    expect(await openKairosDatabase(db)).toEqual({ state: 'ready', schemaVersion: 12 });
     expect(await db.tradeDiscipline.toArray()).toEqual([converted]);
     expect(db.tradeDiscipline.schema.idxByName.tradeId?.unique).toBe(true);
     expect((await inspectKairosDatabaseIntegrity(db)).ok).toBe(true);
@@ -108,7 +108,7 @@ describe('schema v8: one discipline record per trade, answers by item', () => {
     await db.trades.put(trade);
     await db.tradeDiscipline.put(converted);
     const snapshot = await createKairosDatabaseSnapshot(db);
-    expect(snapshot).toMatchObject({ formatVersion: 10, databaseSchemaVersion: 11, recordCounts: { tradeDiscipline: 1 } });
+    expect(snapshot).toMatchObject({ formatVersion: 10, databaseSchemaVersion: 12, recordCounts: { tradeDiscipline: 1 } });
     expect(snapshot.payload.tradeDiscipline).toEqual([converted]);
     expect(parseKairosBackup(serializeKairosBackup(snapshot))).toEqual(snapshot);
   });
@@ -117,7 +117,7 @@ describe('schema v8: one discipline record per trade, answers by item', () => {
     it(`reads a ${label} backup as format 7, converts its record and restores it`, async () => {
       const text = JSON.stringify(backup);
       const parsed = parseKairosBackup(text);
-      expect(parsed).toMatchObject({ formatVersion: 10, databaseSchemaVersion: 11, recordCounts: { tradeDiscipline: 1, total: 2 } });
+      expect(parsed).toMatchObject({ formatVersion: 10, databaseSchemaVersion: 12, recordCounts: { tradeDiscipline: 1, total: 2 } });
       expect(parsed.payload.tradeDiscipline).toEqual([converted]);
       expect(parsed.payload.trades).toEqual([trade]);
       const db = await current('restore');
