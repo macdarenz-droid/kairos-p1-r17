@@ -2,7 +2,7 @@ import { createBrowserBackupDownloadPorts, handBackupFileToBrowser, loadBackupFo
 import type { KairosDatabase } from '../../data/database';
 
 /** A writable file in the folder, as far as Kairos uses it. */
-interface BackupFolderWritable { write(data: string): Promise<void>; close(): Promise<void> }
+interface BackupFolderWritable { write(data: string): Promise<void>; close(): Promise<void>; abort?(): Promise<void> }
 /** The browser's folder handle (File System Access, on computers), as far as Kairos uses it. */
 export interface BackupFolderHandlePort {
   readonly name: string;
@@ -26,15 +26,18 @@ const isAbort = (error: unknown): boolean => typeof error === 'object' && error 
 
 /** Writes the file into the folder, asking for permission once if the browser wants it; false when it cannot. */
 async function writeToFolder(folder: BackupFolderHandlePort, file: KairosBackupFile): Promise<boolean> {
+  let writable: BackupFolderWritable | null = null;
   try {
     let permission: PermissionState = (await folder.queryPermission?.({ mode: 'readwrite' })) ?? 'granted';
     if (permission === 'prompt') permission = (await folder.requestPermission?.({ mode: 'readwrite' })) ?? 'denied';
     if (permission !== 'granted') return false;
-    const writable = await (await folder.getFileHandle(file.fileName, { create: true })).createWritable();
+    writable = await (await folder.getFileHandle(file.fileName, { create: true })).createWritable();
     await writable.write(file.contents);
     await writable.close();
     return true;
   } catch {
+    // A half-written file is thrown away, so no temporary file stays in the folder (T-054b fix r1).
+    await writable?.abort?.().catch(() => undefined);
     return false;
   }
 }
@@ -48,6 +51,8 @@ export function createBackupDelivery(ports: BackupDeliveryPorts): BackupDeliver 
   return async file => {
     const folder = await (ports.folder?.() ?? Promise.resolve(null)).catch(() => null);
     if (folder !== null && await writeToFolder(folder, file)) return { outcome: 'saved', via: 'folder', place: folder.name };
+    // The chosen folder could not be written: the page says so beside where the backup went instead.
+    const missedFolder = folder?.name ?? null;
     const share = ports.share;
     if (share?.canShare !== undefined && share.share !== undefined) {
       const shared = new File([file.contents], file.fileName, { type: file.mediaType });
@@ -56,7 +61,7 @@ export function createBackupDelivery(ports: BackupDeliveryPorts): BackupDeliver 
       if (can) {
         try {
           await share.share({ files: [shared], title: 'Kairos backup' });
-          return { outcome: 'saved', via: 'share', place: null };
+          return { outcome: 'saved', via: 'share', place: null, missedFolder };
         } catch (error) {
           if (isAbort(error)) return 'cancelled';
         }
@@ -64,7 +69,7 @@ export function createBackupDelivery(ports: BackupDeliveryPorts): BackupDeliver 
     }
     try {
       handBackupFileToBrowser(file, ports.downloads);
-      return { outcome: 'saved', via: 'download', place: null };
+      return { outcome: 'saved', via: 'download', place: null, missedFolder };
     } catch {
       return 'failed';
     }

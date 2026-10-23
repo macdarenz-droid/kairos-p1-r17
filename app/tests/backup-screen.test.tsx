@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router';
 import { BackupScreen } from '../src/features/backup/BackupScreen';
 import { defineSavedAnalysis } from '../src/domain/saved-records/savedAnalysisContract';
-import { loadBackupFolder, readBackupReminderSetting, readLastBackup, type BackupDownloadPorts } from '../src/application/backup';
+import { loadBackupFolder, readBackupReminderSetting, readLastBackup, saveBackupFolder, type BackupDownloadPorts } from '../src/application/backup';
 import { saveVisualPnlTimeZone } from '../src/application/visual-pnl';
 import { createKairosBackupEnvelope, parseKairosBackup, serializeKairosBackup } from '../src/data/backup';
 import { createKairosDatabase, openKairosDatabase } from '../src/data/database';
@@ -48,7 +48,7 @@ describe('P28.3 backup and restore, on its own page since T-054a', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Back up now' }));
     await waitFor(() => expect(route().getAttribute('data-backup-export')).toBe('done'));
     const contents = await downloaded[0]!.contents;
-    expect(screen.getByRole('status').textContent).toBe(`Backup saved: kairos-backup-2026-09-18T14-30-00Z.json · 1 record · ${(new TextEncoder().encode(contents).byteLength / 1024).toFixed(1)} KB.`);
+    expect(screen.getByRole('status').textContent).toBe(`Backup saved: kairos-backup-2026-09-18T14-30-00Z.json · 1 record · ${(new TextEncoder().encode(contents).byteLength / 1024).toFixed(1)} KB. Downloaded.`);
     expect(downloaded).toHaveLength(1);
     expect(downloaded[0]!.fileName).toBe('kairos-backup-2026-09-18T14-30-00Z.json');
     expect(urls).toEqual([]);
@@ -293,3 +293,38 @@ describe('T-054a fix r1', () => {
   });
 });
 
+
+describe('T-054b fix r1', () => {
+  const picked = { name: 'Kairos backups' } as never;
+
+  it('says, in the announced line, when the chosen folder could not be written and where the backup went instead', async () => {
+    for (const [delivered, words] of [
+      [{ outcome: 'saved', via: 'download', place: null, missedFolder: 'Kairos backups' }, 'Kairos could not save to Kairos backups, so it was downloaded instead.'],
+      [{ outcome: 'saved', via: 'share', place: null, missedFolder: 'Kairos backups' }, "Kairos could not save to Kairos backups, so it was shared instead. Kairos can't see where you shared it; keep it somewhere you can find."],
+      [{ outcome: 'saved', via: 'folder', place: 'Kairos backups' }, 'Saved to Kairos backups.'],
+    ] as const) {
+      const db = await database();
+      render(<MemoryRouter><BackupScreen db={db} now={now} deliver={async () => delivered} readBackupFile={readBackupFile} /></MemoryRouter>);
+      fireEvent.click(await screen.findByRole('button', { name: 'Back up now' }));
+      expect((await screen.findByText(words)).closest('[role="status"]')).toHaveTextContent(/^Backup saved: /);
+      cleanup();
+    }
+  });
+
+  it('offers nothing while the saved folder is read, and a failed "Stop" keeps showing the folder it kept', async () => {
+    const db = await database();
+    await saveBackupFolder(db, { name: 'Kairos backups', handle: picked }, { now });
+    render(<MemoryRouter><BackupScreen db={db} now={now} downloads={fakeDownloads().ports} readBackupFile={readBackupFile} pickFolder={async () => picked} /></MemoryRouter>);
+    expect(screen.getByText('Checking your backup folder…')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Choose a backup folder' })).toBeNull();
+    expect(await screen.findByText(/^Backups go to:/)).toHaveTextContent('Backups go to: Kairos backups');
+    vi.spyOn(db, 'transaction').mockRejectedValue(new Error('quota'));
+    const stop = screen.getByRole('button', { name: 'Stop using this folder' });
+    stop.focus();
+    fireEvent.click(stop);
+    expect(await screen.findByRole('alert')).toHaveTextContent('Kairos could not save this. Nothing was changed.');
+    expect(screen.getByText(/^Backups go to:/)).toHaveTextContent('Backups go to: Kairos backups');
+    // Focus stays on "Stop", so pressing it again tries once more.
+    expect(stop).toHaveFocus();
+  });
+});

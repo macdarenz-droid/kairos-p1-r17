@@ -58,8 +58,17 @@ const browserFolderPicker = (): Promise<BackupFolderHandlePort> =>
   (window as unknown as { showDirectoryPicker(options: { readonly id: string; readonly mode: 'readwrite' }): Promise<BackupFolderHandlePort> }).showDirectoryPicker({ id: 'kairos-backups', mode: 'readwrite' });
 
 type StatusState = Readonly<{ kind: 'loading' }> | Readonly<{ kind: 'ready'; reminder: BackupReminder; timeZone: string | null }> | Readonly<{ kind: 'error' }>;
-type BackupState = Readonly<{ kind: 'idle' }> | Readonly<{ kind: 'busy' }> | Readonly<{ kind: 'done'; file: KairosBackupFile; skippedCount: number; via: BackupDeliveryWay | null; place: string | null }> | Readonly<{ kind: 'error'; message: string }>;
-type FolderState = Readonly<{ kind: 'loading' }> | Readonly<{ kind: 'ready'; name: string | null }> | Readonly<{ kind: 'failed' }>;
+type BackupState = Readonly<{ kind: 'idle' }> | Readonly<{ kind: 'busy' }> | Readonly<{ kind: 'done'; file: KairosBackupFile; skippedCount: number; via: BackupDeliveryWay | null; place: string | null; missedFolder: string | null }> | Readonly<{ kind: 'error'; message: string }>;
+/** The saved folder's name; `failed` when the last choose or stop could not be saved (the folder shown is the one kept). */
+type FolderState = Readonly<{ kind: 'loading' }> | Readonly<{ kind: 'ready'; name: string | null; failed: boolean }>;
+
+/** Where a saved backup went, in plain words (T-054b), and the folder it missed (fix r1). */
+function whereItWent(via: BackupDeliveryWay, place: string | null, missedFolder: string | null): string {
+  const shared = "Kairos can't see where you shared it; keep it somewhere you can find.";
+  if (via === 'folder') return `Saved to ${place ?? 'your backup folder'}.`;
+  if (missedFolder !== null) return via === 'share' ? `Kairos could not save to ${missedFolder}, so it was shared instead. ${shared}` : `Kairos could not save to ${missedFolder}, so it was downloaded instead.`;
+  return via === 'share' ? `Shared. ${shared}` : 'Downloaded.';
+}
 type SettingState = Readonly<{ kind: 'idle' }> | Readonly<{ kind: 'saved' }> | Readonly<{ kind: 'failed' }>;
 type RestoreState =
   | Readonly<{ kind: 'idle' }>
@@ -163,7 +172,7 @@ export function BackupScreen({ db, now = wallClock, downloads, deliver, readBack
   useEffect(() => {
     if (pickFolder === undefined) return;
     let ignore = false;
-    loadBackupFolder(db).then(saved => { if (!ignore) setFolder({ kind: 'ready', name: saved?.name ?? null }); }, () => { if (!ignore) setFolder({ kind: 'ready', name: null }); });
+    loadBackupFolder(db).then(saved => { if (!ignore) setFolder({ kind: 'ready', name: saved?.name ?? null, failed: false }); }, () => { if (!ignore) setFolder({ kind: 'ready', name: null, failed: false }); });
     return () => { ignore = true; };
   }, [db, pickFolder]);
 
@@ -187,7 +196,7 @@ export function BackupScreen({ db, now = wallClock, downloads, deliver, readBack
       setBackup(message === null ? { kind: 'idle' } : { kind: 'error', message });
       return;
     }
-    setBackup({ kind: 'done', file: result.file, skippedCount: result.skippedCount, via: result.via, place: result.place });
+    setBackup({ kind: 'done', file: result.file, skippedCount: result.skippedCount, via: result.via, place: result.place, missedFolder: result.missedFolder });
     setRevision(value => value + 1);
   }
 
@@ -196,14 +205,15 @@ export function BackupScreen({ db, now = wallClock, downloads, deliver, readBack
     let picked: BackupFolderHandlePort;
     try { picked = await pickFolder(); } catch { return; } // The trader closed the picker.
     const saved = await saveBackupFolder(db, { name: picked.name, handle: picked }, { now });
-    setFolder(saved.ok ? { kind: 'ready', name: picked.name } : { kind: 'failed' });
+    setFolder(current => (saved.ok ? { kind: 'ready', name: picked.name, failed: false } : { kind: 'ready', name: current.kind === 'ready' ? current.name : null, failed: true }));
     folderButton.current?.focus();
   }
 
   async function stopFolder(): Promise<void> {
     const cleared = await clearBackupFolder(db);
-    setFolder(cleared.ok ? { kind: 'ready', name: null } : { kind: 'failed' });
-    folderButton.current?.focus();
+    setFolder(current => (cleared.ok ? { kind: 'ready', name: null, failed: false } : { kind: 'ready', name: current.kind === 'ready' ? current.name : null, failed: true }));
+    // "Stop" goes away only when it worked; after a failure it keeps the focus for another try.
+    if (cleared.ok) folderButton.current?.focus();
   }
 
   async function handleSetting(value: string): Promise<void> {
@@ -290,22 +300,26 @@ export function BackupScreen({ db, now = wallClock, downloads, deliver, readBack
       <div className="kairos-backup-card__actions">
         <Button emphasis="main" onClick={() => { void handleBackup(); }} aria-disabled={backup.kind === 'busy' || restoreBusy || undefined}>{backup.kind === 'busy' ? 'Saving…' : 'Back up now'}</Button>
       </div>
-      {backup.kind === 'done' ? <p className="kairos-backup-card__feedback kairos-backup-card__feedback--success" role="status">Backup saved: <code>{backup.file.fileName}</code> · {plural(backup.file.recordCounts.total, 'record')} · {kilobytes(backup.file.byteLength)}.</p> : null}
-      {backup.kind === 'done' && backup.via !== null ? <p className="kairos-backup__note" data-backup-via={backup.via}>{backup.via === 'folder' ? `Saved to ${backup.place ?? 'your backup folder'}.` : backup.via === 'share' ? "Shared. Kairos can't see where you shared it; keep it somewhere you can find." : 'Downloaded.'}</p> : null}
+      {backup.kind === 'done' ? <p className="kairos-backup-card__feedback kairos-backup-card__feedback--success" role="status">Backup saved: <code>{backup.file.fileName}</code> · {plural(backup.file.recordCounts.total, 'record')} · {kilobytes(backup.file.byteLength)}.
+        {/* In the announced line, so a screen reader hears where it went too (T-054b fix r1). */}
+        {backup.via !== null ? <> <span className="kairos-backup__via" data-backup-via={backup.via}>{whereItWent(backup.via, backup.place, backup.missedFolder)}</span></> : null}</p> : null}
       {backup.kind === 'done' && backup.skippedCount > 0 ? <p className="kairos-backup-card__feedback kairos-backup-card__feedback--error" role="status">Backup saved. {plural(backup.skippedCount, 'saved item')} {backup.skippedCount === 1 ? 'was' : 'were'} damaged and left out; {backup.skippedCount === 1 ? 'it is' : 'they are'} still on this device.</p> : null}
       {backup.kind === 'error' ? <p className="kairos-backup-card__feedback kairos-backup-card__feedback--error" role="alert">{backup.message}</p> : null}
     </Card>
 
     {pickFolder !== undefined ? <Card as="article" className="kairos-backup-card" aria-labelledby="kairos-backup-folder-title" data-backup-folder={folder.kind === 'ready' ? (folder.name === null ? 'none' : 'chosen') : folder.kind}>
       <h2 id="kairos-backup-folder-title">Backup folder</h2>
-      {folder.kind === 'ready' && folder.name !== null
-        ? <p>Backups go to: <strong>{folder.name}</strong></p>
-        : <p>Choose a folder on this computer, and "Back up now" saves each backup there.</p>}
-      <div className="kairos-backup-card__actions">
-        <Button ref={folderButton} variant="secondary" onClick={() => { void chooseFolder(); }}>{folder.kind === 'ready' && folder.name !== null ? 'Change' : 'Choose a backup folder'}</Button>
-        {folder.kind === 'ready' && folder.name !== null ? <Button variant="ghost" onClick={() => { void stopFolder(); }}>Stop using this folder</Button> : null}
-      </div>
-      {folder.kind === 'failed' ? <p className="kairos-backup-card__feedback kairos-backup-card__feedback--error" role="alert">Kairos could not save this. Nothing was changed.</p> : null}
+      {/* Nothing to choose until the saved folder is read, so the block never offers "Choose" for a folder it keeps (fix r1). */}
+      {folder.kind === 'loading' ? <p className="kairos-backup__note">Checking your backup folder…</p> : <>
+        {folder.name !== null
+          ? <p>Backups go to: <strong>{folder.name}</strong></p>
+          : <p>Choose a folder on this computer, and "Back up now" saves each backup there.</p>}
+        <div className="kairos-backup-card__actions">
+          <Button ref={folderButton} variant="secondary" onClick={() => { void chooseFolder(); }}>{folder.name !== null ? 'Change' : 'Choose a backup folder'}</Button>
+          {folder.name !== null ? <Button variant="ghost" onClick={() => { void stopFolder(); }}>Stop using this folder</Button> : null}
+        </div>
+        {folder.failed ? <p className="kairos-backup-card__feedback kairos-backup-card__feedback--error" role="alert">Kairos could not save this. Nothing was changed.</p> : null}
+      </>}
     </Card> : null}
 
     <Card as="article" className="kairos-backup-card" aria-labelledby="kairos-backup-remind-title">

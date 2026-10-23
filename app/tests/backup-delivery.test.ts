@@ -56,11 +56,11 @@ describe('T-054b where a backup goes', () => {
   it('falls through to the share sheet, then the download, when the folder is refused or cannot be written', async () => {
     const refused = folder('prompt', 'denied');
     const sheet = share('shares');
-    expect(await createBackupDelivery({ downloads: downloads().ports, folder: async () => refused.handle, share: sheet.port })(file)).toEqual({ outcome: 'saved', via: 'share', place: null });
+    expect(await createBackupDelivery({ downloads: downloads().ports, folder: async () => refused.handle, share: sheet.port })(file)).toEqual({ outcome: 'saved', via: 'share', place: null, missedFolder: 'Kairos backups' });
     expect(refused.written).toEqual([]);
     const broken = folder('granted', 'granted', true);
     const { ports, names } = downloads();
-    expect(await createBackupDelivery({ downloads: ports, folder: async () => broken.handle })(file)).toEqual({ outcome: 'saved', via: 'download', place: null });
+    expect(await createBackupDelivery({ downloads: ports, folder: async () => broken.handle })(file)).toEqual({ outcome: 'saved', via: 'download', place: null, missedFolder: 'Kairos backups' });
     expect(names).toEqual([file.fileName]);
   });
 
@@ -90,5 +90,19 @@ describe('T-054b where a backup goes', () => {
     expect(await createBackupDelivery({ downloads: downloads().ports })(file)).toMatchObject({ via: 'download' });
     expect(await createBackupDelivery({ downloads: downloads(true).ports })(file)).toBe('failed');
     expect(await createBackupDelivery({ downloads: downloads().ports, folder: async () => { throw new Error('unreadable'); } })(file)).toMatchObject({ via: 'download' });
+  });
+
+  it('T-054b fix r1: a folder that fails mid-write throws the half-written file away, and the backup names the folder it missed', async () => {
+    const aborted: string[] = [];
+    const handle: BackupFolderHandlePort = {
+      name: 'Kairos backups',
+      queryPermission: async () => 'granted',
+      getFileHandle: async name => ({ createWritable: async () => ({ write: async () => { throw new Error('disk'); }, close: async () => undefined, abort: async () => { aborted.push(name); } }) }),
+    };
+    expect(await createBackupDelivery({ downloads: downloads().ports, folder: async () => handle })(file)).toEqual({ outcome: 'saved', via: 'download', place: null, missedFolder: 'Kairos backups' });
+    expect(aborted).toEqual([file.fileName]);
+    expect(await createBackupDelivery({ downloads: downloads().ports, folder: async () => handle, share: share('shares').port })(file)).toEqual({ outcome: 'saved', via: 'share', place: null, missedFolder: 'Kairos backups' });
+    // No folder chosen: nothing was missed.
+    expect(await createBackupDelivery({ downloads: downloads().ports, folder: async () => null })(file)).toEqual({ outcome: 'saved', via: 'download', place: null, missedFolder: null });
   });
 });

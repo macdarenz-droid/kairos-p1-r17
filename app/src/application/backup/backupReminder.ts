@@ -30,7 +30,7 @@ export interface BackupReminder {
   readonly lastBackupAt: string | null;
   /** Whole days (24 hours each) since the last backup, for the rules; null when there was none. */
   readonly daysSince: number | null;
-  /** Calendar days since the last backup in the saved time zone (24-hour days without one), for the words. */
+  /** Calendar days since the last backup in the saved time zone, else the phone's (24-hour days without either), for the words. */
   readonly calendarDaysSince: number | null;
   /** Trades (any source) created after the last backup; every trade when there was none. */
   readonly tradesSince: number;
@@ -71,8 +71,17 @@ function calendarDaysBetween(from: string, to: string, timeZone: string | null):
   return Math.max(0, Math.round((Date.parse(`${end.dayKey}T00:00:00Z`) - Date.parse(`${start.dayKey}T00:00:00Z`)) / DAY_MS));
 }
 
+/** The phone's own time zone, which dates follow when none is saved; null when the browser cannot say. */
+function deviceTimeZone(): string | null {
+  try {
+    return new Intl.DateTimeFormat().resolvedOptions().timeZone ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** Reads the last backup, the setting, "Later" and the trades, and says whether a backup is due now. */
-export async function loadBackupReminder(db: KairosDatabase, dependencies: { readonly now?: () => string } = {}): Promise<BackupReminder> {
+export async function loadBackupReminder(db: KairosDatabase, dependencies: { readonly now?: () => string; readonly deviceTimeZone?: () => string | null } = {}): Promise<BackupReminder> {
   const now = Date.parse((dependencies.now ?? wallClock)());
   const repositories = createKairosRepositories(db);
   const last = await readLastBackup(repositories.metadata);
@@ -81,7 +90,9 @@ export async function loadBackupReminder(db: KairosDatabase, dependencies: { rea
   const trades = await repositories.trades.count();
   const tradesSince = last === null ? trades : await repositories.trades.countCreatedAfter(last.exportedAt);
   const daysSince = last === null ? null : Math.max(0, Math.floor((now - Date.parse(last.exportedAt)) / DAY_MS));
-  const calendarDaysSince = last === null ? null : calendarDaysBetween(last.exportedAt, new Date(now).toISOString(), await readVisualPnlTimeZonePreference(repositories.metadata)) ?? daysSince;
+  // The saved zone, else the phone's: the zone the date beside the words is shown in (T-054b fix r1).
+  const zone = (await readVisualPnlTimeZonePreference(repositories.metadata)) ?? (dependencies.deviceTimeZone ?? deviceTimeZone)();
+  const calendarDaysSince = last === null ? null : calendarDaysBetween(last.exportedAt, new Date(now).toISOString(), zone) ?? daysSince;
   const held = laterAt !== null && now - Date.parse(laterAt) < BACKUP_REMINDER_LATER_MS;
   const reason: BackupReminder['reason'] = trades === 0 || every === null || held ? null
     : last === null ? 'never'

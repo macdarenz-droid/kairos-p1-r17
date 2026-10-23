@@ -154,6 +154,9 @@ test('(f) Library: a lesson from start to finish', async ({ page }) => {
     if (await page.locator('.kairos-lesson-check').count() > 0) {
       await page.locator('.kairos-lesson-check button').first().click();
       await expect(page.locator('.kairos-lesson-check__feedback')).toHaveText(/^(Right\.|Not quite\.)/);
+      // The answered choices stay readable: not dimmed like a disabled button (T-054b fix r1).
+      const opacities = await page.locator('.kairos-lesson-check button').evaluateAll(buttons => buttons.map(button => getComputedStyle(button).opacity));
+      expect(opacities).toEqual(opacities.map(() => '1'));
     }
     await page.getByRole('button', { name: i < steps ? 'Next' : 'Finish', exact: true }).click();
   }

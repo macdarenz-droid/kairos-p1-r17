@@ -118,5 +118,12 @@ describe('T-054a when a backup is due', () => {
     await backedUpAt(db, '2026-10-22T15:30:00.000Z');
     expect(await loadBackupReminder(db, { now: at('2026-10-23T02:00:00.000Z') })).toMatchObject({ daysSince: 0, calendarDaysSince: 1 });
   });
-});
 
+  it('T-054b fix r1: without a saved time zone, counts calendar days in the phone\'s zone', async () => {
+    const db = await database();
+    await addTrades(db, 1, '2026-10-20T10:00:00.000Z');
+    // 23:30 on 22 October on a phone in Manila, read at 10:00 on 23 October there.
+    await backedUpAt(db, '2026-10-22T15:30:00.000Z');
+    expect(await loadBackupReminder(db, { now: at('2026-10-23T02:00:00.000Z'), deviceTimeZone: () => 'Asia/Manila' })).toMatchObject({ daysSince: 0, calendarDaysSince: 1 });
+  });
+});

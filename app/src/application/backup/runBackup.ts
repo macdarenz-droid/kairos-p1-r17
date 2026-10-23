@@ -11,12 +11,18 @@ import { recordLastBackup, type LastBackupRecord } from './lastBackup';
 export type BackupDeliveryOutcome = 'saved' | 'cancelled' | 'failed';
 /** Where a saved backup went (T-054b, D227): into a folder (its name), to the share sheet, or as a download. */
 export type BackupDeliveryWay = 'folder' | 'share' | 'download';
-export interface BackupDelivered { readonly outcome: 'saved'; readonly via: BackupDeliveryWay; readonly place: string | null }
+export interface BackupDelivered {
+  readonly outcome: 'saved';
+  readonly via: BackupDeliveryWay;
+  readonly place: string | null;
+  /** The chosen backup folder that could not be written, so the backup went another way (T-054b fix r1). */
+  readonly missedFolder?: string | null;
+}
 /** Where a backup goes: the browser side, supplied by the screen. A plain 'saved' says nothing of where. */
 export type BackupDeliver = (file: KairosBackupFile) => Promise<BackupDeliveryOutcome | BackupDelivered>;
 
 export type RunBackupResult =
-  | { readonly ok: true; readonly file: KairosBackupFile; /** Damaged saved items left out; they stay on the device. */ readonly skippedCount: number; readonly record: LastBackupRecord; readonly via: BackupDeliveryWay | null; readonly place: string | null }
+  | { readonly ok: true; readonly file: KairosBackupFile; /** Damaged saved items left out; they stay on the device. */ readonly skippedCount: number; readonly record: LastBackupRecord; readonly via: BackupDeliveryWay | null; readonly place: string | null; readonly missedFolder: string | null }
   | { readonly ok: false; readonly reason: 'cancelled' | 'delivery-failed' | 'record-failed' }
   | { readonly ok: false; readonly reason: 'export-failed'; readonly export: Exclude<ExportKairosBackupResult, { ok: true }> };
 
@@ -39,6 +45,6 @@ export async function runBackup(db: KairosDatabase, deliver: BackupDeliver, depe
   if (!recorded.ok) return { ok: false, reason: 'record-failed' };
   const { skipped } = exported;
   const skippedCount = skipped.savedAnalyses + skipped.savedTimeAssistedSnapshots + skipped.tradeDiscipline + skipped.exchangeRates + skipped.economicEvents;
-  const way = delivered === 'saved' ? { via: null, place: null } : { via: delivered.via, place: delivered.place };
+  const way = delivered === 'saved' ? { via: null, place: null, missedFolder: null } : { via: delivered.via, place: delivered.place, missedFolder: delivered.missedFolder ?? null };
   return { ok: true, file: exported.file, skippedCount, record: recorded.record, ...way };
 }

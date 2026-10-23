@@ -61,7 +61,7 @@
 .kairos-lesson-check legend { padding: 0; margin-block-end: var(--kairos-space-3); font-size: var(--kairos-font-size-lg); font-weight: var(--kairos-font-weight-semibold); }
 .kairos-lesson-check__choices { display: grid; gap: var(--kairos-space-2); }
 .kairos-lesson-check__choices .kairos-button { justify-content: flex-start; text-align: start; white-space: normal; padding-block: var(--kairos-space-2); }
-.kairos-lesson-check__choices .kairos-button[aria-disabled="true"] { cursor: default; }
+.kairos-lesson-check__choices .kairos-button[aria-disabled="true"] { cursor: default; opacity: 1; } /* An answered check is read, not a disabled control (T-054b fix r1). */
 .kairos-lesson-check__tag { font-size: var(--kairos-font-size-sm); font-weight: 700; }
 /* The words keep the text colour; the state colours only draw the bar (non-text 3:1 is enough, and Paper's are below 4.5:1 on white). */
 .kairos-lesson-check__feedback[data-result] { padding-inline-start: var(--kairos-space-3); border-inline-start: 4px solid transparent; color: var(--kairos-text-primary); }
