@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { projectTradePicture, type TradePictureInput } from '../src/application/trade-visualizer';
 import { parseDecimalString, type DecimalString, type TradeExecutionId, type TradeFeeId, type TradeFeeRecord, type TradeId, type TradePlanId, type TradeRecord } from '../src/domain/trades';
@@ -339,5 +339,66 @@ describe('T-052a fix r1', () => {
     expect(noPlan.timeRange?.to).toBe(now);
     const withPlan = projectTradePicture({ ...input, trade: draft, executions: [], fees: [], candles, candleInterval: '15m' });
     expect(withPlan.timeRange?.to).toBe(new Date(Date.parse(now) + 12 * 900_000).toISOString());
+  });
+});
+
+describe('T-052b a time axis, how far price went, and a look at any candle', () => {
+  it('draws time labels under a full picture, and none on the thumbnail', () => {
+    const model = projectTradePicture(input);
+    const { container } = render(<TradePictureCard model={model} />);
+    const ticks = [...container.querySelectorAll('[data-axis-tick]')];
+    expect(ticks.length).toBeGreaterThan(0);
+    for (const tick of ticks) {
+      const x = Number(tick.querySelector('text')!.getAttribute('x'));
+      expect(x).toBeGreaterThan(0);
+      expect(x).toBeLessThan(360);
+    }
+    cleanup();
+    expect(render(<TradePictureCard model={model} compact />).container.querySelector('[data-axis-tick]')).toBeNull();
+  });
+
+  it('marks the highest and lowest price while you were in, the one in your favour first, and says it in words', () => {
+    const long = projectTradePicture(input);
+    expect(long.priceMove.available).toBe(true);
+    const { container } = render(<TradePictureCard model={long} />);
+    const y = (move: string) => Number(container.querySelector(`[data-move="${move}"]`)!.getAttribute('y1'));
+    // A long is helped by the highest price, which sits higher (a smaller y).
+    expect(y('for-you')).toBeLessThan(y('against-you'));
+    expect(container.querySelector('.kairos-trade-picture__move')).toHaveTextContent(/^From your average entry, price went .+ for you and .+ against you\.$/);
+    expect(screen.getByRole('img')).not.toContainElement(container.querySelector('.kairos-trade-picture__move') as HTMLElement);
+    cleanup();
+    const short = render(<TradePictureCard model={projectTradePicture({ ...input, trade: { ...trade, side: 'short' } })} />);
+    const shortY = (move: string) => Number(short.container.querySelector(`[data-move="${move}"]`)!.getAttribute('y1'));
+    expect(shortY('for-you')).toBeGreaterThan(shortY('against-you'));
+    cleanup();
+    const none = render(<TradePictureCard model={projectTradePicture({ ...input, candles: null })} />);
+    expect(none.container.querySelector('[data-move]')).toBeNull();
+    expect(none.container.querySelector('.kairos-trade-picture__move')).toBeNull();
+  });
+
+  it('a slider and a tap show one candle\'s time and exact prices', () => {
+    const model = projectTradePicture(input);
+    const { container } = render(<TradePictureCard model={model} />);
+    const slider = screen.getByRole('slider', { name: 'Look at a candle' });
+    const readout = container.querySelector('.kairos-trade-picture__readout')!;
+    expect(readout).toHaveTextContent('Tap or hold a candle to see its time and prices.');
+    expect(slider).toHaveAttribute('aria-valuetext', 'No candle picked');
+    fireEvent.change(slider, { target: { value: '2' } });
+    expect(readout.textContent).toMatch(/: open 104, high 125, low 103, close 121$/);
+    expect(slider).toHaveAttribute('aria-valuetext', readout.textContent);
+    expect(container.querySelectorAll('.kairos-trade-picture__candle')[1]).toHaveAttribute('data-picked');
+    // A tap on the left edge of the drawing picks the first candle.
+    const svg = container.querySelector('svg')!;
+    svg.getBoundingClientRect = () => ({ left: 0, top: 0, width: 360, height: 220, right: 360, bottom: 220, x: 0, y: 0, toJSON: () => ({}) });
+    const chart = container.querySelector('.kairos-trade-picture__chart')!;
+    fireEvent.pointerDown(chart, { clientX: 1, pointerId: 1 });
+    expect(readout.textContent).toMatch(/: open 98, high 105, low 95, close 104$/);
+    fireEvent.pointerMove(chart, { clientX: 300, pointerId: 1 });
+    expect(readout.textContent).toMatch(/: open 104, high 125, low 103, close 121$/);
+    fireEvent.pointerUp(chart, { pointerId: 1 });
+    fireEvent.pointerMove(chart, { clientX: 1, pointerId: 1 });
+    expect(readout.textContent).toMatch(/close 121$/);
+    cleanup();
+    expect(render(<TradePictureCard model={model} compact />).container.querySelector('input[type="range"]')).toBeNull();
   });
 });

@@ -2,6 +2,7 @@
  * U4 (P11.A1, D194): the plain words for a trade's money at risk and its closed part. Words only: every number comes from its owner as given.
  */
 
+import type { PriceMove } from './priceMove';
 import type { TradeClosedPart } from './tradeClosedPart';
 import type { TradeMoneyAtRisk, TradeMoneyAtRiskReason } from './tradeRisk';
 
@@ -26,4 +27,12 @@ export function describeClosedPart(value: Extract<TradeClosedPart, { available: 
     : `Kairos has no exit for the other ${value.openQuantity}: add it to see the full result.`;
   const fees = value.feesSoFar === null ? '' : ` Fees so far: ${value.feesSoFar.amount} ${value.feesSoFar.currency}.`;
   return `${value.closedQuantity} of ${value.enteredQuantity} closed, before fees. ${rest} Kairos closes your oldest entries first.${fees}`;
+}
+
+/** U6 (D192): how far price went for and against you, from your average entry; null when it is not known. Amounts as the owner shows them. */
+export function describePriceMove(move: PriceMove): string | null {
+  if (!move.available) return null;
+  const forYou = `${move.forYouIsAbout ? 'about ' : ''}${move.shownForYou}`;
+  const againstYou = `${move.againstYouIsAbout ? 'about ' : ''}${move.shownAgainstYou}`;
+  return `From your average entry, price went ${forYou} for you and ${againstYou} against you${move.soFar ? ' so far' : ''}.`;
 }

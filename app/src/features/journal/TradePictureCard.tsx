@@ -1,10 +1,12 @@
-import { useId, useLayoutEffect, useRef, type Ref } from 'react';
+import { useId, useLayoutEffect, useRef, useState, type PointerEvent, type Ref } from 'react';
 import type { UnavailableWords } from '../../application/online/onlineWords';
-import type { TradePictureBox, TradePictureInfoKey, TradePictureModel } from '../../application/trade-visualizer';
+import { describePriceMove } from '../../application/performance/performanceWords';
+import type { TradePictureBox, TradePictureCandle, TradePictureInfoKey, TradePictureModel } from '../../application/trade-visualizer';
 import { decimalSubtract } from '../../domain/calculations';
 import { UnavailableNotice } from '../../design-system/primitives';
 import { projectChartDecimal } from '../chart';
 import { GlossaryHint } from '../learn/GlossaryHint';
+import { tradePictureTimeTicks } from './tradePictureAxis';
 import './tradePictureCard.css';
 
 /** Drawing area of the picture, in SVG units; the card scales it to its width. */
@@ -103,6 +105,44 @@ function BoxLabel({ box, scale, kind }: { readonly box: TradePictureBox; readonl
   </g>;
 }
 
+/** Time labels under the plot (D217: the device's time zone). A label too near an edge to fit is left out. */
+const AXIS_EDGE_ROOM = 16;
+function TimeAxis({ model, scale, pad }: { readonly model: TradePictureModel; readonly scale: Scale; readonly pad: Pad }) {
+  if (model.timeRange === null) return null;
+  const bottom = TRADE_PICTURE_HEIGHT - pad.bottom;
+  const ticks = tradePictureTimeTicks(toMs(model.timeRange.from), toMs(model.timeRange.to))
+    .map(tick => ({ ...tick, x: scale.x(new Date(tick.ms).toISOString()) }))
+    .filter(tick => tick.x >= pad.left + AXIS_EDGE_ROOM && tick.x <= TRADE_PICTURE_WIDTH - pad.right - AXIS_EDGE_ROOM);
+  return <g className="kairos-trade-picture__axis">
+    {ticks.map(tick => <g key={tick.ms} data-axis-tick={new Date(tick.ms).toISOString()}>
+      <line x1={tick.x} x2={tick.x} y1={bottom} y2={bottom + 3} />
+      <text x={tick.x} y={bottom + 12} textAnchor="middle">{tick.label}</text>
+    </g>)}
+  </g>;
+}
+
+/** D192: dotted lines at the highest and lowest price while you were in the trade; the one in your favour is "for-you". */
+function PriceMoveLines({ model, scale }: { readonly model: TradePictureModel; readonly scale: Scale }) {
+  const move = model.priceMove;
+  if (!move.available) return null;
+  const entries = model.markers.filter(marker => marker.kind === 'entry');
+  const exits = model.markers.filter(marker => marker.kind === 'exit');
+  if (entries.length === 0 || model.timeRange === null) return null;
+  const x1 = scale.x(entries[0]!.at);
+  const x2 = Math.max(scale.x(exits.length > 0 && model.status !== 'open' ? exits[exits.length - 1]!.at : model.timeRange.to), x1 + 2);
+  const highFor = model.side === 'long';
+  return <g className="kairos-trade-picture__move-lines">
+    <line data-move={highFor ? 'for-you' : 'against-you'} x1={x1} x2={x2} y1={scale.y(move.highest)} y2={scale.y(move.highest)} />
+    <line data-move={highFor ? 'against-you' : 'for-you'} x1={x1} x2={x2} y1={scale.y(move.lowest)} y2={scale.y(move.lowest)} />
+  </g>;
+}
+
+/** D216: one candle's time and exact prices, in words. */
+function describeCandle(candle: TradePictureCandle): string {
+  return `${displayTime(candle.time)}: open ${candle.open}, high ${candle.high}, low ${candle.low}, close ${candle.close}`;
+}
+const NO_CANDLE_PICKED = 'Tap or hold a candle to see its time and prices.';
+
 function Level({ price, scale, pad, kind, labelled }: { readonly price: string | null; readonly scale: Scale; readonly pad: Pad; readonly kind: 'entry' | 'stop' | 'target'; readonly labelled: boolean }) {
   if (price === null) return null;
   const y = scale.y(price);
@@ -180,6 +220,38 @@ export function TradePictureCard({ model, candlesLoading = false, svgRef, compac
   const plotHeight = TRADE_PICTURE_HEIGHT - pad.top - pad.bottom;
   const candleWidth = scale ? tradePictureCandleBodyWidth(model.candles.length, TRADE_PICTURE_WIDTH - pad.left - pad.right) : 0;
   const planned = (key: 'planned-entry' | 'stop' | 'target') => model.info.find(row => row.key === key)?.value ?? null;
+  // D216: look at one candle with the slider, or by tapping or holding the drawing. Presentation only.
+  const [pickedIndex, setPickedIndex] = useState<number | null>(null);
+  const picked = pickedIndex === null ? null : model.candles[pickedIndex] ?? null;
+  const svgElement = useRef<SVGSVGElement | null>(null);
+  const pressed = useRef(false);
+  const lookable = !compact && scale !== null && model.candles.length > 0;
+  const lookupId = useId();
+  const pickAt = (clientX: number) => {
+    const box = svgElement.current?.getBoundingClientRect();
+    if (!scale || !box || box.width <= 0) return;
+    const x = ((clientX - box.left) / box.width) * TRADE_PICTURE_WIDTH;
+    let best: number | null = null;
+    model.candles.forEach((candle, index) => {
+      if (best === null || Math.abs(scale.x(candle.time) - x) < Math.abs(scale.x(model.candles[best]!.time) - x)) best = index;
+    });
+    if (best !== null) setPickedIndex(best);
+  };
+  const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (!lookable) return;
+    pressed.current = true;
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    pickAt(event.clientX);
+  };
+  const onPointerMove = (event: PointerEvent<HTMLDivElement>) => { if (lookable && pressed.current) pickAt(event.clientX); };
+  const onPointerEnd = () => { pressed.current = false; };
+  const setSvg = (element: SVGSVGElement | null) => {
+    svgElement.current = element;
+    if (typeof svgRef === 'function') svgRef(element);
+    else if (svgRef) (svgRef as { current: SVGSVGElement | null }).current = element;
+  };
+  const readout = picked === null ? NO_CANDLE_PICKED : describeCandle(picked);
+  const moveWords = !compact && notes ? describePriceMove(model.priceMove) : null;
   // A "Try again" that had focus and ends without a box (candles came) sends focus to the chart, so it stays in the sheet
   // and Escape still closes it. Ending with another failure keeps the box, whose button takes focus back itself.
   const main = useRef<HTMLDivElement>(null);
@@ -197,15 +269,17 @@ export function TradePictureCard({ model, candlesLoading = false, svgRef, compac
   // The image role sits on the chart only: children of role="img" are hidden from screen readers, and the info panel holds buttons.
   return <figure className="kairos-trade-picture" data-trade-picture={model.symbol}>
     <div className="kairos-trade-picture__main" ref={main}>
-    <div className="kairos-trade-picture__chart" role="img" aria-label={label ?? describeTradePicture(model)} ref={chart} tabIndex={compact ? undefined : -1}>
-      <svg ref={svgRef} viewBox={`0 0 ${TRADE_PICTURE_WIDTH} ${TRADE_PICTURE_HEIGHT}`} preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">
+    <div className="kairos-trade-picture__chart" role="img" aria-label={label ?? describeTradePicture(model)} ref={chart} tabIndex={compact ? undefined : -1}
+      data-lookable={lookable ? '' : undefined} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerEnd} onPointerCancel={onPointerEnd}>
+      <svg ref={setSvg} viewBox={`0 0 ${TRADE_PICTURE_WIDTH} ${TRADE_PICTURE_HEIGHT}`} preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">
         <defs><clipPath id={clipId}><rect x="0" y={pad.top} width={TRADE_PICTURE_WIDTH} height={plotHeight} /></clipPath></defs>
         <rect className="kairos-trade-picture__background" x="0" y="0" width={TRADE_PICTURE_WIDTH} height={TRADE_PICTURE_HEIGHT} rx="8" />
         {scale ? <>
           {model.riskBox ? <Box box={model.riskBox} scale={scale} kind="risk" /> : null}
           {model.rewardBox ? <Box box={model.rewardBox} scale={scale} kind="reward" /> : null}
+          {lookable && picked !== null ? <rect className="kairos-trade-picture__picked" x={scale.x(picked.time) - Math.max(candleWidth, 4) / 2 - 2} y={pad.top} width={Math.max(candleWidth, 4) + 4} height={plotHeight} /> : null}
           <g className="kairos-trade-picture__candles" clipPath={`url(#${clipId})`}>
-            {model.candles.map(candle => {
+            {model.candles.map((candle, index) => {
               const x = scale.x(candle.time);
               const direction = candleDirection(candle.open, candle.close);
               const up = direction !== 'down';
@@ -214,7 +288,7 @@ export function TradePictureCard({ model, candlesLoading = false, svgRef, compac
               const middle = (top + bottom) / 2;
               const bottomEdge = pad.top + plotHeight;
               const edges: readonly ('above' | 'below')[] = candle.cut === 'both' ? ['above', 'below'] : candle.cut === null ? [] : [candle.cut];
-              return <g key={candle.time} className={`kairos-trade-picture__candle${direction === 'flat' ? '' : ` kairos-trade-picture__candle--${direction}`}`} data-direction={direction}>
+              return <g key={candle.time} className={`kairos-trade-picture__candle${direction === 'flat' ? '' : ` kairos-trade-picture__candle--${direction}`}`} data-direction={direction} data-picked={lookable && index === pickedIndex ? '' : undefined}>
                 <line x1={x} x2={x} y1={scale.y(candle.high)} y2={scale.y(candle.low)} />
                 <rect x={x - candleWidth / 2} y={middle - height / 2} width={candleWidth} height={height} />
                 {edges.map(edge => <polygon key={edge} className="kairos-trade-picture__beyond" data-edge={edge} data-beyond={candle.beyond === edge ? edge : undefined}
@@ -231,6 +305,8 @@ export function TradePictureCard({ model, candlesLoading = false, svgRef, compac
               ? <polygon key={`e${index}`} className="kairos-trade-picture__marker kairos-trade-picture__marker--entry" data-marker="entry" points={`${x},${y - 7} ${x + 6},${y + 4} ${x - 6},${y + 4}`} />
               : <polygon key={`x${index}`} className="kairos-trade-picture__marker kairos-trade-picture__marker--exit" data-marker="exit" points={`${x},${y + 7} ${x + 6},${y - 4} ${x - 6},${y - 4}`} />;
           })}
+          {compact ? null : <PriceMoveLines model={model} scale={scale} />}
+          {compact ? null : <TimeAxis model={model} scale={scale} pad={pad} />}
           {model.riskBox ? <BoxLabel box={model.riskBox} scale={scale} kind="risk" /> : null}
           {model.rewardBox ? <BoxLabel box={model.rewardBox} scale={scale} kind="reward" /> : null}
         </> : null}
@@ -238,6 +314,14 @@ export function TradePictureCard({ model, candlesLoading = false, svgRef, compac
     </div>
     {/* Outside the image role, so screen readers hear what is missing (D213). */}
     {notes && model.planNote !== null ? <p className="kairos-trade-picture__note">{model.planNote}</p> : null}
+    {/* Outside the image role, so screen readers reach the words and the slider. */}
+    {moveWords !== null ? <p className="kairos-trade-picture__move">{moveWords}</p> : null}
+    {lookable ? <div className="kairos-trade-picture__lookup">
+      <label htmlFor={lookupId}>Look at a candle</label>
+      <input id={lookupId} type="range" min={0} max={model.candles.length} step={1} value={pickedIndex === null ? 0 : pickedIndex + 1}
+        aria-valuetext={picked === null ? 'No candle picked' : readout} onChange={event => { const value = Number(event.target.value); setPickedIndex(value === 0 ? null : value - 1); }} />
+      <p className="kairos-trade-picture__readout" aria-live="polite">{readout}</p>
+    </div> : null}
     {/* Outside the image role, so screen readers hear why there are no candles. */}
     {notes && noCandles && candleFailure === null ? <p className="kairos-trade-picture__note">{!model.marketHasCandles ? 'Candles are shown for crypto trades only for now.' : candlesLoading ? 'Loading candles…' : candleNote ?? 'No candles for this time.'}</p> : null}
     {/* Outside the image role, so its words and button reach screen readers. The thumbnail sits inside a button:
