@@ -6,7 +6,7 @@ import type { KairosDatabase } from '../../data/database';
 import { createKairosRepositories } from '../../data/repositories';
 import { loadResultsInHomeCurrency, summarizeResultsInHomeCurrency, type ResultsInHomeCurrency, type ResultsInHomeCurrencySummary } from '../currency/resultsInHomeCurrency';
 import { listJournalClosedTradesInPeriod } from '../journal/closedTradePeriodQuery';
-import type { JournalHistoryScope } from '../journal/historyQuery';
+import type { JournalHistoryEntry, JournalHistoryScope } from '../journal/historyQuery';
 import { readVisualPnlTimeZonePreference } from '../visual-pnl/timeZonePreference';
 import { summarizePerformance, type PerformanceSummary } from './performanceSummary';
 
@@ -17,14 +17,14 @@ export type PerformanceSummaryQueryResult =
 
 export type PerformancePeriodRead =
   | Readonly<{ kind: 'unavailable'; reason: 'invalid-day-key' | 'invalid-time-zone' | 'empty-period' }>
-  | Readonly<{ kind: 'ready'; inHome: ResultsInHomeCurrency }>;
+  | Readonly<{ kind: 'ready'; inHome: ResultsInHomeCurrency; recorded: readonly JournalHistoryEntry[] }>;
 
-/** The period query, then the home-currency step: the one read both the U4 loader and the dashboard use. Writes nothing. */
+/** The period query, then the home-currency step: the one read both the U4 loader and the dashboard use. `recorded` keeps the trades as recorded, for trade lists. Writes nothing. */
 export async function loadPerformancePeriod(db: KairosDatabase, options: Readonly<{ timeZone: string; fromDayKey: string | null; toDayKey: string | null; scope?: JournalHistoryScope }>): Promise<PerformancePeriodRead> {
   const { timeZone, fromDayKey, toDayKey } = options;
   const closed = await listJournalClosedTradesInPeriod(db, { timeZone, fromDayKey, toDayKey, scope: options.scope ?? 'real' });
   if (!closed.ok) return Object.freeze({ kind: 'unavailable' as const, reason: closed.reason });
-  return Object.freeze({ kind: 'ready' as const, inHome: await loadResultsInHomeCurrency(db, closed.entries) });
+  return Object.freeze({ kind: 'ready' as const, inHome: await loadResultsInHomeCurrency(db, closed.entries), recorded: closed.entries });
 }
 
 /** `fromDayKey` is included and `toDayKey` is not (the period query's rule); both null = all time, which needs no time zone. */

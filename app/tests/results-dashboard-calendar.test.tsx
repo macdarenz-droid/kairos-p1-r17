@@ -5,12 +5,14 @@ import { useState } from 'react';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it } from 'vitest';
+import { saveHomeCurrency } from '../src/application/currency/homeCurrency';
 import { savePracticeTrade } from '../src/application/practice/savePracticeTrade';
 import { saveManualTrade, type SaveManualTradeInput } from '../src/application/trades';
 import { writeVisualPnlTimeZonePreference, type VisualPnlPeriodChoice } from '../src/application/visual-pnl';
 import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
 import { createKairosRepositories } from '../src/data/repositories';
-import type { TradeId } from '../src/domain/trades';
+import { exchangeRateId } from '../src/domain/calculations/currencyConversion';
+import type { DecimalString, TradeId } from '../src/domain/trades';
 import { ResultsDashboard } from '../src/features/results/ResultsDashboard';
 import { axeViolations } from './fixtures/axe';
 
@@ -145,6 +147,21 @@ describe('T-051d the calendar, a day\'s trades, candles, streak and result days 
     await createKairosRepositories(db).trades.put({ id: 'bad-close' as TradeId, symbol: 'BAD', marketType: 'crypto', side: 'long', status: 'closed', source: 'manual', openedAt: '2026-09-02T10:00:00.000Z', closedAt: '2026-09-02 14:30:00', createdAt: '2026-09-02T10:00:00.000Z', updatedAt: '2026-09-02T15:00:00.000Z' });
     const found = await show(db, { kind: 'all' });
     expect(within(found).getByText('1 closed trade could not be placed on a day.')).toBeInTheDocument();
+  });
+
+  it("lists a day's trades with their own result and the home-currency line", async () => {
+    const db = await database();
+    const openedAt = '2026-09-18T09:00:00.000Z', closedAt = '2026-09-18T10:00:00.000Z';
+    const dollar = { symbol: 'AAPL', marketType: 'stock', side: 'long', status: 'closed', openedAt, closedAt, grossPnlCurrency: 'USD',
+      executions: [{ type: 'entry', price: '187.5', quantity: '10', executedAt: openedAt }, { type: 'exit', price: '190', quantity: '10', executedAt: closedAt }] } as const;
+    expect((await saveManualTrade(db, dollar)).ok).toBe(true);
+    await db.exchangeRates.put({ id: exchangeRateId('ecb', 'EUR', 'USD', '2026-09-18'), source: 'ecb', from: 'EUR', to: 'USD', day: '2026-09-18', rateDay: '2026-09-18', rate: '1.25' as DecimalString, savedAt: NOW });
+    expect((await saveHomeCurrency(db, { currency: 'EUR', usdStablecoins: [] }, { now })).ok).toBe(true);
+    const found = await show(db);
+    fireEvent.click(within(found).getByRole('button', { name: /^18 September 2026:/ }));
+    const item = (await within(found).findByText('AAPL')).closest('li') as HTMLElement;
+    expect(item).toHaveTextContent('25 USD');
+    expect(item).toHaveTextContent('In EUR: 20 (European Central Bank rate of 18 September 2026: 1 EUR = 1.25 USD)');
   });
 
   it('names the practice candles', async () => {

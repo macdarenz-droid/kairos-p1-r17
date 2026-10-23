@@ -27,8 +27,10 @@ export interface ResultsDashboardProjection {
   readonly timeZone: string;
   readonly todayKey: string;
   readonly period: VisualPnlPeriod;
-  /** The period's closed trades, oldest close first, with results in the home currency when one is set (copies, D116). */
+  /** The period's closed trades, oldest close first, with results in the home currency when one is set (copies, D116): for totals and numbers. */
   readonly entries: readonly JournalHistoryEntry[];
+  /** The same trades as recorded, in their own currency: for trade lists, which add the "In EUR: …" line from `conversions`. */
+  readonly recordedEntries: readonly JournalHistoryEntry[];
   /** Each trade's close day in the saved zone (null when its close time can't be read). */
   readonly tradeDays: Readonly<Record<string, string | null>>;
   /** Per trade, for the "In EUR: …" lines; null when no home currency is chosen. */
@@ -133,6 +135,7 @@ export async function loadResultsDashboard(db: KairosDatabase, options: Readonly
     todayKey,
     period,
     entries,
+    recordedEntries: Object.freeze(read.recorded),
     tradeDays: Object.freeze(tradeDays),
     conversions,
     inHomeCurrency: summarizeResultsInHomeCurrency(inHome),
@@ -147,13 +150,13 @@ export async function loadResultsDashboard(db: KairosDatabase, options: Readonly
   return Object.freeze({ kind: 'ready' as const, dashboard });
 }
 
-/** The dashboard's trades for a tap: those that closed from `fromDayKey` (included) to `toDayKey` (not included), or those ids, in close order. Never a new read. */
+/** The dashboard's trades for a tap, as recorded: those that closed from `fromDayKey` (included) to `toDayKey` (not included), or those ids, in close order. Never a new read. */
 export function selectResultsEntries(dashboard: ResultsDashboardProjection, pick: Readonly<{ fromDayKey: string; toDayKey: string }> | Readonly<{ tradeIds: readonly string[] }>): readonly JournalHistoryEntry[] {
   if ('tradeIds' in pick) {
     const wanted = new Set(pick.tradeIds);
-    return Object.freeze(dashboard.entries.filter((entry) => wanted.has(entry.trade.id)));
+    return Object.freeze(dashboard.recordedEntries.filter((entry) => wanted.has(entry.trade.id)));
   }
-  return Object.freeze(dashboard.entries.filter((entry) => {
+  return Object.freeze(dashboard.recordedEntries.filter((entry) => {
     const day = dashboard.tradeDays[entry.trade.id];
     return day !== null && day !== undefined && day >= pick.fromDayKey && day < pick.toDayKey;
   }));
