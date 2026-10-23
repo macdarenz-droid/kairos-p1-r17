@@ -72,7 +72,14 @@ export function TradeShareControls({ model, svg, strategyName = null, ports }: {
     if (status === 'saving') return;
     setStatus('saving');
     // Only the card for what is on screen now: an older picture or choice is never shared.
-    const ready = made !== null && made.by === make ? made : await (working.current !== null && working.current.by === make ? working.current.run : make());
+    let ready: Made;
+    if (made !== null && made.by === make) ready = made;
+    else if (working.current !== null && working.current.by === make) ready = await working.current.run;
+    else {
+      // A tap between a change and its effect: make the card for this tap only, and let its preview address go.
+      ready = await make();
+      if (ready.url) URL.revokeObjectURL(ready.url);
+    }
     const result = ready.blob === null ? 'failed' : await saveTradePictureImage(ready.blob, fileName, savePorts);
     setStatus(result === 'failed' ? 'failed' : 'idle');
   };
@@ -83,11 +90,14 @@ export function TradeShareControls({ model, svg, strategyName = null, ports }: {
     <label className="kairos-trade-share__hide" htmlFor={hideId}>
       <input id={hideId} type="checkbox" checked={hideMoney} onChange={event => setHideMoney(event.target.checked)} /> <span>Hide money amounts</span>
     </label>
-    {made === null || made.by !== make
-      ? <p className="kairos-trade-share__making">Making the image…</p>
-      : made.url !== null
-        ? <img className="kairos-trade-share__preview" data-shape={shape} src={made.url} alt={alt} />
-        : <p className="kairos-trade-share__making">{made.blob === null ? 'The preview could not be made.' : 'No preview on this device.'}</p>}
+    {/* The frame keeps the card's shape while a new card is made, so nothing under it moves. */}
+    <div className="kairos-trade-share__frame" data-shape={shape}>
+      {made === null || made.by !== make
+        ? <p className="kairos-trade-share__making">Making the image…</p>
+        : made.url !== null
+          ? <img className="kairos-trade-share__preview" data-shape={shape} src={made.url} alt={alt} />
+          : <p className="kairos-trade-share__making">{made.blob === null ? 'The preview could not be made.' : 'No preview on this device.'}</p>}
+    </div>
     {/* Never disabled, so focus stays on it during and after a share (the focus rule). */}
     <Button variant="secondary" aria-disabled={status === 'saving' ? true : undefined} onClick={() => { void share(); }}>
       {status === 'saving' ? 'Preparing image…' : 'Share or download image'}

@@ -138,6 +138,21 @@ describe('T-052c fix r1', () => {
     expect(painted).not.toContain('Won');
   });
 
+  it('keeps the preview\'s frame, in the card\'s shape, while a new card is made, so nothing under it moves (fix r2)', async () => {
+    const save = recordingPorts();
+    const { container, rerender } = render(<TradeShareControls model={model} svg={svg()} ports={save} />);
+    save.release();
+    await preview();
+    const frame = container.querySelector('.kairos-trade-share__frame')!;
+    expect(frame).toHaveAttribute('data-shape', 'tall');
+    expect(frame).toContainElement(screen.getByRole('img'));
+    rerender(<TradeShareControls model={lost} svg={svg()} ports={save} />);
+    expect(container.querySelector('.kairos-trade-share__frame')).toBe(frame);
+    expect(frame).toHaveTextContent('Making the image…');
+    fireEvent.click(screen.getByRole('button', { name: 'Square' }));
+    expect(frame).toHaveAttribute('data-shape', 'square');
+  });
+
   it('closing the phone\'s share sheet is not a failure', async () => {
     const save = ports({ canShare: true });
     save.share.mockRejectedValueOnce(Object.assign(new Error('Share canceled'), { name: 'AbortError' }));

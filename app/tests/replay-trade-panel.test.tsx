@@ -204,3 +204,31 @@ describe('T-052d the share card in Replay', () => {
     expect(within(stage).getByRole('button', { name: 'Tall' })).toHaveAttribute('aria-pressed', 'true');
   });
 });
+
+describe('T-052d fix r1 the Replay card is the trade as it closed', () => {
+  it('is made once when the trade closes, and later candles do not change it', async () => {
+    const context = { fillStyle: '', font: '', textAlign: 'left', textBaseline: 'alphabetic', fillRect: () => undefined, fillText: () => undefined, drawImage: () => undefined, measureText: (text: string) => ({ width: text.length * 10 }) };
+    const getContext = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context as never);
+    vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation(callback => { callback(new Blob(['png'], { type: 'image/png' })); });
+    vi.stubGlobal('Image', class { onload: (() => void) | null = null; onerror: (() => void) | null = null; set src(_value: string) { queueMicrotask(() => this.onload?.()); } });
+    URL.createObjectURL = vi.fn(() => 'blob:replay-card');
+    URL.revokeObjectURL = vi.fn();
+    try {
+      await started();
+      placeTrade('long', '100', '95', '110', '2');
+      for (let i = 0; i < 10; i += 1) nextCandle();
+      expect(screen.getByText('Your target was reached: out at 110 USDT.')).toBeInTheDocument();
+      const stage = screen.getByRole('region', { name: /^BTCUSDT · 1 hour candles$/ });
+      expect(await within(stage).findByRole('img', { name: /^BTCUSDT long, won, \+20 USDT/ })).toBeInTheDocument();
+      const made = getContext.mock.calls.length;
+      nextCandle();
+      nextCandle();
+      await act(async () => { await Promise.resolve(); });
+      expect(getContext.mock.calls.length).toBe(made);
+      expect(within(stage).getByRole('img', { name: /^BTCUSDT long, won, \+20 USDT/ })).toBeInTheDocument();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
