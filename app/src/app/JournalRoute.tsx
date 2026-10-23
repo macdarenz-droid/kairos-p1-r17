@@ -1,18 +1,27 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
+import { Link, useInRouterContext } from 'react-router';
 import { JOURNAL_HISTORY_SOURCES } from '../application/journal';
 import { JournalHistoryList } from './JournalHistoryList';
-import { JournalDailyResults } from './JournalDailyResults';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
 import type { TradeStatus } from '../domain/trades';
 import './journalRoute.css';
 import { TradeForm } from '../features/journal/TradeForm';
-import { PageHeader } from '../design-system/primitives';
+import { Card, PageHeader } from '../design-system/primitives';
+import { CoachCard } from '../features/discipline/CoachCard';
 import { useJournalHistoryPages } from '../features/journal/useJournalHistoryPages';
 
 interface JournalRouteProps {
   readonly db?: KairosDatabase;
-  /** The current instant as a canonical UTC ISO string, for Daily results; tests inject a fixed one. */
+  /** The current instant as a canonical UTC ISO string, for the coach card; tests inject a fixed one. */
   readonly now?: () => string;
+}
+
+/** A stable default clock, as in GoalsRoute. */
+const wallClock = (): string => new Date().toISOString();
+
+/** SPA navigation inside the app, a plain link outside a router (JournalRoute renders outside one in tests). */
+function JournalLink({ to, children }: { readonly to: string; readonly children: ReactNode }) {
+  return useInRouterContext() ? <Link to={to}>{children}</Link> : <a href={to}>{children}</a>;
 }
 
 export function JournalRoute({ db = kairosDatabase, now }: JournalRouteProps) {
@@ -29,7 +38,11 @@ export function JournalRoute({ db = kairosDatabase, now }: JournalRouteProps) {
 
       <TradeForm db={db} kind="journal" onSaved={async () => { await pages.refresh(); setJournalRevision(current => current + 1); }} />
 
-      <JournalDailyResults db={db} refreshRevision={journalRevision} now={now} disciplineRevision={disciplineRevision} />
+      <Card className="kairos-journal__results-link">
+        <h2>Your results</h2>
+        <p>Your calendar, your numbers and their pictures are in Analysis. <JournalLink to="/analysis">Open your results</JournalLink></p>
+      </Card>
+      <CoachCard db={db} scope="real" now={now ?? wallClock} refreshRevision={journalRevision} disciplineRevision={disciplineRevision} />
 
       <JournalHistoryList
         db={db}

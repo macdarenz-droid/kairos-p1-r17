@@ -1,12 +1,13 @@
 import 'fake-indexeddb/auto';
 import '@testing-library/jest-dom/vitest';
-import { afterEach, describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import { JournalRoute } from '../src/app/JournalRoute';
-import { createKairosDatabase, openKairosDatabase } from '../src/data/database';
+import { useState } from 'react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, render, screen } from '@testing-library/react';
+import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
 import { createKairosRepositories } from '../src/data/repositories';
-import { writeVisualPnlTimeZonePreference } from '../src/application/visual-pnl';
+import { readVisualPnlTimeZonePreference, writeVisualPnlTimeZonePreference, type VisualPnlPeriodChoice } from '../src/application/visual-pnl';
 import { createTradeDomainId, type TradeId } from '../src/domain/trades';
+import { ResultsDashboard } from '../src/features/results/ResultsDashboard';
 
 const names = new Set<string>();
 
@@ -17,6 +18,8 @@ function dbName(label: string): string {
 }
 
 afterEach(async () => {
+  cleanup();
+  vi.restoreAllMocks();
   for (const name of names) {
     await new Promise<void>((resolve, reject) => {
       const request = indexedDB.deleteDatabase(name);
@@ -32,6 +35,12 @@ async function openFixture(label: string) {
   const db = createKairosDatabase(dbName(label));
   await openKairosDatabase(db);
   return { db, repositories: createKairosRepositories(db) };
+}
+
+/** "Your results" for real trades, with the default month (T-051e: the Journal hands its results to Analysis). */
+function Results({ db, now }: { readonly db: KairosDatabase; readonly now?: () => string }) {
+  const [choice, setChoice] = useState<VisualPnlPeriodChoice>({ kind: 'month', at: null });
+  return <ResultsDashboard db={db} scope="real" choice={choice} onChoiceChange={setChoice} renderTradeLink={() => null} refreshRevision={0} {...(now ? { now } : {})} />;
 }
 
 async function putClosedTrade(
@@ -53,13 +62,16 @@ async function putClosedTrade(
 }
 
 describe('P13.11R1 Journal daily-results child boundary', () => {
-  it('keeps missing timezone explicit rather than inferring the runtime zone', async () => {
+  it('without a saved zone and with none from the device, it asks and saves nothing', async () => {
+    const real = new Intl.DateTimeFormat().resolvedOptions();
+    vi.spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions').mockReturnValue({ ...real, timeZone: '' });
     const { db, repositories } = await openFixture('unconfigured');
     await putClosedTrade(repositories, '2026-09-02T14:30:00.000Z');
 
-    render(<JournalRoute db={db} />);
+    render(<Results db={db} />);
 
-    expect(await screen.findByText('Choose a time zone in Settings to view daily results.')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Choose your time zone' })).toBeInTheDocument();
+    expect(await readVisualPnlTimeZonePreference(repositories.metadata)).toBeNull();
     expect(screen.queryByText('03/09/2026')).not.toBeInTheDocument();
     db.close();
   });
@@ -73,7 +85,7 @@ describe('P13.11R1 Journal daily-results child boundary', () => {
     );
     await putClosedTrade(repositories, '2026-09-02T14:30:00.000Z');
 
-    render(<JournalRoute db={db} now={() => '2026-09-10T00:00:00.000Z'} />);
+    render(<Results db={db} now={() => '2026-09-10T00:00:00.000Z'} />);
 
     const sydneyDay = (await screen.findByText('Time zone: Australia/Sydney')).closest('section')!.querySelector('[data-day-key="2026-09-03"]') as HTMLElement;
     expect(screen.getByText('Time zone: Australia/Sydney')).toBeInTheDocument();
@@ -91,7 +103,7 @@ describe('P13.11R1 Journal daily-results child boundary', () => {
     );
     await putClosedTrade(repositories, '2026-09-02T14:30:00.000Z');
 
-    render(<JournalRoute db={db} now={() => '2026-09-10T00:00:00.000Z'} />);
+    render(<Results db={db} now={() => '2026-09-10T00:00:00.000Z'} />);
 
     expect((await screen.findByText('Time zone: UTC')).closest('section')!.querySelector('[data-day-key="2026-09-02"]')).toHaveAttribute('data-day-result', 'unavailable');
     expect(document.querySelector('[data-day-key="2026-09-03"]')).toHaveAttribute('data-day-result', 'no-trades');

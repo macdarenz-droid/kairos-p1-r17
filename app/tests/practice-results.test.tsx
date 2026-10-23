@@ -1,22 +1,28 @@
 import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
+import { useState } from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
-import { afterEach, describe, expect, it } from 'vitest';
-import { JournalRoute } from '../src/app/JournalRoute';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PracticeRoute } from '../src/app/PracticeRoute';
 import { loadDisciplineScore } from '../src/application/discipline';
 import { listJournalVisualPnlDailySummary } from '../src/application/journal';
 import { savePracticeTrade } from '../src/application/practice';
 import { saveManualTrade } from '../src/application/trades';
-import { writeVisualPnlTimeZonePreference } from '../src/application/visual-pnl';
+import { writeVisualPnlTimeZonePreference, type VisualPnlPeriodChoice } from '../src/application/visual-pnl';
 import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
 import { createKairosRepositories } from '../src/data/repositories';
+import { ResultsDashboard } from '../src/features/results/ResultsDashboard';
 
 const names: string[] = [];
 afterEach(async () => { cleanup(); for (const name of names.splice(0)) await Dexie.delete(name); });
 
 const now = () => '2026-09-20T12:00:00.000Z';
+/** "Your results" for real trades, as Analysis hosts it (T-051e). */
+function RealResults({ db }: { readonly db: KairosDatabase }) {
+  const [choice, setChoice] = useState<VisualPnlPeriodChoice>({ kind: 'month', at: null });
+  return <ResultsDashboard db={db} scope="real" now={now} choice={choice} onChoiceChange={setChoice} renderTradeLink={() => null} refreshRevision={0} />;
+}
 const closed = (symbol: string, day: string, exitPrice: string) => ({ symbol, marketType: 'crypto', side: 'long', status: 'closed', grossPnlCurrency: 'USDT', openedAt: `${day}T09:00:00.000Z`, closedAt: `${day}T10:00:00.000Z`, executions: [{ type: 'entry', price: '100', quantity: '1', executedAt: `${day}T09:00:00.000Z` }, { type: 'exit', price: exitPrice, quantity: '1', executedAt: `${day}T10:00:00.000Z` }] } as const);
 
 async function seeded(withTimeZone = true): Promise<KairosDatabase> {
@@ -64,10 +70,10 @@ describe('P26.1 practice results', () => {
     expect(screen.queryByRole('heading', { name: 'Your discipline' })).toBeNull();
   });
 
-  it('leaves the Journal on real trades', async () => {
+  it('Analysis results stay on real trades', async () => {
     const db = await seeded();
-    render(<MemoryRouter><JournalRoute db={db} now={now} /></MemoryRouter>);
-    const region = await screen.findByRole('region', { name: 'Daily results' });
+    render(<MemoryRouter><RealResults db={db} /></MemoryRouter>);
+    const region = await screen.findByRole('region', { name: 'Your results' });
     await waitFor(() => expect(day(region, '2026-09-17')).toBe('profit'));
     expect(day(region, '2026-09-16')).toBe('no-trades');
     expect(day(region, '2026-09-18')).toBe('no-trades');
@@ -96,9 +102,12 @@ describe('P26.1 practice results', () => {
   });
 
   it('asks for a time zone in its own words', async () => {
+    const real = new Intl.DateTimeFormat().resolvedOptions();
+    vi.spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions').mockReturnValue({ ...real, timeZone: '' });
     const db = await seeded(false);
     render(<MemoryRouter><PracticeRoute db={db} now={now} /></MemoryRouter>);
     const region = await screen.findByRole('region', { name: 'Your practice results' });
-    expect(await within(region).findByText('Choose a time zone in Settings to see your practice results.')).toBeTruthy();
+    expect(await within(region).findByRole('heading', { name: 'Choose your time zone' })).toBeTruthy();
+    vi.restoreAllMocks();
   });
 });

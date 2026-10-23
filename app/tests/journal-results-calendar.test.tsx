@@ -1,15 +1,17 @@
 import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
+import { useState } from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router';
-import { JournalRoute } from '../src/app/JournalRoute';
+import { ReviewTradeLink } from '../src/app/ReviewTradeLink';
 import { saveManualTrade } from '../src/application/trades';
-import { projectVisualPnlMonthGrid, writeVisualPnlTimeZonePreference, type VisualPnlDailySummary } from '../src/application/visual-pnl';
+import { projectVisualPnlMonthGrid, writeVisualPnlTimeZonePreference, type VisualPnlDailySummary, type VisualPnlPeriodChoice } from '../src/application/visual-pnl';
 import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
 import { createKairosRepositories } from '../src/data/repositories';
 import type { DecimalString, TradeId } from '../src/domain/trades';
 import { ResultsCalendar } from '../src/features/results/ResultsCalendar';
+import { ResultsDashboard } from '../src/features/results/ResultsDashboard';
 
 function day(dayKey: string, total: string, currency = 'USD', tradeCount = 1): VisualPnlDailySummary {
   const outcome = total === '0' ? 'breakeven' : total.startsWith('-') ? 'loss' : 'profit';
@@ -81,15 +83,20 @@ async function database(): Promise<KairosDatabase> {
 afterEach(async () => { for (const name of names.splice(0)) await Dexie.delete(name); });
 const closed = (symbol: string, dayKey: string, exitPrice: string) => ({ symbol, marketType: 'crypto', side: 'long', status: 'closed', grossPnlCurrency: 'USDT', openedAt: `${dayKey}T09:00:00.000Z`, closedAt: `${dayKey}T10:00:00.000Z`, executions: [{ type: 'entry', price: '100', quantity: '1', executedAt: `${dayKey}T09:00:00.000Z` }, { type: 'exit', price: exitPrice, quantity: '1', executedAt: `${dayKey}T10:00:00.000Z` }] } as const);
 const now = () => '2026-09-10T12:00:00.000Z';
+/** "Your results" for real trades, as Analysis hosts it (T-051e). */
+function Results({ db, initial = { kind: 'month', at: null } }: { readonly db: KairosDatabase; readonly initial?: VisualPnlPeriodChoice }) {
+  const [choice, setChoice] = useState<VisualPnlPeriodChoice>(initial);
+  return <ResultsDashboard db={db} scope="real" now={now} choice={choice} onChoiceChange={setChoice} renderTradeLink={id => <ReviewTradeLink id={id} />} refreshRevision={0} />;
+}
 
-describe('the Journal month calendar', () => {
+describe('the results calendar', () => {
   it('opens on today\'s month, lists a tapped day\'s trades and pages back', async () => {
     const db = await database();
     await writeVisualPnlTimeZonePreference(createKairosRepositories(db).metadata, 'UTC', now());
     const september = await saveManualTrade(db, closed('BTCUSDT', '2026-09-02', '150'));
     expect((await saveManualTrade(db, closed('ETHUSDT', '2026-08-20', '90'))).ok).toBe(true);
     if (!september.ok) throw new Error('fixture');
-    render(<MemoryRouter><JournalRoute db={db} now={now} /></MemoryRouter>);
+    render(<MemoryRouter><Results db={db} /></MemoryRouter>);
     expect(await screen.findByRole('heading', { name: 'September 2026' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Next month' })).toBeDisabled();
 
@@ -110,7 +117,7 @@ describe('the Journal month calendar', () => {
     const { metadata, trades } = createKairosRepositories(db);
     await writeVisualPnlTimeZonePreference(metadata, 'UTC', now());
     await trades.put({ id: 'bad-close' as TradeId, symbol: 'BAD', marketType: 'crypto', side: 'long', status: 'closed', source: 'manual', openedAt: '2026-09-02T10:00:00.000Z', closedAt: '2026-09-02 14:30:00', createdAt: '2026-09-02T10:00:00.000Z', updatedAt: '2026-09-02T15:00:00.000Z' });
-    render(<MemoryRouter><JournalRoute db={db} now={now} /></MemoryRouter>);
+    render(<MemoryRouter><Results db={db} initial={{ kind: 'all' }} /></MemoryRouter>);
     expect(await screen.findByText('1 closed trade could not be placed on a day.')).toBeInTheDocument();
   });
 });

@@ -39,6 +39,8 @@ export interface ResultsDashboardProps {
   readonly onFirstLoad?: () => void;
   /** D183: true (the default) gives "Result after fees" the screen's one glow; Practice passes false, because its trade form's Save button already glows (`TradeForm.tsx:474`). */
   readonly glow?: boolean;
+  /** false: the dashboard's loading and first-use lines are read politely without the status role, for a page whose form's save line is its status (Practice), as Skeleton's `live`. */
+  readonly live?: boolean;
   /** Tests inject a loader that fails; the app uses loadResultsDashboard. */
   readonly load?: typeof loadResultsDashboard;
 }
@@ -154,7 +156,7 @@ function ResultsDays({ dashboard, renderTradeLink }: { readonly dashboard: Resul
  * device on first use, D199), the period's result after fees, and the discipline ring. Every amount and word comes from
  * an owner; this screen only shows them and never touches storage itself.
  */
-export function ResultsDashboard({ db, scope, choice, onChoiceChange, renderTradeLink, refreshRevision, now = wallClock, onFirstLoad, glow = true, load = loadResultsDashboard }: ResultsDashboardProps) {
+export function ResultsDashboard({ db, scope, choice, onChoiceChange, renderTradeLink, refreshRevision, now = wallClock, onFirstLoad, glow = true, live = true, load = loadResultsDashboard }: ResultsDashboardProps) {
   const titleId = useId();
   const region = useRef<HTMLElement>(null);
   const [answer, setAnswer] = useState<Answer | null>(null);
@@ -209,6 +211,8 @@ export function ResultsDashboard({ db, scope, choice, onChoiceChange, renderTrad
   const result = answer?.kind === 'answer' ? answer.result : null;
   const dashboard = result?.kind === 'ready' ? result.dashboard : null;
   const zone = dashboard?.timeZone ?? (result?.kind === 'invalid-period' ? result.timeZone : null) ?? (zoneStart !== null && zoneStart.kind !== 'unconfigured' ? zoneStart.timeZone : null);
+  // The zone line comes with the first answer, never alone above the loading placeholder.
+  const showZone = zone !== null && status !== 'loading' && status !== 'unconfigured';
   const practice = scope === 'practice';
   const homeWords = dashboard !== null && status === 'ready' ? describeTotalsInHomeCurrency(dashboard.inHomeCurrency) : null;
   const periodLabel = dashboard === null ? '' : dashboard.period.kind === 'all' ? (practice ? 'Practice' : 'your whole journal') : dashboard.period.label;
@@ -219,9 +223,9 @@ export function ResultsDashboard({ db, scope, choice, onChoiceChange, renderTrad
       <h2 id={titleId}>{practice ? 'Your practice results' : 'Your results'}</h2>
     </div>
     {dashboard !== null ? <PeriodChooser period={dashboard.period} todayKey={dashboard.todayKey} onChoiceChange={onChoiceChange} /> : null}
-    {zoneStart?.kind === 'started-from-device' && zone !== null ? <p role="status" className="kairos-results__started">Kairos set your time zone to {zoneStart.timeZone}, this device's time zone.</p> : null}
-    {zone !== null && status !== 'unconfigured' ? <p className="kairos-results__zone"><span>Time zone: {zone}</span> <ResultsLink to="/settings" aria-label="Change your time zone">Change</ResultsLink></p> : null}
-    {status === 'loading' ? <Skeleton label="Loading your results" /> : null}
+    {zoneStart?.kind === 'started-from-device' && showZone ? <p role={live ? 'status' : undefined} aria-live={live ? undefined : 'polite'} className="kairos-results__started">Kairos set your time zone to {zoneStart.timeZone}, this device's time zone.</p> : null}
+    {showZone ? <p className="kairos-results__zone"><span>Time zone: {zone}</span> <ResultsLink to="/settings" aria-label="Change your time zone">Change</ResultsLink></p> : null}
+    {status === 'loading' ? <Skeleton label="Loading your results" live={live} /> : null}
     {status === 'error' ? <ErrorState message={ERROR} onRetry={retry} busy={busy} /> : null}
     {status === 'unconfigured' ? <EmptyState icon="info" headingLevel={3} title="Choose your time zone"
       message="Kairos needs your time zone to put each trade on the right day, and this device did not report one."

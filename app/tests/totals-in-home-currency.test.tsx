@@ -5,7 +5,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it } from 'vitest';
 import { GoalsRoute } from '../src/app/GoalsRoute';
-import { JournalDailyResults } from '../src/app/JournalDailyResults';
+import { useState } from 'react';
 import { JournalRoute } from '../src/app/JournalRoute';
 import { describeConversionStep, describeTotalsInHomeCurrency, describeTradeInHomeCurrency } from '../src/application/currency/currencyWords';
 import { saveHomeCurrency } from '../src/application/currency/homeCurrency';
@@ -13,7 +13,7 @@ import { writeGoalsPreference } from '../src/application/goals';
 import { savePracticeMoney } from '../src/application/practice/practiceMoney';
 import { savePracticeTrade } from '../src/application/practice/savePracticeTrade';
 import { saveManualTrade, type SaveManualTradeInput } from '../src/application/trades';
-import { writeVisualPnlTimeZonePreference } from '../src/application/visual-pnl';
+import { writeVisualPnlTimeZonePreference, type VisualPnlPeriodChoice } from '../src/application/visual-pnl';
 import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
 import { createKairosRepositories } from '../src/data/repositories';
 import { exchangeRateId, type ExchangeRateRecord } from '../src/domain/calculations/currencyConversion';
@@ -23,6 +23,7 @@ import { ForexTradeNote } from '../src/features/journal/ForexTradeNote';
 import { StockTradeNote } from '../src/features/journal/StockTradeNote';
 import { PatternsScreen } from '../src/features/patterns/PatternsScreen';
 import { PracticeMoneyCard } from '../src/features/practice/PracticeMoneyCard';
+import { ResultsDashboard } from '../src/features/results/ResultsDashboard';
 
 const NOW = '2026-09-20T12:00:00.000Z';
 const now = () => NOW;
@@ -67,7 +68,12 @@ async function twoTradesInEuro(db: KairosDatabase, { usdRate = true, practice = 
 const CONVERTED_NOTE = 'Totals in EUR. 2 trades in other currencies were converted to EUR.';
 const UTC_LINE = 'Each result uses the exchange rate of the day it closed by the UTC clock, which can be a day before or after this calendar day.';
 const dayButton = (region: HTMLElement, day: string) => within(region).findByRole('button', { name: new RegExp(`^${day} September 2026:`) });
-const results = () => screen.findByRole('region', { name: 'Daily results' });
+const results = () => screen.findByRole('region', { name: 'Your results' });
+/** "Your results", as Analysis (real) and Practice host it (T-051e). */
+function Results({ db, scope = 'real' }: { readonly db: KairosDatabase; readonly scope?: 'real' | 'practice' }) {
+  const [choice, setChoice] = useState<VisualPnlPeriodChoice>({ kind: 'month', at: null });
+  return <ResultsDashboard db={db} scope={scope} now={now} choice={choice} onChoiceChange={setChoice} renderTradeLink={() => null} refreshRevision={0} />;
+}
 
 describe('T-045h the currency words', () => {
   it('describes each conversion step', () => {
@@ -109,7 +115,7 @@ describe('T-045h the Journal daily results in the home currency', () => {
   it('says the totals are in EUR, and each trade of a day shows its converted result and rate', async () => {
     const db = await database();
     await twoTradesInEuro(db);
-    render(<JournalRoute db={db} now={now} />);
+    render(<Results db={db} />);
     const region = await results();
     expect(await within(region).findByText(CONVERTED_NOTE, { exact: false })).toBeInTheDocument();
     expect(within(region).getByRole('link', { name: 'See your rates' })).toHaveAttribute('href', '/currency');
@@ -129,7 +135,7 @@ describe('T-045h the Journal daily results in the home currency', () => {
   it('says when a trade still needs a rate', async () => {
     const db = await database();
     await twoTradesInEuro(db, { usdRate: false });
-    render(<JournalRoute db={db} now={now} />);
+    render(<Results db={db} />);
     const region = await results();
     expect(await within(region).findByText("Totals in EUR. 1 trade still needs an exchange rate, so totals that include it can't be shown in EUR yet.", { exact: false })).toBeInTheDocument();
     expect(within(region).getByRole('link', { name: 'Add the missing rates' })).toHaveAttribute('href', '/currency');
@@ -144,7 +150,7 @@ describe('T-045h the Journal daily results in the home currency', () => {
     const db = await database();
     await saveAll(db, [PENCE, DOLLAR]);
     await db.exchangeRates.bulkPut([bank('GBP', '0.8588'), bank('USD', '1.146')]);
-    render(<JournalRoute db={db} now={now} />);
+    render(<Results db={db} />);
     const region = await results();
     fireEvent.click(await dayButton(region, '18'));
     await within(region).findByText('Trades closed on 18 September 2026');
@@ -158,7 +164,7 @@ describe('T-045h the Journal daily results in the home currency', () => {
     const db = await database();
     await saveAll(db, [EURO_17]);
     expect((await saveHomeCurrency(db, { currency: 'EUR', usdStablecoins: [] }, { now })).ok).toBe(true);
-    render(<JournalRoute db={db} now={now} />);
+    render(<Results db={db} />);
     const region = await results();
     fireEvent.click(await dayButton(region, '17'));
     await within(region).findByText('Trades closed on 17 September 2026');
@@ -170,7 +176,7 @@ describe('T-045h the Journal daily results in the home currency', () => {
   it('says the same on the practice results', async () => {
     const db = await database();
     await twoTradesInEuro(db, { practice: true });
-    render(<JournalDailyResults db={db} refreshRevision={0} now={now} scope="practice" />);
+    render(<Results db={db} scope="practice" />);
     expect(await screen.findByText(CONVERTED_NOTE, { exact: false })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'See your rates' })).toHaveAttribute('href', '/currency');
   });

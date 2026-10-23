@@ -4,13 +4,20 @@ import Dexie from 'dexie';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { useState } from 'react';
 import { GoalsRoute } from '../src/app/GoalsRoute';
-import { JournalDailyResults } from '../src/app/JournalDailyResults';
 import { SettingsRoute } from '../src/app/SettingsRoute';
 import { ThemeProvider } from '../src/design-system/themes';
-import { readVisualPnlTimeZonePreference } from '../src/application/visual-pnl';
+import { readVisualPnlTimeZonePreference, type VisualPnlPeriodChoice } from '../src/application/visual-pnl';
 import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
 import { createKairosRepositories } from '../src/data/repositories';
+import { ResultsDashboard } from '../src/features/results/ResultsDashboard';
+
+/** "Your results" for real trades (T-051e: the Journal's results moved to Analysis). */
+function Results({ db }: { readonly db: KairosDatabase }) {
+  const [choice, setChoice] = useState<VisualPnlPeriodChoice>({ kind: 'month', at: null });
+  return <ResultsDashboard db={db} scope="real" choice={choice} onChoiceChange={setChoice} renderTradeLink={() => null} refreshRevision={0} />;
+}
 
 const names: string[] = [];
 async function database(): Promise<KairosDatabase> {
@@ -34,15 +41,12 @@ afterEach(async () => {
 });
 
 describe('T-008 time zone in one tap', () => {
-  it('Journal daily results: shows the button, saves only on tap, then loads the results', async () => {
+  it("Your results: saves this device's zone on first use, then loads", async () => {
     const db = await database();
-    render(<JournalDailyResults db={db} refreshRevision={0} />);
-    const button = await deviceButton();
-    expect(screen.getByText('Choose a time zone in Settings to view daily results.')).toBeInTheDocument();
-    expect(await saved(db)).toBeNull();
-    fireEvent.click(button);
-    await waitFor(async () => expect(await saved(db)).toBe('Asia/Manila'));
-    await waitFor(() => expect(document.querySelector('[data-visual-pnl-time-zone="Asia/Manila"]')).not.toBeNull());
+    render(<MemoryRouter><Results db={db} /></MemoryRouter>);
+    expect(await screen.findByText("Kairos set your time zone to Asia/Manila, this device's time zone.")).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /this device/ })).toBeNull();
+    expect(await saved(db)).toBe('Asia/Manila');
   });
 
   it('Goals: the tap saves the zone and the goals reload', async () => {
@@ -90,8 +94,8 @@ describe('T-008 time zone in one tap', () => {
   it('shows no button when the device does not report a time zone', async () => {
     vi.spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions').mockReturnValue({ ...new Intl.DateTimeFormat().resolvedOptions(), timeZone: '' });
     const db = await database();
-    render(<JournalDailyResults db={db} refreshRevision={0} />);
-    await screen.findByText('Choose a time zone in Settings to view daily results.');
+    render(<MemoryRouter><Results db={db} /></MemoryRouter>);
+    expect(await screen.findByRole('heading', { name: 'Choose your time zone' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /this device/ })).toBeNull();
   });
 });
