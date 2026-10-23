@@ -48,3 +48,9 @@
 .kairos-trade-picture__lookup { display: grid; gap: var(--kairos-space-1); min-width: 0; }
 .kairos-trade-picture__lookup label { font-size: var(--kairos-font-size-xs); color: var(--kairos-text-secondary); }
 .kairos-trade-picture__lookup input[type='range'] { width: 100%; min-height: 44px; margin: 0; accent-color: var(--kairos-trade-entry); }
+/* U6 T-052c: the share card's controls (D214, D215). */
+.kairos-trade-share { display: grid; gap: var(--kairos-space-2); justify-items: start; min-width: 0; width: 100%; }
+.kairos-trade-share__hide { display: flex; align-items: center; gap: var(--kairos-space-2); min-height: 44px; font-size: var(--kairos-font-size-sm); }
+.kairos-trade-share__hide input { width: 20px; height: 20px; margin: 0; accent-color: var(--kairos-accent-primary); }
+.kairos-trade-share__preview { display: block; width: min(100%, 240px); height: auto; border: 1px solid var(--kairos-border-subtle); border-radius: var(--kairos-radius-md); }
+.kairos-trade-share__making { margin: 0; color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-xs); }

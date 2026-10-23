@@ -5,7 +5,8 @@ import { projectTradePicture, tradePictureHasCandleSource, type TradePictureCand
 import { Sheet } from '../../design-system/primitives';
 import { TradePictureCard } from './TradePictureCard';
 import { TradePictureCandleLoaderContext } from './tradePictureCandleQueue';
-import { saveTradePictureImage, serializeTradePictureSvg, tradePictureFileName, type TradePictureSavePorts } from './tradePictureImage';
+import type { TradePictureSavePorts } from './tradePictureImage';
+import { TradeShareControls } from './TradeShareControls';
 
 /** `retrying`: "Try again" was tapped; the last answer stays on screen (its box and focused button) until the new one arrives. */
 type CandleState = { readonly kind: 'waiting' } | { readonly kind: 'done'; readonly result: TradePictureCandlesResult; readonly retrying?: boolean };
@@ -62,28 +63,17 @@ function useTradePictureCandles(entry: JournalHistoryEntry, target: React.RefObj
   return { state, reload };
 }
 
-function SaveImageButton({ svg, symbol, dateIso, ports }: { readonly svg: React.RefObject<SVGSVGElement | null>; readonly symbol: string; readonly dateIso: string | null; readonly ports?: TradePictureSavePorts }) {
-  const [status, setStatus] = useState<'idle' | 'saving' | 'failed'>('idle');
-  return <>
-    <button type="button" disabled={status === 'saving'} onClick={() => {
-      const element = svg.current;
-      if (!element) return;
-      setStatus('saving');
-      void saveTradePictureImage(serializeTradePictureSvg(element), tradePictureFileName(symbol, dateIso), ports).then(result => setStatus(result === 'failed' ? 'failed' : 'idle'));
-    }}>{status === 'saving' ? 'Preparing image…' : 'Share or download image'}</button>
-    {status === 'failed' ? <small role="alert">The image could not be made. Nothing was changed.</small> : null}
-  </>;
-}
-
 /**
  * The trade picture for one saved trade. `thumbnail` (Journal, Practice) is a
  * small card that opens the full picture in a dialog; `full` (Analysis) shows
  * it at once under "Your trade". Candles load only while the picture is on screen.
  */
-export function TradePicture({ entry, variant, savePorts }: {
+export function TradePicture({ entry, variant, savePorts, strategyName = null }: {
   readonly entry: JournalHistoryEntry;
   readonly variant: 'thumbnail' | 'full';
   readonly savePorts?: TradePictureSavePorts;
+  /** The strategy the trader chose for this trade, for the share card (P28). */
+  readonly strategyName?: string | null;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const svg = useRef<SVGSVGElement>(null);
@@ -99,13 +89,12 @@ export function TradePicture({ entry, variant, savePorts }: {
   }), [entry, candles]);
   const loading = candles.kind === 'waiting';
   const candleProps = { ...candleCardProps(candles), onRetryCandles: reload };
-  const dateIso = model.info.find(row => row.key === 'opened')?.value ?? null;
 
   if (variant === 'full') {
     return <section className="kairos-trade-picture-panel" aria-labelledby={titleId} ref={container}>
       <h2 id={titleId}>Your trade</h2>
       <TradePictureCard model={model} candlesLoading={loading} svgRef={svg} {...candleProps} />
-      <div className="kairos-trade-picture-panel__actions"><SaveImageButton svg={svg} symbol={model.symbol} dateIso={dateIso} ports={savePorts} /></div>
+      <div className="kairos-trade-picture-panel__actions"><TradeShareControls model={model} svg={svg} strategyName={strategyName} ports={savePorts} /></div>
     </section>;
   }
 
@@ -116,7 +105,7 @@ export function TradePicture({ entry, variant, savePorts }: {
     <Sheet open={open} title={`${model.symbol} trade`} onClose={() => setOpen(false)}>
       <TradePictureCard model={model} candlesLoading={loading} svgRef={dialogSvg} {...candleProps} />
       <div className="kairos-trade-picture-panel__actions">
-        <SaveImageButton svg={dialogSvg} symbol={model.symbol} dateIso={dateIso} ports={savePorts} />
+        <TradeShareControls model={model} svg={dialogSvg} strategyName={strategyName} ports={savePorts} />
       </div>
     </Sheet>
   </div>;
