@@ -39,12 +39,12 @@ async function database(trades: readonly SaveManualTradeInput[]): Promise<Kairos
   }
   return db;
 }
-function Host({ db }: { readonly db: KairosDatabase }) {
-  const [choice, setChoice] = useState<VisualPnlPeriodChoice>({ kind: 'month', at: null });
+function Host({ db, initial = { kind: 'month', at: null } }: { readonly db: KairosDatabase; readonly initial?: VisualPnlPeriodChoice }) {
+  const [choice, setChoice] = useState<VisualPnlPeriodChoice>(initial);
   return <ResultsDashboard db={db} scope="real" now={now} choice={choice} onChoiceChange={setChoice} renderTradeLink={id => <ReviewTradeLink id={id} />} refreshRevision={0} />;
 }
-async function show(db: KairosDatabase): Promise<HTMLElement> {
-  render(<MemoryRouter><Host db={db} /></MemoryRouter>);
+async function show(db: KairosDatabase, initial?: VisualPnlPeriodChoice): Promise<HTMLElement> {
+  render(<MemoryRouter><Host db={db} initial={initial} /></MemoryRouter>);
   const found = await screen.findByRole('region', { name: 'Your results' });
   await waitFor(() => expect(found).toHaveAttribute('data-results-status', 'ready'));
   await waitFor(() => expect(found).not.toHaveAttribute('aria-busy'));
@@ -126,5 +126,24 @@ describe('T-051j when you trade and your markets', () => {
     await db.trades.update(first!.id, { openedAt: null });
     const found = await show(db);
     expect(within(section(found, 'When you trade')).getByText('1 trade has no opening time, so it is left out.')).toBeInTheDocument();
+  });
+
+  it('opens and closes a market whose symbol holds a line break (fix r1)', async () => {
+    const found = await show(await database([trade('AB\nCD', '2026-09-07T09:30:00.000Z', 10)]));
+    const tile = section(found, 'Your markets').querySelector<HTMLElement>('.kairos-results-markets__tile')!;
+    tile.focus();
+    fireEvent.click(tile);
+    const heading = await within(found).findByRole('heading', { name: /^Trades in AB\sCD$/ });
+    fireEvent.click(within(heading.closest('.kairos-results-day-trades') as HTMLElement).getByRole('button', { name: 'Close' }));
+    await waitFor(() => expect(tile).toHaveFocus());
+  });
+
+  it('keeps a market\'s list open when the calendar changes month (fix r1)', async () => {
+    const found = await show(await database([trade('BTCUSDT', '2026-08-20T09:00:00.000Z', 5), ...WEEK]), { kind: 'all' });
+    fireEvent.click(section(found, 'Your markets').querySelector('.kairos-results-markets__tile')!);
+    expect(await within(found).findByRole('heading', { name: 'Trades in BTCUSDT' })).toBeInTheDocument();
+    fireEvent.click(within(found).getByRole('button', { name: 'Previous month' }));
+    expect(await within(found).findByRole('heading', { name: 'August 2026' })).toBeInTheDocument();
+    expect(within(found).getByRole('heading', { name: 'Trades in BTCUSDT' })).toBeInTheDocument();
   });
 });

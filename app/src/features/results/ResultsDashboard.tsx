@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useInRouterContext } from 'react-router';
 import { describeRatesFetchedOnTheirOwn, describeTotalsInHomeCurrency, RATES_NEED_A_CONNECTION } from '../../application/currency/currencyWords';
 import { ecbRatesToFetchOnItsOwn, fetchMissingEcbRates, missingRateKey, type EcbReferenceRatesPort, type FetchEcbRatesResult } from '../../application/currency/ecbRates';
@@ -143,18 +143,22 @@ function listKey(list: OpenList | null): string | null {
     case 'tile': return `tile:${list.tile.key}`;
   }
 }
+type Opener = Readonly<{ find: (box: HTMLElement) => HTMLElement | null; fallback: string }>;
+const bySelector = (selector: string, fallback: string): Opener => ({ find: box => box.querySelector<HTMLElement>(selector), fallback });
 /** The control that opened a list, as the calendar, the candles' numbers, the heatmap and the tiles mark it, then where focus goes when it is gone or hidden. */
-function openerSelectors(list: OpenList): readonly [string, string] {
+function openerOf(list: OpenList): Opener {
   switch (list.kind) {
-    case 'day': return [`[data-day-key="${list.dayKey}"] button`, '.kairos-results-calendar__bar h3'];
-    case 'week': return [`[data-week-key="${list.week.fromDayKey}"] button`, '.kairos-results-calendar__bar h3'];
-    case 'month': return ['.kairos-results-calendar__month-total', '.kairos-results-calendar__bar h3'];
-    case 'candle': return [`[data-candle-row="${list.fromDayKey}"] button`, '.kairos-results-candles h3'];
-    case 'cell': return [`[data-heatmap-cell="${list.cell.weekday}-${list.cell.block}"] button`, '.kairos-results-heatmap h3'];
-    // A symbol is the trader's own text: quotes and backslashes are escaped inside the selector.
-    case 'tile': return [`[data-tile-key="${list.tile.key.replace(/["\\]/g, '\\$&')}"]`, '.kairos-results-markets h3'];
+    case 'day': return bySelector(`[data-day-key="${list.dayKey}"] button`, '.kairos-results-calendar__bar h3');
+    case 'week': return bySelector(`[data-week-key="${list.week.fromDayKey}"] button`, '.kairos-results-calendar__bar h3');
+    case 'month': return bySelector('.kairos-results-calendar__month-total', '.kairos-results-calendar__bar h3');
+    case 'candle': return bySelector(`[data-candle-row="${list.fromDayKey}"] button`, '.kairos-results-candles h3');
+    case 'cell': return bySelector(`[data-heatmap-cell="${list.cell.weekday}-${list.cell.block}"] button`, '.kairos-results-heatmap h3');
+    // A symbol is the trader's own text, so its tile is found by comparing keys, never by building a selector from it.
+    case 'tile': return { find: box => [...box.querySelectorAll<HTMLElement>('[data-tile-key]')].find(tile => tile.dataset.tileKey === list.tile.key) ?? null, fallback: '.kairos-results-markets h3' };
   }
 }
+/** The lists that belong to the calendar's shown month; a month change closes them only. */
+const CALENDAR_LISTS: ReadonlySet<OpenList['kind']> = new Set(['day', 'week', 'month']);
 const CANDLE_UNITS = Object.freeze([{ value: 'day', label: 'Day' }, { value: 'week', label: 'Week' }, { value: 'month', label: 'Month' }] as const);
 
 /**
@@ -168,16 +172,18 @@ function ResultsDays({ dashboard, renderTradeLink }: { readonly dashboard: Resul
   const [month, setMonth] = useState<string | null>(null);
   const [open, setOpen] = useState<OpenList | null>(null);
   const [unit, setUnit] = useState<VisualPnlResultCandleUnit>(() => pickVisualPnlResultCandleUnit(days.days));
-  const heatmap = projectVisualPnlWeekdayTimeHeatmap(dashboard.entries, timeZone);
-  const markets = projectMarketTiles(dashboard.entries);
-  const candles = projectVisualPnlResultCandlesBy(days.days, { unit, tradeIdsByDay: projectResultsTradeIdsByDay(dashboard), marks: projectResultsDipMarks(dashboard) });
+  // Worked out once per answer (or unit), not on every tap: with thousands of trades each takes a while.
+  const heatmap = useMemo(() => projectVisualPnlWeekdayTimeHeatmap(dashboard.entries, timeZone), [dashboard.entries, timeZone]);
+  const markets = useMemo(() => projectMarketTiles(dashboard.entries), [dashboard.entries]);
+  const candleInputs = useMemo(() => ({ tradeIdsByDay: projectResultsTradeIdsByDay(dashboard), marks: projectResultsDipMarks(dashboard) }), [dashboard]);
+  const candles = useMemo(() => projectVisualPnlResultCandlesBy(days.days, { unit, ...candleInputs }), [days.days, unit, candleInputs]);
   /** The list that just opened (its heading takes focus) or closed (its opener takes focus back, else the month heading). */
-  const focusAfter = useRef<Readonly<{ kind: 'opened' | 'closed'; key: string; opener: readonly [string, string] }> | null>(null);
+  const focusAfter = useRef<Readonly<{ kind: 'opened' | 'closed'; key: string; opener: Opener }> | null>(null);
   const lastMonth = calendarMonths[calendarMonths.length - 1]!;
   const shownMonth = month !== null && calendarMonths.includes(month) ? month : lastMonth;
   const bounds = { fromDayKey: period.fromDayKey, toDayKey: period.toDayKey };
-  const grid = projectVisualPnlMonthGrid({ monthKey: shownMonth, days: days.days, todayKey, period: bounds });
-  const totals = projectVisualPnlMonthTotals({ monthKey: shownMonth, days: days.days, period: bounds });
+  const grid = useMemo(() => projectVisualPnlMonthGrid({ monthKey: shownMonth, days: days.days, todayKey, period: bounds }), [shownMonth, days.days, todayKey, period.fromDayKey, period.toDayKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const totals = useMemo(() => projectVisualPnlMonthTotals({ monthKey: shownMonth, days: days.days, period: bounds }), [shownMonth, days.days, period.fromDayKey, period.toDayKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const openKey = listKey(open);
 
   useEffect(() => {
@@ -185,8 +191,8 @@ function ResultsDays({ dashboard, renderTradeLink }: { readonly dashboard: Resul
     // Only once the state matches the press: a run that comes before the new list is shown must not use up the target.
     if (target === null || (target.kind === 'opened' ? openKey !== target.key : openKey !== null)) return;
     focusAfter.current = null;
-    const [opener, fallback] = target.opener;
-    const back = box.current?.querySelector<HTMLElement>(opener);
+    const { find, fallback } = target.opener;
+    const back = box.current ? find(box.current) : null;
     // A row button inside the closed "Show the numbers" can't take focus.
     const element = target.kind === 'opened'
       ? box.current?.querySelector<HTMLElement>('.kairos-results-day-trades h3')
@@ -197,12 +203,12 @@ function ResultsDays({ dashboard, renderTradeLink }: { readonly dashboard: Resul
   function toggle(list: OpenList): void {
     const key = listKey(list)!;
     const closing = key === openKey;
-    focusAfter.current = { kind: closing ? 'closed' : 'opened', key, opener: openerSelectors(list) };
+    focusAfter.current = { kind: closing ? 'closed' : 'opened', key, opener: openerOf(list) };
     setOpen(closing ? null : list);
   }
   function close(): void {
     if (open === null) return;
-    focusAfter.current = { kind: 'closed', key: openKey!, opener: openerSelectors(open) };
+    focusAfter.current = { kind: 'closed', key: openKey!, opener: openerOf(open) };
     setOpen(null);
   }
   /** The month button just pressed: when the new month disables it, focus goes to the other one, else the month heading (WCAG 2.4.3). */
@@ -216,7 +222,7 @@ function ResultsDays({ dashboard, renderTradeLink }: { readonly dashboard: Resul
     const other = pressed === 'previous' ? next : previous;
     (other !== undefined && !other.disabled ? other : box.current?.querySelector<HTMLElement>('.kairos-results-calendar__bar h3'))?.focus();
   }, [shownMonth]);
-  const changeMonth = (next: string, pressed: 'previous' | 'next') => { pressedNav.current = pressed; setMonth(next); setOpen(null); };
+  const changeMonth = (next: string, pressed: 'previous' | 'next') => { pressedNav.current = pressed; setMonth(next); if (open !== null && CALENDAR_LISTS.has(open.kind)) setOpen(null); };
   const outside = grid?.days.some(day => !day.inPeriod) ?? false;
   const changeUnit = (next: VisualPnlResultCandleUnit) => { setUnit(next); if (open?.kind === 'candle') setOpen(null); };
   const selectCandle = (index: number) => {

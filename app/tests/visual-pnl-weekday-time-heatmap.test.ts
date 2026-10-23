@@ -69,4 +69,21 @@ describe('T-051j when you trade: weekday × time of day', () => {
     // 24 is the largest; 6 is 1 of 4 steps; 5 rounds to 1.
     expect([heatmap.rows[2]!.cells[3]!.strength, heatmap.rows[0]!.cells[2]!.strength, heatmap.rows[4]!.cells[5]!.strength]).toEqual([4, 1, 1]);
   });
+
+  it('reads thousands of trades with one formatter per zone, not one per trade (fix r1)', () => {
+    const many = Array.from({ length: 500 }, (_, index) => entry(new Date(Date.UTC(2026, 8, 1, 0, index * 7)).toISOString(), visual('1')));
+    const Real = Intl.DateTimeFormat;
+    let made = 0;
+    class Counting extends Real { constructor(...args: ConstructorParameters<typeof Real>) { super(...args); made += 1; } }
+    const intl = Intl as { DateTimeFormat: typeof Intl.DateTimeFormat };
+    intl.DateTimeFormat = Counting as typeof Intl.DateTimeFormat;
+    try {
+      const heatmap = projectVisualPnlWeekdayTimeHeatmap(many, 'Europe/Paris');
+      expect(heatmap.rows.flatMap(row => row.cells).reduce((sum, cell) => sum + cell.tradeIds.length, 0)).toBe(500);
+    } finally {
+      intl.DateTimeFormat = Real;
+    }
+    // One for the day, one for the hour.
+    expect(made).toBeLessThanOrEqual(2);
+  });
 });

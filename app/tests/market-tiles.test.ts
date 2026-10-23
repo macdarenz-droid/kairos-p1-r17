@@ -56,4 +56,13 @@ describe('T-051j your markets as tiles', () => {
     expect(other.tradeIds).toEqual(entries.slice(11).map(item => item.trade.id));
     expect(tiles.tiles.slice(0, 11).map(tile => tile.symbol)).toEqual(entries.slice(0, 11).map(item => item.trade.symbol));
   });
+
+  it('orders equal totals by trades, then by symbol A to Z, and counts the "other" tile on its own (fix r1)', () => {
+    const tiles = projectMarketTiles([...many('XRPUSDT', ['5']), ...many('ADAUSDT', ['5']), ...many('SOLUSDT', ['2', '3'])]);
+    expect(tiles.tiles.map(tile => tile.symbol)).toEqual(['SOLUSDT', 'ADAUSDT', 'XRPUSDT']);
+    const entries = [...Array.from({ length: 11 }, (_, index) => entry(`M${String(index).padStart(2, '0')}`, String(100 - index))), entry('W1', '9'), entry('W2', '-8'), entry('W3', '0')];
+    const other = projectMarketTiles(entries).tiles[11]!;
+    expect(other.outcomes).toMatchObject({ tradeCount: 3, won: 1, lost: 1, breakEven: 1, resultCount: 3 });
+    expect(other.total).toMatchObject({ available: true, total: '1', tradeCount: 3 });
+  });
 });
