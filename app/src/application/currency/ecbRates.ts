@@ -2,8 +2,8 @@
  * P33: which European Central Bank rates Kairos asks for, and which published rate a trade's close day uses (D112, D113).
  * A day's own rate first; for a day with none (weekends and the bank's holidays), its last rate before, at most
  * ECB_RATE_MAX_AGE_DAYS days before, and only once the bank has published a rate after that day, so a late rate is never
- * replaced by an older one. Nothing is fetched unless the trader asks. The port type comes from services (D31); the
- * composition root builds the port.
+ * replaced by an older one. Rates are fetched on a tap on the Currency page, and on their own on the results screen
+ * (D201). The port type comes from services (D31); the composition root builds the port.
  */
 
 import { runKairosAtomicWrite, type KairosDatabase } from '../../data/database';
@@ -11,6 +11,7 @@ import { ECB_RATE_MAX_AGE_DAYS, exchangeRateId, isEcbReferenceCurrency, isExchan
 import type { EcbReferenceRate, EcbReferenceRateRequest, EcbReferenceRatesPort } from '../../services/exchange-rates/ecbReferenceRates';
 import { projectVisualPnlDayKey } from '../visual-pnl/dayBucket';
 import { isVisualPnlDayKey, shiftVisualPnlDayKey } from '../visual-pnl/dayKeyCalendar';
+import type { MissingExchangeRate } from './resultsInHomeCurrency';
 
 export type { EcbReferenceRatesPort } from '../../services/exchange-rates/ecbReferenceRates';
 
@@ -24,6 +25,16 @@ type MissingPair = { readonly from: string; readonly to: string; readonly day: s
 /** The bank can give a rate between two currencies it publishes. */
 export function ecbCanProvideRate(from: string, to: string): boolean {
   return from !== to && isEcbReferenceCurrency(from) && isEcbReferenceCurrency(to);
+}
+
+/** One missing rate's key, the same on every read: `${from}>${to}@${day}`. */
+export function missingRateKey(missing: Readonly<{ from: string; to: string; day: string }>): string {
+  return `${missing.from}>${missing.to}@${missing.day}`;
+}
+
+/** D201: the missing rates Kairos asks the bank for without a tap: rates the bank publishes (ecbCanProvideRate), not already asked for during this visit. */
+export function ecbRatesToFetchOnItsOwn(missing: readonly MissingExchangeRate[], alreadyAsked: ReadonlySet<string>): readonly MissingExchangeRate[] {
+  return Object.freeze(missing.filter((rate) => ecbCanProvideRate(rate.from, rate.to) && !alreadyAsked.has(missingRateKey(rate))));
 }
 
 /** The bank rows behind missing pairs: one per currency (never EUR) and real calendar day, sorted by day, then currency. */

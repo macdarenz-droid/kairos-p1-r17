@@ -74,6 +74,19 @@ export function describeEcbFetchResult(result: FetchEcbRatesResult): Readonly<{ 
   return Object.freeze({ tone: 'success' as const, lines: Object.freeze(lines) });
 }
 
+/** D201: what fetching the missing rates on their own did, in one line; null when there was nothing to fetch. */
+export function describeRatesFetchedOnTheirOwn(result: FetchEcbRatesResult): Readonly<{ tone: 'status' | 'unavailable' | 'error'; text: string }> | null {
+  if (!result.ok) {
+    if (result.reason === 'nothing-to-fetch') return null;
+    if (result.reason === 'unavailable') return Object.freeze({ tone: 'unavailable' as const, text: 'The missing exchange rates could not be fetched. Check your connection, then try again.' });
+    return Object.freeze({ tone: 'error' as const, text: 'Kairos could not save the exchange rates. Nothing was changed.' });
+  }
+  if (result.saved > 0) return Object.freeze({ tone: 'status' as const, text: `Got ${result.saved} exchange ${result.saved === 1 ? 'rate' : 'rates'} from the European Central Bank.` });
+  if (result.notPublishedYet.length === 0) return null;
+  const latest = result.notPublishedYet.map((need) => need.day).sort().at(-1) as string;
+  return Object.freeze({ tone: 'status' as const, text: `The European Central Bank has no rate for ${currencyDayLabel(latest)} yet. Kairos will ask again next time you open your results.` });
+}
+
 /** One step of a conversion: "100 GBX (pence) = 1 GBP", the coin rule, the trader's rate or the bank's rates (the `from` leg first). */
 export function describeConversionStep(step: CurrencyConversionStep): string {
   switch (step.kind) {

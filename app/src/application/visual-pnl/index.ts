@@ -21,3 +21,4 @@ export * from './monthGrid';
 export * from './resultCandles';
 export * from './tradeStreaks';
 export * from './resultsPeriod';
+export * from './compactAmount';
