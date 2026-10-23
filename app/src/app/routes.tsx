@@ -30,14 +30,22 @@ export const appRoutes = [
     children: [
       { index: true, element: <HomeRoute /> },
       { path: 'journal', lazy: async () => ({ Component: (await import('./JournalRoute')).JournalRoute }) },
-      { path: 'analysis', lazy: async () => ({ Component: (await import('./AnalysisRoute')).AnalysisRoute }) },
+      { path: 'analysis', lazy: async () => {
+        const [{ AnalysisRoute }, { createEcbReferenceRatesPort }] = await Promise.all([import('./AnalysisRoute'), import('../services/exchange-rates/ecbReferenceRates')]);
+        const rates = createEcbReferenceRatesPort();
+        return { Component: function AnalysisWithRatesRoute() { return <AnalysisRoute rates={rates} />; } };
+      } },
       { path: 'library', lazy: async () => ({ Component: (await import('./LibraryRoute')).LibraryRoute }) },
       { path: 'library/words', lazy: async () => ({ Component: (await import('../features/learn/GlossaryScreen')).GlossaryScreen }) },
       { path: 'library/calculators', lazy: async () => ({ Component: (await import('../features/learn/CalculatorsScreen')).CalculatorsScreen }) },
       { path: 'library/lessons', lazy: async () => ({ Component: (await import('../features/learn/LessonListScreen')).LessonListScreen }) },
       { path: 'library/lessons/:lessonId', lazy: async () => ({ Component: (await import('../features/learn/LessonReaderScreen')).LessonReaderScreen }) },
       { path: 'more', element: <MoreRoute /> },
-      { path: 'practice', lazy: async () => ({ Component: (await import('./PracticeRoute')).PracticeRoute }) },
+      { path: 'practice', lazy: async () => {
+        const [{ PracticeRoute }, { createEcbReferenceRatesPort }] = await Promise.all([import('./PracticeRoute'), import('../services/exchange-rates/ecbReferenceRates')]);
+        const rates = createEcbReferenceRatesPort();
+        return { Component: function PracticeWithRatesRoute() { return <PracticeRoute rates={rates} />; } };
+      } },
       { path: 'practice/replay', lazy: async () => {
         const { ReplayScreen } = await import('../features/practice/ReplayScreen');
         const market = createTradePictureCandleBrowserDeps();

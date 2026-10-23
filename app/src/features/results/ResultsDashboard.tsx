@@ -1,6 +1,8 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Link, useInRouterContext } from 'react-router';
-import { describeTotalsInHomeCurrency } from '../../application/currency/currencyWords';
+import { describeRatesFetchedOnTheirOwn, describeTotalsInHomeCurrency, RATES_NEED_A_CONNECTION } from '../../application/currency/currencyWords';
+import { ecbRatesToFetchOnItsOwn, fetchMissingEcbRates, missingRateKey, type EcbReferenceRatesPort, type FetchEcbRatesResult } from '../../application/currency/ecbRates';
+import type { MissingExchangeRate } from '../../application/currency/resultsInHomeCurrency';
 import type { JournalHistoryScope } from '../../application/journal';
 import { describePeriodMoneyUnavailable, describeTradeCount } from '../../application/performance/periodWords';
 import { loadResultsDashboard, selectResultsEntries, type ResultsDashboardProjection, type ResultsDashboardQueryResult } from '../../application/performance/resultsDashboard';
@@ -17,7 +19,7 @@ import {
   type VisualPnlTimeZoneStart,
 } from '../../application/visual-pnl';
 import type { KairosDatabase } from '../../data/database';
-import { Button, EmptyState, ErrorState, ResultText, Skeleton, StatTile } from '../../design-system/primitives';
+import { Button, EmptyState, ErrorState, ResultText, Skeleton, StatTile, UnavailableNotice } from '../../design-system/primitives';
 import { DisciplineScorePanel } from '../discipline/DisciplineScorePanel';
 import { readDeviceTimeZone } from '../settings/DeviceTimeZoneButton';
 import { PERIOD_LIST_ID, PeriodChooser } from './PeriodChooser';
@@ -41,11 +43,16 @@ export interface ResultsDashboardProps {
   readonly glow?: boolean;
   /** false: the dashboard's loading and first-use lines are read politely without the status role, for a page whose form's save line is its status (Practice), as Skeleton's `live`. */
   readonly live?: boolean;
+  /** D201: the bank-rates port; with it, missing rates the bank publishes are fetched once per visit. null: never fetched here. */
+  readonly rates?: EcbReferenceRatesPort | null;
   /** Tests inject a loader that fails; the app uses loadResultsDashboard. */
   readonly load?: typeof loadResultsDashboard;
 }
 
 type Answer = Readonly<{ kind: 'answer'; result: ResultsDashboardQueryResult }> | Readonly<{ kind: 'failed' }>;
+/** The rates fetched on their own (D201): whether a request runs, and the last outcome (kept on screen while a retry runs). */
+type RatesFetch = Readonly<{ fetching: boolean; outcome: Readonly<{ kind: 'none' }> | Readonly<{ kind: 'offline' }> | Readonly<{ kind: 'answered'; result: FetchEcbRatesResult }> }>;
+const NO_RATES_FETCH: RatesFetch = Object.freeze({ fetching: false, outcome: Object.freeze({ kind: 'none' as const }) });
 type Status = 'loading' | 'ready' | 'empty' | 'error' | 'unconfigured' | 'invalid-period';
 
 const wallClock = (): string => new Date().toISOString();
@@ -93,6 +100,19 @@ function PeriodResult({ dashboard, glow, renderTradeLink }: { readonly dashboard
     <dl className="kairos-stat-grid"><StatTile label="Result after fees" emphasis={glow ? 'main' : undefined} value={value} hint={hint} /></dl>
     <BlockedFix dashboard={dashboard} renderTradeLink={renderTradeLink} />
   </>;
+}
+
+/** D201: the missing rates fetched on their own, beside the currency note: "Getting…", what came back, or "Unavailable · Try again". */
+function RatesLine({ state, live, onRetry }: { readonly state: RatesFetch; readonly live: boolean; readonly onRetry: () => void }) {
+  const { fetching, outcome } = state;
+  const statusProps = live ? { role: 'status' } : { 'aria-live': 'polite' as const };
+  if (outcome.kind === 'offline') return <div className="kairos-results__rates"><UnavailableNotice message={RATES_NEED_A_CONNECTION} retryLabel="Try again" onRetry={onRetry} busy={fetching} retryWhenOnline /></div>;
+  const words = outcome.kind === 'answered' ? describeRatesFetchedOnTheirOwn(outcome.result) : null;
+  if (words?.tone === 'unavailable') return <div className="kairos-results__rates"><UnavailableNotice message={words.text} retryLabel="Try again" onRetry={onRetry} busy={fetching} retryWhenOnline /></div>;
+  if (words?.tone === 'error') return <div className="kairos-results__rates"><ErrorState message={words.text} onRetry={onRetry} busy={fetching} /></div>;
+  if (fetching) return <div className="kairos-results__rates"><p className="kairos-results__notice" {...statusProps}>Getting the missing exchange rates…</p></div>;
+  if (words?.tone === 'status') return <div className="kairos-results__rates"><p className="kairos-results__notice" {...statusProps}>{words.text}</p></div>;
+  return null;
 }
 
 /**
@@ -157,7 +177,7 @@ function ResultsDays({ dashboard, renderTradeLink }: { readonly dashboard: Resul
  * device on first use, D199), the period's result after fees, and the discipline ring. Every amount and word comes from
  * an owner; this screen only shows them and never touches storage itself.
  */
-export function ResultsDashboard({ db, scope, choice, onChoiceChange, renderTradeLink, refreshRevision, now = wallClock, onFirstLoad, glow = true, live = true, load = loadResultsDashboard }: ResultsDashboardProps) {
+export function ResultsDashboard({ db, scope, choice, onChoiceChange, renderTradeLink, refreshRevision, now = wallClock, onFirstLoad, glow = true, live = true, rates = null, load = loadResultsDashboard }: ResultsDashboardProps) {
   const titleId = useId();
   const region = useRef<HTMLElement>(null);
   const [answer, setAnswer] = useState<Answer | null>(null);
@@ -175,6 +195,15 @@ export function ResultsDashboard({ db, scope, choice, onChoiceChange, renderTrad
   const nowRef = useRef(now);
   nowRef.current = now;
   const choiceKey = writeVisualPnlPeriodChoice(choice, new URLSearchParams()).toString();
+  /** The missing rates already asked for during this visit (one request per missing rate, D201). */
+  const asked = useRef(new Set<string>());
+  const [ratesFetch, setRatesFetch] = useState<RatesFetch>(NO_RATES_FETCH);
+  /** Bumped after rates were saved: reloads the dashboard with the same choice. */
+  const [ratesRevision, setRatesRevision] = useState(0);
+  const ratesAbort = useRef<AbortController | null>(null);
+  /** Set by the rates' "Try again": after the answer, focus goes to the currency note's link, or the new "Try again". */
+  const ratesFocus = useRef(false);
+  useEffect(() => () => ratesAbort.current?.abort(), []);
 
   useEffect(() => {
     const mine = ++request.current;
@@ -192,7 +221,44 @@ export function ResultsDashboard({ db, scope, choice, onChoiceChange, renderTrad
       result => { if (mine === request.current) { setAnswer({ kind: 'answer', result }); setBusy(false); } },
       () => { if (mine === request.current) { setAnswer({ kind: 'failed' }); setBusy(false); } },
     );
-  }, [db, scope, choiceKey, refreshRevision, attempt, load]);
+  }, [db, scope, choiceKey, refreshRevision, attempt, ratesRevision, load]);
+
+  // D201: after a ready answer, ask the bank once for the missing rates it publishes; offline, wait for a tap or for "online".
+  function fetchRates(missing: readonly MissingExchangeRate[]): void {
+    if (rates === null) return;
+    const pairs = ecbRatesToFetchOnItsOwn(missing, asked.current);
+    if (pairs.length === 0) return;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) { setRatesFetch({ fetching: false, outcome: { kind: 'offline' } }); return; }
+    for (const pair of pairs) asked.current.add(missingRateKey(pair));
+    ratesAbort.current?.abort();
+    const controller = new AbortController();
+    ratesAbort.current = controller;
+    setRatesFetch(current => ({ fetching: true, outcome: current.outcome }));
+    void fetchMissingEcbRates(db, rates, pairs, { now: nowRef.current(), signal: controller.signal }).then(result => {
+      if (controller.signal.aborted) return;
+      setRatesFetch({ fetching: false, outcome: { kind: 'answered', result } });
+      if (result.ok && result.saved > 0) setRatesRevision(current => current + 1);
+    });
+  }
+  const missingRates = answer?.kind === 'answer' && answer.result.kind === 'ready' ? answer.result.dashboard.inHomeCurrency.missing : null;
+  useEffect(() => {
+    if (busy || missingRates === null) return;
+    fetchRates(missingRates);
+  }, [busy, missingRates]); // eslint-disable-line react-hooks/exhaustive-deps
+  function retryRates(): void {
+    if (missingRates === null) return;
+    ratesFocus.current = true;
+    for (const pair of missingRates) asked.current.delete(missingRateKey(pair));
+    fetchRates(missingRates);
+  }
+  // After the rates' "Try again", focus goes to the currency note's link, or to the new "Try again" (WCAG 2.4.3).
+  useEffect(() => {
+    if (!ratesFocus.current || ratesFetch.fetching || busy) return;
+    ratesFocus.current = false;
+    const link = region.current?.querySelector<HTMLElement>('.kairos-results__notice a[href]');
+    const retry = region.current?.querySelector<HTMLElement>('.kairos-results__rates .kairos-error-state button:not([disabled])');
+    (retry ?? link)?.focus();
+  }, [ratesFetch, busy]);
 
   const status = busy && answer === null ? 'loading' : statusOf(answer);
 
@@ -240,6 +306,7 @@ export function ResultsDashboard({ db, scope, choice, onChoiceChange, renderTrad
         : <EmptyState icon="analysis" headingLevel={3} title="No closed trades yet" message="A trade counts here once it is closed." action={<ResultsLink to="/journal">Log a trade</ResultsLink>} />) : null}
     {status === 'ready' && dashboard !== null ? <>
       {homeWords ? <p className="kairos-results__notice" data-home-currency={dashboard.inHomeCurrency.homeCurrency}>{homeWords.text} <ResultsLink to="/currency">{homeWords.link}</ResultsLink></p> : null}
+      <RatesLine state={ratesFetch} live={live} onRetry={retryRates} />
       <PeriodResult dashboard={dashboard} glow={glow} renderTradeLink={renderTradeLink} />
       <ResultsDays key={`${dashboard.period.kind}:${dashboard.period.fromDayKey ?? ''}:${dashboard.period.toDayKey ?? ''}`} dashboard={dashboard} renderTradeLink={renderTradeLink} />
       <DisciplineScorePanel title={practice ? 'Your practice discipline' : 'Your discipline'} state={dashboard.discipline} periodLabel={periodLabel} />

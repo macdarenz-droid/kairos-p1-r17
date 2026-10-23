@@ -29,7 +29,7 @@ const wallClock = (): string => new Date().toISOString();
 const PLAN_KEYS = ['side', 'entry', 'stop', 'quantity'] as const;
 
 /** Practice: paper trades, saved with the Journal's form and listed and pictured with the practice scope; nothing here reaches the Journal's real results, goals, discipline score or Home. */
-export function PracticeRoute({ db = kairosDatabase, now }: PracticeRouteProps) {
+export function PracticeRoute({ db = kairosDatabase, now, rates = null }: PracticeRouteProps) {
   const clock = now ?? wallClock;
   const [historyStatus, setHistoryStatus] = useState<TradeStatus | ''>('');
   const [listNotice, setListNotice] = useState('');
@@ -62,7 +62,7 @@ export function PracticeRoute({ db = kairosDatabase, now }: PracticeRouteProps) 
 
       <ResultsDashboard db={db} scope="practice" now={clock}
         choice={readVisualPnlPeriodChoice(searchParams)} onChoiceChange={choice => setSearchParams(writeVisualPnlPeriodChoice(choice, searchParams))}
-        renderTradeLink={id => <ReviewTradeLink id={id} />} refreshRevision={practiceRevision + disciplineRevision} glow={false} live={false} />
+        renderTradeLink={id => <ReviewTradeLink id={id} />} refreshRevision={practiceRevision + disciplineRevision} glow={false} live={false} rates={rates} />
       <CoachCard db={db} scope="practice" now={clock} refreshRevision={practiceRevision} disciplineRevision={disciplineRevision} />
 
       <JournalHistoryList db={db} updateNotice={listNotice} onTradeDeleted={async notice => { await pages.refresh(); changed(); setListNotice(notice); }} onTradeUpdated={async () => { await pages.refresh(); changed(); setListNotice('Practice trade updated. Your saved details are below.'); }} onTradeOpened={async notice => { await pages.refresh(); changed(); setListNotice(notice); }} onDisciplineSaved={() => setDisciplineRevision(value => value + 1)} allowedSources={['paper']} disciplineSources={['paper', 'replay']} entries={pages.entries} isLoading={pages.isLoading} errorMessage={pages.failed ? 'Kairos could not load your practice trades. Your stored trades were not changed.' : null} hasOlder={pages.hasOlder} isLoadingOlder={pages.isLoadingOlder} olderFailed={pages.olderFailed} onShowOlder={pages.showOlder} onRetry={pages.refresh} statusFilter={historyStatus} onStatusFilterChange={setHistoryStatus} />

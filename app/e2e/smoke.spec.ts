@@ -841,3 +841,71 @@ test('(q) Market data through the Kairos server: sources on the pictures, the re
   await expect(page.getByText('Unavailable · Live prices', { exact: false })).toHaveCount(0);
   expect(errors).toEqual([]);
 });
+
+test('(r) Your results fetch a missing bank rate on their own', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  await activate(page);
+  const bankRequests: string[] = [];
+  let bankOnline = true;
+  const BANK_RATES: Record<string, string> = { USD: '1.146', JPY: '162.5' };
+  await page.route(url => url.hostname === 'data-api.ecb.europa.eu', async route => {
+    const url = new URL(route.request().url());
+    bankRequests.push(`${url.pathname}${url.search}`);
+    if (!bankOnline) return route.abort('internetdisconnected');
+    const currencies = url.pathname.split('/')[4].split('.')[1].split('+');
+    const start = url.searchParams.get('startPeriod')!, end = url.searchParams.get('endPeriod')!;
+    const lines = ['KEY,FREQ,CURRENCY,CURRENCY_DENOM,EXR_TYPE,EXR_SUFFIX,TIME_PERIOD,OBS_VALUE'];
+    for (let time = Date.parse(`${start}T00:00:00Z`); new Date(time).toISOString().slice(0, 10) <= end; time += 86_400_000) {
+      const day = new Date(time).toISOString().slice(0, 10);
+      for (const currency of currencies) if (BANK_RATES[currency]) lines.push(`EXR.D.${currency}.EUR.SP00.A,D,${currency},EUR,SP00,A,${day},${BANK_RATES[currency]}`);
+    }
+    return route.fulfill({ status: 200, contentType: 'text/csv', headers: { 'access-control-allow-origin': '*' }, body: lines.join('\n') });
+  });
+
+  await page.goto('/analysis');
+  await expect(page.getByText('Time zone: Asia/Manila')).toBeVisible();
+  await page.goto('/currency');
+  await page.getByLabel('Show my totals in').selectOption('EUR');
+  await page.getByRole('button', { name: 'Save my currency' }).click();
+  await expect(page.getByText('Saved. Your totals are shown in EUR (Euro).')).toBeVisible();
+
+  await page.goto('/journal');
+  const quickLog = async (symbol: string, entry: string, exit: string, quantity: string, currency: string) => {
+    await page.getByRole('button', { name: 'Quick log' }).click();
+    await page.getByLabel(/^Market/).selectOption('stock');
+    await page.getByLabel(/^Symbol/).fill(symbol);
+    await page.getByLabel(/^Direction/).selectOption('long');
+    await page.getByLabel(/^Entry price/).fill(entry);
+    await page.getByLabel(/^Exit price/).fill(exit);
+    await page.getByLabel(/^Quantity/).fill(quantity);
+    await page.getByRole('button', { name: 'Set opened time to now' }).click();
+    await page.getByRole('button', { name: 'Set closed time to now' }).click();
+    await page.getByLabel('Currency code').fill(currency);
+    await page.getByRole('button', { name: 'Save trade' }).click();
+    await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+  };
+  await quickLog('aapl', '187.5', '190', '10', 'USD');
+
+  await page.goto('/analysis');
+  const results = page.getByRole('region', { name: 'Your results' });
+  await expect(results).toContainText('Totals in EUR. 1 trade in another currency was converted to EUR.');
+  await expect(results.locator('.kairos-stat').filter({ hasText: 'Result after fees' })).toContainText('EUR');
+  expect(bankRequests).toHaveLength(1);
+  await page.reload();
+  await expect(results).toContainText('Totals in EUR. 1 trade in another currency was converted to EUR.');
+  expect(bankRequests).toHaveLength(1);
+
+  bankOnline = false;
+  await page.goto('/journal');
+  await quickLog('7203.t', '2500', '2510', '100', 'JPY');
+  await page.goto('/analysis');
+  await expect(results.getByText('The missing exchange rates could not be fetched.', { exact: false })).toBeVisible();
+  await expect(results).toContainText('Unavailable');
+  bankOnline = true;
+  await results.getByRole('button', { name: 'Try again' }).click();
+  await expect(results.getByText('Got 1 exchange rate from the European Central Bank.')).toBeVisible();
+  await expect(results.getByText('Unavailable', { exact: false })).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  expect(errors).toEqual([]);
+});
