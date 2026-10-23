@@ -109,6 +109,16 @@ describe('T-051c Analysis opens on "Your results", and "Chart" is one tap away',
     expect(option('Your results')).toHaveFocus();
   });
 
+  it('a press that leaves focus on the page does not move it to the heading', async () => {
+    await route('/analysis');
+    await readyResults();
+    (document.activeElement as HTMLElement | null)?.blur();
+    fireEvent.click(option('Chart'));
+    await screen.findByRole('region', { name: 'Choose a saved trade' });
+    await act(async () => { await Promise.resolve(); });
+    expect(screen.getByRole('heading', { level: 1, name: 'Analysis' })).not.toHaveFocus();
+  });
+
   it('"Refresh" reloads the results', async () => {
     const { db } = await route('/analysis');
     await readyResults();

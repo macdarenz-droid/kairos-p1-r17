@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import '@testing-library/jest-dom/vitest';
 import Dexie from 'dexie';
-import { useState } from 'react';
+import { StrictMode, useState } from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -88,6 +88,20 @@ describe('T-051c the time zone on first use', () => {
     expect(within(found).getByText('Time zone: Asia/Manila')).toBeInTheDocument();
     expect(within(found).getByRole('link', { name: 'Change your time zone' })).toHaveAttribute('href', '/settings');
     expect(await readVisualPnlTimeZonePreference(createKairosRepositories(db).metadata)).toBe('Asia/Manila');
+  });
+
+  it('keeps the first-use line when a reload starts before the zone is saved', async () => {
+    const db = await database(null);
+    const view = render(<MemoryRouter><Host db={db} refreshRevision={0} /></MemoryRouter>);
+    view.rerender(<MemoryRouter><Host db={db} refreshRevision={1} /></MemoryRouter>);
+    const found = await settled();
+    expect(within(found).getByRole('status')).toHaveTextContent("Kairos set your time zone to Asia/Manila, this device's time zone.");
+    cleanup();
+
+    const strictDb = await database(null);
+    render(<StrictMode><MemoryRouter><Host db={strictDb} /></MemoryRouter></StrictMode>);
+    const strict = await settled();
+    expect(within(strict).getByRole('status')).toHaveTextContent("Kairos set your time zone to Asia/Manila, this device's time zone.");
   });
 
   it('keeps a saved zone', async () => {

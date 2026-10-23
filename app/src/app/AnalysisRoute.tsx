@@ -87,11 +87,12 @@ export function AnalysisRoute({ load = loadTradeReview, db = kairosDatabase, now
   useEffect(() => {
     if (view !== 'chart' || loading) return;
     const lost = document.activeElement === null || document.activeElement === document.body;
+    // A switch press never moves focus, even where the press left it on the page (Safari does not focus a tapped button).
     if (switching.current) {
       switching.current = false;
       focusedFor.current = selectionN;
       visitFocused.current = true;
-      if (!lost) return;
+      return;
     }
     if (focusedFor.current === selectionN && !lost) return;
     focusedFor.current = selectionN;

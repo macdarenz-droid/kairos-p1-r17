@@ -96,7 +96,8 @@ export function ResultsDashboard({ db, scope, choice, onChoiceChange, renderTrad
   const [busy, setBusy] = useState(true);
   const [attempt, setAttempt] = useState(0);
   const [zoneStart, setZoneStart] = useState<VisualPnlTimeZoneStart | null>(null);
-  const started = useRef<VisualPnlTimeZoneStart | null>(null);
+  /** The one first-use start of this mount, shared by every load that runs before it settles; null again after a failure, so "Try again" runs it once more. */
+  const started = useRef<Promise<VisualPnlTimeZoneStart> | null>(null);
   const request = useRef(0);
   const firstLoadSent = useRef(false);
   /** Set by "Try again", "Show all time" and "Show this month": after the next answer, focus goes to the period list (or the new "Try again"). */
@@ -111,11 +112,13 @@ export function ResultsDashboard({ db, scope, choice, onChoiceChange, renderTrad
     const mine = ++request.current;
     setBusy(true);
     (async () => {
-      if (started.current === null) {
-        const start = await startVisualPnlTimeZoneFromDevice(db, readDeviceTimeZone(), nowRef.current());
-        started.current = start;
-        if (mine === request.current) setZoneStart(start);
-      }
+      // A second load (a refresh, focus, or StrictMode's second effect) waits for the same start, so its
+      // 'started-from-device' answer is never replaced by a later 'saved' (D199's first-use line).
+      started.current ??= startVisualPnlTimeZoneFromDevice(db, readDeviceTimeZone(), nowRef.current()).then(
+        start => { setZoneStart(start); return start; },
+        (error: unknown) => { started.current = null; throw error; },
+      );
+      await started.current;
       return load(db, { choice: choiceRef.current, now: nowRef.current(), scope });
     })().then(
       result => { if (mine === request.current) { setAnswer({ kind: 'answer', result }); setBusy(false); } },
