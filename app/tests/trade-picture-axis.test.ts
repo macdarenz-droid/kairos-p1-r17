@@ -114,3 +114,39 @@ describe('T-052b fix r1 the axis follows clock changes, every language, and long
     }
   });
 });
+
+describe('T-052b fix r2 skipped hours, years and midnight', () => {
+  const unique = (values: readonly unknown[]) => new Set(values).size === values.length;
+
+  it('gives no label to an hour the clock skips, and never the same time twice (London, 29 March)', () => {
+    const ticks = tradePictureTimeTicks(at('2026-03-28T23:30:00.000Z'), at('2026-03-29T03:30:00.000Z'), 'Europe/London');
+    expect(ticks.length).toBeGreaterThanOrEqual(3);
+    expect(unique(ticks.map(tick => tick.ms))).toBe(true);
+    expect(unique(ticks.map(tick => tick.label))).toBe(true);
+  });
+
+  it('labels a day whose midnight is skipped at the moment of the jump (Sao Paulo, 4 November 2018)', () => {
+    const ticks = tradePictureTimeTicks(at('2018-11-02T12:00:00.000Z'), at('2018-11-06T12:00:00.000Z'), 'America/Sao_Paulo');
+    const days = ticks.map(tick => format({ timeZone: 'America/Sao_Paulo', day: 'numeric' }, tick.ms));
+    expect(days).toEqual(['3', '4', '5', '6']);
+    expect(unique(ticks.map(tick => tick.label))).toBe(true);
+  });
+
+  it('names the year from three-month steps up, and labels six years too', () => {
+    const from = at('2026-09-15T00:00:00.000Z');
+    for (const span of [425 * DAY, 730 * DAY, 1461 * DAY, 2200 * DAY]) {
+      const ticks = tradePictureTimeTicks(from, from + span, 'UTC');
+      expect(ticks.length).toBeGreaterThanOrEqual(2);
+      expect(unique(ticks.map(tick => tick.label))).toBe(true);
+      expect(ticks.map(tick => tick.label)).toEqual(ticks.map(tick => format({ timeZone: 'UTC', month: 'short', year: 'numeric' }, tick.ms)));
+    }
+  });
+
+  it('gives the date for a midnight tick on an hours axis', () => {
+    const ticks = tradePictureTimeTicks(at('2026-09-19T06:00:00.000Z'), at('2026-09-21T06:00:00.000Z'), 'UTC');
+    const midnight = ticks.find(tick => tick.ms === at('2026-09-20T00:00:00.000Z'))!;
+    expect(midnight.label).toBe(format({ timeZone: 'UTC', day: 'numeric', month: 'short' }, midnight.ms));
+    const noon = ticks.find(tick => tick.ms === at('2026-09-20T12:00:00.000Z'))!;
+    expect(noon.label).toBe(format({ timeZone: 'UTC', timeStyle: 'short' }, noon.ms));
+  });
+});
