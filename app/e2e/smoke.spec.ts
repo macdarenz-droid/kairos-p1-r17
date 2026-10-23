@@ -1136,8 +1136,14 @@ test('(v) Where am I: back to your place, the tab you are in, and the top of a n
   // Coach belongs to Analysis (D220), so Analysis is marked as the part you are in.
   await expect(page.getByRole('link', { name: 'Analysis', exact: true })).toHaveAttribute('aria-current', 'true');
 
-  // Back returns to the Journal, at the place you left it.
+  // The skip link adds a "#" entry the browser names like the first screen; Back still names and opens the Journal (fix r1).
+  await page.locator('.kairos-skip-link').focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/#kairos-main-content$/);
+  // Back returns to the Journal, at the place you left it, and focus goes to its heading.
   await page.getByRole('button', { name: 'Back to Journal' }).click();
+  await expect(page).toHaveURL(/\/journal$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Journal' })).toBeFocused();
   await expect(page.getByRole('heading', { level: 1, name: 'Journal' })).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThanOrEqual(left - 2);
   expect(Math.abs(await page.evaluate(() => window.scrollY) - left)).toBeLessThanOrEqual(2);

@@ -1,9 +1,10 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { moreNavigation, navigationTabOf, pageParentOf } from '../src/app/navigation';
 import { appRoutes } from '../src/app/routes';
+import { readLessonCatalog } from '../src/application/learn/lessons';
 
 function renderPath(path: string) {
   const router = createMemoryRouter(appRoutes, { initialEntries: [path] });
@@ -12,7 +13,11 @@ function renderPath(path: string) {
 }
 
 beforeAll(async () => {
-  await Promise.all([import('../src/app/AnalysisRoute'), import('../src/app/JournalRoute')]);
+  // Every screen these tests open, loaded once, so a lazy screen never outlasts a find (T-053a fix r1).
+  await Promise.all([
+    import('../src/app/AnalysisRoute'), import('../src/app/JournalRoute'), import('../src/app/GoalsRoute'), import('../src/app/LibraryRoute'),
+    import('../src/features/discipline/CoachScreen'), import('../src/features/learn/LessonListScreen'), import('../src/features/learn/LessonReaderScreen'),
+  ]);
 }, 30_000);
 
 describe('P8.1 navigation shell', () => {
@@ -91,6 +96,22 @@ describe('T-053a where am I', () => {
     fireEvent.click(back);
     await screen.findByRole('heading', { level: 1, name: 'Journal' });
     expect(router.state.location.pathname).toBe('/journal');
+  });
+
+  it('T-053a fix r1: after the back control, focus is on the new page\'s heading, even where that page has its own back control', async () => {
+    const lesson = readLessonCatalog().lessons[0]!;
+    const router = renderPath('/library');
+    await screen.findByRole('heading', { level: 1, name: 'Library' });
+    await act(async () => { await router.navigate('/library/lessons'); });
+    await screen.findByRole('heading', { level: 1, name: 'Lessons' });
+    await act(async () => { await router.navigate(`/library/lessons/${lesson.id}`); });
+    await screen.findByRole('heading', { level: 1, name: lesson.title });
+    const back = screen.getByRole('button', { name: 'Back to Lessons' });
+    back.focus();
+    fireEvent.click(back);
+    const lessons = await screen.findByRole('heading', { level: 1, name: 'Lessons' });
+    await waitFor(() => expect(lessons).toHaveFocus());
+    expect(screen.getByRole('button', { name: 'Back to Library' })).not.toHaveFocus();
   });
 
   it('a tab has no back control', async () => {

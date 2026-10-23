@@ -1,5 +1,4 @@
 .kairos-library { display:grid; gap:var(--kairos-space-5); }
-.kairos-library__heading h1 { margin-top:var(--kairos-space-1); }
 .kairos-library__section { display:grid; gap:var(--kairos-space-4); }
 .kairos-library__section h2 { margin:0; font-size:var(--kairos-font-size-lg); }
 .kairos-library__note, .kairos-library__empty { margin:0; color:var(--kairos-text-muted); font-size:var(--kairos-font-size-sm); line-height:var(--kairos-line-height-normal); }

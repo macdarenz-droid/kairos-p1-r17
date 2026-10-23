@@ -1,7 +1,8 @@
 html {
   background: var(--kairos-background-depth);
   /* D218: a focused element is never under the sticky header or the bottom bar (P40's overlap). */
-  scroll-padding-top: calc(var(--kairos-control-lg) + (var(--kairos-space-3) * 2) + env(safe-area-inset-top, 0px) + 1px + var(--kairos-space-2));
+  /* The header is its row's min-height (padding inside it), its 1px line and the safe area; then a little air. */
+  scroll-padding-top: calc(var(--kairos-control-lg) + 1px + env(safe-area-inset-top, 0px) + var(--kairos-space-2));
   scroll-padding-bottom: calc(var(--kairos-layout-navigation-height) + env(safe-area-inset-bottom, 0px) + var(--kairos-space-2));
 }
 body {

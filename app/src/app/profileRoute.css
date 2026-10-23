@@ -1,6 +1,4 @@
 .kairos-profile { display:grid; gap:var(--kairos-space-6); }
-.kairos-profile__heading h1 { margin-top:var(--kairos-space-1); }
-.kairos-profile__eyebrow { margin:0 !important; color:var(--kairos-accent-primary) !important; font-size:var(--kairos-font-size-xs); font-weight:var(--kairos-font-weight-semibold); letter-spacing:.08em; text-transform:uppercase; }
 .kairos-profile-card { display:grid; gap:var(--kairos-space-3); padding:var(--kairos-space-5); border:1px solid var(--kairos-border-subtle); border-radius:var(--kairos-radius-lg); background:var(--kairos-surface-card); }
 .kairos-profile-card h2 { margin:0; font-size:var(--kairos-font-size-md); }
 .kairos-profile-card p { margin:0; color:var(--kairos-text-secondary); overflow-wrap:anywhere; }

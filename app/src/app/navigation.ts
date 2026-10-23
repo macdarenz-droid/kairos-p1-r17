@@ -52,6 +52,11 @@ export const moreNavigation: readonly KairosMoreItem[] = Object.freeze(moreNavig
 /** Pages that belong to a tab without sitting under its address (D220): the tab is named by its address. */
 const PAGES_FILED_UNDER: Readonly<Record<string, string>> = Object.freeze({ '/coach': '/analysis', '/patterns': '/analysis' });
 
+/** A page's address without a trailing slash ("/more/" is the More page). */
+export function normalizePathname(pathname: string): string {
+  return pathname.length > 1 ? pathname.replace(/\/+$/, '') || '/' : pathname;
+}
+
 const isAtOrUnder = (pathname: string, item: KairosNavigationItem) =>
   item.end ? pathname === item.to : pathname === item.to || pathname.startsWith(`${item.to}/`);
 
@@ -62,7 +67,8 @@ export type KairosNavigationTab = (typeof primaryNavigation)[number];
  * and Patterns name Analysis (D220); a page listed under More, or under such a page, names More; a page with no home
  * (not found) gives null.
  */
-export function navigationTabOf(pathname: string): KairosNavigationTab | null {
+export function navigationTabOf(address: string): KairosNavigationTab | null {
+  const pathname = normalizePathname(address);
   const tab = primaryNavigation.find((item) => isAtOrUnder(pathname, item));
   if (tab !== undefined) return tab;
   const filed = Object.entries(PAGES_FILED_UNDER).find(([page]) => pathname === page || pathname.startsWith(`${page}/`));
@@ -73,7 +79,8 @@ export function navigationTabOf(pathname: string): KairosNavigationTab | null {
 
 /** Whether the page is one of the bottom-bar tabs itself (not a page under one). */
 export function isNavigationTabPage(pathname: string): boolean {
-  return primaryNavigation.some((item) => item.to === pathname);
+  const path = normalizePathname(pathname);
+  return primaryNavigation.some((item) => item.to === path);
 }
 
 export interface KairosPageParent {
@@ -97,7 +104,7 @@ const PARENT_PAGES: Readonly<Record<string, string>> = Object.freeze({
  * go to Analysis; a page listed under More goes to More; any other page goes Home. Null for a tab.
  */
 export function pageParentOf(pathname: string): KairosPageParent | null {
-  const path = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
+  const path = normalizePathname(pathname);
   if (isNavigationTabPage(path)) return null;
   const segments = path.split('/').filter((segment) => segment !== '');
   for (let length = segments.length - 1; length >= 1; length -= 1) {

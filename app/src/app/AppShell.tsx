@@ -4,8 +4,8 @@ import { browserTradePictureCandleLoader } from './tradePictureCandleBrowserDeps
 import { useEffect, useLayoutEffect, useRef, type CSSProperties } from 'react';
 import { Icon, type IconName } from '../design-system/icons/Icon';
 import { ToastProvider } from '../design-system/primitives';
-import { isNavigationTabPage, navigationTabOf, pageParentOf, primaryNavigation } from './navigation';
-import { backStepOf, EMPTY_BACK_TRAIL, recordBackTrailNavigation, recordBackTrailTitle, type BackTrail } from './backTrail';
+import { isNavigationTabPage, navigationTabOf, normalizePathname, pageParentOf, primaryNavigation } from './navigation';
+import { backStepOf, backTrailEntryId, EMPTY_BACK_TRAIL, recordBackTrailNavigation, recordBackTrailTitle, type BackTrail } from './backTrail';
 import { UpdatePrompt, type UpdatePromptPort } from '../features/shell/UpdatePrompt';
 import { activateWaitingServiceWorker, subscribeServiceWorkerStatus } from '../pwa/serviceWorkerRegistration';
 
@@ -71,6 +71,12 @@ function readScrollPlaces(): Map<string, number> {
   }
 }
 
+/** Notes a page's place as the newest, so the places kept across a reload are the most recent ones. */
+function notePlace(places: Map<string, number>, key: string, place: number): void {
+  places.delete(key);
+  places.set(key, place);
+}
+
 function keepScrollPlaces(places: ReadonlyMap<string, number>): void {
   try {
     window.sessionStorage.setItem(SCROLL_PLACES_KEY, JSON.stringify([...places].slice(-SCROLL_PLACES_KEPT)));
@@ -90,10 +96,11 @@ function useScrollPlaces(location: Location): void {
   places.current ??= readScrollPlaces();
   const current = useRef<string | null>(null);
   const shownPath = useRef<string | null>(null);
+  const shownKey = useRef<string | null>(null);
   useEffect(() => {
     const kept = places.current!;
     if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual';
-    const remember = () => { if (current.current !== null) kept.set(current.current, window.scrollY); };
+    const remember = () => { if (current.current !== null) notePlace(kept, current.current, window.scrollY); };
     const leave = () => keepScrollPlaces(kept);
     window.addEventListener('scroll', remember, { passive: true });
     window.addEventListener('pagehide', leave);
@@ -101,11 +108,15 @@ function useScrollPlaces(location: Location): void {
   }, []);
   useLayoutEffect(() => {
     // A first screen's history key is always "default", so an entry is named by its key and its page together.
-    const key = isNavigationTabPage(location.pathname) ? `tab:${location.pathname}` : `entry:${location.key}:${location.pathname}`;
-    const samePage = shownPath.current === location.pathname;
+    const pathname = normalizePathname(location.pathname);
+    const key = isNavigationTabPage(pathname) ? `tab:${pathname}` : `entry:${location.key}:${pathname}`;
+    // Another entry of the same page (a changed query) keeps the place; the same entry again (React's StrictMode
+    // runs this twice on mount) reaches for its place again.
+    const samePage = shownPath.current === pathname && shownKey.current !== location.key;
     current.current = key;
-    shownPath.current = location.pathname;
-    if (samePage) { places.current!.set(key, window.scrollY); return; }
+    shownPath.current = pathname;
+    shownKey.current = location.key;
+    if (samePage) { notePlace(places.current!, key, window.scrollY); return; }
     const place = places.current!.get(key) ?? 0;
     if (place !== window.scrollY) window.scrollTo(0, place);
     if (place <= 0 || typeof requestAnimationFrame !== 'function') return;
@@ -116,6 +127,7 @@ function useScrollPlaces(location: Location): void {
       cancelAnimationFrame(frame);
       for (const name of stopEvents) window.removeEventListener(name, stop);
     };
+    // Kept for the whole second, not only until first reached: what loads above the place can still move it.
     const reach = () => {
       if (performance.now() > until) { stop(); return; }
       if (Math.abs(window.scrollY - place) > 1) window.scrollTo(0, place);
@@ -131,17 +143,23 @@ function useScrollPlaces(location: Location): void {
 function useBackTrail(location: Location) {
   const navigationType = useNavigationType();
   const trail = useRef<BackTrail>(EMPTY_BACK_TRAIL);
-  const shownKey = useRef<string | null>(null);
-  if (shownKey.current !== location.key) {
-    trail.current = recordBackTrailNavigation(trail.current, { kind: navigationType, key: location.key, pathname: location.pathname, fromKey: shownKey.current });
-    shownKey.current = location.key;
+  const shownId = useRef<string | null>(null);
+  const pathname = normalizePathname(location.pathname);
+  const id = backTrailEntryId(location.key, pathname);
+  if (shownId.current !== id) {
+    const up = (location.state as { readonly [BACK_UP_STATE]?: unknown } | null)?.[BACK_UP_STATE] === true;
+    trail.current = recordBackTrailNavigation(trail.current, { kind: navigationType, id, pathname, fromId: shownId.current, up });
+    shownId.current = id;
   }
-  const key = location.key;
   return {
-    step: backStepOf(trail.current, key, pageParentOf(location.pathname)),
-    onTitle: (title: string) => { trail.current = recordBackTrailTitle(trail.current, key, title); },
+    id,
+    step: backStepOf(trail.current, id, pageParentOf(pathname)),
+    onTitle: (title: string) => { trail.current = recordBackTrailTitle(trail.current, id, title); },
   };
 }
+
+/** Marks a navigation made by the "up" link, so the parent page does not offer to go back down (D218). */
+const BACK_UP_STATE = 'kairosBackUp';
 
 /** The back control above a page that isn't a tab: back to where you came from, or up to the page's parent. */
 function BackControl({ step }: { readonly step: NonNullable<ReturnType<typeof backStepOf>> }) {
@@ -149,7 +167,7 @@ function BackControl({ step }: { readonly step: NonNullable<ReturnType<typeof ba
   const content = <><Icon name="chevron-down" size={16} className="kairos-shell__back-icon" />{step.label}</>;
   return <div className="kairos-shell__back-row">
     {step.kind === 'up'
-      ? <Link className="kairos-shell__back" to={step.to} aria-label={`Back to ${step.label}`}>{content}</Link>
+      ? <Link className="kairos-shell__back" to={step.to} state={{ [BACK_UP_STATE]: true }} aria-label={`Back to ${step.label}`}>{content}</Link>
       : <button type="button" className="kairos-shell__back" aria-label={`Back to ${step.label}`} onClick={() => { void navigate(-step.steps); }}>{content}</button>}
   </div>;
 }
@@ -181,7 +199,8 @@ export function AppShell({ loading = false }: { readonly loading?: boolean }) {
       <UpdatePrompt port={updatePromptPort} />
       <ToastProvider>
         <main className="kairos-shell__content" id={MAIN_ID} tabIndex={-1}>
-          {back.step === null ? null : <BackControl step={back.step} />}
+          {/* A new control for each entry: the one that had focus goes away, so focus moves to the new heading (D179). */}
+          {back.step === null ? null : <BackControl key={back.id} step={back.step} />}
           <TradePictureCandleLoaderContext.Provider value={browserTradePictureCandleLoader()}><Outlet /></TradePictureCandleLoaderContext.Provider>
         </main>
       </ToastProvider>
@@ -194,7 +213,7 @@ export function AppShell({ loading = false }: { readonly loading?: boolean }) {
               key={item.to}
               to={item.to}
               className={`kairos-shell__nav-link${item === tab ? ' kairos-shell__nav-link--active' : ''}`}
-              aria-current={item === tab ? (location.pathname === item.to ? 'page' : 'true') : undefined}
+              aria-current={item === tab ? (normalizePathname(location.pathname) === item.to ? 'page' : 'true') : undefined}
             >
               <Icon name={navigationIcons[item.to] ?? 'more'} size={20} className="kairos-shell__nav-icon" />
               {item.label}
