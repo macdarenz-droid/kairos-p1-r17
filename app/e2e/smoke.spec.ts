@@ -890,7 +890,9 @@ test('(r) Your results fetch a missing bank rate on their own', async ({ page })
   await page.goto('/analysis');
   const results = page.getByRole('region', { name: 'Your results' });
   await expect(results).toContainText('Totals in EUR. 1 trade in another currency was converted to EUR.');
-  await expect(results.locator('.kairos-stat').filter({ hasText: 'Result after fees' })).toContainText('EUR');
+  const resultTile = results.locator('.kairos-stat').filter({ hasText: 'Result after fees' });
+  await expect(resultTile).toContainText('EUR');
+  await expect(resultTile).not.toContainText('Not available');
   expect(bankRequests).toHaveLength(1);
   await page.reload();
   await expect(results).toContainText('Totals in EUR. 1 trade in another currency was converted to EUR.');

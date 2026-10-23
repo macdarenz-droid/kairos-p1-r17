@@ -200,10 +200,11 @@ export function ResultsDashboard({ db, scope, choice, onChoiceChange, renderTrad
   const [ratesFetch, setRatesFetch] = useState<RatesFetch>(NO_RATES_FETCH);
   /** Bumped after rates were saved: reloads the dashboard with the same choice. */
   const [ratesRevision, setRatesRevision] = useState(0);
-  const ratesAbort = useRef<AbortController | null>(null);
-  /** Set by the rates' "Try again": after the answer, focus goes to the currency note's link, or the new "Try again". */
-  const ratesFocus = useRef(false);
-  useEffect(() => () => ratesAbort.current?.abort(), []);
+  /** The running request and the rates it asks for; a newer request takes them over, so a period change never drops them. */
+  const ratesRunning = useRef<Readonly<{ controller: AbortController; pairs: readonly MissingExchangeRate[] }> | null>(null);
+  /** Set by a tap on the rates' "Try again" to the state it was tapped in: after a newer answer, focus goes to the currency note's link, or the new "Try again". */
+  const ratesFocus = useRef<RatesFetch | null>(null);
+  useEffect(() => () => ratesRunning.current?.controller.abort(), []);
 
   useEffect(() => {
     const mine = ++request.current;
@@ -226,16 +227,24 @@ export function ResultsDashboard({ db, scope, choice, onChoiceChange, renderTrad
   // D201: after a ready answer, ask the bank once for the missing rates it publishes; offline, wait for a tap or for "online".
   function fetchRates(missing: readonly MissingExchangeRate[]): void {
     if (rates === null) return;
-    const pairs = ecbRatesToFetchOnItsOwn(missing, asked.current);
-    if (pairs.length === 0) return;
+    const running = ratesRunning.current;
+    if (running === null && ecbRatesToFetchOnItsOwn(missing, new Set()).length === 0) {
+      // Nothing on screen comes from the bank: a line about other rates goes, except "Got N", which told of this reload.
+      setRatesFetch(current => (current.outcome.kind === 'offline' || (current.outcome.kind === 'answered' && !(current.outcome.result.ok && current.outcome.result.saved > 0)) ? NO_RATES_FETCH : current));
+      return;
+    }
+    const fresh = ecbRatesToFetchOnItsOwn(missing, asked.current);
+    if (fresh.length === 0) return;
     if (typeof navigator !== 'undefined' && navigator.onLine === false) { setRatesFetch({ fetching: false, outcome: { kind: 'offline' } }); return; }
-    for (const pair of pairs) asked.current.add(missingRateKey(pair));
-    ratesAbort.current?.abort();
+    for (const pair of fresh) asked.current.add(missingRateKey(pair));
+    const pairs = running === null ? fresh : [...running.pairs, ...fresh];
+    running?.controller.abort();
     const controller = new AbortController();
-    ratesAbort.current = controller;
+    ratesRunning.current = { controller, pairs };
     setRatesFetch(current => ({ fetching: true, outcome: current.outcome }));
     void fetchMissingEcbRates(db, rates, pairs, { now: nowRef.current(), signal: controller.signal }).then(result => {
       if (controller.signal.aborted) return;
+      ratesRunning.current = null;
       setRatesFetch({ fetching: false, outcome: { kind: 'answered', result } });
       if (result.ok && result.saved > 0) setRatesRevision(current => current + 1);
     });
@@ -246,15 +255,19 @@ export function ResultsDashboard({ db, scope, choice, onChoiceChange, renderTrad
     fetchRates(missingRates);
   }, [busy, missingRates]); // eslint-disable-line react-hooks/exhaustive-deps
   function retryRates(): void {
-    if (missingRates === null) return;
-    ratesFocus.current = true;
+    // The notice's "online" listener calls this too: never while a request runs, and focus moves only from the notice itself.
+    if (missingRates === null || ratesRunning.current !== null) return;
+    const active = typeof document === 'undefined' ? null : document.activeElement;
+    ratesFocus.current = active !== null && (region.current?.querySelector('.kairos-results__rates')?.contains(active) ?? false) ? ratesFetch : null;
     for (const pair of missingRates) asked.current.delete(missingRateKey(pair));
     fetchRates(missingRates);
   }
   // After the rates' "Try again", focus goes to the currency note's link, or to the new "Try again" (WCAG 2.4.3).
   useEffect(() => {
-    if (!ratesFocus.current || ratesFetch.fetching || busy) return;
-    ratesFocus.current = false;
+    // React may run this for the screen the tap was made on, after the tap: only a newer answer moves focus.
+    const tapped = ratesFocus.current;
+    if (tapped === null || ratesFetch === tapped || ratesFetch.fetching || busy) return;
+    ratesFocus.current = null;
     const link = region.current?.querySelector<HTMLElement>('.kairos-results__notice a[href]');
     const retry = region.current?.querySelector<HTMLElement>('.kairos-results__rates .kairos-error-state button:not([disabled])');
     (retry ?? link)?.focus();
