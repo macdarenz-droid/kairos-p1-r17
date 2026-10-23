@@ -1,3 +1,4 @@
+import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { createPrivateKey, sign } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -948,5 +949,54 @@ test('(s) Your results: a large day and its week fit the calendar at phone width
   expect(fit.page[0]).toBeLessThanOrEqual(fit.page[1]!);
   // The day's colour is the cell's, not the field look Analysis gives other buttons.
   expect(fit.background).toBe('none');
+  expect(errors).toEqual([]);
+});
+
+test('(t) Your results with trades, at phone width', async ({ page }) => {
+  test.setTimeout(120_000);
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  await activate(page);
+  await page.goto('/analysis');
+  await expect(page.getByText('Time zone: Asia/Manila')).toBeVisible();
+  await page.goto('/journal');
+  for (const [symbol, exit] of [['BTCUSDT', '110'], ['BTCUSDT', '120'], ['BTCUSDT', '95'], ['ETHUSDT', '105'], ['ETHUSDT', '85']] as const) {
+    await page.getByRole('button', { name: 'Quick log' }).click();
+    await page.getByLabel(/^Symbol/).fill(symbol);
+    await page.getByLabel(/^Market/).selectOption('crypto');
+    await page.getByLabel(/^Direction/).selectOption('long');
+    await page.getByLabel(/^Entry price/).fill('100');
+    await page.getByLabel(/^Exit price/).fill(exit);
+    await page.getByLabel(/^Quantity/).fill('1');
+    await page.getByRole('button', { name: 'Set opened time to now' }).click();
+    await page.getByRole('button', { name: 'Set closed time to now' }).click();
+    await page.getByLabel('Currency code').fill('USDT');
+    await page.getByRole('button', { name: 'Save trade' }).click();
+    await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+  }
+
+  await page.goto('/analysis');
+  const results = page.getByRole('region', { name: 'Your results' });
+  await expect(results.locator('.kairos-stat').filter({ hasText: 'Result after fees' })).toContainText('+15 USDT');
+  await expect(results.getByRole('region', { name: 'Your numbers' })).toContainText('Won 3 of 5');
+  await expect(results.locator('.kairos-results-calendar [data-cell-amount]').first()).toBeVisible();
+  await expect(results.getByRole('columnheader', { name: 'Week' })).toBeVisible();
+  await expect(results.getByRole('heading', { name: /^Your total in / })).toBeVisible();
+  const heatmap = results.getByRole('region', { name: 'When you trade' });
+  await expect(heatmap.locator('td > button').first()).toBeVisible();
+  const markets = results.getByRole('region', { name: 'Your markets' });
+  await expect(markets.locator('.kairos-results-markets__tile')).toHaveCount(2);
+  await expect(results.getByRole('region', { name: 'Your discipline' })).toBeVisible();
+
+  await heatmap.locator('td > button').first().click();
+  await expect(results.getByRole('heading', { name: /^Trades opened on / })).toBeVisible();
+  await expect(results.locator('.kairos-results-day-trades li')).toHaveCount(5);
+  await markets.locator('.kairos-results-markets__tile').first().click();
+  await expect(results.getByRole('heading', { name: 'Trades in BTCUSDT' })).toBeVisible();
+  await expect(results.locator('.kairos-results-day-trades li')).toHaveCount(3);
+
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  const axe = await new AxeBuilder({ page }).include('.kairos-results').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(axe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
   expect(errors).toEqual([]);
 });

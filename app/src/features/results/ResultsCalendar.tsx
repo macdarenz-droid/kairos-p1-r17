@@ -1,3 +1,4 @@
+import { describeUnavailableWhy } from '../../application/performance/periodWords';
 import { describeVisualPnlCompactAmount, type VisualPnlAggregationSummary, type VisualPnlMonthGridDay, type VisualPnlMonthGridProjection, type VisualPnlMonthTotals, type VisualPnlMonthWeek } from '../../application/visual-pnl';
 import { Icon } from '../../design-system/icons/Icon';
 import { ResultText } from '../../design-system/primitives';
@@ -45,12 +46,7 @@ export function monthLabel(monthKey: string): string {
   return `${MONTH_NAMES[month - 1]} ${year}`;
 }
 
-function unavailableWhy(reason: string): string {
-  if (reason === 'mixed-currencies') return 'trades in different currencies';
-  if (reason === 'unavailable-trade-outcome') return 'a trade has no result yet';
-  if (reason === 'missing-currency-evidence') return 'a trade has no currency';
-  return 'it could not be worked out';
-}
+const unavailableWhy = describeUnavailableWhy;
 
 const OUTCOME_LABEL = { profit: 'Profit', loss: 'Loss', breakeven: 'Break-even' } as const;
 
@@ -77,8 +73,8 @@ function weekAriaLabel(week: VisualPnlMonthWeek): string {
   return `Week of ${weekDays(week)}: ${what}, ${tradesWord(summary.tradeCount)}`;
 }
 
-/** What a cell shows: the short amount (the exact one is in the button's name), or the "not available" shape. */
-function CellResult({ summary }: { readonly summary: VisualPnlAggregationSummary }) {
+/** What a cell shows: the short amount (the exact one is in the button's name), or the "not available" shape. Shared by the heatmap (T-051j). */
+export function CellResult({ summary }: { readonly summary: VisualPnlAggregationSummary }) {
   const short = summary.available ? describeVisualPnlCompactAmount(summary.total) : null;
   return <>
     {short !== null
@@ -108,6 +104,13 @@ function WeekCell({ week, pressed, onSelect }: { readonly week: VisualPnlMonthWe
       <CellResult summary={week.summary} />
     </button>
   </td>;
+}
+
+/** The four colours of a result cell with their shapes and words. Shared by the heatmap (T-051j). */
+export function ColourKey({ className = 'kairos-results-calendar__key' }: { readonly className?: string }) {
+  return <p className={`kairos-results-calendar__legend ${className}`}>
+    <span data-key="profit"><span className="kairos-results-calendar__swatch" /><Icon name="result-up" size={16} /> Profit</span> <span data-key="loss"><span className="kairos-results-calendar__swatch" /><Icon name="result-down" size={16} /> Loss</span> <span data-key="breakeven"><span className="kairos-results-calendar__swatch" /><Icon name="result-flat" size={16} /> Break-even</span> <span data-key="unavailable"><span className="kairos-results-calendar__swatch" /><Icon name="result-unknown" size={16} /> Not available</span>
+  </p>;
 }
 
 /** The month calendar heatmap: presentational only, from a projected month grid (and, in the dashboard, its week and month totals). */
@@ -140,9 +143,7 @@ export function ResultsCalendar({ grid, selectedDayKey, canShowNextMonth, canSho
       </tbody>
     </table>
     {totals?.month ? <MonthTotal monthKey={grid.monthKey} summary={totals.month} pressed={monthSelected} onSelect={onSelectMonth} /> : null}
-    <p className="kairos-results-calendar__legend kairos-results-calendar__key">
-      <span data-key="profit"><span className="kairos-results-calendar__swatch" /><Icon name="result-up" size={16} /> Profit</span> <span data-key="loss"><span className="kairos-results-calendar__swatch" /><Icon name="result-down" size={16} /> Loss</span> <span data-key="breakeven"><span className="kairos-results-calendar__swatch" /><Icon name="result-flat" size={16} /> Break-even</span> <span data-key="unavailable"><span className="kairos-results-calendar__swatch" /><Icon name="result-unknown" size={16} /> Not available</span>
-    </p>
+    <ColourKey />
     <p className="kairos-results-calendar__legend">{totals !== null ? 'The small number is how many trades closed that day, or that week in the Week column.' : 'The small number is how many trades closed that day.'} Stronger colour means a bigger result in this month.</p>
     {grid.scale.kind === 'one-currency' ? <p className="kairos-results-calendar__legend">Amounts in {grid.scale.currency}.</p> : null}
     {grid.scale.kind === 'none' && grid.scale.reason === 'mixed-currencies'

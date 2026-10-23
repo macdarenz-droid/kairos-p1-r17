@@ -1,3 +1,5 @@
+import { visualPnlMondayFirstWeekday } from './dayKeyCalendar';
+
 export type VisualPnlDayKeyBlockReason =
   | 'missing-close-time'
   | 'invalid-close-time'
@@ -129,4 +131,14 @@ export function projectVisualPnlClockTime(instant: string | null, timeZone: stri
   const minute = parts.find((part) => part.type === 'minute')?.value;
   if (hour === undefined || minute === undefined || !/^\d{1,2}$/.test(hour) || !/^\d{2}$/.test(minute)) return null;
   return `${hour.padStart(2, '0')}:${minute}`;
+}
+
+/** U5 (D206): hours in one time-of-day block, six blocks a day (00–03, 04–07, … 20–23), shared by Patterns and the heatmap. */
+export const VISUAL_PNL_HOURS_PER_BLOCK = 4;
+
+/** When a trade opened, in `timeZone`: weekday (Monday 0) and hour; null when the time is missing or can't be read (never the device zone). */
+export function projectVisualPnlOpening(openedAt: string | null, timeZone: string): Readonly<{ weekday: number; hour: number }> | null {
+  const day = projectVisualPnlDayKey(openedAt, timeZone);
+  const hour = projectVisualPnlHourOfDay(openedAt, timeZone);
+  return !day.available || hour === null ? null : Object.freeze({ weekday: visualPnlMondayFirstWeekday(day.dayKey), hour });
 }

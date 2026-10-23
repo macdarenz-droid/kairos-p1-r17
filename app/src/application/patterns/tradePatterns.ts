@@ -7,7 +7,7 @@ import { checkSavedTradeStrategy } from '../discipline/strategyCheck';
 import type { JournalHistoryEntry } from '../journal/historyQuery';
 import { PERFORMANCE_LEAST_TRADES, summarizeTradeOutcomes, type TradeOutcomeSummary } from '../performance/performanceSummary';
 import { projectTradePlanVsExecution } from '../trades/planVsExecution';
-import { projectVisualPnlDayKey, projectVisualPnlHourOfDay, summarizeVisualPnlAggregation, visualPnlMondayFirstWeekday, type VisualPnlAggregationSummary } from '../visual-pnl';
+import { projectVisualPnlOpening, summarizeVisualPnlAggregation, VISUAL_PNL_HOURS_PER_BLOCK, type VisualPnlAggregationSummary } from '../visual-pnl';
 
 /** A group shows how it went only from this many trades with a result. */
 export const PATTERN_LEAST_TRADES = PERFORMANCE_LEAST_TRADES;
@@ -28,7 +28,7 @@ export type TradePatternKind = (typeof TRADE_PATTERN_KINDS)[number];
 /** Bars are drawn out of this many steps. */
 export const PATTERN_BAR_STEPS = 10;
 /** Hours in one time-of-day group: six groups, 00–03, 04–07, … 20–23, in the saved time zone. */
-export const PATTERN_HOURS_PER_GROUP = 4;
+export const PATTERN_HOURS_PER_GROUP = VISUAL_PNL_HOURS_PER_BLOCK;
 
 export interface TradePatternGroup {
   /** Stable within its pattern: 'kept' | 'broken'; 'after-win' | 'after-loss'; 'strategy:<strategy id>' | 'no-strategy'; 'weekday:0'…'weekday:6' (Monday first); 'hours:0'…'hours:5'; 'long' | 'short'. */
@@ -131,11 +131,7 @@ const HOUR_KEYS = Object.freeze(Array.from({ length: 24 / PATTERN_HOURS_PER_GROU
 export function projectTradePatterns(input: TradePatternsInput): TradePatternsProjection {
   const { entries, timeZone } = input;
   // When each trade was opened, in the saved time zone: the moment the trader chose.
-  const openings = entries.map(entry => {
-    const day = projectVisualPnlDayKey(entry.trade.openedAt, timeZone);
-    const hour = projectVisualPnlHourOfDay(entry.trade.openedAt, timeZone);
-    return !day.available || hour === null ? null : { weekday: visualPnlMondayFirstWeekday(day.dayKey), hour };
-  });
+  const openings = entries.map(entry => projectVisualPnlOpening(entry.trade.openedAt, timeZone));
   const records = input.records;
   const closes = entries.filter(entry => entry.trade.closedAt !== null).sort((a, b) => (a.trade.closedAt! < b.trade.closedAt! ? -1 : a.trade.closedAt! > b.trade.closedAt! ? 1 : 0));
   const byKind: Record<TradePatternKind, () => TradePattern> = {
