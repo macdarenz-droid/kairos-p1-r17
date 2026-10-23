@@ -15,23 +15,32 @@ import { AnalysisHandoffContext, parseAnalysisHandoff } from './analysisHandoff'
 import { ReviewTradeLink } from './ReviewTradeLink';
 import { TradePicture } from '../features/journal/TradePicture';
 import { ResultsDashboard } from '../features/results/ResultsDashboard';
+import { DisciplineOverview } from '../features/discipline/DisciplineOverview';
+import { PATTERNS_SHORT_INTRO, PatternsPanel } from '../features/patterns/PatternsPanel';
 
 type State = { readonly key: string | null; readonly result: TradeReviewResult | null; readonly error: boolean };
 type TradeEntry = Extract<TradeReviewResult, { kind: 'trade' }>['entry'];
 /** The last trade picture loaded for one selection (its counter n); a refresh of that selection keeps it mounted so an open hint sheet survives. */
 type Shown = { readonly n: number; readonly entry: TradeEntry } | null;
 
-type AnalysisView = 'results' | 'chart';
-const VIEW_OPTIONS = [{ value: 'results', label: 'Your results' }, { value: 'chart', label: 'Chart' }] as const;
+type AnalysisView = 'results' | 'discipline' | 'patterns' | 'chart';
+/** The four parts of Analysis (D220); "Results" has no address of its own. */
+const VIEW_OPTIONS = [
+  { value: 'results', label: 'Results' }, { value: 'discipline', label: 'Discipline' },
+  { value: 'patterns', label: 'Patterns' }, { value: 'chart', label: 'Chart' },
+] as const;
+const PATTERNS_TITLE = 'kairos-analysis-patterns-title';
 /** The keys "Your results" keeps from the address: the period's own (D198). */
 const PERIOD_KEYS = ['period', 'at', 'first', 'last'] as const;
 const TITLE = 'kairos-review-title';
 /** A stable default clock, as in GoalsRoute. */
 const wallClock = (): string => new Date().toISOString();
 
-/** "Chart" for its own address, a trade link or a Library handoff; otherwise "Your results" (D197). */
+/** "Chart" for its own address, a trade link or a Library handoff; "Discipline" or "Patterns" for theirs; otherwise "Results" (D197, D220). */
 function analysisView(params: URLSearchParams): AnalysisView {
-  return params.get('view') === 'chart' || params.get('trade') !== null || parseAnalysisHandoff(params) !== null ? 'chart' : 'results';
+  if (params.get('view') === 'chart' || params.get('trade') !== null || parseAnalysisHandoff(params) !== null) return 'chart';
+  const view = params.get('view');
+  return view === 'discipline' || view === 'patterns' ? view : 'results';
 }
 
 export interface AnalysisRouteProps {
@@ -139,8 +148,19 @@ export function AnalysisRoute({ load = loadTradeReview, db = kairosDatabase, now
     }
     const kept = new URLSearchParams();
     for (const key of PERIOD_KEYS) { const value = params.get(key); if (value !== null) kept.set(key, value); }
+    if (next !== 'results') kept.set('view', next);
     setParams(kept);
   }
+
+  // Discipline and Patterns, opened at their own address: the heading takes focus once per visit, as "Your results" does
+  // after its first load; a switch press leaves focus on the pressed option (D177).
+  useEffect(() => {
+    if (view !== 'discipline' && view !== 'patterns') return;
+    if (switching.current) { switching.current = false; visitFocused.current = true; return; }
+    if (visitFocused.current) return;
+    visitFocused.current = true;
+    document.getElementById(TITLE)?.focus();
+  }, [view]);
 
   const result = current?.result;
   const selectedEntry = result?.kind === 'trade' ? result.entry : null;
@@ -154,7 +174,13 @@ export function AnalysisRoute({ load = loadTradeReview, db = kairosDatabase, now
     <Segmented label="Analysis view" options={VIEW_OPTIONS} value={view} onChange={changeView} />
     {view === 'results' ? <ResultsDashboard db={db} scope="real" now={now}
       choice={readVisualPnlPeriodChoice(params)} onChoiceChange={choice => setParams(writeVisualPnlPeriodChoice(choice, params))}
-      renderTradeLink={id => <ReviewTradeLink id={id} />} refreshRevision={revision} onFirstLoad={resultsFirstLoad} rates={rates} /> : <>
+      renderTradeLink={id => <ReviewTradeLink id={id} />} refreshRevision={revision} onFirstLoad={resultsFirstLoad} rates={rates} />
+    : view === 'discipline' ? <DisciplineOverview db={db} now={now} refreshRevision={revision} />
+    : view === 'patterns' ? <section className="kairos-analysis-patterns kairos-patterns" aria-labelledby={PATTERNS_TITLE}>
+      <h2 id={PATTERNS_TITLE} tabIndex={-1}>Patterns</h2>
+      <p>{PATTERNS_SHORT_INTRO.real}</p>
+      <PatternsPanel key={revision} db={db} scope="real" now={now} level={3} headingId={PATTERNS_TITLE} />
+    </section> : <>
     {pictureEntry ? <TradePicture key={pictureEntry.trade.id} entry={pictureEntry} variant="full" strategyName={strategyName} /> : null}
     <AnalysisHandoffContext.Provider value={handoff}>
     <AnalysisHistoryWorkspace entry={selectedEntry} savedTradePending={savedTradePending} />

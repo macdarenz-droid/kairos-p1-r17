@@ -143,3 +143,11 @@
   overflow-wrap: anywhere;
   font-size: 0.75rem;
 }
+
+/* Analysis › Discipline (D220): one block after another, each with its own heading. */
+.kairos-discipline-part { display: grid; gap: var(--kairos-space-6); margin-top: var(--kairos-space-6); }
+.kairos-discipline-part__block { display: grid; gap: var(--kairos-space-3); }
+.kairos-discipline-part__block > h2 { margin: 0; }
+.kairos-discipline-part__strategies { display: grid; gap: var(--kairos-space-2); margin: 0; padding: 0; list-style: none; }
+.kairos-discipline-part__strategies li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--kairos-space-2); padding: var(--kairos-space-3) var(--kairos-space-4); border: 1px solid var(--kairos-border-subtle); border-radius: var(--kairos-radius-md); background: var(--kairos-surface-card); }
+.kairos-discipline-part__strategy-name { font-weight: var(--kairos-font-weight-semibold); overflow-wrap: anywhere; }

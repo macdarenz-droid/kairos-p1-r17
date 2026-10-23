@@ -1,4 +1,5 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Link, useInRouterContext } from 'react-router';
 import {
   readVisualPnlTimeZonePreference,
   writeVisualPnlTimeZonePreference,
@@ -7,7 +8,6 @@ import { kairosDatabase, type KairosDatabase } from '../data/database';
 import { createKairosRepositories } from '../data/repositories';
 import { DeviceTimeZoneButton } from '../features/settings/DeviceTimeZoneButton';
 import { ThemePicker } from '../features/settings/ThemePicker';
-import { DisciplineListsEditor } from '../features/discipline/DisciplineListsEditor';
 import { Button, ErrorState, Field, PageHeader } from '../design-system/primitives';
 import './settingsRoute.css';
 
@@ -36,6 +36,11 @@ type Feedback =
  * delegated to the P13.10R1 application contract and MetadataRepository.
  * The device time zone is saved only on an explicit tap.
  */
+/** SPA navigation inside the app, a plain link outside a router (Settings is also shown on its own in tests). */
+function SettingsLink({ to, children }: { readonly to: string; readonly children: ReactNode }) {
+  return useInRouterContext() ? <Link to={to}>{children}</Link> : <a href={to}>{children}</a>;
+}
+
 export function SettingsRoute({ db = kairosDatabase }: SettingsRouteProps) {
   const repositories = useMemo(() => createKairosRepositories(db), [db]);
   const [timeZone, setTimeZone] = useState('');
@@ -159,7 +164,8 @@ export function SettingsRoute({ db = kairosDatabase }: SettingsRouteProps) {
       </form>
 
       <ThemePicker />
-      <DisciplineListsEditor db={db} />
+      {/* D220: the checklist and mistakes lists moved to Analysis › Discipline. */}
+      <p className="kairos-settings__moved">Your checklist and mistakes list are in <SettingsLink to="/analysis?view=discipline">Analysis › Discipline</SettingsLink>.</p>
     </section>
   );
 }

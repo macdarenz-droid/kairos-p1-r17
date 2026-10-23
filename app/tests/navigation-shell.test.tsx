@@ -56,7 +56,7 @@ const ROUTE_HOMES: Readonly<Record<string, readonly [tab: string | null, parent:
   '/library/words': ['/library', '/library'], '/library/calculators': ['/library', '/library'], '/library/lessons': ['/library', '/library'],
   '/library/lessons/:lessonId': ['/library', '/library/lessons'],
   '/practice': ['/more', '/more'], '/practice/replay': ['/more', '/practice'], '/practice/coach': ['/more', '/practice'], '/practice/patterns': ['/more', '/practice'],
-  '/goals': ['/more', '/more'], '/strategies': ['/more', '/more'], '/coach': ['/analysis', '/analysis'], '/patterns': ['/analysis', '/analysis'],
+  '/goals': ['/more', '/more'], '/strategies': ['/more', '/more'], '/coach': ['/analysis', '/analysis?view=discipline'], '/patterns': ['/analysis', '/analysis?view=patterns'],
   '/news-calendar': ['/more', '/more'], '/currency': ['/more', '/more'], '/settings': ['/more', '/more'], '/profile': ['/more', '/more'],
   '/*': [null, '/'],
 };
@@ -167,7 +167,7 @@ describe('T-053b More in four groups', () => {
     expect(screen.queryByRole('link', { name: 'Coach' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Patterns' })).toBeNull();
     expect(navigationTabOf('/coach')?.to).toBe('/analysis');
-    expect(pageParentOf('/patterns')).toEqual({ to: '/analysis', label: 'Analysis' });
+    expect(pageParentOf('/patterns')).toEqual({ to: '/analysis?view=patterns', label: 'Analysis' });
   });
 
   it('opens a route for every item', () => {

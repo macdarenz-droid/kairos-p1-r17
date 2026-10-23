@@ -383,15 +383,16 @@ test('(k) Patterns: a closed trade, then your patterns and your practice pattern
   await page.getByRole('button', { name: 'Save trade' }).click();
   await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
 
-  // T-053b: Patterns left More for Analysis; T-053c opens it as Analysis › Patterns.
-  await page.goto('/patterns');
-  await expect(page).toHaveURL(/\/patterns$/);
-  await expect(page.getByRole('heading', { name: 'Your patterns', level: 1 })).toBeVisible();
+  // T-053c (D220): Patterns is a part of Analysis.
+  await page.goto('/analysis');
+  await page.getByRole('group', { name: 'Analysis view' }).getByRole('button', { name: 'Patterns' }).click();
+  await expect(page).toHaveURL(/\/analysis\?view=patterns$/);
+  await expect(page.getByRole('heading', { name: 'Patterns', level: 2 })).toBeVisible();
   const overall = page.getByRole('region', { name: 'All your trades' });
   await expect(overall).toContainText('1 trade.');
   await expect(overall).toContainText('Not enough trades with a result yet (1 of 10).');
   for (const title of ['Keeping your plan', 'After a win or a loss', 'By strategy', 'By day of the week', 'By time of day', 'Long or short']) {
-    await expect(page.getByRole('heading', { name: title, level: 2 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: title, level: 3 })).toBeVisible();
   }
   await expect(page.getByRole('region', { name: 'Long or short' }).getByRole('listitem').filter({ hasText: 'Short (you sold first)' })).toContainText('1 trade.');
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);

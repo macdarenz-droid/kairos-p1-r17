@@ -49,8 +49,11 @@ export const moreNavigationGroups: readonly KairosMoreGroup[] = Object.freeze([
 /** Every More item, in the page's order. */
 export const moreNavigation: readonly KairosMoreItem[] = Object.freeze(moreNavigationGroups.flatMap((group) => group.items));
 
-/** Pages that belong to a tab without sitting under its address (D220): the tab is named by its address. */
-const PAGES_FILED_UNDER: Readonly<Record<string, string>> = Object.freeze({ '/coach': '/analysis', '/patterns': '/analysis' });
+/** Pages that belong to a tab without sitting under its address (D220): the tab, and the part of it "up" opens. */
+const PAGES_FILED_UNDER: Readonly<Record<string, Readonly<{ tab: string; parent: string }>>> = Object.freeze({
+  '/coach': { tab: '/analysis', parent: '/analysis?view=discipline' },
+  '/patterns': { tab: '/analysis', parent: '/analysis?view=patterns' },
+});
 
 /** A page's address without a trailing slash ("/more/" is the More page). */
 export function normalizePathname(pathname: string): string {
@@ -72,7 +75,7 @@ export function navigationTabOf(address: string): KairosNavigationTab | null {
   const tab = primaryNavigation.find((item) => isAtOrUnder(pathname, item));
   if (tab !== undefined) return tab;
   const filed = Object.entries(PAGES_FILED_UNDER).find(([page]) => pathname === page || pathname.startsWith(`${page}/`));
-  if (filed !== undefined) return primaryNavigation.find((item) => item.to === filed[1]) ?? null;
+  if (filed !== undefined) return primaryNavigation.find((item) => item.to === filed[1].tab) ?? null;
   if (moreNavigation.some((item) => isAtOrUnder(pathname, item))) return primaryNavigation.find((item) => item.to === '/more') ?? null;
   return null;
 }
@@ -101,7 +104,7 @@ const PARENT_PAGES: Readonly<Record<string, string>> = Object.freeze({
 
 /**
  * Where "up" goes from a page that isn't a tab (D218): the nearest page above it in its address; Coach and Patterns
- * go to Analysis; a page listed under More goes to More; any other page goes Home. Null for a tab.
+ * go to their Analysis part; a page listed under More goes to More; any other page goes Home. Null for a tab.
  */
 export function pageParentOf(pathname: string): KairosPageParent | null {
   const path = normalizePathname(pathname);
@@ -113,7 +116,7 @@ export function pageParentOf(pathname: string): KairosPageParent | null {
     if (label !== undefined) return Object.freeze({ to: candidate, label });
   }
   const filed = PAGES_FILED_UNDER[path];
-  if (filed !== undefined) return Object.freeze({ to: filed, label: PARENT_PAGES[filed]! });
+  if (filed !== undefined) return Object.freeze({ to: filed.parent, label: PARENT_PAGES[filed.tab]! });
   if (moreNavigation.some((item) => item.to === path)) return Object.freeze({ to: '/more', label: PARENT_PAGES['/more']! });
   return Object.freeze({ to: '/', label: PARENT_PAGES['/']! });
 }

@@ -57,7 +57,7 @@ describe('T-042e the patterns page', () => {
     // It left More for Analysis: Analysis is marked, and "up" goes there.
     render(<ThemeProvider><RouterProvider router={createMemoryRouter(appRoutes, { initialEntries: ['/patterns'] })} /></ThemeProvider>);
     expect(await screen.findByRole('heading', { name: 'Your patterns', level: 1 })).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Back to Analysis' }).getAttribute('href')).toBe('/analysis');
+    expect(screen.getByRole('link', { name: 'Back to Analysis' }).getAttribute('href')).toBe('/analysis?view=patterns');
     expect(screen.getByRole('link', { name: 'Analysis' }).getAttribute('aria-current')).toBe('true');
   });
 

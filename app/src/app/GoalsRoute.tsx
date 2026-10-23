@@ -1,13 +1,12 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
-import { loadGoalsProgress, writeGoalsPreference, type GoalsPreference, type GoalsPreferenceInvalidReason, type GoalsProgressProjection, type GoalsProgressQueryResult } from '../application/goals';
-import { describeTotalsInHomeCurrency } from '../application/currency/currencyWords';
-import type { ResultsInHomeCurrencySummary } from '../application/currency/resultsInHomeCurrency';
+import { loadGoalsProgress, writeGoalsPreference, type GoalsPreference, type GoalsPreferenceInvalidReason, type GoalsProgressQueryResult } from '../application/goals';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
 import { createKairosRepositories } from '../data/repositories';
 import { Button, Card, Field, PageHeader } from '../design-system/primitives';
 import { DeviceTimeZoneButton } from '../features/settings/DeviceTimeZoneButton';
-import './goalsRoute.css';
+import { GoalsProgress } from '../features/discipline/GoalsProgressCard';
+import '../features/discipline/goals.css';
 
 interface GoalsRouteProps {
   readonly db?: KairosDatabase;
@@ -40,30 +39,6 @@ const fields = (preference: GoalsPreference) => ({
   monthlyResultTargetAmount: preference.monthlyResultTarget === null ? '' : preference.monthlyResultTarget.amount,
   monthlyResultTargetCurrency: preference.monthlyResultTarget === null ? '' : preference.monthlyResultTarget.currency,
 });
-
-function Progress({ progress, inHomeCurrency }: { readonly progress: GoalsProgressProjection; readonly inHomeCurrency: ResultsInHomeCurrencySummary | null }) {
-  if (progress.kind !== 'ready') return <p role="alert" data-goals-progress="unavailable">{progress.reason === 'invalid-time-zone' ? 'Your daily-results time zone is not valid. Fix it in Settings.' : 'The current time could not be read.'}</p>;
-  const { tradesPerMonth, maxTradesPerDay, monthlyResult } = progress;
-  const homeWords = describeTotalsInHomeCurrency(inHomeCurrency);
-  return <div className="kairos-goals__progress" data-goals-progress="ready" data-goals-month={progress.monthKey} data-goals-today={progress.todayKey}>
-    <Card as="article" className="kairos-goals-card" data-goal="trades-per-month" data-goal-state={tradesPerMonth.kind === 'unset' ? 'unset' : tradesPerMonth.reached ? 'reached' : 'progress'}>
-      <h2>Closed trades this month</h2>
-      {tradesPerMonth.kind === 'unset' ? <p>No target set.</p> : <p><strong>{tradesPerMonth.current}</strong> of {tradesPerMonth.target} · {tradesPerMonth.reached ? 'target reached' : `${tradesPerMonth.target - tradesPerMonth.current} to go`}</p>}
-    </Card>
-    <Card as="article" className="kairos-goals-card" data-goal="max-trades-per-day" data-goal-state={maxTradesPerDay.kind === 'unset' ? 'unset' : maxTradesPerDay.exceeded ? 'exceeded' : maxTradesPerDay.remaining === 0 ? 'at-limit' : 'within'}>
-      <h2>Trades opened today</h2>
-      {maxTradesPerDay.kind === 'unset' ? <p>No limit set.</p> : <p><strong>{maxTradesPerDay.today}</strong> of {maxTradesPerDay.limit} allowed · {maxTradesPerDay.exceeded ? 'over your limit' : maxTradesPerDay.remaining === 0 ? 'at your limit' : `${maxTradesPerDay.remaining} left`}</p>}
-    </Card>
-    <Card as="article" className="kairos-goals-card" data-goal="monthly-result" data-goal-state={monthlyResult.kind === 'unset' ? 'unset' : monthlyResult.kind === 'unavailable' ? 'unavailable' : monthlyResult.reached ? 'reached' : 'progress'}>
-      <h2>Result this month</h2>
-      {monthlyResult.kind === 'unset' ? <p>No result target set.</p>
-        : monthlyResult.kind === 'unavailable' ? <p>Target {monthlyResult.target} {monthlyResult.currency} · {monthlyResult.reason === 'no-comparable-days' ? `no closed trade this month has a result in ${monthlyResult.currency} yet` : 'the month total could not be added'}{monthlyResult.incompleteDays > 0 ? ` (${monthlyResult.incompleteDays} ${monthlyResult.incompleteDays === 1 ? 'day' : 'days'} in another currency or without a result)` : ''}.</p>
-        : <p><strong>{monthlyResult.current}</strong> of {monthlyResult.target} {monthlyResult.currency} · {monthlyResult.reached ? 'target reached' : `${monthlyResult.remaining} to go`}{monthlyResult.incompleteDays > 0 ? ` (${monthlyResult.incompleteDays} ${monthlyResult.incompleteDays === 1 ? 'day' : 'days'} in another currency or without a result)` : ''}</p>}
-    </Card>
-    <p className="kairos-goals__note">Counted from all your trades this month ({progress.monthKey}, time zone {progress.timeZone}). Results are your recorded results after fees, never estimates.</p>
-    {homeWords ? <p className="kairos-goals__note">{homeWords.text} <Link to="/currency">{homeWords.link}</Link></p> : null}
-  </div>;
-}
 
 /** Goals: user-set targets persisted as a P5 preference, progress projected read-only from released journal truth. */
 export function GoalsRoute({ db = kairosDatabase, now = wallClock }: GoalsRouteProps) {
@@ -118,7 +93,7 @@ export function GoalsRoute({ db = kairosDatabase, now = wallClock }: GoalsRouteP
     {state.kind === 'error' ? <p role="alert">Kairos could not load your goals.</p> : null}
     {state.kind === 'ready' && state.result.kind === 'time-zone-unconfigured' ? <p className="kairos-goals__unconfigured" role="status">Goals follow your daily-results calendar. <Link to="/settings">Set your time zone in Settings</Link> first.</p> : null}
     {state.kind === 'ready' && state.result.kind === 'time-zone-unconfigured' ? <DeviceTimeZoneButton metadata={repositories.metadata} onSaved={() => { void load(() => false); }} /> : null}
-    {state.kind === 'ready' && state.result.kind === 'ready' ? <Progress progress={state.result.progress} inHomeCurrency={state.result.inHomeCurrency} /> : null}
+    {state.kind === 'ready' && state.result.kind === 'ready' ? <GoalsProgress progress={state.result.progress} inHomeCurrency={state.result.inHomeCurrency} /> : null}
     <Card as="form" className="kairos-goals-card kairos-goals__form" onSubmit={handleSubmit} noValidate>
       <div><h2>Your targets</h2><p>Leave a field blank to keep no target. Targets are yours to change any time; they never alter your journal.</p></div>
       <Field label="Closed trades per month" id="kairos-goals-trades-per-month">{control => <input {...control} inputMode="numeric" value={form.tradesPerMonthTarget} onChange={field('tradesPerMonthTarget')} placeholder="20" autoComplete="off" disabled={busy} />}</Field>
