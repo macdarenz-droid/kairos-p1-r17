@@ -8,6 +8,7 @@ import type { KairosDatabase } from '../../data/database';
 import { describeMarketDataUnavailable } from '../../application/online/onlineWords';
 import { Button, Card, Field, UnavailableNotice } from '../../design-system/primitives';
 import { TradePictureCard } from '../journal/TradePictureCard';
+import { TradeShareControls } from '../journal/TradeShareControls';
 import { ReplayTradePanel } from './ReplayTradePanel';
 import './replay.css';
 
@@ -48,6 +49,7 @@ export function ReplayScreen({ db, market, playStepMs = REPLAY_PLAY_STEP_MS }: {
   const marketId = useId(), sizeId = useId(), startId = useId();
   const controller = useRef<AbortController | null>(null);
   const stageHeading = useRef<HTMLHeadingElement>(null);
+  const pictureSvg = useRef<SVGSVGElement>(null);
   const focusAfterLoad = useRef<'stage' | FieldName | null>(null);
 
   useEffect(() => () => controller.current?.abort(), []);
@@ -153,9 +155,11 @@ export function ReplayScreen({ db, market, playStepMs = REPLAY_PLAY_STEP_MS }: {
       const time = formatTime(view.replayTime);
       return <><section className="kairos-replay__stage" aria-labelledby={stageTitleId}>
         <h2 id={stageTitleId} tabIndex={-1} ref={stageHeading}>{replay.symbol} · {replay.candleSize.label} candles</h2>
-        <TradePictureCard model={picture} compact={order === null} notes={false} label={order === null ? `${replay.symbol}: ${view.window.length} candles up to ${time}. Price now ${view.last.close}${quote}.` : undefined} />
+        <TradePictureCard model={picture} svgRef={pictureSvg} compact={order === null} notes={false} label={order === null ? `${replay.symbol}: ${view.window.length} candles up to ${time}. Price now ${view.last.close}${quote}.` : undefined} />
         <p className="kairos-replay__source">{replay.source}</p>
         {replay.note !== null ? <p className="kairos-replay__source">{replay.note}</p> : null}
+        {/* U6 (D214): a finished replay trade can be shared like any other. */}
+        {outcomeKind === 'closed' ? <TradeShareControls model={picture} svg={pictureSvg} /> : null}
         <p className="kairos-replay__now" aria-live={playing ? 'off' : 'polite'}>Now in the replay: <time dateTime={view.replayTime}>{time}</time>. Price: <strong>{view.last.close}{quote}</strong></p>
         <div className="kairos-replay__controls" role="group" aria-label="Replay controls">
           <Button onClick={next} disabled={playing || candlesLeft === 0}>Next candle</Button>
