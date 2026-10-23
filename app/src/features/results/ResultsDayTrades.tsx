@@ -37,7 +37,9 @@ export function ResultsDayTrades({ dayKey, title, timeZone, state, renderTradeLi
     </div>
     {state.kind === 'loading' ? <p className="kairos-pnl-calendar__notice">Loading this day's trades…</p> : null}
     {state.kind === 'error' ? <p className="kairos-pnl-calendar__notice" role="alert">Kairos could not load this day's trades. Your stored trades were not changed.</p> : null}
-    {state.kind === 'ready' && hasHomeLines(state) ? <p className="kairos-pnl-calendar__notice">Each result uses the exchange rate of the day it closed by the UTC clock, which can be a day before or after this calendar day.</p> : null}
+    {state.kind === 'ready' && hasHomeLines(state) ? <p className="kairos-pnl-calendar__notice">{title === undefined
+      ? 'Each result uses the exchange rate of the day it closed by the UTC clock, which can be a day before or after this calendar day.'
+      : 'Each result uses the exchange rate of the day it closed by the UTC clock, which can be a day before or after the day it shows on the calendar.'}</p> : null}
     {state.kind === 'ready' ? <ul className="kairos-results-day-trades__list">
       {state.entries.map(entry => { const line = state.conversions ? describeTradeInHomeCurrency(state.conversions[entry.trade.id]) : null; return <li key={entry.trade.id} data-outcome={entry.visualPnl.outcome}>
         <strong>{entry.trade.symbol}</strong>

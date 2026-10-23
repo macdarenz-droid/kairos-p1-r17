@@ -6,7 +6,7 @@
 .kairos-results-calendar { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: var(--kairos-space-1); }
 .kairos-results-calendar th { color: var(--kairos-text-muted); font-size: var(--kairos-font-size-xs); font-weight: var(--kairos-font-weight-medium); }
 .kairos-results-calendar td { height: 3.25rem; padding: 0; border: 1px solid transparent; border-radius: var(--kairos-radius-sm); text-align: center; vertical-align: middle; }
-.kairos-results-calendar td > button { display: grid; place-items: center; gap: 0; width: 100%; height: 100%; min-block-size: 3.25rem; padding: 2px 3px; border: 0; border-radius: inherit; background: transparent; color: var(--kairos-text-primary); font: inherit; font-size: var(--kairos-font-size-sm); font-variant-numeric: tabular-nums; }
+.kairos-results-calendar td > button { display: grid; place-items: center; gap: 0; width: 100%; height: 100%; min-block-size: 3.25rem; padding: 2px 1px; border: 0; border-radius: inherit; background: transparent; color: var(--kairos-text-primary); font: inherit; font-size: var(--kairos-font-size-sm); font-variant-numeric: tabular-nums; }
 .kairos-results-calendar td > button[aria-pressed='true'] { outline: 2px solid var(--kairos-state-focus); outline-offset: 1px; }
 .kairos-results-calendar__number { color: var(--kairos-text-muted); font-size: var(--kairos-font-size-sm); }
 .kairos-results-calendar :is(td[data-day-result='profit'], td[data-week-result='profit']) { background: color-mix(in oklab, var(--kairos-trade-profit) 45%, transparent); }
@@ -26,7 +26,7 @@
 .kairos-results-day-trades { display: grid; gap: var(--kairos-space-2); margin-top: var(--kairos-space-3); padding: var(--kairos-space-3); border: 1px solid var(--kairos-border-subtle); border-radius: var(--kairos-radius-md); }
 .kairos-results-day-trades__heading { display: flex; align-items: center; justify-content: space-between; gap: var(--kairos-space-3); }
 .kairos-results-day-trades__heading h3 { margin: 0; font-size: var(--kairos-font-size-sm); }
-.kairos-results-day-trades__close { min-block-size: var(--kairos-control-sm); padding: 0 var(--kairos-space-3); border: 1px solid var(--kairos-border-default); border-radius: var(--kairos-radius-md); background: transparent; color: var(--kairos-text-secondary); font: inherit; }
+.kairos-results-day-trades__close { flex: none; white-space: nowrap; min-block-size: var(--kairos-control-sm); padding: 0 var(--kairos-space-3); border: 1px solid var(--kairos-border-default); border-radius: var(--kairos-radius-md); background: transparent; color: var(--kairos-text-secondary); font: inherit; }
 .kairos-results-day-trades__list { display: grid; gap: var(--kairos-space-2); margin: 0; padding: 0; list-style: none; }
 .kairos-results-day-trades__list li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--kairos-space-2) var(--kairos-space-3); color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-sm); }
 .kairos-results-day-trades__list strong { color: var(--kairos-text-primary); }
@@ -142,7 +142,11 @@
 /* T-051h: each day's short amount and trade count, the week column and the month total (D203, D204). */
 .kairos-results-calendar td > button { grid-template-rows: auto 1fr auto; }
 .kairos-results-calendar__day { justify-self: start; color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-xs); line-height: 1; }
-.kairos-results-calendar__amount { display: inline-flex; align-items: center; font-size: var(--kairos-font-size-xs); font-variant-numeric: tabular-nums; line-height: 1; white-space: nowrap; }
+.kairos-results-calendar__amount { display: inline-flex; align-items: center; max-inline-size: 100%; font-size: var(--kairos-font-size-xs); font-variant-numeric: tabular-nums; line-height: 1; white-space: nowrap; }
+/* A cell is about 40px wide at 390px: a 6-character amount is drawn a little smaller, 7 smaller still, and a longer one may break. */
+.kairos-results-calendar__amount[data-cell-length='6'] { font-size: calc(var(--kairos-font-size-xs) * 0.85); letter-spacing: -0.02em; }
+.kairos-results-calendar__amount[data-cell-length='7'] { font-size: calc(var(--kairos-font-size-xs) * 0.72); letter-spacing: -0.03em; }
+.kairos-results-calendar__amount[data-cell-length='long'] { font-size: calc(var(--kairos-font-size-xs) * 0.72); letter-spacing: -0.03em; white-space: normal; overflow-wrap: anywhere; text-align: center; }
 .kairos-results-calendar__count { justify-self: end; color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-xs); font-variant-numeric: tabular-nums; line-height: 1; }
 .kairos-results-calendar__week { background: var(--kairos-surface-raised); }
 .kairos-results-calendar__week > button { grid-template-rows: 1fr auto; }
@@ -169,3 +173,15 @@
 .kairos-results-candles__row-button { min-block-size: 24px; padding: 0; border: 0; background: none; color: var(--kairos-accent-primary); font: inherit; text-align: start; text-decoration: underline; cursor: pointer; }
 .kairos-results-candles__heading h3:focus { outline: none; }
 .kairos-results-candles__heading h3:focus-visible { outline: 2px solid var(--kairos-state-focus); outline-offset: 2px; }
+/* Analysis gives every button a field look (tradeReview.css .kairos-review :is(button, …)); the calendar's cells, week totals,
+   month total and the candles' row buttons keep their own, so the day and week colours show. */
+.kairos-results .kairos-results-calendar td > button, .kairos-results .kairos-results-candles__numbers .kairos-results-candles__row-button { border-color: transparent; background: transparent; }
+.kairos-results .kairos-results-calendar-block .kairos-results-calendar__month-total { border-color: var(--kairos-border-default); background: var(--kairos-surface-raised); }
+.kairos-results-calendar__swatch { display: inline-block; inline-size: 0.75rem; block-size: 0.75rem; border-radius: var(--kairos-radius-sm); }
+.kairos-results-calendar__key [data-key='profit'] .kairos-results-calendar__swatch { background: color-mix(in oklab, var(--kairos-trade-profit) 45%, transparent); }
+.kairos-results-calendar__key [data-key='loss'] .kairos-results-calendar__swatch { background: color-mix(in oklab, var(--kairos-trade-loss) 45%, transparent); }
+.kairos-results-calendar__key [data-key='breakeven'] .kairos-results-calendar__swatch { background: color-mix(in oklab, var(--kairos-trade-flat) 30%, transparent); }
+.kairos-results-calendar__key [data-key='unavailable'] .kairos-results-calendar__swatch { box-sizing: border-box; border: 1px dashed var(--kairos-text-muted); }
+.kairos-results-calendar__key [data-key='profit'] .kairos-icon { color: var(--kairos-trade-profit); }
+.kairos-results-calendar__key [data-key='loss'] .kairos-icon { color: var(--kairos-trade-loss); }
+.kairos-results-calendar__key [data-key='breakeven'] .kairos-icon { color: var(--kairos-trade-flat); }

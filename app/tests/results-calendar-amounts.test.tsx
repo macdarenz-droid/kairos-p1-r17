@@ -6,7 +6,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ReviewTradeLink } from '../src/app/ReviewTradeLink';
-import { saveManualTrade, type SaveManualTradeInput } from '../src/application/trades';
+import { deleteTradeRecord, saveManualTrade, type SaveManualTradeInput } from '../src/application/trades';
 import { writeVisualPnlTimeZonePreference, type VisualPnlPeriodChoice } from '../src/application/visual-pnl';
 import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
 import { createKairosRepositories } from '../src/data/repositories';
@@ -37,9 +37,9 @@ async function database(trades: readonly SaveManualTradeInput[]): Promise<Kairos
   }
   return db;
 }
-function Host({ db, initial }: { readonly db: KairosDatabase; readonly initial: VisualPnlPeriodChoice }) {
+function Host({ db, initial, revision = 0 }: { readonly db: KairosDatabase; readonly initial: VisualPnlPeriodChoice; readonly revision?: number }) {
   const [choice, setChoice] = useState<VisualPnlPeriodChoice>(initial);
-  return <ResultsDashboard db={db} scope="real" now={now} choice={choice} onChoiceChange={setChoice} renderTradeLink={id => <ReviewTradeLink id={id} />} refreshRevision={0} />;
+  return <ResultsDashboard db={db} scope="real" now={now} choice={choice} onChoiceChange={setChoice} renderTradeLink={id => <ReviewTradeLink id={id} />} refreshRevision={revision} />;
 }
 async function show(db: KairosDatabase, initial: VisualPnlPeriodChoice = { kind: 'month', at: null }): Promise<HTMLElement> {
   render(<MemoryRouter><Host db={db} initial={initial} /></MemoryRouter>);
@@ -63,7 +63,10 @@ describe('T-051h the calendar with amounts, a week column and the month total', 
     expect(found.querySelector('.kairos-results-calendar')).not.toHaveTextContent(/▲|▼/);
     expect(within(found).getByRole('columnheader', { name: 'Week' })).toHaveAttribute('abbr', 'Week total');
     expect(within(found).getByText('Amounts in USDT.')).toBeInTheDocument();
-    expect(within(found).getByText(/^The small number is how many trades closed that day\./)).toBeInTheDocument();
+    expect(within(found).getByText(/^The small number is how many trades closed that day, or that week in the Week column\./)).toBeInTheDocument();
+    // Each key carries the swatch of its cell colour (fix r1).
+    expect([...found.querySelectorAll('.kairos-results-calendar__key [data-key]')].map(key => [key.getAttribute('data-key'), key.querySelector('.kairos-results-calendar__swatch') !== null]))
+      .toEqual([['profit', true], ['loss', true], ['breakeven', true], ['unavailable', true]]);
   });
 
   it('shortens a large day, and keeps the exact amount in its name', async () => {
@@ -71,6 +74,30 @@ describe('T-051h the calendar with amounts, a week column and the month total', 
     const day = cell(found, '2026-09-02');
     expect(day.querySelector('[data-cell-amount]')).toHaveTextContent(/^\+1\.2K$/);
     expect(within(day).getByRole('button').getAttribute('aria-label')).toContain('1234.5 USDT');
+    expect(day.querySelector('[data-cell-amount]')).not.toHaveAttribute('data-cell-length');
+  });
+
+  it('marks long short amounts so they are drawn smaller and fit their cell (fix r1)', async () => {
+    const found = await show(await database([trade('2026-09-02', '123556'), trade('2026-09-09', '12445')]));
+    expect(cell(found, '2026-09-02').querySelector('[data-cell-amount]')).toHaveTextContent(/^\+123\.5K$/);
+    expect(cell(found, '2026-09-02').querySelector('[data-cell-amount]')).toHaveAttribute('data-cell-length', '7');
+    expect(cell(found, '2026-09-09').querySelector('[data-cell-amount]')).toHaveAttribute('data-cell-length', '6');
+    expect(found.querySelector('.kairos-results-calendar__month-total')).toHaveTextContent('+135801 USDT');
+  });
+
+  it('gives focus to the month heading when the list\'s opener is gone (fix r1)', async () => {
+    const db = await database(SEPTEMBER);
+    const view = render(<MemoryRouter><Host db={db} initial={{ kind: 'month', at: null }} /></MemoryRouter>);
+    const found = await screen.findByRole('region', { name: 'Your results' });
+    await waitFor(() => expect(found).not.toHaveAttribute('aria-busy'));
+    fireEvent.click(within(cell(found, '2026-09-09')).getByRole('button'));
+    const heading = await within(found).findByRole('heading', { name: 'Trades closed on 9 September 2026' });
+    const id = within(heading.closest('.kairos-results-day-trades') as HTMLElement).getByRole('link', { name: 'View trade' }).getAttribute('href')!.split('=')[1]!;
+    expect((await deleteTradeRecord(db, decodeURIComponent(id) as never)).ok).toBe(true);
+    view.rerender(<MemoryRouter><Host db={db} initial={{ kind: 'month', at: null }} revision={1} /></MemoryRouter>);
+    await waitFor(() => expect(within(cell(found, '2026-09-09')).queryByRole('button')).toBeNull());
+    fireEvent.click(within(found.querySelector('.kairos-results-day-trades') as HTMLElement).getByRole('button', { name: 'Close' }));
+    await waitFor(() => expect(within(found).getByRole('heading', { name: 'September 2026' })).toHaveFocus());
   });
 
   it('lists a week\'s trades from its button, with focus on the list and back on the week', async () => {

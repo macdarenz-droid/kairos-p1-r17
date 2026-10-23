@@ -43,9 +43,9 @@ function Amount({ amount, currency }: { readonly amount: string; readonly curren
   return <ResultText outcome={outcome} label={outcome === 'unavailable' ? 'Not available' : OUTCOME_WORDS[outcome]} amount={outcome === 'unavailable' ? null : amount} currency={currency} showLabel={false} />;
 }
 
-/** "Not available" with its shape, and why in small words, as "Result after fees" says it. */
+/** The "not available" shape with the owner's sentence, said once ("Not available: …"). */
 function NotAvailable({ why }: { readonly why: string }) {
-  return <><ResultText outcome="unavailable" label="Not available" amount={null} /> <span className="kairos-results-numbers__why">{why}</span></>;
+  return <ResultText outcome="unavailable" label={why} amount={null} className="kairos-results-numbers__why" />;
 }
 
 /** An average, or why it is missing. With no trade that has a result yet, no average can say there was no win or no loss. */
@@ -82,7 +82,7 @@ export function ResultsNumbers({ summary, context, renderTradeLink }: ResultsNum
   const worst = tile(worstTrade.available, tradeValue(worstTrade, renderTradeLink), worstTrade.tradeCount, tradeWhy(worstTrade));
   const dip = tile(biggestDip.available, describeBiggestDip(biggestDip, context), biggestDip.tradeCount, describeBiggestDip(biggestDip, context));
   const profitFactorWords = describeProfitFactor(profitFactor, context);
-  const profitFactorShown = profitFactor.available || profitFactor.reason === 'no-losses' || profitFactor.reason === 'no-trades';
+  const profitFactorGated = !profitFactor.available && profitFactor.reason !== 'no-losses' && profitFactor.reason !== 'no-trades';
   return <section className="kairos-results-numbers" aria-labelledby={titleId}>
     <h3 id={titleId}>Your numbers</h3>
 
@@ -112,7 +112,7 @@ export function ResultsNumbers({ summary, context, renderTradeLink }: ResultsNum
         <p className="kairos-results-numbers__label">Average loss {moneyValue(averageLoss, 'loss', context, noResultYet)}</p>
         {winLoss.available ? <div className="kairos-results-numbers__bar" aria-hidden="true"><span data-part="lost" style={{ inlineSize: width(winLoss.lossSteps) }} /></div> : null}
       </div>
-      <p data-number="profit-factor">{profitFactorShown ? profitFactorWords : <>For every 1 you lost: <NotAvailable why={profitFactorWords} /></>} <GlossaryHint termId="for-every-1-you-lost" label="For every 1 you lost" /></p>
+      <p data-number="profit-factor">{profitFactor.available ? profitFactorWords : <>For every 1 you lost: {profitFactorGated ? <NotAvailable why={profitFactorWords} /> : profitFactorWords}</>} <GlossaryHint termId="for-every-1-you-lost" label="For every 1 you lost" /></p>
       <p data-number="average-result">Average result per trade {moneyValue(averageResult, 'result', context, noResultYet)} <GlossaryHint termId="average-result-per-trade" label="Average result per trade" /></p>
     </div>
 

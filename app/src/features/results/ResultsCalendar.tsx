@@ -81,7 +81,9 @@ function weekAriaLabel(week: VisualPnlMonthWeek): string {
 function CellResult({ summary }: { readonly summary: VisualPnlAggregationSummary }) {
   const short = summary.available ? describeVisualPnlCompactAmount(summary.total) : null;
   return <>
-    {short !== null ? <span className="kairos-results-calendar__amount" data-cell-amount="">{short}</span> : <span className="kairos-results-calendar__amount"><Icon name="result-unknown" size={16} /></span>}
+    {short !== null
+      ? <span className="kairos-results-calendar__amount" data-cell-amount="" data-cell-length={short.length <= 5 ? undefined : short.length <= 7 ? String(short.length) : 'long'}>{short}</span>
+      : <span className="kairos-results-calendar__amount"><Icon name="result-unknown" size={16} /></span>}
     <span className="kairos-results-calendar__count" data-cell-count="">{summary.tradeCount}</span>
   </>;
 }
@@ -139,9 +141,9 @@ export function ResultsCalendar({ grid, selectedDayKey, canShowNextMonth, canSho
     </table>
     {totals?.month ? <MonthTotal monthKey={grid.monthKey} summary={totals.month} pressed={monthSelected} onSelect={onSelectMonth} /> : null}
     <p className="kairos-results-calendar__legend kairos-results-calendar__key">
-      <span><Icon name="result-up" size={16} /> Profit</span> <span><Icon name="result-down" size={16} /> Loss</span> <span><Icon name="result-flat" size={16} /> Break-even</span> <span><Icon name="result-unknown" size={16} /> Not available</span>
+      <span data-key="profit"><span className="kairos-results-calendar__swatch" /><Icon name="result-up" size={16} /> Profit</span> <span data-key="loss"><span className="kairos-results-calendar__swatch" /><Icon name="result-down" size={16} /> Loss</span> <span data-key="breakeven"><span className="kairos-results-calendar__swatch" /><Icon name="result-flat" size={16} /> Break-even</span> <span data-key="unavailable"><span className="kairos-results-calendar__swatch" /><Icon name="result-unknown" size={16} /> Not available</span>
     </p>
-    <p className="kairos-results-calendar__legend">The small number is how many trades closed that day. Stronger colour means a bigger result in this month.</p>
+    <p className="kairos-results-calendar__legend">{totals !== null ? 'The small number is how many trades closed that day, or that week in the Week column.' : 'The small number is how many trades closed that day.'} Stronger colour means a bigger result in this month.</p>
     {grid.scale.kind === 'one-currency' ? <p className="kairos-results-calendar__legend">Amounts in {grid.scale.currency}.</p> : null}
     {grid.scale.kind === 'none' && grid.scale.reason === 'mixed-currencies'
       ? <p className="kairos-results-calendar__legend">{totals !== null

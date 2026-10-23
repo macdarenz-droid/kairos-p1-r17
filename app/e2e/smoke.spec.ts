@@ -911,3 +911,42 @@ test('(r) Your results fetch a missing bank rate on their own', async ({ page })
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   expect(errors).toEqual([]);
 });
+
+test('(s) Your results: a large day and its week fit the calendar at phone width, in their own colours', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  await activate(page);
+  await page.goto('/analysis');
+  await expect(page.getByText('Time zone: Asia/Manila')).toBeVisible();
+  await page.goto('/journal');
+  await page.getByRole('button', { name: 'Quick log' }).click();
+  await page.getByLabel(/^Symbol/).fill('BTCUSDT');
+  await page.getByLabel(/^Market/).selectOption('crypto');
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Entry price/).fill('100');
+  await page.getByLabel(/^Exit price/).fill('123556');
+  await page.getByLabel(/^Quantity/).fill('1');
+  await page.getByRole('button', { name: 'Set opened time to now' }).click();
+  await page.getByRole('button', { name: 'Set closed time to now' }).click();
+  await page.getByLabel('Currency code').fill('USDT');
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+
+  await page.goto('/analysis');
+  const results = page.getByRole('region', { name: 'Your results' });
+  const calendar = results.locator('.kairos-results-calendar');
+  await expect(calendar.locator('[data-cell-amount]').first()).toHaveText('+123.5K');
+  await expect(calendar.locator('.kairos-results-calendar__week [data-cell-amount]')).toHaveText('+123.5K');
+  const fit = await calendar.evaluate(table => ({
+    table: [table.scrollWidth, table.clientWidth],
+    cells: [...table.querySelectorAll<HTMLElement>('[data-cell-amount]')].map(amount => [amount.scrollWidth, (amount.closest('button') as HTMLElement).clientWidth]),
+    page: [document.documentElement.scrollWidth, document.documentElement.clientWidth],
+    background: getComputedStyle(table.querySelector('td > button')!).backgroundImage,
+  }));
+  expect(fit.table[0]).toBeLessThanOrEqual(fit.table[1]!);
+  for (const [amount, button] of fit.cells) expect(amount).toBeLessThanOrEqual(button!);
+  expect(fit.page[0]).toBeLessThanOrEqual(fit.page[1]!);
+  // The day's colour is the cell's, not the field look Analysis gives other buttons.
+  expect(fit.background).toBe('none');
+  expect(errors).toEqual([]);
+});

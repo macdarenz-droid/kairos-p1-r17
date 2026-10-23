@@ -160,6 +160,8 @@ describe('T-051g your numbers as pictures', () => {
     }
     expect(number(numbers, 'profit-factor')).toHaveTextContent(/^For every 1 you lost: Not available/);
     expect(number(numbers, 'average-win').querySelector('.kairos-results-numbers__why')).toHaveTextContent(words);
+    // Said once per row (fix r2).
+    for (const name of ['average-win', 'average-loss', 'profit-factor', 'average-result']) expect(number(numbers, name).textContent!.match(/Not available/g)).toHaveLength(1);
   });
 
   it('says no trade has a result yet, never that there was no win or no loss (fix r1)', async () => {
@@ -167,6 +169,7 @@ describe('T-051g your numbers as pictures', () => {
     await saveAll(db, [{ exit: '110', entered: '2', exited: '1' }]);
     const { numbers } = await showNumbers(db);
     for (const name of ['average-win', 'average-loss', 'average-result']) expect(number(numbers, name)).toHaveTextContent('No trade with a result yet');
+    expect(number(numbers, 'profit-factor')).toHaveTextContent(/^For every 1 you lost: Needs a win or a loss/);
     expect(numbers).not.toHaveTextContent(/No winning trade|No losing trade/);
   });
 
