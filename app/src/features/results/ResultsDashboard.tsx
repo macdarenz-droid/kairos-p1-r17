@@ -112,7 +112,8 @@ function ResultsDays({ dashboard, renderTradeLink }: { readonly dashboard: Resul
 
   useEffect(() => {
     const target = focusAfter.current;
-    if (target === null) return;
+    // Only once the state matches the press: a run that comes before the new day is shown must not use up the target.
+    if (target === null || (target.kind === 'opened' ? selectedDay !== target.day : selectedDay !== null)) return;
     focusAfter.current = null;
     const element = target.kind === 'opened'
       ? box.current?.querySelector<HTMLElement>('.kairos-results-day-trades h3')
