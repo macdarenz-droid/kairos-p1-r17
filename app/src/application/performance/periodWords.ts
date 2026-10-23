@@ -68,7 +68,8 @@ export function describeProfitFactor(ratio: PerformanceRatio, context?: PeriodMo
 /** "On average you make 0.4× what you risk". */
 export function describeAverageTimesRisked(ratio: PerformanceRatio): string {
   if (!ratio.available) return ratio.reason === 'no-trades' ? 'Needs trades with a stop and a result' : 'Not available.';
-  const sign = decimalCompare(ratio.value, '0');
+  // The sentence follows the number shown: a value that rounds to 0 reads as break-even, never "0×" (D211).
+  const sign = decimalCompare(ratio.shown, '0');
   if (sign === null) return 'Not available.';
   if (sign === 0) return 'On average you break even on what you risk';
   if (sign > 0) return `On average you make ${ratio.shown}× what you risk`;

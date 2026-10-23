@@ -46,6 +46,8 @@ describe('T-051b the words for your numbers', () => {
     expect(describeAverageTimesRisked(ratio('0.4'))).toBe('On average you make 0.4× what you risk');
     expect(describeAverageTimesRisked(ratio('-0.35'))).toBe('On average you lose 0.35× what you risk');
     expect(describeAverageTimesRisked(ratio('0'))).toBe('On average you break even on what you risk');
+    expect(describeAverageTimesRisked(ratio('0.004', '0'))).toBe('On average you break even on what you risk');
+    expect(describeAverageTimesRisked(ratio('-0.004', '0'))).toBe('On average you break even on what you risk');
     expect(describeAverageTimesRisked({ available: false, reason: 'no-trades', tradeCount: 0 })).toBe('Needs trades with a stop and a result');
   });
 

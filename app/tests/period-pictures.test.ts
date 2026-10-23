@@ -34,11 +34,13 @@ describe('T-051b the sizes of the number pictures', () => {
   it('draws the average win against the average loss', () => {
     expect(projectPeriodPictures(summary(1, 1, 0, 0, { averageWin: money('15'), averageLoss: money('-10') })).winLoss).toEqual({ available: true, winSteps: 100, lossSteps: 67 });
     expect(projectPeriodPictures(summary(2, 0, 0, 0, { averageWin: money('15') })).winLoss).toEqual({ available: false });
+    expect(projectPeriodPictures(summary(1, 1, 0, 0, { averageWin: money('1000'), averageLoss: money('-0.001') })).winLoss).toEqual({ available: true, winSteps: 100, lossSteps: 1 });
   });
 
   it('draws what you make against one risk', () => {
     expect(projectPeriodPictures(summary(1, 1, 0, 0, { averageTimesRisked: ratio('0.4') })).timesRisked).toEqual({ available: true, direction: 'up', valueSteps: 40, oneRiskSteps: 100 });
     expect(projectPeriodPictures(summary(1, 1, 0, 0, { averageTimesRisked: ratio('-2') })).timesRisked).toEqual({ available: true, direction: 'down', valueSteps: 100, oneRiskSteps: 50 });
+    expect(projectPeriodPictures(summary(1, 1, 0, 0, { averageTimesRisked: ratio('-0.001') })).timesRisked).toEqual({ available: true, direction: 'down', valueSteps: 1, oneRiskSteps: 100 });
     expect(projectPeriodPictures(summary(1, 1, 0, 0, { averageTimesRisked: ratio('0') })).timesRisked).toEqual({ available: true, direction: 'flat', valueSteps: 0, oneRiskSteps: 100 });
     expect(projectPeriodPictures(summary(1, 1, 0, 0)).timesRisked).toEqual({ available: false });
   });
