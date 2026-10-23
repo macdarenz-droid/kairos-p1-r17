@@ -17,13 +17,16 @@ function PartLink({ to, children }: { readonly to: string; readonly children: Re
 
 type Loaded<T> = Readonly<{ kind: 'loading' }> | Readonly<{ kind: 'error' }> | Readonly<{ kind: 'ready'; result: T }>;
 
-/** Reads one owner, again when `revision` changes; the state says loading, failed or what it answered. */
+/**
+ * Reads one owner, and again when its inputs change (a refresh when the trader comes back to the app). Only the first
+ * read shows loading; a later one keeps the last answer until the new one arrives, so nothing on the page goes away
+ * and focus never falls to the page.
+ */
 function useLoaded<T>(read: () => Promise<T>, deps: readonly unknown[]): Loaded<T> {
   const [state, setState] = useState<Loaded<T>>({ kind: 'loading' });
   useEffect(() => {
     let ignore = false;
-    setState({ kind: 'loading' });
-    read().then(result => { if (!ignore) setState({ kind: 'ready', result }); }, () => { if (!ignore) setState({ kind: 'error' }); });
+    read().then(result => { if (!ignore) setState({ kind: 'ready', result }); }, () => { if (!ignore) setState(current => (current.kind === 'ready' ? current : { kind: 'error' })); });
     return () => { ignore = true; };
     // The deps are the read's own inputs, given by the caller.
   }, deps);

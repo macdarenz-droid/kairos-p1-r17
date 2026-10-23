@@ -1233,6 +1233,12 @@ test('(w) First run: the setup step by step, then the Journal; it can be opened 
   await page.goto('/analysis?view=discipline');
   await expect(page.getByRole('form', { name: 'Your checklist' }).getByRole('group', { name: 'Before you trade: your steps' }).getByRole('textbox')).toHaveCount(kept - 2);
   await expect(page.getByText(/Closed trades this month/)).toBeVisible();
+  // Saving the checklist keeps focus on its button (T-053c fix r1: a disabled button lost it to the page).
+  const saveChecklist = page.getByRole('button', { name: 'Save your checklist' });
+  await saveChecklist.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByText('Your checklist is saved.')).toBeVisible();
+  await expect(saveChecklist).toBeFocused();
 
   // More › Set up Kairos opens it again at step 1, showing what is saved.
   await page.goto('/more');

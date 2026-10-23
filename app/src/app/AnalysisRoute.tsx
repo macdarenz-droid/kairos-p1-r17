@@ -7,7 +7,8 @@ import type { EcbReferenceRatesPort } from '../application/currency/ecbRates';
 import { readVisualPnlPeriodChoice, writeVisualPnlPeriodChoice } from '../application/visual-pnl';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
 import type { TradeId } from '../domain/trades';
-import { Button, PageHeader, Segmented } from '../design-system/primitives';
+import { Button, PageHeader, Segmented, Sheet } from '../design-system/primitives';
+import { Icon } from '../design-system/icons/Icon';
 import { TradeReviewDetails, reviewTimestamp } from './TradeReviewDetails';
 import './tradeReview.css';
 import { AnalysisHistoryWorkspace } from './AnalysisHistoryWorkspace';
@@ -16,7 +17,7 @@ import { ReviewTradeLink } from './ReviewTradeLink';
 import { TradePicture } from '../features/journal/TradePicture';
 import { ResultsDashboard } from '../features/results/ResultsDashboard';
 import { DisciplineOverview } from '../features/discipline/DisciplineOverview';
-import { PATTERNS_SHORT_INTRO, PatternsPanel } from '../features/patterns/PatternsPanel';
+import { PATTERNS_INTRO, PATTERNS_SHORT_INTRO, PatternsPanel } from '../features/patterns/PatternsPanel';
 
 type State = { readonly key: string | null; readonly result: TradeReviewResult | null; readonly error: boolean };
 type TradeEntry = Extract<TradeReviewResult, { kind: 'trade' }>['entry'];
@@ -50,6 +51,15 @@ export interface AnalysisRouteProps {
   readonly now?: () => string;
   /** The bank-rates port for missing rates fetched on their own (D201); the route passes it, null fetches nothing. */
   readonly rates?: EcbReferenceRatesPort | null;
+}
+
+/** The Patterns page's longer explanation, behind "How this works", as its page header has it. */
+function PatternsHowItWorks() {
+  const [open, setOpen] = useState(false);
+  return <>
+    <Button variant="ghost" size="sm" onClick={() => setOpen(true)}><Icon name="info" size={16} />How this works</Button>
+    <Sheet open={open} title="How this works" onClose={() => setOpen(false)}><p>{PATTERNS_INTRO.real}</p></Sheet>
+  </>;
 }
 
 /** The strategy the trader chose for the shown trade, for its share card (P28); null without one or when the read fails. */
@@ -179,7 +189,8 @@ export function AnalysisRoute({ load = loadTradeReview, db = kairosDatabase, now
     : view === 'patterns' ? <section className="kairos-analysis-patterns kairos-patterns" aria-labelledby={PATTERNS_TITLE}>
       <h2 id={PATTERNS_TITLE} tabIndex={-1}>Patterns</h2>
       <p>{PATTERNS_SHORT_INTRO.real}</p>
-      <PatternsPanel key={revision} db={db} scope="real" now={now} level={3} headingId={PATTERNS_TITLE} />
+      <PatternsHowItWorks />
+      <PatternsPanel db={db} scope="real" now={now} level={3} headingId={PATTERNS_TITLE} refreshRevision={revision} />
     </section> : <>
     {pictureEntry ? <TradePicture key={pictureEntry.trade.id} entry={pictureEntry} variant="full" strategyName={strategyName} /> : null}
     <AnalysisHandoffContext.Provider value={handoff}>

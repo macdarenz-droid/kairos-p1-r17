@@ -9,6 +9,7 @@ import type { TradeReviewResult } from '../src/application/journal/loadTradeRevi
 import { saveManualTrade, type SaveManualTradeInput } from '../src/application/trades';
 import { loadDisciplineLists } from '../src/application/discipline';
 import { exampleStrategyDraft, saveStrategy } from '../src/application/discipline/strategies';
+import { saveGoalsPreference } from '../src/application/goals';
 import { writeVisualPnlTimeZonePreference } from '../src/application/visual-pnl';
 import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
 import { createKairosRepositories } from '../src/data/repositories';
@@ -205,5 +206,40 @@ describe('T-053c Analysis in four parts', () => {
     expect(title.closest('section')).toHaveTextContent(/closed in the last 90 days/);
     expect(await screen.findByText(/No closed trades in the last 90 days yet/)).toBeInTheDocument();
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+  });
+
+  it('T-053c fix r1: coming back to the app refreshes Discipline and Patterns in place, so focus stays where it was', async () => {
+    await route('/analysis?view=discipline');
+    const add = await screen.findByRole('link', { name: 'Add a strategy' });
+    add.focus();
+    await act(async () => { window.dispatchEvent(new Event('focus')); await new Promise(resolve => setTimeout(resolve, 50)); });
+    expect(screen.getByRole('link', { name: 'Add a strategy' })).toBe(add);
+    expect(add).toHaveFocus();
+    expect(screen.queryByText(/^Loading your strategies/)).toBeNull();
+    cleanup();
+    // Patterns without a time zone shows its "Open Settings" link inside the panel.
+    const name = `kairos-analysis-sections-${crypto.randomUUID()}`; names.push(name);
+    const db = createKairosDatabase(name); opened.push(db); await openKairosDatabase(db);
+    render(<RouterProvider router={createMemoryRouter([{ path: '/analysis', element: <AnalysisRoute db={db} now={now} /> }], { initialEntries: ['/analysis?view=patterns'] })} />);
+    const settings = await screen.findByRole('link', { name: 'Open Settings' });
+    settings.focus();
+    await act(async () => { window.dispatchEvent(new Event('focus')); await new Promise(resolve => setTimeout(resolve, 50)); });
+    expect(screen.getByRole('link', { name: 'Open Settings' })).toBe(settings);
+    expect(settings).toHaveFocus();
+  });
+
+  it('T-053c fix r1: Discipline shows your goals as cards with "Change your goals", and Patterns keeps "How this works"', async () => {
+    const db = await database();
+    expect((await saveGoalsPreference(db, { tradesPerMonthTarget: '20' }, { now })).ok).toBe(true);
+    render(<RouterProvider router={createMemoryRouter([{ path: '/analysis', element: <AnalysisRoute db={db} now={now} /> }], { initialEntries: ['/analysis?view=discipline'] })} />);
+    const goals = (await screen.findByRole('heading', { level: 2, name: 'Your goals' })).closest('section')!;
+    expect(await within(goals).findByRole('heading', { level: 3, name: 'Closed trades this month' })).toBeInTheDocument();
+    expect(within(goals).getByText(/of 20/)).toBeInTheDocument();
+    expect(within(goals).getByRole('link', { name: 'Change your goals' })).toHaveAttribute('href', '/goals');
+    expect(within(goals).queryByText('No goals yet.')).toBeNull();
+    cleanup();
+    await route('/analysis?view=patterns');
+    fireEvent.click(await screen.findByRole('button', { name: 'How this works' }));
+    expect(await screen.findByRole('dialog', { name: 'How this works' })).toHaveTextContent(/never predict a price/);
   });
 });

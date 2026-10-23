@@ -18,6 +18,8 @@ export interface PatternsPanelProps {
   readonly level?: 2 | 3;
   /** Where focus goes after "Try again" when what loaded has nothing to focus: the heading above the panel. */
   readonly headingId: string;
+  /** Bumped by the host to read again (Analysis's refresh); the last patterns stay until the new ones arrive. */
+  readonly refreshRevision?: number;
 }
 
 type ScreenState = Readonly<{ kind: 'loading' }> | Readonly<{ kind: 'failed' }> | Readonly<{ kind: 'ready'; result: TradePatternsQueryResult }>;
@@ -72,20 +74,22 @@ function PatternCard({ pattern, level }: { readonly pattern: TradePattern; reado
 
 /** P30 "Your patterns": what repeats in the closed trades of the last 90 days, bars before words. It only reads. Shown on
  * its own page and as Analysis › Patterns (D220). */
-export function PatternsPanel({ db, scope, now = wallClock, level = 2, headingId }: PatternsPanelProps) {
+export function PatternsPanel({ db, scope, now = wallClock, level = 2, headingId, refreshRevision = 0 }: PatternsPanelProps) {
   const overallId = useId();
   const [state, setState] = useState<ScreenState>({ kind: 'loading' });
   // "Try again" after a failed load bumps this, which runs the load effect again.
   const [attempt, setAttempt] = useState(0);
+  // "Try again" shows loading; a refresh keeps the last patterns until the new ones arrive (focus never falls to the page).
+  const [lastAttempt, setLastAttempt] = useState(attempt);
+  if (lastAttempt !== attempt) { setLastAttempt(attempt); setState({ kind: 'loading' }); }
   useEffect(() => {
     let ignore = false;
-    setState({ kind: 'loading' });
     loadTradePatterns(db, { now: now(), scope }).then(
       result => { if (!ignore) setState({ kind: 'ready', result }); },
-      () => { if (!ignore) setState({ kind: 'failed' }); },
+      () => { if (!ignore) setState(current => (current.kind === 'ready' ? current : { kind: 'failed' })); },
     );
     return () => { ignore = true; };
-  }, [db, scope, now, attempt]);
+  }, [db, scope, now, attempt, refreshRevision]);
   // "Try again" unmounts its own error box while loading, so focus would fall to the page (WCAG 2.4.3). When it had focus,
   // focus goes to the first link or button of what loaded (the new "Try again" when it failed again), else the heading above.
   // Holds the screen the tap was made on: React may run the effect for that screen after the tap, so only a newer one moves focus.
