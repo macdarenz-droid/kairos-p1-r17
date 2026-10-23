@@ -13,7 +13,7 @@ describe('P13.14 Visual P&L streak presentation', () => {
     }} />);
     expect(screen.getByText('Profit streak')).toBeInTheDocument();
     expect(screen.getByText('3 result days')).toBeInTheDocument();
-    expect(screen.getByText('▲')).toHaveAttribute('aria-hidden', 'true');
+    expect(document.querySelector('[data-icon="result-up"]')).toHaveAttribute('aria-hidden', 'true');
   });
 
   it('presents loss without relying on color alone', () => {
@@ -25,7 +25,7 @@ describe('P13.14 Visual P&L streak presentation', () => {
     }} />);
     expect(screen.getByText('Loss streak')).toBeInTheDocument();
     expect(screen.getByText('1 result day')).toBeInTheDocument();
-    expect(screen.getByText('▼')).toHaveAttribute('aria-hidden', 'true');
+    expect(document.querySelector('[data-icon="result-down"]')).toHaveAttribute('aria-hidden', 'true');
   });
 
   it('presents break-even explicitly', () => {

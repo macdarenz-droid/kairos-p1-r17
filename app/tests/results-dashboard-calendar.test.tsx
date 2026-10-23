@@ -159,7 +159,7 @@ describe('T-051d the calendar, a day\'s trades, candles, streak and result days 
     expect((await saveHomeCurrency(db, { currency: 'EUR', usdStablecoins: [] }, { now })).ok).toBe(true);
     const found = await show(db);
     fireEvent.click(within(found).getByRole('button', { name: /^18 September 2026:/ }));
-    const item = (await within(found).findByText('AAPL')).closest('li') as HTMLElement;
+    const item = (await within(await waitFor(() => { const panel = found.querySelector<HTMLElement>('.kairos-results-day-trades'); expect(panel).not.toBeNull(); return panel!; })).findByText('AAPL')).closest('li') as HTMLElement;
     expect(item).toHaveTextContent('25 USD');
     expect(item).toHaveTextContent('In EUR: 20 (European Central Bank rate of 18 September 2026: 1 EUR = 1.25 USD)');
   });

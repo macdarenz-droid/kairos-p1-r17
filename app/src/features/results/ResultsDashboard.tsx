@@ -26,6 +26,7 @@ import { PERIOD_LIST_ID, PeriodChooser } from './PeriodChooser';
 import { ResultsCalendar } from './ResultsCalendar';
 import { ResultsCandles } from './ResultsCandles';
 import { ResultsDayTrades } from './ResultsDayTrades';
+import { ResultsNumbers } from './ResultsNumbers';
 import { VisualPnlPerformanceSummary } from './VisualPnlPerformanceSummary';
 import { VisualPnlStreak } from './VisualPnlStreak';
 import './resultsDashboard.css';
@@ -321,6 +322,7 @@ export function ResultsDashboard({ db, scope, choice, onChoiceChange, renderTrad
       {homeWords ? <p className="kairos-results__notice" data-home-currency={dashboard.inHomeCurrency.homeCurrency}>{homeWords.text} <ResultsLink to="/currency">{homeWords.link}</ResultsLink></p> : null}
       <RatesLine state={ratesFetch} live={live} onRetry={retryRates} />
       <PeriodResult dashboard={dashboard} glow={glow} renderTradeLink={renderTradeLink} />
+      <ResultsNumbers summary={dashboard.summary} context={dashboard.inHomeCurrency} renderTradeLink={renderTradeLink} />
       <ResultsDays key={`${dashboard.period.kind}:${dashboard.period.fromDayKey ?? ''}:${dashboard.period.toDayKey ?? ''}`} dashboard={dashboard} renderTradeLink={renderTradeLink} />
       <DisciplineScorePanel title={practice ? 'Your practice discipline' : 'Your discipline'} state={dashboard.discipline} periodLabel={periodLabel} />
       {dashboard.days.blockedTrades.length > 0 ? <p className="kairos-results__notice">{dashboard.days.blockedTrades.length === 1 ? '1 closed trade could not be placed on a day.' : `${dashboard.days.blockedTrades.length} closed trades could not be placed on a day.`}</p> : null}

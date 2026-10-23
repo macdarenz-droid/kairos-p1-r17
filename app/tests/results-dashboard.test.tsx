@@ -77,6 +77,8 @@ async function settled(name = 'Your results', status?: string) {
   await waitFor(() => expect(found).not.toHaveAttribute('aria-busy'));
   return found;
 }
+/** "Result after fees" and its line; "Your numbers" (T-051g) repeats the same words for its own numbers. */
+const resultTile = (found: HTMLElement) => within(found).getByText('Result after fees').closest('.kairos-stat') as HTMLElement;
 const periodLabel = (found: HTMLElement) => found.querySelector('.kairos-period-chooser__label')?.textContent;
 
 describe('T-051c the time zone on first use', () => {
@@ -156,9 +158,9 @@ describe("T-051c the period's result after fees", () => {
     const partly = await save(db, trade('2026-09-10T10:00:00.000Z', '110', { quantity: '2', exitQuantity: '1' }));
     show({ db });
     const found = await settled('Your results', 'ready');
-    expect(within(found).getByText('Not available: a trade has no result yet.')).toBeInTheDocument();
+    expect(within(resultTile(found)).getByText('Not available: a trade has no result yet.')).toBeInTheDocument();
     expect(within(found).getByText('1 trade has no result yet:')).toBeInTheDocument();
-    expect(within(found).getByRole('link', { name: 'View trade' })).toHaveAttribute('href', `/analysis?trade=${partly}`);
+    expect(within(found.querySelector('.kairos-results__fix') as HTMLElement).getByRole('link', { name: 'View trade' })).toHaveAttribute('href', `/analysis?trade=${partly}`);
   });
 
   it('asks for a home currency when the trades are in different currencies', async () => {
@@ -167,7 +169,7 @@ describe("T-051c the period's result after fees", () => {
     await save(db, trade('2026-09-11T10:00:00.000Z', '1.1', { currency: 'EUR', symbol: 'BTCEUR', entry: '1' }));
     show({ db });
     const found = await settled('Your results', 'ready');
-    expect(within(found).getByText('Not available: your trades are in different currencies. Choose a home currency to add them up.')).toBeInTheDocument();
+    expect(within(resultTile(found)).getByText('Not available: your trades are in different currencies. Choose a home currency to add them up.')).toBeInTheDocument();
     expect(within(found).getByRole('link', { name: 'Choose a home currency' })).toHaveAttribute('href', '/currency');
   });
 
@@ -180,7 +182,7 @@ describe("T-051c the period's result after fees", () => {
     expect((await saveHomeCurrency(db, { currency: 'EUR', usdStablecoins: [] }, { now })).ok).toBe(true);
     show({ db });
     const found = await settled('Your results', 'ready');
-    expect(within(found).getByText('Not available: 1 trade still needs an exchange rate to count in EUR.')).toBeInTheDocument();
+    expect(within(resultTile(found)).getByText('Not available: 1 trade still needs an exchange rate to count in EUR.')).toBeInTheDocument();
     expect(within(found).getAllByRole('link', { name: 'Add the missing rates' })).toHaveLength(1);
     expect(found.querySelector('[data-home-currency="EUR"]')).not.toBeNull();
   });

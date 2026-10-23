@@ -115,3 +115,26 @@
 .kairos-results .kairos-pnl-streak--profit { border-inline-start-color: var(--kairos-trade-profit); }
 .kairos-results .kairos-pnl-streak--loss { border-inline-start-color: var(--kairos-trade-loss); }
 .kairos-results-calendar td[data-day-outside] { opacity: .45; }
+
+/* "Your numbers" (U5, T-051g): pictures first, sizes from projectPeriodPictures, tokens only. */
+.kairos-results-numbers { display: grid; gap: var(--kairos-space-4); margin-block: var(--kairos-space-4); min-width: 0; }
+.kairos-results-numbers h3 { margin: 0; font-size: var(--kairos-font-size-md); }
+.kairos-results-numbers__block { display: grid; gap: var(--kairos-space-2); min-width: 0; }
+.kairos-results-numbers__row { display: grid; gap: var(--kairos-space-1); min-width: 0; }
+.kairos-results-numbers__label, .kairos-results-numbers__count, .kairos-results-numbers__legend, .kairos-results-numbers__risk-label, .kairos-results-numbers__symbol { color: var(--kairos-text-secondary); }
+.kairos-results-numbers__count, .kairos-results-numbers__legend, .kairos-results-numbers__risk-label { font-size: var(--kairos-font-size-sm); }
+.kairos-results-numbers__bar { display: flex; gap: 2px; block-size: 0.75rem; overflow: hidden; border-radius: var(--kairos-radius-full); }
+.kairos-results-numbers__bar > span, .kairos-results-numbers__risk-bar > span { display: block; block-size: 100%; border-radius: var(--kairos-radius-full); }
+.kairos-results-numbers [data-part='won'] { background: var(--kairos-trade-profit); }
+.kairos-results-numbers [data-part='lost'] { background: var(--kairos-trade-loss); }
+.kairos-results-numbers [data-part='breakEven'] { background: var(--kairos-trade-flat); }
+.kairos-results-numbers [data-part='noResult'] { box-sizing: border-box; border: 1px dashed var(--kairos-border-strong); background: transparent; }
+.kairos-results-numbers__legend { display: flex; flex-wrap: wrap; gap: var(--kairos-space-1) var(--kairos-space-3); margin: 0; padding: 0; list-style: none; }
+.kairos-results-numbers__legend li { display: inline-flex; align-items: center; gap: var(--kairos-space-1); }
+.kairos-results-numbers__risk { display: grid; gap: var(--kairos-space-1); }
+.kairos-results-numbers__risk-bar { display: block; block-size: 0.75rem; }
+.kairos-results-numbers [data-part='one-risk'] { box-sizing: border-box; border: 1px solid var(--kairos-border-strong); }
+.kairos-results-numbers [data-part='average-risk'][data-direction='up'] { background: var(--kairos-trade-profit); }
+.kairos-results-numbers [data-part='average-risk'][data-direction='down'] { background: var(--kairos-trade-loss); }
+.kairos-results-numbers [data-part='average-risk'][data-direction='flat'] { background: var(--kairos-trade-flat); }
+.kairos-results-numbers .kairos-stat__value { overflow-wrap: anywhere; }
