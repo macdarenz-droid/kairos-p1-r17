@@ -126,7 +126,7 @@ export function SettingsRoute({ db = kairosDatabase }: SettingsRouteProps) {
       <form ref={form} className="kairos-settings-card" onSubmit={handleSubmit} noValidate>
         <div>
           <h2>Time zone for your results</h2>
-          <p>Choose which calendar day Kairos uses when grouping closed trades. The first time you open your results, Kairos starts with this device's time zone and never changes it after that.</p>
+          <p>Choose which calendar day Kairos uses when grouping closed trades. When you first open Kairos, it starts with this device's time zone and never changes it after that.</p>
         </div>
 
         <Field label="Time zone" id="kairos-daily-results-time-zone" wide

@@ -1,8 +1,9 @@
 import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { commitBackupRestore, exportKairosBackup, prepareBackupRestore } from '../src/application/backup';
+import { commitBackupRestore, commitTradeImport, exportKairosBackup, prepareBackupRestore, prepareTradeImport } from '../src/application/backup';
 import { loadTradedMarkets, parseTradedMarkets, saveTradedMarkets, tradedMarketsMetadataKey } from '../src/application/setup/tradedMarkets';
+import { saveManualTrade } from '../src/application/trades';
 import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
 
 const names: string[] = [];
@@ -51,5 +52,19 @@ describe('T-053d the markets you trade', () => {
     if (!prepared.ok) throw new Error('prepare failed');
     expect((await commitBackupRestore(target, prepared.restore)).ok).toBe(true);
     expect(await loadTradedMarkets(target)).toEqual(['crypto', 'stock']);
+  });
+
+  it('T-053d fix r1: a merge import (trades only) leaves it alone', async () => {
+    const target = await database('merge-target');
+    await saveTradedMarkets(target, ['forex'], { now });
+    const other = await database('merge-other');
+    await saveTradedMarkets(other, ['crypto', 'stock'], { now });
+    await saveManualTrade(other, { symbol: 'ETHUSDT', marketType: 'crypto', side: 'long', status: 'open', openedAt: '2026-10-20T08:00:00.000Z' });
+    const backup = await exportKairosBackup(other, new Date(now()));
+    if (!backup.ok) throw new Error('export failed');
+    const importing = await prepareTradeImport(target, backup.file.contents);
+    if (!importing.ok) throw new Error('import prepare failed');
+    expect((await commitTradeImport(target, importing.import)).ok).toBe(true);
+    expect(await loadTradedMarkets(target)).toEqual(['forex']);
   });
 });

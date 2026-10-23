@@ -28,6 +28,7 @@ export interface SetupScreenProps {
 const STEPS = 6;
 const TITLE = 'kairos-setup-title';
 const STEP_TITLE = 'kairos-setup-step-title';
+const ZONE_FIELD = 'kairos-setup-time-zone';
 const wallClock = (): string => new Date().toISOString();
 
 const MARKET_WORDS: Readonly<Record<MarketType, string>> = Object.freeze({ crypto: 'Crypto', forex: 'Forex', stock: 'Stocks', futures: 'Futures', options: 'Options', other: 'Other' });
@@ -45,7 +46,8 @@ interface Saved {
   readonly goals: GoalsPreference;
 }
 
-type Loaded = Readonly<{ kind: 'loading' }> | Readonly<{ kind: 'error' }> | Readonly<{ kind: 'ready'; saved: Saved }>;
+/** A failed load stays on screen while "Try again" reads again (`retrying`), so the button keeps focus. */
+type Loaded = Readonly<{ kind: 'loading' }> | Readonly<{ kind: 'error'; retrying: boolean }> | Readonly<{ kind: 'ready'; saved: Saved }>;
 
 /** The step the address asks for (`?step=N`, from the Getting started card), else the first. */
 function stepFrom(params: URLSearchParams): number {
@@ -71,9 +73,13 @@ export function SetupScreen({ db, deviceTimeZone, languages, now = wallClock }: 
   const [loaded, setLoaded] = useState<Loaded>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [problem, setProblem] = useState<string | null>(null);
-  const [failed, setFailed] = useState(false);
+  // What could not be saved, so "Try again" repeats it; the message stays while it retries, so focus stays on it.
+  const [failed, setFailed] = useState<'next' | 'skip' | null>(null);
   const [busy, setBusy] = useState(false);
-  const moved = useRef(false);
+  // Each change of step (never the first screen: the shell focuses the page's h1) moves focus to the step's heading.
+  const [titleFocus, setTitleFocus] = useState(0);
+  const retried = useRef(false);
+  const zoneAsked = useRef(false);
 
   // Each step's answer, kept while the trader moves back and forth.
   const [zone, setZone] = useState('');
@@ -86,13 +92,15 @@ export function SetupScreen({ db, deviceTimeZone, languages, now = wallClock }: 
 
   useEffect(() => {
     let ignore = false;
-    setLoaded({ kind: 'loading' });
+    setLoaded(current => (current.kind === 'error' ? { kind: 'error', retrying: true } : { kind: 'loading' }));
     Promise.all([loadVisualPnlTimeZone(db), loadHomeCurrency(db), loadTradedMarkets(db), loadDisciplineLists(db), loadGoalsPreference(db)]).then(
       ([timeZone, home, traded, lists, goal]) => {
         if (ignore) return;
-        if (!lists.ok) { setLoaded({ kind: 'error' }); return; }
+        if (!lists.ok) { setLoaded({ kind: 'error', retrying: false }); return; }
         const saved: Saved = { timeZone, currency: home, markets: traded, lists: lists.lists, goals: goal };
         setLoaded({ kind: 'ready', saved });
+        // After "Try again" its message is gone, so focus goes to the step.
+        if (retried.current) { retried.current = false; setTitleFocus(value => value + 1); }
         setZone(timeZone ?? deviceTimeZone ?? '');
         setChangingZone(timeZone === null && deviceTimeZone === null);
         setCurrency(home?.currency ?? suggestion ?? '');
@@ -105,33 +113,40 @@ export function SetupScreen({ db, deviceTimeZone, languages, now = wallClock }: 
           monthlyResultTargetCurrency: goal.monthlyResultTarget?.currency ?? home?.currency ?? suggestion ?? '',
         });
       },
-      () => { if (!ignore) setLoaded({ kind: 'error' }); },
+      () => { if (!ignore) setLoaded({ kind: 'error', retrying: false }); },
     );
     return () => { ignore = true; };
     // The phone's zone and languages are read once by the route; a retry reads the saved values again.
   }, [db, attempt]);
 
-  // Focus goes to the step's heading on each step change (never on the first one: the shell focuses the page's h1).
   useEffect(() => {
-    if (!moved.current) return;
-    document.getElementById(STEP_TITLE)?.focus();
-  }, [step]);
+    if (titleFocus > 0) document.getElementById(STEP_TITLE)?.focus();
+  }, [titleFocus]);
+
+  // "Change" gives way to the time zone field, which takes the focus.
+  useEffect(() => {
+    if (!changingZone || !zoneAsked.current) return;
+    zoneAsked.current = false;
+    document.getElementById(ZONE_FIELD)?.focus();
+  }, [changingZone]);
 
   // Reaching the last step finishes the setup (the first time is kept).
   useEffect(() => {
     if (step === STEPS) void finishSetup(db, { now });
   }, [db, now, step]);
 
-  const go = (next: number) => { moved.current = true; setProblem(null); setFailed(false); setStep(next); };
+  const go = (next: number) => { setProblem(null); setFailed(null); setStep(next); setTitleFocus(value => value + 1); };
   const saved = loaded.kind === 'ready' ? loaded.saved : null;
 
   async function next(form: StepForm): Promise<void> {
     if (busy) return;
-    setBusy(true); setProblem(null); setFailed(false);
+    setBusy(true); setProblem(null);
     try {
-      if (await form.save()) go(step + 1);
+      if (await form.save()) { go(step + 1); return; }
+      // A step that answers with a problem replaces "Try again"; focus goes back to the step.
+      if (failed !== null) { setFailed(null); setTitleFocus(value => value + 1); }
     } catch {
-      setFailed(true);
+      setFailed('next');
     } finally {
       setBusy(false);
     }
@@ -142,7 +157,7 @@ export function SetupScreen({ db, deviceTimeZone, languages, now = wallClock }: 
     setBusy(true);
     const result = await skipSetup(db, { now });
     setBusy(false);
-    if (!result.ok) { setFailed(true); return; }
+    if (!result.ok) { setFailed('skip'); return; }
     void navigate('/');
   }
 
@@ -154,9 +169,9 @@ export function SetupScreen({ db, deviceTimeZone, languages, now = wallClock }: 
       title: 'Your time zone',
       body: <>
         {zone !== '' && !changingZone ? <p>Kairos uses {saved?.timeZone !== null && saved?.timeZone !== undefined ? 'your saved' : "this phone's"} time zone: <strong>{zone}</strong>. Your days and months follow it.</p> : null}
-        {changingZone ? <Field label="Time zone" id="kairos-setup-time-zone" hint="Your place, for example Asia/Manila, Europe/London or UTC.">
+        {changingZone ? <Field label="Time zone" id={ZONE_FIELD} hint="Your place, for example Asia/Manila, Europe/London or UTC.">
           {control => <input {...control} value={zone} autoComplete="off" onChange={event => setZone(event.target.value)} />}
-        </Field> : <Button variant="secondary" size="sm" onClick={() => setChangingZone(true)}>Change</Button>}
+        </Field> : <Button variant="secondary" size="sm" onClick={() => { zoneAsked.current = true; setChangingZone(true); }}>Change</Button>}
       </>,
       save: async () => {
         if (zone.trim() === '') { setProblem('Type your time zone, for example Asia/Manila.'); return false; }
@@ -257,14 +272,16 @@ export function SetupScreen({ db, deviceTimeZone, languages, now = wallClock }: 
   const form = forms[step]!;
 
   return <section className="kairos-route kairos-setup" aria-labelledby={TITLE}>
-    <PageHeader eyebrow={`Step ${step} of ${STEPS}`} title="Set up Kairos" titleId={TITLE} intro="Six short steps. Skip any of them; you can come back from More." />
+    <PageHeader eyebrow={`Step ${step} of ${STEPS}`} title="Set up Kairos" titleId={TITLE} intro="Six short steps. You can skip the setup and come back to it from More." />
     {loaded.kind === 'loading' ? <p role="status">Loading your setup…</p> : null}
-    {loaded.kind === 'error' ? <div role="alert" className="kairos-setup__problem"><p>Kairos could not load your setup. Nothing was changed.</p><Button variant="secondary" onClick={() => setAttempt(value => value + 1)}>Try again</Button></div> : null}
+    {loaded.kind === 'error' ? <div role="alert" className="kairos-setup__problem"><p>Kairos could not load your setup. Nothing was changed.</p>
+      <Button variant="secondary" aria-disabled={loaded.retrying || undefined} onClick={() => { if (loaded.retrying) return; retried.current = true; setAttempt(value => value + 1); }}>Try again</Button></div> : null}
     {loaded.kind === 'ready' ? <Card as="section" className="kairos-setup__step" aria-labelledby={STEP_TITLE}>
       <h2 id={STEP_TITLE} tabIndex={-1}>{form.title}</h2>
       {form.body}
       {problem !== null ? <p role="alert" className="kairos-setup__problem">{problem}</p> : null}
-      {failed ? <div role="alert" className="kairos-setup__problem"><p>Could not save. Nothing was changed.</p><Button variant="secondary" onClick={() => { void next(form); }}>Try again</Button></div> : null}
+      {failed !== null ? <div role="alert" className="kairos-setup__problem"><p>Could not save. Nothing was changed.</p>
+        <Button variant="secondary" aria-disabled={busy || undefined} onClick={() => { void (failed === 'skip' ? skip() : next(form)); }}>Try again</Button></div> : null}
       {step < STEPS ? <div className="kairos-setup__actions">
         {step > 1 ? <Button variant="secondary" onClick={() => go(step - 1)}>Back</Button> : null}
         <Button onClick={() => { void next(form); }} aria-disabled={busy || undefined}>{step === 2 && currency === '' ? 'Not now' : 'Next'}</Button>

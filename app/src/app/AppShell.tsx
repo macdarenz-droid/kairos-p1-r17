@@ -10,7 +10,6 @@ import { backStepOf, backTrailEntryId, EMPTY_BACK_TRAIL, recordBackTrailNavigati
 import { UpdatePrompt, type UpdatePromptPort } from '../features/shell/UpdatePrompt';
 import { readDeviceTimeZone } from '../features/settings/DeviceTimeZoneButton';
 import { startVisualPnlTimeZoneFromDevice } from '../application/visual-pnl';
-import { loadTradedMarkets } from '../application/setup/tradedMarkets';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
 import { activateWaitingServiceWorker, subscribeServiceWorkerStatus } from '../pwa/serviceWorkerRegistration';
 
@@ -219,8 +218,6 @@ export function AppShellRoute({ db = kairosDatabase, now = () => new Date().toIS
   const navigation = useNavigation();
   useEffect(() => {
     void startVisualPnlTimeZoneFromDevice(db, readDeviceTimeZone(), now()).catch(() => undefined);
-    // Read once, so Home starts on the right view (D223).
-    void loadTradedMarkets(db).catch(() => undefined);
     // Once per start: the database and clock are the app's own.
   }, []);
   return <AppShell loading={navigation.state !== 'idle'} />;

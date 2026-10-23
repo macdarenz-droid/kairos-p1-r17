@@ -21,7 +21,7 @@ const viewFor = (markets: readonly MarketType[] | null | undefined): 'market' | 
   markets !== null && markets !== undefined && !markets.includes('crypto') ? 'trades' : 'market';
 
 export function HomeRoute({ db = kairosDatabase, now = wallClock }: { readonly db?: KairosDatabase; readonly now?: () => string } = {}) {
-  // Home shows at once, on the markets last known in this visit (the shell reads them at start).
+  // Home shows at once, on the markets last known in this visit (read at start, before the app shows: main.tsx).
   const [view,setViewState] = useState<'market'|'trades'>(() => viewFor(knownTradedMarkets(db)));
   const chosen = useRef(false);
   const control = useRef<HTMLDivElement>(null);

@@ -1248,9 +1248,20 @@ test('(w) First run: the setup step by step, then the Journal; it can be opened 
   await next();
   await next();
   await expect(page.getByLabel('Forex')).toBeChecked();
-  // Home opens Home now: the setup was finished.
+  // Home opens Home now: the setup was finished. A cold start opens it on "Your Trades" for a forex trader at once,
+  // never on Live Market first (T-053d fix r1): every view the dashboard control shows is noted from the first frame.
+  await page.addInitScript(() => {
+    const shown: string[] = [];
+    (window as unknown as { kairosShownViews: string[] }).kairosShownViews = shown;
+    new MutationObserver(() => {
+      const pressed = document.querySelector('[role="group"][aria-label="Dashboard view"] button[aria-pressed="true"]')?.textContent ?? null;
+      if (pressed !== null && shown.at(-1) !== pressed) shown.push(pressed);
+    }).observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ['aria-pressed'] });
+  });
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Home' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Your Trades' })).toHaveAttribute('aria-pressed', 'true');
+  expect(await page.evaluate(() => (window as unknown as { kairosShownViews: string[] }).kairosShownViews)).toEqual(['Your Trades']);
   await expect(page).toHaveURL(/\/$/);
   expect(errors).toEqual([]);
 });
@@ -1263,7 +1274,12 @@ test('(w2) First run skipped: Home, and never the setup again', async ({ page })
   await page.reload();
   await expect(page.getByRole('heading', { level: 1, name: 'Home' })).toBeVisible();
   await expect(page.getByRole('group', { name: 'Dashboard view' })).toBeVisible();
-  await expect(page).toHaveURL(/\/$/);
+  // Home's read answers within moments; the address must still be Home well after it (T-053d fix r1).
+  const until = Date.now() + 2000;
+  while (Date.now() < until) {
+    expect(new URL(page.url()).pathname).toBe('/');
+    await page.waitForTimeout(100);
+  }
   expect(errors).toEqual([]);
 });
 

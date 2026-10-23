@@ -23,7 +23,7 @@ async function database(): Promise<KairosDatabase> {
 }
 const now = () => '2026-10-23T10:00:00.000Z';
 
-async function mount(db: KairosDatabase, path = '/setup') {
+async function mount(db: KairosDatabase, path = '/setup', ready = true) {
   const router = createMemoryRouter([
     { path: '/setup', element: <SetupScreen db={db} deviceTimeZone="Asia/Manila" languages={['en-PH']} now={now} /> },
     { path: '/', element: <p>Home page</p> },
@@ -31,7 +31,7 @@ async function mount(db: KairosDatabase, path = '/setup') {
     { path: '/practice', element: <p>Practice page</p> },
   ], { initialEntries: [path] });
   render(<RouterProvider router={router} />);
-  await screen.findByRole('heading', { level: 2 });
+  if (ready) await screen.findByRole('heading', { level: 2 });
   return router;
 }
 const next = async () => { await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^(Next|Not now)$/ })); }); };
@@ -123,5 +123,62 @@ describe('T-053d the setup screen', () => {
     await next();
     expect(await screen.findByRole('alert')).toHaveTextContent('Kairos does not know that time zone.');
     expect(await loadVisualPnlTimeZone(db)).toBeNull();
+  });
+
+  it('T-053d fix r1: "Change" gives way to the time zone field, which takes the focus', async () => {
+    await mount(await database());
+    const change = screen.getByRole('button', { name: 'Change' });
+    change.focus();
+    fireEvent.click(change);
+    await waitFor(() => expect(screen.getByLabelText('Time zone')).toHaveFocus());
+  });
+
+  it('T-053d fix r1: "Try again" keeps the focus when the save fails again, and the next step takes it when it works', async () => {
+    const db = await database();
+    await mount(db);
+    const transaction = db.transaction.bind(db);
+    const spy = vi.spyOn(db, 'transaction').mockRejectedValue(new Error('quota'));
+    await next();
+    const retry = await screen.findByRole('button', { name: 'Try again' });
+    retry.focus();
+    await act(async () => { fireEvent.click(retry); });
+    await waitFor(() => expect(spy).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Try again' })).not.toHaveAttribute('aria-disabled'));
+    expect(screen.getByRole('button', { name: 'Try again' })).toHaveFocus();
+    spy.mockImplementation(transaction as typeof db.transaction);
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Try again' })); });
+    const heading = await stepHeading('Your home currency');
+    await waitFor(() => expect(heading).toHaveFocus());
+  });
+
+  it('T-053d fix r1: when "Skip for now" could not save, "Try again" skips', async () => {
+    const db = await database();
+    await mount(db);
+    vi.spyOn(db, 'transaction').mockRejectedValueOnce(new Error('quota'));
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Skip for now' })); });
+    expect(await screen.findByText('Could not save. Nothing was changed.')).toBeInTheDocument();
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Try again' })); });
+    expect(await screen.findByText('Home page')).toBeInTheDocument();
+    expect((await loadSetupState(db)).skippedAt).toBe(now());
+    expect(await loadVisualPnlTimeZone(db)).toBeNull();
+  });
+
+  it('T-053d fix r1: a failed load keeps "Try again" focused while it reads again, and the step takes the focus once it loads', async () => {
+    const db = await database();
+    const get = db.metadata.get.bind(db.metadata);
+    const spy = vi.spyOn(db.metadata, 'get').mockRejectedValue(new Error('closed'));
+    await mount(db, '/setup', false);
+    const retry = await screen.findByRole('button', { name: 'Try again' });
+    expect(screen.getByRole('alert')).toHaveTextContent('Kairos could not load your setup.');
+    retry.focus();
+    const reads = spy.mock.calls.length;
+    await act(async () => { fireEvent.click(retry); });
+    await waitFor(() => expect(spy.mock.calls.length).toBeGreaterThan(reads));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Try again' })).not.toHaveAttribute('aria-disabled'));
+    expect(screen.getByRole('button', { name: 'Try again' })).toHaveFocus();
+    spy.mockImplementation(get as typeof db.metadata.get);
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Try again' })); });
+    const heading = await stepHeading('Your time zone');
+    await waitFor(() => expect(heading).toHaveFocus());
   });
 });
