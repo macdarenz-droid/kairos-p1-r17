@@ -46,8 +46,10 @@ export function SettingsRoute({ db = kairosDatabase }: SettingsRouteProps) {
   const [loadFailed, setLoadFailed] = useState(false);
   // "Try again" after a failed load bumps this, which runs the load effect again.
   const [loadAttempt, setLoadAttempt] = useState(0);
-  // Set when "Try again" had focus: once the load settles, focus goes to the field, or to the new "Try again" (WCAG 2.4.3).
-  const refocusAfterRetry = useRef(false);
+  // The "Try again" that was tapped with focus: once the load settles, focus goes to the field, or to the new "Try again"
+  // (WCAG 2.4.3). React may run the effect for the screen the tap was made on after the tap: that run finds the tapped button
+  // itself and is skipped.
+  const refocusAfterRetry = useRef<Element | null>(null);
   const form = useRef<HTMLFormElement>(null);
   const timeZoneOptions = useMemo(() => listTimeZoneOptions(savedTimeZone), [savedTimeZone]);
 
@@ -72,14 +74,17 @@ export function SettingsRoute({ db = kairosDatabase }: SettingsRouteProps) {
   }, [repositories, loadAttempt]);
 
   useEffect(() => {
-    if (isLoading || !refocusAfterRetry.current) return;
-    refocusAfterRetry.current = false;
+    const tapped = refocusAfterRetry.current;
+    if (isLoading || tapped === null) return;
     const target = loadFailed ? form.current?.querySelector<HTMLElement>('.kairos-error-state button') : document.getElementById('kairos-daily-results-time-zone');
+    if (target === tapped) return;
+    refocusAfterRetry.current = null;
     target?.focus();
   }, [isLoading, loadFailed]);
 
   function retryLoad(): void {
-    refocusAfterRetry.current = document.activeElement?.closest('.kairos-error-state') != null;
+    const active = document.activeElement;
+    refocusAfterRetry.current = active?.closest('.kairos-error-state') != null ? active : null;
     setLoadAttempt(current => current + 1);
   }
 

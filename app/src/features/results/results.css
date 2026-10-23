@@ -34,7 +34,8 @@
 .kairos-results-candles { display: grid; gap: var(--kairos-space-2); margin-block: var(--kairos-space-3); padding: var(--kairos-space-3); border: 1px solid var(--kairos-border-subtle); border-radius: var(--kairos-radius-lg); background: var(--kairos-surface-raised); min-width: 0; }
 .kairos-results-candles__heading { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: var(--kairos-space-1) var(--kairos-space-3); }
 .kairos-results-candles__heading h3 { margin: 0; font-size: var(--kairos-font-size-md); }
-.kairos-results-candles__heading strong { font-family: var(--kairos-font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: end; }
+/* The total keeps one line and drops under the title; only a total wider than the whole card breaks. */
+.kairos-results-candles__heading strong { flex: none; max-inline-size: 100%; font-family: var(--kairos-font-mono); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; text-align: end; }
 .kairos-results-candles[data-outcome='profit'] .kairos-results-candles__heading strong { color: var(--kairos-trade-profit); }
 .kairos-results-candles[data-outcome='loss'] .kairos-results-candles__heading strong { color: var(--kairos-trade-loss); }
 .kairos-results-candles__picture { display: block; width: 100%; height: auto; }
@@ -176,7 +177,8 @@
 .kairos-results-candles__heading h3:focus-visible { outline: 2px solid var(--kairos-state-focus); outline-offset: 2px; }
 /* Analysis gives every button a field look (tradeReview.css .kairos-review :is(button, …)); the calendar's cells, week totals,
    month total and the candles' row buttons keep their own, so the day and week colours show. */
-.kairos-results :is(.kairos-results-calendar, .kairos-results-heatmap__table) td > button, .kairos-results .kairos-results-candles__numbers .kairos-results-candles__row-button { padding: 0; border-color: transparent; background: transparent; }
+.kairos-results :is(.kairos-results-calendar, .kairos-results-heatmap__table) td > button { border-color: transparent; background: transparent; }
+.kairos-results .kairos-results-candles__numbers .kairos-results-candles__row-button { padding: 0; border-color: transparent; background: transparent; }
 .kairos-results .kairos-results-calendar-block .kairos-results-calendar__month-total { padding: var(--kairos-space-1) var(--kairos-space-3); border-color: var(--kairos-border-default); background: var(--kairos-surface-raised); font-size: var(--kairos-font-size-sm); }
 .kairos-results-calendar__swatch { display: inline-block; inline-size: 0.75rem; block-size: 0.75rem; border-radius: var(--kairos-radius-sm); }
 :is(.kairos-results-calendar__key, .kairos-results-heatmap__key) [data-key='profit'] .kairos-results-calendar__swatch { background: color-mix(in oklab, var(--kairos-trade-profit) 45%, transparent); }

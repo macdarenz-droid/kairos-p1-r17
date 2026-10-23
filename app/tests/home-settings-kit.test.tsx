@@ -222,4 +222,38 @@ describe('T-049f fix r1', () => {
     expect(await within(card()).findByText('Your checklist is saved.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
   });
+
+  /** Tap "Try again" the moment it is put on screen, before React has run that screen's effects (the race CI run 290 hit). */
+  function tapWhenShown(root: HTMLElement, selector = '.kairos-error-state button'): Promise<void> {
+    return new Promise(resolve => {
+      const observer = new MutationObserver(() => {
+        const retry = root.querySelector<HTMLElement>(selector);
+        if (retry === null) return;
+        observer.disconnect();
+        retry.focus();
+        fireEvent.click(retry);
+        resolve();
+      });
+      observer.observe(root, { childList: true, subtree: true });
+    });
+  }
+
+  it('Settings: a "Try again" tapped as soon as it shows still gives focus to the Time zone field that loads (T-051j fix ci 3)', async () => {
+    const db = await database();
+    await writeVisualPnlTimeZonePreference(createKairosRepositories(db).metadata, 'Asia/Manila', '2026-09-27T00:00:00.000Z');
+    failZoneReads(db, 1);
+    const view = render(<ThemeProvider><ToastProvider><SettingsRoute db={db} /></ToastProvider></ThemeProvider>);
+    await tapWhenShown(view.container, 'form .kairos-error-state button');
+    expect(await screen.findByText('Current: Asia/Manila')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Time zone' })).toHaveFocus());
+  });
+
+  it('Your Trades: a "Try again" tapped as soon as it shows still gives focus to the heading once the trades load (T-051j fix ci 3)', async () => {
+    const load = vi.fn<() => Promise<readonly HomeYourTrade[]>>().mockRejectedValueOnce(new Error('read')).mockResolvedValue([trade]);
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(390);
+    const view = render(<MemoryRouter><HomeDashboardYourTrades load={load} /></MemoryRouter>);
+    await tapWhenShown(view.container);
+    expect(await screen.findByRole('button', { name: /^BTCUSDT, long, Profit/ })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Your Trades' })).toHaveFocus());
+  });
 });
