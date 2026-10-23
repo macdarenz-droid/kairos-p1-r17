@@ -14,6 +14,8 @@ interface ResultsDayTradesProps {
   readonly dayKey: string;
   /** Default "Trades closed on {day}"; a week or the month passes its own (T-051h). */
   readonly title?: string;
+  /** true for a list that can hold several days (a week, a month, a heatmap cell, a market): each trade shows its day with its time. */
+  readonly showDay?: boolean;
   readonly timeZone: string;
   readonly state: ResultsDayTradesState;
   readonly renderTradeLink: (id: string) => ReactNode;
@@ -28,8 +30,9 @@ function hasHomeLines(state: Extract<ResultsDayTradesState, { kind: 'ready' }>):
 }
 
 /** The closed trades of one calendar day, under the month calendar. */
-export function ResultsDayTrades({ dayKey, title, timeZone, state, renderTradeLink, onClose }: ResultsDayTradesProps) {
-  const time = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit', timeZone });
+export function ResultsDayTrades({ dayKey, title, showDay = false, timeZone, state, renderTradeLink, onClose }: ResultsDayTradesProps) {
+  // A list of one day shows the time; a list that can hold several days shows the day too.
+  const time = new Intl.DateTimeFormat(undefined, showDay ? { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone } : { hour: '2-digit', minute: '2-digit', timeZone });
   return <div className="kairos-results-day-trades">
     <div className="kairos-results-day-trades__heading">
       <h3 tabIndex={-1}>{title ?? `Trades closed on ${dayLabel(dayKey)}`}</h3>
@@ -37,7 +40,7 @@ export function ResultsDayTrades({ dayKey, title, timeZone, state, renderTradeLi
     </div>
     {state.kind === 'loading' ? <p className="kairos-pnl-calendar__notice">Loading this day's trades…</p> : null}
     {state.kind === 'error' ? <p className="kairos-pnl-calendar__notice" role="alert">Kairos could not load this day's trades. Your stored trades were not changed.</p> : null}
-    {state.kind === 'ready' && hasHomeLines(state) ? <p className="kairos-pnl-calendar__notice">{title === undefined
+    {state.kind === 'ready' && hasHomeLines(state) ? <p className="kairos-pnl-calendar__notice">{!showDay
       ? 'Each result uses the exchange rate of the day it closed by the UTC clock, which can be a day before or after this calendar day.'
       : 'Each result uses the exchange rate of the day it closed by the UTC clock, which can be a day before or after the day it shows on the calendar.'}</p> : null}
     {state.kind === 'ready' ? <ul className="kairos-results-day-trades__list">

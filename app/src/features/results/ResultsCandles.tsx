@@ -27,6 +27,8 @@ const STEPS = 1000;
 const RESULT_CANDLES_LABEL_GAP = 10;
 /** Up to this many candles, every candle gets its date; more get the first, middle and last. */
 const RESULT_CANDLES_ALL_DATES = 7;
+/** About this many units a character of the 9-unit dip label takes. */
+const DIP_LABEL_UNIT = 5;
 /** A value label longer than this is squeezed to fit the right strip. */
 const RESULT_CANDLES_LABEL_MAX_CHARS = 10;
 
@@ -34,10 +36,12 @@ const RESULT_CANDLES_LABEL_MAX_CHARS = 10;
 const y = (step: number): number => PAD.top + ((STEPS - step) / STEPS) * PLOT_HEIGHT;
 
 /** The words of a unit: its name, a candle's long and short date, and the table's first column. */
-const UNIT_WORDS: Readonly<Record<VisualPnlResultCandleUnit, Readonly<{ one: string; many: string; long: (dayKey: string) => string; short: (dayKey: string) => string; column: string }>>> = Object.freeze({
-  day: { one: 'day', many: 'days', long: dayLabel, short: shortDayLabel, column: 'Day' },
-  week: { one: 'week', many: 'weeks', long: (dayKey: string) => `the week of ${dayLabel(dayKey)}`, short: shortDayLabel, column: 'Week' },
-  month: { one: 'month', many: 'months', long: (dayKey: string) => monthLabel(dayKey.slice(0, 7)), short: (dayKey: string) => { const [month, year] = monthLabel(dayKey.slice(0, 7)).split(' '); return `${month!.slice(0, 3)} ${year}`; }, column: 'Month' },
+const monthOf = (dayKey: string) => monthLabel(dayKey.slice(0, 7));
+/** The words of a unit: its name, a candle's long, row and short date, and the table's first column. */
+const UNIT_WORDS: Readonly<Record<VisualPnlResultCandleUnit, Readonly<{ one: string; many: string; long: (dayKey: string) => string; row: (dayKey: string) => string; short: (dayKey: string) => string; column: string }>>> = Object.freeze({
+  day: { one: 'day', many: 'days', long: dayLabel, row: dayLabel, short: shortDayLabel, column: 'Day' },
+  week: { one: 'week', many: 'weeks', long: (dayKey: string) => `the week of ${dayLabel(dayKey)}`, row: dayLabel, short: shortDayLabel, column: 'Week' },
+  month: { one: 'month', many: 'months', long: monthOf, row: monthOf, short: (dayKey: string) => { const [month, year] = monthOf(dayKey).split(' '); return `${month!.slice(0, 3)} ${year}`; }, column: 'Month' },
 });
 
 function countsText(candles: readonly { readonly direction: 'up' | 'down' | 'even' }[], unit: VisualPnlResultCandleUnit): string {
@@ -79,7 +83,6 @@ export function ResultsCandles({ projection, eyebrow = 'Your results over time',
   if (!projection.available) {
     return <section className="kairos-results-candles" aria-labelledby={titleId}>
       <div className="kairos-results-candles__heading">{heading}</div>
-      {controls}
       <p className="kairos-results-candles__state">{unavailableMessage(projection.reason)}</p>
     </section>;
   }
@@ -101,6 +104,8 @@ export function ResultsCandles({ projection, eyebrow = 'Your results over time',
   const low = marks.find((mark) => mark.key === 'dip-low');
   const dipDrawn = dip !== null && high?.step != null && low?.step != null && low.candleIndex !== null && (high.atStart || high.candleIndex !== null);
   const dipHidden = dip !== null && high !== undefined && low !== undefined && !dipDrawn;
+  // The low point is on the picture but the high point (or the start) is not: the dip began before the candles shown.
+  const dipBegan = dipHidden && low!.step !== null && low!.candleIndex !== null;
   const label = `${title}: ${total} ${currency} after ${resultDays} ${resultDays === 1 ? 'day' : 'days'} with results. ${span}${countsText(candles, unit)}.${dipDrawn ? ` Biggest dip ${dip}.` : ''}`;
   const zeroY = y(zeroStep);
   const centre = (index: number) => PAD.left + slot * (index + 0.5);
@@ -125,12 +130,16 @@ export function ResultsCandles({ projection, eyebrow = 'Your results over time',
     const fromX = high!.atStart ? PAD.left : centre(high!.candleIndex!);
     const lowX = centre(low!.candleIndex!);
     const bracketX = Math.min(lowX + bodyWidth / 2 + 3, PAD.left + PLOT_WIDTH - 1);
-    const textX = bracketX + 3;
-    const anchor = textX > PAD.left + PLOT_WIDTH - 60 ? 'end' as const : 'start' as const;
+    // The words go above the dashed line when there is room, else under the low point, else halfway down the dip; centred on it and kept inside the plot.
+    const words = `Biggest dip ${dip}`;
+    const wide = Math.min(words.length * DIP_LABEL_UNIT, PLOT_WIDTH - 4);
+    const labelX = Math.max(PAD.left + 2, Math.min(PAD.left + PLOT_WIDTH - wide, (fromX + lowX) / 2 - wide / 2));
+    const labelY = highY - 4 >= PAD.top + 8 ? highY - 4 : lowY + 11 <= PAD.top + PLOT_HEIGHT ? lowY + 11 : (highY + lowY) / 2 + 3;
     return <g className="kairos-results-candles__dip">
       <line data-mark="dip-high" data-candle-index={high!.atStart ? undefined : high!.candleIndex!} data-at-start={high!.atStart || undefined} x1={fromX} x2={lowX} y1={highY} y2={highY} />
       <path data-mark="dip-low" data-candle-index={low!.candleIndex!} d={`M${bracketX - 2},${highY} H${bracketX} V${lowY} H${bracketX - 2}`} />
-      <text className="kairos-results-candles__dip-label" x={anchor === 'end' ? bracketX - 4 : textX} y={(highY + lowY) / 2 + 3} textAnchor={anchor}>Biggest dip {dip}</text>
+      <text className="kairos-results-candles__dip-label" x={labelX} y={labelY} pointerEvents="none"
+        {...(words.length * DIP_LABEL_UNIT > wide ? { textLength: wide, lengthAdjust: 'spacingAndGlyphs' } : {})}>{words}</text>
     </g>;
   })() : null;
 
@@ -171,10 +180,10 @@ export function ResultsCandles({ projection, eyebrow = 'Your results over time',
       {dated.map((date) => <text key={date.dayKey} className="kairos-results-candles__date" data-date-for={date.dayKey} x={date.x} y={RESULT_CANDLES_HEIGHT - 8} textAnchor={date.anchor}>{words.short(date.dayKey)}</text>)}
     </svg>
     {note ? <p className="kairos-results-candles__state">{note}</p> : null}
-    {dipHidden ? <p className="kairos-results-candles__state">Biggest dip {dip} (before the candles shown)</p> : null}
+    {dipHidden ? <p className="kairos-results-candles__state">Biggest dip {dip} ({dipBegan ? 'it began before the candles shown' : 'before the candles shown'})</p> : null}
     <p className="kairos-results-candles__state">One candle per {words.one} with results. It starts at your total before that {words.one} and ends at your total after it; the thin line shows the highest and lowest it reached that {words.one}. <Icon name="result-up" size={16} /> up · <Icon name="result-down" size={16} /> down · no mark: no change.</p>
     {unitCount > n ? <p className="kairos-results-candles__state">Showing your last {n} {words.many} with results. The total above counts all {unitCount}.</p> : null}
-    <details className="kairos-results-candles__numbers">
+    <details className="kairos-results-candles__numbers" data-row-buttons={onSelectCandle ? '' : undefined}>
       <summary>Show the numbers</summary>
       <table>
         <caption>Your total so far for each {words.one}, in {currency}</caption>
@@ -182,7 +191,8 @@ export function ResultsCandles({ projection, eyebrow = 'Your results over time',
         <tbody>
           {candles.map((candle, index) => <tr key={candle.dayKey} data-candle-row={candle.dayKey}>
             <th scope="row"><Icon name={DIRECTION_ICONS[candle.direction]} size={16} /> {onSelectCandle
-              ? <button type="button" className="kairos-results-candles__row-button" onClick={() => onSelectCandle(index)}>See the trades of {words.long(candle.dayKey)}</button>
+              // The column names the unit, so the button shows the date; its name says what it does and holds those words.
+              ? <button type="button" className="kairos-results-candles__row-button" aria-label={`See the trades of ${words.long(candle.dayKey)}`} onClick={() => onSelectCandle(index)}>{words.row(candle.dayKey)}</button>
               : words.long(candle.dayKey)}</th>
             <td>{candle.open}</td><td>{candle.high}</td><td>{candle.low}</td><td>{candle.close}</td>
           </tr>)}

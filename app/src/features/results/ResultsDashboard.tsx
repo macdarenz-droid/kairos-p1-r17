@@ -253,6 +253,7 @@ function ResultsDays({ dashboard, renderTradeLink }: { readonly dashboard: Resul
   const listView = list === null ? null : <ResultsDayTrades
     dayKey={list.dayKey}
     title={list.title}
+    showDay={open?.kind !== 'day' && !(open?.kind === 'candle' && open.unit === 'day')}
     timeZone={timeZone}
     state={{ kind: 'ready', entries: list.entries, conversions: dashboard.conversions }}
     renderTradeLink={renderTradeLink}

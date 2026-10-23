@@ -95,6 +95,8 @@ describe('T-051i your total as day, week or month candles', () => {
     await waitFor(() => expect(heading).toHaveFocus());
     const list = heading.closest('.kairos-results-day-trades') as HTMLElement;
     expect(within(list).getAllByRole('listitem')).toHaveLength(2);
+    // One day's list shows the time only (fix r1).
+    expect(list.querySelector('time')!.textContent).not.toMatch(/Sep/);
     expect(await axeViolations(found)).toEqual([]);
     fireEvent.click(within(list).getByRole('button', { name: 'Close' }));
     await waitFor(() => expect(row).toHaveFocus());
@@ -106,6 +108,8 @@ describe('T-051i your total as day, week or month candles', () => {
     fireEvent.click(picture(found).querySelector('[data-candle-hit]')!);
     const week = await within(found).findByRole('heading', { name: 'Trades closed in the week of 31 August 2026' });
     expect(within(week.closest('.kairos-results-day-trades') as HTMLElement).getAllByRole('listitem')).toHaveLength(3);
+    // A list of several days shows each trade's day with its time (fix r1).
+    for (const time of (week.closest('.kairos-results-day-trades') as HTMLElement).querySelectorAll('time')) expect(time.textContent).toMatch(/Sep/);
     // The tap came from the picture and the numbers are closed: focus goes back to the candles' heading.
     numbers.open = false;
     fireEvent.click(within(week.closest('.kairos-results-day-trades') as HTMLElement).getByRole('button', { name: 'Close' }));
@@ -141,6 +145,38 @@ describe('T-051i your total as day, week or month candles', () => {
     fireEvent.click(unitButton(found, 'Day'));
     expect(within(found).getByText('Biggest dip 5 USDT (before the candles shown)')).toBeInTheDocument();
     expect(picture(found).querySelector('[data-mark^="dip"]')).toBeNull();
+  });
+
+  it('keeps the dip words inside the picture, clear of the top candles, and lets taps through (fix r1)', async () => {
+    const drop: SaveManualTradeInput = {
+      symbol: 'BTCUSDT', marketType: 'crypto', side: 'long', status: 'closed', openedAt: '2026-09-10T09:00:00.000Z', closedAt: '2026-09-10T10:00:00.000Z', grossPnlCurrency: 'USDT',
+      executions: [{ type: 'entry', price: '2000', quantity: '1', executedAt: '2026-09-10T09:00:00.000Z' }, { type: 'exit', price: '765.43211', quantity: '1', executedAt: '2026-09-10T10:00:00.000Z' }],
+    } as SaveManualTradeInput;
+    const found = await show(await database([...Array.from({ length: 9 }, (_, index) => trade(`2026-09-0${index + 1}`, 1)), drop]));
+    const label = within(picture(found)).getByText('Biggest dip 1234.56789 USDT');
+    const x = Number(label.getAttribute('x')), y = Number(label.getAttribute('y'));
+    // 27 characters of about 5 units each, inside the plot (4 to 302 of the 360-unit picture; the value labels sit right of it).
+    expect(x).toBeGreaterThanOrEqual(4);
+    expect(x + 27 * 5).toBeLessThanOrEqual(302);
+    expect(label.getAttribute('text-anchor')).toBeNull();
+    // The high point is at the top and the low point at the bottom, so the words sit halfway down the dip.
+    const highY = Number(picture(found).querySelector('[data-mark="dip-high"]')!.getAttribute('y1'));
+    expect(y).toBeGreaterThan(highY + 40);
+    expect(y).toBeLessThan(150 - 40);
+    expect(label).toHaveAttribute('pointer-events', 'none');
+  });
+
+  it('says the dip began before the candles shown when only its low point is drawn (fix r1)', async () => {
+    const found = await show(await database(Array.from({ length: 40 }, (_, index) => trade(new Date(Date.UTC(2026, 7, 1 + index)).toISOString().slice(0, 10), -1))), { kind: 'all' });
+    fireEvent.click(unitButton(found, 'Day'));
+    expect(within(found).getByText('Biggest dip 40 USDT (it began before the candles shown)')).toBeInTheDocument();
+  });
+
+  it('shows no unit switch when no picture can be drawn (fix r1)', async () => {
+    const euro = { ...trade('2026-09-03', 5), symbol: 'BTCEUR', grossPnlCurrency: 'EUR' } as SaveManualTradeInput;
+    const found = await show(await database([trade('2026-09-02', 10), euro]));
+    expect(within(picture(found)).getByText("The total can't be drawn because your trades use more than one currency.")).toBeInTheDocument();
+    expect(within(found).queryByRole('group', { name: 'Candles' })).toBeNull();
   });
 
   it('marks nothing when the total never fell', async () => {
