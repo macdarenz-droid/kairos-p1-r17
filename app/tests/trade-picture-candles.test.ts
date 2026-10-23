@@ -107,7 +107,8 @@ describe('T-027b candles for the trade window', () => {
 
   it('a trade with no start time → no start, with no request', async () => {
     const fetchMock = stubFetch();
-    await expect(loadTradePictureCandles(trade({ status: 'draft', openedAt: null }), [], deps())).resolves.toMatchObject({ ok: false, why: 'no-start' });
+    // A draft is drawn against the market up to now (D212); an open trade needs its own start.
+    await expect(loadTradePictureCandles(trade({ status: 'open', openedAt: null }), [], deps())).resolves.toMatchObject({ ok: false, why: 'no-start' });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });

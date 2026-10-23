@@ -94,6 +94,7 @@ export function TradePicture({ entry, variant, savePorts }: {
   const model = useMemo(() => projectTradePicture({
     trade: entry.trade, plans: entry.plans, executions: entry.executions, fees: entry.fees,
     candles: candles.kind === 'done' && candles.result.ok ? candles.result.candles : null,
+    candleInterval: candles.kind === 'done' && candles.result.ok ? candles.result.interval ?? null : null,
     now: new Date().toISOString(),
   }), [entry, candles]);
   const loading = candles.kind === 'waiting';

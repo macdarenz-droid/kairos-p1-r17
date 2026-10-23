@@ -26,6 +26,24 @@ export const TRADE_PICTURE_INTERVALS = Object.freeze([
   Object.freeze({ interval: '1w', ms: 7 * DAY_MS }),
 ] as const);
 
+export type TradePictureInterval = (typeof TRADE_PICTURE_INTERVALS)[number]['interval'];
+
+const INTERVAL_WORDS: Readonly<Record<TradePictureInterval, string>> = Object.freeze({
+  '1m': '1-minute candles', '3m': '3-minute candles', '5m': '5-minute candles', '15m': '15-minute candles', '30m': '30-minute candles',
+  '1h': '1-hour candles', '2h': '2-hour candles', '4h': '4-hour candles', '6h': '6-hour candles', '8h': '8-hour candles', '12h': '12-hour candles',
+  '1d': '1-day candles', '3d': '3-day candles', '1w': '1-week candles',
+});
+
+/** "15-minute candles": the candle size in words, for the picture and the share card. */
+export function describeTradePictureInterval(interval: TradePictureInterval): string {
+  return INTERVAL_WORDS[interval];
+}
+
+/** The length of one candle of `interval`. */
+export function tradePictureIntervalMs(interval: TradePictureInterval): number {
+  return TRADE_PICTURE_INTERVALS.find(choice => choice.interval === interval)!.ms;
+}
+
 /** A picture window holds at most this many candles, so a body is at least 4 units wide (T-039d). */
 export const TRADE_PICTURE_MAX_WINDOW_CANDLES = 48;
 export const TRADE_PICTURE_PADDING_FRACTION = 0.2;
@@ -44,8 +62,13 @@ export function tradePictureHasCandleSource(marketType: MarketType): boolean {
   return marketType !== 'forex' && marketType !== 'stock';
 }
 
+/** A planned trade (D212): the recent market on 15-minute candles, 36 up to now, and room for 12 more on the right for its boxes. */
+export const TRADE_PICTURE_PLANNED_INTERVAL = '15m' satisfies TradePictureInterval;
+export const TRADE_PICTURE_PLANNED_CANDLES = 36;
+export const TRADE_PICTURE_PLANNED_ROOM_CANDLES = 12;
+
 export interface TradePictureCandleWindow {
-  readonly interval: (typeof TRADE_PICTURE_INTERVALS)[number]['interval'];
+  readonly interval: TradePictureInterval;
   readonly startTimeMs: number;
   readonly endTimeMs: number;
   /** Candles in the padded window plus one, so the request covers it end to end. */
@@ -71,6 +94,14 @@ export function planTradePictureCandleWindow(startMs: number, endMs: number): Tr
     if (window.limit <= TRADE_PICTURE_MAX_WINDOW_CANDLES) return window;
   }
   return windowFor(TRADE_PICTURE_INTERVALS[TRADE_PICTURE_INTERVALS.length - 1]);
+}
+
+/** A planned trade's window (D212): the 36 fifteen-minute candles up to and including the one forming at `nowMs`. Null when `nowMs` is not a time. */
+export function planPlannedTradeCandleWindow(nowMs: number): TradePictureCandleWindow | null {
+  if (!Number.isFinite(nowMs)) return null;
+  const ms = tradePictureIntervalMs(TRADE_PICTURE_PLANNED_INTERVAL);
+  const startTimeMs = Math.floor(nowMs / ms) * ms - (TRADE_PICTURE_PLANNED_CANDLES - 1) * ms;
+  return Object.freeze({ interval: TRADE_PICTURE_PLANNED_INTERVAL, startTimeMs, endTimeMs: nowMs, limit: Math.ceil((nowMs - startTimeMs) / ms) + 1 });
 }
 
 const parseMs = (iso: string | null | undefined): number | null => {
@@ -105,7 +136,7 @@ const FUTURES_VENUE = 'binance-usdm';
 export type TradePictureCandlesFailure = 'no-candle-source' | 'no-start' | 'not-listed' | 'no-candles' | MarketDataUnavailableWhy;
 
 export type TradePictureCandlesResult =
-  | Readonly<{ ok: true; candles: readonly MarketCandle[]; source: string; note: string | null }>
+  | Readonly<{ ok: true; candles: readonly MarketCandle[]; source: string; note: string | null; /** The window's candle size; a loader may leave it out. */ interval?: TradePictureInterval }>
   | Readonly<{ ok: false; why: TradePictureCandlesFailure; retryAfterSeconds: number | null; note: string | null }>;
 
 type TradePictureCandlesSuccess = Extract<TradePictureCandlesResult, { ok: true }>;
@@ -129,10 +160,10 @@ const unavailable = (result: { readonly reason: string; readonly why?: MarketDat
  * Binance's "no such market" and a source without futures candles read as not listed, with the reason.
  */
 async function loadFuturesOnlyCandles(
-  symbol: string, spotNote: string, typed: string, window: TradePictureCandleWindow, deps: TradePictureCandleDeps, options: { readonly signal?: AbortSignal } | undefined,
+  symbol: string, spotNote: string, typed: string, window: TradePictureCandleWindow, keep: boolean, deps: TradePictureCandleDeps, options: { readonly signal?: AbortSignal } | undefined,
 ): Promise<TradePictureCandlesResult> {
   const key = [symbol, 'futures-only', window.interval, window.startTimeMs, window.endTimeMs].join('|');
-  const stored = cache.get(key);
+  const stored = keep ? cache.get(key) : undefined;
   if (stored) return stored;
   const result = await deps.history.acquireHistory({
     instrument: { venue: FUTURES_VENUE, symbol },
@@ -147,15 +178,16 @@ async function loadFuturesOnlyCandles(
     return unavailable(result);
   }
   if (result.snapshot.candles.length === 0) return failed('no-candles');
-  const success: TradePictureCandlesSuccess = Object.freeze({ ok: true as const, candles: result.snapshot.candles, source: describeFuturesOnlySource(symbol), note: null });
-  cache.set(key, success);
+  const success: TradePictureCandlesSuccess = Object.freeze({ ok: true as const, candles: result.snapshot.candles, source: describeFuturesOnlySource(symbol), note: null, interval: window.interval });
+  if (keep) cache.set(key, success);
   return success;
 }
 
 /**
  * Candles around one trade for its picture, with the line that says where they came from, or why there are none:
  * no candle source for the market, no start time, a market Binance doesn't list, no candles for the time, or the
- * source's own reason. Futures trades ask futures candles, and spot candles once when there is no futures market. It never throws.
+ * source's own reason. Futures trades ask futures candles, and spot candles once when there is no futures market. A planned
+ * trade asks the recent market up to now (D212), never from the cache. It never throws.
  */
 export async function loadTradePictureCandles(
   trade: TradeRecord,
@@ -165,10 +197,18 @@ export async function loadTradePictureCandles(
   try {
     if (!tradePictureHasCandleSource(trade.marketType)) return failed('no-candle-source');
     const nowMs = (deps.nowMs ?? Date.now)();
-    const times = tradePictureTimes(trade, executions, nowMs);
-    if (times.startMs === null) return failed('no-start');
-    const window = planTradePictureCandleWindow(times.startMs, times.endMs);
+    // A planned trade has no time of its own: it is drawn against the market up to now, which is never kept (it ends now).
+    const planned = trade.status === 'draft';
+    let window: TradePictureCandleWindow | null;
+    if (planned) {
+      window = planPlannedTradeCandleWindow(nowMs);
+    } else {
+      const times = tradePictureTimes(trade, executions, nowMs);
+      if (times.startMs === null) return failed('no-start');
+      window = planTradePictureCandleWindow(times.startMs, times.endMs);
+    }
     if (window === null) return failed('no-start');
+    const keep = !planned;
     const options = deps.signal ? { signal: deps.signal } : undefined;
 
     const metadata = await deps.metadata.acquireInstrumentMetadata(options);
@@ -177,19 +217,20 @@ export async function loadTradePictureCandles(
     if (!match.ok) {
       const futuresOnly = match.why === 'not-listed' ? futuresOnlyMarket(trade.symbol, trade.marketType) : null;
       if (futuresOnly === null) return failed('not-listed', null, match.note);
-      return loadFuturesOnlyCandles(futuresOnly, match.note, trade.symbol, window, deps, options);
+      return loadFuturesOnlyCandles(futuresOnly, match.note, trade.symbol, window, keep, deps, options);
     }
 
     const key = [match.symbol, match.candles, window.interval, window.startTimeMs, window.endTimeMs].join('|');
-    const stored = cache.get(key);
+    const stored = keep ? cache.get(key) : undefined;
     if (stored) return stored;
+    const asked = window;
 
     const ask = (venue: string): Promise<MarketCandleHistoryResult> => deps.history.acquireHistory({
       instrument: { venue, symbol: match.symbol },
-      interval: window.interval,
-      limit: window.limit,
-      startTimeMs: window.startTimeMs,
-      endTimeMs: window.endTimeMs,
+      interval: asked.interval,
+      limit: asked.limit,
+      startTimeMs: asked.startTimeMs,
+      endTimeMs: asked.endTimeMs,
       pair: { base: match.base, quote: match.quote },
     }, options);
     let result = await ask(match.candles === 'usdm-futures' ? FUTURES_VENUE : deps.venue);
@@ -204,8 +245,9 @@ export async function loadTradePictureCandles(
       candles: result.snapshot.candles,
       source: describeCandleSource(result.snapshot.origin, match, match.candles),
       note: matchNoteFor(match, result.snapshot.origin === undefined || result.snapshot.origin.market === 'spot' ? 'spot' : 'usdm-futures'),
+      interval: window.interval,
     });
-    cache.set(key, success);
+    if (keep) cache.set(key, success);
     return success;
   } catch {
     return failed('source-down');

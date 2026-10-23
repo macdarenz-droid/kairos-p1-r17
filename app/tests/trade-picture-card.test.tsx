@@ -44,7 +44,7 @@ describe('T-027c trade picture card', () => {
     expect(within(info).getByText(infoText(model, 'actual-r'))).toBeInTheDocument();
     expect(within(info).getByText('3 h')).toBeInTheDocument();
     expect(screen.queryByText('No candles for this time.')).toBeNull();
-    expect(screen.queryByText('Add a stop and target to see your risk box.')).toBeNull();
+    expect(screen.queryByText(/to see your (risk|reward)/)).toBeNull();
   });
 
   it('shows the connection note without candles, and still draws the boxes', () => {
@@ -56,7 +56,7 @@ describe('T-027c trade picture card', () => {
 
   it('asks for a stop and target when the plan has none', () => {
     const { container } = render(<TradePictureCard model={projectTradePicture({ ...input, plans: plan(null, null) })} />);
-    expect(screen.getByText('Add a stop and target to see your risk box.')).toBeInTheDocument();
+    expect(screen.getByText('Add a stop and target to see your risk and reward boxes.')).toBeInTheDocument();
     expect(container.querySelector('[data-box]')).toBeNull();
   });
 
@@ -259,5 +259,59 @@ describe('T-048f fix r1 the no-candles sentences reach screen readers', () => {
     render(<TradePictureCard model={model} candleNote={note} />);
     const sentence = screen.getByText(note);
     expect(screen.getByRole('img')).not.toContainElement(sentence);
+  });
+});
+
+describe('T-052a the rows that were missing, and a note that names what is missing', () => {
+  const planWith = (entry: string | null, stop: string | null, target: string | null) => [{ ...plan(stop, target)[0]!, plannedEntryPrice: entry === null ? null : dec(entry) }];
+  const noteFor = (overrides: Partial<TradePictureInput>) => projectTradePicture({ ...input, ...overrides }).planNote;
+
+  it('shows your average entry, result before fees, fees and money at risk', () => {
+    const model = projectTradePicture(input);
+    const { container } = render(<TradePictureCard model={model} />);
+    const shown = (key: string) => container.querySelector(`[data-info="${key}"] dd`)?.textContent;
+    expect(shown('average-entry')).toBe('100');
+    expect(shown('result-before-fees')).toBe('40 USDT');
+    expect(shown('fees')).toBe('1 USDT');
+    expect(shown('money-at-risk')).toBe('20 USDT');
+    expect([...container.querySelectorAll('[data-info]')].map(item => item.getAttribute('data-info'))).toEqual(
+      ['opened', 'closed', 'planned-entry', 'average-entry', 'stop', 'target', 'average-exit', 'size', 'money-at-risk', 'result-before-fees', 'fees', 'result', 'planned-reward', 'actual-r', 'duration']);
+    cleanup();
+    const noFees = render(<TradePictureCard model={projectTradePicture({ ...input, fees: [] })} />);
+    expect(noFees.container.querySelector('[data-info="fees"] dd')).toHaveTextContent(/^None saved$/);
+    cleanup();
+    const noStop = render(<TradePictureCard model={projectTradePicture({ ...input, plans: plan(null, '130') })} />);
+    expect(noStop.container.querySelector('[data-info="money-at-risk"] dd')).toHaveTextContent(/^Not available: no stop$/);
+  });
+
+  it('names what is missing for the boxes, and says nothing when both are drawn', () => {
+    expect(noteFor({})).toBeNull();
+    expect(noteFor({ plans: [] })).toBe('Add a planned entry, stop and target to see your risk and reward boxes.');
+    expect(noteFor({ plans: planWith(null, '90', '130') })).toBe('Add a planned entry to see your risk and reward boxes.');
+    expect(noteFor({ plans: planWith(null, null, '130') })).toBe('Add a planned entry and stop to see your risk and reward boxes.');
+    expect(noteFor({ plans: planWith(null, '90', null) })).toBe('Add a planned entry and target to see your risk and reward boxes.');
+    expect(noteFor({ plans: plan(null, null) })).toBe('Add a stop and target to see your risk and reward boxes.');
+    expect(noteFor({ plans: plan(null, '130') })).toBe('Add a stop to see your risk box.');
+    expect(noteFor({ plans: plan('90', null) })).toBe('Add a target to see your reward box.');
+    expect(noteFor({ trade: { ...trade, status: 'open', openedAt: null, closedAt: null }, executions: [] })).toBe('Add when the trade opened to see your risk and reward boxes.');
+    expect(noteFor({ plans: [{ ...plan('90', '130')[0]!, plannedStopPrice: 'not a price' as DecimalString }] })).toBe('Kairos could not read the planned prices, so there is no risk or reward box.');
+    const { container } = render(<TradePictureCard model={projectTradePicture({ ...input, plans: plan('90', null) })} />);
+    expect(container.querySelector('.kairos-trade-picture__note')).toHaveTextContent('Add a target to see your reward box.');
+  });
+
+  it('a planned trade shows its price now, both boxes from now and no note; a full picture says its candle size', () => {
+    const now = input.now;
+    const candle = (openMs: number, close: string) => ({ openTime: new Date(openMs).toISOString(), closeTime: new Date(openMs + 899_999).toISOString(), open: dec('100'), high: dec('104'), low: dec('96'), close: dec(close) });
+    const last = Date.parse(now) - 900_000;
+    const model = projectTradePicture({ ...input, trade: { ...trade, status: 'draft', openedAt: null, closedAt: null }, executions: [], fees: [], candles: [candle(last - 900_000, '101'), candle(last, '102.25')], candleInterval: '15m' });
+    const { container } = render(<TradePictureCard model={model} candleSource="Candles: Binance Spot · BTC/USDT" />);
+    const priceNow = container.querySelector('[data-info="price-now"] dd')!.textContent!;
+    expect(priceNow.startsWith('102.25 USDT (last candle, ')).toBe(true);
+    expect(container.querySelectorAll('[data-box]')).toHaveLength(2);
+    expect(container.querySelector('.kairos-trade-picture__note')).toBeNull();
+    expect(container.querySelector('.kairos-trade-picture__candle-size')).toHaveTextContent(/^15-minute candles$/);
+    cleanup();
+    const compact = render(<TradePictureCard model={model} compact />);
+    expect(compact.container.querySelector('.kairos-trade-picture__candle-size')).toBeNull();
   });
 });

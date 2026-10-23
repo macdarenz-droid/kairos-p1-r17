@@ -34,6 +34,7 @@ export function tradePictureCandleBodyWidth(count: number, plotWidth: number): n
 /** Trading words that explain an info row; tapping the "?" loads the glossary. */
 const INFO_GLOSSARY_TERMS: Readonly<Partial<Record<TradePictureInfoKey, string>>> = {
   result: 'result-after-fees', 'planned-reward': 'reward-to-risk', 'actual-r': 'times-what-you-risked', stop: 'stop', target: 'target', size: 'position-size', pips: 'pip', 'pip-value': 'pip', 'per-share': 'share',
+  'money-at-risk': 'money-at-risk', 'result-before-fees': 'result-before-fees', fees: 'fees', 'average-entry': 'entries-and-exits',
 };
 
 const toMs = (iso: string) => Date.parse(iso);
@@ -129,14 +130,18 @@ export function describeTradePicture(model: TradePictureModel): string {
   ].filter(Boolean).join(' ');
 }
 
+/** Same format and time zone (the device's) as the card header and View trade. */
+function displayTime(isoTime: string): string {
+  const date = new Date(isoTime);
+  return Number.isNaN(date.getTime()) ? isoTime : new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
+}
+
 function displayValue(model: TradePictureModel, key: string): string {
   const row = model.info.find(item => item.key === key);
   if (!row || row.text === null) return 'Not available';
-  if ((key === 'opened' || key === 'closed') && row.value !== null) {
-    // Same format and time zone (the device's) as the card header and View trade.
-    const date = new Date(row.value);
-    return Number.isNaN(date.getTime()) ? row.value : new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
-  }
+  if ((key === 'opened' || key === 'closed') && row.value !== null) return displayTime(row.value);
+  // D212: a planned trade's price now is the last candle's close; the row says which candle.
+  if (key === 'price-now' && model.priceNow !== null) return `${row.text} (last candle, ${displayTime(model.priceNow.at)})`;
   return row.text;
 }
 
@@ -172,7 +177,6 @@ export function TradePictureCard({ model, candlesLoading = false, svgRef, compac
   const clipId = `kairos-trade-picture-clip${useId()}`;
   const scale = makeScale(model, pad);
   const noCandles = model.candles.length === 0;
-  const noPlan = model.riskBox === null || model.rewardBox === null;
   const plotHeight = TRADE_PICTURE_HEIGHT - pad.top - pad.bottom;
   const candleWidth = scale ? tradePictureCandleBodyWidth(model.candles.length, TRADE_PICTURE_WIDTH - pad.left - pad.right) : 0;
   const planned = (key: 'planned-entry' | 'stop' | 'target') => model.info.find(row => row.key === key)?.value ?? null;
@@ -231,7 +235,7 @@ export function TradePictureCard({ model, candlesLoading = false, svgRef, compac
           {model.rewardBox ? <BoxLabel box={model.rewardBox} scale={scale} kind="reward" /> : null}
         </> : null}
       </svg>
-      {notes && noPlan ? <p className="kairos-trade-picture__note">Add a stop and target to see your risk box.</p> : null}
+      {notes && model.planNote !== null ? <p className="kairos-trade-picture__note">{model.planNote}</p> : null}
     </div>
     {/* Outside the image role, so screen readers hear why there are no candles. */}
     {notes && noCandles && candleFailure === null ? <p className="kairos-trade-picture__note">{!model.marketHasCandles ? 'Candles are shown for crypto trades only for now.' : candlesLoading ? 'Loading candles…' : candleNote ?? 'No candles for this time.'}</p> : null}
@@ -240,6 +244,7 @@ export function TradePictureCard({ model, candlesLoading = false, svgRef, compac
     {notes && noCandles && model.marketHasCandles && !candlesLoading && candleFailure !== null
       ? <UnavailableNotice live={false} message={candleFailure.message} retryLabel={compact ? null : candleFailure.retryLabel} onRetry={onRetryCandles} busy={candleRetrying} retryWhenOnline={candleFailure.retryWhenOnline} />
       : null}
+    {notes && !noCandles && !compact && model.candleWords !== null ? <p className="kairos-trade-picture__candle-size">{model.candleWords}</p> : null}
     {notes && !noCandles && !compact && candleSource !== null ? <>
       <p className="kairos-trade-picture__source">{candleSource}</p>
       {candleNote !== null ? <p className="kairos-trade-picture__note">{candleNote}</p> : null}

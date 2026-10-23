@@ -75,7 +75,7 @@ describe('T-044c the stock trade picture', () => {
     expect(value(model, 'size')).toMatchObject({ value: '10', unit: 'shares', text: '10 shares' });
     expect(value(model, 'result')!.text).toBe('24 USD');
     expect(value(model, 'per-share')).toMatchObject({ label: 'Won or lost per share', value: '2.5', unit: 'USD', text: '+2.5 USD before fees' });
-    expect(model.info.map(row => row.key)).toEqual(['market', 'direction', 'opened', 'closed', 'planned-entry', 'stop', 'target', 'average-exit', 'size', 'result', 'per-share', 'planned-reward', 'actual-r', 'duration', 'status']);
+    expect(model.info.map(row => row.key)).toEqual(['market', 'direction', 'opened', 'closed', 'planned-entry', 'average-entry', 'stop', 'target', 'average-exit', 'size', 'money-at-risk', 'result-before-fees', 'fees', 'result', 'per-share', 'planned-reward', 'actual-r', 'duration', 'status']);
     expect(model.marketHasCandles).toBe(false);
     expect(model.missing).toContainEqual({ part: 'candles', message: 'No stock candles yet, so only your plan, entries and exits are shown.' });
     const metrics = calculateTradeMetrics('long', aapl.executions, undefined, aapl.fees, { grossPnlCurrency: 'USD' });
@@ -129,7 +129,7 @@ describe('T-044c the stock trade picture', () => {
       candles: null,
       now,
     });
-    expect(btc.info.map(row => row.key)).toEqual(['market', 'direction', 'opened', 'closed', 'planned-entry', 'stop', 'target', 'average-exit', 'size', 'result', 'planned-reward', 'actual-r', 'duration', 'status']);
+    expect(btc.info.map(row => row.key)).toEqual(['market', 'direction', 'opened', 'closed', 'planned-entry', 'average-entry', 'stop', 'target', 'average-exit', 'size', 'money-at-risk', 'result-before-fees', 'fees', 'result', 'planned-reward', 'actual-r', 'duration', 'status']);
     expect(value(btc, 'size')).toMatchObject({ unit: null, text: '2' });
     expect(btc.marketHasCandles).toBe(true);
     const fx = projectTradePicture(simple('EURUSD', 'long', '10000', '1.085', '1.09', 'USD', 'forex'));
