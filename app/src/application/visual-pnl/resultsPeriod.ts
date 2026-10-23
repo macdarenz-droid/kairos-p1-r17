@@ -151,7 +151,11 @@ export function projectVisualPnlPeriod(choice: VisualPnlPeriodChoice, todayKey: 
       const firstMonth = shiftVisualPnlMonthKey(month, -2);
       const from = firstOfMonth(firstMonth);
       const to = firstOfMonth(shiftVisualPnlMonthKey(month, 1));
-      return bounded(frozenChoice, from, to, todayKey, stepChoice('three-months', shiftVisualPnlDayKey(from, -1)), nextIfStarted('three-months', firstOfMonth(shiftVisualPnlMonthKey(month, 3)), todayKey), monthRangeLabel(firstMonth, month));
+      // A period kept in an old address can end before today's 3 months: when the next 3 months have begun but would end
+      // after today, "next" is the 3 months up to today (D210).
+      const next = nextIfStarted('three-months', firstOfMonth(shiftVisualPnlMonthKey(month, 3)), todayKey)
+        ?? (to <= todayKey ? Object.freeze({ kind: 'three-months' as const, at: null }) : null);
+      return bounded(frozenChoice, from, to, todayKey, stepChoice('three-months', shiftVisualPnlDayKey(from, -1)), next, monthRangeLabel(firstMonth, month));
     }
     case 'year': {
       const january = `${yearOf(at)}-01`;

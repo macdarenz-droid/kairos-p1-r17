@@ -51,6 +51,13 @@ describe('T-051a which days a results period covers', () => {
     expect(period({ kind: 'three-months', at: null }, '2026-01-15')).toMatchObject({ label: 'November 2025 – January 2026', fromDayKey: '2025-11-01', toDayKey: '2026-02-01' });
   });
 
+  it('three months from an old address step forward to the 3 months up to today (D210)', () => {
+    const kept = period({ kind: 'three-months', at: '2026-09-01' }, '2026-10-05');
+    expect(kept).toMatchObject({ label: 'July – September 2026', holdsToday: false });
+    expect(kept.next).toEqual({ kind: 'three-months', at: null });
+    expect(period(kept.next!, '2026-10-05')).toMatchObject({ label: 'August – October 2026', holdsToday: true, next: null });
+  });
+
   it('a year runs from 1 January to the next 1 January', () => {
     const year = period({ kind: 'year', at: null });
     expect(year).toMatchObject({ fromDayKey: '2026-01-01', toDayKey: '2027-01-01', label: '2026', next: null, holdsToday: true });
