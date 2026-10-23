@@ -1,11 +1,16 @@
-import { NavLink, Outlet, useLocation, useNavigation } from 'react-router';
+import { Link, Outlet, useLocation, useNavigate, useNavigation, useNavigationType, type Location } from 'react-router';
 import { TradePictureCandleLoaderContext } from '../features/journal/tradePictureCandleQueue';
 import { browserTradePictureCandleLoader } from './tradePictureCandleBrowserDeps';
-import { useEffect, useRef, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { Icon, type IconName } from '../design-system/icons/Icon';
 import { ToastProvider } from '../design-system/primitives';
-import { moreNavigation, primaryNavigation, type KairosNavigationItem } from './navigation';
+import { LOG_TRADE_ADDRESS } from '../features/setup/GettingStartedCard';
+import { isNavigationTabPage, navigationTabOf, normalizePathname, pageParentOf, primaryNavigation } from './navigation';
+import { backStepOf, backTrailEntryId, EMPTY_BACK_TRAIL, recordBackTrailNavigation, recordBackTrailTitle, type BackTrail } from './backTrail';
 import { UpdatePrompt, type UpdatePromptPort } from '../features/shell/UpdatePrompt';
+import { readDeviceTimeZone } from '../features/settings/DeviceTimeZoneButton';
+import { startVisualPnlTimeZoneFromDevice } from '../application/visual-pnl';
+import { kairosDatabase, type KairosDatabase } from '../data/database';
 import { activateWaitingServiceWorker, subscribeServiceWorkerStatus } from '../pwa/serviceWorkerRegistration';
 
 const updatePromptPort: UpdatePromptPort = Object.freeze({ subscribe: subscribeServiceWorkerStatus, activate: activateWaitingServiceWorker });
@@ -20,9 +25,10 @@ const MAIN_ID = 'kairos-main-content';
 /**
  * D179: after each change of path (never of only the query or hash), the tab title becomes "{screen h1} · Kairos", and
  * focus moves to that h1 unless this is the first screen or the screen already put focus inside main. A screen whose
- * h1 arrives later (lazy code, data) is handled when the h1 appears.
+ * h1 arrives later (lazy code, data) is handled when the h1 appears. The focus never scrolls: the page's place is the
+ * scroll keeper's (D218). `onTitle` hears each screen's title.
  */
-function useScreenTitleAndFocus(pathname: string): void {
+function useScreenTitleAndFocus(pathname: string, onTitle: (title: string) => void): void {
   const firstPath = useRef<string | null>(null);
   const navigated = useRef(false);
   useEffect(() => {
@@ -37,9 +43,10 @@ function useScreenTitleAndFocus(pathname: string): void {
       if (heading === null) return false;
       const text = heading.textContent?.trim() ?? '';
       document.title = text === '' ? 'Kairos' : `${text} · Kairos`;
+      onTitle(text);
       if (!firstScreen && !main.contains(document.activeElement)) {
         if (!heading.hasAttribute('tabindex')) heading.setAttribute('tabindex', '-1');
-        heading.focus({ preventScroll: false });
+        heading.focus({ preventScroll: true });
       }
       return true;
     };
@@ -48,32 +55,185 @@ function useScreenTitleAndFocus(pathname: string): void {
     const observer = new MutationObserver(() => { if (settle()) observer.disconnect(); });
     observer.observe(main, { childList: true, subtree: true });
     return () => observer.disconnect();
+    // onTitle is read when the title settles; a new function each render must not re-run the move.
   }, [pathname]);
 }
 
-const isAtOrUnder = (pathname: string, item: KairosNavigationItem) =>
-  item.end ? pathname === item.to : pathname === item.to || pathname.startsWith(`${item.to}/`);
+const SCROLL_PLACES_KEY = 'kairos.scroll-places.v1';
+/** A page that brings part of itself into view (the Journal's log address) says so, and the shell stops reaching for its place. */
+export const SCROLL_CLAIMED_EVENT = 'kairos:scroll-claimed';
+/** Places kept across a reload (sessionStorage, this tab only); the newest are kept. */
+const SCROLL_PLACES_KEPT = 50;
+/** How long a returning page keeps reaching for its place while its data arrives. */
+const SCROLL_PLACE_PATIENCE_MS = 1000;
 
-/** The bottom-bar tab to mark: a matching primary tab; "More" for a screen opened from More; otherwise none (null). */
-function activeNavigationIndex(pathname: string): number | null {
-  const index = primaryNavigation.findIndex((item) => isAtOrUnder(pathname, item));
-  if (index >= 0) return index;
-  if (moreNavigation.some((item) => isAtOrUnder(pathname, item))) return primaryNavigation.findIndex((item) => item.to === '/more');
-  return null;
+function readScrollPlaces(): Map<string, number> {
+  try {
+    const parsed: unknown = JSON.parse(window.sessionStorage.getItem(SCROLL_PLACES_KEY) ?? '[]');
+    if (!Array.isArray(parsed)) return new Map();
+    return new Map(parsed.filter((pair): pair is [string, number] => Array.isArray(pair) && typeof pair[0] === 'string' && typeof pair[1] === 'number' && Number.isFinite(pair[1])));
+  } catch {
+    return new Map();
+  }
 }
 
-/** Production data-router wrapper: the only place router loading state is read. */
-export function AppShellRoute() {
+/** Notes a page's place as the newest, so the places kept across a reload are the most recent ones. */
+function notePlace(places: Map<string, number>, key: string, place: number): void {
+  places.delete(key);
+  places.set(key, place);
+}
+
+function keepScrollPlaces(places: ReadonlyMap<string, number>): void {
+  try {
+    window.sessionStorage.setItem(SCROLL_PLACES_KEY, JSON.stringify([...places].slice(-SCROLL_PLACES_KEPT)));
+  } catch {
+    // A full or blocked storage only loses the places after a reload.
+  }
+}
+
+/**
+ * D218: a page opened by a link starts at its top; a page returned to by Back (the shell's or the phone's) goes back
+ * to where it was left, and each tab keeps its own place. A changed query on the same page keeps the place. A page
+ * whose data arrives late is shorter than its place at first, so the place is reached for until it is reached and
+ * the page is tall enough, the trader scrolls or touches, or a second passes.
+ */
+function useScrollPlaces(location: Location): void {
+  const places = useRef<Map<string, number> | null>(null);
+  places.current ??= readScrollPlaces();
+  const current = useRef<string | null>(null);
+  const shownPath = useRef<string | null>(null);
+  const shownKey = useRef<string | null>(null);
+  useEffect(() => {
+    const kept = places.current!;
+    if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual';
+    const remember = () => { if (current.current !== null) notePlace(kept, current.current, window.scrollY); };
+    const leave = () => keepScrollPlaces(kept);
+    window.addEventListener('scroll', remember, { passive: true });
+    window.addEventListener('pagehide', leave);
+    return () => { window.removeEventListener('scroll', remember); window.removeEventListener('pagehide', leave); };
+  }, []);
+  useLayoutEffect(() => {
+    // A first screen's history key is always "default", so an entry is named by its key and its page together.
+    const pathname = normalizePathname(location.pathname);
+    const key = isNavigationTabPage(pathname) ? `tab:${pathname}` : `entry:${location.key}:${pathname}`;
+    // Another entry of the same page (a changed query) keeps the place; the same entry again (React's StrictMode
+    // runs this twice on mount) reaches for its place again.
+    const samePage = shownPath.current === pathname && shownKey.current !== location.key;
+    current.current = key;
+    shownPath.current = pathname;
+    shownKey.current = location.key;
+    if (samePage) { notePlace(places.current!, key, window.scrollY); return; }
+    const place = places.current!.get(key) ?? 0;
+    if (place !== window.scrollY) window.scrollTo(0, place);
+    if (place <= 0 || typeof requestAnimationFrame !== 'function') return;
+    let frame = 0;
+    const until = performance.now() + SCROLL_PLACE_PATIENCE_MS;
+    const stopEvents = ['wheel', 'touchstart', 'pointerdown', 'keydown'] as const;
+    const stop = () => {
+      cancelAnimationFrame(frame);
+      for (const name of stopEvents) window.removeEventListener(name, stop);
+      window.removeEventListener(SCROLL_CLAIMED_EVENT, stop);
+    };
+    // Kept for the whole second, not only until first reached: what loads above the place can still move it.
+    const reach = () => {
+      if (performance.now() > until) { stop(); return; }
+      if (Math.abs(window.scrollY - place) > 1) window.scrollTo(0, place);
+      frame = requestAnimationFrame(reach);
+    };
+    for (const name of stopEvents) window.addEventListener(name, stop, { passive: true });
+    window.addEventListener(SCROLL_CLAIMED_EVENT, stop);
+    frame = requestAnimationFrame(reach);
+    return stop;
+  }, [location.key, location.pathname]);
+}
+
+/** D218: the back control's trail for this visit; it is kept in a ref and moved on once per shown entry. */
+function useBackTrail(location: Location) {
+  const navigationType = useNavigationType();
+  const trail = useRef<BackTrail>(EMPTY_BACK_TRAIL);
+  const shownId = useRef<string | null>(null);
+  const pathname = normalizePathname(location.pathname);
+  const id = backTrailEntryId(location.key, pathname);
+  if (shownId.current !== id) {
+    const up = (location.state as { readonly [BACK_UP_STATE]?: unknown } | null)?.[BACK_UP_STATE] === true;
+    trail.current = recordBackTrailNavigation(trail.current, { kind: navigationType, id, pathname, fromId: shownId.current, up });
+    shownId.current = id;
+  }
+  return {
+    id,
+    step: backStepOf(trail.current, id, pageParentOf(pathname)),
+    onTitle: (title: string) => { trail.current = recordBackTrailTitle(trail.current, id, title); },
+  };
+}
+
+/** Marks a navigation made by the "up" link, so the parent page does not offer to go back down (D218). */
+const BACK_UP_STATE = 'kairosBackUp';
+
+/** The pages that offer "+ Log trade" (D225): Home, the Journal and Analysis. Practice has its own form. */
+const LOG_TRADE_PAGES: ReadonlySet<string> = new Set(['/', '/journal', '/analysis']);
+
+/**
+ * Whether a sheet or dialog is open. The kit's Sheet and ConfirmDialog are the app's only modals, and each is put
+ * straight into body while open, so only body's own children are watched (not every change on a live page).
+ */
+function useModalOpen(): boolean {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const check = () => setOpen(document.querySelector('body > .kairos-sheet') !== null);
+    check();
+    const observer = new MutationObserver(check);
+    observer.observe(document.body, { childList: true });
+    return () => observer.disconnect();
+  }, []);
+  return open;
+}
+
+/**
+ * D225: the floating "+ Log trade", above the bottom bar, hidden while a sheet or dialog is open. On the Journal it
+ * replaces the entry, so the form is brought into view without a step added to Back.
+ */
+function LogTradeButton({ onJournal }: { readonly onJournal: boolean }) {
+  const modalOpen = useModalOpen();
+  if (modalOpen) return null;
+  return <Link className="kairos-log-trade" to={LOG_TRADE_ADDRESS} replace={onJournal}><Icon name="plus" size={20} />Log trade</Link>;
+}
+
+/** The back control above a page that isn't a tab: back to where you came from, or up to the page's parent. */
+function BackControl({ step }: { readonly step: NonNullable<ReturnType<typeof backStepOf>> }) {
+  const navigate = useNavigate();
+  const content = <><Icon name="chevron-down" size={16} className="kairos-shell__back-icon" />{step.label}</>;
+  return <div className="kairos-shell__back-row">
+    {step.kind === 'up'
+      ? <Link className="kairos-shell__back" to={step.to} state={{ [BACK_UP_STATE]: true }} aria-label={`Back to ${step.label}`}>{content}</Link>
+      : <button type="button" className="kairos-shell__back" aria-label={`Back to ${step.label}`} onClick={() => { void navigate(-step.steps); }}>{content}</button>}
+  </div>;
+}
+
+/**
+ * Production data-router wrapper: the only place router loading state is read. Once per app start (activation is
+ * done when it shows), it saves this phone's time zone if none is saved, never over a saved one (D221), so no screen
+ * waits for a time zone on a fresh install.
+ */
+export function AppShellRoute({ db = kairosDatabase, now = () => new Date().toISOString() }: { readonly db?: KairosDatabase; readonly now?: () => string } = {}) {
   const navigation = useNavigation();
+  useEffect(() => {
+    void startVisualPnlTimeZoneFromDevice(db, readDeviceTimeZone(), now()).catch(() => undefined);
+    // Once per start: the database and clock are the app's own.
+  }, []);
   return <AppShell loading={navigation.state !== 'idle'} />;
 }
 
 /** Presentation shell. Works inside any router; loading is supplied by the owner above. */
 export function AppShell({ loading = false }: { readonly loading?: boolean }) {
   const location = useLocation();
-  const navIndex = activeNavigationIndex(location.pathname);
+  const tab = navigationTabOf(location.pathname);
+  const navIndex = tab === null ? null : primaryNavigation.indexOf(tab);
   const inkStyle = (navIndex === null ? {} : { '--kairos-nav-index': navIndex }) as CSSProperties;
-  useScreenTitleAndFocus(location.pathname);
+  const back = useBackTrail(location);
+  const page = normalizePathname(location.pathname);
+  const logTrade = LOG_TRADE_PAGES.has(page);
+  useScreenTitleAndFocus(location.pathname, back.onTitle);
+  useScrollPlaces(location);
   return (
     <div className="kairos-shell" data-app="kairos" data-loading={loading ? 'true' : 'false'}>
       <a className="kairos-skip-link" href={`#${MAIN_ID}`}>Skip to main content</a>
@@ -85,25 +245,29 @@ export function AppShell({ loading = false }: { readonly loading?: boolean }) {
       </header>
       <UpdatePrompt port={updatePromptPort} />
       <ToastProvider>
-        <main className="kairos-shell__content" id={MAIN_ID} tabIndex={-1}>
+        <main className="kairos-shell__content" id={MAIN_ID} tabIndex={-1} data-log-trade={logTrade ? 'true' : undefined}>
+          {/* A new control for each page: the one that had focus goes away, so focus moves to the new heading (D179). Another
+              entry of the same page (a changed period, a step) keeps it, so focus never falls to the page. */}
+          {back.step === null ? null : <BackControl key={page} step={back.step} />}
           <TradePictureCandleLoaderContext.Provider value={browserTradePictureCandleLoader()}><Outlet /></TradePictureCandleLoaderContext.Provider>
+          {/* Last in main, so it is inside the page's landmark and comes after the page in the tab order. */}
+          {logTrade ? <LogTradeButton onJournal={page === '/journal'} /> : null}
         </main>
       </ToastProvider>
       <nav className="kairos-shell__navigation" aria-label="Primary navigation">
         <div className="kairos-shell__navigation-inner" style={inkStyle}>
           {navIndex === null ? null : <span className="kairos-shell__nav-ink" aria-hidden="true" />}
           {primaryNavigation.map((item) => (
-            <NavLink
+            // D219: the tab a page belongs to is marked: "page" on the tab's own page, "true" on a page under it.
+            <Link
               key={item.to}
               to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                `kairos-shell__nav-link${isActive ? ' kairos-shell__nav-link--active' : ''}`
-              }
+              className={`kairos-shell__nav-link${item === tab ? ' kairos-shell__nav-link--active' : ''}`}
+              aria-current={item === tab ? (page === item.to ? 'page' : 'true') : undefined}
             >
               <Icon name={navigationIcons[item.to] ?? 'more'} size={20} className="kairos-shell__nav-icon" />
               {item.label}
-            </NavLink>
+            </Link>
           ))}
         </div>
       </nav>

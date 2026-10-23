@@ -1,6 +1,4 @@
 .kairos-goals { display:grid; gap:var(--kairos-space-6); }
-.kairos-goals__heading h1 { margin-top:var(--kairos-space-1); }
-.kairos-goals__eyebrow { margin:0 !important; color:var(--kairos-accent-primary) !important; font-size:var(--kairos-font-size-xs); font-weight:var(--kairos-font-weight-semibold); letter-spacing:.08em; text-transform:uppercase; }
 .kairos-goals__progress { display:grid; gap:var(--kairos-space-3); }
 .kairos-goals-card h2 { margin:0; font-size:var(--kairos-font-size-md); }
 .kairos-goals-card p { margin:0; color:var(--kairos-text-secondary); }

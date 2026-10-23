@@ -35,6 +35,8 @@
 .kairos-route[data-kairos-home-dashboard] > header { position: absolute; width: calc(var(--kairos-space-1) / 4); height: calc(var(--kairos-space-1) / 4); overflow: hidden; clip-path: inset(50%); }
 .kairos-route[data-kairos-home-dashboard] h2 { margin: 0 0 var(--kairos-space-1); font-size: var(--kairos-font-size-md); }
 .kairos-shell__content:has([data-kairos-home-dashboard]) { padding: calc(var(--kairos-space-2) * 1.25) var(--kairos-space-2) 0; }
+/* D225: Home's bubbles end at "+ Log trade" (the field measures to this room), so none sits under the button. */
+.kairos-shell__content[data-log-trade='true']:has([data-kairos-home-dashboard]) { padding-bottom: calc(var(--kairos-log-trade-bottom) + var(--kairos-control-lg) + var(--kairos-space-3)); }
 
 /* Restore the approved V5 outer-rim curl; texture and text stay independent. */
 .kairos-glass-smoke { position:absolute; inset:-1%; border-radius:50%; background:conic-gradient(from 20deg,transparent 10%,var(--kairos-bubble-smoke-1) 19%,transparent 26%,var(--kairos-bubble-smoke-2) 39%,transparent 48%,var(--kairos-bubble-smoke-3) 68%,transparent 78%,var(--kairos-bubble-smoke-4) 88%,transparent 98%); mask-image:radial-gradient(circle closest-side,transparent 78%,black 85%,transparent 99%); -webkit-mask-image:radial-gradient(circle closest-side,transparent 78%,black 85%,transparent 99%); filter:blur(2px); opacity:.65; animation:kairos-glass-curl 18s ease-in-out infinite alternate; animation-delay:var(--glass-delay); pointer-events:none; }

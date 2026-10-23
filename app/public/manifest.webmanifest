@@ -8,6 +8,14 @@
   "display": "standalone",
   "background_color": "#0b0d14",
   "theme_color": "#0b0d14",
+  "shortcuts": [
+    {
+      "name": "Log a trade",
+      "short_name": "Log trade",
+      "url": "/journal?log=1",
+      "icons": [{ "src": "/icons/kairos-icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ],
   "icons": [
     {
       "src": "/icons/kairos-icon-192.png",

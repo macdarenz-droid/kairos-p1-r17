@@ -1,5 +1,4 @@
 .kairos-news-calendar { display: grid; gap: var(--kairos-space-5); min-width: 0; overflow-wrap: anywhere; }
-.kairos-news-calendar .kairos-news-calendar__eyebrow { margin: 0; color: var(--kairos-accent-primary); font-size: var(--kairos-font-size-xs); font-weight: var(--kairos-font-weight-semibold); letter-spacing: .08em; text-transform: uppercase; }
 .kairos-news-calendar > h1, .kairos-news-calendar > p { margin: 0; }
 .kairos-card.kairos-news-calendar-card { display: grid; gap: var(--kairos-space-3); min-width: 0; overflow-wrap: anywhere; }
 .kairos-news-calendar-card.kairos-news-calendar-card h2, .kairos-news-calendar-card.kairos-news-calendar-card h3, .kairos-news-calendar-card.kairos-news-calendar-card p { margin: 0; }

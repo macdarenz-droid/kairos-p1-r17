@@ -26,11 +26,12 @@ function Bar({ percent }: { readonly percent: number }) {
 }
 
 /** "Your discipline" beside the month calendar: the ring, two bars in plain sentences and the most common mistakes. It reads nothing. */
-export function DisciplineScorePanel({ state, periodLabel, title = 'Your discipline' }: { readonly state: DisciplineScorePanelState; readonly periodLabel: string; readonly title?: string }) {
+export function DisciplineScorePanel({ state, periodLabel, title = 'Your discipline', level = 3 }: { readonly state: DisciplineScorePanelState; readonly periodLabel: string; readonly title?: string; readonly level?: 2 | 3 }) {
   const titleId = useId();
+  const Heading = level === 2 ? 'h2' : 'h3';
   return <section className="kairos-discipline-score" aria-labelledby={titleId}>
     <div className="kairos-discipline-score__heading">
-      <h3 id={titleId}>{title}</h3>
+      <Heading id={titleId}>{title}</Heading>
       <p>Trades closed in {periodLabel}</p>
     </div>
     {state.kind === 'loading' ? <p>Loading your discipline score…</p> : null}

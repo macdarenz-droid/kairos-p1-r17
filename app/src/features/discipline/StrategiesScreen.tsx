@@ -3,7 +3,7 @@ import { deleteStrategy, exampleStrategyDraft, loadStrategies, saveStrategy, str
 import { describeStrategyRule } from '../../application/discipline/strategyWords';
 import type { KairosDatabase } from '../../data/database';
 import type { Strategy, StrategyId } from '../../domain/discipline';
-import { Button, Card } from '../../design-system/primitives';
+import { Button, Card, PageHeader } from '../../design-system/primitives';
 import { StrategyEditor } from './StrategyEditor';
 import './strategies.css';
 
@@ -57,9 +57,8 @@ export function StrategiesScreen({ db }: { readonly db: KairosDatabase }) {
   };
 
   return <section className="kairos-route kairos-strategies" aria-labelledby="kairos-strategies-title">
+    <PageHeader eyebrow="Discipline" title="Your strategies" titleId="kairos-strategies-title" />
     <div>
-      <p className="kairos-strategies__eyebrow">Discipline</p>
-      <h1 id="kairos-strategies-title" tabIndex={-1}>Your strategies</h1>
       <p>A strategy is your own plan for one kind of trade, written as rules. When you log a trade, choose the strategy it follows: Kairos checks the rules it can from your trade plan, and you tick the others yourself. A rule never stops you saving a trade.</p>
     </div>
     {feedback?.kind === 'saved' ? <p role="status">Strategy saved.</p> : null}

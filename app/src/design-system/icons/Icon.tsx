@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react';
 
-export const ICON_NAMES = ['home', 'journal', 'analysis', 'library', 'more', 'plus', 'check', 'close', 'info', 'alert', 'retry', 'undo', 'trash', 'chevron-down', 'result-up', 'result-down', 'result-flat', 'result-unknown', 'insight', 'bubbles'] as const;
+export const ICON_NAMES = ['home', 'journal', 'analysis', 'library', 'more', 'plus', 'check', 'close', 'info', 'alert', 'retry', 'undo', 'trash', 'chevron-down', 'result-up', 'result-down', 'result-flat', 'result-unknown', 'insight', 'bubbles',
+  'goal', 'strategy', 'calendar', 'practice', 'replay', 'currency', 'calculator', 'settings', 'profile', 'setup'] as const;
 export type IconName = (typeof ICON_NAMES)[number];
 export interface IconProps { readonly name: IconName; readonly label?: string; readonly size?: 16 | 20 | 24 | 40; readonly className?: string }
 
@@ -29,6 +30,17 @@ const drawings: Readonly<Record<IconName, ReactElement>> = Object.freeze({
   'result-unknown': <circle cx="12" cy="12" r="3.5" {...filled} />,
   insight: <><path d="M12 3.5v2M4.5 12h-2M21.5 12h-2M6.5 6.5 5 5M17.5 6.5 19 5" /><path d="M9 17.5h6M10 20.5h4" /><path d="M8.5 14.5a5 5 0 1 1 7 0c-.6.6-1 1.3-1 2v1h-5v-1c0-.7-.4-1.4-1-2z" /></>,
   bubbles: <><circle cx="9" cy="14" r="5" /><circle cx="16.5" cy="7.5" r="3.5" /><circle cx="18" cy="17" r="2" /></>,
+  // The More page's drawings (D219), on the same grid and line.
+  goal: <><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="4.5" /><circle cx="12" cy="12" r="1" /></>,
+  strategy: <><path d="M8.5 5H7a1.5 1.5 0 0 0-1.5 1.5v13A1.5 1.5 0 0 0 7 21h10a1.5 1.5 0 0 0 1.5-1.5v-13A1.5 1.5 0 0 0 17 5h-1.5" /><path d="M9 3.5h6v3H9z" /><path d="m8.75 12.5 1.75 1.75 3.25-3.5M8.75 17.5h6.5" /></>,
+  calendar: <><rect x="4" y="5.5" width="16" height="14.5" rx="1.5" /><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4" /></>,
+  practice: <><path d="M9.5 3.5h5M10.5 3.5v6L5.4 18.2A1.5 1.5 0 0 0 6.7 20.5h10.6a1.5 1.5 0 0 0 1.3-2.3l-5.1-8.7v-6" /><path d="M8 15h8" /></>,
+  replay: <><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3" /><path d="M4.5 4.5V8H8" /><path d="M12 8.5V12l2.5 2" /></>,
+  currency: <><rect x="3.5" y="6.5" width="17" height="11" rx="1.5" /><circle cx="12" cy="12" r="2.5" /><path d="M6.5 9.5v5M17.5 9.5v5" /></>,
+  calculator: <><rect x="5.5" y="3.5" width="13" height="17" rx="1.5" /><path d="M8.5 7h7v3h-7z" /><path d="M8.5 14h.01M12 14h.01M15.5 14h.01M8.5 17.5h.01M12 17.5h.01M15.5 17.5h.01" /></>,
+  settings: <><path d="M5 7h8M17 7h2M5 12h2M11 12h8M5 17h10" /><circle cx="15" cy="7" r="2" /><circle cx="9" cy="12" r="2" /><circle cx="17" cy="17" r="2" /></>,
+  profile: <><circle cx="12" cy="8.5" r="3.5" /><path d="M5 20a7 7 0 0 1 14 0" /></>,
+  setup: <><circle cx="12" cy="12" r="8.5" /><path d="m15.5 8.5-2.2 4.8-4.8 2.2 2.2-4.8z" /></>,
 });
 
 /** One icon. Without a label it is decoration and hidden from screen readers; with a label it is an image with that name. */

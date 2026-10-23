@@ -148,7 +148,7 @@ export function DisciplineListsEditor({ db }: DisciplineListsEditorProps) {
     </div>
     {loading ? <Skeleton label="Loading your checklist…" /> : null}
     {load.kind === 'failed' ? <ErrorState message="Kairos could not load your checklist." onRetry={() => { refocusAfterRetry.current = document.activeElement?.closest('.kairos-error-state') != null ? load : null; setLoadAttempt(current => current + 1); }} /> : <>
-      {GROUPS.map(group => <fieldset key={group.kind} disabled={loading || saving}>
+      {GROUPS.map(group => <fieldset key={group.kind} disabled={loading}>
         <legend>{group.legend}</legend>
         {draft[group.kind].map((item, index) => <div className="kairos-discipline-lists__row" key={item.id}>
           <Field label={`${capital(group.noun)} ${index + 1}`}>
@@ -159,7 +159,8 @@ export function DisciplineListsEditor({ db }: DisciplineListsEditorProps) {
         </div>)}
         <Button variant="secondary" size="sm" onClick={() => change(group.kind, items => [...items, { id: createDisciplineListItemId(), label: '', ruleId: null }])}>{`Add a ${group.noun}`}</Button>
       </fieldset>)}
-      <Button type="submit" busy={saving} disabled={loading}>{saving ? 'Saving…' : 'Save your checklist'}</Button>
+      {/* Never disabled while saving: the button keeps focus (a second press is ignored by the submit). */}
+      <Button type="submit" aria-disabled={saving || undefined} aria-busy={saving || undefined} disabled={loading}>{saving ? 'Saving…' : 'Save your checklist'}</Button>
     </>}
     {feedback?.kind === 'saved' ? <p role="status">Your checklist is saved.</p> : null}
     {feedback?.kind === 'refused' ? <p role="alert">{feedback.message}</p> : null}

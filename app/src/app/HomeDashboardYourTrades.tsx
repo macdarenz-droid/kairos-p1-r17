@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 import { Link } from 'react-router';
 import { ReviewTradeLink } from './ReviewTradeLink';
 import { loadHomeYourTrades, YOUR_TRADES_HISTORY_LIMIT, type HomeYourTrade } from '../application/dashboard/homeDashboardYourTradesQuery';
-import { GlassDecoration, GlassIcon } from './HomeDashboardGlassBubbleMap';
+import { GlassDecoration, GlassIcon, glassFieldBottom } from './HomeDashboardGlassBubbleMap';
 import { layoutGlassViewportCircles } from './homeDashboardGlassViewportLayout';
 import { useHomeDashboardGlassMotion } from './useHomeDashboardGlassMotion';
 import { projectYourTradeBubbleSizes } from './homeDashboardYourTradesSizing';
@@ -32,12 +32,12 @@ export function HomeDashboardYourTrades({load=loadHomeYourTrades,glance}:{readon
   },[refresh]);
   useEffect(()=>{
     const el=field.current;if(!el)return;
-    const measure=()=>{const nav=document.querySelector('.kairos-shell__navigation')?.getBoundingClientRect();const viewport=window.visualViewport?.height??window.innerHeight;
-      const bottom=nav&&nav.width>window.innerWidth*.7&&nav.top>0?Math.min(viewport,nav.top):viewport;
-      const next={width:el.clientWidth,height:Math.max(240,bottom-el.getBoundingClientRect().top-12)};
+    const measure=()=>{
+      const next={width:el.clientWidth,height:Math.max(240,glassFieldBottom(el)-el.getBoundingClientRect().top-12)};
       setBounds(old=>old.width===next.width&&old.height===next.height?old:next);
     };
     measure();const observer=typeof ResizeObserver==='undefined'?null:new ResizeObserver(measure);observer?.observe(el);
+    const main=el.closest('main');if(main!==null)observer?.observe(main);
     window.addEventListener('resize',measure);window.visualViewport?.addEventListener('resize',measure);
     return()=>{observer?.disconnect();window.removeEventListener('resize',measure);window.visualViewport?.removeEventListener('resize',measure);};
   },[]);

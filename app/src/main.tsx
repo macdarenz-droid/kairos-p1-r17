@@ -5,7 +5,8 @@ import { AppErrorBoundary } from './app/ErrorBoundary';
 import { router } from './app/router';
 import { describeThrownValue, diagnostics } from './diagnostics/DiagnosticsService';
 import { applyInitialTheme, ThemeProvider } from './design-system/themes';
-import { openKairosDatabase } from './data/database';
+import { kairosDatabase, openKairosDatabase } from './data/database';
+import { loadTradedMarkets } from './application/setup/tradedMarkets';
 import { ActivationBootstrap } from './features/activation';
 import { registerKairosServiceWorker } from './pwa/serviceWorkerRegistration';
 import { inspectStorageDurability } from './pwa/storageDurability';
@@ -19,7 +20,7 @@ diagnostics.record({ level: 'info', category: 'app', event: 'bootstrap' });
 applyInitialTheme();
 if (import.meta.env.PROD) void registerKairosServiceWorker();
 void inspectStorageDurability();
-const databaseStartup = openKairosDatabase().then((status) => {
+const databaseStartup = openKairosDatabase().then(async (status) => {
   diagnostics.record({
     level: status.state === 'ready' ? 'info' : 'error',
     category: 'database',
@@ -30,6 +31,8 @@ const databaseStartup = openKairosDatabase().then((status) => {
       ...(status.errorMessage ? { errorMessage: status.errorMessage } : {}),
     },
   });
+  // D223: the markets you trade are known before the app shows, so Home opens on its right view without a flash.
+  if (status.state === 'ready') await loadTradedMarkets(kairosDatabase).catch(() => null);
   return status;
 });
 

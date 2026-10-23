@@ -1,4 +1,10 @@
-html { background: var(--kairos-background-depth); }
+html {
+  background: var(--kairos-background-depth);
+  /* D218: a focused element is never under the sticky header or the bottom bar (P40's overlap). */
+  /* The header is its row's min-height (padding inside it), its 1px line and the safe area; then a little air. */
+  scroll-padding-top: calc(var(--kairos-control-lg) + 1px + env(safe-area-inset-top, 0px) + var(--kairos-space-2));
+  scroll-padding-bottom: calc(var(--kairos-layout-navigation-height) + env(safe-area-inset-bottom, 0px) + var(--kairos-space-2));
+}
 body {
   min-width: 20rem;
   background: var(--kairos-background-base);
@@ -62,6 +68,26 @@ body {
     calc(var(--kairos-layout-navigation-height) + var(--kairos-space-8) + env(safe-area-inset-bottom, 0px));
 }
 .kairos-route { width: 100%; max-width: 48rem; margin: 0 auto; animation: kairos-route-in var(--kairos-motion-slow) var(--kairos-ease-out); }
+.kairos-shell__back-row { width: 100%; max-width: 48rem; margin: calc(var(--kairos-space-4) * -1) auto var(--kairos-space-2); }
+.kairos-shell__back {
+  min-height: var(--kairos-control-md);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--kairos-space-1);
+  margin-left: calc(var(--kairos-space-2) * -1);
+  padding: 0 var(--kairos-space-2);
+  border: 0;
+  border-radius: var(--kairos-radius-md);
+  background: none;
+  color: var(--kairos-accent-primary);
+  font: inherit;
+  font-weight: var(--kairos-font-weight-semibold);
+  text-decoration: none;
+  cursor: pointer;
+}
+.kairos-shell__back:hover { background: var(--kairos-accent-soft); }
+.kairos-shell__back:focus-visible { outline: 2px solid var(--kairos-state-focus); outline-offset: 2px; }
+.kairos-shell__back-icon { transform: rotate(90deg); }
 @keyframes kairos-route-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .kairos-route h1 { margin: 0; font-size: var(--kairos-font-size-xxl); line-height: var(--kairos-line-height-tight); }
 .kairos-route p { margin: var(--kairos-space-3) 0 0; color: var(--kairos-text-secondary); line-height: var(--kairos-line-height-relaxed); }
@@ -122,13 +148,15 @@ body {
 .kairos-shell__nav-link:active { transform: scale(.97); }
 .kairos-shell__nav-link:focus-visible { outline: 2px solid var(--kairos-accent-primary); outline-offset: -2px; }
 .kairos-shell__nav-link--active { color: var(--kairos-text-primary); }
-.kairos-more-links { display: grid; gap: var(--kairos-space-2); margin-top: var(--kairos-space-8); }
+.kairos-more-links { display: grid; gap: var(--kairos-space-6); margin-top: var(--kairos-space-6); }
+.kairos-more-links__group { display: grid; gap: var(--kairos-space-2); }
+.kairos-more-links__title { margin: 0; color: var(--kairos-text-muted); font-size: var(--kairos-font-size-xs); font-weight: var(--kairos-font-weight-semibold); letter-spacing: .06em; text-transform: uppercase; }
+.kairos-more-links__list { display: grid; gap: var(--kairos-space-2); margin: 0; padding: 0; list-style: none; }
 .kairos-more-links__item {
   min-height: var(--kairos-control-lg);
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--kairos-space-4);
+  gap: var(--kairos-space-3);
   padding: var(--kairos-space-3) var(--kairos-space-4);
   border: 1px solid var(--kairos-border-subtle);
   border-radius: var(--kairos-radius-md);
@@ -136,6 +164,11 @@ body {
   color: var(--kairos-text-primary);
   text-decoration: none;
 }
+.kairos-more-links__icon { flex: none; color: var(--kairos-accent-primary); }
+.kairos-more-links__text { min-width: 0; flex: 1; display: grid; gap: 2px; }
+.kairos-more-links__label { font-weight: var(--kairos-font-weight-semibold); }
+.kairos-more-links__line { color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-sm); line-height: var(--kairos-line-height-normal); }
+.kairos-more-links__chevron { flex: none; color: var(--kairos-text-muted); transform: rotate(-90deg); }
 .kairos-update-prompt {
   position: fixed;
   z-index: 25;
@@ -181,6 +214,7 @@ body {
   }
   .kairos-shell__nav-link--active { background: var(--kairos-accent-soft); }
   .kairos-shell__content { padding: var(--kairos-space-10) var(--kairos-space-8); }
+  html { scroll-padding-bottom: var(--kairos-space-2); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -213,4 +247,35 @@ body {
 }
 @media (min-width: 48rem) {
   .kairos-toast-region { left: calc(13rem + var(--kairos-space-6)); right: var(--kairos-space-6); bottom: var(--kairos-space-6); }
+}
+
+/* D225: "+ Log trade" floats above the bottom bar, on the right, inside the safe area (on a wide screen, at the bottom
+   right of the content). The page keeps room under it; toasts and the update prompt rise above it, and a part of the
+   page brought into view stops above it. */
+:root { --kairos-log-trade-bottom: calc(var(--kairos-layout-navigation-height) + env(safe-area-inset-bottom, 0px) + var(--kairos-space-3)); }
+.kairos-log-trade {
+  position: fixed;
+  z-index: 25;
+  right: max(var(--kairos-space-4), env(safe-area-inset-right, 0px));
+  bottom: var(--kairos-log-trade-bottom);
+  min-height: var(--kairos-control-lg);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--kairos-space-2);
+  padding: 0 var(--kairos-space-5);
+  border-radius: var(--kairos-radius-full);
+  background: var(--kairos-accent-primary);
+  color: var(--kairos-accent-ink);
+  font-weight: var(--kairos-font-weight-semibold);
+  text-decoration: none;
+  box-shadow: var(--kairos-elevation-2);
+}
+.kairos-log-trade:focus-visible { outline: 2px solid var(--kairos-state-focus); outline-offset: 3px; }
+.kairos-shell__content[data-log-trade='true'] { padding-bottom: calc(var(--kairos-log-trade-bottom) + var(--kairos-control-lg) + var(--kairos-space-6)); }
+.kairos-shell:has(.kairos-log-trade) :is(.kairos-toast-region, .kairos-update-prompt) { bottom: calc(var(--kairos-log-trade-bottom) + var(--kairos-control-lg) + var(--kairos-space-2)); }
+html:has(.kairos-log-trade) { scroll-padding-bottom: calc(var(--kairos-log-trade-bottom) + var(--kairos-control-lg) + var(--kairos-space-2)); }
+@media (min-width: 48rem) {
+  :root { --kairos-log-trade-bottom: var(--kairos-space-6); }
+  /* The content is at most 72rem wide, centred beside the 13rem side list; the button lines up with its inner edge. */
+  .kairos-log-trade { right: max(var(--kairos-space-6), calc((100vw - 13rem - 72rem) / 2 + var(--kairos-space-8))); }
 }

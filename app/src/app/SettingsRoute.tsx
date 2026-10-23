@@ -1,13 +1,13 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Link, useInRouterContext } from 'react-router';
 import {
   readVisualPnlTimeZonePreference,
   writeVisualPnlTimeZonePreference,
 } from '../application/visual-pnl';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
 import { createKairosRepositories } from '../data/repositories';
-import { DeviceTimeZoneButton } from '../features/settings/DeviceTimeZoneButton';
+import { DeviceTimeZoneButton, readDeviceTimeZone } from '../features/settings/DeviceTimeZoneButton';
 import { ThemePicker } from '../features/settings/ThemePicker';
-import { DisciplineListsEditor } from '../features/discipline/DisciplineListsEditor';
 import { Button, ErrorState, Field, PageHeader } from '../design-system/primitives';
 import './settingsRoute.css';
 
@@ -36,6 +36,11 @@ type Feedback =
  * delegated to the P13.10R1 application contract and MetadataRepository.
  * The device time zone is saved only on an explicit tap.
  */
+/** SPA navigation inside the app, a plain link outside a router (Settings is also shown on its own in tests). */
+function SettingsLink({ to, children }: { readonly to: string; readonly children: ReactNode }) {
+  return useInRouterContext() ? <Link to={to}>{children}</Link> : <a href={to}>{children}</a>;
+}
+
 export function SettingsRoute({ db = kairosDatabase }: SettingsRouteProps) {
   const repositories = useMemo(() => createKairosRepositories(db), [db]);
   const [timeZone, setTimeZone] = useState('');
@@ -121,7 +126,7 @@ export function SettingsRoute({ db = kairosDatabase }: SettingsRouteProps) {
       <form ref={form} className="kairos-settings-card" onSubmit={handleSubmit} noValidate>
         <div>
           <h2>Time zone for your results</h2>
-          <p>Choose which calendar day Kairos uses when grouping closed trades. The first time you open your results, Kairos starts with this device's time zone and never changes it after that.</p>
+          <p>Choose which calendar day Kairos uses when grouping closed trades. When you first open Kairos, it starts with this device's time zone and never changes it after that.</p>
         </div>
 
         <Field label="Time zone" id="kairos-daily-results-time-zone" wide
@@ -148,7 +153,8 @@ export function SettingsRoute({ db = kairosDatabase }: SettingsRouteProps) {
           </Button>
           <span>{savedTimeZone === null ? 'Not configured' : `Current: ${savedTimeZone}`}</span>
         </div>
-        {!isLoading && !loadFailed && savedTimeZone === null ? <DeviceTimeZoneButton metadata={repositories.metadata} onSaved={(zone) => { setSavedTimeZone(zone); setTimeZone(zone); setFeedback({ kind: 'success', message: 'Time zone saved.' }); }} /> : null}
+        {/* T-053d (D221): offered whenever the saved zone is not this device's (the shell saves it at first open). */}
+        {!isLoading && !loadFailed && savedTimeZone !== readDeviceTimeZone() ? <DeviceTimeZoneButton metadata={repositories.metadata} onSaved={(zone) => { setSavedTimeZone(zone); setTimeZone(zone); setFeedback({ kind: 'success', message: 'Time zone saved.' }); }} /> : null}
 
         {loadFailed ? <ErrorState message="Kairos could not load your time zone." onRetry={retryLoad} /> : null}
         {feedback ? (
@@ -159,7 +165,8 @@ export function SettingsRoute({ db = kairosDatabase }: SettingsRouteProps) {
       </form>
 
       <ThemePicker />
-      <DisciplineListsEditor db={db} />
+      {/* D220: the checklist and mistakes lists moved to Analysis › Discipline. */}
+      <p className="kairos-settings__moved">Your checklist and mistakes list are in <SettingsLink to="/analysis?view=discipline">Analysis › Discipline</SettingsLink>.</p>
     </section>
   );
 }

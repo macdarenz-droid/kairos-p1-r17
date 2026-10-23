@@ -4,7 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { afterEach, describe, expect, it } from 'vitest';
 import { MemoryRouter } from 'react-router';
 import { JournalRoute } from '../src/app/JournalRoute';
-import { SettingsRoute } from '../src/app/SettingsRoute';
+import { DisciplineOverview } from '../src/features/discipline/DisciplineOverview';
 import { disciplineListsPreferenceMetadataKey, loadDisciplineLists } from '../src/application/discipline';
 import { saveManualTrade } from '../src/application/trades';
 import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
@@ -19,14 +19,15 @@ const lists = KAIROS_DEFAULT_DISCIPLINE_LISTS;
 const card = () => screen.getByRole('form', { name: 'Your checklist' });
 const group = (legend: string) => within(card()).getByRole('group', { name: legend });
 async function mount(db: KairosDatabase) {
-  render(<ThemeProvider><SettingsRoute db={db} /></ThemeProvider>);
+  // T-053c (D220): the editor moved from Settings to Analysis › Discipline.
+  render(<ThemeProvider><MemoryRouter><DisciplineOverview db={db} now={() => '2026-10-01T00:00:00.000Z'} refreshRevision={0} /></MemoryRouter></ThemeProvider>);
   await waitFor(() => expect(within(card()).getByRole('textbox', { name: 'Step 1' })).toBeTruthy());
 }
 async function save() {
   await act(async () => { fireEvent.click(within(card()).getByRole('button', { name: 'Save your checklist' })); });
 }
 
-describe('T-032c "Your checklist" in Settings', () => {
+describe('T-032c "Your checklist" in Analysis › Discipline', () => {
   it('shows the default lists in three groups', async () => {
     const db = await database();
     await mount(db);

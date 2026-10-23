@@ -5,7 +5,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { moreNavigation } from '../src/app/navigation';
+import { moreNavigationGroups } from '../src/app/navigation';
 import { appRoutes } from '../src/app/routes';
 import { loadHomeCurrency } from '../src/application/currency/homeCurrency';
 import { findGlossaryEntry, readGlossary } from '../src/application/learn/glossary';
@@ -143,11 +143,11 @@ describe('T-045f the word and the route', () => {
     expect(findGlossaryEntry('exchange-rate')?.related.map(term => term.id)).toEqual(['result-after-fees']);
   });
 
-  it('opens at /currency and sits right before Settings in More', async () => {
+  it('opens at /currency and sits in More’s Money group', async () => {
     const router = createMemoryRouter(appRoutes, { initialEntries: ['/currency'] });
     render(<ThemeProvider><RouterProvider router={router} /></ThemeProvider>);
     expect(await screen.findByRole('heading', { level: 1, name: 'Your currency' }, { timeout: 10_000 })).toBeInTheDocument();
-    const labels = moreNavigation.map(item => item.label);
-    expect(labels[labels.indexOf('Settings') - 1]).toBe('Currency');
+    // T-053b (D219): More is grouped; Currency is in "Money".
+    expect(moreNavigationGroups.find(group => group.title === 'Money')?.items.map(item => item.label)).toContain('Currency');
   });
 });

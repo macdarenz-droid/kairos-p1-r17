@@ -4,6 +4,7 @@ import { readLessonCatalog } from '../../application/learn/lessons';
 import { lessonCoverPicture, type LessonCatalog } from '../../domain/learn/lessons';
 import { LearnPicture } from './LearnPicture';
 import './learn.css';
+import { PageHeader } from '../../design-system/primitives';
 
 /** The one place that builds a link to a lesson. */
 export function lessonHref(id: string): string {
@@ -17,9 +18,7 @@ export function LessonListScreen({ catalog }: { readonly catalog?: LessonCatalog
   const [data] = useState(() => catalog ?? readLessonCatalog());
   return (
     <section className="kairos-route kairos-learn" aria-labelledby="kairos-lessons-title">
-      <Link className="kairos-learn__back" to="/library">Back to the Library</Link>
-      <h1 id="kairos-lessons-title">Lessons</h1>
-      <p>Short lessons with pictures, a few minutes each. Your answers are not saved.</p>
+      <PageHeader title="Lessons" titleId="kairos-lessons-title" intro="Short lessons with pictures, a few minutes each. Your answers are not saved." />
       {data.problems.length > 0 ? <p>Some lessons could not be shown.</p> : null}
       {data.lessons.length === 0 ? <p>No lessons in this version yet.</p> : (
         <ol className="kairos-lessons__list">

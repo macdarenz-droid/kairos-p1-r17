@@ -111,3 +111,67 @@ describe('T-049e the accessible shell', () => {
     expect(await axeViolations(container)).toEqual([]);
   });
 });
+
+describe('T-053a the page opens at the top or at your place', () => {
+  const placeRoutes: RouteObject[] = [{
+    element: <AppShell />,
+    children: [
+      { path: '/', element: <h1>Start</h1> },
+      { path: '/journal', element: <h1>Tab two</h1> },
+      { path: '/long', element: <h1>Long</h1> },
+    ],
+  }];
+  let y = 0;
+  const scrolled = (top: number) => { y = top; window.dispatchEvent(new Event('scroll')); };
+  function stubScroll() {
+    y = 0;
+    window.sessionStorage.clear();
+    Object.defineProperty(window, 'scrollY', { configurable: true, get: () => y });
+    return vi.spyOn(window, 'scrollTo').mockImplementation(((_x: number, top: number) => { y = top; }) as typeof window.scrollTo);
+  }
+  afterEach(() => { vi.restoreAllMocks(); Reflect.deleteProperty(window, 'scrollY'); });
+
+  it('moves focus to the new heading without scrolling', async () => {
+    stubScroll();
+    const focus = vi.spyOn(HTMLElement.prototype, 'focus');
+    const router = renderPath('/', placeRoutes);
+    await act(async () => { await router.navigate('/long'); });
+    await waitFor(() => expect(document.activeElement).toHaveTextContent('Long'));
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+    expect(focus).not.toHaveBeenCalledWith({ preventScroll: false });
+  });
+
+  it('opens a new page at its top, and Back returns to the place you left', async () => {
+    const scrollTo = stubScroll();
+    const router = renderPath('/', placeRoutes);
+    await screen.findByRole('heading', { name: 'Start' });
+    scrolled(500);
+    await act(async () => { await router.navigate('/long'); });
+    expect(scrollTo).toHaveBeenLastCalledWith(0, 0);
+    expect(window.scrollY).toBe(0);
+    fireEvent.click(await screen.findByRole('button', { name: 'Back to Start' }));
+    await screen.findByRole('heading', { name: 'Start' });
+    expect(scrollTo).toHaveBeenLastCalledWith(0, 500);
+    expect(window.scrollY).toBe(500);
+  });
+
+  it('keeps each tab\'s place, and the place when only the address\'s query changes', async () => {
+    const scrollTo = stubScroll();
+    const router = renderPath('/', placeRoutes);
+    await screen.findByRole('heading', { name: 'Start' });
+    scrolled(400);
+    await act(async () => { await router.navigate('/journal'); });
+    expect(window.scrollY).toBe(0);
+    scrolled(120);
+    await act(async () => { await router.navigate('/'); });
+    expect(window.scrollY).toBe(400);
+    await act(async () => { await router.navigate('/journal'); });
+    expect(window.scrollY).toBe(120);
+    await act(async () => { await router.navigate('/long'); });
+    scrolled(300);
+    scrollTo.mockClear();
+    await act(async () => { await router.navigate('/long?period=week'); });
+    expect(scrollTo).not.toHaveBeenCalled();
+    expect(window.scrollY).toBe(300);
+  });
+});

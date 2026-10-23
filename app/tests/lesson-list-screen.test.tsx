@@ -34,7 +34,8 @@ describe('P25.4 Lessons page', () => {
     // The accessible name (the picture is aria-hidden) starts with the title.
     const escaped = lessons[0].title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     expect(within(screen.getByRole('list')).getAllByRole('link', { name: new RegExp(`^${escaped}`) })[0]).toBe(links[0]);
-    expect(screen.getAllByRole('link', { name: 'Library' }).some((link) => link.getAttribute('aria-current') === 'page')).toBe(true);
+    // T-053a (D219): the Library tab is marked as the part you are in ("true"); "page" is for the Library page itself.
+    expect(screen.getAllByRole('link', { name: 'Library' }).some((link) => link.getAttribute('aria-current') === 'true')).toBe(true);
   });
 
   it('lists lessons in file order with their picture, sentence and facts', () => {

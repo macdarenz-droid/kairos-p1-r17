@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { useSearchParams } from 'react-router';
 import { findGlossaryEntry, readGlossary } from '../../application/learn/glossary';
 import { searchGlossary, type Glossary } from '../../domain/learn/glossary';
-import { Field } from '../../design-system/primitives';
+import { Field, PageHeader } from '../../design-system/primitives';
 import { GlossaryTermCard } from './GlossaryTermCard';
 import './learn.css';
 
@@ -33,9 +33,7 @@ export function GlossaryScreen({ glossary }: { readonly glossary?: Glossary } = 
 
   return (
     <section className="kairos-route kairos-learn" aria-labelledby="kairos-glossary-title">
-      <Link className="kairos-learn__back" to="/library">Back to the Library</Link>
-      <h1 id="kairos-glossary-title">Trading words</h1>
-      <p>Kairos shows plain words on screen. Here is what each one means, and what traders usually call it.</p>
+      <PageHeader title="Trading words" titleId="kairos-glossary-title" intro="Kairos shows plain words on screen. Here is what each one means, and what traders usually call it." />
       <Field label="Find a word" id="kairos-glossary-search">
         {(control) => <input {...control} type="search" autoComplete="off" value={query} onChange={(event) => { setFocusId(null); setQuery(event.target.value); }} />}
       </Field>

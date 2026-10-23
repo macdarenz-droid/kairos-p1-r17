@@ -1,5 +1,5 @@
 import { runKairosAtomicWrite, type KairosDatabase } from '../../data/database';
-import type { MetadataRepository } from '../../data/repositories';
+import { createKairosRepositories, type MetadataRepository } from '../../data/repositories';
 import { projectVisualPnlDayKey } from './dayBucket';
 
 export const visualPnlTimeZonePreferenceMetadataKey = 'preferences.visual-pnl.time-zone.v1';
@@ -80,4 +80,15 @@ export async function startVisualPnlTimeZoneFromDevice(
     await repositories.metadata.put({ key: visualPnlTimeZonePreferenceMetadataKey, value: deviceTimeZone, updatedAt });
     return Object.freeze({ kind: 'started-from-device' as const, timeZone: deviceTimeZone });
   });
+}
+
+/** For screens, which never import data/repositories: the saved zone, or null when none is saved. */
+export function loadVisualPnlTimeZone(db: KairosDatabase): Promise<VisualPnlTimeZonePreference> {
+  return readVisualPnlTimeZonePreference(createKairosRepositories(db).metadata);
+}
+
+/** For screens: save a zone the trader chose, as one atomic write (T-053d, the setup's first step). */
+export function saveVisualPnlTimeZone(db: KairosDatabase, timeZone: string, dependencies: { readonly now?: () => string } = {}): Promise<VisualPnlTimeZonePreferenceWriteResult> {
+  const updatedAt = (dependencies.now ?? (() => new Date().toISOString()))();
+  return runKairosAtomicWrite(db, ['metadata'], ({ repositories }) => writeVisualPnlTimeZonePreference(repositories.metadata, timeZone, updatedAt));
 }

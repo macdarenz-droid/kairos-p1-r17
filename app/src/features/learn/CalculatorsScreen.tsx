@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import { practicePlanHref } from '../../application/practice/practicePlanStart';
 import { projectLeveragePicture, type LeverageField } from '../../application/learn/leveragePicture';
 import { projectPositionSizePlan, type PositionSizeField, type PositionSizeProblem, type PositionSizeProblemReason } from '../../application/learn/positionSizePlan';
-import { Field } from '../../design-system/primitives';
+import { Field, PageHeader } from '../../design-system/primitives';
 import { LearnPicture } from './LearnPicture';
 import './learn.css';
 
@@ -125,9 +125,7 @@ function LeverageCalculator() {
 export function CalculatorsScreen() {
   return (
     <section className="kairos-route kairos-learn" aria-labelledby="kairos-calculators-title">
-      <Link className="kairos-learn__back" to="/library">Back to the Library</Link>
-      <h1 id="kairos-calculators-title">Calculators</h1>
-      <p>Work out a trade before you place it. Nothing you type here is saved.</p>
+      <PageHeader title="Calculators" titleId="kairos-calculators-title" intro="Work out a trade before you place it. Nothing you type here is saved." />
       <PositionSizeCalculator />
       <LeverageCalculator />
     </section>

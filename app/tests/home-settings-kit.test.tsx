@@ -10,6 +10,7 @@ vi.mock('../src/app/HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTex
 import { HomeRoute } from '../src/app/HomeRoute';
 import { HomeDashboardYourTrades } from '../src/app/HomeDashboardYourTrades';
 import { SettingsRoute } from '../src/app/SettingsRoute';
+import { DisciplineListsEditor } from '../src/features/discipline/DisciplineListsEditor';
 import type { HomeYourTrade } from '../src/application/dashboard/homeDashboardYourTradesQuery';
 import { loadDisciplineLists } from '../src/application/discipline';
 import { visualPnlTimeZonePreferenceMetadataKey, writeVisualPnlTimeZonePreference } from '../src/application/visual-pnl';
@@ -92,7 +93,8 @@ describe('T-049f Settings on the kit', () => {
     expect(await screen.findByText('Current: Asia/Manila')).toBeInTheDocument();
     expect(input).toHaveValue('Asia/Manila');
     expect(screen.queryByText('Kairos could not load your time zone.')).toBeNull();
-    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Step 1' })).toBeInTheDocument());
+    // T-053c (D220): the checklist moved to Analysis › Discipline; Settings says where it went.
+    expect(screen.getByRole('link', { name: 'Analysis › Discipline' })).toHaveAttribute('href', '/analysis?view=discipline');
     expect(await axeViolations(document.body)).toEqual([]);
   });
 });
@@ -104,7 +106,7 @@ describe('T-049f checklist Undo and "Try again"', () => {
     const db = await database();
     const steps = KAIROS_DEFAULT_DISCIPLINE_LISTS.checklist;
     expect(steps.length).toBeGreaterThanOrEqual(3);
-    render(<ThemeProvider><ToastProvider><SettingsRoute db={db} /></ToastProvider></ThemeProvider>);
+    render(<ThemeProvider><ToastProvider><DisciplineListsEditor db={db} /></ToastProvider></ThemeProvider>);
     await waitFor(() => expect(within(card()).getByRole('textbox', { name: 'Step 1' })).toBeInTheDocument());
     const values = () => within(within(card()).getByRole('group', { name: 'Before you trade: your steps' })).getAllByRole('textbox').map(input => (input as HTMLInputElement).value);
     const before = values();
@@ -127,7 +129,7 @@ describe('T-049f checklist Undo and "Try again"', () => {
       if (key !== visualPnlTimeZonePreferenceMetadataKey && !failed) { failed = true; return Promise.reject(new Error('storage')); }
       return read(key);
     }) as typeof db.metadata.get);
-    render(<ThemeProvider><ToastProvider><SettingsRoute db={db} /></ToastProvider></ThemeProvider>);
+    render(<ThemeProvider><ToastProvider><DisciplineListsEditor db={db} /></ToastProvider></ThemeProvider>);
     const message = await within(card()).findByText('Kairos could not load your checklist.');
     fireEvent.click(within(message.closest('[role="alert"]') as HTMLElement).getByRole('button', { name: 'Try again' }));
     expect(await within(card()).findByRole('textbox', { name: 'Step 1' })).toBeInTheDocument();
@@ -142,7 +144,7 @@ describe('T-049f checklist Undo and "Try again"', () => {
       if (key !== visualPnlTimeZonePreferenceMetadataKey && !failed) { failed = true; return Promise.reject(new Error('storage')); }
       return read(key);
     }) as typeof db.metadata.get);
-    const view = render(<ThemeProvider><ToastProvider><SettingsRoute db={db} /></ToastProvider></ThemeProvider>);
+    const view = render(<ThemeProvider><ToastProvider><DisciplineListsEditor db={db} /></ToastProvider></ThemeProvider>);
     // Tap the moment the error is put on screen, before React has run that screen's effects.
     await new Promise<void>(resolve => {
       const observer = new MutationObserver(() => {
@@ -202,7 +204,7 @@ describe('T-049f fix r1', () => {
 
   it('checklist: after "Remove" focus goes to the next row\'s "Remove", or to "Add a step" after the last row', async () => {
     const db = await database();
-    render(<ThemeProvider><ToastProvider><SettingsRoute db={db} /></ToastProvider></ThemeProvider>);
+    render(<ThemeProvider><ToastProvider><DisciplineListsEditor db={db} /></ToastProvider></ThemeProvider>);
     await waitFor(() => expect(within(card()).getByRole('textbox', { name: 'Step 1' })).toBeInTheDocument());
     const steps = within(card()).getByRole('group', { name: 'Before you trade: your steps' });
     fireEvent.click(within(steps).getByRole('button', { name: 'Remove step 2' }));
@@ -214,7 +216,7 @@ describe('T-049f fix r1', () => {
 
   it('checklist: after a save, the "Undo" for a removed step is gone', async () => {
     const db = await database();
-    render(<ThemeProvider><ToastProvider><SettingsRoute db={db} /></ToastProvider></ThemeProvider>);
+    render(<ThemeProvider><ToastProvider><DisciplineListsEditor db={db} /></ToastProvider></ThemeProvider>);
     await waitFor(() => expect(within(card()).getByRole('textbox', { name: 'Step 1' })).toBeInTheDocument());
     fireEvent.click(within(card()).getByRole('button', { name: 'Remove step 2' }));
     expect(screen.getByRole('button', { name: 'Undo' })).toBeInTheDocument();

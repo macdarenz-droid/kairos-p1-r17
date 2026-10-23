@@ -48,14 +48,17 @@ const region = (name: string) => screen.getByRole('region', { name });
 const part = (bar: Element, name: string) => (bar.querySelector(`[data-part="${name}"]`) as HTMLElement).style.flexGrow;
 
 describe('T-042e the patterns page', () => {
-  it('is reachable from More, and at /patterns and /practice/patterns', async () => {
+  it('belongs to Analysis (T-053b, D220), and opens at /patterns and /practice/patterns', async () => {
     for (const [path, heading] of [['/patterns', 'Your patterns'], ['/practice/patterns', 'Your practice patterns']] as const) {
       render(<ThemeProvider><RouterProvider router={createMemoryRouter(appRoutes, { initialEntries: [path] })} /></ThemeProvider>);
       expect(await screen.findByRole('heading', { name: heading, level: 1 })).toBeTruthy();
       cleanup();
     }
-    render(<ThemeProvider><RouterProvider router={createMemoryRouter(appRoutes, { initialEntries: ['/more'] })} /></ThemeProvider>);
-    expect((await screen.findByRole('link', { name: 'Patterns' })).getAttribute('href')).toBe('/patterns');
+    // It left More for Analysis: Analysis is marked, and "up" goes there.
+    render(<ThemeProvider><RouterProvider router={createMemoryRouter(appRoutes, { initialEntries: ['/patterns'] })} /></ThemeProvider>);
+    expect(await screen.findByRole('heading', { name: 'Your patterns', level: 1 })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Back to Analysis' }).getAttribute('href')).toBe('/analysis?view=patterns');
+    expect(screen.getByRole('link', { name: 'Analysis' }).getAttribute('aria-current')).toBe('true');
   });
 
   it('shows every pattern with bars before words', async () => {

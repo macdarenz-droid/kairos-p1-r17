@@ -15,6 +15,8 @@ export interface CoachCardProps {
   readonly refreshRevision: number;
   /** Bumped by the host when a checklist, review or strategy is saved on a card. */
   readonly disciplineRevision: number;
+  /** Its heading's level: 3 under a page's part (the Journal), 2 as a part of its own (Analysis › Discipline). */
+  readonly level?: 2 | 3;
 }
 
 type CardState = Readonly<{ kind: 'loading' }> | Readonly<{ kind: 'error' }> | Readonly<{ kind: 'ready'; result: CoachNotesQueryResult }>;
@@ -25,7 +27,7 @@ function CoachLink({ to, children }: { readonly to: string; readonly children: R
 }
 
 /** P29: the coach under "Your discipline": how many notes this month, the first one and its step, and the page. Its rules load on demand. */
-export function CoachCard({ db, scope, now, refreshRevision, disciplineRevision }: CoachCardProps) {
+export function CoachCard({ db, scope, now, refreshRevision, disciplineRevision, level = 3 }: CoachCardProps) {
   const titleId = useId();
   const [state, setState] = useState<CardState>({ kind: 'loading' });
 
@@ -44,7 +46,7 @@ export function CoachCard({ db, scope, now, refreshRevision, disciplineRevision 
   const first = notes && notes.length > 0 ? describeCoachNote(notes[0]!) : null;
   return <Card as="section" className="kairos-coach-card" aria-labelledby={titleId}>
     <div className="kairos-coach-card__heading">
-      <h3 id={titleId}>{scope === 'practice' ? 'Your practice coach' : 'Your coach'}</h3>
+      {level === 2 ? <h2 id={titleId}>{scope === 'practice' ? 'Your practice coach' : 'Your coach'}</h2> : <h3 id={titleId}>{scope === 'practice' ? 'Your practice coach' : 'Your coach'}</h3>}
       <p>This month</p>
     </div>
     {state.kind === 'loading' ? <p>Loading your coach…</p> : null}

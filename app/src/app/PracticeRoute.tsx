@@ -14,6 +14,7 @@ import { JournalHistoryList } from './JournalHistoryList';
 import { ReviewTradeLink } from './ReviewTradeLink';
 import './journalRoute.css';
 import './practiceRoute.css';
+import { PageHeader } from '../design-system/primitives';
 
 interface PracticeRouteProps {
   readonly db?: KairosDatabase;
@@ -42,13 +43,8 @@ export function PracticeRoute({ db = kairosDatabase, now, rates = null }: Practi
 
   return (
     <section className="kairos-route kairos-journal kairos-practice" aria-labelledby="kairos-practice-title" data-practice-status={pages.isLoading ? 'loading' : pages.failed ? 'error' : 'ready'} data-practice-count={pages.entries.length}>
-      <div className="kairos-journal__heading">
-        <div>
-          <p className="kairos-journal__eyebrow">Practice trades</p>
-          <h1 id="kairos-practice-title">Practice</h1>
-        </div>
-        <span className="kairos-journal__badge kairos-practice__badge">Practice only</span>
-      </div>
+      <PageHeader eyebrow="Practice trades" title="Practice" titleId="kairos-practice-title"
+        action={<span className="kairos-journal__badge kairos-practice__badge">Practice only</span>} />
       <p className="kairos-journal__intro">Practise with pretend money before real money is at risk. Practice trades stay apart: they never count in your Journal results, goals, discipline score or Home.</p>
 
       <PracticeMoneyCard db={db} refreshRevision={practiceRevision} />

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { Link } from 'react-router';
 import { parseForexPair } from '../../application/markets/forexPair';
 import { loadReplayCandles, REPLAY_CANDLE_SIZES, type LoadedReplay, type ReplayLoadFailure, type ReplayLoadResult, type ReplayMarketDeps } from '../../application/practice/replayCandles';
 import { projectReplayView, type ReplayOrder } from '../../application/practice/replayEngine';
@@ -7,7 +6,7 @@ import { projectReplayPicture } from '../../application/practice/replayTrade';
 import type { TradePictureModel } from '../../application/trade-visualizer';
 import type { KairosDatabase } from '../../data/database';
 import { describeMarketDataUnavailable } from '../../application/online/onlineWords';
-import { Button, Card, Field, UnavailableNotice } from '../../design-system/primitives';
+import { Button, Card, Field, PageHeader, UnavailableNotice } from '../../design-system/primitives';
 import { TradePictureCard } from '../journal/TradePictureCard';
 import { TradeShareControls } from '../journal/TradeShareControls';
 import { ReplayTradePanel } from './ReplayTradePanel';
@@ -160,10 +159,8 @@ export function ReplayScreen({ db, market, playStepMs = REPLAY_PLAY_STEP_MS }: {
   const loading = load.kind === 'loading';
 
   return <section className="kairos-route kairos-replay" aria-labelledby="kairos-replay-title">
-    <p className="kairos-replay__eyebrow">Practice only</p>
-    <h1 id="kairos-replay-title">Replay the past</h1>
+    <PageHeader eyebrow="Practice only" title="Replay the past" titleId="kairos-replay-title" />
     <p>Pick a market and a moment in the past. Kairos shows the candles up to that moment and hides the rest. Then play them one at a time and practise a trade without knowing what comes next. No real money is used.</p>
-    <p className="kairos-replay__back"><Link to="/practice">Back to Practice</Link></p>
 
     {replay && view && picture ? (() => {
       const quote = replay.quoteAsset ? ` ${replay.quoteAsset}` : '';

@@ -21,12 +21,16 @@ async function routeNetwork(page: Page): Promise<void> {
   });
 }
 
-async function activate(page: Page): Promise<void> {
+/** A fresh install opens the setup (T-053d, D222): `setup: 'show'` leaves it open, otherwise "Skip for now" is tapped. */
+async function activate(page: Page, setup: 'skip' | 'show' = 'skip'): Promise<void> {
   await routeNetwork(page);
   await page.goto('/');
   await page.getByLabel('Invite code').fill('QA-INVITE-001');
   await page.locator('button[type="submit"]').click();
   await expect(page.locator('.kairos-shell')).toBeVisible();
+  if (setup === 'show') return;
+  await page.getByRole('button', { name: 'Skip for now' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Home' })).toBeVisible();
 }
 
 test('(a) an invite code opens the app shell', async ({ page }) => {
@@ -383,15 +387,16 @@ test('(k) Patterns: a closed trade, then your patterns and your practice pattern
   await page.getByRole('button', { name: 'Save trade' }).click();
   await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
 
-  await page.goto('/more');
-  await page.getByRole('link', { name: 'Patterns', exact: true }).click();
-  await expect(page).toHaveURL(/\/patterns$/);
-  await expect(page.getByRole('heading', { name: 'Your patterns', level: 1 })).toBeVisible();
+  // T-053c (D220): Patterns is a part of Analysis.
+  await page.goto('/analysis');
+  await page.getByRole('group', { name: 'Analysis view' }).getByRole('button', { name: 'Patterns' }).click();
+  await expect(page).toHaveURL(/\/analysis\?view=patterns$/);
+  await expect(page.getByRole('heading', { name: 'Patterns', level: 2 })).toBeVisible();
   const overall = page.getByRole('region', { name: 'All your trades' });
   await expect(overall).toContainText('1 trade.');
   await expect(overall).toContainText('Not enough trades with a result yet (1 of 10).');
   for (const title of ['Keeping your plan', 'After a win or a loss', 'By strategy', 'By day of the week', 'By time of day', 'Long or short']) {
-    await expect(page.getByRole('heading', { name: title, level: 2 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: title, level: 3 })).toBeVisible();
   }
   await expect(page.getByRole('region', { name: 'Long or short' }).getByRole('listitem').filter({ hasText: 'Short (you sold first)' })).toContainText('1 trade.');
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
@@ -1097,5 +1102,304 @@ test('(u) Share a trade as an image, and a planned trade drawn from now', async 
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   const axe = await new AxeBuilder({ page }).include('[role="dialog"]').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
   expect(axe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test('(v) Where am I: back to your place, the tab you are in, and the top of a new page', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  // A short window, so the Journal and the coach page are both taller than the view.
+  await page.setViewportSize({ width: 390, height: 560 });
+  await activate(page);
+  await page.goto('/analysis');
+  await expect(page.getByText('Time zone: Asia/Manila')).toBeVisible();
+  await page.goto('/journal');
+  const openCoach = page.getByRole('link', { name: 'Open your coach' });
+  await expect(openCoach).toBeVisible();
+  await openCoach.scrollIntoViewIfNeeded();
+  const place = await page.evaluate(() => window.scrollY);
+  expect(place).toBeGreaterThan(100);
+
+  // Bringing a field above the view to the top puts it below the sticky header, never under it (Chromium centres a
+  // focused field anyway; a jump to a part of the page, as the log address does, lines it up with the top).
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await expect(page.getByLabel(/^Symbol/)).not.toBeInViewport();
+  await page.getByLabel(/^Symbol/).evaluate(element => element.scrollIntoView({ block: 'start' }));
+  const header = (await page.locator('.kairos-shell__header').boundingBox())!;
+  expect((await page.getByLabel(/^Symbol/).boundingBox())!.y).toBeGreaterThanOrEqual(header.y + header.height);
+  await openCoach.scrollIntoViewIfNeeded();
+  const left = await page.evaluate(() => window.scrollY);
+
+  // A new page opens at its top, with focus on its heading.
+  await openCoach.click();
+  const title = page.getByRole('heading', { level: 1, name: 'Your coach' });
+  await expect(title).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollHeight > window.innerHeight)).toBe(true);
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+  await expect(title).toBeFocused();
+  expect((await title.boundingBox())!.y).toBeGreaterThanOrEqual(header.y + header.height);
+  // Coach belongs to Analysis (D220), so Analysis is marked as the part you are in.
+  await expect(page.getByRole('link', { name: 'Analysis', exact: true })).toHaveAttribute('aria-current', 'true');
+
+  // The skip link adds a "#" entry the browser names like the first screen; Back still names and opens the Journal (fix r1).
+  await page.locator('.kairos-skip-link').focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/#kairos-main-content$/);
+  // Back returns to the Journal, at the place you left it, and focus goes to its heading.
+  await page.getByRole('button', { name: 'Back to Journal' }).click();
+  await expect(page).toHaveURL(/\/journal$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Journal' })).toBeFocused();
+  await expect(page.getByRole('heading', { level: 1, name: 'Journal' })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThanOrEqual(left - 2);
+  expect(Math.abs(await page.evaluate(() => window.scrollY) - left)).toBeLessThanOrEqual(2);
+
+  // Opened directly, a page goes up to its parent.
+  await page.goto('/goals');
+  const up = page.getByRole('link', { name: 'Back to More' });
+  await expect(up).toBeVisible();
+  await expect(page.getByRole('link', { name: 'More', exact: true })).toHaveAttribute('aria-current', 'true');
+  await up.click();
+  await expect(page.getByRole('heading', { level: 1, name: 'More' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'More', exact: true })).toHaveAttribute('aria-current', 'page');
+
+  // On a wide screen, where the bottom bar is a side list, More is marked too.
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/goals');
+  const more = page.getByRole('link', { name: 'More', exact: true });
+  await expect(more).toHaveClass(/kairos-shell__nav-link--active/);
+  const background = (name: string) => page.getByRole('link', { name, exact: true }).evaluate(element => getComputedStyle(element).backgroundColor);
+  expect(await background('More')).not.toBe(await background('Home'));
+  expect(errors).toEqual([]);
+});
+
+test('(w) First run: the setup step by step, then the Journal; it can be opened again', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  const axeOk = async (where: string) => {
+    const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+    expect(axe.violations.map(violation => `${where} ${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  };
+  const next = () => page.getByRole('button', { name: 'Next' }).click();
+  const stepTitle = (name: string) => page.getByRole('heading', { level: 2, name });
+
+  // A fresh install opens the setup in Home's place.
+  await activate(page, 'show');
+  await expect(page).toHaveURL(/\/setup$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Set up Kairos' })).toBeVisible();
+  await expect(stepTitle('Your time zone')).toBeVisible();
+  await expect(page.getByText('Step 1 of 6')).toBeVisible();
+  await expect(page.getByText(/time zone: Asia\/Manila/)).toBeVisible();
+  await axeOk('step 1');
+  await next();
+
+  // The home currency starts on the browser region's currency.
+  await expect(stepTitle('Your home currency')).toBeFocused();
+  await expect(page.getByLabel('Home currency', { exact: true })).toHaveValue('USD');
+  await expect(page.getByText("USD, from this phone's region")).toBeVisible();
+  await axeOk('step 2');
+  await next();
+
+  await expect(stepTitle('What you trade')).toBeFocused();
+  await next();
+  await expect(page.getByText('Choose at least one market.')).toBeVisible();
+  await page.getByLabel('Forex').check();
+  await axeOk('step 3');
+  await next();
+
+  await expect(stepTitle('Your checklist')).toBeFocused();
+  const steps = page.getByRole('group', { name: 'Before you trade: your steps' }).getByRole('checkbox');
+  const kept = await steps.count();
+  await steps.nth(0).uncheck();
+  await steps.nth(1).uncheck();
+  await axeOk('step 4');
+  await next();
+
+  await expect(stepTitle('Your first goal')).toBeFocused();
+  await page.getByLabel('Trades a month').fill('20');
+  await axeOk('step 5');
+  await next();
+
+  await expect(stepTitle("You're set")).toBeFocused();
+  await axeOk('step 6');
+  await page.getByRole('link', { name: 'Log your first trade' }).click();
+  await expect(page).toHaveURL(/\/journal$/);
+  // The trade form starts on the market chosen first.
+  await expect(page.getByLabel(/^Market/)).toHaveValue('forex');
+
+  // What was chosen is saved: the coach needs no time zone, the checklist lost two steps, the goal shows.
+  await page.goto('/coach');
+  await expect(page.getByText('Nothing to point out this month.')).toBeVisible();
+  await page.goto('/analysis?view=discipline');
+  await expect(page.getByRole('form', { name: 'Your checklist' }).getByRole('group', { name: 'Before you trade: your steps' }).getByRole('textbox')).toHaveCount(kept - 2);
+  await expect(page.getByText(/Closed trades this month/)).toBeVisible();
+  // Saving the checklist keeps focus on its button (T-053c fix r1: a disabled button lost it to the page).
+  const saveChecklist = page.getByRole('button', { name: 'Save your checklist' });
+  await saveChecklist.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByText('Your checklist is saved.')).toBeVisible();
+  await expect(saveChecklist).toBeFocused();
+
+  // More › Set up Kairos opens it again at step 1, showing what is saved.
+  await page.goto('/more');
+  await page.getByRole('link', { name: 'Set up Kairos' }).click();
+  await expect(page).toHaveURL(/\/setup$/);
+  await expect(stepTitle('Your time zone')).toBeVisible();
+  await next();
+  await next();
+  await expect(page.getByLabel('Forex')).toBeChecked();
+  // Home opens Home now: the setup was finished. A cold start opens it on "Your Trades" for a forex trader at once,
+  // never on Live Market first (T-053d fix r1): every view the dashboard control shows is noted from the first frame.
+  await page.addInitScript(() => {
+    const shown: string[] = [];
+    (window as unknown as { kairosShownViews: string[] }).kairosShownViews = shown;
+    new MutationObserver(() => {
+      const pressed = document.querySelector('[role="group"][aria-label="Dashboard view"] button[aria-pressed="true"]')?.textContent ?? null;
+      if (pressed !== null && shown.at(-1) !== pressed) shown.push(pressed);
+    }).observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ['aria-pressed'] });
+  });
+  await page.goto('/');
+  await expect(page.getByRole('heading', { level: 1, name: 'Home' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Your Trades' })).toHaveAttribute('aria-pressed', 'true');
+  expect(await page.evaluate(() => (window as unknown as { kairosShownViews: string[] }).kairosShownViews)).toEqual(['Your Trades']);
+  await expect(page).toHaveURL(/\/$/);
+  expect(errors).toEqual([]);
+});
+
+test('(w2) First run skipped: Home, and never the setup again', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  await activate(page);
+  await expect(page).toHaveURL(/\/$/);
+  await page.reload();
+  await expect(page.getByRole('heading', { level: 1, name: 'Home' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Dashboard view' })).toBeVisible();
+  // Home's read answers within moments; the address must still be Home well after it (T-053d fix r1).
+  const until = Date.now() + 2000;
+  while (Date.now() < until) {
+    expect(new URL(page.url()).pathname).toBe('/');
+    await page.waitForTimeout(100);
+  }
+  expect(errors).toEqual([]);
+});
+
+test('(x) Log a trade from anywhere: "+ Log trade", the log address and Getting started', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  const axeOk = async (where: string) => {
+    const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+    expect(axe.violations.map(violation => `${where} ${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  };
+  const logTrade = page.getByRole('link', { name: 'Log trade' });
+  const symbol = page.getByLabel(/^Symbol/);
+  // Symbol has focus, and the form is in view: below the sticky header and above the button.
+  const formReady = async () => {
+    await expect(page).toHaveURL(/\/journal$/);
+    await expect(symbol).toBeFocused();
+    const header = (await page.locator('.kairos-shell__header').boundingBox())!;
+    const field = (await symbol.boundingBox())!;
+    const button = (await logTrade.boundingBox())!;
+    expect(field.y).toBeGreaterThanOrEqual(header.y + header.height);
+    expect(field.y + field.height).toBeLessThanOrEqual(button.y);
+  };
+  await activate(page);
+
+  // A skipped setup still shows Getting started on Home, with the button.
+  const gettingStarted = page.getByRole('region', { name: 'Getting started' });
+  await expect(gettingStarted).toBeVisible();
+  await expect(gettingStarted.getByText(/^\d of 6 done$/)).toBeVisible();
+  await expect(gettingStarted.getByRole('link', { name: 'Your first trade' })).toBeVisible();
+  await expect(logTrade).toBeVisible();
+  await axeOk('Home');
+  await logTrade.click();
+  await formReady();
+  await axeOk('Journal');
+  // T-053e fix r1: the button is inside the page's landmark (axe's "region" rule, not in the WCAG tags above).
+  const inLandmarks = async (where: string) => {
+    const axe = await new AxeBuilder({ page }).withRules(['region']).analyze();
+    expect(axe.violations.map(violation => `${where} ${violation.id}: ${violation.nodes.map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+  };
+  await inLandmarks('Journal');
+  // A part of the page brought into view at the bottom stops above the button.
+  const save = page.getByRole('button', { name: 'Save trade' });
+  await save.evaluate(element => element.scrollIntoView({ block: 'end' }));
+  expect(((await save.boundingBox())!.y + (await save.boundingBox())!.height)).toBeLessThanOrEqual((await logTrade.boundingBox())!.y);
+  // The update prompt (its markup as UpdatePrompt draws it; a waiting update cannot be made here) rises above the button.
+  await page.evaluate(() => {
+    const prompt = document.createElement('div');
+    prompt.className = 'kairos-update-prompt';
+    prompt.setAttribute('role', 'status');
+    prompt.innerHTML = '<p>A new version is ready.</p><button type="button">Update</button>';
+    document.querySelector('.kairos-shell')!.append(prompt);
+  });
+  const update = page.getByRole('button', { name: 'Update' });
+  expect((await update.boundingBox())!.y + (await update.boundingBox())!.height).toBeLessThanOrEqual((await logTrade.boundingBox())!.y);
+  await update.click({ trial: true });
+  await page.evaluate(() => document.querySelector('.kairos-shell > .kairos-update-prompt')?.remove());
+
+  await page.goto('/analysis');
+  await expect(page.getByRole('heading', { level: 1, name: 'Analysis' })).toBeVisible();
+  await inLandmarks('Analysis');
+  await logTrade.click();
+  await formReady();
+
+  // A trade saved, then the Journal scrolled to its end: the button covers no card.
+  await page.getByLabel(/^Market/).selectOption('crypto');
+  await symbol.fill('BTCUSDT');
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Status/).selectOption('closed');
+  await page.locator('#kairos-trade-opened-at').fill('2026-09-20T09:00');
+  await page.locator('#kairos-trade-closed-at').fill('2026-09-20T10:00');
+  await page.getByLabel('Currency code').fill('USDT');
+  await page.getByRole('button', { name: 'Add entry' }).click();
+  await page.getByLabel('Entry 1 price').fill('60000');
+  await page.getByLabel('Entry 1 quantity').fill('0.1');
+  await page.getByLabel('Entry 1 date and time').fill('2026-09-20T09:00');
+  await page.getByRole('button', { name: 'Add exit' }).click();
+  await page.getByLabel('Exit 2 price').fill('61500');
+  await page.getByLabel('Exit 2 quantity').fill('0.1');
+  await page.getByLabel('Exit 2 date and time').fill('2026-09-20T10:00');
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.locator('[data-outcome="profit"]').first()).toContainText('150 USDT');
+  // The card's picture arrives after the save and the page grows, so the end is reached again until the page settles.
+  const lastCardClear = async () => {
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    return page.evaluate(() => {
+      const card = [...document.querySelectorAll('.kairos-history-card')].at(-1)!.getBoundingClientRect();
+      const button = document.querySelector('.kairos-log-trade')!.getBoundingClientRect();
+      return window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 1 && card.bottom <= button.top;
+    });
+  };
+  await expect.poll(lastCardClear).toBe(true);
+  await expect(symbol).not.toBeInViewport();
+  // On the Journal the button brings the form back, without a step added to Back.
+  await logTrade.click();
+  await formReady();
+  await page.goBack();
+  await expect(page.getByRole('heading', { level: 1, name: 'Analysis' })).toBeVisible();
+
+  // Opened directly (the app shortcut's address).
+  await page.goto('/journal?log=1');
+  await formReady();
+
+  // Getting started ticks the first trade; the button is not on Practice.
+  await page.goto('/');
+  await expect(gettingStarted.getByText('Your first trade (done)')).toBeVisible();
+  await expect(gettingStarted.getByRole('link', { name: 'Your first trade' })).toHaveCount(0);
+  // Home's bubbles end above the button, with Getting started above them (at the page's end when they do not fit).
+  await page.getByRole('button', { name: 'Your Trades' }).click();
+  const fieldClear = async () => {
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    return page.evaluate(() => {
+      const field = document.querySelector('.kairos-your-trades__field')?.getBoundingClientRect();
+      const button = document.querySelector('.kairos-log-trade')?.getBoundingClientRect();
+      return field !== undefined && button !== undefined && field.height >= 240 && field.bottom <= button.top;
+    });
+  };
+  await expect.poll(fieldClear).toBe(true);
+  await page.goto('/practice');
+  await expect(page.getByRole('heading', { level: 1, name: 'Practice' })).toBeVisible();
+  await expect(logTrade).toHaveCount(0);
   expect(errors).toEqual([]);
 });

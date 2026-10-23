@@ -9,7 +9,7 @@ import {
 } from '../../application/currency/currencyWords';
 import { ECB_REFERENCE_CURRENCIES, USD_STABLECOINS, type ExchangeRateRecord, type UsdStablecoin } from '../../domain/calculations/currencyConversion';
 import type { KairosDatabase } from '../../data/database';
-import { Button, Card, Field } from '../../design-system/primitives';
+import { Button, Card, Field, PageHeader } from '../../design-system/primitives';
 import { GlossaryHint } from '../learn/GlossaryHint';
 import './currency.css';
 
@@ -179,8 +179,7 @@ export function CurrencyScreen({ db, rates, now = wallClock }: CurrencyScreenPro
   };
 
   return <section className="kairos-route kairos-currency" aria-labelledby="kairos-currency-title">
-    <p className="kairos-currency__eyebrow">Your totals</p>
-    <h1 id="kairos-currency-title" tabIndex={-1}>Your currency</h1>
+    <PageHeader eyebrow="Your totals" title="Your currency" titleId="kairos-currency-title" />
     <p>
       Choose the one currency Kairos shows your totals in. Each trade keeps the currency you recorded, and its own result never changes: Kairos converts only totals, with the exchange rate of the day each trade closed (by the UTC clock). It never guesses a rate. Without one, a total that includes that trade can't be shown in your currency.
       {' '}<GlossaryHint termId="exchange-rate" label="Exchange rate" />

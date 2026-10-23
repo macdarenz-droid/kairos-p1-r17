@@ -55,14 +55,17 @@ async function fixture(db: KairosDatabase): Promise<TradeId> {
 }
 
 describe('T-041d the coach page', () => {
-  it('is reachable from More, and at /coach and /practice/coach', async () => {
+  it('belongs to Analysis (T-053b, D220), and opens at /coach and /practice/coach', async () => {
     for (const [path, heading] of [['/coach', 'Your coach'], ['/practice/coach', 'Your practice coach']] as const) {
       render(<ThemeProvider><RouterProvider router={createMemoryRouter(appRoutes, { initialEntries: [path] })} /></ThemeProvider>);
       expect(await screen.findByRole('heading', { name: heading, level: 1 })).toBeTruthy();
       cleanup();
     }
-    render(<ThemeProvider><RouterProvider router={createMemoryRouter(appRoutes, { initialEntries: ['/more'] })} /></ThemeProvider>);
-    expect((await screen.findByRole('link', { name: 'Coach' })).getAttribute('href')).toBe('/coach');
+    // It left More for Analysis: Analysis is marked, and "up" goes there.
+    render(<ThemeProvider><RouterProvider router={createMemoryRouter(appRoutes, { initialEntries: ['/coach'] })} /></ThemeProvider>);
+    expect(await screen.findByRole('heading', { name: 'Your coach', level: 1 })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Back to Analysis' }).getAttribute('href')).toBe('/analysis?view=discipline');
+    expect(screen.getByRole('link', { name: 'Analysis' }).getAttribute('aria-current')).toBe('true');
   });
 
   it('shows every note with its trades, pictures and next step', async () => {
