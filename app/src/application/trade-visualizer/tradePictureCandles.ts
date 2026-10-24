@@ -143,7 +143,8 @@ export interface TradePictureCandleDeps {
 }
 
 /** The USDⓈ-M futures venue the history port serves for futures trades (D165). */
-const FUTURES_VENUE = 'binance-usdm';
+export const FUTURES_CANDLE_VENUE = 'binance-usdm';
+const FUTURES_VENUE = FUTURES_CANDLE_VENUE;
 /** The Kairos server's forex and metal candles from OANDA (D231); a build without the server has no port for it. */
 export const FOREX_CANDLE_VENUE = 'oanda-forex';
 /** The words when this build has no Kairos server: forex candles come only through it. */

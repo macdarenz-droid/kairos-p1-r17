@@ -1,4 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+import type { PriceNowResult } from '../../application/market-reference/priceNow';
+import type { MarketType } from '../../domain/trades';
 import type { LiveMarketUniverseInstrumentMetadataFact } from '../../services/market-data/liveMarketUniverseInstrumentMetadataFact';
 
 export type TradeFormMarketListResult =
@@ -10,6 +12,8 @@ export type TradeFormMarketListResult =
 export interface TradeFormMarket {
   /** The markets the symbol search lists (searchableCryptoMarkets), from the device copy of the market list when it is fresh, with coin names when there are any. */
   readonly marketList: (signal: AbortSignal) => Promise<TradeFormMarketListResult>;
+  /** The latest price for a typed market (D256); without it the form offers no "Price now". */
+  readonly priceNow?: (ask: Readonly<{ marketType: MarketType; symbol: string }>, signal: AbortSignal) => Promise<PriceNowResult>;
 }
 
 export const TradeFormMarketContext = createContext<TradeFormMarket | null>(null);

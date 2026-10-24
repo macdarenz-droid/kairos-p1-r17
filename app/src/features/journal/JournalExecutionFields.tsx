@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import type { ManualExecutionRow, ManualFeeRow } from '../../application/trades/manualTradeExecutionDraft';
+import type { MarketType } from '../../domain/trades';
 import { Button, PriceInput, useToast } from '../../design-system/primitives';
+import { PriceNowInput } from './PriceNowInput';
 import './journalExecutionFields.css';
 
 interface Props {
@@ -11,9 +13,12 @@ interface Props {
   readonly canAddExecution: boolean;
   readonly disabled: boolean;
   readonly errorField?: string;
+  /** The trade's market, for "Price now" beside each price (U14, D256). */
+  readonly marketType?: MarketType | '';
+  readonly symbol?: string;
 }
 
-export function JournalExecutionFields({ executions, fees, onExecutionsChange, onFeesChange, canAddExecution, disabled, errorField }: Props) {
+export function JournalExecutionFields({ executions, fees, onExecutionsChange, onFeesChange, canAddExecution, disabled, errorField, marketType = '', symbol = '' }: Props) {
   const toast = useToast();
   // Undo reads the rows as they are when it runs, so edits made while the toast was shown are kept.
   const latest = useRef({ executions, fees });
@@ -77,9 +82,10 @@ export function JournalExecutionFields({ executions, fees, onExecutionsChange, o
       return <fieldset className="kairos-executions__row" key={row.key}>
         <legend>{title}</legend>
         <div className="kairos-executions__grid">
-          <label className="kairos-field" htmlFor={`${row.key}-price`}><span>Price</span>
-            <PriceInput id={`${row.key}-price`} aria-label={`${title} price`} value={row.price} onValueChange={text => updateExecution(row.key, 'price', text)} aria-invalid={errorField === `executions.${index}.price` || undefined}/>
-          </label>
+          <div className="kairos-field"><label htmlFor={`${row.key}-price`}><span>Price</span></label>
+            <PriceNowInput input={{ id: `${row.key}-price`, 'aria-label': `${title} price`, 'aria-invalid': errorField === `executions.${index}.price` || undefined }}
+              value={row.price} onValueChange={text => updateExecution(row.key, 'price', text)} marketType={marketType} symbol={symbol} fills={title.toLowerCase()} />
+          </div>
           <label className="kairos-field" htmlFor={`${row.key}-quantity`}><span>Quantity</span>
             <PriceInput id={`${row.key}-quantity`} aria-label={`${title} quantity`} value={row.quantity} onValueChange={text => updateExecution(row.key, 'quantity', text)} aria-invalid={errorField === `executions.${index}.quantity` || undefined}/>
           </label>

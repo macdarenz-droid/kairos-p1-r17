@@ -33,6 +33,7 @@ import { TradeTagsField } from './TradeTagsField';
 import { BeforeYouTradeField } from './BeforeYouTradeField';
 import { BeforeYouSaveBox } from './BeforeYouSaveBox';
 import { CONTRACT_SIZE_HINT } from './AddContractSizeControl';
+import { PriceNowInput } from './PriceNowInput';
 import { SymbolSearchField } from './SymbolSearchField';
 import { TradeFormMarketContext, useTradeFormMarketList } from './tradeFormMarket';
 import './tradeForm.css';
@@ -509,10 +510,10 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
 
             {isQuick ? <>
               <Field label="Entry price" id={`${idPrefix}-entry-price`} required invalid={quickInvalid('entryPrice')}>
-                {control => <PriceInput {...control} name="entryPrice" value={quick.entryPrice} onValueChange={text => updateQuick('entryPrice', text)} />}
+                {control => <PriceNowInput input={{ ...control, name: 'entryPrice' }} value={quick.entryPrice} onValueChange={text => updateQuick('entryPrice', text)} marketType={draft.marketType} symbol={draft.symbol} fills="the entry price" />}
               </Field>
               <Field label="Exit price" id={`${idPrefix}-exit-price`} required invalid={quickInvalid('exitPrice')}>
-                {control => <PriceInput {...control} name="exitPrice" value={quick.exitPrice} onValueChange={text => updateQuick('exitPrice', text)} />}
+                {control => <PriceNowInput input={{ ...control, name: 'exitPrice' }} value={quick.exitPrice} onValueChange={text => updateQuick('exitPrice', text)} marketType={draft.marketType} symbol={draft.symbol} fills="the exit price" />}
               </Field>
               {stopField(draft.plan.plannedStopPrice.trim() === '' ? QUICK_NO_STOP_HINT : undefined)}
               {targetField}
@@ -593,7 +594,7 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
         {isQuick ? null : <>
           <JournalExecutionFields
             key={formGeneration}
-            executions={executions} fees={fees}
+            executions={executions} fees={fees} marketType={draft.marketType} symbol={draft.symbol}
             onExecutionsChange={rows => { setExecutions(rows); setFeedback(null); }}
             onFeesChange={rows => { setFees(rows); setFeedback(null); }}
             canAddExecution={draft.status === 'open' || draft.status === 'closed'} disabled={isSaving}

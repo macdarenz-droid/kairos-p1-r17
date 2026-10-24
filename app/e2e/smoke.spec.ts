@@ -2036,6 +2036,15 @@ test('(ag) Faster logging: a symbol you search, its currency filled in, and a st
     body: JSON.stringify({ apiVersion: 1, ok: true, data: { source: 'binance-spot', fetchedAt: new Date().toISOString(), markets: [market('BTCUSDT', 'BTC', 'USDT'), market('ETHBTC', 'ETH', 'BTC'), market('ETHUSDT', 'ETH', 'USDT')], leftOut: 0 } }),
   }));
 
+  // T-059c: the latest 1-minute candle, a minute before now, closes at 2,512.34.
+  await page.route(url => url.hostname === 'api.qa.invalid' && url.pathname === '/market/candles', route => {
+    const url = new URL(route.request().url());
+    const end = Number(url.searchParams.get('end'));
+    const openMs = Math.floor(end / 60_000) * 60_000 - 60_000;
+    const minute = { openTime: new Date(openMs).toISOString(), closeTime: new Date(openMs + 59_999).toISOString(), open: '2510', high: '2513', low: '2509.5', close: '2512.34', volume: '3' };
+    return route.fulfill({ headers: cors, contentType: 'application/json', body: JSON.stringify({ apiVersion: 1, ok: true, data: { source: { provider: 'binance', market: 'spot', symbol: url.searchParams.get('symbol') }, backup: null, interval: '1m', fetchedAt: new Date().toISOString(), candles: [minute], next: null } }) });
+  });
+
   await page.goto('/journal');
   await page.getByRole('button', { name: 'Quick log' }).click();
   const symbol = page.getByRole('combobox', { name: /^Symbol/ });
@@ -2050,6 +2059,12 @@ test('(ag) Faster logging: a symbol you search, its currency filled in, and a st
   await expect(page.getByText('Filled from ETHUSDT: prices are in USDT. You can change it.')).toBeVisible();
 
   await page.getByLabel(/^Direction/).selectOption('long');
+  const priceNow = page.getByRole('button', { name: 'Price now for the entry price' });
+  await priceNow.click();
+  await expect(page.getByLabel(/^Entry price/)).toHaveValue('2512.34');
+  await expect(page.getByText(/^Binance · ETHUSDT · \d\d:\d\d$/)).toBeVisible();
+  await expect(priceNow).toBeFocused();
+  await axeOk('.kairos-trade-form');
   await page.getByLabel(/^Entry price/).fill('100');
   await page.getByLabel(/^Exit price/).fill('110');
   await expect(page.getByText("Without a stop, Kairos can't draw your risk or show × what you risked.")).toBeVisible();

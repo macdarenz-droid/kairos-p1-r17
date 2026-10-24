@@ -28,3 +28,9 @@
 .kairos-symbol-search__option { padding: var(--kairos-space-2); border-radius: var(--kairos-radius-sm); color: var(--kairos-text-primary); cursor: pointer; overflow-wrap: anywhere; }
 .kairos-symbol-search__option[aria-selected="true"], .kairos-symbol-search__option:hover { background: var(--kairos-accent-soft); }
 .kairos-symbol-search__credit { margin: var(--kairos-space-1) var(--kairos-space-2) 0; color: var(--kairos-text-muted); font-size: var(--kairos-font-size-xs); text-align: right; }
+/* U14 (D256): "Price now" beside a price, and the line that says where the price came from. */
+.kairos-price-now { display: grid; gap: var(--kairos-space-1); min-width: 0; }
+.kairos-price-now__row { display: flex; gap: var(--kairos-space-2); align-items: center; min-width: 0; }
+.kairos-price-now__row > input { flex: 1 1 auto; min-width: 0; }
+.kairos-price-now__row > button { flex: none; }
+.kairos-price-now__source, .kairos-price-now__failed { color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-xs); }
