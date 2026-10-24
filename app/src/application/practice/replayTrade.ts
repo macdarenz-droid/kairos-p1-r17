@@ -3,6 +3,7 @@
  */
 
 import type { KairosDatabase } from '../../data/database';
+import type { DisciplineAnswerInput } from '../discipline';
 import type { TradeExecutionId, TradeFeeId, TradeId, TradePlanId } from '../../domain/trades';
 import { prepareManualTrade } from '../trades/saveManualTrade';
 import { projectTradePicture, type TradePictureModel } from '../trade-visualizer/tradePicture';
@@ -48,15 +49,20 @@ export function projectReplayPicture(replay: LoadedReplay, cursor: number, order
   });
 }
 
-/** Saves a finished replay trade as a practice trade from replay. The fills are worked out here from the candles, never handed in. */
+/**
+ * Saves a finished replay trade as a practice trade from replay. The fills are worked out here from the candles, never handed in.
+ * U12 (D241): `checklist` is what was ticked before "Place trade", saved with the trade in the same write; none ticked saves no checklist.
+ */
 export async function saveReplayTrade(
   db: KairosDatabase,
   replay: LoadedReplay,
   cursor: number,
   order: ReplayOrder,
   dependencies: SavePracticeTradeDependencies = {},
+  checklist: readonly DisciplineAnswerInput[] = [],
 ): Promise<SaveReplayTradeResult> {
   const view = projectReplayView(replay.candles, cursor, order);
   if (view === null || view.outcome === null || view.outcome.kind !== 'closed') return { ok: false, type: 'not-finished' };
-  return savePracticeTrade(db, { ...replayTradeInput(replay, order, view.outcome), source: 'replay' }, dependencies);
+  const discipline = checklist.length > 0 ? { discipline: { checklist } } : {};
+  return savePracticeTrade(db, { ...replayTradeInput(replay, order, view.outcome), source: 'replay', ...discipline }, dependencies);
 }

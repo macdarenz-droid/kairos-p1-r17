@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { loadDisciplineLists, type DisciplineAnswerInput } from '../../application/discipline';
 import type { KairosDatabase } from '../../data/database';
 import type { DisciplineListItem } from '../../domain/discipline';
+import './tradeForm.css';
 
 interface BeforeYouTradeFieldProps {
   readonly db: KairosDatabase;

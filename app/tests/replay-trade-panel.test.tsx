@@ -5,6 +5,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { REPLAY_HISTORY_CANDLES } from '../src/application/practice/replayCandles';
+import { KAIROS_DEFAULT_DISCIPLINE_LISTS } from '../src/domain/discipline';
 import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
 import { ReplayScreen } from '../src/features/practice/ReplayScreen';
 import type { MarketCandleHistoryRequest } from '../src/services/market-data/MarketCandleHistoryPort';
@@ -232,3 +233,26 @@ describe('T-052d fix r1 the Replay card is the trade as it closed', () => {
   });
 });
 
+describe('T-057d "Before you trade" on the Replay plan', () => {
+  const steps = KAIROS_DEFAULT_DISCIPLINE_LISTS.checklist;
+  it('the steps ticked while planning stay with the placed trade and are saved with it in one record', async () => {
+    const db = await started();
+    const list = await screen.findByRole('group', { name: /Before you trade/ });
+    fireEvent.click(await within(list).findByRole('checkbox', { name: steps[0]!.label }));
+    fireEvent.click(within(list).getByRole('checkbox', { name: steps[2]!.label }));
+    placeTrade('long', '100', '95', '110', '2');
+    for (let i = 0; i < 10; i += 1) nextCandle();
+    expect(screen.getByText('Your target was reached: out at 110 USDT.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Save to my practice trades' }));
+    expect(await screen.findByText('Saved with your practice trades. It never counts in your Journal.')).toBeInTheDocument();
+    const [trade] = await db.trades.toArray();
+    expect(await db.tradeDiscipline.toArray()).toEqual([expect.objectContaining({
+      tradeId: trade!.id, checklistCompletedAt: trade!.createdAt,
+      preTradeChecklist: steps.map((step, index) => ({ itemId: step.id, label: step.label, answer: index === 0 || index === 2 ? 'yes' : 'no' })),
+    })]);
+    // The next plan starts with nothing ticked.
+    fireEvent.click(screen.getByRole('button', { name: 'Place another trade' }));
+    const next = await screen.findByRole('group', { name: /Before you trade/ });
+    expect((await within(next).findAllByRole('checkbox')).every(box => !(box as HTMLInputElement).checked)).toBe(true);
+  });
+});
