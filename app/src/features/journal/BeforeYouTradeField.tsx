@@ -22,13 +22,16 @@ type ListsState = { readonly kind: 'loading' } | { readonly kind: 'failed' } | {
  */
 export function BeforeYouTradeField({ db, idPrefix, mode, answers, onAnswersChange, disabled }: BeforeYouTradeFieldProps) {
   const [lists, setLists] = useState<ListsState>({ kind: 'loading' });
+  // The lists are read only once the checklist shows (a draft or open trade), not on every form that never asks for it.
+  const asks = mode === 'checklist';
   useEffect(() => {
+    if (!asks) return;
     let ignore = false;
     void loadDisciplineLists(db).catch(() => null).then(result => {
       if (!ignore) setLists(result?.ok ? { kind: 'ready', items: result.lists.checklist } : { kind: 'failed' });
     });
     return () => { ignore = true; };
-  }, [db]);
+  }, [db, asks]);
 
   if (mode === null) return null;
   if (mode === 'after') {

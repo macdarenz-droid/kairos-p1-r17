@@ -1,8 +1,11 @@
 import 'fake-indexeddb/auto';
 import '@testing-library/jest-dom/vitest';
 import Dexie from 'dexie';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it } from 'vitest';
+import { JournalRoute } from '../src/app/JournalRoute';
+import { disciplineListsPreferenceMetadataKey, saveDisciplineLists } from '../src/application/discipline/disciplineListsPreference';
 import { saveStrategy } from '../src/application/discipline/strategies';
 import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
 import { KAIROS_DEFAULT_DISCIPLINE_LISTS, type Strategy, type TradeDisciplineRecord } from '../src/domain/discipline';
@@ -102,5 +105,44 @@ describe('T-057b "Before you trade" in the form', () => {
     expect(marks()).toBe('✓✓');
     expect(rule).toBeChecked();
     expect(await axeViolations(container)).toEqual([]);
+  });
+
+  it('reads the checklist only once it shows, not for Quick log or before a status is chosen', async () => {
+    const db = await database();
+    expect((await saveDisciplineLists(db, KAIROS_DEFAULT_DISCIPLINE_LISTS)).ok).toBe(true);
+    let reads = 0;
+    db.metadata.hook('reading', record => { if ((record as { key?: string } | undefined)?.key === disciplineListsPreferenceMetadataKey) reads += 1; return record; });
+    mount(db, 'journal', 'quick');
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 50)); });
+    fireEvent.click(screen.getByRole('button', { name: 'All details' }));
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 50)); });
+    expect(reads).toBe(0);
+    planned();
+    await checklist();
+    expect(reads).toBeGreaterThan(0);
+  });
+
+  it('the strategy check points to the checklist right there while nothing is ticked', async () => {
+    const db = await database();
+    const chosen = await strategy(db);
+    mount(db);
+    planned();
+    fireEvent.change(await screen.findByLabelText(/^Strategy/), { target: { value: chosen.id } });
+    expect(await screen.findByText('Checklist: not ticked yet. Tick it under "Before you trade".')).toBeInTheDocument();
+  });
+
+  it('a trade saved with ticks never shows "not done yet" on its new card while its record loads', async () => {
+    const db = await database();
+    localStorage.setItem(TRADE_FORM_MODE_STORAGE_KEY, 'full');
+    render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
+    planned();
+    fireEvent.click(await within(await checklist()).findByRole('checkbox', { name: steps[0]!.label }));
+    let sawNotDone = false;
+    const observer = new MutationObserver(() => { if (screen.queryAllByRole('button', { name: 'Before you trade: not done yet' }).length > 0) sawNotDone = true; });
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+    fireEvent.click(screen.getByRole('button', { name: 'Save trade' }));
+    expect(await screen.findByRole('button', { name: `Before you trade: 1 of ${steps.length} ticked` })).toBeInTheDocument();
+    observer.disconnect();
+    expect(sawNotDone).toBe(false);
   });
 });

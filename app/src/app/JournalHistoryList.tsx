@@ -179,16 +179,16 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
                 {entry.trade.tags?.length ? <TradeTagChips tags={entry.trade.tags} /> : null}
                 <ReviewTradeLink id={entry.trade.id} className="kairos-history-card__review" />
                 {db && (entry.trade.status === 'draft' || entry.trade.status === 'open') && disciplineSources.includes(entry.trade.source)
-                  ? discipline.state.kind === 'ready'
+                  ? discipline.state.kind === 'ready' && discipline.state.ids.has(entry.trade.id)
                     ? <TradeChecklistControl symbol={entry.trade.symbol} tradeId={entry.trade.id} scope={scope} items={discipline.state.lists.checklist} record={discipline.state.records.get(entry.trade.id) ?? null} save={input => saveTradeDiscipline(db, input)} onSaved={disciplineSaved} />
                     : discipline.state.kind === 'failed' ? <Button variant="secondary" size="sm" disabled>Before you trade: could not load</Button> : null
                   : null}
                 {db && entry.trade.status === 'closed' && disciplineSources.includes(entry.trade.source)
-                  ? discipline.state.kind === 'ready'
+                  ? discipline.state.kind === 'ready' && discipline.state.ids.has(entry.trade.id)
                     ? <TradeReviewControl symbol={entry.trade.symbol} tradeId={entry.trade.id} scope={scope} reviewItems={discipline.state.lists.review} mistakeItems={discipline.state.lists.mistakes} record={discipline.state.records.get(entry.trade.id) ?? null} save={input => saveTradeDiscipline(db, input)} onSaved={disciplineSaved} />
                     : discipline.state.kind === 'failed' ? <Button variant="secondary" size="sm" disabled>After the trade: could not load</Button> : null
                   : null}
-                {db && disciplineSources.includes(entry.trade.source) && discipline.state.kind === 'ready'
+                {db && disciplineSources.includes(entry.trade.source) && discipline.state.kind === 'ready' && discipline.state.ids.has(entry.trade.id)
                   ? <TradeStrategyControl symbol={entry.trade.symbol} tradeId={entry.trade.id} scope={scope} strategies={discipline.state.strategies} record={discipline.state.records.get(entry.trade.id) ?? null}
                     check={checkSavedTradeStrategy(entry.trade, entry.plans, discipline.state.records.get(entry.trade.id) ?? null)} save={input => saveTradeDiscipline(db, input)} onSaved={disciplineSaved} />
                   : null}
@@ -205,7 +205,7 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
                   : null}
                 {closedPart.available ? <p className="kairos-history-card__closed-part"><ResultText outcome={closedPart.outcome} label="Closed part" amount={closedPart.resultBeforeFees} currency={closedPart.currency} /> <span>{describeClosedPart(closedPart)}</span></p>
                   : closedPart.reason === 'needs-contract-size' ? <p className="kairos-history-card__closed-part">{CLOSED_PART_NEEDS_CONTRACT_SIZE_WORDS}</p> : null}
-                <TradePicture entry={entry} variant="thumbnail" strategyName={discipline.state.kind === 'ready' ? discipline.state.records.get(entry.trade.id)?.strategy?.name ?? null : null} />
+                <TradePicture entry={entry} variant="thumbnail" strategyName={discipline.state.kind === 'ready' && discipline.state.ids.has(entry.trade.id) ? discipline.state.records.get(entry.trade.id)?.strategy?.name ?? null : null} />
                 {/* The five words are explained once per list (D69): only the first card has the "?" buttons. */}
                 <dl className="kairos-history-card__facts">
                   <div><dt><span>Entries and exits</span>{index === 0 ? <GlossaryHint termId="entries-and-exits" label="Entries and exits" /> : null}</dt><dd>{entry.executions.length}</dd></div>
