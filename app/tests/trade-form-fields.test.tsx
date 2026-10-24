@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import '@testing-library/jest-dom/vitest';
 import Dexie from 'dexie';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { previewTradeStrategyCheck } from '../src/application/discipline/strategyCheck';
 import { getJournalHistoryEntry } from '../src/application/journal';
@@ -127,7 +127,7 @@ describe('T-056c the new trade fields on the form', () => {
       save();
       const alert = await screen.findByRole('alert');
       expect(alert).toHaveTextContent(message);
-      expect(alert).toHaveFocus();
+      await waitFor(() => expect(alert).toHaveFocus());
       expect(screen.getByLabelText(label)).toHaveAttribute('aria-invalid', 'true');
       expect(screen.getByLabelText(label)).toHaveAccessibleDescription(expect.stringContaining(message));
       type(label, '');

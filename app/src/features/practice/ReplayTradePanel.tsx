@@ -1,10 +1,12 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
+import type { DisciplineAnswerInput } from '../../application/discipline';
 import type { LoadedReplay } from '../../application/practice/replayCandles';
 import { placeReplayOrder, type ReplayOrder, type ReplayOrderInput, type ReplayOrderInvalidReason, type ReplayView } from '../../application/practice/replayEngine';
 import { saveReplayTrade } from '../../application/practice/replayTrade';
 import type { KairosDatabase } from '../../data/database';
 import { Button, Card, Field } from '../../design-system/primitives';
+import { BeforeYouTradeField } from '../journal/BeforeYouTradeField';
 import './replay.css';
 
 type InputName = 'side' | 'entryPrice' | 'stopPrice' | 'targetPrice' | 'quantity';
@@ -46,7 +48,10 @@ export function ReplayTradePanel({ db, replay, cursor, view, order, onPlace, onC
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
+  // U12 (D241): the steps ticked while planning stay with the placed trade and are saved with it.
+  const [checklist, setChecklist] = useState<readonly DisciplineAnswerInput[]>([]);
   const titleId = useId();
+  const checklistId = useId();
   const ids = { side: useId(), entryPrice: useId(), stopPrice: useId(), targetPrice: useId(), quantity: useId() };
   const heading = useRef<HTMLHeadingElement>(null);
   const tradesLink = useRef<HTMLAnchorElement>(null);
@@ -89,7 +94,7 @@ export function ReplayTradePanel({ db, replay, cursor, view, order, onPlace, onC
     const forOrder = order;
     setSaving(true);
     setSaveFailed(false);
-    const result = await saveReplayTrade(db, replay, cursor, order).catch(() => null);
+    const result = await saveReplayTrade(db, replay, cursor, order, {}, checklist).catch(() => null);
     setSaving(false);
     if (currentOrder.current !== forOrder) return;
     if (result?.ok) {
@@ -103,6 +108,7 @@ export function ReplayTradePanel({ db, replay, cursor, view, order, onPlace, onC
   const clear = () => {
     setSaved(false);
     setSaveFailed(false);
+    setChecklist([]);
     pendingFocus.current = view.candlesLeft === 0 ? 'heading' : 'side';
     onClear();
   };
@@ -132,6 +138,7 @@ export function ReplayTradePanel({ db, replay, cursor, view, order, onPlace, onC
       {priceField('stopPrice', 'Stop price', 'Where you get out if the price goes against you.')}
       {priceField('targetPrice', 'Target price', 'Where you take your profit.')}
       {priceField('quantity', 'Quantity', 'How much you pretend to buy or sell, for example 0.01.')}
+      <BeforeYouTradeField db={db} idPrefix={checklistId} mode="checklist" answers={checklist} onAnswersChange={setChecklist} disabled={false} />
       <Button type="submit">Place trade</Button>
       {noCandles ? <p role="alert">There are no candles left to play. Choose another moment.</p> : null}
     </Card>;

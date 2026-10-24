@@ -7,7 +7,8 @@ export type TradeDisciplineCardsState =
   | Readonly<{ kind: 'off' }>
   | Readonly<{ kind: 'loading' }>
   | Readonly<{ kind: 'failed' }>
-  | Readonly<{ kind: 'ready'; lists: DisciplineLists; records: ReadonlyMap<string, TradeDisciplineRecord>; strategies: readonly Strategy[] }>;
+  /** `ids`: the trades whose records were read; a card not in it is still loading, never "not done yet". */
+  | Readonly<{ kind: 'ready'; lists: DisciplineLists; records: ReadonlyMap<string, TradeDisciplineRecord>; strategies: readonly Strategy[]; ids: ReadonlySet<string> }>;
 
 const OFF: TradeDisciplineCardsState = Object.freeze({ kind: 'off' });
 const LOADING: TradeDisciplineCardsState = Object.freeze({ kind: 'loading' });
@@ -17,6 +18,7 @@ const FAILED: TradeDisciplineCardsState = Object.freeze({ kind: 'failed' });
  * Reads the discipline lists and the records of the trades on screen in one
  * batch. Only the first load shows `loading`; a reload keeps the last ready
  * data until the new data arrives, and a slow old answer never replaces a newer one.
+ * A trade new to the screen waits for that data: its record is unknown until read.
  */
 export function useTradeDisciplineCards(db: KairosDatabase | undefined, tradeIds: readonly string[]): { readonly state: TradeDisciplineCardsState; readonly remember: (record: TradeDisciplineRecord) => void } {
   const [state, setState] = useState<TradeDisciplineCardsState>(db ? LOADING : OFF);
@@ -29,7 +31,7 @@ export function useTradeDisciplineCards(db: KairosDatabase | undefined, tradeIds
     setState(previous => (previous.kind === 'ready' ? previous : LOADING));
     const ids = idsKey === '' ? [] : idsKey.split('\n');
     loadTradeDisciplineCards(db, ids).then(
-      data => { if (current === request.current) setState(Object.freeze({ kind: 'ready', lists: data.lists, records: data.records, strategies: data.strategies })); },
+      data => { if (current === request.current) setState(Object.freeze({ kind: 'ready', lists: data.lists, records: data.records, strategies: data.strategies, ids: new Set(ids) })); },
       () => { if (current === request.current) setState(FAILED); },
     );
     // A load that finishes after unmount or a newer request is dropped.
@@ -41,7 +43,7 @@ export function useTradeDisciplineCards(db: KairosDatabase | undefined, tradeIds
       if (previous.kind !== 'ready') return previous;
       const records = new Map(previous.records);
       records.set(record.tradeId, record);
-      return Object.freeze({ kind: 'ready', lists: previous.lists, records, strategies: previous.strategies });
+      return Object.freeze({ kind: 'ready', lists: previous.lists, records, strategies: previous.strategies, ids: new Set([...previous.ids, record.tradeId]) });
     });
   }, []);
 

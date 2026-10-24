@@ -6,7 +6,7 @@ import type { ExchangeRateRecord } from '../../domain/calculations/currencyConve
 import type { EconomicEventRecord } from '../../domain/economic-calendar/economicEvent';
 
 export const KAIROS_DATABASE_NAME = 'kairos';
-export const KAIROS_DB_SCHEMA_VERSION = 13 as const;
+export const KAIROS_DB_SCHEMA_VERSION = 14 as const;
 
 /** Immutable released V1 contract. Never edit. */
 export const KAIROS_V1_STORES = Object.freeze({
@@ -78,6 +78,9 @@ export const KAIROS_V13_STORES = Object.freeze({
   trades: '&id,status,symbol,updatedAt,[status+updatedAt],[status+closedAt],*tags',
 });
 
+/** V14 (U12, D243) changes no store or index: a discipline record may now carry what "Before you save" named (optional field, nothing to convert). */
+export const KAIROS_V14_STORES = Object.freeze({});
+
 /** Current complete store authority used by transactions/integrity only. */
 export const KAIROS_CURRENT_STORES = Object.freeze({
   ...KAIROS_V2_STORES,
@@ -92,6 +95,7 @@ export const KAIROS_CURRENT_STORES = Object.freeze({
   ...KAIROS_V11_STORES,
   ...KAIROS_V12_STORES,
   ...KAIROS_V13_STORES,
+  ...KAIROS_V14_STORES,
 });
 
 export interface DatabaseMetadataRecord {

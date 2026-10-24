@@ -156,12 +156,18 @@ const typedDecimal = (value: string): DecimalString | null => {
   return parsed.ok ? parsed.value : null;
 };
 
-/** The check of the trade form as typed, before saving, against one strategy. */
-export function previewTradeStrategyCheck(draft: ManualTradeDraft, status: TradeStatus | '', strategy: Strategy): TradeStrategyCheck {
+/** U12 (D241): what the form has ticked before saving: its checklist (null when none applies or nothing is ticked) and the strategy's written rules. */
+export interface TradeFormTicks {
+  readonly checklist: TradeChecklistSummary | null;
+  readonly answers: readonly StrategyRuleAnswer[];
+}
+
+/** The check of the trade form as typed, before saving, against one strategy, with what the form has ticked. */
+export function previewTradeStrategyCheck(draft: ManualTradeDraft, status: TradeStatus | '', strategy: Strategy, ticks?: TradeFormTicks): TradeStrategyCheck {
   const currency = (draft.priceCurrency ?? '').trim().toUpperCase();
   return checkTradeStrategy({
     rules: strategy.rules,
-    answers: [],
+    answers: ticks?.answers ?? [],
     symbol: draft.symbol,
     side: draft.side || null,
     status: status || null,
@@ -174,6 +180,6 @@ export function previewTradeStrategyCheck(draft: ManualTradeDraft, status: Trade
       target: typedDecimal(draft.plan.plannedTargetPrice),
       quantity: typedDecimal(draft.plan.plannedQuantity),
     },
-    checklist: null,
+    checklist: ticks?.checklist ?? null,
   });
 }

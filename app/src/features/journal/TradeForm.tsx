@@ -1,6 +1,9 @@
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { saveTradeDiscipline } from '../../application/discipline';
+import type { DisciplineAnswerInput, TradeDisciplineParts } from '../../application/discipline';
+import {
+  beforeYouSaveSymbol, loadBeforeYouSave, loadRecentSizes, previewBeforeYouSave, type BeforeYouSaveFacts, type LoadBeforeYouSaveResult, type LoadRecentSizesResult,
+} from '../../application/discipline/beforeYouSave';
 import { savePracticeTrade } from '../../application/practice';
 import {
   createEmptyManualTradeDraft,
@@ -17,6 +20,7 @@ import { PRICE_CURRENCY_INPUT_ERROR } from '../../application/trades/priceCurren
 import { createEmptyQuickTradeLogDraft, quickTradeLogFieldFor, quickTradeLogRows, type QuickTradeLogDraft, type QuickTradeLogField } from '../../application/trades/quickTradeLog';
 import type { KairosDatabase } from '../../data/database';
 import type { StrategyId } from '../../domain/discipline';
+import type { DecimalString } from '../../domain/trades';
 import { Button, Field, PriceInput, Segmented, Select } from '../../design-system/primitives';
 import { JournalClosedTradeGuidance } from './JournalClosedTradeGuidance';
 import { JournalExecutionFields } from './JournalExecutionFields';
@@ -25,6 +29,8 @@ import { StockTradeNote, STOCK_QUANTITY_HINT, STOCK_TICKER_MESSAGES } from './St
 import { JournalPriceCurrencyField } from './JournalPriceCurrencyField';
 import { TradeStrategyField } from './TradeStrategyField';
 import { TradeTagsField } from './TradeTagsField';
+import { BeforeYouTradeField } from './BeforeYouTradeField';
+import { BeforeYouSaveBox } from './BeforeYouSaveBox';
 import { CONTRACT_SIZE_HINT } from './AddContractSizeControl';
 import './tradeForm.css';
 
@@ -79,6 +85,9 @@ const NEW_FIELD_MESSAGES: Readonly<Partial<Record<ManualTradeValidationField, st
   tags: 'At most 10 tags, each up to 24 letters.',
   exchange: '"Where you traded" can be up to 40 letters.',
   'plan.reason': '"Why I\'m taking it" can be up to 500 letters.',
+  'discipline.checklist': 'Your checklist changed in another tab. Reload the page and tick it again.',
+  'discipline.strategy': 'That strategy changed in another tab. Choose it again, or choose none.',
+  'discipline.beforeSave': 'Review the trade details and try again.',
 };
 
 const pad = (value: number): string => String(value).padStart(2, '0');
@@ -117,11 +126,11 @@ const TRADE_FORM_TEXT: Record<TradeFormKind, TradeFormText> = {
     legend: 'Trade details',
     hintOpen: 'Open trades need an opened date and time.',
     hintClosed: 'Closed trades need both opened and closed date and time.',
-    hintDraft: 'Draft trades have no entries, exits or times yet.',
+    hintDraft: 'A planned trade has no entries, exits or times yet.',
     hintNone: 'Choose the state that matches the trade right now.',
     openRequiresOpenedAt: 'Add the opened date and time for an open trade.',
     closedRequiresTimes: 'Add both opened and closed date and time for a closed trade.',
-    draftCannotHaveTimes: 'Draft trades cannot have opened or closed times yet.',
+    draftCannotHaveTimes: 'A planned trade cannot have opened or closed times yet.',
     reviewTrade: 'Review the trade details and try again.',
     submit: 'Save trade',
     saved: 'Trade saved to your journal.',
@@ -133,11 +142,11 @@ const TRADE_FORM_TEXT: Record<TradeFormKind, TradeFormText> = {
     legend: 'Practice trade details',
     hintOpen: 'Open practice trades need an opened date and time.',
     hintClosed: 'Closed practice trades need both opened and closed date and time.',
-    hintDraft: 'Draft practice trades have no entries, exits or times yet.',
+    hintDraft: 'A planned practice trade has no entries, exits or times yet.',
     hintNone: 'Choose the state that matches the practice trade right now.',
     openRequiresOpenedAt: 'Add the opened date and time for an open practice trade.',
     closedRequiresTimes: 'Add both opened and closed date and time for a closed practice trade.',
-    draftCannotHaveTimes: 'Draft practice trades cannot have opened or closed times yet.',
+    draftCannotHaveTimes: 'A planned practice trade cannot have opened or closed times yet.',
     reviewTrade: 'Review the practice trade details and try again.',
     submit: 'Save practice trade',
     saved: 'Practice trade saved. It stays out of your journal results.',
@@ -162,7 +171,8 @@ const SIDE_OPTIONS = [
 ] as const;
 
 const STATUS_OPTIONS = [
-  ['draft', 'Draft'],
+  // U12 (D245): the stored value stays `draft`.
+  ['draft', 'Planned (not in yet)'],
   ['open', 'Open'],
   ['closed', 'Closed'],
   ['cancelled', 'Cancelled'],
@@ -199,6 +209,13 @@ function validationMessage(text: TradeFormText, field: ManualTradeValidationFiel
   return 'Review this value and try again.';
 }
 
+type BeforeSaveRead = Readonly<{ facts: BeforeYouSaveFacts | null; failed: boolean }>;
+type SizesRead = Readonly<{ symbol: string; sizes: readonly DecimalString[] | null; failed: boolean }>;
+const factsRead = (result: LoadBeforeYouSaveResult): BeforeSaveRead => (result.ok ? { facts: result.facts, failed: false } : { facts: null, failed: true });
+const sizesReadFor = (symbol: string, result: LoadRecentSizesResult): SizesRead => (result.ok ? { symbol, sizes: result.sizes, failed: false } : { symbol, sizes: null, failed: true });
+/** The usual size is read for the symbol once typing pauses, not on every key. */
+const SIZES_READ_PAUSE_MS = 300;
+
 function fieldHasError(feedback: Feedback, field: string): boolean {
   return feedback?.kind === 'error' && feedback.field === field;
 }
@@ -221,6 +238,17 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [strategyId, setStrategyId] = useState<StrategyId | ''>('');
+  // U12 (D241): what is ticked before Save, saved with the trade in one write.
+  const [checklistAnswers, setChecklistAnswers] = useState<readonly DisciplineAnswerInput[]>([]);
+  const [strategyAnswers, setStrategyAnswers] = useState<readonly DisciplineAnswerInput[]>([]);
+  // U12 (D242): what "Before you save" read (again after each save and on "Try again"), and the optional reason.
+  const beforeSaveScope = kind === 'practice' ? 'practice' : 'real';
+  const [beforeSaveRead, setBeforeSaveRead] = useState<BeforeSaveRead>({ facts: null, failed: false });
+  const [beforeSaveReads, setBeforeSaveReads] = useState(0);
+  const [brokenRules, setBrokenRules] = useState(0);
+  const [saveAnywayReason, setSaveAnywayReason] = useState('');
+  const [sizesRead, setSizesRead] = useState<SizesRead>({ symbol: '', sizes: null, failed: false });
+  const [retrying, setRetrying] = useState(false);
   const [mode, setMode] = useState<TradeFormMode>(readTradeFormMode);
   const [quick, setQuick] = useState<QuickTradeLogDraft>(createEmptyQuickTradeLogDraft);
   const isQuick = mode === 'quick';
@@ -235,7 +263,41 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
   }, [feedback]);
 
   const showOpenedAt = isQuick || draft.status === 'open' || draft.status === 'closed';
+  const checklistMode = isQuick || draft.status === 'closed' || draft.status === 'cancelled' ? 'after' : draft.status === 'draft' || draft.status === 'open' ? 'checklist' : null;
   const showClosedAt = isQuick || draft.status === 'closed';
+  // Read only while the box can show (a draft or open trade in All details): when it starts to, and after each save.
+  const asksBeforeSave = checklistMode === 'checklist';
+  useEffect(() => {
+    if (!asksBeforeSave) return;
+    let ignore = false;
+    void loadBeforeYouSave(db, { scope: beforeSaveScope, now: now().toISOString() }).then(result => { if (!ignore) setBeforeSaveRead(factsRead(result)); });
+    return () => { ignore = true; };
+  }, [db, beforeSaveScope, beforeSaveReads, asksBeforeSave]);
+  const sizesSymbol = asksBeforeSave ? beforeYouSaveSymbol(draft.symbol) : '';
+  useEffect(() => {
+    if (sizesSymbol === '') return;
+    let ignore = false;
+    const timer = setTimeout(() => {
+      void loadRecentSizes(db, { scope: beforeSaveScope, symbol: sizesSymbol }).then(result => { if (!ignore) setSizesRead(sizesReadFor(sizesSymbol, result)); });
+    }, SIZES_READ_PAUSE_MS);
+    return () => { ignore = true; clearTimeout(timer); };
+  }, [db, beforeSaveScope, sizesSymbol, beforeSaveReads]);
+  const sizesForSymbol = sizesRead.symbol === sizesSymbol ? sizesRead : null;
+  /** "Try again": both reads again, then the box moves focus once their result is on screen. */
+  async function retryBeforeSaveReads(): Promise<void> {
+    setRetrying(true);
+    const symbol = sizesSymbol;
+    const [facts, sizes] = await Promise.all([
+      loadBeforeYouSave(db, { scope: beforeSaveScope, now: now().toISOString() }),
+      symbol === '' ? null : loadRecentSizes(db, { scope: beforeSaveScope, symbol }),
+    ]);
+    flushSync(() => {
+      setBeforeSaveRead(factsRead(facts));
+      if (sizes !== null) setSizesRead(sizesReadFor(symbol, sizes));
+      setRetrying(false);
+    });
+  }
+  const beforeSaveNotes = checklistMode === 'checklist' ? previewBeforeYouSave(draft, executions, brokenRules, now().toISOString(), beforeSaveRead.facts, sizesForSymbol?.sizes ?? null) : [];
   const errorField = feedback?.kind === 'error' ? feedback.field : undefined;
   const quickInvalid = (field: QuickTradeLogField): boolean => isQuick && quickTradeLogFieldFor(errorField) === field;
   const fieldError = (field: ManualTradeValidationField): string | undefined => (feedback?.kind === 'error' && feedback.field === field ? feedback.message : undefined);
@@ -303,8 +365,16 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
       return;
     }
 
+    // What was ticked before the trade goes with it in one write (D241); nothing ticked saves no checklist.
+    const discipline: TradeDisciplineParts = {
+      ...(checklistMode === 'checklist' && checklistAnswers.length > 0 ? { checklist: checklistAnswers } : {}),
+      ...(strategyId !== '' ? { strategy: { strategyId, answers: strategyAnswers } } : {}),
+      // What "Before you save" named, as the trader saw it, with their reason; nothing when it named nothing.
+      ...(beforeSaveNotes.length > 0 ? { beforeSave: { notes: beforeSaveNotes.map(note => note.kind), reason: saveAnywayReason.trim() || null } } : {}),
+    };
     setIsSaving(true);
-    const result = kind === 'practice' ? await savePracticeTrade(db, prepared.input) : await saveManualTrade(db, prepared.input);
+    const input = { ...prepared.input, discipline };
+    const result = kind === 'practice' ? await savePracticeTrade(db, input) : await saveManualTrade(db, input);
 
     if (!result.ok) {
       setIsSaving(false);
@@ -320,12 +390,7 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
       return;
     }
 
-    // The form stays busy until the strategy link is written too (two atomic writes, D76); the trade is saved either way.
-    let saved = text.saved;
-    if (strategyId !== '') {
-      const linked = await saveTradeDiscipline(db, { tradeId: result.tradeId, scope: kind === 'practice' ? 'practice' : 'real', half: 'strategy', strategyId, answers: [] }).catch(() => null);
-      if (!linked?.ok) saved = `${text.saved} Its strategy was not saved: choose it again on the trade card.`;
-    }
+    const saved = text.saved;
     setIsSaving(false);
 
     // Commit the reset and the success banner before the page refreshes its lists.
@@ -337,6 +402,10 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
       setFormGeneration(current => current + 1);
       setQuick(createEmptyQuickTradeLogDraft());
       setStrategyId('');
+      setChecklistAnswers([]);
+      setStrategyAnswers([]);
+      setSaveAnywayReason('');
+      setBeforeSaveReads(current => current + 1);
       setFeedback({ kind: 'success', message: saved });
     });
     await onSaved();
@@ -519,7 +588,13 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
 
         </details>
 
-        <TradeStrategyField db={db} idPrefix={idPrefix} value={strategyId} onChange={value => { setStrategyId(value); setFeedback(null); }} draft={draft} status={isQuick ? 'closed' : draft.status} disabled={isSaving} />
+        <TradeStrategyField db={db} idPrefix={idPrefix} value={strategyId} onChange={value => { setStrategyId(value); setStrategyAnswers([]); setFeedback(null); }} draft={draft} status={isQuick ? 'closed' : draft.status} disabled={isSaving}
+          answers={strategyAnswers} onAnswersChange={answers => { setStrategyAnswers(answers); setFeedback(null); }} checklist={checklistMode === 'checklist' ? checklistAnswers : null} onBrokenRulesChange={setBrokenRules} />
+
+        <BeforeYouTradeField db={db} idPrefix={idPrefix} mode={checklistMode} answers={checklistAnswers} onAnswersChange={answers => { setChecklistAnswers(answers); setFeedback(null); }} disabled={isSaving} />
+
+        {checklistMode === 'checklist' ? <BeforeYouSaveBox idPrefix={idPrefix} notes={beforeSaveNotes} readsFailed={beforeSaveRead.failed || sizesForSymbol?.failed === true} retrying={retrying}
+          onRetry={retryBeforeSaveReads} reason={saveAnywayReason} onReasonChange={value => { setSaveAnywayReason(value); setFeedback(null); }} disabled={isSaving} afterRef={submitRef} /> : null}
 
         <div className="kairos-trade-form__actions">
           <Button ref={submitRef} type="submit" busy={isSaving} emphasis="main" aria-describedby={strategyId ? `${idPrefix}-strategy-note` : undefined}>{isSaving ? 'Saving…' : text.submit}</Button>

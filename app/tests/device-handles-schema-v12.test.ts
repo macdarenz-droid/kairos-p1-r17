@@ -28,7 +28,7 @@ describe('T-054b schema v12: a device-only store for the backup folder', () => {
     await old.table('metadata').put({ key: 'preferences.goals.v1', value: '{"version":1}', updatedAt: '2026-10-20T08:00:00.000Z' });
     old.close();
     const db = createKairosDatabase(name); opened.push(db);
-    expect(await openKairosDatabase(db)).toEqual({ state: 'ready', schemaVersion: 13 });
+    expect(await openKairosDatabase(db)).toEqual({ state: 'ready', schemaVersion: 14 });
     expect(await db.trades.toArray()).toEqual([trade]);
     expect(await db.metadata.count()).toBe(1);
     expect(await db.deviceHandles.count()).toBe(0);
@@ -54,7 +54,7 @@ describe('T-054b schema v12: a device-only store for the backup folder', () => {
     const exported = await exportKairosBackup(db, new Date(now()));
     if (!exported.ok) throw new Error('export failed');
     const parsed = parseKairosBackup(exported.file.contents);
-    expect(parsed).toMatchObject({ formatVersion: 11, databaseSchemaVersion: 13 });
+    expect(parsed).toMatchObject({ formatVersion: 12, databaseSchemaVersion: 14 });
     expect(Object.keys(parsed.payload)).not.toContain('deviceHandles');
     expect(exported.file.contents).not.toContain('Kairos backups');
     // Another journal's backup replaces everything here, but not this device's folder.

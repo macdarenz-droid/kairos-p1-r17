@@ -60,7 +60,7 @@ describe('T-046b schema v11: news is stored', () => {
     await old.table('exchangeRates').put(ecbUsd);
     old.close();
     const db = createKairosDatabase(name); opened.push(db);
-    expect(await openKairosDatabase(db)).toEqual({ state: 'ready', schemaVersion: 13 });
+    expect(await openKairosDatabase(db)).toEqual({ state: 'ready', schemaVersion: 14 });
     expect(await db.trades.toArray()).toEqual([trade]);
     expect(await db.exchangeRates.toArray()).toEqual([ecbUsd]);
     expect(await db.economicEvents.count()).toBe(0);
@@ -102,14 +102,14 @@ describe('T-046b backup format 10', () => {
     const db = await current('export');
     await db.economicEvents.bulkPut([speech, cpi]);
     const snapshot = await createKairosDatabaseSnapshot(db);
-    expect(snapshot).toMatchObject({ formatVersion: 11, databaseSchemaVersion: 13, recordCounts: { economicEvents: 2 } });
+    expect(snapshot).toMatchObject({ formatVersion: 12, databaseSchemaVersion: 14, recordCounts: { economicEvents: 2 } });
     expect(snapshot.payload.economicEvents).toEqual([cpi, speech]);
     expect(parseKairosBackup(serializeKairosBackup(snapshot))).toEqual(snapshot);
   });
 
   it('reads a format 9 backup as format 10 with its discipline record and rate, and no news', () => {
     const parsed = parseKairosBackup(format9());
-    expect(parsed).toMatchObject({ formatVersion: 11, databaseSchemaVersion: 13, recordCounts: { exchangeRates: 1, economicEvents: 0, total: 3 } });
+    expect(parsed).toMatchObject({ formatVersion: 12, databaseSchemaVersion: 14, recordCounts: { exchangeRates: 1, economicEvents: 0, total: 3 } });
     expect(parsed.payload.tradeDiscipline).toEqual([plain]);
     expect(parsed.payload.exchangeRates).toEqual([ecbUsd]);
     expect(parsed.payload.economicEvents).toEqual([]);
@@ -129,7 +129,7 @@ describe('T-046b backup format 10', () => {
 
   it('reads a format 8 backup as format 10 with its discipline record, no rates and no news', () => {
     const parsed = parseKairosBackup(format8());
-    expect(parsed).toMatchObject({ formatVersion: 11, databaseSchemaVersion: 13 });
+    expect(parsed).toMatchObject({ formatVersion: 12, databaseSchemaVersion: 14 });
     expect(parsed.payload.tradeDiscipline).toEqual([plain]);
     expect(parsed.payload.exchangeRates).toEqual([]);
     expect(parsed.payload.economicEvents).toEqual([]);
@@ -138,7 +138,7 @@ describe('T-046b backup format 10', () => {
   it('reads a format 1 metadata-only backup as format 10 with no news', () => {
     const legacy = { ...header, formatVersion: 1, databaseSchemaVersion: 1, recordCounts: { metadata: 0, total: 0 }, payload: { metadata: [] } };
     const parsed = parseKairosBackup(JSON.stringify(legacy));
-    expect(parsed).toMatchObject({ formatVersion: 11, databaseSchemaVersion: 13 });
+    expect(parsed).toMatchObject({ formatVersion: 12, databaseSchemaVersion: 14 });
     expect(parsed.payload.economicEvents).toEqual([]);
   });
 
@@ -163,7 +163,7 @@ describe('T-046b backup format 10', () => {
     expect(() => parseKairosBackup(JSON.stringify(wrongCount))).toThrow(expect.objectContaining({ code: 'INVALID_RECORD_COUNTS' }));
     const db = await current('duplicate');
     expect(await prepareBackupRestore(db, JSON.stringify(format10([cpi, cpi])))).toMatchObject({ ok: false, type: 'incompatible-backup', code: 'DUPLICATE_ECONOMIC_EVENT_ID' });
-    expect(() => parseKairosBackup(JSON.stringify({ ...format10([]), formatVersion: 12 }))).toThrow(expect.objectContaining({ code: 'UNSUPPORTED_FORMAT_VERSION' }));
+    expect(() => parseKairosBackup(JSON.stringify({ ...format10([]), formatVersion: 13 }))).toThrow(expect.objectContaining({ code: 'UNSUPPORTED_FORMAT_VERSION' }));
   });
 
   it('a merge import adds the trade and leaves news alone', async () => {

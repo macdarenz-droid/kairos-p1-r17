@@ -56,7 +56,7 @@ export function JournalDraftTradeActivation({ entry, db, onOpened, allowedSource
     if (!result.ok) {
       const field = result.type === 'validation-error' ? result.field : undefined;
       const message = result.type === 'update-conflict'
-        ? (result.reason === 'trade-changed' ? 'This draft changed since you opened it. Refresh the history and try again.' : result.reason === 'trade-not-draft-manual' ? 'This trade is no longer a draft. Refresh the history.' : 'Kairos could not assign new ids. Nothing was changed.')
+        ? (result.reason === 'trade-changed' ? 'This trade changed since you opened it. Refresh the history and try again.' : result.reason === 'trade-not-draft-manual' ? 'This trade is no longer planned. Refresh the history.' : 'Kairos could not assign new ids. Nothing was changed.')
         : result.type === 'storage-error' ? 'Kairos could not open this trade. Your entries are kept so you can retry.'
         : field === 'grossPnlCurrency' ? PRICE_CURRENCY_INPUT_ERROR
         : field?.startsWith('executions.') ? 'Each entry or exit needs a positive price, positive quantity and valid time.'
@@ -70,7 +70,7 @@ export function JournalDraftTradeActivation({ entry, db, onOpened, allowedSource
   }
 
   return <div className="kairos-draft-open" data-draft-open={snapshot ? 'editing' : 'idle'}>
-    {!snapshot ? <button ref={triggerRef} type="button" className="kairos-draft-open__trigger" onClick={() => setSnapshot(entry)}>Open this trade</button> : null}
+    {!snapshot ? <button ref={triggerRef} type="button" className="kairos-draft-open__trigger" onClick={() => setSnapshot(entry)}>I'm in</button> : null}
     {snapshot ? <div ref={panelRef} tabIndex={-1} role="region" aria-label={`Open ${snapshot.trade.symbol}`} className="kairos-draft-open__panel">
       <h3>Open {snapshot.trade.symbol}</h3>
       <p>Record when this planned trade was opened and, if you have them, its first fills. Your plan stays as you wrote it.</p>

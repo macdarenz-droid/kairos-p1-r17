@@ -49,7 +49,7 @@ export function describeStrategyRuleResult(result: StrategyRuleResult): string {
         case 'steps-missed': return `Checklist: you ticked ${result.ticked} of ${result.asked} steps.`;
         case 'no-checklist': return "Checklist: none was saved before this trade closed, so Kairos can't check it.";
         case 'cancelled': return 'Checklist: this trade was cancelled before a checklist was ticked.';
-        case 'not-yet': return 'Checklist: not ticked yet. You can tick it on the trade card while the trade is a draft or open.';
+        case 'not-yet': return 'Checklist: not ticked yet. Tick it under "Before you trade".';
       }
       break;
     case 'markets':

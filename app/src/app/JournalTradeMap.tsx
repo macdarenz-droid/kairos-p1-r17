@@ -12,7 +12,7 @@ function sideLabel(side: 'long' | 'short'): string {
 }
 
 function statusLabel(status: 'draft' | 'open' | 'closed' | 'cancelled'): string {
-  if (status === 'draft') return 'Draft';
+  if (status === 'draft') return 'Planned';
   if (status === 'open') return 'Open';
   if (status === 'closed') return 'Closed';
   return 'Cancelled';

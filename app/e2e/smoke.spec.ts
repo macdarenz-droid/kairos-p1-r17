@@ -1816,3 +1816,90 @@ test('(ad) New trade fields: a futures trade with how much one point is worth, t
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   expect(errors).toEqual([]);
 });
+
+test("(ae) Before you save, then the guided flow: past the daily limit a planned trade says so and still saves; then I'm in, close, Review it now", async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  await activate(page);
+  await page.goto('/goals');
+  // Wait for the page to read your goals: only then does it offer this device's time zone, when none is saved.
+  const goals = page.locator('[data-goals-status]');
+  await expect(goals).not.toHaveAttribute('data-goals-status', 'loading');
+  const deviceZone = page.getByRole('button', { name: /\(this device\)$/ });
+  if (await deviceZone.isVisible()) await deviceZone.click();
+  await expect(goals).toHaveAttribute('data-goals-status', 'ready');
+  await page.getByLabel('Max trades per day').fill('1');
+  await page.getByRole('button', { name: 'Save goals' }).click();
+  await expect(page.getByLabel('Max trades per day')).toHaveValue('1');
+
+  // One trade opened now uses up the day.
+  await page.goto('/journal');
+  const local = await page.evaluate(() => { const d = new Date(); const p = (n: number) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; });
+  await page.getByLabel(/^Symbol/).fill('BTCUSDT');
+  await page.getByLabel(/^Market/).selectOption('crypto');
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Status/).selectOption('open');
+  await page.getByLabel(/^Opened/).fill(local);
+  await page.getByLabel('Currency code').fill('USDT');
+  await page.getByText('Trade plan · Optional').click();
+  await page.getByLabel('Planned entry').fill('100');
+  await page.getByLabel('Planned stop').fill('95');
+  await expect(page.getByRole('region', { name: 'Before you save' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+
+  // The next planned trade: the box names the limit, a reason is typed, and Save is still one tap.
+  await page.getByLabel(/^Symbol/).fill('ETHUSDT');
+  await page.getByLabel(/^Market/).selectOption('crypto');
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Status/).selectOption('draft');
+  await page.getByLabel('Currency code').fill('USDT');
+  // The plan stays open after a save when it was opened by hand.
+  if (!(await page.getByLabel('Planned entry').isVisible())) await page.getByText('Trade plan · Optional').click();
+  await page.getByLabel('Planned entry').fill('100');
+  await page.getByLabel('Planned stop').fill('95');
+  const box = page.getByRole('region', { name: 'Before you save' });
+  await expect(box.getByRole('listitem')).toHaveText(['This would be trade 2 today. Your most is 1.']);
+  await page.getByLabel(/Why save anyway\?/).fill('A clean retest, half size.');
+  const formAxe = await new AxeBuilder({ page }).include('.kairos-trade-form').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(formAxe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+  await expect(box).toHaveCount(0);
+  await expect(page.locator('.kairos-history-card').filter({ hasText: 'ETHUSDT' })).toHaveCount(1);
+
+  // T-057e: the planned trade, "I'm in", close it, "Review it now", save the review.
+  const eth = page.locator('.kairos-history-card').filter({ hasText: 'ETHUSDT' });
+  await eth.getByRole('button', { name: "I'm in" }).click();
+  const opening = page.getByRole('region', { name: 'Open ETHUSDT' });
+  await opening.getByLabel('Opened date & time').fill(local);
+  await opening.getByRole('button', { name: 'Add entry' }).click();
+  await opening.getByLabel('Entry 1 price').fill('100');
+  await opening.getByLabel('Entry 1 quantity').fill('1');
+  await opening.getByLabel('Entry 1 date and time').fill(local);
+  await opening.getByRole('button', { name: 'Save opening' }).click();
+  await expect(page.getByText(/^ETHUSDT is now open from/)).toBeVisible();
+  await eth.getByRole('button', { name: 'Update trade' }).click();
+  const update = page.getByRole('region', { name: 'Update ETHUSDT' });
+  await update.getByRole('button', { name: 'Add exit' }).click();
+  await update.getByLabel('Exit 1 price').fill('110');
+  await update.getByLabel('Exit 1 quantity').fill('1');
+  await update.getByLabel('Exit 1 date and time').fill(local);
+  await update.getByLabel('Trade status').selectOption('closed');
+  await update.getByLabel('Closed date & time').fill(local);
+  await update.getByRole('button', { name: 'Save update' }).click();
+  await expect(page.getByText('Trade closed. How did it go?')).toBeVisible();
+  await page.getByRole('button', { name: 'Review it now' }).click();
+  const sheet = page.getByRole('dialog', { name: 'After the trade: ETHUSDT' });
+  await expect(sheet).toBeVisible();
+  const sheetAxe = await new AxeBuilder({ page }).include('.kairos-sheet__panel').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(sheetAxe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+  await sheet.getByRole('checkbox').first().check();
+  await sheet.getByRole('button', { name: 'Save review' }).click();
+  const reviewed = eth.getByRole('button', { name: /^After the trade: reviewed/ });
+  await expect(reviewed).toBeVisible();
+  await expect(reviewed).toBeFocused();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  expect(errors).toEqual([]);
+});

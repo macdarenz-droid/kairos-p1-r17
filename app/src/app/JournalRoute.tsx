@@ -5,7 +5,7 @@ import { JOURNAL_CHANGED_EVENT, SCROLL_CLAIMED_EVENT } from './AppShell';
 import { BackupReminderCard } from '../features/backup/BackupReminderCard';
 import { askToKeepDataOnce } from '../application/setup/deviceKeeping';
 import { JOURNAL_HISTORY_SOURCES } from '../application/journal';
-import { JournalHistoryList } from './JournalHistoryList';
+import { JournalHistoryList, type HistoryNotice } from './JournalHistoryList';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
 import type { MarketType as TradeMarket, TradeStatus } from '../domain/trades';
 import './journalRoute.css';
@@ -51,7 +51,7 @@ function LogAddress() {
 }
 
 export function JournalRoute({ db = kairosDatabase, now }: JournalRouteProps) {
-  const [updateNotice, setUpdateNotice] = useState('');
+  const [updateNotice, setUpdateNotice] = useState<HistoryNotice>('');
   const [historyStatus, setHistoryStatus] = useState<TradeStatus | ''>('');
   const [journalRevision, setJournalRevision] = useState(0);
   const [disciplineRevision, setDisciplineRevision] = useState(0);
@@ -101,7 +101,7 @@ export function JournalRoute({ db = kairosDatabase, now }: JournalRouteProps) {
         db={db}
         allowedSources={JOURNAL_HISTORY_SOURCES.real}
         updateNotice={updateNotice}
-        onTradeUpdated={async () => { await pages.refresh(); setJournalRevision(current => current + 1); setUpdateNotice('Trade updated. Your saved details are below.'); }}
+        onTradeUpdated={async closedTradeId => { await pages.refresh(); setJournalRevision(current => current + 1); setUpdateNotice(closedTradeId ? { kind: 'closed', tradeId: closedTradeId } : 'Trade updated. Your saved details are below.'); }}
         onTradeDeleted={async notice => { await pages.refresh(); setJournalRevision(current => current + 1); setUpdateNotice(notice); }}
         onTradeOpened={async notice => { await pages.refresh(); setJournalRevision(current => current + 1); setUpdateNotice(notice); }}
         entries={pages.entries}

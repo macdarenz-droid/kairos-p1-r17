@@ -35,8 +35,9 @@ interface JournalHistoryListProps {
   /** "Try again" after a failed load: loads the list again. */
   readonly onRetry?: () => void;
   readonly db?: KairosDatabase;
-  readonly onTradeUpdated?: () => Promise<void>;
-  readonly updateNotice?: string;
+  /** Called after a card's update; `closedTradeId` names the trade an update closed. */
+  readonly onTradeUpdated?: (closedTradeId?: TradeId) => Promise<void>;
+  readonly updateNotice?: HistoryNotice;
   /** P30.2: mounts the confirmed delete control on each card; receives the notice to show after the store changed. */
   readonly onTradeDeleted?: (notice: string) => Promise<void>;
   /** P31.2: mounts the draft activation control on manual draft cards; receives the notice to show after the draft became open. */
@@ -54,13 +55,16 @@ interface JournalHistoryListProps {
   readonly disciplineSources?: readonly TradeSource[];
 }
 
+/** U12 (D245): a plain notice, or the prompt after an update closed a trade: "Trade closed. How did it go?" with "Review it now". */
+export type HistoryNotice = string | Readonly<{ kind: 'closed'; tradeId: TradeId }>;
+
 const STATUS_FILTERS = [
-  { value: '', label: 'All trades' }, { value: 'draft', label: 'Draft' }, { value: 'open', label: 'Open' },
+  { value: '', label: 'All trades' }, { value: 'draft', label: 'Planned' }, { value: 'open', label: 'Open' },
   { value: 'closed', label: 'Closed' }, { value: 'cancelled', label: 'Cancelled' },
 ] as const;
 
 function statusLabel(status: JournalHistoryEntry['trade']['status']): string {
-  if (status === 'draft') return 'Draft';
+  if (status === 'draft') return 'Planned';
   if (status === 'open') return 'Open';
   if (status === 'closed') return 'Closed';
   return 'Cancelled';
@@ -94,6 +98,28 @@ function TradeTagChips({ tags }: { readonly tags: readonly string[] }) {
 
 export function JournalHistoryList({ entries, isLoading, errorMessage, statusFilter, onStatusFilterChange, onRetry, db, onTradeUpdated, updateNotice, onTradeDeleted, onTradeOpened, allowedSources = ['manual'], hasOlder = false, isLoadingOlder = false, olderFailed = false, onShowOlder, onDisciplineSaved, disciplineSources = allowedSources }: JournalHistoryListProps) {
   const discipline = useTradeDisciplineCards(db, entries.map(entry => entry.trade.id));
+  // U12 (D245): "Review it now" asks that trade's "After the trade" control to open; the prompt goes once that sheet
+  // closes, so focus always has somewhere to return to.
+  const [reviewRequest, setReviewRequest] = useState<TradeId | null>(null);
+  const [usedPrompt, setUsedPrompt] = useState<HistoryNotice | null>(null);
+  const prompt = typeof updateNotice === 'object' && updateNotice !== usedPrompt ? updateNotice : null;
+  const promptEntry = prompt ? entries.find(entry => entry.trade.id === prompt.tradeId) : undefined;
+  const promptReviewable = Boolean(db) && (promptEntry === undefined || (promptEntry.trade.status === 'closed' && disciplineSources.includes(promptEntry.trade.source)));
+  const reviewNow = (notice: Readonly<{ kind: 'closed'; tradeId: TradeId }>) => {
+    setReviewRequest(notice.tradeId);
+    // A trade hidden by the status filter shows again under all trades, where its card opens the review.
+    if (!entries.some(entry => entry.trade.id === notice.tradeId)) onStatusFilterChange('');
+  };
+  // An update that closes its form leaves focus on the page: the notice takes it ("Review it now" when there is one).
+  // Counted per update, since the same notice twice in a row changes nothing else.
+  const promptButtonRef = useRef<HTMLButtonElement>(null);
+  const noticeRef = useRef<HTMLParagraphElement>(null);
+  const [updates, setUpdates] = useState(0);
+  useEffect(() => {
+    if (!updateNotice) return;
+    const active = document.activeElement;
+    if (active === null || active === document.body) (promptButtonRef.current ?? noticeRef.current)?.focus();
+  }, [updateNotice, updates]);
   const news = useNewsNearTrades(db, entries.map(entry => entry.trade));
   // Journal passes the real sources, Practice the paper one; the discipline writer needs the page's scope.
   const disciplineSaved = (record: Parameters<typeof discipline.remember>[0]) => { discipline.remember(record); onDisciplineSaved?.(); };
@@ -151,7 +177,11 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
       </div>
 
       {errorMessage ? <ErrorState className="kairos-history__load-error" message={errorMessage} onRetry={retryLoad} /> : null}
-      {updateNotice ? <p className="kairos-history__state" role="status">{updateNotice}</p> : null}
+      {typeof updateNotice === 'string' && updateNotice ? <p ref={noticeRef} tabIndex={-1} className="kairos-history__state" role="status">{updateNotice}</p> : null}
+      {prompt ? <div className="kairos-history__state kairos-history__prompt">
+        <p ref={noticeRef} tabIndex={-1} role="status">Trade closed. How did it go?</p>
+        {promptReviewable ? <Button ref={promptButtonRef} variant="secondary" size="sm" onClick={() => reviewNow(prompt)}>Review it now</Button> : null}
+      </div> : null}
       {isLoading ? <Skeleton label="Loading trade history…" live={false} /> : null}
       {!isLoading && !errorMessage && entries.length === 0 ? (
         statusFilter === ''
@@ -179,20 +209,22 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
                 {entry.trade.tags?.length ? <TradeTagChips tags={entry.trade.tags} /> : null}
                 <ReviewTradeLink id={entry.trade.id} className="kairos-history-card__review" />
                 {db && (entry.trade.status === 'draft' || entry.trade.status === 'open') && disciplineSources.includes(entry.trade.source)
-                  ? discipline.state.kind === 'ready'
+                  ? discipline.state.kind === 'ready' && discipline.state.ids.has(entry.trade.id)
                     ? <TradeChecklistControl symbol={entry.trade.symbol} tradeId={entry.trade.id} scope={scope} items={discipline.state.lists.checklist} record={discipline.state.records.get(entry.trade.id) ?? null} save={input => saveTradeDiscipline(db, input)} onSaved={disciplineSaved} />
                     : discipline.state.kind === 'failed' ? <Button variant="secondary" size="sm" disabled>Before you trade: could not load</Button> : null
                   : null}
                 {db && entry.trade.status === 'closed' && disciplineSources.includes(entry.trade.source)
-                  ? discipline.state.kind === 'ready'
-                    ? <TradeReviewControl symbol={entry.trade.symbol} tradeId={entry.trade.id} scope={scope} reviewItems={discipline.state.lists.review} mistakeItems={discipline.state.lists.mistakes} record={discipline.state.records.get(entry.trade.id) ?? null} save={input => saveTradeDiscipline(db, input)} onSaved={disciplineSaved} />
+                  ? discipline.state.kind === 'ready' && discipline.state.ids.has(entry.trade.id)
+                    ? <TradeReviewControl symbol={entry.trade.symbol} tradeId={entry.trade.id} scope={scope} reviewItems={discipline.state.lists.review} mistakeItems={discipline.state.lists.mistakes} record={discipline.state.records.get(entry.trade.id) ?? null} save={input => saveTradeDiscipline(db, input)} onSaved={disciplineSaved}
+                      openRequested={reviewRequest === entry.trade.id} onOpenRequestHandled={() => setReviewRequest(null)}
+                      onRequestedSheetClosed={() => { if (prompt) setUsedPrompt(prompt); }} />
                     : discipline.state.kind === 'failed' ? <Button variant="secondary" size="sm" disabled>After the trade: could not load</Button> : null
                   : null}
-                {db && disciplineSources.includes(entry.trade.source) && discipline.state.kind === 'ready'
+                {db && disciplineSources.includes(entry.trade.source) && discipline.state.kind === 'ready' && discipline.state.ids.has(entry.trade.id)
                   ? <TradeStrategyControl symbol={entry.trade.symbol} tradeId={entry.trade.id} scope={scope} strategies={discipline.state.strategies} record={discipline.state.records.get(entry.trade.id) ?? null}
                     check={checkSavedTradeStrategy(entry.trade, entry.plans, discipline.state.records.get(entry.trade.id) ?? null)} save={input => saveTradeDiscipline(db, input)} onSaved={disciplineSaved} />
                   : null}
-                {db && onTradeUpdated ? <JournalOpenTradeUpdate entry={entry} db={db} onCommitted={onTradeUpdated} allowedSources={allowedSources} /> : null}
+                {db && onTradeUpdated ? <JournalOpenTradeUpdate entry={entry} db={db} onCommitted={async closed => { await onTradeUpdated(closed ? entry.trade.id : undefined); setUpdates(count => count + 1); }} allowedSources={allowedSources} /> : null}
                 {db && onTradeUpdated && allowedSources.includes(entry.trade.source) ? <EntriesAndExitsEditor entry={entry} save={input => updateTradeExecution(db, { ...input, allowedSources })} onSaved={onTradeUpdated} /> : null}
                 {db && onTradeOpened ? <JournalDraftTradeActivation entry={entry} db={db} onOpened={onTradeOpened} allowedSources={allowedSources} /> : null}
                 {db && tradeDeleted ? <JournalTradeDeleteControl entry={entry} db={db} onDeleted={tradeDeleted} /> : null}
@@ -205,7 +237,7 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
                   : null}
                 {closedPart.available ? <p className="kairos-history-card__closed-part"><ResultText outcome={closedPart.outcome} label="Closed part" amount={closedPart.resultBeforeFees} currency={closedPart.currency} /> <span>{describeClosedPart(closedPart)}</span></p>
                   : closedPart.reason === 'needs-contract-size' ? <p className="kairos-history-card__closed-part">{CLOSED_PART_NEEDS_CONTRACT_SIZE_WORDS}</p> : null}
-                <TradePicture entry={entry} variant="thumbnail" strategyName={discipline.state.kind === 'ready' ? discipline.state.records.get(entry.trade.id)?.strategy?.name ?? null : null} />
+                <TradePicture entry={entry} variant="thumbnail" strategyName={discipline.state.kind === 'ready' && discipline.state.ids.has(entry.trade.id) ? discipline.state.records.get(entry.trade.id)?.strategy?.name ?? null : null} />
                 {/* The five words are explained once per list (D69): only the first card has the "?" buttons. */}
                 <dl className="kairos-history-card__facts">
                   <div><dt><span>Entries and exits</span>{index === 0 ? <GlossaryHint termId="entries-and-exits" label="Entries and exits" /> : null}</dt><dd>{entry.executions.length}</dd></div>

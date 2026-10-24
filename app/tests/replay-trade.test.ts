@@ -10,6 +10,7 @@ import { placeReplayOrder, type ReplayOrder } from '../src/application/practice/
 import { projectReplayPicture, saveReplayTrade } from '../src/application/practice/replayTrade';
 import { decimalCompare } from '../src/domain/calculations/decimalKernel';
 import { createKairosDatabase, inspectKairosDatabaseIntegrity, openKairosDatabase } from '../src/data/database';
+import { KAIROS_DEFAULT_DISCIPLINE_LISTS, type TradeDisciplineId } from '../src/domain/discipline';
 import type { TradeExecutionId, TradeFeeId, TradeId, TradePlanId } from '../src/domain/trades';
 import { HOUR, rampPrices, replayCandle } from './fixtures/replayCandles';
 
@@ -134,5 +135,24 @@ describe('T-038c the replay picture', () => {
     const closed = projectReplayPicture(replay, 70, order)!;
     expect(closed.markers.map(marker => marker.kind)).toEqual(['entry', 'exit']);
     expect(info(closed, 'result')).toMatchObject({ value: '20', unit: 'USDT' });
+  });
+});
+
+describe('T-057d the checklist ticked before "Place trade"', () => {
+  const steps = KAIROS_DEFAULT_DISCIPLINE_LISTS.checklist;
+  const ticks = steps.map((step, index) => ({ itemId: step.id, answer: index < 2 ? 'yes' as const : 'no' as const }));
+
+  it('is saved with the finished replay trade in one write; none ticked, or a replay not finished, saves no checklist', async () => {
+    const db = await database('checklist');
+    expect(await saveReplayTrade(db, replay, 61, order, { now, createId: ids('w') }, ticks)).toEqual({ ok: false, type: 'not-finished' });
+    expect((await saveReplayTrade(db, replay, 70, order, { now, createId: ids('none') }, [])).ok).toBe(true);
+    expect(await db.tradeDiscipline.count()).toBe(0);
+    const result = await saveReplayTrade(db, replay, 70, order, { now, createId: ids(), createDisciplineId: () => 'replay-discipline' as TradeDisciplineId }, ticks);
+    if (!result.ok) throw new Error('save failed');
+    expect(await db.trades.get(result.tradeId)).toMatchObject({ source: 'replay', status: 'closed' });
+    expect(await db.tradeDiscipline.toArray()).toEqual([expect.objectContaining({
+      id: 'replay-discipline', tradeId: result.tradeId, checklistCompletedAt: now(),
+      preTradeChecklist: steps.map((step, index) => ({ itemId: step.id, label: step.label, answer: index < 2 ? 'yes' : 'no' })),
+    })]);
   });
 });

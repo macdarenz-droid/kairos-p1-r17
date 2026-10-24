@@ -129,6 +129,23 @@ export interface TradeStrategyMark {
 }
 
 /**
+ * U12 (D242): what the "Before you save" box can name, in its order. `loss-limit` is kept for U13's loss limits (D252):
+ * it is accepted from schema v14 and backup format 12 on, so they need no new version.
+ */
+export const BEFORE_YOU_SAVE_KINDS = Object.freeze(['trade-limit', 'loss-limit', 'recent-loss', 'no-stop', 'big-news', 'bigger-size', 'rule-broken'] as const);
+export type BeforeYouSaveKind = (typeof BEFORE_YOU_SAVE_KINDS)[number];
+/** U12 (D243): at most this many characters in "Why save anyway?". */
+export const BEFORE_SAVE_REASON_MAX_LENGTH = 200;
+
+/** U12 (D243): what "Before you save" named when the trade was saved, and the trader's optional reason for saving anyway. */
+export interface TradeBeforeSaveNote {
+  readonly notes: readonly BeforeYouSaveKind[];
+  readonly reason: string | null;
+  /** When the trade was saved with them (UTC ISO). */
+  readonly at: string;
+}
+
+/**
  * P22.2 trade discipline record: the trader's own answers about one trade.
  *
  * One record per trade (the database keeps `tradeId` unique, schema v8).
@@ -152,4 +169,6 @@ export interface TradeDisciplineRecord {
   readonly updatedAt: string;
   /** P28: the strategy this trade follows, as it was when chosen (rules copied), and the trader's ticks on its written rules. Absent: no strategy. Written only by saveTradeDiscipline. */
   readonly strategy?: TradeStrategyMark;
+  /** U12 (D243, schema v14): what "Before you save" named and why the trader saved anyway. Absent: the box named nothing. */
+  readonly beforeSave?: TradeBeforeSaveNote;
 }

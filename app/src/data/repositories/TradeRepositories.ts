@@ -30,6 +30,9 @@ export class TradeRepository {
   async replaceAll(records: readonly DatabaseTradeRecord[]) { await this.db.trades.clear(); if (records.length) await this.db.trades.bulkPut([...records]); }
 }
 /** Read-only source-scoped view over the trades store: index order and the bound are unchanged, records outside the scope are skipped by the cursor. */
+/** Up to this many trades of one symbol are read whole; past it, the newest closes are walked instead (measured in Chromium, U12). */
+const SYMBOL_READ_WHOLE_MAX = 500;
+
 export class SourceScopedTradeRepository {
   constructor(private readonly db: KairosDatabase, private readonly sources: ReadonlySet<TradeSource>) {}
   listRecentByUpdatedAt(limit: number) { return this.db.trades.orderBy('updatedAt').reverse().filter(trade => this.sources.has(trade.source)).limit(limit).toArray(); }
@@ -63,6 +66,29 @@ export class SourceScopedTradeRepository {
       .between([status, ''], [status, '\uffff'])
       .reverse()
       .filter(trade => this.sources.has(trade.source))
+      .toArray();
+  }
+  /**
+   * U12: one symbol's latest closed trades in scope, newest close first, at most `limit`. A symbol with few trades is read
+   * whole through the symbol index; a busy one is found walking [status+closedAt] from the newest close, which stops early.
+   */
+  async listRecentClosedBySymbol(symbol: string, limit: number) {
+    const symbolTrades = this.db.trades.where('symbol').equals(symbol);
+    const count = await symbolTrades.count();
+    if (count === 0) return [];
+    if (count <= SYMBOL_READ_WHOLE_MAX) {
+      const trades = await symbolTrades.toArray();
+      return trades
+        .filter(trade => trade.status === 'closed' && this.sources.has(trade.source))
+        .sort((a, b) => (b.closedAt ?? '').localeCompare(a.closedAt ?? ''))
+        .slice(0, limit);
+    }
+    return this.db.trades
+      .where('[status+closedAt]')
+      .between(['closed', ''], ['closed', '\uffff'])
+      .reverse()
+      .filter(trade => trade.symbol === symbol && this.sources.has(trade.source))
+      .limit(limit)
       .toArray();
   }
   /** Closed trades with closedAt in [fromClosedAt, toClosedAt), oldest close first, through the [status+closedAt] index. null = no bound. No limit: this path serves period totals. */

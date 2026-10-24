@@ -1,4 +1,8 @@
 import { isPriceCurrencyInput } from './priceCurrencyInput';
+import { readDisciplineLists } from '../discipline/disciplineListsPreference';
+import { readStrategies } from '../discipline/strategies';
+import { buildTradeDisciplineRecord, emptyTradeDisciplineRecord, type TradeDisciplineParts } from '../discipline/tradeDiscipline';
+import { KAIROS_DEFAULT_DISCIPLINE_LISTS, createTradeDisciplineId, validateTradeDisciplineRecord, type TradeDisciplineId } from '../../domain/discipline';
 import type { KairosDatabase } from '../../data/database/KairosDatabase';
 import { runKairosAtomicWrite } from '../../data/database/transactions';
 import {
@@ -60,6 +64,11 @@ export interface SaveManualTradeInput {
   readonly exchange?: string | null;
   readonly tags?: readonly string[] | null;
   readonly leverage?: string | null;
+  /**
+   * U12 (D241): what was ticked before the trade (its checklist, the strategy and its written-rule ticks) and what "Before
+   * you save" named, saved with the trade in the same write. A checklist needs a draft or open trade, or a replay trade.
+   */
+  readonly discipline?: TradeDisciplineParts;
 }
 
 export type ManualTradeValidationField =
@@ -70,6 +79,9 @@ export type ManualTradeValidationField =
   | 'exchange'
   | 'tags'
   | 'leverage'
+  | 'discipline.checklist'
+  | 'discipline.strategy'
+  | 'discipline.beforeSave'
   | 'plan.reason'
   | 'plan.plannedEntryPrice'
   | 'plan.plannedStopPrice'
@@ -106,6 +118,7 @@ export type SaveManualTradeResult =
 export interface SaveManualTradeDependencies {
   readonly now?: () => string;
   readonly createId?: <T extends TradeId | TradePlanId | TradeExecutionId | TradeFeeId>() => T;
+  readonly createDisciplineId?: () => TradeDisciplineId;
 }
 
 type ValidationFailure = Extract<SaveManualTradeResult, { type: 'validation-error' }>;
@@ -275,21 +288,9 @@ export async function saveManualTrade(
   const prepared = prepareManualTrade(input, now, createId);
   if ('ok' in prepared) return prepared;
 
-  const stores = ['trades'] as const;
-  const storeNames = [
-    ...stores,
-    ...(prepared.plan ? (['tradePlans'] as const) : []),
-    ...(prepared.executions.length ? (['tradeExecutions'] as const) : []),
-    ...(prepared.fees.length ? (['tradeFees'] as const) : []),
-  ];
-
   try {
-    await runKairosAtomicWrite(db, storeNames, async ({ repositories }) => {
-      await repositories.trades.put(prepared.trade);
-      if (prepared.plan) await repositories.tradePlans.put(prepared.plan);
-      for (const execution of prepared.executions) await repositories.tradeExecutions.put(execution);
-      for (const fee of prepared.fees) await repositories.tradeFees.put(fee);
-    });
+    const written = await writePreparedTrade(db, prepared, input.discipline, dependencies.createDisciplineId ?? createTradeDisciplineId);
+    if (written !== null) return written;
   } catch {
     return { ok: false, type: 'storage-error', reason: 'trade-save-failed' };
   }
@@ -303,4 +304,59 @@ export async function saveManualTrade(
       fees: prepared.fees.length,
     }),
   };
+}
+
+/** Parts that say nothing are left out: an empty checklist, no strategy, a box that named nothing. */
+function meaningfulParts(parts: TradeDisciplineParts | undefined): TradeDisciplineParts | null {
+  if (!parts) return null;
+  const kept: TradeDisciplineParts = {
+    ...(parts.checklist && parts.checklist.length > 0 ? { checklist: parts.checklist } : {}),
+    ...(parts.strategy && parts.strategy.strategyId !== null ? { strategy: parts.strategy } : {}),
+    ...(parts.beforeSave && parts.beforeSave.notes.length > 0 ? { beforeSave: parts.beforeSave } : {}),
+  };
+  return Object.keys(kept).length > 0 ? kept : null;
+}
+
+/**
+ * The one write of a prepared trade (Journal and Practice): the trade, its plan, fills and fees and, U12 (D241), its
+ * discipline record built from what was ticked before it, all in one atomic write. A refused part saves nothing and is
+ * returned as a validation failure naming it; null means saved. Storage failures throw for the caller to word.
+ */
+export async function writePreparedTrade(
+  db: KairosDatabase,
+  prepared: PreparedManualTrade,
+  discipline: TradeDisciplineParts | undefined,
+  createDisciplineId: () => TradeDisciplineId,
+): Promise<ValidationFailure | null> {
+  const parts = meaningfulParts(discipline);
+  const { trade } = prepared;
+  // A checklist answered after the trade closed would be hindsight; a replay's list is ticked at its plan step (D241).
+  if (parts?.checklist && trade.status !== 'draft' && trade.status !== 'open' && trade.source !== 'replay') {
+    return validationFailure('discipline.checklist', 'trade-status-not-allowed');
+  }
+  const storeNames = [
+    'trades' as const,
+    ...(prepared.plan ? (['tradePlans'] as const) : []),
+    ...(prepared.executions.length ? (['tradeExecutions'] as const) : []),
+    ...(prepared.fees.length ? (['tradeFees'] as const) : []),
+    ...(parts ? (['metadata', 'tradeDiscipline'] as const) : []),
+  ];
+  return runKairosAtomicWrite(db, storeNames, async ({ repositories }): Promise<ValidationFailure | null> => {
+    let record = null;
+    if (parts) {
+      // Read directly in this write (see saveTradeDiscipline), then build before anything is written.
+      const lists = parts.checklist ? await readDisciplineLists(repositories.metadata) : KAIROS_DEFAULT_DISCIPLINE_LISTS;
+      const strategies = parts.strategy ? await readStrategies(repositories.metadata) : [];
+      const built = buildTradeDisciplineRecord(emptyTradeDisciplineRecord(createDisciplineId(), trade.id, trade.createdAt), null, parts, trade.createdAt, { lists, strategies });
+      if (!built.ok) return validationFailure(`discipline.${built.failure.part}`, built.failure.reason);
+      if (!validateTradeDisciplineRecord(built.record).ok) throw new Error('invalid-discipline-record');
+      record = built.record;
+    }
+    await repositories.trades.put(trade);
+    if (prepared.plan) await repositories.tradePlans.put(prepared.plan);
+    for (const execution of prepared.executions) await repositories.tradeExecutions.put(execution);
+    for (const fee of prepared.fees) await repositories.tradeFees.put(fee);
+    if (record) await repositories.tradeDiscipline.put(record);
+    return null;
+  });
 }

@@ -13,7 +13,8 @@ import './journalOpenTradeUpdate.css';
 interface Props {
   readonly entry: JournalHistoryEntry;
   readonly db: KairosDatabase;
-  readonly onCommitted: () => Promise<void>;
+  /** U12 (D245): told whether the update closed the trade, so the list can ask how it went. */
+  readonly onCommitted: (closed: boolean) => Promise<void>;
   /** P35.2: which trade sources this control may update. Defaults to `['manual']`, so the Journal is unchanged; the Practice route names `['paper']`. */
   readonly allowedSources?: readonly TradeSource[];
 }
@@ -69,8 +70,9 @@ export function JournalOpenTradeUpdate({ entry, db, onCommitted, allowedSources 
         : 'Add a valid closed date and time.';
       setError({ field, message }); return;
     }
+    const closed = status === 'closed';
     clear();
-    await onCommitted();
+    await onCommitted(closed);
   }
 
   if (!allowedSources.includes(entry.trade.source)) return null;

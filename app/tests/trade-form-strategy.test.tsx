@@ -79,7 +79,8 @@ describe('T-040h a strategy on the trade form', () => {
     expect(screen.getByLabelText(/^Strategy/)).toHaveValue('');
   });
 
-  it('stays busy until the strategy is written too', async () => {
+  // U12 (D241): the trade and its strategy are one write, so nothing is saved until both are.
+  it('saves the trade and its strategy in one write, busy until it is done', async () => {
     const db = await database();
     await breakout(db);
     let release!: () => void;
@@ -94,13 +95,17 @@ describe('T-040h a strategy on the trade form', () => {
     fillDraft('5');
     await chooseStrategy('Breakout');
     fireEvent.click(screen.getByRole('button', { name: 'Save trade' }));
-    await waitFor(async () => expect(await db.trades.count()).toBe(1));
-    const button = screen.getByRole('button', { name: 'Saving…' });
+    const button = await screen.findByRole('button', { name: 'Saving…' });
     expect(button).toBeDisabled();
     expect(button).toHaveAttribute('aria-busy', 'true');
+    // Nothing is saved while the one write waits: never a trade without its strategy.
+    expect(await db.trades.count()).toBe(0);
     release();
     expect(await screen.findByText('Trade saved to your journal.')).toBeInTheDocument();
-    expect(await db.trades.count()).toBe(1);
+    const [trade] = await db.trades.toArray();
+    const records = await loadTradeDiscipline(db, [trade!.id as TradeId]);
+    if (!records.ok) throw new Error('read failed');
+    expect(records.records.get(trade!.id as TradeId)?.strategy?.name).toBe('Breakout');
   });
 
   it('works for a practice trade', async () => {
@@ -130,15 +135,20 @@ describe('T-040h a strategy on the trade form', () => {
     expect(document.querySelector('.kairos-trade-form__strategy-note p[data-verdict="unknown"]')!.textContent).toContain("Checklist: none was saved before this trade closed, so Kairos can't check it.");
   });
 
-  it('still saves the trade when the strategy is gone before saving', async () => {
+  // U12 (D241): one write, so a strategy deleted in another tab refuses the save and keeps the form; choosing none saves.
+  it('keeps the form when the strategy is gone before saving, and saves once none is chosen', async () => {
     const db = await database();
     const strategy = await breakout(db);
     render(<TradeForm db={db} kind="journal" onSaved={async () => {}} />);
     fillDraft('5');
     await chooseStrategy('Breakout');
     expect((await deleteStrategy(db, strategy.id)).ok).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Save trade' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('That strategy changed in another tab. Choose it again, or choose none.');
+    expect(await db.trades.count()).toBe(0);
+    expect(screen.getByLabelText(/Symbol/)).toHaveValue('BTCUSDT');
+    type(/^Strategy/, '');
     await save();
-    expect(await screen.findByText('Trade saved to your journal. Its strategy was not saved: choose it again on the trade card.')).toBeInTheDocument();
     expect(await db.trades.count()).toBe(1);
   });
 
