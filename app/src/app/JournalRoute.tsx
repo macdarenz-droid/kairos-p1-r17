@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { loadTradedMarkets } from '../application/setup/tradedMarkets';
 import { Link, useInRouterContext, useSearchParams } from 'react-router';
-import { SCROLL_CLAIMED_EVENT } from './AppShell';
+import { JOURNAL_CHANGED_EVENT, SCROLL_CLAIMED_EVENT } from './AppShell';
 import { BackupReminderCard } from '../features/backup/BackupReminderCard';
 import { askToKeepDataOnce } from '../application/setup/deviceKeeping';
 import { JOURNAL_HISTORY_SOURCES } from '../application/journal';
@@ -64,6 +64,13 @@ export function JournalRoute({ db = kairosDatabase, now }: JournalRouteProps) {
     return () => { ignore = true; };
   }, [db]);
   const pages = useJournalHistoryPages(db, 'real', historyStatus);
+  // D229: another tab saved; the list (and the coach card) read again.
+  const { refresh: refreshPages } = pages;
+  useEffect(() => {
+    const changed = () => { void refreshPages(); setJournalRevision(current => current + 1); };
+    window.addEventListener(JOURNAL_CHANGED_EVENT, changed);
+    return () => window.removeEventListener(JOURNAL_CHANGED_EVENT, changed);
+  }, [refreshPages]);
   const toast = useToast();
   // D228: "Keep my data" is asked once, after a trade is saved here (never in Practice); one ask at a time.
   const asking = useRef(false);

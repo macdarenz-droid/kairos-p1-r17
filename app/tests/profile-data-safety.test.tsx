@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router';
 import { ProfileRoute, type StorageDurabilityPorts } from '../src/app/ProfileRoute';
@@ -67,5 +67,16 @@ describe('P34.2 Profile data safety', () => {
     await waitFor(() => expect(route().querySelector('[data-profile-storage]')!.getAttribute('data-profile-storage')).toBe('unsupported'));
     expect(route().querySelector('[data-profile-storage]')!.textContent).toBe('This browser cannot promise to keep data on this device. Keep a recent backup.');
     expect(screen.queryByRole('button', { name: 'Keep my data on this device' })).toBeNull();
+  });
+
+  it('T-054d: says how much Kairos keeps here when the browser says, and nothing when it cannot', async () => {
+    const db = await database();
+    const { durability } = fakeDurability({ state: 'persistent', persistent: true }, true);
+    mount(db, { ...durability, estimate: async () => ({ usage: 12_400_000, quota: 2_112_400_000 }) });
+    expect(await screen.findByText('Kairos uses about 12 MB · 2.1 GB free')).toBeInTheDocument();
+    cleanup();
+    mount(db, { ...durability, estimate: async () => null });
+    await waitFor(() => expect(route().querySelector('[data-profile-storage]')!.getAttribute('data-profile-storage')).toBe('persistent'));
+    expect(route().querySelector('[data-profile-storage-use]')).toBeNull();
   });
 });

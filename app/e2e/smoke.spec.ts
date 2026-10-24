@@ -1538,3 +1538,40 @@ test('(z) Install help: the Home Screen guide on iPhone Safari, and "Not now" ke
   await expect(help).toHaveCount(0);
   expect(errors).toEqual([]);
 });
+
+test('(aa) Two tabs: a save shows in the other tab, and an update in another tab says Reload', async ({ page, context }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`tab 1 ${page.url()}: ${error.message}`));
+  await activate(page);
+  // The second tab of the same browser: same journal, same activation.
+  const other = await context.newPage();
+  other.on('pageerror', error => errors.push(`tab 2 ${other.url()}: ${error.message}`));
+  await other.goto('/journal');
+  await expect(other.getByRole('heading', { level: 1, name: 'Journal' })).toBeVisible();
+  await expect(other.getByText('TWOTABS')).toHaveCount(0);
+
+  await page.goto('/journal');
+  await page.getByLabel(/^Symbol/).fill('TWOTABS');
+  await page.getByLabel(/^Market/).selectOption('crypto');
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Status/).selectOption('cancelled');
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.getByText('TWOTABS').first()).toBeVisible();
+  // Tab 2 reads again without a reload.
+  await expect(other.getByText('TWOTABS').first()).toBeVisible();
+  await expect(other.getByRole('alert')).toHaveCount(0);
+
+  // A newer Kairos opening the journal in another tab: tab 2 is told to reload.
+  await page.evaluate(name => new Promise<void>((resolve, reject) => {
+    const request = indexedDB.open(name, 100_000);
+    request.onsuccess = () => { request.result.close(); resolve(); };
+    request.onerror = () => reject(request.error);
+  }), 'kairos');
+  const banner = other.getByRole('alert').filter({ hasText: 'Kairos was updated in another tab. Reload to keep saving.' });
+  await expect(banner).toBeVisible();
+  await expect(banner.getByRole('button', { name: 'Reload' })).toBeVisible();
+  const axe = await new AxeBuilder({ page: other }).include('.kairos-database-status').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(axe.violations.map(violation => violation.id)).toEqual([]);
+  expect(await other.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  expect(errors).toEqual([]);
+});

@@ -49,9 +49,17 @@ export type {
 export type { DatabaseDeviceHandleRecord, DatabaseEconomicEventRecord, DatabaseExchangeRateRecord, DatabaseMetadataRecord, DatabaseSavedAnalysisRecord, DatabaseSavedTimeAssistedSnapshotRecord, DatabaseTradeDisciplineRecord } from './schema';
 
 export type { DatabaseIntegrityCheck, DatabaseIntegrityCheckId, DatabaseIntegrityCheckTier, DatabaseIntegrityReport } from './integrity';
-export { runKairosAtomicWrite } from './transactions';
+export {
+  KAIROS_JOURNAL_CHANNEL,
+  classifyKairosWriteFailure,
+  listenForKairosJournalChanges,
+  runKairosAtomicWrite,
+  subscribeKairosWriteFailures,
+} from './transactions';
 export type {
   KairosAtomicWriteWork,
   KairosTransactionContext,
   KairosTransactionStoreName,
+  KairosWriteFailureKind,
+  KairosWriteFailureListener,
 } from './transactions';

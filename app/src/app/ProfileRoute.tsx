@@ -3,7 +3,7 @@ import { Link, useInRouterContext } from 'react-router';
 import { PageHeader } from '../design-system/primitives';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
 import { createKairosRepositories } from '../data/repositories';
-import { inspectStorageDurability, requestPersistentStorage, subscribeStorageDurabilityStatus, type StorageDurabilityStatus } from '../pwa/storageDurability';
+import { describeStorageUse, estimateStorageUse, inspectStorageDurability, requestPersistentStorage, subscribeStorageDurabilityStatus, type StorageDurabilityStatus, type StorageUse } from '../pwa/storageDurability';
 import { ActivationReceiptRepository, type StoredActivationReceiptLoadResult } from '../services/activation';
 import { buildInfo } from '../shared/config/buildInfo';
 import { OnlineServicesCheck } from '../features/settings/OnlineServicesCheck';
@@ -22,10 +22,12 @@ export interface StorageDurabilityPorts {
   readonly inspect: () => Promise<StorageDurabilityStatus>;
   readonly request: () => Promise<StorageDurabilityStatus>;
   readonly subscribe: (listener: (status: StorageDurabilityStatus) => void) => () => void;
+  /** T-054d: how much Kairos keeps here, when the browser says; left out where a test does not need it. */
+  readonly estimate?: () => Promise<StorageUse | null>;
 }
 
 /** A stable default: the released owner's functions, never recreated per render. */
-const releasedDurability: StorageDurabilityPorts = Object.freeze({ inspect: inspectStorageDurability, request: requestPersistentStorage, subscribe: subscribeStorageDurabilityStatus });
+const releasedDurability: StorageDurabilityPorts = Object.freeze({ inspect: inspectStorageDurability, request: requestPersistentStorage, subscribe: subscribeStorageDurabilityStatus, estimate: estimateStorageUse });
 type PersistState = Readonly<{ kind: 'idle' }> | Readonly<{ kind: 'requesting' }> | Readonly<{ kind: 'declined' }>;
 
 type ActivationState = Readonly<{ kind: 'loading' }> | Readonly<{ kind: 'error' }> | Readonly<{ kind: 'ready'; stored: StoredActivationReceiptLoadResult }>;
@@ -60,6 +62,7 @@ export function ProfileRoute({ db = kairosDatabase, durability = releasedDurabil
   const [storage, setStorage] = useState<StorageDurabilityStatus>({ state: 'unknown', persistent: false });
   const [persist, setPersist] = useState<PersistState>({ kind: 'idle' });
   const [activation, setActivation] = useState<ActivationState>({ kind: 'loading' });
+  const [use, setUse] = useState<StorageUse | null>(null);
 
   const loadActivation = useCallback(async (ignore: () => boolean) => {
     try {
@@ -79,7 +82,9 @@ export function ProfileRoute({ db = kairosDatabase, durability = releasedDurabil
   useEffect(() => {
     const unsubscribe = durability.subscribe(status => setStorage(status));
     void durability.inspect().catch(() => {});
-    return unsubscribe;
+    let ignore = false;
+    durability.estimate?.().then(estimate => { if (!ignore) setUse(estimate); }, () => undefined);
+    return () => { ignore = true; unsubscribe(); };
   }, [durability]);
 
   async function handlePersist(): Promise<void> {
@@ -102,6 +107,7 @@ export function ProfileRoute({ db = kairosDatabase, durability = releasedDurabil
       <Activation state={activation} />
       <p>Save a copy of your journal, or bring one back, in <ProfileLink to="/backup">Backup and restore</ProfileLink>.</p>
       <p data-profile-storage={storage.state}>{durabilityText(storage)}</p>
+      {use !== null ? <p className="kairos-profile__note" data-profile-storage-use="">{describeStorageUse(use)}</p> : null}
       {storage.state === 'best-effort' ? <div className="kairos-profile-card__actions"><button type="button" className="kairos-profile-button--secondary" onClick={() => { void handlePersist(); }} disabled={persist.kind === 'requesting'}>{persist.kind === 'requesting' ? 'Asking…' : 'Keep my data on this device'}</button></div> : null}
       {persist.kind === 'declined' ? <p className="kairos-profile__note" role="status">The browser did not grant persistent storage this time. Keep a recent backup.</p> : null}
       <p className="kairos-profile__note">Kairos {buildInfo.appVersion} · build {buildInfo.buildId}. Everything you record stays on this device unless you back it up.</p>
