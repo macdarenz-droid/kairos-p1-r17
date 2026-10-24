@@ -1,10 +1,13 @@
 import type { DomainValidationResult } from '../trades/tradeValidation';
 import {
+  BEFORE_SAVE_REASON_MAX_LENGTH,
+  BEFORE_YOU_SAVE_KINDS,
   KAIROS_DISCIPLINE_MISTAKE_TAGS,
   KAIROS_DISCIPLINE_NOTE_MAX_LENGTH,
   KAIROS_POST_TRADE_REVIEW_KEYS,
   KAIROS_PRE_TRADE_CHECKLIST_KEYS,
   type LegacyTradeDisciplineRecord,
+  type TradeBeforeSaveNote,
   type TradeDisciplineRecord,
   type TradeStrategyMark,
 } from './disciplineTypes';
@@ -90,8 +93,19 @@ export function isTradeDisciplineRecordShape(value: unknown): value is TradeDisc
     isItemAnswerList(value.postTradeReview) &&
     isMistakeMarkList(value.mistakes) &&
     hasRecordFields(value) &&
-    (value.strategy === undefined || isTradeStrategyMark(value.strategy))
+    (value.strategy === undefined || isTradeStrategyMark(value.strategy)) &&
+    (value.beforeSave === undefined || isTradeBeforeSaveNote(value.beforeSave))
   );
+}
+
+/** U12 (D243): 1 to 6 known kinds, each once; a trimmed reason of at most 200 characters, or null; a canonical time. */
+export function isTradeBeforeSaveNote(value: unknown): value is TradeBeforeSaveNote {
+  if (!isRecord(value) || !Array.isArray(value.notes) || value.notes.length === 0) return false;
+  const kinds: readonly string[] = BEFORE_YOU_SAVE_KINDS;
+  if (!value.notes.every(note => typeof note === 'string' && kinds.includes(note)) || new Set(value.notes).size !== value.notes.length) return false;
+  const reason = value.reason;
+  const reasonOk = reason === null || (typeof reason === 'string' && reason !== '' && reason === reason.trim() && Array.from(reason).length <= BEFORE_SAVE_REASON_MAX_LENGTH);
+  return reasonOk && isIsoMoment(value.at);
 }
 
 /** The L36.1 shape (fixed keys), accepted only in format 5–6 backups and v6/v7 databases. */

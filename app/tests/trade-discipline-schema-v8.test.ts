@@ -73,7 +73,7 @@ describe('schema v8: one discipline record per trade, answers by item', () => {
     old.close();
 
     const db = createKairosDatabase(name); opened.push(db);
-    expect(await openKairosDatabase(db)).toEqual({ state: 'ready', schemaVersion: 13 });
+    expect(await openKairosDatabase(db)).toEqual({ state: 'ready', schemaVersion: 14 });
     expect(await db.tradeDiscipline.toArray()).toEqual([converted]);
     expect(db.tradeDiscipline.schema.idxByName.tradeId?.unique).toBe(true);
     expect((await inspectKairosDatabaseIntegrity(db)).ok).toBe(true);
@@ -108,7 +108,7 @@ describe('schema v8: one discipline record per trade, answers by item', () => {
     await db.trades.put(trade);
     await db.tradeDiscipline.put(converted);
     const snapshot = await createKairosDatabaseSnapshot(db);
-    expect(snapshot).toMatchObject({ formatVersion: 11, databaseSchemaVersion: 13, recordCounts: { tradeDiscipline: 1 } });
+    expect(snapshot).toMatchObject({ formatVersion: 12, databaseSchemaVersion: 14, recordCounts: { tradeDiscipline: 1 } });
     expect(snapshot.payload.tradeDiscipline).toEqual([converted]);
     expect(parseKairosBackup(serializeKairosBackup(snapshot))).toEqual(snapshot);
   });
@@ -117,7 +117,7 @@ describe('schema v8: one discipline record per trade, answers by item', () => {
     it(`reads a ${label} backup as format 7, converts its record and restores it`, async () => {
       const text = JSON.stringify(backup);
       const parsed = parseKairosBackup(text);
-      expect(parsed).toMatchObject({ formatVersion: 11, databaseSchemaVersion: 13, recordCounts: { tradeDiscipline: 1, total: 2 } });
+      expect(parsed).toMatchObject({ formatVersion: 12, databaseSchemaVersion: 14, recordCounts: { tradeDiscipline: 1, total: 2 } });
       expect(parsed.payload.tradeDiscipline).toEqual([converted]);
       expect(parsed.payload.trades).toEqual([trade]);
       const db = await current('restore');
@@ -137,7 +137,7 @@ describe('schema v8: one discipline record per trade, answers by item', () => {
   });
 
   it('refuses a format from the future', () => {
-    const future = { ...header, formatVersion: 12, databaseSchemaVersion: 12, recordCounts: counts, payload: payload(converted) };
+    const future = { ...header, formatVersion: 13, databaseSchemaVersion: 13, recordCounts: counts, payload: payload(converted) };
     expect(() => parseKairosBackup(JSON.stringify(future))).toThrow(expect.objectContaining({ code: 'UNSUPPORTED_FORMAT_VERSION' }));
   });
 });

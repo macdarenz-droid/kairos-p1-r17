@@ -1,10 +1,13 @@
 import { runKairosAtomicWrite, type KairosDatabase } from '../../data/database';
 import { createKairosRepositories, type KairosRepositories } from '../../data/repositories';
 import {
+  KAIROS_DEFAULT_DISCIPLINE_LISTS,
   KAIROS_DISCIPLINE_NOTE_MAX_LENGTH,
   createTradeDisciplineId,
+  isTradeBeforeSaveNote,
   isTradeDisciplineRecordShape,
   validateTradeDisciplineRecord,
+  type BeforeYouSaveKind,
   type DisciplineAnswer,
   type DisciplineItemAnswer,
   type DisciplineListItem,
@@ -85,43 +88,36 @@ export async function saveTradeDiscipline(
       const statusAllowed = input.half === 'checklist' ? trade.status === 'draft' || trade.status === 'open' : trade.status === 'closed';
       if (!statusAllowed) return { ok: false, type: 'not-allowed', reason: 'trade-status-not-allowed' };
 
-      const lists = await readDisciplineLists(repositories.metadata);
       const existing = await repositories.tradeDiscipline.getByTradeId(input.tradeId);
       const saved = existing !== undefined && isTradeDisciplineRecordShape(existing) ? existing : null;
-      // Each label comes from the current list. An id no longer in the list but already saved on this
-      // trade keeps its saved words, so re-saving a sheet never drops an answer the trader gave.
-      const labelsFrom = (items: readonly DisciplineListItem[], savedMarks: readonly { readonly itemId: string; readonly label: string }[]) => {
-        const labels = new Map(savedMarks.map((mark) => [mark.itemId, mark.label]));
-        for (const item of items) labels.set(item.id, item.label);
-        return labels;
-      };
-      const answerLabels = input.half === 'checklist'
-        ? labelsFrom(lists.checklist, saved?.preTradeChecklist ?? [])
-        : labelsFrom(lists.review, saved?.postTradeReview ?? []);
-      const mistakeLabels = labelsFrom(lists.mistakes, saved?.mistakes ?? []);
-      const answers: DisciplineItemAnswer[] = [];
-      for (const { itemId, answer } of input.answers) {
-        const label = answerLabels.get(itemId);
-        if (label === undefined) return { ok: false, type: 'validation-error', reason: 'unknown-item' };
-        answers.push({ itemId, label, answer });
-      }
-      const mistakes: DisciplineMistakeMark[] = [];
-      for (const itemId of mistakeIds) {
-        const label = mistakeLabels.get(itemId);
-        if (label === undefined) return { ok: false, type: 'validation-error', reason: 'unknown-item' };
-        mistakes.push({ itemId, label });
-      }
-
-      const empty = (id: TradeDisciplineId): TradeDisciplineRecord => ({
-        id, tradeId: input.tradeId, preTradeChecklist: [], postTradeReview: [], mistakes: [], note: '',
-        checklistCompletedAt: null, reviewedAt: null, createdAt: at, updatedAt: at,
-      });
       // A damaged record is replaced by the trader's new answers; an earlier backup still holds it.
-      const start = existing === undefined ? empty(createId()) : saved ?? empty((existing as Pick<TradeDisciplineRecord, 'id'>).id);
-      const updatedAt = at >= start.createdAt ? at : start.createdAt;
-      const record: TradeDisciplineRecord = input.half === 'checklist'
-        ? { ...start, preTradeChecklist: answers, checklistCompletedAt: at, updatedAt }
-        : { ...start, postTradeReview: answers, mistakes, note, reviewedAt: at, updatedAt };
+      const start = existing === undefined ? emptyTradeDisciplineRecord(createId(), input.tradeId, at) : saved ?? emptyTradeDisciplineRecord((existing as Pick<TradeDisciplineRecord, 'id'>).id, input.tradeId, at);
+      let record: TradeDisciplineRecord;
+      if (input.half === 'checklist') {
+        // Read directly in this write: reading the lists through a helper made the write commit early (Dexie PrematureCommitError, U12).
+        const lists = await readDisciplineLists(repositories.metadata);
+        const built = buildTradeDisciplineRecord(start, saved, { checklist: input.answers }, at, { lists, strategies: [] });
+        if (!built.ok) return partsRefused(built.failure);
+        record = built.record;
+      } else {
+        const lists = await readDisciplineLists(repositories.metadata);
+        const answerLabels = labelsFrom(lists.review, saved?.postTradeReview ?? []);
+        const mistakeLabels = labelsFrom(lists.mistakes, saved?.mistakes ?? []);
+        const answers: DisciplineItemAnswer[] = [];
+        for (const { itemId, answer } of input.answers) {
+          const label = answerLabels.get(itemId);
+          if (label === undefined) return { ok: false, type: 'validation-error', reason: 'unknown-item' };
+          answers.push({ itemId, label, answer });
+        }
+        const mistakes: DisciplineMistakeMark[] = [];
+        for (const itemId of mistakeIds) {
+          const label = mistakeLabels.get(itemId);
+          if (label === undefined) return { ok: false, type: 'validation-error', reason: 'unknown-item' };
+          mistakes.push({ itemId, label });
+        }
+        const updatedAt = at >= start.createdAt ? at : start.createdAt;
+        record = { ...start, postTradeReview: answers, mistakes, note, reviewedAt: at, updatedAt };
+      }
       const valid = validateTradeDisciplineRecord(record);
       if (!valid.ok) throw new Error(valid.reason);
       await repositories.tradeDiscipline.put(record);
@@ -132,7 +128,8 @@ export async function saveTradeDiscipline(
   }
 }
 
-const emptyRecord = (id: TradeDisciplineId, tradeId: TradeId, at: string): TradeDisciplineRecord => ({
+/** An empty discipline record for one trade, as the first save of any part starts it. */
+export const emptyTradeDisciplineRecord = (id: TradeDisciplineId, tradeId: TradeId, at: string): TradeDisciplineRecord => ({
   id, tradeId, preTradeChecklist: [], postTradeReview: [], mistakes: [], note: '',
   checklistCompletedAt: null, reviewedAt: null, createdAt: at, updatedAt: at,
 });
@@ -146,32 +143,96 @@ async function saveStrategyHalf(
 ): Promise<SaveTradeDisciplineResult> {
   const existing = await repositories.tradeDiscipline.getByTradeId(input.tradeId);
   const saved = existing !== undefined && isTradeDisciplineRecordShape(existing) ? existing : null;
+  if (input.strategyId === null && existing === undefined) return { ok: false, type: 'validation-error', reason: 'nothing-to-save' };
   // A damaged record is replaced; an earlier backup still holds it.
-  const start = existing === undefined ? emptyRecord(createId(), input.tradeId, at) : saved ?? emptyRecord((existing as Pick<TradeDisciplineRecord, 'id'>).id, input.tradeId, at);
-  const updatedAt = at >= start.createdAt ? at : start.createdAt;
-  let record: TradeDisciplineRecord;
-  if (input.strategyId === null) {
-    if (existing === undefined) return { ok: false, type: 'validation-error', reason: 'nothing-to-save' };
-    const { strategy: _drop, ...rest } = start;
-    record = { ...rest, updatedAt };
-  } else {
-    let base: TradeStrategyMark;
-    if (saved?.strategy?.strategyId === input.strategyId) {
-      base = saved.strategy;
-    } else {
-      const strategy = (await readStrategies(repositories.metadata)).find(item => item.id === input.strategyId);
-      if (!strategy) return { ok: false, type: 'not-found', reason: 'strategy-not-found' };
-      base = { strategyId: strategy.id, revision: strategy.revision, name: strategy.name, rules: strategy.rules, answers: [], linkedAt: at };
-    }
-    const written = new Set(base.rules.filter(rule => rule.kind === 'written').map(rule => rule.id));
-    if (input.answers.some(answer => !written.has(answer.itemId))) return { ok: false, type: 'validation-error', reason: 'unknown-item' };
-    const mark: TradeStrategyMark = { ...base, answers: input.answers.map(({ itemId, answer }) => ({ ruleId: itemId, answer })) };
-    record = { ...start, strategy: mark, updatedAt };
-  }
-  const valid = validateTradeDisciplineRecord(record);
+  const start = existing === undefined ? emptyTradeDisciplineRecord(createId(), input.tradeId, at) : saved ?? emptyTradeDisciplineRecord((existing as Pick<TradeDisciplineRecord, 'id'>).id, input.tradeId, at);
+  const strategies = input.strategyId === null ? [] : await readStrategies(repositories.metadata);
+  const built = buildTradeDisciplineRecord(start, saved, { strategy: { strategyId: input.strategyId, answers: input.answers } }, at, { lists: KAIROS_DEFAULT_DISCIPLINE_LISTS, strategies });
+  if (!built.ok) return partsRefused(built.failure);
+  const valid = validateTradeDisciplineRecord(built.record);
   if (!valid.ok) throw new Error(valid.reason);
-  await repositories.tradeDiscipline.put(record);
-  return { ok: true, record, created: existing === undefined };
+  await repositories.tradeDiscipline.put(built.record);
+  return { ok: true, record: built.record, created: existing === undefined };
+}
+
+/** U12 (D241): the parts a trade's discipline record is built from: the checklist, the strategy and its written-rule ticks, and what "Before you save" named. */
+export interface TradeDisciplineParts {
+  readonly checklist?: readonly DisciplineAnswerInput[];
+  readonly strategy?: Readonly<{ strategyId: StrategyId | null; answers: readonly DisciplineAnswerInput[] }>;
+  readonly beforeSave?: Readonly<{ notes: readonly BeforeYouSaveKind[]; reason: string | null }>;
+}
+export type TradeDisciplinePartsFailure =
+  | Readonly<{ part: 'checklist' | 'strategy' | 'beforeSave'; type: 'validation-error'; reason: 'duplicate-item' | 'unknown-item' | 'invalid-before-save' }>
+  | Readonly<{ part: 'strategy'; type: 'not-found'; reason: 'strategy-not-found' }>;
+
+/** Labels as the record keeps them: from the trader's current list; an id no longer listed keeps the words already saved on this trade. */
+function labelsFrom(items: readonly DisciplineListItem[], savedMarks: readonly { readonly itemId: string; readonly label: string }[]): Map<string, string> {
+  const labels = new Map(savedMarks.map((mark) => [mark.itemId, mark.label]));
+  for (const item of items) labels.set(item.id, item.label);
+  return labels;
+}
+
+function partsRefused(failure: TradeDisciplinePartsFailure): SaveTradeDisciplineResult {
+  if (failure.type === 'not-found') return { ok: false, type: 'not-found', reason: failure.reason };
+  return { ok: false, type: 'validation-error', reason: failure.reason === 'duplicate-item' ? 'duplicate-item' : 'unknown-item' };
+}
+
+/** The trader's lists and strategies a record is built from, read inside the caller's write. */
+export interface TradeDisciplineSources { readonly lists: DisciplineLists; readonly strategies: readonly Strategy[] }
+
+/**
+ * U12 (D241): the one builder of a trade's discipline record from its parts, used by `saveTradeDiscipline` and by a trade
+ * saved with what was ticked before it. Each label is taken from the trader's lists at that moment, and a chosen strategy's
+ * rules are copied, so a later change never changes how this trade is judged. It reads and writes nothing; the caller reads
+ * the lists (`readDisciplineLists`) and strategies (`readStrategies`) directly inside its write and keeps its own status rules.
+ */
+export function buildTradeDisciplineRecord(
+  start: TradeDisciplineRecord,
+  saved: TradeDisciplineRecord | null,
+  parts: TradeDisciplineParts,
+  at: string,
+  sources: TradeDisciplineSources,
+): Readonly<{ ok: true; record: TradeDisciplineRecord }> | Readonly<{ ok: false; failure: TradeDisciplinePartsFailure }> {
+  const refuse = (failure: TradeDisciplinePartsFailure) => ({ ok: false as const, failure });
+  let record: TradeDisciplineRecord = start;
+  if (parts.checklist !== undefined) {
+    if (hasRepeat(parts.checklist.map(answer => answer.itemId))) return refuse({ part: 'checklist', type: 'validation-error', reason: 'duplicate-item' });
+    const labels = labelsFrom(sources.lists.checklist, saved?.preTradeChecklist ?? []);
+    const answers: DisciplineItemAnswer[] = [];
+    for (const { itemId, answer } of parts.checklist) {
+      const label = labels.get(itemId);
+      if (label === undefined) return refuse({ part: 'checklist', type: 'validation-error', reason: 'unknown-item' });
+      answers.push({ itemId, label, answer });
+    }
+    record = { ...record, preTradeChecklist: answers, checklistCompletedAt: at };
+  }
+  if (parts.strategy !== undefined) {
+    const { strategyId, answers } = parts.strategy;
+    if (hasRepeat(answers.map(answer => answer.itemId))) return refuse({ part: 'strategy', type: 'validation-error', reason: 'duplicate-item' });
+    if (strategyId === null) {
+      if (answers.length > 0) return refuse({ part: 'strategy', type: 'validation-error', reason: 'unknown-item' });
+      const { strategy: _drop, ...rest } = record;
+      record = rest;
+    } else {
+      let base: TradeStrategyMark;
+      if (saved?.strategy?.strategyId === strategyId) {
+        base = saved.strategy;
+      } else {
+        const strategy = sources.strategies.find(item => item.id === strategyId);
+        if (!strategy) return refuse({ part: 'strategy', type: 'not-found', reason: 'strategy-not-found' });
+        base = { strategyId: strategy.id, revision: strategy.revision, name: strategy.name, rules: strategy.rules, answers: [], linkedAt: at };
+      }
+      const written = new Set(base.rules.filter(rule => rule.kind === 'written').map(rule => rule.id));
+      if (answers.some(answer => !written.has(answer.itemId))) return refuse({ part: 'strategy', type: 'validation-error', reason: 'unknown-item' });
+      record = { ...record, strategy: { ...base, answers: answers.map(({ itemId, answer }) => ({ ruleId: itemId, answer })) } };
+    }
+  }
+  if (parts.beforeSave !== undefined) {
+    const note = { notes: [...parts.beforeSave.notes], reason: parts.beforeSave.reason?.trim() || null, at };
+    if (!isTradeBeforeSaveNote(note)) return refuse({ part: 'beforeSave', type: 'validation-error', reason: 'invalid-before-save' });
+    record = { ...record, beforeSave: note };
+  }
+  return { ok: true, record: { ...record, updatedAt: at >= start.createdAt ? at : start.createdAt } };
 }
 
 export type LoadTradeDisciplineResult =
