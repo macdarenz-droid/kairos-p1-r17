@@ -6,7 +6,9 @@ import { createKairosBackupEnvelope, KAIROS_BACKUP_FORMAT_NAME, parseKairosBacku
 import {
   KAIROS_DATABASE_MIGRATIONS, KAIROS_V14_STORES, createKairosDatabase, inspectKairosDatabaseIntegrity, openKairosDatabase, registerKairosMigrations, type KairosDatabase,
 } from '../src/data/database';
+import { exchangeRateId, type ExchangeRateRecord } from '../src/domain/calculations/currencyConversion';
 import { isTradeBeforeSaveNote, type TradeDisciplineId, type TradeDisciplineRecord } from '../src/domain/discipline';
+import { economicEventId, type EconomicEventRecord } from '../src/domain/economic-calendar/economicEvent';
 import type { TradeId, TradeRecord } from '../src/domain/trades';
 
 const names: string[] = [];
@@ -79,17 +81,21 @@ describe('T-057a backup format 12', () => {
     expect(() => parseKairosBackup(JSON.stringify(envelope))).toThrow(expect.objectContaining({ code: 'INVALID_PAYLOAD' }));
   });
 
-  it('a format 11 backup still restores, keeping its discipline record', async () => {
+  it('a format 11 backup still restores, keeping its discipline record, rate and news', async () => {
+    const rate: ExchangeRateRecord = { id: exchangeRateId('ecb', 'EUR', 'USD', '2026-10-23'), source: 'ecb', from: 'EUR', to: 'USD', day: '2026-10-23', rateDay: '2026-10-23', rate: '1.146' as ExchangeRateRecord['rate'], savedAt: at };
+    const news: EconomicEventRecord = { id: economicEventId('typed', 'cpi'), source: 'typed', title: 'US CPI', currency: 'USD', startsAt: '2026-10-24T12:30:00.000Z', impact: 'high', expected: '3.1%', previous: '2.9%', actual: null, savedAt: at, fetchedAt: null };
     const format11 = JSON.stringify({
       formatName: KAIROS_BACKUP_FORMAT_NAME, formatVersion: 11, appVersion: 'old', buildId: 'old', exportedAt: at, databaseSchemaVersion: 13,
-      recordCounts: { metadata: 0, trades: 1, tradePlans: 0, tradeExecutions: 0, tradeFees: 0, savedAnalyses: 0, savedTimeAssistedSnapshots: 0, tradeDiscipline: 1, exchangeRates: 0, economicEvents: 0, total: 2 },
-      payload: { metadata: [], trades: [trade], tradePlans: [], tradeExecutions: [], tradeFees: [], savedAnalyses: [], savedTimeAssistedSnapshots: [], tradeDiscipline: [record], exchangeRates: [], economicEvents: [] },
+      recordCounts: { metadata: 0, trades: 1, tradePlans: 0, tradeExecutions: 0, tradeFees: 0, savedAnalyses: 0, savedTimeAssistedSnapshots: 0, tradeDiscipline: 1, exchangeRates: 1, economicEvents: 1, total: 4 },
+      payload: { metadata: [], trades: [trade], tradePlans: [], tradeExecutions: [], tradeFees: [], savedAnalyses: [], savedTimeAssistedSnapshots: [], tradeDiscipline: [record], exchangeRates: [rate], economicEvents: [news] },
     });
-    expect(parseKairosBackup(format11)).toMatchObject({ formatVersion: 12, databaseSchemaVersion: 14, recordCounts: { trades: 1, tradeDiscipline: 1, total: 2 } });
+    expect(parseKairosBackup(format11)).toMatchObject({ formatVersion: 12, databaseSchemaVersion: 14, recordCounts: { trades: 1, tradeDiscipline: 1, exchangeRates: 1, economicEvents: 1, total: 4 } });
     const db = await current('format11');
     const prepared = await prepareBackupRestore(db, format11);
     if (!prepared.ok) throw new Error('prepare failed');
     expect((await commitBackupRestore(db, prepared.restore)).ok).toBe(true);
     expect(await db.tradeDiscipline.toArray()).toEqual([record]);
+    expect(await db.exchangeRates.toArray()).toEqual([rate]);
+    expect(await db.economicEvents.toArray()).toEqual([news]);
   });
 });

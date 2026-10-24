@@ -12,3 +12,6 @@
 .kairos-trade-form__tags { display:grid; gap:var(--kairos-space-2); margin-top:var(--kairos-space-3); min-width:0; }
 .kairos-trade-form__tag-list { display:flex; flex-wrap:wrap; gap:var(--kairos-space-2); margin:0; padding:0; list-style:none; }
 .kairos-trade-form__tag { display:inline-flex; align-items:center; gap:var(--kairos-space-1); max-width:100%; padding-left:var(--kairos-space-3); border:1px solid var(--kairos-border-subtle); border-radius:var(--kairos-radius-full); background:var(--kairos-accent-soft); color:var(--kairos-text-primary); font-size:var(--kairos-font-size-sm); overflow-wrap:anywhere; }
+.kairos-trade-form__check { display:flex; align-items:flex-start; gap:var(--kairos-space-2); min-height:44px; padding:var(--kairos-space-2) 0; overflow-wrap:anywhere; }
+.kairos-trade-form__check input { flex:none; width:1.25rem; height:1.25rem; margin-top:0.1rem; }
+.kairos-trade-form__before-title { margin:0; font-size:var(--kairos-font-size-md); }

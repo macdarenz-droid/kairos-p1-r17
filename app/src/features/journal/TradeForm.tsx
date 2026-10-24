@@ -1,6 +1,6 @@
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { saveTradeDiscipline } from '../../application/discipline';
+import type { DisciplineAnswerInput, TradeDisciplineParts } from '../../application/discipline';
 import { savePracticeTrade } from '../../application/practice';
 import {
   createEmptyManualTradeDraft,
@@ -25,6 +25,7 @@ import { StockTradeNote, STOCK_QUANTITY_HINT, STOCK_TICKER_MESSAGES } from './St
 import { JournalPriceCurrencyField } from './JournalPriceCurrencyField';
 import { TradeStrategyField } from './TradeStrategyField';
 import { TradeTagsField } from './TradeTagsField';
+import { BeforeYouTradeField } from './BeforeYouTradeField';
 import { CONTRACT_SIZE_HINT } from './AddContractSizeControl';
 import './tradeForm.css';
 
@@ -79,6 +80,9 @@ const NEW_FIELD_MESSAGES: Readonly<Partial<Record<ManualTradeValidationField, st
   tags: 'At most 10 tags, each up to 24 letters.',
   exchange: '"Where you traded" can be up to 40 letters.',
   'plan.reason': '"Why I\'m taking it" can be up to 500 letters.',
+  'discipline.checklist': 'Your checklist changed in another tab. Reload the page and tick it again.',
+  'discipline.strategy': 'That strategy changed in another tab. Choose it again, or choose none.',
+  'discipline.beforeSave': 'Review the trade details and try again.',
 };
 
 const pad = (value: number): string => String(value).padStart(2, '0');
@@ -221,6 +225,9 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [strategyId, setStrategyId] = useState<StrategyId | ''>('');
+  // U12 (D241): what is ticked before Save, saved with the trade in one write.
+  const [checklistAnswers, setChecklistAnswers] = useState<readonly DisciplineAnswerInput[]>([]);
+  const [strategyAnswers, setStrategyAnswers] = useState<readonly DisciplineAnswerInput[]>([]);
   const [mode, setMode] = useState<TradeFormMode>(readTradeFormMode);
   const [quick, setQuick] = useState<QuickTradeLogDraft>(createEmptyQuickTradeLogDraft);
   const isQuick = mode === 'quick';
@@ -235,6 +242,7 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
   }, [feedback]);
 
   const showOpenedAt = isQuick || draft.status === 'open' || draft.status === 'closed';
+  const checklistMode = isQuick || draft.status === 'closed' || draft.status === 'cancelled' ? 'after' : draft.status === 'draft' || draft.status === 'open' ? 'checklist' : null;
   const showClosedAt = isQuick || draft.status === 'closed';
   const errorField = feedback?.kind === 'error' ? feedback.field : undefined;
   const quickInvalid = (field: QuickTradeLogField): boolean => isQuick && quickTradeLogFieldFor(errorField) === field;
@@ -303,8 +311,14 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
       return;
     }
 
+    // What was ticked before the trade goes with it in one write (D241); nothing ticked saves no checklist.
+    const discipline: TradeDisciplineParts = {
+      ...(checklistMode === 'checklist' && checklistAnswers.length > 0 ? { checklist: checklistAnswers } : {}),
+      ...(strategyId !== '' ? { strategy: { strategyId, answers: strategyAnswers } } : {}),
+    };
     setIsSaving(true);
-    const result = kind === 'practice' ? await savePracticeTrade(db, prepared.input) : await saveManualTrade(db, prepared.input);
+    const input = { ...prepared.input, discipline };
+    const result = kind === 'practice' ? await savePracticeTrade(db, input) : await saveManualTrade(db, input);
 
     if (!result.ok) {
       setIsSaving(false);
@@ -320,12 +334,7 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
       return;
     }
 
-    // The form stays busy until the strategy link is written too (two atomic writes, D76); the trade is saved either way.
-    let saved = text.saved;
-    if (strategyId !== '') {
-      const linked = await saveTradeDiscipline(db, { tradeId: result.tradeId, scope: kind === 'practice' ? 'practice' : 'real', half: 'strategy', strategyId, answers: [] }).catch(() => null);
-      if (!linked?.ok) saved = `${text.saved} Its strategy was not saved: choose it again on the trade card.`;
-    }
+    const saved = text.saved;
     setIsSaving(false);
 
     // Commit the reset and the success banner before the page refreshes its lists.
@@ -337,6 +346,8 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
       setFormGeneration(current => current + 1);
       setQuick(createEmptyQuickTradeLogDraft());
       setStrategyId('');
+      setChecklistAnswers([]);
+      setStrategyAnswers([]);
       setFeedback({ kind: 'success', message: saved });
     });
     await onSaved();
@@ -519,7 +530,10 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
 
         </details>
 
-        <TradeStrategyField db={db} idPrefix={idPrefix} value={strategyId} onChange={value => { setStrategyId(value); setFeedback(null); }} draft={draft} status={isQuick ? 'closed' : draft.status} disabled={isSaving} />
+        <TradeStrategyField db={db} idPrefix={idPrefix} value={strategyId} onChange={value => { setStrategyId(value); setStrategyAnswers([]); setFeedback(null); }} draft={draft} status={isQuick ? 'closed' : draft.status} disabled={isSaving}
+          answers={strategyAnswers} onAnswersChange={answers => { setStrategyAnswers(answers); setFeedback(null); }} checklist={checklistMode === 'checklist' ? checklistAnswers : null} />
+
+        <BeforeYouTradeField db={db} idPrefix={idPrefix} mode={checklistMode} answers={checklistAnswers} onAnswersChange={answers => { setChecklistAnswers(answers); setFeedback(null); }} disabled={isSaving} />
 
         <div className="kairos-trade-form__actions">
           <Button ref={submitRef} type="submit" busy={isSaving} emphasis="main" aria-describedby={strategyId ? `${idPrefix}-strategy-note` : undefined}>{isSaving ? 'Saving…' : text.submit}</Button>

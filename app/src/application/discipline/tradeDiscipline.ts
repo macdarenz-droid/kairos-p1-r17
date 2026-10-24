@@ -94,7 +94,8 @@ export async function saveTradeDiscipline(
       const start = existing === undefined ? emptyTradeDisciplineRecord(createId(), input.tradeId, at) : saved ?? emptyTradeDisciplineRecord((existing as Pick<TradeDisciplineRecord, 'id'>).id, input.tradeId, at);
       let record: TradeDisciplineRecord;
       if (input.half === 'checklist') {
-        // Read directly in this write: reading the lists through a helper made the write commit early (Dexie PrematureCommitError, U12).
+        // Read directly in this write, as before U12: a version that read the lists and strategies through one more async helper
+        // made the write commit early in tests (Dexie PrematureCommitError); the cause was not pinned down, so keep this shape.
         const lists = await readDisciplineLists(repositories.metadata);
         const built = buildTradeDisciplineRecord(start, saved, { checklist: input.answers }, at, { lists, strategies: [] });
         if (!built.ok) return partsRefused(built.failure);
