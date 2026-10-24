@@ -46,6 +46,8 @@ describe('T-056a the trade fields, written one way and checked once', () => {
       [{ contractSize: '0' }, 'invalid-contract-size'], [{ contractSize: '-5' }, 'invalid-contract-size'],
       [{ exchange: 'x'.repeat(41) }, 'invalid-exchange'], [{ exchange: ' CME' }, 'invalid-exchange'], [{ exchange: '' }, 'invalid-exchange'],
       [{ tags: ['Breakout', 'breakout'] }, 'invalid-tags'], [{ tags: [' padded'] }, 'invalid-tags'],
+      // Review r1: no tags is an absent key, never an empty list; where it was traded is one line.
+      [{ tags: [] }, 'invalid-tags'], [{ exchange: 'CME\nGlobex' }, 'invalid-exchange'], [{ exchange: 'CME  Globex' }, 'invalid-exchange'],
       [{ leverage: '0' }, 'invalid-leverage'], [{ leverage: '1000.5' }, 'invalid-leverage'], [{ leverage: '1001' }, 'invalid-leverage'],
     ] as const) expect(validateTradeFields(fields as never), JSON.stringify(fields)).toEqual({ ok: false, reason });
     expect(validateTradeFields({ leverage: '1000' as DecimalString }).ok).toBe(true);

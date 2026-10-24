@@ -1,6 +1,6 @@
 import { isStoredSavedRecordLabel } from '../../domain/saved-records/savedRecordLabel';
 import { isLegacyTradeDisciplineRecordShape, isTradeDisciplineRecordShape } from '../../domain/discipline';
-import { parsePositiveDecimalString, validateTradePlanFields, validateTradeRecord } from '../../domain/trades';
+import { parsePositiveDecimalString, validateTradePlanFields, validateTradeRecord, type TradePlanRecord } from '../../domain/trades';
 import { isExchangeRateRecordShape } from '../../domain/calculations/currencyConversion';
 import { isEconomicEventRecordShape } from '../../domain/economic-calendar/economicEvent';
 import {
@@ -99,7 +99,7 @@ function isTradePlanRecord(value: unknown): boolean {
     decimalOrNull(value.plannedStopPrice) &&
     decimalOrNull(value.plannedTargetPrice) &&
     decimalOrNull(value.plannedQuantity) &&
-    validateTradePlanFields(value as never).ok &&
+    validateTradePlanFields(value as Pick<TradePlanRecord, 'reason'>).ok &&
     isIsoDate(value.createdAt) &&
     isIsoDate(value.updatedAt)
   );

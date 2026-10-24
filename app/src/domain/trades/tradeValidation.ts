@@ -35,6 +35,11 @@ export const TRADE_LEVERAGE_MAX = 1000;
 const isTrimmedText = (value: unknown, max: number): boolean =>
   typeof value === 'string' && value === value.trim() && value !== '' && Array.from(value).length <= max;
 
+/** Where a trade was traded, written the one way: one line, trimmed, its inner spaces and line breaks joined into one space. */
+export function writeTradeExchange(value: string): string {
+  return value.replace(/\s+/g, ' ').trim();
+}
+
 /** A positive decimal no larger than `max` (a whole number), compared as text: never through Number(). */
 function isPositiveDecimalAtMost(value: unknown, max: number): boolean {
   if (typeof value !== 'string' || !parsePositiveDecimalString(value).ok || value !== value.trim()) return false;
@@ -46,15 +51,17 @@ function isPositiveDecimalAtMost(value: unknown, max: number): boolean {
 
 /**
  * U11 (D237–D239): the one check of a trade's optional fields. Each may be absent; when present the contract size is a
- * positive decimal, where it was traded is a trimmed name of at most 40 characters, the tags are in their one written
- * form, and the leverage is a positive decimal of at most 1000.
+ * positive decimal, where it was traded is a one-line name of at most 40 characters, the tags are in their one written
+ * form (never an empty list: no tags is an absent key), and the leverage is a positive decimal of at most 1000.
  */
 export function validateTradeFields(trade: Pick<TradeRecord, 'contractSize' | 'exchange' | 'tags' | 'leverage'>): DomainValidationResult<true> {
   if (trade.contractSize != null && !(typeof trade.contractSize === 'string' && parsePositiveDecimalString(trade.contractSize).ok && trade.contractSize === trade.contractSize.trim())) {
     return { ok: false, reason: 'invalid-contract-size' };
   }
-  if (trade.exchange != null && !isTrimmedText(trade.exchange, TRADE_EXCHANGE_MAX_LENGTH)) return { ok: false, reason: 'invalid-exchange' };
-  if (trade.tags !== undefined && !areNormalTradeTags(trade.tags)) return { ok: false, reason: 'invalid-tags' };
+  if (trade.exchange != null && !(isTrimmedText(trade.exchange, TRADE_EXCHANGE_MAX_LENGTH) && trade.exchange === writeTradeExchange(trade.exchange))) {
+    return { ok: false, reason: 'invalid-exchange' };
+  }
+  if (trade.tags !== undefined && !(areNormalTradeTags(trade.tags) && trade.tags.length > 0)) return { ok: false, reason: 'invalid-tags' };
   if (trade.leverage != null && !isPositiveDecimalAtMost(trade.leverage, TRADE_LEVERAGE_MAX)) return { ok: false, reason: 'invalid-leverage' };
   return { ok: true, value: true };
 }
