@@ -2019,3 +2019,50 @@ test('(af) Goals you can see: limits, a loss, the rings and Home', async ({ page
   await axeOk('.kairos-goals-months');
   expect(errors).toEqual([]);
 });
+
+test('(ag) Faster logging: a symbol you search, its currency filled in, and a stop in Quick log', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  const axeOk = async (include: string) => {
+    const axe = await new AxeBuilder({ page }).include(include).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+    expect(axe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  };
+  await activate(page);
+  const cors = { 'Access-Control-Allow-Origin': '*' };
+  const market = (symbol: string, base: string, quote: string) => ({ symbol, base, quote, tickSize: '0.01', stepSize: '0.0001' });
+  await page.route(url => url.hostname === 'api.qa.invalid' && url.pathname === '/market/symbols', route => route.fulfill({
+    headers: cors, contentType: 'application/json',
+    body: JSON.stringify({ apiVersion: 1, ok: true, data: { source: 'binance-spot', fetchedAt: new Date().toISOString(), markets: [market('BTCUSDT', 'BTC', 'USDT'), market('ETHBTC', 'ETH', 'BTC'), market('ETHUSDT', 'ETH', 'USDT')], leftOut: 0 } }),
+  }));
+
+  await page.goto('/journal');
+  await page.getByRole('button', { name: 'Quick log' }).click();
+  const symbol = page.getByRole('combobox', { name: /^Symbol/ });
+  await symbol.fill('eth');
+  const results = page.getByRole('listbox', { name: 'Search results' }).getByRole('option');
+  await expect(results).toHaveText(['ETHUSDT · ETH/USDT', 'ETHBTC · ETH/BTC']);
+  await axeOk('.kairos-trade-form');
+  await results.first().click();
+  await expect(symbol).toHaveValue('ETHUSDT');
+  await expect(page.getByLabel(/^Market/)).toHaveValue('crypto');
+  await expect(page.getByLabel('Currency code')).toHaveValue('USDT');
+  await expect(page.getByText('Filled from ETHUSDT: prices are in USDT. You can change it.')).toBeVisible();
+
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Entry price/).fill('100');
+  await page.getByLabel(/^Exit price/).fill('110');
+  await expect(page.getByText("Without a stop, Kairos can't draw your risk or show × what you risked.")).toBeVisible();
+  await page.getByLabel(/^Planned stop/).fill('95');
+  await page.getByLabel(/^Planned target/).fill('120');
+  await page.getByLabel(/^Quantity/).fill('1');
+  await page.getByRole('button', { name: 'Set opened time to now' }).click();
+  await page.getByRole('button', { name: 'Set closed time to now' }).click();
+  await axeOk('.kairos-trade-form');
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+  // The stop from Quick log gives the trade its risk: 10 USDT on 5 risked.
+  await expect(page.getByRole('img', { name: 'ETHUSDT long trade, closed. Result after fees 10 USDT. +2× what you risked.' })).toBeVisible();
+  await axeOk('.kairos-shell__content');
+  expect(errors).toEqual([]);
+});

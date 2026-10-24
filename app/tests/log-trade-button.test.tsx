@@ -50,7 +50,7 @@ async function shell(db: KairosDatabase, initialEntries: string[]) {
   return router;
 }
 const logButton = () => screen.queryByRole('link', { name: 'Log trade' });
-const symbol = () => screen.getByRole('textbox', { name: /^Symbol/ });
+const symbol = () => screen.getByRole('combobox', { name: /^Symbol/ });
 
 describe('T-053e "+ Log trade"', () => {
   it('is on Home, the Journal and Analysis, and not on Practice or More', async () => {

@@ -1,24 +1,14 @@
 import { useId, useMemo, useState, type KeyboardEvent } from 'react';
+import { filterCryptoMarkets, SYMBOL_SEARCH_MAX_RESULTS, type CryptoMarketOption } from '../../application/market-reference/symbolSearch';
+
 /** What the picker needs from a market: its symbol and its two assets. */
-export interface SymbolPickerOption {
-  readonly instrument: { readonly symbol: string };
-  readonly baseAsset: string;
-  readonly quoteAsset: string;
-}
+export type SymbolPickerOption = CryptoMarketOption;
 
-export const SYMBOL_PICKER_MAX_RESULTS = 50;
+export const SYMBOL_PICKER_MAX_RESULTS = SYMBOL_SEARCH_MAX_RESULTS;
 
-/** USDT pairs A→Z first, then every other pair A→Z; at most 50, filtered by symbol or base/quote. */
-export function filterSymbolPickerOptions<T extends SymbolPickerOption>(
-  facts: readonly T[],
-  query: string,
-): readonly T[] {
-  const needle = query.replace(/[/\-\s]/g, '').toUpperCase();
-  const matches = facts.filter(fact => needle === '' || fact.instrument.symbol.toUpperCase().includes(needle) || `${fact.baseAsset}${fact.quoteAsset}`.toUpperCase().includes(needle));
-  const bySymbol = (a: T, b: T) => a.instrument.symbol.localeCompare(b.instrument.symbol);
-  const usdt = matches.filter(fact => fact.quoteAsset === 'USDT').sort(bySymbol);
-  const others = matches.filter(fact => fact.quoteAsset !== 'USDT').sort(bySymbol);
-  return [...usdt, ...others].slice(0, SYMBOL_PICKER_MAX_RESULTS);
+/** USDT pairs A→Z first, then every other pair A→Z; at most 50, filtered by symbol or base/quote (the search owner, D254). */
+export function filterSymbolPickerOptions<T extends SymbolPickerOption>(facts: readonly T[], query: string): readonly T[] {
+  return filterCryptoMarkets(facts, query);
 }
 
 const optionLabel = (fact: SymbolPickerOption) => `${fact.instrument.symbol} · ${fact.baseAsset}/${fact.quoteAsset}`;

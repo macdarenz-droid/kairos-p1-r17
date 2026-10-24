@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { type FormEvent, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import type { DisciplineAnswerInput, TradeDisciplineParts } from '../../application/discipline';
 import {
@@ -17,6 +17,7 @@ import {
 } from '../../application/trades';
 import { prepareManualTradeExecutionDetails, type ManualExecutionRow, type ManualFeeRow } from '../../application/trades/manualTradeExecutionDraft';
 import { PRICE_CURRENCY_INPUT_ERROR } from '../../application/trades/priceCurrencyInput';
+import { checkTypedCryptoSymbol, type SymbolSearchRow } from '../../application/market-reference/symbolSearch';
 import { createEmptyQuickTradeLogDraft, quickTradeLogFieldFor, quickTradeLogRows, type QuickTradeLogDraft, type QuickTradeLogField } from '../../application/trades/quickTradeLog';
 import type { KairosDatabase } from '../../data/database';
 import type { StrategyId } from '../../domain/discipline';
@@ -32,6 +33,8 @@ import { TradeTagsField } from './TradeTagsField';
 import { BeforeYouTradeField } from './BeforeYouTradeField';
 import { BeforeYouSaveBox } from './BeforeYouSaveBox';
 import { CONTRACT_SIZE_HINT } from './AddContractSizeControl';
+import { SymbolSearchField } from './SymbolSearchField';
+import { TradeFormMarketContext, useTradeFormMarketList } from './tradeFormMarket';
 import './tradeForm.css';
 
 export type TradeFormKind = 'journal' | 'practice';
@@ -69,6 +72,8 @@ function writeTradeFormMode(mode: TradeFormMode): void {
     // Not remembering the choice is fine; the form still works.
   }
 }
+
+const QUICK_NO_STOP_HINT = "Without a stop, Kairos can't draw your risk or show × what you risked.";
 
 const QUICK_MESSAGES: Readonly<Record<QuickTradeLogField, string>> = {
   entryPrice: 'Enter the entry price as a number above 0, such as 64000.5.',
@@ -253,6 +258,40 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
   const [quick, setQuick] = useState<QuickTradeLogDraft>(createEmptyQuickTradeLogDraft);
   const isQuick = mode === 'quick';
 
+  // U14 (D254): the symbol search and the currency from a crypto market's quote asset. The list is read once the
+  // trader types a symbol; a currency Kairos filled follows the symbol, one the trader typed is never replaced.
+  const searchable = useContext(TradeFormMarketContext) !== null;
+  const cryptoOrOpen = draft.marketType === 'crypto' || draft.marketType === '';
+  const marketList = useTradeFormMarketList(searchable && cryptoOrOpen && draft.symbol.trim() !== '');
+  const markets = marketList.phase === 'ready' ? marketList.markets : null;
+  const typedCrypto = draft.marketType === 'crypto' && markets !== null ? checkTypedCryptoSymbol(draft.symbol, markets) : null;
+  const [currencyFilledBy, setCurrencyFilledBy] = useState<string | null>(null);
+  const listedSymbol = typedCrypto?.kind === 'listed' ? typedCrypto.symbol : null;
+  const listedQuote = typedCrypto?.kind === 'listed' ? typedCrypto.quote : null;
+  const judged = typedCrypto !== null || draft.marketType !== 'crypto';
+  const currencyBlank = (draft.priceCurrency ?? '').trim() === '';
+  useEffect(() => {
+    if (listedSymbol !== null && listedQuote !== null) {
+      if (!currencyBlank && currencyFilledBy === null) return;
+      if (currencyFilledBy === listedSymbol && draft.priceCurrency === listedQuote) return;
+      setDraft(current => ({ ...current, priceCurrency: listedQuote }));
+      setCurrencyFilledBy(listedSymbol);
+    } else if (judged && currencyFilledBy !== null) {
+      // The next symbol is not a listed market: its currency would be a guess.
+      setDraft(current => ({ ...current, priceCurrency: '' }));
+      setCurrencyFilledBy(null);
+    }
+  }, [listedSymbol, listedQuote, judged, currencyBlank, currencyFilledBy, draft.priceCurrency]);
+  function chooseSymbol(row: SymbolSearchRow): void {
+    setDraft(current => ({ ...current, symbol: row.symbol, marketType: row.marketType }));
+    setFeedback(null);
+  }
+  const symbolNote = typedCrypto?.kind === 'near'
+    ? <>On Binance this market is {typedCrypto.symbol}. <Button variant="ghost" size="sm" onClick={() => update('symbol', typedCrypto.symbol)}>Use {typedCrypto.symbol}</Button></>
+    : typedCrypto?.kind === 'not-listed' ? typedCrypto.note
+    : marketList.phase === 'unavailable' && draft.marketType === 'crypto' && draft.symbol.trim() !== '' ? "The market list is unavailable, so Kairos can't check the symbol. You can still type it."
+    : undefined;
+
   const submitRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (feedback?.kind === 'error') { feedbackRef.current?.focus(); return; }
@@ -302,6 +341,13 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
   const quickInvalid = (field: QuickTradeLogField): boolean => isQuick && quickTradeLogFieldFor(errorField) === field;
   const fieldError = (field: ManualTradeValidationField): string | undefined => (feedback?.kind === 'error' && feedback.field === field ? feedback.message : undefined);
   const asksContractSize = marketAsksContractSize(draft.marketType);
+  // D253: the plan's stop and target. Quick log shows them with the prices; All details keeps them in the plan.
+  const stopField = (hint: string | undefined) => <Field label="Planned stop" id={`${planIdPrefix}-stop`} hint={hint} invalid={fieldHasError(feedback, 'plan.plannedStopPrice')}>
+    {control => <PriceInput {...control} value={draft.plan.plannedStopPrice} onValueChange={text => updatePlan('plannedStopPrice', text)} />}
+  </Field>;
+  const targetField = <Field label="Planned target" id={`${planIdPrefix}-target`} invalid={fieldHasError(feedback, 'plan.plannedTargetPrice')}>
+    {control => <PriceInput {...control} value={draft.plan.plannedTargetPrice} onValueChange={text => updatePlan('plannedTargetPrice', text)} />}
+  </Field>;
   const contractSizeField = asksContractSize ? <Field label="Each point is worth" id={`${idPrefix}-contract-size`} hint={CONTRACT_SIZE_HINT} error={fieldError('contractSize')}>
     {control => <PriceInput {...control} name="contractSize" value={draft.contractSize ?? ''} onValueChange={text => update('contractSize', text)} />}
   </Field> : null;
@@ -396,6 +442,7 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
     // Commit the reset and the success banner before the page refreshes its lists.
     flushSync(() => {
       setDraft({ ...createEmptyManualTradeDraft(), marketType: defaultMarket ?? '' });
+      setCurrencyFilledBy(null);
       setPlanShown(false);
       setExecutions([]);
       setFees([]);
@@ -432,17 +479,9 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
         <fieldset className="kairos-trade-form__section" disabled={isSaving}>
           <legend>{text.legend}</legend>
           <div className="kairos-trade-form__grid">
-            <Field label="Symbol" id={`${idPrefix}-symbol`} required wide invalid={fieldHasError(feedback, 'symbol')}>
-              {control => <input
-                {...control}
-                name="symbol"
-                value={draft.symbol}
-                onChange={(event) => update('symbol', event.target.value)}
-                autoCapitalize="characters"
-                autoComplete="off"
-                spellCheck={false}
-                placeholder="BTCUSD"
-              />}
+            <Field label="Symbol" id={`${idPrefix}-symbol`} required wide invalid={fieldHasError(feedback, 'symbol')} hint={symbolNote}>
+              {control => <SymbolSearchField control={control} value={draft.symbol} marketType={draft.marketType} markets={markets} searchable={searchable}
+                onType={text => update('symbol', text)} onChoose={chooseSymbol} />}
             </Field>
 
             <Field label="Market" id={`${idPrefix}-market`} required invalid={fieldHasError(feedback, 'marketType')}>
@@ -474,6 +513,8 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
               <Field label="Exit price" id={`${idPrefix}-exit-price`} required invalid={quickInvalid('exitPrice')}>
                 {control => <PriceInput {...control} name="exitPrice" value={quick.exitPrice} onValueChange={text => updateQuick('exitPrice', text)} />}
               </Field>
+              {stopField(draft.plan.plannedStopPrice.trim() === '' ? QUICK_NO_STOP_HINT : undefined)}
+              {targetField}
               <Field label="Quantity" id={`${idPrefix}-quantity`} required invalid={quickInvalid('quantity')} hint={draft.marketType === 'forex' ? forexQuantityHint(draft.symbol, quick.quantity) ?? undefined : draft.marketType === 'stock' ? STOCK_QUANTITY_HINT : undefined}>
                 {control => <PriceInput {...control} name="quantity" value={quick.quantity} onValueChange={text => updateQuick('quantity', text)} />}
               </Field>
@@ -534,7 +575,8 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
           {draft.marketType === 'stock' ? <StockTradeNote symbol={draft.symbol} priceCurrency={draft.priceCurrency ?? ''} /> : null}
         </fieldset>
 
-        <JournalPriceCurrencyField value={draft.priceCurrency ?? ''} onChange={value => update('priceCurrency', value)} disabled={isSaving} error={feedback?.kind === 'error' && feedback.field === 'grossPnlCurrency' ? feedback.message : undefined} />
+        <JournalPriceCurrencyField value={draft.priceCurrency ?? ''} onChange={value => { update('priceCurrency', value); setCurrencyFilledBy(null); }} disabled={isSaving}
+          filledFrom={currencyFilledBy !== null && listedQuote !== null && draft.priceCurrency === listedQuote ? { symbol: currencyFilledBy, currency: listedQuote } : null} error={feedback?.kind === 'error' && feedback.field === 'grossPnlCurrency' ? feedback.message : undefined} />
         {isQuick ? null : <fieldset className="kairos-trade-form__section" disabled={isSaving}>
           <legend>More about this trade</legend>
           <div className="kairos-trade-form__grid">
@@ -574,12 +616,7 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
             <Field label="Planned entry" id={`${planIdPrefix}-entry`} invalid={fieldHasError(feedback, 'plan.plannedEntryPrice')}>
               {control => <PriceInput {...control} value={draft.plan.plannedEntryPrice} onValueChange={text => updatePlan('plannedEntryPrice', text)} />}
             </Field>
-            <Field label="Planned stop" id={`${planIdPrefix}-stop`} invalid={fieldHasError(feedback, 'plan.plannedStopPrice')}>
-              {control => <PriceInput {...control} value={draft.plan.plannedStopPrice} onValueChange={text => updatePlan('plannedStopPrice', text)} />}
-            </Field>
-            <Field label="Planned target" id={`${planIdPrefix}-target`} invalid={fieldHasError(feedback, 'plan.plannedTargetPrice')}>
-              {control => <PriceInput {...control} value={draft.plan.plannedTargetPrice} onValueChange={text => updatePlan('plannedTargetPrice', text)} />}
-            </Field>
+            {isQuick ? null : <>{stopField(undefined)}{targetField}</>}
             <Field label="Planned quantity" id={`${planIdPrefix}-quantity`} invalid={fieldHasError(feedback, 'plan.plannedQuantity')}>
               {control => <PriceInput {...control} value={draft.plan.plannedQuantity} onValueChange={text => updatePlan('plannedQuantity', text)} />}
             </Field>

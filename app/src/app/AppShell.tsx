@@ -1,6 +1,8 @@
 import { Link, Outlet, useLocation, useNavigate, useNavigation, useNavigationType, type Location } from 'react-router';
 import { TradePictureCandleLoaderContext } from '../features/journal/tradePictureCandleQueue';
 import { browserTradePictureCandleLoader } from './tradePictureCandleBrowserDeps';
+import { TradeFormMarketContext } from '../features/journal/tradeFormMarket';
+import { browserTradeFormMarket } from './tradeFormMarketPorts';
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { Icon, type IconName } from '../design-system/icons/Icon';
 import { ToastProvider } from '../design-system/primitives';
@@ -268,7 +270,9 @@ export function AppShell({ loading = false }: { readonly loading?: boolean }) {
           {/* A new control for each page: the one that had focus goes away, so focus moves to the new heading (D179). Another
               entry of the same page (a changed period, a step) keeps it, so focus never falls to the page. */}
           {back.step === null ? null : <BackControl key={page} step={back.step} />}
-          <TradePictureCandleLoaderContext.Provider value={browserTradePictureCandleLoader()}><Outlet /></TradePictureCandleLoaderContext.Provider>
+          <TradePictureCandleLoaderContext.Provider value={browserTradePictureCandleLoader()}>
+            <TradeFormMarketContext.Provider value={browserTradeFormMarket()}><Outlet /></TradeFormMarketContext.Provider>
+          </TradePictureCandleLoaderContext.Provider>
           {/* Last in main, so it is inside the page's landmark and comes after the page in the tab order. */}
           {logTrade ? <LogTradeButton onJournal={page === '/journal'} /> : null}
         </main>
