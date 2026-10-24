@@ -65,7 +65,7 @@ export function LibraryRoute({ db = kairosDatabase, learningSourceDevice }: Libr
         <label><span>Kind</span><select aria-label="Record kind" value={kind} onChange={event => setKind(event.target.value as 'all' | SavedRecordKind)}><option value="all">All records</option><option value="analysis">Saved analyses</option><option value="snapshot">Trades estimated from time</option></select></label>
         <label><span>Market</span><select aria-label="Record market" value={market} onChange={event => setMarket(event.target.value)}><option value="all">All markets</option>{state.index.markets.map(item => <option key={marketKey(item)} value={marketKey(item)}>{item.instrument} on {item.venue}</option>)}</select></label>
       </div>
-      {entries.length === 0 ? <p className="kairos-library__empty" role="status">{state.index.entries.length === 0 ? 'Nothing saved yet. Save an analysis or a trade estimated from time on the Analysis page and it will appear here.' : 'No saved charts match these filters.'}</p>
+      {entries.length === 0 ? <p className="kairos-library__empty" role="status">{state.index.entries.length === 0 ? 'Nothing saved yet. Save an analysis on the Analysis page and it will appear here.' : 'No saved charts match these filters.'}</p>
         : <ul className="kairos-library__list">
           {entries.map(entry => <li key={`${entry.kind}:${entry.id}`} className="kairos-library__item" data-record-kind={entry.kind} data-record-id={entry.id}>
             <div className="kairos-library__item-body">

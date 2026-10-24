@@ -6,6 +6,8 @@ import { AnalysisSavedAnalysisControls } from '../src/app/AnalysisSavedAnalysisC
 import { AnalysisTimeAssistedSnapshotControls } from '../src/app/AnalysisTimeAssistedSnapshotControls';
 import { analysisMarketReference, createAnalysisSavedAnalysisPorts } from '../src/app/analysisSavedAnalysisRoundTrip';
 import { createAnalysisSavedTimeAssistedSnapshotPorts } from '../src/app/analysisSavedTimeAssistedSnapshotRoundTrip';
+import type { TimeAssistedTradeSnapshot } from '../src/application/market-reference';
+import { saveSavedTimeAssistedSnapshot } from '../src/application/saved-time-assisted-snapshot';
 import { SAVED_RECORD_LABEL_MAX_LENGTH } from '../src/domain/saved-records/savedRecordLabel';
 import { createKairosDatabase, openKairosDatabase } from '../src/data/database';
 import type { ChartDrawing } from '../src/features/chart';
@@ -57,28 +59,21 @@ describe('P25.2 saved record labels on the Analysis page', () => {
     expect(await db.savedAnalyses.count()).toBe(0);
   });
 
-  it('saves a snapshot with the typed label, clears the input, lists the label first, and loads it back unchanged', async () => {
+  it('lists a saved snapshot by its label first, and loads it back unchanged', async () => {
     const db = await database();
+    // U14 (D12): Analysis makes no new estimates, so the labelled one is seeded through its save command.
+    const snapshot: TimeAssistedTradeSnapshot = { kind: 'snapshot', isEstimate: true, source: 'market-reference', instrument, side: 'long', opening: { kind: 'unavailable', instrument, requestedAt: '2026-09-10T02:13:27Z', reason: 'no-candle' }, closing: null, durationMs: null };
+    expect((await saveSavedTimeAssistedSnapshot(db, { snapshot, inputTimeZone: 'UTC', label: ' Morning scalp ' })).ok).toBe(true);
     const ports = createAnalysisSavedTimeAssistedSnapshotPorts(db);
-    render(<AnalysisTimeAssistedSnapshotControls history={port()} saved={ports} instrument={instrument} now={now} />);
+    render(<AnalysisTimeAssistedSnapshotControls saved={ports} instrument={instrument} />);
     const group = () => screen.getByRole('group', { name: 'Saved snapshot' });
-    await waitFor(() => expect(group().getAttribute('data-saved-snapshot-count')).toBe('0'));
-    type('Snapshot opened at', '2026-09-10T02:13:27');
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Estimate' })); });
-    await waitFor(() => expect(screen.getByRole('region', { name: 'Time-assisted snapshot' }).getAttribute('data-time-assisted-status')).toBe('snapshot'));
-    type('Snapshot label', ' Morning scalp ');
-    await click('Save snapshot');
     await waitFor(() => expect(group().getAttribute('data-saved-snapshot-count')).toBe('1'));
-    expect((screen.getByLabelText('Snapshot label') as HTMLInputElement).value).toBe('');
     const [record] = await db.savedTimeAssistedSnapshots.toArray();
     expect(record.label).toBe('Morning scalp');
     expect((screen.getByRole('option', { name: /^Morning scalp · / }) as HTMLOptionElement).value).toBe(record.id);
     await click('Load snapshot');
     await waitFor(() => expect(group().getAttribute('data-saved-snapshot-status')).toBe('loaded'));
-    expect(await db.savedTimeAssistedSnapshots.count()).toBe(1);
-    type('Snapshot label', 'y'.repeat(SAVED_RECORD_LABEL_MAX_LENGTH + 1));
-    await click('Save snapshot');
-    await waitFor(() => expect(screen.getByText(`The label must be ${SAVED_RECORD_LABEL_MAX_LENGTH} characters or fewer. Nothing was written.`)).toBeTruthy());
+    expect(screen.getByRole('region', { name: 'Your saved trades estimated from time' }).getAttribute('data-time-assisted-status')).toBe('snapshot');
     expect(await db.savedTimeAssistedSnapshots.count()).toBe(1);
   });
 });

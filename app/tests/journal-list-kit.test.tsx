@@ -13,6 +13,7 @@ import { analysisMarketReference, createAnalysisSavedAnalysisPorts } from '../sr
 import { createAnalysisSavedTimeAssistedSnapshotPorts } from '../src/app/analysisSavedTimeAssistedSnapshotRoundTrip';
 import type { JournalHistoryEntry } from '../src/application/journal';
 import type { TimeAssistedTradeSnapshot } from '../src/application/market-reference';
+import { saveSavedTimeAssistedSnapshot } from '../src/application/saved-time-assisted-snapshot';
 import { saveManualTrade } from '../src/application/trades';
 import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
 import type { ChartDrawing } from '../src/features/chart';
@@ -134,8 +135,9 @@ describe('T-049h a question before any saved record is deleted', () => {
     const instrument = { venue: 'binance-spot', symbol: 'ETHUSDT' } as const;
     const snapshot: TimeAssistedTradeSnapshot = { kind: 'snapshot', isEstimate: true, source: 'market-reference', instrument, side: 'long', opening: { kind: 'unavailable', instrument, requestedAt: '2026-09-10T02:13:27Z', reason: 'no-candle' }, closing: null, durationMs: null };
     const ports = createAnalysisSavedTimeAssistedSnapshotPorts(db);
-    expect((await ports.save(snapshot, 'UTC')).ok).toBe(true);
-    render(<AnalysisTimeAssistedSnapshotControls history={{ acquireHistory: vi.fn(async () => { throw new Error('unused'); }) }} saved={ports} instrument={instrument} />);
+    // U14 (D12): Analysis makes no new estimates, so the saved one is seeded through its save command.
+    expect((await saveSavedTimeAssistedSnapshot(db, { snapshot, inputTimeZone: 'UTC' })).ok).toBe(true);
+    render(<AnalysisTimeAssistedSnapshotControls saved={ports} instrument={instrument} />);
     await waitFor(() => expect(screen.getByRole('group', { name: 'Saved snapshot' }).getAttribute('data-saved-snapshot-count')).toBe('1'));
     await click('Delete snapshot');
     expect(screen.getByRole('alertdialog', { name: 'Delete this saved estimate for good?' })).toHaveTextContent('It will be gone from this device. Your trades stay as they are.');
@@ -175,14 +177,14 @@ describe('T-049h fix r1: focus stays on something usable', () => {
     await waitFor(() => expect(screen.getByRole('textbox', { name: 'Analysis label' })).toHaveFocus());
   });
 
-  it('after "Delete for good" on a saved snapshot, focus is on "Delete snapshot", or on the label field once none are left', async () => {
+  it('after "Delete for good" on a saved snapshot, focus is on "Delete snapshot", or on the section heading once none are left', async () => {
     const db = await database();
     const instrument = { venue: 'binance-spot', symbol: 'ETHUSDT' } as const;
     const snapshot: TimeAssistedTradeSnapshot = { kind: 'snapshot', isEstimate: true, source: 'market-reference', instrument, side: 'long', opening: { kind: 'unavailable', instrument, requestedAt: '2026-09-10T02:13:27Z', reason: 'no-candle' }, closing: null, durationMs: null };
     const ports = createAnalysisSavedTimeAssistedSnapshotPorts(db);
-    expect((await ports.save(snapshot, 'UTC')).ok).toBe(true);
-    expect((await ports.save(snapshot, 'UTC')).ok).toBe(true);
-    render(<AnalysisTimeAssistedSnapshotControls history={{ acquireHistory: vi.fn(async () => { throw new Error('unused'); }) }} saved={ports} instrument={instrument} />);
+    expect((await saveSavedTimeAssistedSnapshot(db, { snapshot, inputTimeZone: 'UTC' })).ok).toBe(true);
+    expect((await saveSavedTimeAssistedSnapshot(db, { snapshot, inputTimeZone: 'UTC' })).ok).toBe(true);
+    render(<AnalysisTimeAssistedSnapshotControls saved={ports} instrument={instrument} />);
     const count = () => screen.getByRole('group', { name: 'Saved snapshot' }).getAttribute('data-saved-snapshot-count');
     await waitFor(() => expect(count()).toBe('2'));
     await deleteFromFocus('Delete snapshot');
@@ -192,7 +194,7 @@ describe('T-049h fix r1: focus stays on something usable', () => {
     expect(screen.getByRole('button', { name: 'Delete snapshot' })).toHaveFocus();
     await deleteFromFocus('Delete snapshot');
     await waitFor(() => expect(count()).toBe('0'));
-    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Snapshot label' })).toHaveFocus());
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Your saved trades estimated from time' })).toHaveFocus());
   });
 
   const failed = 'Kairos could not load your saved trade history. Your stored trades were not changed.';
