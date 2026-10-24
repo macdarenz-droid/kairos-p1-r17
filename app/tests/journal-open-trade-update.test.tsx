@@ -177,15 +177,18 @@ describe('T-057e one guided flow: planned, "I\'m in", close, review', () => {
     expect(screen.queryByText('Trade closed. How did it go?')).toBeNull();
   });
 
-  it('an update that keeps the trade open gives its notice the focus', async () => {
+  it('an update that keeps the trade open gives its notice the focus, every time', async () => {
     await start();
     render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
-    fireEvent.click(await screen.findByRole('button', { name: 'Update trade' }));
-    const ui = within(await screen.findByRole('region', { name: 'Update BTCUSDT' }));
-    fireEvent.click(ui.getByRole('button', { name: 'Add exit' }));
-    for (const [name, value] of [['price', '120'], ['quantity', '1'], ['date and time', '2026-09-12T15:00']]) fireEvent.change(ui.getByLabelText(`Exit 1 ${name}`), { target: { value } });
-    fireEvent.click(ui.getByRole('button', { name: 'Save update' }));
-    await waitFor(() => expect(screen.getByText('Trade updated. Your saved details are below.')).toHaveFocus());
+    for (const quantity of ['1', '0.5']) {
+      fireEvent.click(await screen.findByRole('button', { name: 'Update trade' }));
+      const ui = within(await screen.findByRole('region', { name: 'Update BTCUSDT' }));
+      fireEvent.click(ui.getByRole('button', { name: 'Add exit' }));
+      for (const [name, value] of [['price', '120'], ['quantity', quantity], ['date and time', '2026-09-12T15:00']]) fireEvent.change(ui.getByLabelText(`Exit 1 ${name}`), { target: { value } });
+      fireEvent.click(ui.getByRole('button', { name: 'Save update' }));
+      // The same notice twice in a row still takes the focus.
+      await waitFor(() => expect(screen.getByText('Trade updated. Your saved details are below.')).toHaveFocus());
+    }
   });
 
   it('a closed trade hidden by the Open filter shows again, and its review opens', async () => {
@@ -195,7 +198,12 @@ describe('T-057e one guided flow: planned, "I\'m in", close, review', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Update trade' }));
     await closeIt();
     fireEvent.click(await screen.findByRole('button', { name: 'Review it now' }));
-    expect(await screen.findByRole('dialog', { name: 'After the trade: BTCUSDT' })).toBeInTheDocument();
+    const sheet = await screen.findByRole('dialog', { name: 'After the trade: BTCUSDT' });
+    // Even when its card had to show again first, the prompt stays behind the sheet until it closes.
+    expect(screen.getByText('Trade closed. How did it go?')).toBeInTheDocument();
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Close' }));
+    await waitFor(() => expect(reviewButton()).toHaveFocus());
+    expect(screen.queryByText('Trade closed. How did it go?')).toBeNull();
   });
 
   it('Practice says the same and opens the same review', async () => {

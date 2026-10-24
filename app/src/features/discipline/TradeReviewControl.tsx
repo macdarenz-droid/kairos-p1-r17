@@ -61,6 +61,8 @@ export function TradeReviewControl({ symbol, tradeId, scope, reviewItems, mistak
   const [failure, setFailure] = useState<string | null>(null);
   const text = cardText(record);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  // Asked to open (the prompt), then open: only a sheet that really opened sends focus back to the button.
+  const requested = useRef(false);
   const backToButton = useRef(false);
 
   function openSheet(): void {
@@ -73,14 +75,15 @@ export function TradeReviewControl({ symbol, tradeId, scope, reviewItems, mistak
 
   useEffect(() => {
     if (!openRequested) return;
-    backToButton.current = true;
+    requested.current = true;
     openSheet();
     onOpenRequestHandled?.();
     // Only the request starts this; the sheet reads the record and lists as they are now.
   }, [openRequested]);
   useEffect(() => {
     // Runs after the sheet gave focus back to where it came from (the prompt): the card's button takes it, then the prompt goes.
-    if (open || !backToButton.current) return;
+    if (open) { backToButton.current = requested.current; requested.current = false; return; }
+    if (!backToButton.current) return;
     backToButton.current = false;
     buttonRef.current?.focus();
     onRequestedSheetClosed?.();

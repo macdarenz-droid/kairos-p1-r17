@@ -111,13 +111,15 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
     if (!entries.some(entry => entry.trade.id === notice.tradeId)) onStatusFilterChange('');
   };
   // An update that closes its form leaves focus on the page: the notice takes it ("Review it now" when there is one).
+  // Counted per update, since the same notice twice in a row changes nothing else.
   const promptButtonRef = useRef<HTMLButtonElement>(null);
   const noticeRef = useRef<HTMLParagraphElement>(null);
+  const [updates, setUpdates] = useState(0);
   useEffect(() => {
     if (!updateNotice) return;
     const active = document.activeElement;
     if (active === null || active === document.body) (promptButtonRef.current ?? noticeRef.current)?.focus();
-  }, [updateNotice]);
+  }, [updateNotice, updates]);
   const news = useNewsNearTrades(db, entries.map(entry => entry.trade));
   // Journal passes the real sources, Practice the paper one; the discipline writer needs the page's scope.
   const disciplineSaved = (record: Parameters<typeof discipline.remember>[0]) => { discipline.remember(record); onDisciplineSaved?.(); };
@@ -222,7 +224,7 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
                   ? <TradeStrategyControl symbol={entry.trade.symbol} tradeId={entry.trade.id} scope={scope} strategies={discipline.state.strategies} record={discipline.state.records.get(entry.trade.id) ?? null}
                     check={checkSavedTradeStrategy(entry.trade, entry.plans, discipline.state.records.get(entry.trade.id) ?? null)} save={input => saveTradeDiscipline(db, input)} onSaved={disciplineSaved} />
                   : null}
-                {db && onTradeUpdated ? <JournalOpenTradeUpdate entry={entry} db={db} onCommitted={closed => onTradeUpdated(closed ? entry.trade.id : undefined)} allowedSources={allowedSources} /> : null}
+                {db && onTradeUpdated ? <JournalOpenTradeUpdate entry={entry} db={db} onCommitted={async closed => { await onTradeUpdated(closed ? entry.trade.id : undefined); setUpdates(count => count + 1); }} allowedSources={allowedSources} /> : null}
                 {db && onTradeUpdated && allowedSources.includes(entry.trade.source) ? <EntriesAndExitsEditor entry={entry} save={input => updateTradeExecution(db, { ...input, allowedSources })} onSaved={onTradeUpdated} /> : null}
                 {db && onTradeOpened ? <JournalDraftTradeActivation entry={entry} db={db} onOpened={onTradeOpened} allowedSources={allowedSources} /> : null}
                 {db && tradeDeleted ? <JournalTradeDeleteControl entry={entry} db={db} onDeleted={tradeDeleted} /> : null}
