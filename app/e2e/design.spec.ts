@@ -335,7 +335,7 @@ test('(11) links, focus rings and the bottom-bar marker follow the theme, and li
     await listsFit(page, `${theme} /settings`);
 
     await page.goto('/journal');
-    await expect(page.getByRole('textbox', { name: /^Symbol/ })).toBeVisible();
+    await expect(page.getByRole('combobox', { name: /^Symbol/ })).toBeVisible();
     await listsFit(page, `${theme} /journal`);
     await context.close();
   }
