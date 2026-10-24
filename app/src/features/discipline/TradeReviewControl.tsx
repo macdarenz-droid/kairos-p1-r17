@@ -20,6 +20,8 @@ export interface TradeReviewControlProps {
   /** U12 (D245): "Review it now" after a close opens this sheet; closing it then returns focus to this card's button. */
   readonly openRequested?: boolean;
   readonly onOpenRequestHandled?: () => void;
+  /** Called once a sheet opened by the request has closed and its button has focus. */
+  readonly onRequestedSheetClosed?: () => void;
 }
 
 interface Row { readonly itemId: string; readonly label: string; readonly ticked: boolean; }
@@ -50,7 +52,7 @@ function cardText(record: TradeDisciplineRecord | null): { readonly state: strin
 }
 
 /** "After the trade" on a closed card: what went well, any mistakes and a short note, saved in one write. */
-export function TradeReviewControl({ symbol, tradeId, scope, reviewItems, mistakeItems, record, save, onSaved, openRequested = false, onOpenRequestHandled }: TradeReviewControlProps) {
+export function TradeReviewControl({ symbol, tradeId, scope, reviewItems, mistakeItems, record, save, onSaved, openRequested = false, onOpenRequestHandled, onRequestedSheetClosed }: TradeReviewControlProps) {
   const [open, setOpen] = useState(false);
   const [review, setReview] = useState<Row[]>([]);
   const [mistakes, setMistakes] = useState<Row[]>([]);
@@ -77,15 +79,18 @@ export function TradeReviewControl({ symbol, tradeId, scope, reviewItems, mistak
     // Only the request starts this; the sheet reads the record and lists as they are now.
   }, [openRequested]);
   useEffect(() => {
-    // Runs after the sheet gave focus back to where it came from (the prompt, which is gone): the card's button takes it.
+    // Runs after the sheet gave focus back to where it came from (the prompt): the card's button takes it, then the prompt goes.
     if (open || !backToButton.current) return;
     backToButton.current = false;
     buttonRef.current?.focus();
+    onRequestedSheetClosed?.();
   }, [open]);
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     if (saving) return;
+    // A busy button is disabled, and a browser drops its focus to the page: the form holds it while saving.
+    event.currentTarget.focus({ preventScroll: true });
     setSaving(true);
     setFailure(null);
     const result = await save({
@@ -114,7 +119,7 @@ export function TradeReviewControl({ symbol, tradeId, scope, reviewItems, mistak
       <span className="kairos-discipline-control__state">{text.state}</span>
     </Button>
     <Sheet open={open} title={`After the trade: ${symbol}`} onClose={() => setOpen(false)}>
-      <form className="kairos-discipline-sheet" onSubmit={event => { void submit(event); }} noValidate>
+      <form className="kairos-discipline-sheet" tabIndex={-1} onSubmit={event => { void submit(event); }} noValidate>
         <fieldset>
           <legend>What went well?</legend>
           {review.map((row, index) => <label className="kairos-discipline-check" key={row.itemId}>

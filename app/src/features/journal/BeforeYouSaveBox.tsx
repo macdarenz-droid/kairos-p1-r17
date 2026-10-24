@@ -37,7 +37,8 @@ export function BeforeYouSaveBox({ idPrefix, notes, readsFailed, retrying, onRet
 
   const shown = notes.length > 0 || readsFailed;
   const titleId = `${idPrefix}-before-save-title`;
-  return <div ref={boxRef} tabIndex={shown ? -1 : undefined} className={shown ? 'kairos-trade-form__section kairos-trade-form__before-save' : undefined} role={shown ? 'region' : undefined} aria-labelledby={shown ? titleId : undefined}>
+  // Always focusable, so focus resting on it while "Try again" reads is not dropped when the box closes.
+  return <div ref={boxRef} tabIndex={-1} className={shown ? 'kairos-trade-form__section kairos-trade-form__before-save' : undefined} role={shown ? 'region' : undefined} aria-labelledby={shown ? titleId : undefined}>
     {shown ? <h2 id={titleId} className="kairos-trade-form__before-save-title">Before you save</h2> : null}
     <div aria-live="polite">
       {notes.length > 0 ? <ul className="kairos-trade-form__before-save-list">{notes.map(note => <li key={note.kind}>{note.text}</li>)}</ul> : null}

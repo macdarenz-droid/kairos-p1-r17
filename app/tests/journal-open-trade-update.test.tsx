@@ -164,14 +164,28 @@ describe('T-057e one guided flow: planned, "I\'m in", close, review', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Update trade' }));
     await closeIt();
     expect(await screen.findByText('Trade closed. How did it go?')).toBeInTheDocument();
+    // The update's form is gone, so its next step takes the focus.
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Review it now' })).toHaveFocus());
     await waitFor(() => expect(reviewButton()).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: 'Review it now' }));
     const sheet = await screen.findByRole('dialog', { name: 'After the trade: BTCUSDT' });
     await waitFor(() => expect(sheet.contains(document.activeElement)).toBe(true));
-    // The prompt has done its job.
-    expect(screen.queryByText('Trade closed. How did it go?')).toBeNull();
+    // The prompt stays behind the sheet, so focus has somewhere to return to; it goes once the sheet closes.
+    expect(screen.getByText('Trade closed. How did it go?')).toBeInTheDocument();
     fireEvent.click(within(sheet).getByRole('button', { name: 'Close' }));
     await waitFor(() => expect(reviewButton()).toHaveFocus());
+    expect(screen.queryByText('Trade closed. How did it go?')).toBeNull();
+  });
+
+  it('an update that keeps the trade open gives its notice the focus', async () => {
+    await start();
+    render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: 'Update trade' }));
+    const ui = within(await screen.findByRole('region', { name: 'Update BTCUSDT' }));
+    fireEvent.click(ui.getByRole('button', { name: 'Add exit' }));
+    for (const [name, value] of [['price', '120'], ['quantity', '1'], ['date and time', '2026-09-12T15:00']]) fireEvent.change(ui.getByLabelText(`Exit 1 ${name}`), { target: { value } });
+    fireEvent.click(ui.getByRole('button', { name: 'Save update' }));
+    await waitFor(() => expect(screen.getByText('Trade updated. Your saved details are below.')).toHaveFocus());
   });
 
   it('a closed trade hidden by the Open filter shows again, and its review opens', async () => {

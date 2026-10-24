@@ -98,18 +98,26 @@ function TradeTagChips({ tags }: { readonly tags: readonly string[] }) {
 
 export function JournalHistoryList({ entries, isLoading, errorMessage, statusFilter, onStatusFilterChange, onRetry, db, onTradeUpdated, updateNotice, onTradeDeleted, onTradeOpened, allowedSources = ['manual'], hasOlder = false, isLoadingOlder = false, olderFailed = false, onShowOlder, onDisciplineSaved, disciplineSources = allowedSources }: JournalHistoryListProps) {
   const discipline = useTradeDisciplineCards(db, entries.map(entry => entry.trade.id));
-  // U12 (D245): "Review it now" asks that trade's "After the trade" control to open; the prompt then goes.
+  // U12 (D245): "Review it now" asks that trade's "After the trade" control to open; the prompt goes once that sheet
+  // closes, so focus always has somewhere to return to.
   const [reviewRequest, setReviewRequest] = useState<TradeId | null>(null);
   const [usedPrompt, setUsedPrompt] = useState<HistoryNotice | null>(null);
   const prompt = typeof updateNotice === 'object' && updateNotice !== usedPrompt ? updateNotice : null;
   const promptEntry = prompt ? entries.find(entry => entry.trade.id === prompt.tradeId) : undefined;
   const promptReviewable = Boolean(db) && (promptEntry === undefined || (promptEntry.trade.status === 'closed' && disciplineSources.includes(promptEntry.trade.source)));
   const reviewNow = (notice: Readonly<{ kind: 'closed'; tradeId: TradeId }>) => {
-    setUsedPrompt(notice);
     setReviewRequest(notice.tradeId);
     // A trade hidden by the status filter shows again under all trades, where its card opens the review.
     if (!entries.some(entry => entry.trade.id === notice.tradeId)) onStatusFilterChange('');
   };
+  // An update that closes its form leaves focus on the page: the notice takes it ("Review it now" when there is one).
+  const promptButtonRef = useRef<HTMLButtonElement>(null);
+  const noticeRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (!updateNotice) return;
+    const active = document.activeElement;
+    if (active === null || active === document.body) (promptButtonRef.current ?? noticeRef.current)?.focus();
+  }, [updateNotice]);
   const news = useNewsNearTrades(db, entries.map(entry => entry.trade));
   // Journal passes the real sources, Practice the paper one; the discipline writer needs the page's scope.
   const disciplineSaved = (record: Parameters<typeof discipline.remember>[0]) => { discipline.remember(record); onDisciplineSaved?.(); };
@@ -167,10 +175,10 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
       </div>
 
       {errorMessage ? <ErrorState className="kairos-history__load-error" message={errorMessage} onRetry={retryLoad} /> : null}
-      {typeof updateNotice === 'string' && updateNotice ? <p className="kairos-history__state" role="status">{updateNotice}</p> : null}
+      {typeof updateNotice === 'string' && updateNotice ? <p ref={noticeRef} tabIndex={-1} className="kairos-history__state" role="status">{updateNotice}</p> : null}
       {prompt ? <div className="kairos-history__state kairos-history__prompt">
-        <p role="status">Trade closed. How did it go?</p>
-        {promptReviewable ? <Button variant="secondary" size="sm" onClick={() => reviewNow(prompt)}>Review it now</Button> : null}
+        <p ref={noticeRef} tabIndex={-1} role="status">Trade closed. How did it go?</p>
+        {promptReviewable ? <Button ref={promptButtonRef} variant="secondary" size="sm" onClick={() => reviewNow(prompt)}>Review it now</Button> : null}
       </div> : null}
       {isLoading ? <Skeleton label="Loading trade history…" live={false} /> : null}
       {!isLoading && !errorMessage && entries.length === 0 ? (
@@ -206,7 +214,8 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
                 {db && entry.trade.status === 'closed' && disciplineSources.includes(entry.trade.source)
                   ? discipline.state.kind === 'ready' && discipline.state.ids.has(entry.trade.id)
                     ? <TradeReviewControl symbol={entry.trade.symbol} tradeId={entry.trade.id} scope={scope} reviewItems={discipline.state.lists.review} mistakeItems={discipline.state.lists.mistakes} record={discipline.state.records.get(entry.trade.id) ?? null} save={input => saveTradeDiscipline(db, input)} onSaved={disciplineSaved}
-                      openRequested={reviewRequest === entry.trade.id} onOpenRequestHandled={() => setReviewRequest(null)} />
+                      openRequested={reviewRequest === entry.trade.id} onOpenRequestHandled={() => setReviewRequest(null)}
+                      onRequestedSheetClosed={() => { if (prompt) setUsedPrompt(prompt); }} />
                     : discipline.state.kind === 'failed' ? <Button variant="secondary" size="sm" disabled>After the trade: could not load</Button> : null
                   : null}
                 {db && disciplineSources.includes(entry.trade.source) && discipline.state.kind === 'ready' && discipline.state.ids.has(entry.trade.id)
