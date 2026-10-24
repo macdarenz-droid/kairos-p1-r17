@@ -3,15 +3,26 @@ import '@testing-library/jest-dom/vitest';
 import Dexie from 'dexie';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AppShell } from '../src/app/AppShell';
 import { JournalRoute } from '../src/app/JournalRoute';
 import { savePracticeTrade } from '../src/application/practice';
 import { saveManualTrade, type SaveManualTradeInput } from '../src/application/trades';
-import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
+import { createKairosDatabase, JOURNAL_CHANGED_EVENT, openKairosDatabase, type KairosDatabase } from '../src/data/database';
+import { deleteTradeRecord } from '../src/application/trades';
 import type { TradeId } from '../src/domain/trades';
 import { TradePageScreen } from '../src/features/journal/TradePageScreen';
 import { axeViolations } from './fixtures/axe';
+
+// Review r1: a read of the trade can be made to fail.
+const reads = vi.hoisted(() => ({ failNext: 0 }));
+vi.mock('../src/application/journal', async importOriginal => {
+  const actual = await importOriginal<typeof import('../src/application/journal')>();
+  return { ...actual, getJournalHistoryEntry: async (...args: Parameters<typeof actual.getJournalHistoryEntry>) => {
+    if (reads.failNext > 0) { reads.failNext -= 1; throw new Error('read failed'); }
+    return actual.getJournalHistoryEntry(...args);
+  } };
+});
 
 const names: string[] = [];
 const opened: Dexie[] = [];
@@ -39,8 +50,8 @@ async function saved(db: KairosDatabase, input: SaveManualTradeInput): Promise<T
   return result.tradeId;
 }
 
-/** The app's shell around the pages a trade's page links to, starting at `path`. */
-function app(db: KairosDatabase, path: string) {
+/** The app's shell around the pages a trade's page links to, starting at `path` (after the entries `before`). */
+function app(db: KairosDatabase, path: string, before: readonly string[] = []) {
   const router = createMemoryRouter([{ element: <AppShell />, children: [
     { path: '/', element: <h1>Home</h1> },
     { path: '/journal', element: <JournalRoute db={db} /> },
@@ -48,7 +59,7 @@ function app(db: KairosDatabase, path: string) {
     { path: '/analysis', element: <h1>Analysis</h1> },
     { path: '/journal/trades/:id', element: <TradePageScreen db={db} scope="real" /> },
     { path: '/practice/trades/:id', element: <TradePageScreen db={db} scope="practice" /> },
-  ] }], { initialEntries: [path] });
+  ] }], { initialEntries: [...before, path], initialIndex: before.length });
   render(<RouterProvider router={router} />);
   return router;
 }
@@ -85,8 +96,8 @@ describe('T-060b a page for each trade', () => {
     expect(part('Saved plan').getByText('Planned stop').nextElementSibling).toHaveTextContent('90');
     expect(part('Your entries and exits').getByText('2 recorded')).toBeInTheDocument();
     expect(part('Recorded fees').getByText('0.5 USDT')).toBeInTheDocument();
-    const discipline = part('Before and after the trade');
-    expect(await discipline.findByRole('button', { name: /^After the trade/ })).toBeInTheDocument();
+    const discipline = within(await screen.findByRole('region', { name: 'Before and after the trade' }));
+    expect(discipline.getByRole('button', { name: /^After the trade/ })).toBeInTheDocument();
     expect(discipline.queryByRole('button', { name: /^Before you trade/ })).toBeNull();
     expect(screen.getByRole('link', { name: 'See it on the market chart' })).toHaveAttribute('href', `/analysis?trade=${encodeURIComponent(id)}`);
     const changes = part('Change this trade');
@@ -103,7 +114,7 @@ describe('T-060b a page for each trade', () => {
     app(db, `/journal/trades/${openId}`);
     await screen.findByRole('heading', { level: 1, name: 'ETHUSDT · Short' });
     expect(intro()).toMatch(/^Open · opened /);
-    expect(await part('Before and after the trade').findByRole('button', { name: /^Before you trade/ })).toBeInTheDocument();
+    expect(within(await screen.findByRole('region', { name: 'Before and after the trade' })).getByRole('button', { name: /^Before you trade/ })).toBeInTheDocument();
     expect(part('Change this trade').getByRole('button', { name: 'Update trade' })).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Plan and what happened' })).toBeNull();
     cleanup();
@@ -175,19 +186,67 @@ describe('T-060b a page for each trade', () => {
     await waitFor(() => expect(part('Recorded result').getByText('Result after fees').nextElementSibling).toHaveTextContent('59.5 USDT'));
   });
 
-  it('deletes after asking, then goes back to the list with the notice and focus on its heading', async () => {
+  it('deletes after asking, then goes back to the list with the notice, which takes focus so it is read out', async () => {
     const db = await database();
     const id = await saved(db, closed);
-    const router = app(db, `/journal/trades/${id}`);
+    const router = app(db, `/journal/trades/${id}`, ['/journal']);
     await screen.findByRole('heading', { level: 1, name: 'BTCUSDT · Long' });
     fireEvent.click(part('Change this trade').getByRole('button', { name: 'Delete trade' }));
     fireEvent.click(within(screen.getByRole('alertdialog', { name: 'Delete BTCUSDT for good?' })).getByRole('button', { name: 'Delete for good' }));
-    const listHeading = await screen.findByRole('heading', { name: 'Trade history' });
+    await screen.findByRole('heading', { name: 'Trade history' });
     expect(router.state.location.pathname).toBe('/journal');
-    await waitFor(() => expect(listHeading).toHaveFocus());
-    expect(screen.getByText('BTCUSDT deleted, with its 2 entries and exits and 1 fee.')).toBeInTheDocument();
+    const notice = screen.getByText('BTCUSDT deleted, with its 2 entries and exits and 1 fee.');
+    expect(notice).toHaveAttribute('role', 'status');
+    await waitFor(() => expect(notice).toHaveFocus());
     expect(await db.trades.count()).toBe(0);
     // The list's address forgets the notice: coming back to it later shows none.
     expect(router.state.location.state).toBeNull();
+    // Review r1: the deleted trade's page is gone from the history, so Back never leads to it.
+    await act(async () => { await router.navigate(-1); });
+    expect(router.state.location.pathname).toBe('/journal');
+    expect(screen.queryByRole('heading', { name: "This trade isn't in your journal." })).toBeNull();
+  });
+
+  it('review r1: when another tab deletes the trade, the page says so and focus moves to its heading, never the page', async () => {
+    const db = await database();
+    const id = await saved(db, closed);
+    app(db, `/journal/trades/${id}`);
+    await screen.findByRole('heading', { level: 1, name: 'BTCUSDT · Long' });
+    part('Change this trade').getByRole('button', { name: 'Delete trade' }).focus();
+    expect(await deleteTradeRecord(db, id)).toMatchObject({ ok: true });
+    await act(async () => { window.dispatchEvent(new Event(JOURNAL_CHANGED_EVENT)); });
+    const heading = await screen.findByRole('heading', { level: 1, name: "This trade isn't in your journal." });
+    await waitFor(() => expect(heading).toHaveFocus());
+  });
+
+  it('review r1: a read again that fails keeps the trade on screen, with what you were typing', async () => {
+    const db = await database();
+    const id = await saved(db, open);
+    app(db, `/journal/trades/${id}`);
+    await screen.findByRole('heading', { level: 1, name: 'ETHUSDT · Short' });
+    fireEvent.click(part('Change this trade').getByRole('button', { name: 'Update trade' }));
+    fireEvent.click(within(screen.getByRole('region', { name: 'Update ETHUSDT' })).getByRole('button', { name: 'Add exit' }));
+    reads.failNext = 1;
+    await act(async () => { window.dispatchEvent(new Event('focus')); });
+    await waitFor(() => expect(reads.failNext).toBe(0));
+    expect(screen.getByRole('heading', { level: 1, name: 'ETHUSDT · Short' })).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'Update ETHUSDT' })).getByLabelText('Exit 1 price')).toBeInTheDocument();
+    expect(screen.queryByText('Kairos could not read this trade. Your saved trades were not changed.')).toBeNull();
+  });
+
+  it('review r1: another trade\'s page starts afresh, with nothing said on the last one', async () => {
+    const db = await database();
+    const draftId = await saved(db, draft);
+    const otherId = await saved(db, closed);
+    const router = app(db, `/journal/trades/${draftId}`);
+    await screen.findByRole('heading', { level: 1, name: 'SOLUSDT · Long' });
+    fireEvent.click(part('Change this trade').getByRole('button', { name: "I'm in" }));
+    const panel = within(screen.getByRole('region', { name: 'Open SOLUSDT' }));
+    fireEvent.change(panel.getByLabelText(/Opened date/), { target: { value: '2026-09-18T09:00' } });
+    fireEvent.click(panel.getByRole('button', { name: 'Save opening' }));
+    await waitFor(() => expect(document.querySelector('.kairos-trade-page__notice')).not.toBeNull());
+    await act(async () => { await router.navigate(`/journal/trades/${otherId}`); });
+    await screen.findByRole('heading', { level: 1, name: 'BTCUSDT · Long' });
+    expect(document.querySelector('.kairos-trade-page__notice')).toBeNull();
   });
 });

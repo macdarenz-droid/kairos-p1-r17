@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router';
+import { Link, useNavigate, useParams } from 'react-router';
 import { saveTradeDiscipline } from '../../application/discipline';
 import { checkSavedTradeStrategy } from '../../application/discipline/strategyCheck';
 import { describePlanAndWhatHappened } from '../../application/coach/coachWords';
@@ -20,29 +20,12 @@ import { JournalDraftTradeActivation } from './JournalDraftTradeActivation';
 import { JournalOpenTradeUpdate } from './JournalOpenTradeUpdate';
 import { JournalTradeDeleteControl } from './JournalTradeDeleteControl';
 import { reviewTimestamp, TradeEntriesAndExits, TradeFees, TradeOverview, TradePlan, TradeResult } from './TradeDetails';
-import { tradeReviewHref } from './tradeAddress';
+import { tradeDeletedState, tradeReviewHref } from './tradeAddress';
 import { TradePicture } from './TradePicture';
 import './tradePageScreen.css';
 
 const TITLE = 'kairos-trade-page-title';
 
-/** Navigation state the list reads after a delete here: the notice to show, with focus on the list's heading (D264). */
-const TRADE_DELETED_STATE = 'kairos.trade-deleted';
-
-/**
- * For the Journal and Practice lists: the notice a trade's page sent with you (after a delete), read once on arrival.
- * The address's entry then forgets it, so going Back to the list later never shows it again.
- */
-export function useArrivedNotice(): string | undefined {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const sent = (location.state as Readonly<Record<string, unknown>> | null)?.[TRADE_DELETED_STATE];
-  const [arrived] = useState(typeof sent === 'string' ? sent : undefined);
-  useEffect(() => {
-    if (typeof sent === 'string') navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: null });
-  }, [sent]); // eslint-disable-line react-hooks/exhaustive-deps
-  return arrived;
-}
 
 /**
  * Which trades each page may change, as on the list's cards: the Journal its own sources; Practice its paper trades, and
@@ -81,16 +64,22 @@ function describeWhen(trade: TradeRecord): string {
  */
 export function TradePageScreen({ db = kairosDatabase, scope }: { readonly db?: KairosDatabase; readonly scope: JournalHistoryScope }) {
   const { id = '' } = useParams();
+  // Another trade is another page: nothing said or asked on this one carries over.
+  return <TradePage key={id} db={db} scope={scope} id={id} />;
+}
+
+function TradePage({ db, scope, id }: { readonly db: KairosDatabase; readonly scope: JournalHistoryScope; readonly id: string }) {
   const navigate = useNavigate();
   const page = PAGE_SCOPES[scope];
   const [read, setRead] = useState<Read>({ kind: 'reading', id });
-  const current: Read = read.id === id ? read : { kind: 'reading', id };
+  const current = read;
   const request = useRef(0);
   const load = useCallback(async (): Promise<void> => {
     const n = ++request.current;
     const found = await getJournalHistoryEntry(db, id).then(entry => entry, () => undefined);
     if (n !== request.current) return;
-    setRead(found === undefined ? { kind: 'failed', id }
+    // A read again that fails keeps the trade on screen (with any form being typed); the next read tries again.
+    setRead(previous => found === undefined ? (previous.kind === 'shown' ? previous : { kind: 'failed', id })
       : found !== null && (JOURNAL_HISTORY_SOURCES[scope] as readonly TradeSource[]).includes(found.trade.source) ? { kind: 'shown', id, entry: found }
       : { kind: 'missing', id });
   }, [db, id, scope]);
@@ -125,11 +114,17 @@ export function TradePageScreen({ db = kairosDatabase, scope }: { readonly db?: 
   const [focusResult, setFocusResult] = useState(false);
   const resultFocused = useCallback(() => setFocusResult(false), []);
 
-  // "Try again" goes away when the read works: focus goes to the heading, or to the new "Try again" when it fails again.
+  // When what the page shows changes under focus ("Try again" worked, or another tab deleted the trade), focus goes to
+  // the new heading, or to the new "Try again" when a read fails again; never to the page. The first arrival is the shell's.
   const retried = useRef(false);
+  const shownKind = useRef<Read['kind']>('reading');
   const retry = () => { retried.current = true; setRead({ kind: 'reading', id }); void load(); };
   useEffect(() => {
-    if (!retried.current || current.kind === 'reading') return;
+    if (current.kind === 'reading') return;
+    const before = shownKind.current;
+    shownKind.current = current.kind;
+    const lost = document.activeElement === null || document.activeElement === document.body;
+    if (!retried.current && !(lost && before !== 'reading' && before !== current.kind)) return;
     retried.current = false;
     if (current.kind === 'failed') document.querySelector<HTMLElement>('.kairos-trade-page__failed button')?.focus();
     else document.getElementById(TITLE)?.focus();
@@ -155,6 +150,15 @@ export function TradePageScreen({ db = kairosDatabase, scope }: { readonly db?: 
   const prompt = typeof notice === 'object' && notice !== null ? notice : null;
   const reviewable = trade.status === 'closed' && disciplineAllowed;
   const failedLabel = (half: string) => discipline.state.kind === 'failed' ? <Button variant="secondary" size="sm" disabled>{half}: could not load</Button> : null;
+  const checklist = trade.status === 'draft' || trade.status === 'open'
+    ? ready ? <TradeChecklistControl symbol={trade.symbol} tradeId={trade.id} scope={scope} items={ready.lists.checklist} record={record} save={input => saveTradeDiscipline(db, input)} onSaved={remember} /> : failedLabel('Before you trade')
+    : null;
+  const review = trade.status === 'closed'
+    ? ready ? <TradeReviewControl symbol={trade.symbol} tradeId={trade.id} scope={scope} reviewItems={ready.lists.review} mistakeItems={ready.lists.mistakes} record={record} save={input => saveTradeDiscipline(db, input)} onSaved={remember}
+      openRequested={reviewRequested} onOpenRequestHandled={() => setReviewRequested(false)} onRequestedSheetClosed={() => setNotice(null)} /> : failedLabel('After the trade')
+    : null;
+  const strategy = ready ? <TradeStrategyControl symbol={trade.symbol} tradeId={trade.id} scope={scope} strategies={ready.strategies} record={record}
+    check={checkSavedTradeStrategy(trade, entry.plans, record)} save={input => saveTradeDiscipline(db, input)} onSaved={remember} /> : null;
 
   return <section className="kairos-route kairos-journal kairos-trade-page" aria-labelledby={TITLE}>
     <PageHeader eyebrow={scope === 'practice' ? 'Practice trade' : 'Your trade'} title={`${trade.symbol} · ${sideWord(trade.side)}`} titleId={TITLE} intro={describeWhen(trade)} />
@@ -180,17 +184,9 @@ export function TradePageScreen({ db = kairosDatabase, scope }: { readonly db?: 
       <TradeFees executions={entry.executions} fees={entry.fees} />
     </div>
 
-    {disciplineAllowed ? <Card as="section" className="kairos-trade-page__part" aria-labelledby="kairos-trade-page-discipline">
+    {disciplineAllowed && (checklist !== null || review !== null || strategy !== null) ? <Card as="section" className="kairos-trade-page__part" aria-labelledby="kairos-trade-page-discipline">
       <h2 id="kairos-trade-page-discipline">Before and after the trade</h2>
-      {trade.status === 'draft' || trade.status === 'open'
-        ? ready ? <TradeChecklistControl symbol={trade.symbol} tradeId={trade.id} scope={scope} items={ready.lists.checklist} record={record} save={input => saveTradeDiscipline(db, input)} onSaved={remember} /> : failedLabel('Before you trade')
-        : null}
-      {trade.status === 'closed'
-        ? ready ? <TradeReviewControl symbol={trade.symbol} tradeId={trade.id} scope={scope} reviewItems={ready.lists.review} mistakeItems={ready.lists.mistakes} record={record} save={input => saveTradeDiscipline(db, input)} onSaved={remember}
-          openRequested={reviewRequested} onOpenRequestHandled={() => setReviewRequested(false)} onRequestedSheetClosed={() => setNotice(null)} /> : failedLabel('After the trade')
-        : null}
-      {ready ? <TradeStrategyControl symbol={trade.symbol} tradeId={trade.id} scope={scope} strategies={ready.strategies} record={record}
-        check={checkSavedTradeStrategy(trade, entry.plans, record)} save={input => saveTradeDiscipline(db, input)} onSaved={remember} /> : null}
+      {checklist}{review}{strategy}
     </Card> : null}
 
     {newsLines.length > 0 ? <Card as="section" className="kairos-trade-page__part" aria-labelledby="kairos-trade-page-news">
@@ -206,7 +202,7 @@ export function TradePageScreen({ db = kairosDatabase, scope }: { readonly db?: 
         onSaved={() => changed('Trade updated. Your saved details are on this page.')} /> : null}
       <JournalDraftTradeActivation entry={entry} db={db} allowedSources={page.allowed} onOpened={next => changed(next)} />
       <JournalTradeDeleteControl entry={entry} db={db}
-        onDeleted={async deleted => { navigate(page.list, { state: { [TRADE_DELETED_STATE]: deleted } }); }} />
+        onDeleted={async deleted => { navigate(page.list, { replace: true, state: tradeDeletedState(deleted) }); }} />
     </Card>
   </section>;
 }

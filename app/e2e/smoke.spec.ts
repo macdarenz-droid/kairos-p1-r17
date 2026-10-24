@@ -472,7 +472,7 @@ test('(l) Forex: a EUR/USD trade in units, its picture asking only the Kairos se
   await dialog.getByRole('button', { name: 'Close' }).click();
 
   await card.getByRole('link', { name: 'View trade' }).click();
-  await expect(page).toHaveURL(/\/(journal|practice)\/trades\//);
+  await expect(page).toHaveURL(/\/journal\/trades\//);
   await page.getByRole('link', { name: 'See it on the market chart' }).click();
   await expect(page).toHaveURL(/\/analysis\?trade=/);
   await expect(page.getByRole('heading', { name: 'Your trade' })).toBeVisible();
@@ -529,7 +529,7 @@ test('(m) Stocks: an AAPL trade in shares, its picture without crypto candles, A
   await dialog.getByRole('button', { name: 'Close' }).click();
 
   await card.getByRole('link', { name: 'View trade' }).click();
-  await expect(page).toHaveURL(/\/(journal|practice)\/trades\//);
+  await expect(page).toHaveURL(/\/journal\/trades\//);
   await page.getByRole('link', { name: 'See it on the market chart' }).click();
   await expect(page).toHaveURL(/\/analysis\?trade=/);
   await expect(page.getByRole('heading', { name: 'Your trade' })).toBeVisible();
@@ -1718,7 +1718,7 @@ test('(ac) Forex candles: a EUR/USD trade and a practice gold trade drawn with O
 
   // View trade: the Analysis chart draws the pair from OANDA with the trade's entries and exits, read again every 30 seconds.
   await card.getByRole('link', { name: 'View trade' }).click();
-  await expect(page).toHaveURL(/\/(journal|practice)\/trades\//);
+  await expect(page).toHaveURL(/\/journal\/trades\//);
   await page.getByRole('link', { name: 'See it on the market chart' }).click();
   await expect(page).toHaveURL(/\/analysis\?trade=/);
   const chart = page.getByRole('region', { name: 'Market chart' });

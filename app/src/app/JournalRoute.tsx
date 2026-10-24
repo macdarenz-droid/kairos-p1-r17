@@ -14,7 +14,7 @@ import { TradeForm } from '../features/journal/TradeForm';
 import { Card, PageHeader, useToast } from '../design-system/primitives';
 import { CoachCard } from '../features/discipline/CoachCard';
 import { useJournalHistoryPages } from '../features/journal/useJournalHistoryPages';
-import { useArrivedNotice } from '../features/journal/TradePageScreen';
+import { useArrivedNotice } from '../features/journal/tradeAddress';
 
 interface JournalRouteProps {
   readonly db?: KairosDatabase;
@@ -109,7 +109,7 @@ function JournalPage({ db = kairosDatabase, now, arrivedNotice }: JournalRoutePr
         statusFilter={historyStatus}
         onStatusFilterChange={setHistoryStatus}
         onDisciplineSaved={() => setDisciplineRevision(value => value + 1)}
-        focusHeadingOnArrival={arrivedNotice !== undefined}
+        focusOnArrival={arrivedNotice !== undefined}
       />
     </section>
   );

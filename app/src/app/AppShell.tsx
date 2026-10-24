@@ -73,6 +73,11 @@ function useScreenTitleAndFocus(pathname: string, onTitle: (title: string) => vo
 }
 
 const SCROLL_PLACES_KEY = 'kairos.scroll-places.v1';
+/**
+ * A page that brings part of itself into view as it opens says so (the Journal's or Practice's list after a trade's
+ * page deleted a trade, D264), and the shell stops reaching for the page's place.
+ */
+export const SCROLL_CLAIMED_EVENT = 'kairos:scroll-claimed';
 /** D229: another tab saved (the event's owner is `data/database/transactions.ts`); app screens import it from here. */
 export { JOURNAL_CHANGED_EVENT };
 /** Places kept across a reload (sessionStorage, this tab only); the newest are kept. */
@@ -145,6 +150,7 @@ function useScrollPlaces(location: Location): void {
     const stop = () => {
       cancelAnimationFrame(frame);
       for (const name of stopEvents) window.removeEventListener(name, stop);
+      window.removeEventListener(SCROLL_CLAIMED_EVENT, stop);
     };
     // Kept for the whole second, not only until first reached: what loads above the place can still move it.
     const reach = () => {
@@ -153,6 +159,7 @@ function useScrollPlaces(location: Location): void {
       frame = requestAnimationFrame(reach);
     };
     for (const name of stopEvents) window.addEventListener(name, stop, { passive: true });
+    window.addEventListener(SCROLL_CLAIMED_EVENT, stop);
     frame = requestAnimationFrame(reach);
     return stop;
   }, [location.key, location.pathname]);
