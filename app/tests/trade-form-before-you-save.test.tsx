@@ -94,7 +94,7 @@ describe('T-057c "Before you save" in the form', () => {
     mount(db);
     planned();
     type('Planned quantity', '3');
-    await waitFor(() => expect(within(box()!).getAllByRole('listitem').map(item => item.textContent)).toEqual(['This size, 3, is more than twice your usual 1 for BTCUSDT.']));
+    await waitFor(() => expect(within(box()!).getAllByRole('listitem').map(item => item.textContent)).toEqual(['This size is more than twice your usual 1 for BTCUSDT.']));
     type(/^Symbol/, 'ETHUSDT');
     await waitFor(() => expect(box()).toBeNull());
     type('Planned quantity', '2');
@@ -149,8 +149,10 @@ describe('T-057c "Before you save" in the form', () => {
     expect(box()).toHaveTextContent('No stop is written for this trade.');
     expect(box()).toHaveTextContent('Kairos could not check your limits and news.');
     expect(await axeViolations(container)).toEqual([]);
-    // It fails again: focus stays on "Try again".
+    // It fails again: focus waits on the box while it reads (a busy button is disabled), then stays on "Try again".
+    act(() => { retry.focus(); });
     fireEvent.click(retry);
+    expect(box()).toHaveFocus();
     await waitFor(() => expect(screen.getByRole('button', { name: 'Try again' })).toHaveFocus());
     // It works: the failure line goes and focus moves to the reason.
     await db.open();

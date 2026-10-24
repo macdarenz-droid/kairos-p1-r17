@@ -91,16 +91,6 @@ export class SourceScopedTradeRepository {
       .limit(limit)
       .toArray();
   }
-  /** U12: the latest closed trades in scope, newest close first, through the [status+closedAt] index, at most `limit`. */
-  listRecentClosedByClosedAt(limit: number) {
-    return this.db.trades
-      .where('[status+closedAt]')
-      .between(['closed', ''], ['closed', '\uffff'])
-      .reverse()
-      .filter(trade => this.sources.has(trade.source))
-      .limit(limit)
-      .toArray();
-  }
   /** Closed trades with closedAt in [fromClosedAt, toClosedAt), oldest close first, through the [status+closedAt] index. null = no bound. No limit: this path serves period totals. */
   listClosedByClosedAtRange(fromClosedAt: string | null, toClosedAt: string | null) {
     return this.db.trades

@@ -40,7 +40,7 @@ describe('T-057c what "Before you save" names', () => {
       'Your last trade was a loss 12 minutes ago.',
       'No stop is written for this trade.',
       'Big news in 12 minutes: US CPI and 2 more.',
-      'This size, 3, is more than twice your usual 1 for BTCUSDT.',
+      'This size is more than twice your usual 1 for BTCUSDT.',
       "1 of your strategy's rules is broken.",
     ]);
     expect(texts(input({ brokenRules: 2 }))).toEqual(["2 of your strategy's rules are broken."]);
@@ -107,15 +107,19 @@ describe('T-057c the form draft as the box reads it', () => {
     previewBeforeYouSave(value, rows, 0, now, facts(limit), sizes).map(note => note.text);
 
   it('a draft is sized by its planned quantity, with the symbol as a save writes it', () => {
-    expect(kindsOf(draft({ symbol: ' btcusdt ', quantity: '3' }))).toEqual(['This size, 3, is more than twice your usual 1 for BTCUSDT.']);
+    // The words leave the typed size out, so they are not read out again on every digit.
+    expect(kindsOf(draft({ symbol: ' btcusdt ', quantity: '3' }))).toEqual(['This size is more than twice your usual 1 for BTCUSDT.']);
+    expect(kindsOf(draft({ quantity: '2' }))).toEqual([]);
     expect(kindsOf(draft({ quantity: 'two' }))).toEqual([]);
   });
 
   it('an open trade is sized by its entry rows, and counts today by its open time', () => {
     const open = draft({ status: 'open', openedAt: new Date(now).toISOString().slice(0, 16), quantity: '9' });
-    expect(kindsOf(open, [{ type: 'entry', quantity: '1' }, { type: 'entry', quantity: '1.5' }, { type: 'exit', quantity: '9' }])).toEqual(['This size, 2.5, is more than twice your usual 1 for BTCUSDT.']);
+    // Both entries count (1 + 1.5 is more than twice 1); exits never do (1 + 0.5 stays under, whatever the exit).
+    expect(kindsOf(open, [{ type: 'entry', quantity: '1' }, { type: 'entry', quantity: '1.5' }, { type: 'exit', quantity: '9' }])).toEqual(['This size is more than twice your usual 1 for BTCUSDT.']);
+    expect(kindsOf(open, [{ type: 'entry', quantity: '1' }, { type: 'entry', quantity: '0.5' }, { type: 'exit', quantity: '9' }])).toEqual([]);
     expect(kindsOf(open, [{ type: 'entry', quantity: '1' }, { type: 'entry', quantity: '' }])).toEqual([]);
-    expect(kindsOf({ ...open, openedAt: '' }, [], { today: 1, limit: 1, timeZone: 'UTC' })).toEqual(['This size, 9, is more than twice your usual 1 for BTCUSDT.']);
+    expect(kindsOf({ ...open, openedAt: '' }, [], { today: 1, limit: 1, timeZone: 'UTC' })).toEqual(['This size is more than twice your usual 1 for BTCUSDT.']);
   });
 });
 
@@ -154,6 +158,10 @@ describe('T-057c the reads', () => {
     for (let index = 0; index < 22; index += 1) await saveManualTrade(db, closedTrade('XRPUSDT', minutesFromNow(-100 + index), '101', String(index + 1)));
     const xrp = await loadRecentSizes(db, { scope: 'real', symbol: 'XRPUSDT' });
     expect(xrp.ok && xrp.sizes).toEqual(Array.from({ length: 20 }, (_, index) => String(22 - index)));
+
+    // Only a close of the last 30 minutes is read: an older one is never named, so it is not looked for.
+    const afterWindow = await loadBeforeYouSave(db, { scope: 'real', now: minutesFromNow(41) });
+    expect(afterWindow.ok && afterWindow.facts.lastClosed).toBeNull();
 
     const practice = await loadBeforeYouSave(db, { scope: 'practice', now });
     if (!practice.ok) throw new Error('read failed');

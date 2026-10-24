@@ -32,6 +32,7 @@ const MINUTE_MS = 60_000;
 export interface BeforeYouSaveFacts {
   /** Real trades with a daily limit and a saved time zone: how many were opened today. */
   readonly tradeLimit: Readonly<{ today: number; limit: number; timeZone: string }> | null;
+  /** The latest close of the last 30 minutes (or one dated later); null when there is none. */
   readonly lastClosed: Readonly<{ closedAt: string; outcome: VisualPnlOutcome }> | null;
   /** Saved big news starting from the read to a day ahead, in time order; the projection names what starts within BEFORE_YOU_SAVE_MINUTES of its now. */
   readonly upcomingNews: readonly Readonly<{ name: string; startsAt: string }>[];
@@ -120,7 +121,8 @@ export function projectBeforeYouSave(input: BeforeYouSaveInput): readonly Before
   const usual = input.size === null || input.symbol === '' || input.recentSizes === null ? null : projectUsualSize(input.recentSizes);
   const twice = usual === null ? null : decimalMultiply(usual, '2');
   if (input.size !== null && usual !== null && twice?.ok && decimalCompare(input.size, twice.value) === 1) {
-    notes.push({ kind: 'bigger-size', text: `This size, ${input.size}, is more than twice your usual ${usual} for ${input.symbol}.` });
+    // The typed size stays out of the words, so the line is not read out again on every digit.
+    notes.push({ kind: 'bigger-size', text: `This size is more than twice your usual ${usual} for ${input.symbol}.` });
   }
 
   if (input.brokenRules > 0) {
@@ -173,19 +175,20 @@ export function previewBeforeYouSave(
 
 export type LoadBeforeYouSaveResult = Readonly<{ ok: true; facts: BeforeYouSaveFacts }> | Readonly<{ ok: false }>;
 
-/** The reads behind "Before you save" for one scope: the daily trade limit (real trades), the latest closed trade and saved big news. */
+/** The reads behind "Before you save" for one scope: the daily trade limit (real trades), the latest close of the last 30 minutes and saved big news. */
 export async function loadBeforeYouSave(db: KairosDatabase, options: Readonly<{ scope: JournalHistoryScope; now: string }>): Promise<LoadBeforeYouSaveResult> {
   try {
     const repositories = createKairosRepositories(db);
     const nowMs = Date.parse(options.now);
     const until = new Date(nowMs + BEFORE_YOU_SAVE_NEWS_READ_AHEAD_MINUTES * MINUTE_MS).toISOString();
     const [latest, events, goals] = await Promise.all([
-      repositories.trades.scopedBySource(JOURNAL_HISTORY_SOURCES[options.scope]).listRecentClosedByClosedAt(1),
+      // Only a close in the last 30 minutes can be named, so only those are read (oldest first).
+      repositories.trades.scopedBySource(JOURNAL_HISTORY_SOURCES[options.scope]).listClosedByClosedAtRange(new Date(nowMs - BEFORE_YOU_SAVE_MINUTES * MINUTE_MS).toISOString(), null),
       repositories.economicEvents.listStartingBetween(new Date(nowMs).toISOString(), until),
       // Practice has no goals (D242).
       options.scope === 'real' ? loadGoalsProgress(db, options.now) : Promise.resolve(null),
     ]);
-    const [last] = await hydrateJournalHistoryEntries(repositories, latest);
+    const [last] = await hydrateJournalHistoryEntries(repositories, latest.slice(-1));
     const progress = goals?.kind === 'ready' && goals.progress.kind === 'ready' ? goals.progress : null;
     const tradeLimit = progress !== null && progress.maxTradesPerDay.kind === 'limit'
       ? Object.freeze({ today: progress.maxTradesPerDay.today, limit: progress.maxTradesPerDay.limit, timeZone: progress.timeZone })

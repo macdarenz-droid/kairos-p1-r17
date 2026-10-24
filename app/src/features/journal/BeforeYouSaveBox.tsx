@@ -27,12 +27,17 @@ interface BeforeYouSaveBoxProps {
 export function BeforeYouSaveBox({ idPrefix, notes, readsFailed, retrying, onRetry, reason, onReasonChange, disabled, afterRef }: BeforeYouSaveBoxProps) {
   const reasonRef = useRef<HTMLTextAreaElement>(null);
   const retryRef = useRef<HTMLButtonElement>(null);
-  // A "Try again" still on screen means it failed again; otherwise the reason field, or Save when the box closed.
-  const retry = () => { void onRetry().then(() => (retryRef.current ?? reasonRef.current ?? afterRef.current)?.focus()); };
+  const boxRef = useRef<HTMLDivElement>(null);
+  // A busy "Try again" is disabled, and a browser drops focus from a disabled button to the page: focus waits on the box.
+  // Then a "Try again" still on screen means it failed again; otherwise the reason field, or Save when the box closed.
+  const retry = () => {
+    boxRef.current?.focus({ preventScroll: true });
+    void onRetry().then(() => (retryRef.current ?? reasonRef.current ?? afterRef.current)?.focus());
+  };
 
   const shown = notes.length > 0 || readsFailed;
   const titleId = `${idPrefix}-before-save-title`;
-  return <div className={shown ? 'kairos-trade-form__section kairos-trade-form__before-save' : undefined} role={shown ? 'region' : undefined} aria-labelledby={shown ? titleId : undefined}>
+  return <div ref={boxRef} tabIndex={shown ? -1 : undefined} className={shown ? 'kairos-trade-form__section kairos-trade-form__before-save' : undefined} role={shown ? 'region' : undefined} aria-labelledby={shown ? titleId : undefined}>
     {shown ? <h2 id={titleId} className="kairos-trade-form__before-save-title">Before you save</h2> : null}
     <div aria-live="polite">
       {notes.length > 0 ? <ul className="kairos-trade-form__before-save-list">{notes.map(note => <li key={note.kind}>{note.text}</li>)}</ul> : null}
