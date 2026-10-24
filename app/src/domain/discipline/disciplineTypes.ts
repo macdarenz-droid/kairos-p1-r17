@@ -128,8 +128,11 @@ export interface TradeStrategyMark {
   readonly linkedAt: string;
 }
 
-/** U12 (D242): what the "Before you save" box can name, in its order. U13 adds the daily loss limit. */
-export const BEFORE_YOU_SAVE_KINDS = Object.freeze(['trade-limit', 'recent-loss', 'no-stop', 'big-news', 'bigger-size', 'rule-broken'] as const);
+/**
+ * U12 (D242): what the "Before you save" box can name, in its order. `loss-limit` is kept for U13's loss limits (D252):
+ * it is accepted from schema v14 and backup format 12 on, so they need no new version.
+ */
+export const BEFORE_YOU_SAVE_KINDS = Object.freeze(['trade-limit', 'loss-limit', 'recent-loss', 'no-stop', 'big-news', 'bigger-size', 'rule-broken'] as const);
 export type BeforeYouSaveKind = (typeof BEFORE_YOU_SAVE_KINDS)[number];
 /** U12 (D243): at most this many characters in "Why save anyway?". */
 export const BEFORE_SAVE_REASON_MAX_LENGTH = 200;

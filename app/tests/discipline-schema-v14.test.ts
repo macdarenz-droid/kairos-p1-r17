@@ -28,12 +28,12 @@ const record: TradeDisciplineRecord = {
 const noted: TradeDisciplineRecord = { ...record, beforeSave: { notes: ['trade-limit', 'no-stop'], reason: 'A clean setup.', at } };
 
 describe('T-057a what "Before you save" said, checked once', () => {
-  it('keeps 1 to 6 known kinds once each, a trimmed reason of up to 200 characters or none, and a canonical time', () => {
+  it('keeps 1 to 7 known kinds once each (loss-limit kept for U13), a trimmed reason of up to 200 characters or none, and a canonical time', () => {
     expect(isTradeBeforeSaveNote(noted.beforeSave)).toBe(true);
-    expect(isTradeBeforeSaveNote({ notes: ['trade-limit', 'recent-loss', 'no-stop', 'big-news', 'bigger-size', 'rule-broken'], reason: null, at })).toBe(true);
+    expect(isTradeBeforeSaveNote({ notes: ['trade-limit', 'loss-limit', 'recent-loss', 'no-stop', 'big-news', 'bigger-size', 'rule-broken'], reason: null, at })).toBe(true);
     expect(isTradeBeforeSaveNote({ notes: ['no-stop'], reason: 'x'.repeat(200), at })).toBe(true);
     for (const bad of [
-      { notes: [], reason: null, at }, { notes: ['no-stop', 'no-stop'], reason: null, at }, { notes: ['loss-limit'], reason: null, at },
+      { notes: [], reason: null, at }, { notes: ['no-stop', 'no-stop'], reason: null, at }, { notes: ['week-limit'], reason: null, at },
       { notes: ['no-stop'], reason: '', at }, { notes: ['no-stop'], reason: ' padded', at }, { notes: ['no-stop'], reason: 'x'.repeat(201), at },
       { notes: ['no-stop'], reason: null, at: '2026-10-24' }, { notes: 'no-stop', reason: null, at },
     ]) expect(isTradeBeforeSaveNote(bad), JSON.stringify(bad)).toBe(false);
