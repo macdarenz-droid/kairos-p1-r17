@@ -50,7 +50,7 @@ describe('T-057a schema v14', () => {
     await v13.table('tradeDiscipline').put(record);
     v13.close();
     const db = createKairosDatabase(name); opened.push(db);
-    expect(await openKairosDatabase(db)).toEqual({ state: 'ready', schemaVersion: 14 });
+    expect(await openKairosDatabase(db)).toEqual({ state: 'ready', schemaVersion: 15 });
     expect(KAIROS_DATABASE_MIGRATIONS[13]).toEqual({ version: 14, stores: KAIROS_V14_STORES });
     expect(await db.tradeDiscipline.toArray()).toEqual([record]);
     await db.tradeDiscipline.put(noted);
@@ -68,7 +68,7 @@ describe('T-057a backup format 12', () => {
     await source.tradeDiscipline.put(noted);
     const exported = await exportKairosBackup(source, new Date(at));
     if (!exported.ok) throw new Error('export failed');
-    expect(parseKairosBackup(exported.file.contents)).toMatchObject({ formatVersion: 12, databaseSchemaVersion: 14, recordCounts: { trades: 1, tradeDiscipline: 1 } });
+    expect(parseKairosBackup(exported.file.contents)).toMatchObject({ formatVersion: 13, databaseSchemaVersion: 15, recordCounts: { trades: 1, tradeDiscipline: 1 } });
     const target = await current('target');
     const prepared = await prepareBackupRestore(target, exported.file.contents);
     if (!prepared.ok) throw new Error('prepare failed');
@@ -103,7 +103,7 @@ describe('T-057a backup format 12', () => {
       recordCounts: { metadata: 0, trades: 1, tradePlans: 0, tradeExecutions: 0, tradeFees: 0, savedAnalyses: 0, savedTimeAssistedSnapshots: 0, tradeDiscipline: 1, exchangeRates: 1, economicEvents: 1, total: 4 },
       payload: { metadata: [], trades: [trade], tradePlans: [], tradeExecutions: [], tradeFees: [], savedAnalyses: [], savedTimeAssistedSnapshots: [], tradeDiscipline: [record], exchangeRates: [rate], economicEvents: [news] },
     });
-    expect(parseKairosBackup(format11)).toMatchObject({ formatVersion: 12, databaseSchemaVersion: 14, recordCounts: { trades: 1, tradeDiscipline: 1, exchangeRates: 1, economicEvents: 1, total: 4 } });
+    expect(parseKairosBackup(format11)).toMatchObject({ formatVersion: 13, databaseSchemaVersion: 15, recordCounts: { trades: 1, tradeDiscipline: 1, exchangeRates: 1, economicEvents: 1, total: 4 } });
     const db = await current('format11');
     const prepared = await prepareBackupRestore(db, format11);
     if (!prepared.ok) throw new Error('prepare failed');

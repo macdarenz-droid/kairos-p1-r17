@@ -6,7 +6,8 @@ import type { EconomicEventRecord } from '../../domain/economic-calendar/economi
 import type { DatabaseMetadataRecord, DatabaseTradeExecutionRecord, DatabaseTradeFeeRecord, DatabaseTradePlanRecord, DatabaseTradeRecord } from '../database/schema';
 
 export const KAIROS_BACKUP_FORMAT_NAME = 'kairos-full-backup' as const;
-export const KAIROS_BACKUP_FORMAT_VERSION = 12 as const;
+export const KAIROS_BACKUP_FORMAT_VERSION = 13 as const;
+export const KAIROS_BEFORE_SAVE_BACKUP_FORMAT_VERSION = 12 as const;
 export const KAIROS_TRADE_FIELDS_BACKUP_FORMAT_VERSION = 11 as const;
 export const KAIROS_NEWS_BACKUP_FORMAT_VERSION = 10 as const;
 export const KAIROS_EXCHANGE_RATE_BACKUP_FORMAT_VERSION = 9 as const;
@@ -65,5 +66,11 @@ export interface KairosBackupEnvelopeV11 { readonly formatName:typeof KAIROS_BAC
 /** V12 keeps the V10 payload; a discipline record may now carry what "Before you save" named (U12, D243). It describes schema 14. */
 export interface KairosBackupEnvelopeV12 { readonly formatName:typeof KAIROS_BACKUP_FORMAT_NAME; readonly formatVersion:12; readonly appVersion:string; readonly buildId:string; readonly exportedAt:string; readonly databaseSchemaVersion:14; readonly recordCounts:KairosBackupRecordCountsV10; readonly payload:KairosBackupPayloadV10; }
 
-export type KairosBackupEnvelope = KairosBackupEnvelopeV1|KairosBackupEnvelopeV2|KairosBackupEnvelopeV3|KairosBackupEnvelopeV4|KairosBackupEnvelopeV5|KairosBackupEnvelopeV6|KairosBackupEnvelopeV7|KairosBackupEnvelopeV8|KairosBackupEnvelopeV9|KairosBackupEnvelopeV10|KairosBackupEnvelopeV11|KairosBackupEnvelopeV12;
-export type KairosCurrentBackupEnvelope = KairosBackupEnvelopeV12;
+/**
+ * V13 keeps the V10 payload; a trade may now carry its note (U15, D265). It describes schema 15. The Journal's order
+ * (`journalAt`, D259) is never in a backup: restore and import stamp it again.
+ */
+export interface KairosBackupEnvelopeV13 { readonly formatName:typeof KAIROS_BACKUP_FORMAT_NAME; readonly formatVersion:13; readonly appVersion:string; readonly buildId:string; readonly exportedAt:string; readonly databaseSchemaVersion:15; readonly recordCounts:KairosBackupRecordCountsV10; readonly payload:KairosBackupPayloadV10; }
+
+export type KairosBackupEnvelope = KairosBackupEnvelopeV1|KairosBackupEnvelopeV2|KairosBackupEnvelopeV3|KairosBackupEnvelopeV4|KairosBackupEnvelopeV5|KairosBackupEnvelopeV6|KairosBackupEnvelopeV7|KairosBackupEnvelopeV8|KairosBackupEnvelopeV9|KairosBackupEnvelopeV10|KairosBackupEnvelopeV11|KairosBackupEnvelopeV12|KairosBackupEnvelopeV13;
+export type KairosCurrentBackupEnvelope = KairosBackupEnvelopeV13;

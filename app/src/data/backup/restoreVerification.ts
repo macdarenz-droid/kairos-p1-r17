@@ -1,6 +1,7 @@
 import { closeKairosDatabase, openKairosDatabase } from '../database/databaseLifecycle';
 import type { KairosDatabase } from '../database/KairosDatabase';
 import { assertKairosDatabaseIntegrity, type DatabaseIntegrityReport } from '../database/integrity';
+import { tradeWithoutJournalOrder } from '../database/schema';
 import { createKairosRepositories, isKairosDeviceScopedMetadataKey } from '../repositories';
 import type { KairosPreparedRestoreWithRecovery, KairosRecoveryCopy } from './restorePreflight';
 import { replaceKairosDatabaseFromPreparedRestore } from './restoreReplacement';
@@ -70,7 +71,8 @@ export async function restoreAndVerifyKairosDatabase(
   const expected = prepared.incoming.payload;
   const matches =
     normalizedJson(backupMetadata, 'key') === normalizedJson(expected.metadata, 'key') &&
-    normalizedJson(trades, 'id') === normalizedJson(expected.trades, 'id') &&
+    // The Journal's order is derived and never in a backup (D259): the trades are compared as the trader entered them.
+    normalizedJson(trades.map(tradeWithoutJournalOrder), 'id') === normalizedJson(expected.trades, 'id') &&
     normalizedJson(tradePlans, 'id') === normalizedJson(expected.tradePlans, 'id') &&
     normalizedJson(tradeExecutions, 'id') === normalizedJson(expected.tradeExecutions, 'id') &&
     normalizedJson(tradeFees, 'id') === normalizedJson(expected.tradeFees, 'id') &&

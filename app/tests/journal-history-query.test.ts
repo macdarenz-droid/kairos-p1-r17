@@ -41,7 +41,7 @@ describe('P12.1 journal history query foundation', () => {
     db.close();
   });
 
-  it('uses indexed updatedAt chronology and bounds trade selection before child evidence loading', async () => {
+  it('uses the indexed Journal order (when it happened, not the last edit, D259) and bounds trade selection before child evidence loading', async () => {
     const db = createKairosDatabase(dbName());
     await openKairosDatabase(db);
     const repos = createKairosRepositories(db);
@@ -52,7 +52,8 @@ describe('P12.1 journal history query foundation', () => {
     await repos.trades.put({ id: second, symbol: 'MID', marketType: 'stock', side: 'long', status: 'draft', source: 'manual', openedAt: null, closedAt: null, createdAt: '2026-09-01T01:00:00.000Z', updatedAt: '2026-09-02T02:00:00.000Z' });
     await repos.trades.put({ id: third, symbol: 'NEW', marketType: 'stock', side: 'long', status: 'draft', source: 'manual', openedAt: null, closedAt: null, createdAt: '2026-08-01T01:00:00.000Z', updatedAt: '2026-09-02T03:00:00.000Z' });
     const history = await listJournalHistory(db, { limit: 2 });
-    expect(history.map((entry) => entry.trade.id)).toEqual([third, second]);
+    // Planned trades sort by when they were planned (createdAt); the later edits of `third` and `second` never move them.
+    expect(history.map((entry) => entry.trade.id)).toEqual([first, second]);
     db.close();
   });
 

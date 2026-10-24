@@ -2,7 +2,7 @@ import type { KairosDatabase } from '../../data/database';
 import { createKairosRepositories } from '../../data/repositories';
 import { calculateSavedTradeMetrics, type TradeMetricsResult } from '../../domain/calculations';
 import { projectVisualPnlOutcome, type VisualPnlOutcomeProjection } from '../visual-pnl';
-import type { TradeExecutionRecord, TradeFeeRecord, TradePlanRecord, TradeRecord, TradeSource, TradeStatus, TradeId } from '../../domain/trades';
+import { tradeJournalAt, type TradeExecutionRecord, type TradeFeeRecord, type TradePlanRecord, type TradeRecord, type TradeSource, type TradeStatus, type TradeId } from '../../domain/trades';
 
 export interface JournalHistoryEntry {
   readonly trade: TradeRecord;
@@ -41,9 +41,8 @@ export async function listJournalHistory(
 ): Promise<readonly JournalHistoryEntry[]> {
   const repositories = createKairosRepositories(db);
   const scoped = repositories.trades.scopedBySource(JOURNAL_HISTORY_SOURCES[options.scope ?? DEFAULT_JOURNAL_HISTORY_SCOPE]);
-  const trades = options.status === undefined
-    ? await scoped.listRecentByUpdatedAt(normalizeHistoryLimit(options.limit))
-    : await scoped.listRecentByStatusAndUpdatedAt(options.status, normalizeHistoryLimit(options.limit));
+  // The Journal's order (D259): when each trade happened, latest first.
+  const trades = await scoped.listPageByJournalAt(options.status ?? null, null, normalizeHistoryLimit(options.limit));
 
   const entries = await Promise.all(trades.map(trade => hydrateJournalHistoryEntry(repositories, trade)));
 
@@ -129,10 +128,10 @@ export async function listJournalOpenTrades(
 }
 
 export const JOURNAL_HISTORY_PAGE_SIZE = DEFAULT_JOURNAL_HISTORY_LIMIT;
-export interface JournalHistoryCursor { readonly updatedAt: string; readonly id: TradeId; }
+export interface JournalHistoryCursor { readonly journalAt: string; readonly id: TradeId; }
 export interface JournalHistoryPage { readonly entries: readonly JournalHistoryEntry[]; readonly nextCursor: JournalHistoryCursor | null; }
 
-/** One page of the history list, newest edit first, strictly before `before`; `nextCursor` is null on the last page. */
+/** One page of the history list in the Journal's order (D259), strictly before `before`; `nextCursor` is null on the last page. */
 export async function listJournalHistoryPage(
   db: KairosDatabase,
   options: { readonly scope?: JournalHistoryScope; readonly status?: TradeStatus; readonly before?: JournalHistoryCursor | null } = {},
@@ -141,10 +140,10 @@ export async function listJournalHistoryPage(
   return db.transaction('r', ['trades', 'tradePlans', 'tradeExecutions', 'tradeFees'], async () => {
     const rows = await repositories.trades
       .scopedBySource(JOURNAL_HISTORY_SOURCES[options.scope ?? DEFAULT_JOURNAL_HISTORY_SCOPE])
-      .listPageByUpdatedAt(options.status ?? null, options.before ?? null, JOURNAL_HISTORY_PAGE_SIZE + 1);
+      .listPageByJournalAt(options.status ?? null, options.before ?? null, JOURNAL_HISTORY_PAGE_SIZE + 1);
     const kept = rows.slice(0, JOURNAL_HISTORY_PAGE_SIZE);
     const last = kept[kept.length - 1];
-    const nextCursor = rows.length > JOURNAL_HISTORY_PAGE_SIZE && last ? Object.freeze({ updatedAt: last.updatedAt, id: last.id }) : null;
+    const nextCursor = rows.length > JOURNAL_HISTORY_PAGE_SIZE && last ? Object.freeze({ journalAt: tradeJournalAt(last), id: last.id }) : null;
     return Object.freeze({ entries: await hydrateJournalHistoryEntries(repositories, kept), nextCursor });
   });
 }

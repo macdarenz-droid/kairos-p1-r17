@@ -19,7 +19,7 @@ describe('P29.1 practice trade save command', () => {
     const result = await savePracticeTrade(db, input, { now, createId: ids() });
     expect(result).toEqual({ ok: true, tradeId: 'p29-id-1', source: 'paper', persisted: { plans: 1, executions: 2, fees: 1 } });
     const trade = await db.trades.get('p29-id-1' as TradeId);
-    expect(trade).toEqual({ id: 'p29-id-1', symbol: 'ETHUSDT', marketType: 'crypto', side: 'short', status: 'closed', source: 'paper', grossPnlCurrency: 'USDT', openedAt: '2026-09-18T09:00:00.000Z', closedAt: '2026-09-18T10:00:00.000Z', createdAt: now(), updatedAt: now() });
+    expect(trade).toEqual({ id: 'p29-id-1', symbol: 'ETHUSDT', marketType: 'crypto', side: 'short', status: 'closed', source: 'paper', grossPnlCurrency: 'USDT', openedAt: '2026-09-18T09:00:00.000Z', closedAt: '2026-09-18T10:00:00.000Z', createdAt: now(), updatedAt: now(), journalAt: '2026-09-18T09:00:00.000Z' });
     expect((await db.tradePlans.toArray()).map(plan => plan.tradeId)).toEqual(['p29-id-1']);
     expect((await db.tradeExecutions.toArray()).map(execution => execution.type)).toEqual(['entry', 'exit']);
     expect((await db.tradeFees.toArray()).map(fee => fee.currency)).toEqual(['USDT']);

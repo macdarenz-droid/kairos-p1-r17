@@ -1,6 +1,6 @@
 import type { KairosDatabase } from '../database/KairosDatabase';
 import type { DatabaseTradeExecutionRecord, DatabaseTradeFeeRecord, DatabaseTradePlanRecord, DatabaseTradeRecord } from '../database/schema';
-import type { TradeExecutionId, TradeFeeId, TradeId, TradePlanId, TradeSource, TradeStatus } from '../../domain/trades';
+import type { TradeExecutionId, TradeFeeId, TradeId, TradePlanId, TradeRecord, TradeSource, TradeStatus } from '../../domain/trades';
 
 export class TradeRepository {
   constructor(private readonly db: KairosDatabase) {}
@@ -15,19 +15,12 @@ export class TradeRepository {
     return this.db.trades.where('updatedAt').aboveOrEqual(instant).filter(trade => Date.parse(trade.createdAt) > after).count();
   }
   listRecentByUpdatedAt(limit: number) { return this.db.trades.orderBy('updatedAt').reverse().limit(limit).toArray(); }
-  listRecentByStatusAndUpdatedAt(status: TradeStatus, limit: number) {
-    return this.db.trades
-      .where('[status+updatedAt]')
-      .between([status, ''], [status, '\uffff'])
-      .reverse()
-      .limit(limit)
-      .toArray();
-  }
   /** P29.2: the same indexed newest-first bounded paths, restricted to the given trade sources while the cursor walks the index. */
   scopedBySource(sources: readonly TradeSource[]) { return new SourceScopedTradeRepository(this.db, new Set(sources)); }
-  put(record: DatabaseTradeRecord) { return this.db.trades.put(record).then(() => undefined); }
+  /** The database stamps the Journal's order on every write (D259, `KairosDatabase`). */
+  put(record: TradeRecord) { return this.db.trades.put(record).then(() => undefined); }
   delete(id: TradeId) { return this.db.trades.delete(id); }
-  async replaceAll(records: readonly DatabaseTradeRecord[]) { await this.db.trades.clear(); if (records.length) await this.db.trades.bulkPut([...records]); }
+  async replaceAll(records: readonly TradeRecord[]) { await this.db.trades.clear(); if (records.length) await this.db.trades.bulkPut([...records]); }
 }
 /** Read-only source-scoped view over the trades store: index order and the bound are unchanged, records outside the scope are skipped by the cursor. */
 /** Up to this many trades of one symbol are read whole; past it, the newest closes are walked instead (measured in Chromium, U12). */
@@ -36,28 +29,13 @@ const SYMBOL_READ_WHOLE_MAX = 500;
 export class SourceScopedTradeRepository {
   constructor(private readonly db: KairosDatabase, private readonly sources: ReadonlySet<TradeSource>) {}
   listRecentByUpdatedAt(limit: number) { return this.db.trades.orderBy('updatedAt').reverse().filter(trade => this.sources.has(trade.source)).limit(limit).toArray(); }
-  listRecentByStatusAndUpdatedAt(status: TradeStatus, limit: number) {
-    return this.db.trades
-      .where('[status+updatedAt]')
-      .between([status, ''], [status, '\uffff'])
-      .reverse()
-      .filter(trade => this.sources.has(trade.source))
-      .limit(limit)
-      .toArray();
-  }
   /**
-   * One page, newest edit first, strictly older than the cursor (updatedAt, then id). IndexedDB orders
-   * equal index keys by primary key and reverse() walks ids high to low, so "older" within the same
-   * updatedAt means a smaller id. No new index is needed.
+   * U15 (D259): one page in the Journal's order, latest first (when the trade was opened, else planned), strictly before
+   * the cursor (journalAt, then id), through the `[journalAt+id]` index. A status, when given, is tested while walking.
    */
-  listPageByUpdatedAt(status: TradeStatus | null, before: { readonly updatedAt: string; readonly id: TradeId } | null, limit: number) {
-    const start = status === null
-      ? before === null ? this.db.trades.orderBy('updatedAt') : this.db.trades.where('updatedAt').belowOrEqual(before.updatedAt)
-      : this.db.trades.where('[status+updatedAt]').between([status, ''], [status, before?.updatedAt ?? '\uffff'], true, true);
-    const isOlder = (trade: DatabaseTradeRecord) => before === null
-      || trade.updatedAt < before.updatedAt
-      || (trade.updatedAt === before.updatedAt && trade.id < before.id);
-    return start.reverse().filter(trade => this.sources.has(trade.source) && isOlder(trade)).limit(limit).toArray();
+  listPageByJournalAt(status: TradeStatus | null, before: { readonly journalAt: string; readonly id: TradeId } | null, limit: number) {
+    const start = before === null ? this.db.trades.orderBy('[journalAt+id]') : this.db.trades.where('[journalAt+id]').below([before.journalAt, before.id]);
+    return start.reverse().filter(trade => this.sources.has(trade.source) && (status === null || trade.status === status)).limit(limit).toArray();
   }
   /** Every trade of one status in scope, newest edit first, through the [status+updatedAt] index. No limit. */
   listAllByStatus(status: TradeStatus) {

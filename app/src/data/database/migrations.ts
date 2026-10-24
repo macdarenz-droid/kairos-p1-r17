@@ -1,7 +1,8 @@
 import type Dexie from 'dexie';
 import type { Transaction } from 'dexie';
-import { KAIROS_DB_SCHEMA_VERSION, KAIROS_V1_STORES, KAIROS_V2_STORES, KAIROS_V3_STORES, KAIROS_V4_STORES, KAIROS_V5_STORES, KAIROS_V6_STORES, KAIROS_V7_STORES, KAIROS_V8_STORES, KAIROS_V9_STORES, KAIROS_V10_STORES, KAIROS_V11_STORES, KAIROS_V12_STORES, KAIROS_V13_STORES, KAIROS_V14_STORES } from './schema';
+import { KAIROS_DB_SCHEMA_VERSION, KAIROS_V1_STORES, KAIROS_V2_STORES, KAIROS_V3_STORES, KAIROS_V4_STORES, KAIROS_V5_STORES, KAIROS_V6_STORES, KAIROS_V7_STORES, KAIROS_V8_STORES, KAIROS_V9_STORES, KAIROS_V10_STORES, KAIROS_V11_STORES, KAIROS_V12_STORES, KAIROS_V13_STORES, KAIROS_V14_STORES, KAIROS_V15_STORES } from './schema';
 import { isLegacyTradeDisciplineRecordShape, upgradeLegacyTradeDisciplineRecord } from '../../domain/discipline';
+import { tradeJournalAt, type TradeRecord } from '../../domain/trades';
 
 export type KairosStoreSchema = Readonly<Record<string, string | null>>;
 export type KairosMigrationUpgrade = (transaction: Transaction) => void | PromiseLike<unknown>;
@@ -39,8 +40,16 @@ const KAIROS_V12_MIGRATION: KairosMigrationDefinition = Object.freeze({ version:
 const KAIROS_V13_MIGRATION: KairosMigrationDefinition = Object.freeze({ version: 13, stores: KAIROS_V13_STORES });
 /** V14 changes no store: a discipline record may carry an optional "Before you save" note (U12, D243), so nothing is converted. */
 const KAIROS_V14_MIGRATION: KairosMigrationDefinition = Object.freeze({ version: 14, stores: KAIROS_V14_STORES });
+/** V15 indexes the Journal's order (U15, D259): every saved trade gets `journalAt`, when it was opened, else planned. */
+const KAIROS_V15_MIGRATION: KairosMigrationDefinition = Object.freeze({
+  version: 15,
+  stores: KAIROS_V15_STORES,
+  upgrade: (transaction: Transaction) => transaction.table('trades').toCollection().modify((record: TradeRecord & { journalAt?: string }) => {
+    record.journalAt = tradeJournalAt(record);
+  }),
+});
 
-export const KAIROS_DATABASE_MIGRATIONS: readonly KairosMigrationDefinition[] = Object.freeze([KAIROS_V1_MIGRATION, KAIROS_V2_MIGRATION, KAIROS_V3_MIGRATION, KAIROS_V4_MIGRATION, KAIROS_V5_MIGRATION, KAIROS_V6_MIGRATION, KAIROS_V7_MIGRATION, KAIROS_V8_MIGRATION, KAIROS_V9_MIGRATION, KAIROS_V10_MIGRATION, KAIROS_V11_MIGRATION, KAIROS_V12_MIGRATION, KAIROS_V13_MIGRATION, KAIROS_V14_MIGRATION]);
+export const KAIROS_DATABASE_MIGRATIONS: readonly KairosMigrationDefinition[] = Object.freeze([KAIROS_V1_MIGRATION, KAIROS_V2_MIGRATION, KAIROS_V3_MIGRATION, KAIROS_V4_MIGRATION, KAIROS_V5_MIGRATION, KAIROS_V6_MIGRATION, KAIROS_V7_MIGRATION, KAIROS_V8_MIGRATION, KAIROS_V9_MIGRATION, KAIROS_V10_MIGRATION, KAIROS_V11_MIGRATION, KAIROS_V12_MIGRATION, KAIROS_V13_MIGRATION, KAIROS_V14_MIGRATION, KAIROS_V15_MIGRATION]);
 
 export function validateKairosMigrationSequence(migrations: readonly KairosMigrationDefinition[], expectedCurrentVersion: number = KAIROS_DB_SCHEMA_VERSION): void {
   if (migrations.length === 0) throw new Error('Kairos database migration registry must contain schema version 1.');

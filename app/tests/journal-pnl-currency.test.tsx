@@ -36,13 +36,16 @@ it.each([undefined, null, '', '   '])('keeps unknown currency %s unknown without
 });
 it('does not subtract mismatched or mixed-currency fees or infer a conversion', async () => {
   expect((await start({ grossPnlCurrency: 'USD' })).metrics).toMatchObject({ grossPnl: '40', netPnl: null });
-  await saveManualTrade(db, { ...input, grossPnlCurrency: 'USDT', fees: [{ amount: '1', currency: 'USD' }, { amount: '1', currency: 'USDT' }] });
-  expect((await listJournalHistory(db))[0].metricsError).toBe('mixed-fee-currency');
+  const mixed = await saveManualTrade(db, { ...input, grossPnlCurrency: 'USDT', fees: [{ amount: '1', currency: 'USD' }, { amount: '1', currency: 'USDT' }] });
+  if (!mixed.ok) throw new Error('save');
+  // Both trades opened at the same moment (D259 ties them by id): read this one by its id.
+  expect((await listJournalHistory(db)).find(entry => entry.trade.id === mixed.tradeId)?.metricsError).toBe('mixed-fee-currency');
 });
 it('labels zero-fee results with known currency and preserves legacy unitless results', async () => {
   expect((await start({ grossPnlCurrency: 'AUD', fees: [] })).metrics).toMatchObject({ netPnl: '40', netPnlCurrency: 'AUD' });
-  await saveManualTrade(db, { ...input, fees: [] });
-  expect((await listJournalHistory(db))[0].metrics).toMatchObject({ netPnl: '40', netPnlCurrency: null });
+  const legacy = await saveManualTrade(db, { ...input, fees: [] });
+  if (!legacy.ok) throw new Error('save');
+  expect((await listJournalHistory(db)).find(entry => entry.trade.id === legacy.tradeId)?.metrics).toMatchObject({ netPnl: '40', netPnlCurrency: null });
 });
 it('adds currency once to an existing open trade without new fills, rejects a same-millisecond stale update and preserves all facts', async () => {
   const expected = await start({ status: 'open', closedAt: null, executions: [entry] });
