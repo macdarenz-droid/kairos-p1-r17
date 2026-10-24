@@ -19,10 +19,11 @@ import { prepareManualTradeExecutionDetails, type ManualExecutionRow, type Manua
 import { PRICE_CURRENCY_INPUT_ERROR } from '../../application/trades/priceCurrencyInput';
 import { checkTypedCryptoSymbol, type SymbolSearchRow } from '../../application/market-reference/symbolSearch';
 import { createEmptyQuickTradeLogDraft, quickTradeLogFieldFor, quickTradeLogRows, type QuickTradeLogDraft, type QuickTradeLogField } from '../../application/trades/quickTradeLog';
+import type { KeptTradeFormDraft, TradeFormDraft } from '../../application/trades/tradeFormDraft';
 import type { KairosDatabase } from '../../data/database';
 import type { StrategyId } from '../../domain/discipline';
-import type { DecimalString } from '../../domain/trades';
-import { Button, Field, PriceInput, Segmented, Select } from '../../design-system/primitives';
+import type { DecimalString, TradeId } from '../../domain/trades';
+import { Button, Field, PriceInput, Segmented, Select, useToast } from '../../design-system/primitives';
 import { JournalClosedTradeGuidance } from './JournalClosedTradeGuidance';
 import { JournalExecutionFields } from './JournalExecutionFields';
 import { ForexTradeNote, forexQuantityHint } from './ForexTradeNote';
@@ -37,6 +38,7 @@ import { MarketMinuteLink } from './MarketMinute';
 import { PriceNowInput } from './PriceNowInput';
 import { SymbolSearchField } from './SymbolSearchField';
 import { TradeFormMarketContext, useTradeFormMarketList } from './tradeFormMarket';
+import { useKeptTradeFormDraft } from './useKeptTradeFormDraft';
 import './tradeForm.css';
 
 export type TradeFormKind = 'journal' | 'practice';
@@ -44,8 +46,8 @@ export type TradeFormKind = 'journal' | 'practice';
 interface TradeFormProps {
   readonly db: KairosDatabase;
   readonly kind: TradeFormKind;
-  /** Called once after a successful save, when the form is already reset and the success banner shows. */
-  readonly onSaved: () => Promise<void>;
+  /** Called once after a successful save with the new trade's id, when the form is already reset and the success banner shows. */
+  readonly onSaved: (tradeId: TradeId) => Promise<void>;
   /** The device clock for the "Now" buttons; tests inject a fixed one. */
   readonly now?: () => Date;
   /** The draft the form opens with, read once when it mounts (Practice passes a plan from the calculator); later changes are ignored. */
@@ -260,6 +262,48 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
   const [quick, setQuick] = useState<QuickTradeLogDraft>(createEmptyQuickTradeLogDraft);
   const isQuick = mode === 'quick';
 
+  // U14 (D258): what is typed is kept on this device and filled back in when the form opens again (Practice's plan
+  // from the calculator wins over a kept trade). A save clears it; "Start over" clears it with Undo for a moment.
+  const typed = useMemo<TradeFormDraft>(() => ({ trade: draft, quick, executions, fees }), [draft, quick, executions, fees]);
+  const [keptShown, setKeptShown] = useState(false);
+  const toast = useToast();
+  function fillIn(kept: Pick<KeptTradeFormDraft, 'mode' | 'draft'>): void {
+    setDraft(kept.draft.trade);
+    setQuick(kept.draft.quick);
+    setExecutions(kept.draft.executions);
+    setFees(kept.draft.fees);
+    setMode(kept.mode);
+    setPlanShown(Object.values(kept.draft.trade.plan).some(value => typeof value === 'string' && value.trim() !== ''));
+    setCurrencyFilledBy(null);
+    setFormGeneration(current => current + 1);
+  }
+  const keptDraft = useKeptTradeFormDraft(db, kind, { mode, draft: typed }, {
+    read: initialDraft === undefined,
+    onFound: kept => { fillIn(kept); setKeptShown(true); },
+  });
+  /** Empties every field, as after a save, without the saved message. */
+  function emptyForm(): void {
+    setDraft({ ...createEmptyManualTradeDraft(), marketType: defaultMarket ?? '' });
+    setCurrencyFilledBy(null);
+    setPlanShown(false);
+    setExecutions([]);
+    setFees([]);
+    setFormGeneration(current => current + 1);
+    setQuick(createEmptyQuickTradeLogDraft());
+    setStrategyId('');
+    setChecklistAnswers([]);
+    setStrategyAnswers([]);
+    setSaveAnywayReason('');
+    setKeptShown(false);
+  }
+  function startOver(): void {
+    const before = { mode, draft: typed };
+    flushSync(() => { emptyForm(); setFeedback(null); });
+    void keptDraft.clear();
+    document.getElementById(`${idPrefix}-symbol`)?.focus();
+    toast.show({ message: 'Started over.', action: { label: 'Undo', onAction: () => fillIn(before) } });
+  }
+
   // U14 (D254): the symbol search and the currency from a crypto market's quote asset. The list is read once the
   // trader types a symbol; a currency Kairos filled follows the symbol, one the trader typed is never replaced.
   const searchable = useContext(TradeFormMarketContext) !== null;
@@ -444,21 +488,12 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
 
     // Commit the reset and the success banner before the page refreshes its lists.
     flushSync(() => {
-      setDraft({ ...createEmptyManualTradeDraft(), marketType: defaultMarket ?? '' });
-      setCurrencyFilledBy(null);
-      setPlanShown(false);
-      setExecutions([]);
-      setFees([]);
-      setFormGeneration(current => current + 1);
-      setQuick(createEmptyQuickTradeLogDraft());
-      setStrategyId('');
-      setChecklistAnswers([]);
-      setStrategyAnswers([]);
-      setSaveAnywayReason('');
+      emptyForm();
       setBeforeSaveReads(current => current + 1);
       setFeedback({ kind: 'success', message: saved });
     });
-    await onSaved();
+    await keptDraft.clear();
+    await onSaved(result.tradeId);
   }
 
   return (
@@ -474,6 +509,8 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
           {feedback.message}
         </div>
       ) : null}
+
+      {keptShown ? <p className="kairos-trade-form__kept">Kairos kept the trade you were typing. <Button variant="ghost" size="sm" onClick={startOver}>Start over</Button></p> : null}
 
       <form className="kairos-trade-form" onSubmit={handleSubmit} noValidate>
         <Segmented label="How to log this trade" value={mode} onChange={chooseMode}

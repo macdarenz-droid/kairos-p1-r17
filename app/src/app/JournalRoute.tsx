@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { loadTradedMarkets } from '../application/setup/tradedMarkets';
-import { Link, useInRouterContext, useSearchParams } from 'react-router';
-import { JOURNAL_CHANGED_EVENT, SCROLL_CLAIMED_EVENT } from './AppShell';
+import { Link, Navigate, useInRouterContext, useSearchParams } from 'react-router';
+import { JOURNAL_CHANGED_EVENT } from './AppShell';
+import { LOG_TRADE_ADDRESS } from '../features/setup/GettingStartedCard';
 import { BackupReminderCard } from '../features/backup/BackupReminderCard';
 import { askToKeepDataOnce } from '../application/setup/deviceKeeping';
 import { JOURNAL_HISTORY_SOURCES } from '../application/journal';
@@ -28,26 +29,10 @@ function JournalLink({ to, children }: { readonly to: string; readonly children:
   return useInRouterContext() ? <Link to={to}>{children}</Link> : <a href={to}>{children}</a>;
 }
 
-/**
- * D225: `/journal?log=1` (the "+ Log trade" button, the app shortcut, Getting started) brings the trade form into
- * view and focuses its first field, then takes `log` out of the address so Back does not do it again.
- */
+/** D258: the old log address `/journal?log=1` (an app shortcut installed before, a bookmark) now opens the log page, in its place. */
 function LogAddress() {
-  const [params, setParams] = useSearchParams();
-  const asked = params.get('log') === '1';
-  useEffect(() => {
-    if (!asked) return;
-    const symbol = document.getElementById('kairos-trade-symbol');
-    if (symbol !== null) {
-      window.dispatchEvent(new Event(SCROLL_CLAIMED_EVENT));
-      symbol.scrollIntoView({ block: 'start' });
-      symbol.focus({ preventScroll: true });
-    }
-    const kept = new URLSearchParams(params);
-    kept.delete('log');
-    setParams(kept, { replace: true });
-  }, [asked, params, setParams]);
-  return null;
+  const [params] = useSearchParams();
+  return params.get('log') === '1' ? <Navigate to={LOG_TRADE_ADDRESS} replace /> : null;
 }
 
 export function JournalRoute({ db = kairosDatabase, now }: JournalRouteProps) {

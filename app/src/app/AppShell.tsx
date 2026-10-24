@@ -6,7 +6,7 @@ import { browserTradeFormMarket } from './tradeFormMarketPorts';
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { Icon, type IconName } from '../design-system/icons/Icon';
 import { ToastProvider } from '../design-system/primitives';
-import { LOG_TRADE_ADDRESS } from '../features/setup/GettingStartedCard';
+import { LOG_TRADE_ADDRESS, LOG_TRADE_FOCUS_STATE } from '../features/setup/GettingStartedCard';
 import { isNavigationTabPage, navigationTabOf, normalizePathname, pageParentOf, primaryNavigation } from './navigation';
 import { backStepOf, backTrailEntryId, EMPTY_BACK_TRAIL, recordBackTrailNavigation, recordBackTrailTitle, type BackTrail } from './backTrail';
 import { UpdatePrompt, type UpdatePromptPort } from '../features/shell/UpdatePrompt';
@@ -73,8 +73,6 @@ function useScreenTitleAndFocus(pathname: string, onTitle: (title: string) => vo
 }
 
 const SCROLL_PLACES_KEY = 'kairos.scroll-places.v1';
-/** A page that brings part of itself into view (the Journal's log address) says so, and the shell stops reaching for its place. */
-export const SCROLL_CLAIMED_EVENT = 'kairos:scroll-claimed';
 /**
  * D229: another tab saved. The shell raises it once per message from the other tab; every screen that reads again when
  * you come back to the app also reads again on it.
@@ -150,7 +148,6 @@ function useScrollPlaces(location: Location): void {
     const stop = () => {
       cancelAnimationFrame(frame);
       for (const name of stopEvents) window.removeEventListener(name, stop);
-      window.removeEventListener(SCROLL_CLAIMED_EVENT, stop);
     };
     // Kept for the whole second, not only until first reached: what loads above the place can still move it.
     const reach = () => {
@@ -159,7 +156,6 @@ function useScrollPlaces(location: Location): void {
       frame = requestAnimationFrame(reach);
     };
     for (const name of stopEvents) window.addEventListener(name, stop, { passive: true });
-    window.addEventListener(SCROLL_CLAIMED_EVENT, stop);
     frame = requestAnimationFrame(reach);
     return stop;
   }, [location.key, location.pathname]);
@@ -207,13 +203,13 @@ function useModalOpen(): boolean {
 }
 
 /**
- * D225: the floating "+ Log trade", above the bottom bar, hidden while a sheet or dialog is open. On the Journal it
- * replaces the entry, so the form is brought into view without a step added to Back.
+ * D225, D258: the floating "+ Log trade", above the bottom bar, hidden while a sheet or dialog is open. It opens the log
+ * page, which focuses Symbol because it came from here.
  */
-function LogTradeButton({ onJournal }: { readonly onJournal: boolean }) {
+function LogTradeButton() {
   const modalOpen = useModalOpen();
   if (modalOpen) return null;
-  return <Link className="kairos-log-trade" to={LOG_TRADE_ADDRESS} replace={onJournal}><Icon name="plus" size={20} />Log trade</Link>;
+  return <Link className="kairos-log-trade" to={LOG_TRADE_ADDRESS} state={{ [LOG_TRADE_FOCUS_STATE]: true }}><Icon name="plus" size={20} />Log trade</Link>;
 }
 
 /** The back control above a page that isn't a tab: back to where you came from, or up to the page's parent. */
@@ -274,7 +270,7 @@ export function AppShell({ loading = false }: { readonly loading?: boolean }) {
             <TradeFormMarketContext.Provider value={browserTradeFormMarket()}><Outlet /></TradeFormMarketContext.Provider>
           </TradePictureCandleLoaderContext.Provider>
           {/* Last in main, so it is inside the page's landmark and comes after the page in the tab order. */}
-          {logTrade ? <LogTradeButton onJournal={page === '/journal'} /> : null}
+          {logTrade ? <LogTradeButton /> : null}
         </main>
       </ToastProvider>
       <nav className="kairos-shell__navigation" aria-label="Primary navigation">

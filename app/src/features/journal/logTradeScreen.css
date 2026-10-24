@@ -1,0 +1,3 @@
+/* U14 (D258): the log page. The form takes the page's width; after a save, the trade's picture and what to do next. */
+.kairos-log-trade-page__saved { display: grid; gap: var(--kairos-space-4); }
+.kairos-log-trade-page__next { display: flex; flex-wrap: wrap; gap: var(--kairos-space-3); }

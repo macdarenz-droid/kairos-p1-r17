@@ -17,6 +17,7 @@ const scrolled = vi.fn();
 beforeAll(async () => {
   Element.prototype.scrollIntoView = function scrollIntoView(this: Element, options?: boolean | ScrollIntoViewOptions) { scrolled(this, options); };
   await import('../src/app/JournalRoute');
+  await import('../src/features/journal/LogTradeScreen');
 }, 30_000);
 afterEach(async () => { cleanup(); scrolled.mockClear(); for (const db of opened.splice(0)) db.close(); for (const name of names.splice(0)) await Dexie.delete(name); });
 async function database(): Promise<KairosDatabase> {
@@ -36,11 +37,13 @@ function PageWithSheet() {
 
 async function shell(db: KairosDatabase, initialEntries: string[]) {
   const { JournalRoute } = await import('../src/app/JournalRoute');
+  const { LogTradeScreen } = await import('../src/features/journal/LogTradeScreen');
   const router = createMemoryRouter([{
     element: <AppShell />,
     children: [
       { path: '/', element: <h1>Home</h1> },
       { path: '/journal', element: <JournalRoute db={db} /> },
+      { path: '/journal/log', element: <LogTradeScreen db={db} /> },
       { path: '/analysis', element: <PageWithSheet /> },
       { path: '/practice', element: <h1>Practice</h1> },
       { path: '/more', element: <h1>More</h1> },
@@ -57,10 +60,10 @@ describe('T-053e "+ Log trade"', () => {
     const db = await database();
     for (const path of ['/', '/journal', '/analysis']) {
       await shell(db, [path]);
-      expect(await screen.findByRole('link', { name: 'Log trade' }), path).toHaveAttribute('href', '/journal?log=1');
+      expect(await screen.findByRole('link', { name: 'Log trade' }), path).toHaveAttribute('href', '/journal/log');
       cleanup();
     }
-    for (const path of ['/practice', '/more']) {
+    for (const path of ['/practice', '/more', '/journal/log']) {
       await shell(db, [path]);
       await screen.findByRole('heading', { level: 1 });
       expect(logButton(), path).toBeNull();
@@ -68,33 +71,34 @@ describe('T-053e "+ Log trade"', () => {
     }
   });
 
-  it('from Home opens the Journal with Symbol focused and the form brought into view, and leaves "log" out of the address', async () => {
+  it('from Home opens the log page with Symbol focused, without scrolling into the Journal; Back returns Home', async () => {
     const router = await shell(await database(), ['/']);
     fireEvent.click(await screen.findByRole('link', { name: 'Log trade' }));
     await waitFor(() => expect(document.activeElement).toBe(symbol()));
-    expect(scrolled).toHaveBeenCalledWith(symbol(), { block: 'start' });
-    await waitFor(() => expect(router.state.location.search).toBe(''));
-    expect(router.state.location.pathname).toBe('/journal');
-    // Back returns to Home, not to a Journal that focuses Symbol again.
+    expect(router.state.location.pathname).toBe('/journal/log');
+    expect(screen.getByRole('heading', { level: 1, name: 'Log a trade' })).toBeInTheDocument();
+    expect(scrolled).not.toHaveBeenCalled();
     await act(async () => { await router.navigate(-1); });
     expect(router.state.location.pathname).toBe('/');
   });
 
-  it('on the Journal focuses Symbol without adding a step to Back', async () => {
+  it('from the Journal opens the log page, and Back returns to the Journal', async () => {
     const router = await shell(await database(), ['/', '/journal']);
     await screen.findByRole('heading', { name: 'Journal' });
     fireEvent.click(screen.getByRole('link', { name: 'Log trade' }));
     await waitFor(() => expect(document.activeElement).toBe(symbol()));
-    await waitFor(() => expect(router.state.location.search).toBe(''));
+    expect(router.state.location.pathname).toBe('/journal/log');
     await act(async () => { await router.navigate(-1); });
-    expect(router.state.location.pathname).toBe('/');
+    expect(router.state.location.pathname).toBe('/journal');
   });
 
-  it('opened directly at /journal?log=1, focuses Symbol and leaves "log" out of the address', async () => {
+  it('the old address /journal?log=1 opens the log page in its place', async () => {
     const router = await shell(await database(), ['/journal?log=1&status=open']);
-    await waitFor(() => expect(document.activeElement).toBe(symbol()));
-    await waitFor(() => expect(router.state.location.search).toBe('?status=open'));
+    await screen.findByRole('heading', { level: 1, name: 'Log a trade' });
+    expect(router.state.location.pathname).toBe('/journal/log');
     expect(router.state.historyAction).toBe('REPLACE');
+    // Not from "+ Log trade": Symbol is not focused for you.
+    expect(document.activeElement).not.toBe(symbol());
   });
 
   it('is hidden while a sheet is open', async () => {
@@ -109,14 +113,14 @@ describe('T-053e "+ Log trade"', () => {
 });
 
 describe('T-053e the "Log a trade" app shortcut', () => {
-  it('opens a Journal address that brings the trade form up', () => {
+  it('opens the log page', () => {
     const manifest = JSON.parse(manifestText) as { shortcuts?: { name: string; short_name: string; url: string; icons: { src: string }[] }[] };
     expect(manifest.shortcuts).toHaveLength(1);
     const [shortcut] = manifest.shortcuts!;
     expect(shortcut).toMatchObject({ name: 'Log a trade', short_name: 'Log trade' });
     const address = new URL(shortcut.url, 'https://kairos.example');
-    expect(address.searchParams.get('log')).toBe('1');
-    expect(matchRoutes(appRoutes, address.pathname)?.at(-1)?.route.path).toBe('journal');
+    expect(address.pathname).toBe('/journal/log');
+    expect(matchRoutes(appRoutes, address.pathname)?.at(-1)?.route.path).toBe('journal/log');
     expect(shortcut.icons[0].src).toMatch(/^\/icons\//);
   });
 });

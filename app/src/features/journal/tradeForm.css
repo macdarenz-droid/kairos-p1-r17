@@ -38,3 +38,4 @@
 .kairos-market-minute { display: grid; gap: var(--kairos-space-1); justify-items: start; min-width: 0; grid-column: 1 / -1; }
 .kairos-market-minute__line { color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-xs); overflow-wrap: anywhere; }
 .kairos-price-now__typo { color: var(--kairos-state-warning, var(--kairos-text-primary)); font-size: var(--kairos-font-size-xs); overflow-wrap: anywhere; }
+.kairos-trade-form__kept { display: flex; flex-wrap: wrap; gap: var(--kairos-space-2); align-items: center; margin: 0 0 var(--kairos-space-3); color: var(--kairos-text-secondary); }

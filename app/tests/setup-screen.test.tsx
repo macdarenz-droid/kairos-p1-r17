@@ -70,7 +70,7 @@ describe('T-053d the setup screen', () => {
     expect(await stepHeading("You're set")).toHaveFocus();
     expect((await loadGoalsPreference(db)).tradesPerMonthTarget).toBe(20);
     await waitFor(async () => expect((await loadSetupState(db)).finishedAt).toBe(now()));
-    expect(screen.getByRole('link', { name: 'Log your first trade' })).toHaveAttribute('href', '/journal?log=1');
+    expect(screen.getByRole('link', { name: 'Log your first trade' })).toHaveAttribute('href', '/journal/log');
     expect(screen.getByRole('link', { name: 'Try Practice first' })).toHaveAttribute('href', '/practice');
   });
 
