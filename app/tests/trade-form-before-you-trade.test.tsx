@@ -118,7 +118,8 @@ describe('T-057b "Before you trade" in the form', () => {
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 50)); });
     expect(reads).toBe(0);
     planned();
-    await checklist();
+    // The steps show only once the checklist has been read.
+    await within(await checklist()).findAllByRole('checkbox');
     expect(reads).toBeGreaterThan(0);
   });
 
