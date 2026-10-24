@@ -189,3 +189,51 @@ describe("T-057c one symbol's latest closes, read either way", () => {
     expect(await createKairosRepositories(db).trades.scopedBySource(['manual']).listRecentClosedBySymbol('NONE', 20)).toEqual([]);
   });
 });
+
+describe('T-058c "Before you save" names a loss limit from the limit on', () => {
+  type Loss = NonNullable<BeforeYouSaveFacts['lossLimit']>['day'];
+  const counted = (lost: string, limit: string): Loss => {
+    const compared = Number(lost) > Number(limit) ? 'over' : lost === limit ? 'at-limit' : 'within';
+    return { kind: 'counted', limit: d(limit), currency: 'USDT', lost: d(lost), left: d('0'), state: compared, fill: 0, closedTrades: 1 };
+  };
+  const unset: Loss = { kind: 'unset' };
+  const withLoss = (day: Loss, week: Loss, overrides: Partial<BeforeYouSaveInput> = {}) =>
+    texts(input({ facts: { ...noFacts, lossLimit: { day, week, timeZone: 'UTC' } }, ...overrides }));
+
+  it('says what was lost and the most allowed, for the day, the week or both', () => {
+    expect(withLoss(counted('120', '100'), unset)).toEqual(['You have lost 120 USDT today. Your most for a day is 100 USDT.']);
+    expect(withLoss(unset, counted('300', '250'))).toEqual(['You have lost 300 USDT this week. Your most for a week is 250 USDT.']);
+    expect(withLoss(counted('120', '100'), counted('300', '250'))).toEqual(['You have lost 120 USDT today and 300 USDT this week. Your most is 100 USDT a day and 250 USDT a week.']);
+  });
+
+  it('shows at the limit itself, and not one cent below', () => {
+    expect(withLoss(counted('100', '100'), unset)).toEqual(['You have lost 100 USDT today. Your most for a day is 100 USDT.']);
+    expect(withLoss(counted('99.99', '100'), counted('99.99', '250'))).toEqual([]);
+  });
+
+  it("says when a loss can't be counted yet, if no limit is reached", () => {
+    expect(withLoss({ kind: 'unknown', limit: d('100'), currency: 'USDT', uncounted: 1 }, unset)).toEqual(["Kairos can't tell how much you lost today: 1 trade has no result in USDT."]);
+    expect(withLoss(unset, { kind: 'unknown', limit: d('250'), currency: 'USDT', uncounted: 2 })).toEqual(["Kairos can't tell how much you lost this week: 2 trades have no result in USDT."]);
+    expect(withLoss({ kind: 'unknown', limit: d('100'), currency: 'USDT', uncounted: 1 }, counted('300', '250'))).toEqual(['You have lost 300 USDT this week. Your most for a week is 250 USDT.']);
+  });
+
+  it('comes right after the trade limit, and not for an open trade opened on another day', () => {
+    const facts: BeforeYouSaveFacts = { ...noFacts, tradeLimit: { today: 3, limit: 3, timeZone: 'UTC' }, lossLimit: { day: counted('120', '100'), week: unset, timeZone: 'UTC' } };
+    expect(kinds(input({ stop: '', facts }))).toEqual(['trade-limit', 'loss-limit', 'no-stop']);
+    expect(kinds(input({ status: 'open', openedAt: '2026-10-23T09:00:00.000Z', facts }))).toEqual([]);
+  });
+
+  it('reads the loss limits for real trades only', async () => {
+    const db = await database();
+    await writeVisualPnlTimeZonePreference(createKairosRepositories(db).metadata, 'UTC', now);
+    expect((await saveGoalsPreference(db, { lossLimitPerDay: '100', lossLimitCurrency: 'USDT' })).ok).toBe(true);
+    const losing = { symbol: 'BTCUSDT', marketType: 'crypto', side: 'long', status: 'closed', grossPnlCurrency: 'USDT', openedAt: minutesFromNow(-90), closedAt: minutesFromNow(-60),
+      executions: [{ type: 'entry', price: '200', quantity: '1', executedAt: minutesFromNow(-90) }, { type: 'exit', price: '80', quantity: '1', executedAt: minutesFromNow(-60) }] } as const;
+    await saveManualTrade(db, losing);
+    const real = await loadBeforeYouSave(db, { scope: 'real', now });
+    if (!real.ok) throw new Error('read failed');
+    expect(projectBeforeYouSave(input({ facts: real.facts })).map(note => note.text)).toEqual(['You have lost 120 USDT today. Your most for a day is 100 USDT.']);
+    const practice = await loadBeforeYouSave(db, { scope: 'practice', now });
+    expect(practice.ok && practice.facts.lossLimit).toBeNull();
+  });
+});

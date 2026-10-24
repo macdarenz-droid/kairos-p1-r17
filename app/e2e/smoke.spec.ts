@@ -1949,5 +1949,34 @@ test('(af) Goals you can see: limits, a loss, the rings and Home', async ({ page
   await page.getByRole('button', { name: 'Your Trades' }).click();
   await expect(page.getByText('Lost today: 40 of 100 USDT')).toBeVisible();
   await axeOk('.kairos-home-discipline');
+
+  // T-058c: a second loss makes 120 USDT today; the next planned trade names the limit, takes a reason and saves.
+  await page.goto('/journal');
+  await page.getByRole('button', { name: 'Quick log' }).click();
+  await page.getByLabel(/^Symbol/).fill('BTCUSDT');
+  await page.getByLabel(/^Market/).selectOption('crypto');
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Entry price/).fill('100');
+  await page.getByLabel(/^Exit price/).fill('20');
+  await page.getByLabel(/^Quantity/).fill('1');
+  await page.getByRole('button', { name: 'Set opened time to now' }).click();
+  await page.getByRole('button', { name: 'Set closed time to now' }).click();
+  await page.getByLabel('Currency code').fill('USDT');
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+  await page.getByRole('button', { name: 'All details' }).click();
+  await page.getByLabel(/^Symbol/).fill('ETHUSDT');
+  await page.getByLabel(/^Market/).selectOption('crypto');
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Status/).selectOption('draft');
+  await page.getByLabel('Currency code').fill('USDT');
+  await page.getByText('Trade plan · Optional').click();
+  await page.getByLabel('Planned entry').fill('100');
+  await page.getByLabel('Planned stop').fill('95');
+  const box = page.getByRole('region', { name: 'Before you save' });
+  await expect(box.getByRole('listitem')).toHaveText(['You have lost 120 USDT today. Your most for a day is 100 USDT.', /^Your last trade was a loss (just now|1 minute ago|\d+ minutes ago)\.$/]);
+  await page.getByLabel(/Why save anyway\?/).fill('Half size, clear stop.');
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
   expect(errors).toEqual([]);
 });

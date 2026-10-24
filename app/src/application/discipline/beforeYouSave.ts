@@ -12,6 +12,7 @@ import { isEconomicEventRecordShape } from '../../domain/economic-calendar/econo
 import { economicEventName, economicEventSize } from '../../domain/economic-calendar/newsImpact';
 import { parsePositiveDecimalString, type DecimalString, type TradeStatus } from '../../domain/trades';
 import { NEWS_NEAR_TRADE_MINUTES } from '../economic-calendar/newsNearTrades';
+import type { GoalsLossProgress } from '../goals/goalsProgress';
 import { loadGoalsProgress } from '../goals/loadGoalsProgress';
 import { hydrateJournalHistoryEntries, JOURNAL_HISTORY_SOURCES, type JournalHistoryScope } from '../journal/historyQuery';
 import type { ManualTradeDraft } from '../trades/manualTradeDraft';
@@ -32,6 +33,8 @@ const MINUTE_MS = 60_000;
 export interface BeforeYouSaveFacts {
   /** Real trades with a daily limit and a saved time zone: how many were opened today. */
   readonly tradeLimit: Readonly<{ today: number; limit: number; timeZone: string }> | null;
+  /** U13 (D252): what was lost today and this week against the loss limits (real trades); left out or null when none is set. */
+  readonly lossLimit?: Readonly<{ day: GoalsLossProgress; week: GoalsLossProgress; timeZone: string }> | null;
   /** The latest close of the last 30 minutes (or one dated later); null when there is none. */
   readonly lastClosed: Readonly<{ closedAt: string; outcome: VisualPnlOutcome }> | null;
   /** Saved big news starting from the read to a day ahead, in time order; the projection names what starts within BEFORE_YOU_SAVE_MINUTES of its now. */
@@ -61,6 +64,24 @@ export interface BeforeYouSaveNote { readonly kind: BeforeYouSaveKind; readonly 
 
 /** The symbol as a save writes it, so the sizes read are the ones the journal keeps under it. */
 export const beforeYouSaveSymbol = (typed: string): string => typed.trim().toUpperCase();
+
+const reachedLoss = (loss: GoalsLossProgress): loss is Extract<GoalsLossProgress, { kind: 'counted' }> => loss.kind === 'counted' && loss.state !== 'within';
+
+/** D252: from the limit on, what was lost and the most allowed; with nothing reached, what can't be counted yet. */
+function lossLimitWords(day: GoalsLossProgress, week: GoalsLossProgress): string | null {
+  const dayReached = reachedLoss(day), weekReached = reachedLoss(week);
+  if (dayReached && weekReached) {
+    return `You have lost ${day.lost} ${day.currency} today and ${week.lost} ${week.currency} this week. Your most is ${day.limit} ${day.currency} a day and ${week.limit} ${week.currency} a week.`;
+  }
+  if (dayReached) return `You have lost ${day.lost} ${day.currency} today. Your most for a day is ${day.limit} ${day.currency}.`;
+  if (weekReached) return `You have lost ${week.lost} ${week.currency} this week. Your most for a week is ${week.limit} ${week.currency}.`;
+  for (const [loss, period] of [[day, 'today'], [week, 'this week']] as const) {
+    if (loss.kind !== 'unknown') continue;
+    const trades = loss.uncounted === 1 ? '1 trade has' : `${loss.uncounted} trades have`;
+    return `Kairos can't tell how much you lost ${period}: ${trades} no result in ${loss.currency}.`;
+  }
+  return null;
+}
 
 const minutesWord = (minutes: number) => (minutes === 1 ? '1 minute' : `${minutes} minutes`);
 
@@ -97,6 +118,10 @@ export function projectBeforeYouSave(input: BeforeYouSaveInput): readonly Before
   if (limit !== null && counts(input, limit.timeZone) && limit.today + 1 > limit.limit) {
     notes.push({ kind: 'trade-limit', text: `This would be trade ${limit.today + 1} today. Your most is ${limit.limit}.` });
   }
+
+  const loss = facts?.lossLimit ?? null;
+  const lossText = loss !== null && counts(input, loss.timeZone) ? lossLimitWords(loss.day, loss.week) : null;
+  if (lossText !== null) notes.push({ kind: 'loss-limit', text: lossText });
 
   const last = facts?.lastClosed ?? null;
   const sinceLoss = last === null ? NaN : nowMs - Date.parse(last.closedAt);
@@ -193,6 +218,9 @@ export async function loadBeforeYouSave(db: KairosDatabase, options: Readonly<{ 
     const tradeLimit = progress !== null && progress.maxTradesPerDay.kind === 'limit'
       ? Object.freeze({ today: progress.maxTradesPerDay.today, limit: progress.maxTradesPerDay.limit, timeZone: progress.timeZone })
       : null;
+    const lossLimit = progress !== null && (progress.dailyLoss.kind !== 'unset' || progress.weeklyLoss.kind !== 'unset')
+      ? Object.freeze({ day: progress.dailyLoss, week: progress.weeklyLoss, timeZone: progress.timeZone })
+      : null;
     const upcomingNews = events
       .filter(event => isEconomicEventRecordShape(event) && economicEventSize(event).size === 'high')
       .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))
@@ -201,6 +229,7 @@ export async function loadBeforeYouSave(db: KairosDatabase, options: Readonly<{ 
       ok: true as const,
       facts: Object.freeze({
         tradeLimit,
+        lossLimit,
         lastClosed: last?.trade.closedAt ? Object.freeze({ closedAt: last.trade.closedAt, outcome: last.visualPnl.outcome }) : null,
         upcomingNews: Object.freeze(upcomingNews),
       }),
