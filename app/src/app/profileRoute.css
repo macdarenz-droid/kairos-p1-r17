@@ -1,0 +1,11 @@
+.kairos-profile { display:grid; gap:var(--kairos-space-6); }
+.kairos-profile-card { display:grid; gap:var(--kairos-space-3); padding:var(--kairos-space-5); border:1px solid var(--kairos-border-subtle); border-radius:var(--kairos-radius-lg); background:var(--kairos-surface-card); }
+.kairos-profile-card h2 { margin:0; font-size:var(--kairos-font-size-md); }
+.kairos-profile-card p { margin:0; color:var(--kairos-text-secondary); overflow-wrap:anywhere; }
+.kairos-profile-card code, .kairos-profile-card strong { font-family:var(--kairos-font-mono); font-variant-numeric:tabular-nums; color:var(--kairos-text-primary); }
+.kairos-profile__note { margin:0; color:var(--kairos-text-muted) !important; font-size:var(--kairos-font-size-xs); line-height:var(--kairos-line-height-normal); }
+.kairos-profile-card__actions { display:flex; align-items:center; gap:var(--kairos-space-3); flex-wrap:wrap; }
+.kairos-profile-card__actions button { padding:0 var(--kairos-space-5); border:1px solid var(--kairos-accent-primary); border-radius:var(--kairos-radius-md); background:var(--kairos-accent-primary); color:var(--kairos-background-depth); font:inherit; line-height:2.5; }
+.kairos-profile-card__actions button.kairos-profile-button--secondary { border-color:var(--kairos-border-default); background:var(--kairos-surface-input); color:var(--kairos-text-primary); }
+.kairos-profile-card__actions button:disabled { opacity:.58; }
+@media (max-width:34rem) { .kairos-profile-card { padding:var(--kairos-space-4); } .kairos-profile-card__actions, .kairos-profile-card__actions button { width:100%; } }

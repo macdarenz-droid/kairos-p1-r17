@@ -1,0 +1,21 @@
+@media (max-width: 34rem) { .kairos-trade-form__actions .kairos-button { width: 100%; } }
+.kairos-trade-form__time { display: flex; align-items: center; gap: var(--kairos-space-2); }
+.kairos-trade-form__time input { flex: 1 1 auto; }
+.kairos-trade-form__strategy-note { display:grid; gap:var(--kairos-space-2); margin-top:var(--kairos-space-3); overflow-wrap:anywhere; min-width:0; }
+.kairos-trade-form__strategy-note p { margin:0 !important; }
+.kairos-trade-form__forex-note, .kairos-trade-form__stock-note { display:grid; gap:var(--kairos-space-2); margin-top:var(--kairos-space-3); overflow-wrap:anywhere; min-width:0; }
+.kairos-trade-form__forex-note p, .kairos-trade-form__stock-note p { margin:0 !important; }
+.kairos-trade-form__strategy-marks { letter-spacing:.2em; font-variant-numeric:tabular-nums; }
+.kairos-trade-form__strategy-note [data-verdict="kept"] { color:var(--kairos-state-success); }
+.kairos-trade-form__strategy-note [data-verdict="broken"] { color:var(--kairos-state-error); }
+.kairos-trade-form__strategy-note [data-verdict="unknown"] { color:var(--kairos-text-muted); }
+.kairos-trade-form__tags { display:grid; gap:var(--kairos-space-2); margin-top:var(--kairos-space-3); min-width:0; }
+.kairos-trade-form__tag-list { display:flex; flex-wrap:wrap; gap:var(--kairos-space-2); margin:0; padding:0; list-style:none; }
+.kairos-trade-form__tag { display:inline-flex; align-items:center; gap:var(--kairos-space-1); max-width:100%; padding-left:var(--kairos-space-3); border:1px solid var(--kairos-border-subtle); border-radius:var(--kairos-radius-full); background:var(--kairos-accent-soft); color:var(--kairos-text-primary); font-size:var(--kairos-font-size-sm); overflow-wrap:anywhere; }
+.kairos-trade-form__check { display:flex; align-items:flex-start; gap:var(--kairos-space-2); min-height:44px; padding:var(--kairos-space-2) 0; overflow-wrap:anywhere; }
+.kairos-trade-form__check input { flex:none; width:1.25rem; height:1.25rem; margin-top:0.1rem; }
+.kairos-trade-form__before-title { margin:0; font-size:var(--kairos-font-size-md); }
+.kairos-trade-form__before-save { display:grid; gap:var(--kairos-space-3); border-left:3px solid var(--kairos-state-warning); min-width:0; overflow-wrap:anywhere; }
+.kairos-trade-form__before-save-title { margin:0; font-size:var(--kairos-font-size-md); }
+.kairos-trade-form__before-save-list { display:grid; gap:var(--kairos-space-2); margin:0; padding-left:var(--kairos-space-5); }
+.kairos-trade-form__before-save .kairos-button { justify-self:start; }

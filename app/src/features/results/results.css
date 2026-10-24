@@ -1,0 +1,225 @@
+.kairos-results-calendar-block { display: grid; gap: var(--kairos-space-3); margin-top: var(--kairos-space-4); }
+.kairos-results-calendar__bar { display: flex; align-items: center; justify-content: space-between; gap: var(--kairos-space-3); }
+.kairos-results-calendar__bar h3 { margin: 0; font-size: var(--kairos-font-size-md); }
+.kairos-results-calendar__nav { min-inline-size: var(--kairos-control-md); min-block-size: var(--kairos-control-md); border: 1px solid var(--kairos-border-default); border-radius: var(--kairos-radius-md); background: transparent; color: var(--kairos-text-primary); font: inherit; font-size: var(--kairos-font-size-lg); }
+.kairos-results-calendar__nav:disabled { opacity: .4; }
+:is(.kairos-results-calendar, .kairos-results-heatmap__table) { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: var(--kairos-space-1); }
+:is(.kairos-results-calendar, .kairos-results-heatmap__table) th { color: var(--kairos-text-muted); font-size: var(--kairos-font-size-xs); font-weight: var(--kairos-font-weight-medium); }
+:is(.kairos-results-calendar, .kairos-results-heatmap__table) td { height: 3.25rem; padding: 0; border: 1px solid transparent; border-radius: var(--kairos-radius-sm); text-align: center; vertical-align: middle; }
+:is(.kairos-results-calendar, .kairos-results-heatmap__table) td > button { display: grid; place-items: center; gap: 0; width: 100%; height: 100%; min-block-size: 3.25rem; padding: 2px 1px; border: 0; border-radius: inherit; background: transparent; color: var(--kairos-text-primary); font: inherit; font-size: var(--kairos-font-size-sm); font-variant-numeric: tabular-nums; }
+:is(.kairos-results-calendar, .kairos-results-heatmap__table) td > button[aria-pressed='true'] { outline: 2px solid var(--kairos-state-focus); outline-offset: 1px; }
+.kairos-results-calendar__number { color: var(--kairos-text-muted); font-size: var(--kairos-font-size-sm); }
+:is(.kairos-results-calendar, .kairos-results-heatmap__table) :is(td[data-day-result='profit'], td[data-week-result='profit'], td[data-cell-result='profit']) { background: color-mix(in oklab, var(--kairos-trade-profit) 40%, transparent); }
+:is(.kairos-results-calendar, .kairos-results-heatmap__table) :is(td[data-day-result='loss'], td[data-week-result='loss'], td[data-cell-result='loss']) { background: color-mix(in oklab, var(--kairos-trade-loss) 40%, transparent); }
+:is(.kairos-results-calendar, .kairos-results-heatmap__table) :is(td[data-day-result='profit'][data-day-strength='1'], td[data-week-result='profit'][data-week-strength='1'], td[data-cell-result='profit'][data-cell-strength='1']) { background: color-mix(in oklab, var(--kairos-trade-profit) 18%, transparent); }
+:is(.kairos-results-calendar, .kairos-results-heatmap__table) :is(td[data-day-result='profit'][data-day-strength='2'], td[data-week-result='profit'][data-week-strength='2'], td[data-cell-result='profit'][data-cell-strength='2']) { background: color-mix(in oklab, var(--kairos-trade-profit) 30%, transparent); }
+:is(.kairos-results-calendar, .kairos-results-heatmap__table) :is(td[data-day-result='profit'][data-day-strength='3'], td[data-week-result='profit'][data-week-strength='3'], td[data-cell-result='profit'][data-cell-strength='3']) { background: color-mix(in oklab, var(--kairos-trade-profit) 44%, transparent); }
+:is(.kairos-results-calendar, .kairos-results-heatmap__table) :is(td[data-day-result='profit'][data-day-strength='4'], td[data-week-result='profit'][data-week-strength='4'], td[data-cell-result='profit'][data-cell-strength='4']) { background: color-mix(in oklab, var(--kairos-trade-profit) 58%, transparent); }
+:is(.kairos-results-calendar, .kairos-results-heatmap__table) :is(td[data-day-result='loss'][data-day-strength='1'], td[data-week-result='loss'][data-week-strength='1'], td[data-cell-result='loss'][data-cell-strength='1']) { background: color-mix(in oklab, var(--kairos-trade-loss) 18%, transparent); }
+:is(.kairos-results-calendar, .kairos-results-heatmap__table) :is(td[data-day-result='loss'][data-day-strength='2'], td[data-week-result='loss'][data-week-strength='2'], td[data-cell-result='loss'][data-cell-strength='2']) { background: color-mix(in oklab, var(--kairos-trade-loss) 30%, transparent); }
+:is(.kairos-results-calendar, .kairos-results-heatmap__table) :is(td[data-day-result='loss'][data-day-strength='3'], td[data-week-result='loss'][data-week-strength='3'], td[data-cell-result='loss'][data-cell-strength='3']) { background: color-mix(in oklab, var(--kairos-trade-loss) 44%, transparent); }
+:is(.kairos-results-calendar, .kairos-results-heatmap__table) :is(td[data-day-result='loss'][data-day-strength='4'], td[data-week-result='loss'][data-week-strength='4'], td[data-cell-result='loss'][data-cell-strength='4']) { background: color-mix(in oklab, var(--kairos-trade-loss) 58%, transparent); }
+:is(.kairos-results-calendar, .kairos-results-heatmap__table) :is(td[data-day-result='breakeven'], td[data-week-result='breakeven'], td[data-cell-result='breakeven']) { background: color-mix(in oklab, var(--kairos-trade-flat) 30%, transparent); }
+:is(.kairos-results-calendar, .kairos-results-heatmap__table) :is(td[data-day-result='unavailable'], td[data-week-result='unavailable'], td[data-cell-result='unavailable']) { border: 1px dashed var(--kairos-border-strong); }
+:is(.kairos-results-calendar, .kairos-results-heatmap__table) td[data-day-today] { border: 1px solid var(--kairos-border-active); }
+.kairos-results-calendar__legend { margin: 0; color: var(--kairos-text-muted); font-size: var(--kairos-font-size-xs); }
+.kairos-results-day-trades { display: grid; gap: var(--kairos-space-2); margin-top: var(--kairos-space-3); padding: var(--kairos-space-3); border: 1px solid var(--kairos-border-subtle); border-radius: var(--kairos-radius-md); }
+.kairos-results-day-trades__heading { display: flex; align-items: center; justify-content: space-between; gap: var(--kairos-space-3); }
+.kairos-results-day-trades__heading h3 { margin: 0; font-size: var(--kairos-font-size-sm); }
+.kairos-results-day-trades__close { flex: none; white-space: nowrap; min-block-size: var(--kairos-control-sm); padding: 0 var(--kairos-space-3); border: 1px solid var(--kairos-border-default); border-radius: var(--kairos-radius-md); background: transparent; color: var(--kairos-text-secondary); font: inherit; }
+.kairos-results-day-trades__list { display: grid; gap: var(--kairos-space-2); margin: 0; padding: 0; list-style: none; }
+.kairos-results-day-trades__list li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--kairos-space-2) var(--kairos-space-3); color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-sm); }
+.kairos-results-day-trades__list strong { color: var(--kairos-text-primary); }
+.kairos-results-day-trades__converted { flex-basis: 100%; min-width: 0; overflow-wrap: anywhere; color: var(--kairos-text-secondary); }
+.kairos-results-candles { display: grid; gap: var(--kairos-space-2); margin-block: var(--kairos-space-3); padding: var(--kairos-space-3); border: 1px solid var(--kairos-border-subtle); border-radius: var(--kairos-radius-lg); background: var(--kairos-surface-raised); min-width: 0; }
+.kairos-results-candles__heading { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: var(--kairos-space-1) var(--kairos-space-3); }
+.kairos-results-candles__heading h3 { margin: 0; font-size: var(--kairos-font-size-md); }
+/* The total keeps one line and drops under the title; only a total wider than the whole card breaks. */
+.kairos-results-candles__heading strong { flex: none; max-inline-size: 100%; font-family: var(--kairos-font-mono); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; text-align: start; }
+.kairos-results-candles[data-outcome='profit'] .kairos-results-candles__heading strong { color: var(--kairos-trade-profit); }
+.kairos-results-candles[data-outcome='loss'] .kairos-results-candles__heading strong { color: var(--kairos-trade-loss); }
+.kairos-results-candles__picture { display: block; width: 100%; height: auto; }
+.kairos-results-candles__picture { max-width: calc(15rem * 360 / 176); margin-inline: auto; width: 100%; }
+.kairos-results-candles__background { fill: var(--kairos-chart-background); }
+.kairos-results-candles__zero { stroke: var(--kairos-border-strong); stroke-width: 1; stroke-dasharray: 4 4; }
+.kairos-results-candles__zero-label, .kairos-results-candles__value { fill: var(--kairos-chart-axis); font-size: 9px; font-family: var(--kairos-font-mono); }
+.kairos-results-candles__candle line { stroke-width: 1; }
+.kairos-results-candles__candle--up line, .kairos-results-candles__candle--up rect, .kairos-results-candles__candle--up polygon { stroke: var(--kairos-chart-wick-up); fill: var(--kairos-chart-candle-up); }
+.kairos-results-candles__candle--down line, .kairos-results-candles__candle--down rect, .kairos-results-candles__candle--down polygon { stroke: var(--kairos-chart-wick-down); fill: var(--kairos-chart-candle-down); }
+.kairos-results-candles__candle--even line, .kairos-results-candles__candle--even rect { stroke: var(--kairos-trade-flat); fill: var(--kairos-trade-flat); }
+.kairos-results-candles__date { fill: var(--kairos-chart-axis); font-size: 9px; }
+.kairos-results-candles__numbers summary { cursor: pointer; color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-sm); }
+.kairos-results-candles__numbers table { width: 100%; table-layout: fixed; border-collapse: collapse; margin-block-start: var(--kairos-space-2); font-size: var(--kairos-font-size-xs); color: var(--kairos-text-secondary); }
+.kairos-results-candles__numbers caption { text-align: start; padding-block-end: var(--kairos-space-1); }
+.kairos-results-candles__numbers th, .kairos-results-candles__numbers td { padding: var(--kairos-space-1); text-align: end; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; border-bottom: 1px solid var(--kairos-border-subtle); }
+.kairos-results-candles__numbers td { font-family: var(--kairos-font-mono); color: var(--kairos-text-primary); }
+.kairos-results-candles__numbers th:first-child { width: 27%; text-align: start; }
+.kairos-results-candles__state { margin: 0; color: var(--kairos-text-muted); font-size: var(--kairos-font-size-sm); }
+.kairos-results-candles__numbers th { overflow-wrap: normal; }
+
+.kairos-pnl-calendar { margin-top:var(--kairos-space-8); border-top:1px solid var(--kairos-border-subtle); padding-top:var(--kairos-space-6); }
+.kairos-pnl-calendar__heading { display:flex; align-items:flex-end; justify-content:space-between; gap:var(--kairos-space-4); margin-bottom:var(--kairos-space-4); }
+.kairos-pnl-calendar__heading h2 { margin:0; }
+.kairos-pnl-calendar__state { margin:0; padding:var(--kairos-space-4); border:1px solid var(--kairos-border-subtle); border-radius:var(--kairos-radius-md); color:var(--kairos-text-muted); }
+.kairos-pnl-calendar__notice { margin:var(--kairos-space-3) 0 0; color:var(--kairos-text-muted); font-size:var(--kairos-font-size-sm); }
+@media (max-width:420px) { .kairos-pnl-calendar__heading { align-items:flex-start; } }
+
+.kairos-pnl-streak {
+  display: grid;
+  gap: var(--kairos-space-1);
+  margin-block-end: var(--kairos-space-3);
+  padding: var(--kairos-space-3);
+  border: 1px solid var(--kairos-border-subtle);
+  border-radius: var(--kairos-radius-lg);
+  background: var(--kairos-surface-raised);
+}
+
+.kairos-pnl-streak__label,
+.kairos-pnl-streak small {
+  color: var(--kairos-text-muted);
+}
+
+.kairos-pnl-streak--profit strong {
+  color: var(--kairos-trade-profit);
+}
+
+.kairos-pnl-streak--loss strong {
+  color: var(--kairos-trade-loss);
+}
+
+.kairos-pnl-streak--breakeven strong,
+.kairos-pnl-streak--empty strong {
+  color: var(--kairos-text-secondary);
+}
+
+.kairos-pnl-performance-summary {
+  display: grid;
+  gap: var(--kairos-space-2);
+  margin-block-end: var(--kairos-space-3);
+  padding: var(--kairos-space-3);
+  border: 1px solid var(--kairos-border-subtle);
+  border-radius: var(--kairos-radius-lg);
+  background: var(--kairos-surface-raised);
+}
+
+.kairos-pnl-performance-summary__label {
+  color: var(--kairos-text-muted);
+}
+
+/* "Your results" (U5): the eyebrow like the Journal's (journalRoute.css .kairos-journal__eyebrow), and the streak and result
+   days with the hairline edge, raised surface, lined-up digits and coloured left edge the Journal gives them. */
+.kairos-results__eyebrow { margin: 0 !important; color: var(--kairos-accent-primary) !important; font-size: var(--kairos-font-size-xs); font-weight: var(--kairos-font-weight-semibold); letter-spacing: .08em; text-transform: uppercase; }
+.kairos-results :is(.kairos-pnl-streak, .kairos-pnl-performance-summary) { border-color: var(--kairos-border-hairline); background-color: var(--kairos-surface-raised); background-image: var(--kairos-surface-gradient); }
+.kairos-results :is(.kairos-pnl-streak strong, .kairos-pnl-performance-summary strong) { font-family: var(--kairos-font-mono); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.kairos-results .kairos-pnl-streak { border-inline-start: 3px solid var(--kairos-border-strong); }
+.kairos-results .kairos-pnl-streak--profit { border-inline-start-color: var(--kairos-trade-profit); }
+.kairos-results .kairos-pnl-streak--loss { border-inline-start-color: var(--kairos-trade-loss); }
+:is(.kairos-results-calendar, .kairos-results-heatmap__table) td[data-day-outside] { opacity: .45; }
+
+/* "Your numbers" (U5, T-051g): pictures first, sizes from projectPeriodPictures, tokens only. */
+.kairos-results-numbers { display: grid; gap: var(--kairos-space-4); margin-block: var(--kairos-space-4); min-width: 0; }
+.kairos-results-numbers h3 { margin: 0; font-size: var(--kairos-font-size-md); }
+.kairos-results-numbers__block { display: grid; gap: var(--kairos-space-2); min-width: 0; }
+.kairos-results-numbers__row { display: grid; gap: var(--kairos-space-1); min-width: 0; }
+.kairos-results-numbers__label, .kairos-results-numbers__count, .kairos-results-numbers__legend, .kairos-results-numbers__risk-label, .kairos-results-numbers__symbol { color: var(--kairos-text-secondary); }
+.kairos-results-numbers__count, .kairos-results-numbers__legend, .kairos-results-numbers__risk-label { font-size: var(--kairos-font-size-sm); }
+.kairos-results-numbers__bar { display: flex; gap: 2px; block-size: 0.75rem; overflow: hidden; border-radius: var(--kairos-radius-full); }
+.kairos-results-numbers__bar > span, .kairos-results-numbers__risk-bar > span { display: block; block-size: 100%; border-radius: var(--kairos-radius-full); }
+.kairos-results-numbers [data-part='won'] { background: var(--kairos-trade-profit); }
+.kairos-results-numbers [data-part='lost'] { background: var(--kairos-trade-loss); }
+.kairos-results-numbers [data-part='breakEven'] { background: var(--kairos-trade-flat); }
+/* The outline and the dash use a text token (4.5:1 on every surface, themeContrast.ts) so they read as graphics (WCAG 1.4.11). */
+.kairos-results-numbers [data-part='noResult'] { box-sizing: border-box; border: 1px dashed var(--kairos-text-muted); background: transparent; }
+.kairos-results-numbers__legend { display: flex; flex-wrap: wrap; gap: var(--kairos-space-1) var(--kairos-space-3); margin: 0; padding: 0; list-style: none; }
+.kairos-results-numbers__legend li { display: inline-flex; align-items: center; gap: var(--kairos-space-1); }
+.kairos-results-numbers__risk { display: grid; gap: var(--kairos-space-1); }
+.kairos-results-numbers__risk-bar { display: block; block-size: 0.75rem; }
+.kairos-results-numbers [data-part='one-risk'] { box-sizing: border-box; border: 1px solid var(--kairos-text-muted); }
+.kairos-results-numbers [data-part='average-risk'][data-direction='up'] { background: var(--kairos-trade-profit); }
+.kairos-results-numbers [data-part='average-risk'][data-direction='down'] { background: var(--kairos-trade-loss); }
+.kairos-results-numbers [data-part='average-risk'][data-direction='flat'] { min-inline-size: 0.25rem; background: var(--kairos-trade-flat); }
+.kairos-results-numbers .kairos-stat__value { overflow-wrap: anywhere; }
+
+/* T-051h: each day's short amount and trade count, the week column and the month total (D203, D204). */
+:is(.kairos-results-calendar, .kairos-results-heatmap__table) td > button { grid-template-rows: auto 1fr auto; }
+.kairos-results-calendar__day { justify-self: start; color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-xs); line-height: 1; }
+.kairos-results-calendar__amount { display: inline-flex; align-items: center; max-inline-size: 100%; font-size: var(--kairos-font-size-xs); font-variant-numeric: tabular-nums; line-height: 1; white-space: nowrap; }
+/* A cell is about 40px wide at 390px: a 6-character amount is drawn a little smaller, 7 smaller still, and a longer one may break. */
+.kairos-results-calendar__amount[data-cell-length='6'] { font-size: calc(var(--kairos-font-size-xs) * 0.85); letter-spacing: -0.02em; }
+.kairos-results-calendar__amount[data-cell-length='7'] { font-size: calc(var(--kairos-font-size-xs) * 0.72); letter-spacing: -0.03em; }
+.kairos-results-calendar__amount[data-cell-length='long'] { font-size: calc(var(--kairos-font-size-xs) * 0.72); letter-spacing: -0.03em; white-space: normal; overflow-wrap: anywhere; text-align: center; }
+.kairos-results-calendar__count { justify-self: end; color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-xs); font-variant-numeric: tabular-nums; line-height: 1; }
+.kairos-results-calendar__week { background: var(--kairos-surface-raised); }
+/* The week and heatmap cells have no day number: amount, then count (this must outweigh the day cells' rule above). */
+:is(.kairos-results-calendar, .kairos-results-heatmap__table) td:is(.kairos-results-calendar__week, .kairos-results-heatmap__cell) > button { grid-template-rows: 1fr auto; }
+.kairos-results-calendar__month-total { display: flex; flex-wrap: wrap; align-items: center; gap: var(--kairos-space-1); justify-self: start; min-block-size: var(--kairos-control-md); padding: var(--kairos-space-1) var(--kairos-space-3); border: 1px solid var(--kairos-border-default); border-radius: var(--kairos-radius-md); background: var(--kairos-surface-raised); color: var(--kairos-text-primary); font: inherit; font-size: var(--kairos-font-size-sm); font-variant-numeric: tabular-nums; text-align: start; }
+.kairos-results-calendar__month-total[aria-pressed='true'] { outline: 2px solid var(--kairos-state-focus); outline-offset: 1px; }
+:is(.kairos-results-calendar__key, .kairos-results-heatmap__key) { display: flex; flex-wrap: wrap; gap: var(--kairos-space-1) var(--kairos-space-3); }
+:is(.kairos-results-calendar__key, .kairos-results-heatmap__key) span { display: inline-flex; align-items: center; gap: var(--kairos-space-1); }
+.kairos-results-numbers__why { color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-sm); font-weight: var(--kairos-font-weight-regular); }
+.kairos-results-numbers__swatch { display: inline-block; inline-size: 0.75rem; block-size: 0.75rem; border-radius: var(--kairos-radius-full); }
+.kairos-results-numbers__legend [data-key='won'] .kairos-results-numbers__swatch { background: var(--kairos-trade-profit); }
+.kairos-results-numbers__legend [data-key='lost'] .kairos-results-numbers__swatch { background: var(--kairos-trade-loss); }
+.kairos-results-numbers__legend [data-key='breakEven'] .kairos-results-numbers__swatch { background: var(--kairos-trade-flat); }
+.kairos-results-numbers__legend [data-key='noResult'] .kairos-results-numbers__swatch { box-sizing: border-box; border: 1px dashed var(--kairos-text-muted); }
+.kairos-results-numbers__legend [data-key='won'] .kairos-icon { color: var(--kairos-trade-profit); }
+.kairos-results-numbers__legend [data-key='lost'] .kairos-icon { color: var(--kairos-trade-loss); }
+.kairos-results-numbers__legend [data-key='breakEven'] .kairos-icon { color: var(--kairos-trade-flat); }
+
+/* T-051i: candles you can tap, the row buttons under "Show the numbers", and the biggest dip (D205). */
+.kairos-results-candles__candle .kairos-results-candles__hit { fill: transparent; stroke: none; cursor: pointer; }
+.kairos-results-candles__dip line { stroke: var(--kairos-text-secondary); stroke-width: 1; stroke-dasharray: 4 3; }
+.kairos-results-candles__dip path { fill: none; stroke: var(--kairos-text-secondary); stroke-width: 1.5; }
+.kairos-results-candles__dip-label { fill: var(--kairos-text-secondary); font-size: 9px; }
+.kairos-results-candles__numbers th .kairos-icon { vertical-align: middle; }
+.kairos-results-candles__row-button { min-block-size: 24px; padding: 0; border: 0; background: none; color: var(--kairos-accent-primary); font: inherit; text-align: start; text-decoration: underline; cursor: pointer; }
+.kairos-results-candles__heading h3:focus { outline: none; }
+.kairos-results-candles__heading h3:focus-visible { outline: 2px solid var(--kairos-state-focus); outline-offset: 2px; }
+/* Analysis gives every button a field look (tradeReview.css .kairos-review :is(button, …)); the calendar's cells, week totals,
+   month total and the candles' row buttons keep their own, so the day and week colours show. */
+.kairos-results :is(.kairos-results-calendar, .kairos-results-heatmap__table) td > button { border-color: transparent; background: transparent; }
+.kairos-results .kairos-results-candles__numbers .kairos-results-candles__row-button { padding: 0; border-color: transparent; background: transparent; }
+.kairos-results .kairos-results-calendar-block .kairos-results-calendar__month-total { padding: var(--kairos-space-1) var(--kairos-space-3); border-color: var(--kairos-border-default); background: var(--kairos-surface-raised); font-size: var(--kairos-font-size-sm); }
+.kairos-results-calendar__swatch { display: inline-block; inline-size: 0.75rem; block-size: 0.75rem; border-radius: var(--kairos-radius-sm); }
+:is(.kairos-results-calendar__key, .kairos-results-heatmap__key) [data-key='profit'] .kairos-results-calendar__swatch { background: color-mix(in oklab, var(--kairos-trade-profit) 45%, transparent); }
+:is(.kairos-results-calendar__key, .kairos-results-heatmap__key) [data-key='loss'] .kairos-results-calendar__swatch { background: color-mix(in oklab, var(--kairos-trade-loss) 45%, transparent); }
+:is(.kairos-results-calendar__key, .kairos-results-heatmap__key) [data-key='breakeven'] .kairos-results-calendar__swatch { background: color-mix(in oklab, var(--kairos-trade-flat) 30%, transparent); }
+:is(.kairos-results-calendar__key, .kairos-results-heatmap__key) [data-key='unavailable'] .kairos-results-calendar__swatch { box-sizing: border-box; border: 1px dashed var(--kairos-text-muted); }
+:is(.kairos-results-calendar__key, .kairos-results-heatmap__key) [data-key='profit'] .kairos-icon { color: var(--kairos-trade-profit); }
+:is(.kairos-results-calendar__key, .kairos-results-heatmap__key) [data-key='loss'] .kairos-icon { color: var(--kairos-trade-loss); }
+:is(.kairos-results-calendar__key, .kairos-results-heatmap__key) [data-key='breakeven'] .kairos-icon { color: var(--kairos-trade-flat); }
+
+/* T-051j: when you trade (a weekday × 4-hour table in the calendar's cells) and your markets (tiles), D206. */
+.kairos-results-heatmap, .kairos-results-markets { display: grid; gap: var(--kairos-space-2); margin-block: var(--kairos-space-4); min-width: 0; }
+.kairos-results-heatmap h3, .kairos-results-markets h3 { margin: 0; font-size: var(--kairos-font-size-md); }
+.kairos-results-heatmap th[scope='row'] { color: var(--kairos-text-muted); font-size: var(--kairos-font-size-xs); font-weight: var(--kairos-font-weight-medium); text-align: start; }
+.kairos-results-markets__grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: minmax(4.5rem, auto); grid-auto-flow: dense; gap: var(--kairos-space-1); }
+.kairos-results-markets__tile { display: grid; grid-template-columns: minmax(0, 1fr); align-content: space-between; gap: var(--kairos-space-1); min-block-size: 4.5rem; min-width: 0; padding: var(--kairos-space-2) var(--kairos-space-2) calc(var(--kairos-space-2) + 0.375rem); border: 1px solid var(--kairos-border-subtle); border-radius: var(--kairos-radius-md); background: var(--kairos-surface-raised); color: var(--kairos-text-primary); font: inherit; font-size: var(--kairos-font-size-sm); font-variant-numeric: tabular-nums; text-align: start; overflow-wrap: break-word; cursor: pointer; }
+.kairos-results-markets__tile[data-size='2'] { grid-column: span 2; }
+.kairos-results-markets__tile[data-size='3'] { grid-column: span 2; grid-row: span 2; }
+.kairos-results-markets__tile[aria-pressed='true'] { outline: 2px solid var(--kairos-state-focus); outline-offset: 1px; }
+.kairos-results-markets__symbol { font-size: var(--kairos-font-size-sm); }
+.kairos-results-markets__count { color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-xs); }
+.kairos-results .kairos-results-markets .kairos-results-markets__tile { padding: var(--kairos-space-2) var(--kairos-space-2) calc(var(--kairos-space-2) + 0.375rem); border-color: var(--kairos-border-subtle); background: var(--kairos-surface-raised); font-size: var(--kairos-font-size-sm); }
+/* Text stays on the tile's own surface (4.5:1 by the theme rules): the outcome colour is the edge, and the strength a band along the bottom, inside the padding. */
+.kairos-results .kairos-results-markets .kairos-results-markets__tile[data-tile-result='profit'] { border-inline-start: 3px solid var(--kairos-trade-profit); background-image: linear-gradient(to top, color-mix(in oklab, var(--kairos-trade-profit) 55%, transparent) 0 0.375rem, transparent 0.375rem); }
+.kairos-results .kairos-results-markets .kairos-results-markets__tile[data-tile-result='loss'] { border-inline-start: 3px solid var(--kairos-trade-loss); background-image: linear-gradient(to top, color-mix(in oklab, var(--kairos-trade-loss) 55%, transparent) 0 0.375rem, transparent 0.375rem); }
+.kairos-results .kairos-results-markets .kairos-results-markets__tile[data-tile-result='breakeven'] { border-inline-start: 3px solid var(--kairos-trade-flat); background-image: linear-gradient(to top, color-mix(in oklab, var(--kairos-trade-flat) 55%, transparent) 0 0.375rem, transparent 0.375rem); }
+.kairos-results .kairos-results-markets .kairos-results-markets__tile[data-tile-result='profit'][data-tile-strength='1'] { background-image: linear-gradient(to top, color-mix(in oklab, var(--kairos-trade-profit) 40%, transparent) 0 0.375rem, transparent 0.375rem); }
+.kairos-results .kairos-results-markets .kairos-results-markets__tile[data-tile-result='profit'][data-tile-strength='2'] { background-image: linear-gradient(to top, color-mix(in oklab, var(--kairos-trade-profit) 60%, transparent) 0 0.375rem, transparent 0.375rem); }
+.kairos-results .kairos-results-markets .kairos-results-markets__tile[data-tile-result='profit'][data-tile-strength='3'] { background-image: linear-gradient(to top, color-mix(in oklab, var(--kairos-trade-profit) 80%, transparent) 0 0.375rem, transparent 0.375rem); }
+.kairos-results .kairos-results-markets .kairos-results-markets__tile[data-tile-result='profit'][data-tile-strength='4'] { background-image: linear-gradient(to top, color-mix(in oklab, var(--kairos-trade-profit) 100%, transparent) 0 0.375rem, transparent 0.375rem); }
+.kairos-results .kairos-results-markets .kairos-results-markets__tile[data-tile-result='loss'][data-tile-strength='1'] { background-image: linear-gradient(to top, color-mix(in oklab, var(--kairos-trade-loss) 40%, transparent) 0 0.375rem, transparent 0.375rem); }
+.kairos-results .kairos-results-markets .kairos-results-markets__tile[data-tile-result='loss'][data-tile-strength='2'] { background-image: linear-gradient(to top, color-mix(in oklab, var(--kairos-trade-loss) 60%, transparent) 0 0.375rem, transparent 0.375rem); }
+.kairos-results .kairos-results-markets .kairos-results-markets__tile[data-tile-result='loss'][data-tile-strength='3'] { background-image: linear-gradient(to top, color-mix(in oklab, var(--kairos-trade-loss) 80%, transparent) 0 0.375rem, transparent 0.375rem); }
+.kairos-results .kairos-results-markets .kairos-results-markets__tile[data-tile-result='loss'][data-tile-strength='4'] { background-image: linear-gradient(to top, color-mix(in oklab, var(--kairos-trade-loss) 100%, transparent) 0 0.375rem, transparent 0.375rem); }
+.kairos-results .kairos-results-markets .kairos-results-markets__tile[data-tile-result='unavailable'] { border: 1px dashed var(--kairos-text-muted); }
+/* Text on a coloured cell: the fills stop at 58% and the small numbers use the main text colour, so they keep their contrast. */
+:is(.kairos-results-calendar, .kairos-results-heatmap__table) :is(td[data-day-result], td[data-week-result], td[data-cell-result]) :is(.kairos-results-calendar__day, .kairos-results-calendar__count) { color: var(--kairos-text-primary); }
+.kairos-results-markets__tile[data-size='1'] .kairos-results-markets__symbol { font-size: var(--kairos-font-size-xs); }
+/* T-051i fix r1: the dip words keep a halo of the chart's background so candles behind them don't hide them; row buttons get a wider first column. */
+.kairos-results-candles__dip-label { paint-order: stroke; stroke: var(--kairos-chart-background); stroke-width: 3px; stroke-linejoin: round; }
+.kairos-results-candles__numbers[data-row-buttons] th:first-child { width: 36%; }
+.kairos-results-candles__row-button { display: inline-block; vertical-align: middle; max-inline-size: calc(100% - 1.25rem); }
+/* An empty heatmap cell keeps a faint outline, so a sparse grid still reads as a grid. */
+.kairos-results-heatmap__table td.kairos-results-heatmap__cell:not([data-cell-result]) { border: 1px solid var(--kairos-border-subtle); }
