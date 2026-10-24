@@ -46,7 +46,9 @@ export type DisciplineScoreProjection =
       /** null: no closed trade in the period had a saved checklist. */
       checklist: DisciplineChecklistPart | null;
       review: DisciplineReviewPart;
-      /** At most DISCIPLINE_TOP_MISTAKES, most frequent first. */
+      /** U13 (D251): every tagged mistake, most frequent first (then by label). */
+      mistakes: readonly DisciplineMistakeCount[];
+      /** The first DISCIPLINE_TOP_MISTAKES of `mistakes`. */
       topMistakes: readonly DisciplineMistakeCount[];
     }>;
 
@@ -102,10 +104,10 @@ export function projectDisciplineScore(input: DisciplineScoreInput): DisciplineS
   const score = checklist === null
     ? percentHalfUp(reviewedCount, closedCount)
     : percentHalfUp(tickedCount * closedCount + reviewedCount * askedCount, 2 * askedCount * closedCount);
-  const topMistakes = Object.freeze([...mistakes]
+  const allMistakes = Object.freeze([...mistakes]
     .map(([itemId, counted]) => Object.freeze({ itemId, label: counted.label, count: counted.count }))
-    .sort((left, right) => right.count - left.count || compare(left.label, right.label) || compare(left.itemId, right.itemId))
-    .slice(0, DISCIPLINE_TOP_MISTAKES));
+    .sort((left, right) => right.count - left.count || compare(left.label, right.label) || compare(left.itemId, right.itemId)));
+  const topMistakes = Object.freeze(allMistakes.slice(0, DISCIPLINE_TOP_MISTAKES));
 
   return Object.freeze({
     available: true as const,
@@ -113,6 +115,59 @@ export function projectDisciplineScore(input: DisciplineScoreInput): DisciplineS
     basis: checklist === null ? 'reviews-only' as const : 'checklist-and-reviews' as const,
     checklist,
     review,
+    mistakes: allMistakes,
     topMistakes,
+  });
+}
+
+/** One month's score, as `projectDisciplineScore` gave it, for the trend. */
+export interface DisciplineScoreMonth {
+  readonly monthKey: string;
+  readonly score: DisciplineScoreProjection;
+}
+
+/** A common mistake's count each month: null when the month had no reviewed trade (no review is not "no mistake"). */
+export interface DisciplineMistakeTrend {
+  readonly itemId: string;
+  readonly label: string;
+  readonly total: number;
+  readonly counts: readonly Readonly<{ monthKey: string; count: number | null }>[];
+}
+
+export interface DisciplineTrend {
+  /** Oldest first; null for a month with no closed trade (a gap, never 0). */
+  readonly scores: readonly Readonly<{ monthKey: string; score: number | null }>[];
+  /** The DISCIPLINE_TOP_MISTAKES most frequent over the months shown. */
+  readonly mistakes: readonly DisciplineMistakeTrend[];
+}
+
+/**
+ * U13 (D251): the score and the common mistakes month by month, over the last `window` months given (oldest first).
+ * Each month's numbers are its own `projectDisciplineScore`; nothing is counted twice.
+ */
+export function projectDisciplineTrend(input: Readonly<{ months: readonly DisciplineScoreMonth[]; window: number }>): DisciplineTrend {
+  const months = input.months.slice(-Math.max(0, input.window));
+  const totals = new Map<string, { label: string; total: number }>();
+  for (const month of months) {
+    if (!month.score.available) continue;
+    // The newest month's label wins, as within a month.
+    for (const mistake of month.score.mistakes) {
+      const counted = totals.get(mistake.itemId);
+      totals.set(mistake.itemId, { label: mistake.label, total: (counted?.total ?? 0) + mistake.count });
+    }
+  }
+  const common = [...totals]
+    .map(([itemId, counted]) => ({ itemId, label: counted.label, total: counted.total }))
+    .sort((left, right) => right.total - left.total || compare(left.label, right.label) || compare(left.itemId, right.itemId))
+    .slice(0, DISCIPLINE_TOP_MISTAKES);
+  return Object.freeze({
+    scores: Object.freeze(months.map(month => Object.freeze({ monthKey: month.monthKey, score: month.score.available ? month.score.score : null }))),
+    mistakes: Object.freeze(common.map(mistake => Object.freeze({
+      ...mistake,
+      counts: Object.freeze(months.map(month => Object.freeze({
+        monthKey: month.monthKey,
+        count: !month.score.available || month.score.review.reviewedCount === 0 ? null : month.score.mistakes.find(item => item.itemId === mistake.itemId)?.count ?? 0,
+      }))),
+    }))),
   });
 }

@@ -5,6 +5,7 @@ import { loadGoalsHistory, type GoalsHistoryResult, type LimitsCalendarDay, type
 import { writeVisualPnlPeriodChoice } from '../../application/visual-pnl';
 import type { KairosDatabase } from '../../data/database';
 import { Button, Card, ErrorState } from '../../design-system/primitives';
+import { GoalsByMonth } from './GoalsByMonth';
 import './goals.css';
 
 function CalendarLink({ to, children }: { readonly to: string; readonly children: ReactNode }) {
@@ -67,7 +68,10 @@ function MonthGrid({ month, selected, onSelect }: { readonly month: LimitsCalend
 
 type State = Readonly<{ kind: 'loading' }> | Readonly<{ kind: 'error' }> | Readonly<{ kind: 'ready'; result: GoalsHistoryResult }>;
 
-/** U13 (D250): the Goals page's limits calendar: green inside your limits, red over one, "?" when Kairos can't tell. */
+/**
+ * U13 (D250, D251): the Goals page's limits calendar (green inside your limits, red over one, "?" when Kairos can't
+ * tell), then "Month by month" from the same 12-month read. Loading, errors and "Try again" stay with the calendar.
+ */
 export function LimitsCalendar({ db, now, revision = 0 }: { readonly db: KairosDatabase; readonly now: () => string; readonly revision?: number }) {
   const titleId = useId();
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -107,7 +111,7 @@ export function LimitsCalendar({ db, now, revision = 0 }: { readonly db: KairosD
   };
   const homeWords = result?.kind === 'ready' ? describeTotalsInHomeCurrency(result.inHomeCurrency) : null;
 
-  return <Card as="section" className="kairos-goals-card kairos-limits" aria-labelledby={titleId}>
+  return <><Card as="section" className="kairos-goals-card kairos-limits" aria-labelledby={titleId}>
     <h2 id={titleId} ref={titleRef} tabIndex={-1}>Your limits calendar</h2>
     {state.kind === 'loading' ? <p>Loading your limits calendar…</p> : null}
     {state.kind === 'error' ? <ErrorState message="Kairos could not load your limits calendar." onRetry={() => { setRetrying(true); setAttempt(value => value + 1); }} busy={retrying} /> : null}
@@ -126,5 +130,6 @@ export function LimitsCalendar({ db, now, revision = 0 }: { readonly db: KairosD
       <div className="kairos-limits__details" aria-live="polite">{selectedDay !== null ? <DayDetails day={selectedDay} /> : null}</div>
       {homeWords ? <p className="kairos-goals__note">{homeWords.text} <CalendarLink to="/currency">{homeWords.link}</CalendarLink></p> : null}
     </> : null}
-  </Card>;
+  </Card>
+  {result?.kind === 'ready' ? <GoalsByMonth months={result.months} trend={result.trend} /> : null}</>;
 }

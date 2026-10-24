@@ -40,6 +40,7 @@ describe('P22.4 projectDisciplineScore', () => {
       basis: 'checklist-and-reviews',
       checklist: { tradeCount: 2, fullTradeCount: 1, tickedCount: 8, askedCount: 10, percent: 80 },
       review: { reviewedCount: 2, closedCount: 3, percent: 67 },
+      mistakes: [{ itemId: 'moved-stop', label: 'Moved my stop', count: 2 }, { itemId: 'early-exit', label: 'Closed too early', count: 1 }],
       topMistakes: [{ itemId: 'moved-stop', label: 'Moved my stop', count: 2 }, { itemId: 'early-exit', label: 'Closed too early', count: 1 }],
     });
   });

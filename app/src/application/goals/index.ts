@@ -5,3 +5,4 @@ export * from './goalsWords';
 export * from './lossLimits';
 export * from './limitsCalendar';
 export * from './loadGoalsHistory';
+export * from './goalsMonths';

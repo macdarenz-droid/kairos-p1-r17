@@ -1914,8 +1914,12 @@ test('(af) Goals you can see: limits, a loss, the rings and Home', async ({ page
   };
   await activate(page);
   await page.goto('/goals');
+  // Wait for the page to load before asking whether the time zone still needs choosing.
+  const goalsPage = page.locator('[data-goals-status]');
+  await expect(goalsPage).not.toHaveAttribute('data-goals-status', 'loading');
   const deviceZone = page.getByRole('button', { name: /\(this device\)$/ });
   if (await deviceZone.isVisible()) await deviceZone.click();
+  await expect(goalsPage).toHaveAttribute('data-goals-status', 'ready');
   await page.getByLabel('Most trades in a day').fill('3');
   await page.getByLabel('Most I can lose in a day').fill('100');
   await page.getByLabel('Most I can lose in a week').fill('250');
@@ -1990,5 +1994,18 @@ test('(af) Goals you can see: limits, a loss, the rings and Home', async ({ page
   await page.getByRole('button', { name: 'Previous month' }).click();
   await expect(page.getByRole('button', { name: /: over a limit$/ })).toHaveCount(0);
   await axeOk('.kairos-limits');
+
+  // T-058e: this month's tile says the day limit was missed; the switch shows 12 months.
+  const tiles = page.getByRole('list', { name: 'Months' }).getByRole('button');
+  await expect(tiles).toHaveCount(6);
+  await tiles.last().click();
+  await expect(page.getByRole('heading', { level: 3, name: / \(so far\)$/ })).toBeVisible();
+  await expect(page.getByText('Most I can lose in a day: missed on 1 day')).toBeVisible();
+  await axeOk('.kairos-goals-months');
+  const twelve = page.getByRole('button', { name: '12 months' });
+  await twelve.click();
+  await expect(twelve).toBeFocused();
+  await expect(tiles).toHaveCount(12);
+  await axeOk('.kairos-goals-months');
   expect(errors).toEqual([]);
 });
