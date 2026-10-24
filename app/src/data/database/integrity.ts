@@ -1,7 +1,7 @@
 import { isStoredSavedRecordLabel } from '../../domain/saved-records/savedRecordLabel';
 import type { KairosDatabase } from './KairosDatabase';
 import { KAIROS_CURRENT_STORES, KAIROS_DB_SCHEMA_VERSION } from './schema';
-import { validateTradeRecord, parsePositiveDecimalString } from '../../domain/trades';
+import { validateTradePlanFields, validateTradeRecord, parsePositiveDecimalString } from '../../domain/trades';
 import { isTradeDisciplineRecordShape } from '../../domain/discipline';
 import { isExchangeRateRecordShape } from '../../domain/calculations/currencyConversion';
 import { isEconomicEventRecordShape } from '../../domain/economic-calendar/economicEvent';
@@ -35,7 +35,7 @@ export async function inspectKairosDatabaseIntegrity(db:KairosDatabase):Promise<
  if(open&&mt&&sat&&stt&&tdt&&ert&&eet&&tradeTables.every(Boolean)){
    const ms=await mt.toArray(); metadataRecordCount=ms.length; metadataOk=ms.every(metadata);
    const trades=await db.trades.toArray(), plans=await db.tradePlans.toArray(), executions=await db.tradeExecutions.toArray(), fees=await db.tradeFees.toArray(), saved=await db.savedAnalyses.toArray(), snapshots=await db.savedTimeAssistedSnapshots.toArray(), discipline=await db.tradeDiscipline.toArray(); tradeRecordCount=trades.length; savedAnalysisRecordCount=saved.length; savedOk=saved.every(isSavedAnalysisRecordShape); savedTimeAssistedSnapshotRecordCount=snapshots.length; snapshotsOk=snapshots.every(isSavedTimeAssistedSnapshotRecordShape); tradeDisciplineRecordCount=discipline.length; disciplineOk=discipline.every(isTradeDisciplineRecordShape);
-   shapeOk=trades.every(t=>validateTradeRecord(t).ok)&&plans.every(p=>p.plannedQuantity===null||parsePositiveDecimalString(p.plannedQuantity).ok)&&executions.every(e=>parsePositiveDecimalString(e.price).ok&&parsePositiveDecimalString(e.quantity).ok)&&fees.every(f=>parsePositiveDecimalString(f.amount).ok);
+   shapeOk=trades.every(t=>validateTradeRecord(t).ok)&&plans.every(p=>(p.plannedQuantity===null||parsePositiveDecimalString(p.plannedQuantity).ok)&&validateTradePlanFields(p).ok)&&executions.every(e=>parsePositiveDecimalString(e.price).ok&&parsePositiveDecimalString(e.quantity).ok)&&fees.every(f=>parsePositiveDecimalString(f.amount).ok);
    const ids=new Set(trades.map(t=>t.id)); const execIds=new Set(executions.map(e=>e.id)); refsOk=plans.every(p=>ids.has(p.tradeId))&&executions.every(e=>ids.has(e.tradeId))&&fees.every(f=>ids.has(f.tradeId)&&(f.executionId===null||execIds.has(f.executionId)));
    const disciplineTradeIds=discipline.map(d=>d.tradeId); disciplineRefsOk=disciplineTradeIds.every(id=>ids.has(id))&&new Set(disciplineTradeIds).size===disciplineTradeIds.length;
    const rates=await db.exchangeRates.toArray(); exchangeRateRecordCount=rates.length; ratesOk=rates.every(isExchangeRateRecordShape);
