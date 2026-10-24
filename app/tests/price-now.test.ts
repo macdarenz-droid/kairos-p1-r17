@@ -23,7 +23,7 @@ describe('T-059c the price now', () => {
       instrument: { venue: 'binance-spot', symbol: 'PEPEUSDT' }, interval: '1m', limit: 6,
       startTimeMs: Date.parse('2026-10-24T10:27:00.000Z'), endTimeMs: NOW, pair: { base: 'PEPE', quote: 'USDT' },
     });
-    expect(result).toEqual({ ok: true, price: '0.00001234', at: '2026-10-24T10:32:00.000Z', source: 'binance', market: 'PEPEUSDT', midPrice: false });
+    expect(result).toEqual({ ok: true, price: '0.00001234', at: '2026-10-24T10:32:00.000Z', source: 'binance', market: 'PEPEUSDT', midPrice: false, futures: false });
     if (!result.ok) return;
     expect(describePriceNowSource(result)).toMatch(/^Binance · PEPEUSDT · \d\d:\d\d$/);
   });
@@ -40,7 +40,7 @@ describe('T-059c the price now', () => {
     expect(acquireHistory.mock.calls[0]![0].instrument).toEqual({ venue: 'oanda-forex', symbol: 'EURUSD' });
     expect(acquireHistory.mock.calls[0]![0].pair).toBeUndefined();
     expect(value.metadata.acquireInstrumentMetadata).not.toHaveBeenCalled();
-    expect(result).toEqual({ ok: true, price: '1.16682', at: '2026-10-24T10:31:00.000Z', source: 'oanda', market: 'EUR/USD', midPrice: true });
+    expect(result).toEqual({ ok: true, price: '1.16682', at: '2026-10-24T10:31:00.000Z', source: 'oanda', market: 'EUR/USD', midPrice: true, futures: false });
     if (!result.ok) return;
     expect(describePriceNowSource(result)).toMatch(/^OANDA · EUR\/USD · mid price · \d\d:\d\d$/);
   });
@@ -99,5 +99,17 @@ describe('T-059c the price now', () => {
     expect(blank).toMatchObject({ ok: false, why: 'invalid-symbol' });
     if (blank.ok) return;
     expect(describePriceNowFailure(blank)).toEqual({ message: 'Price now: type a symbol first.', retry: false });
+  });
+
+  it('review r2: a futures trade says Binance Futures, and reads Binance Spot once when there are no futures candles', async () => {
+    const futures = await readPriceNow(deps(() => answer(candle('2026-10-24T10:32:00.000Z', '65010'))).value, { marketType: 'futures', symbol: 'BTCUSDT' }, { nowMs: NOW });
+    if (!futures.ok) throw new Error('futures price');
+    expect(describePriceNowSource(futures)).toMatch(/^Binance Futures · BTCUSDT · \d\d:\d\d$/);
+    const { value, acquireHistory } = deps(request => (request.instrument.venue === 'binance-usdm'
+      ? { ok: false, reason: 'invalid-request', detail: 'no futures' } as MarketCandleHistoryResult
+      : answer(candle('2026-10-24T10:32:00.000Z', '65000'))));
+    const spot = await readPriceNow(value, { marketType: 'futures', symbol: 'BTCUSDT' }, { nowMs: NOW });
+    expect(acquireHistory.mock.calls.map(call => call[0].instrument.venue)).toEqual(['binance-usdm', 'binance-spot']);
+    expect(spot).toMatchObject({ ok: true, price: '65000', futures: false });
   });
 });

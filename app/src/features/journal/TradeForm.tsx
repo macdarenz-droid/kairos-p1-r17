@@ -262,49 +262,6 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
   const [quick, setQuick] = useState<QuickTradeLogDraft>(createEmptyQuickTradeLogDraft);
   const isQuick = mode === 'quick';
 
-  // U14 (D258): what is typed is kept on this device and filled back in when the form opens again (Practice's plan
-  // from the calculator wins over a kept trade). A save clears it; "Start over" clears it with Undo for a moment.
-  const typed = useMemo<TradeFormDraft>(() => ({ trade: draft, quick, executions, fees }), [draft, quick, executions, fees]);
-  const [keptShown, setKeptShown] = useState(false);
-  const toast = useToast();
-  function fillIn(kept: Pick<KeptTradeFormDraft, 'mode' | 'draft'>): void {
-    setDraft(kept.draft.trade);
-    setQuick(kept.draft.quick);
-    setExecutions(kept.draft.executions);
-    setFees(kept.draft.fees);
-    setMode(kept.mode);
-    setPlanShown(Object.values(kept.draft.trade.plan).some(value => typeof value === 'string' && value.trim() !== ''));
-    setCurrencyFilledBy(null);
-    setCurrencyTyped(false);
-    setFormGeneration(current => current + 1);
-  }
-  const keptDraft = useKeptTradeFormDraft(db, kind, { mode, draft: typed }, {
-    read: initialDraft === undefined,
-    onFound: kept => { fillIn(kept); setKeptShown(true); },
-  });
-  /** Empties every field, as after a save, without the saved message. */
-  function emptyForm(): void {
-    setDraft({ ...createEmptyManualTradeDraft(), marketType: defaultMarket ?? '' });
-    setCurrencyFilledBy(null);
-    setCurrencyTyped(false);
-    setPlanShown(false);
-    setExecutions([]);
-    setFees([]);
-    setFormGeneration(current => current + 1);
-    setQuick(createEmptyQuickTradeLogDraft());
-    setStrategyId('');
-    setChecklistAnswers([]);
-    setStrategyAnswers([]);
-    setSaveAnywayReason('');
-    setKeptShown(false);
-  }
-  function startOver(): void {
-    const before = { mode, draft: typed };
-    flushSync(() => { emptyForm(); setFeedback(null); });
-    void keptDraft.clear();
-    document.getElementById(`${idPrefix}-symbol`)?.focus();
-    toast.show({ message: 'Started over.', action: { label: 'Undo', onAction: () => fillIn(before) } });
-  }
 
   // U14 (D254): the symbol search and the currency from a crypto market's quote asset. The list is read once the
   // trader types a symbol; a currency Kairos filled follows the symbol, one the trader typed is never replaced.
@@ -334,6 +291,51 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
       setCurrencyFilledBy(null);
     }
   }, [listedSymbol, listedQuote, judged, currencyBlank, currencyFilledBy, currencyTyped, draft.priceCurrency]);
+
+  // U14 (D258): what is typed is kept on this device and filled back in when the form opens again (Practice's plan
+  // from the calculator wins over a kept trade). A save clears it; "Start over" clears it with Undo for a moment.
+  const typed = useMemo<TradeFormDraft>(() => ({ trade: draft, quick, executions, fees, currencyFilledBy, currencyTyped }), [draft, quick, executions, fees, currencyFilledBy, currencyTyped]);
+  const [keptShown, setKeptShown] = useState(false);
+  const toast = useToast();
+  function fillIn(kept: Pick<KeptTradeFormDraft, 'mode' | 'draft'>): void {
+    setDraft(kept.draft.trade);
+    setQuick(kept.draft.quick);
+    setExecutions(kept.draft.executions);
+    setFees(kept.draft.fees);
+    setMode(kept.mode);
+    setPlanShown(Object.values(kept.draft.trade.plan).some(value => typeof value === 'string' && value.trim() !== ''));
+    // Who set the currency comes back too, so a currency Kairos filled still follows the symbol (D254).
+    setCurrencyFilledBy(kept.draft.currencyFilledBy);
+    setCurrencyTyped(kept.draft.currencyTyped);
+    setFormGeneration(current => current + 1);
+  }
+  const keptDraft = useKeptTradeFormDraft(db, kind, { mode, draft: typed }, {
+    read: initialDraft === undefined,
+    onFound: kept => { fillIn(kept); setKeptShown(true); },
+  });
+  /** Empties every field, as after a save, without the saved message. */
+  function emptyForm(): void {
+    setDraft({ ...createEmptyManualTradeDraft(), marketType: defaultMarket ?? '' });
+    setCurrencyFilledBy(null);
+    setCurrencyTyped(false);
+    setPlanShown(false);
+    setExecutions([]);
+    setFees([]);
+    setFormGeneration(current => current + 1);
+    setQuick(createEmptyQuickTradeLogDraft());
+    setStrategyId('');
+    setChecklistAnswers([]);
+    setStrategyAnswers([]);
+    setSaveAnywayReason('');
+    setKeptShown(false);
+  }
+  function startOver(): void {
+    const before = { mode, draft: typed };
+    flushSync(() => { emptyForm(); setFeedback(null); });
+    void keptDraft.clear();
+    document.getElementById(`${idPrefix}-symbol`)?.focus();
+    toast.show({ message: 'Started over.', action: { label: 'Undo', onAction: () => fillIn(before) } });
+  }
   function chooseSymbol(row: SymbolSearchRow): void {
     setDraft(current => ({ ...current, symbol: row.symbol, marketType: row.marketType }));
     setFeedback(null);

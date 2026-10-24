@@ -1,6 +1,8 @@
 import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
 import { afterEach, describe, expect, it } from 'vitest';
+import { listenForKairosJournalChanges, KAIROS_JOURNAL_CHANNEL } from '../src/data/database';
+import { saveManualTrade } from '../src/application/trades';
 import { commitBackupRestore, prepareBackupRestore } from '../src/application/backup';
 import { clearTradeFormDraft, keepTradeFormDraft, readTradeFormDraft, tradeFormDraftKey, type TradeFormDraft } from '../src/application/trades/tradeFormDraft';
 import { createEmptyManualTradeDraft } from '../src/application/trades';
@@ -21,6 +23,8 @@ const typed: TradeFormDraft = {
   quick: { entryPrice: '65000', exitPrice: '', quantity: '0.1' },
   executions: [{ key: 'e1', type: 'entry', price: '65000', quantity: '0.1', executedAt: '2026-10-24T09:00' }],
   fees: [{ key: 'f1', amount: '1.2', currency: 'USDT' }],
+  currencyFilledBy: 'BTCUSDT',
+  currencyTyped: false,
 };
 
 describe('T-059e the trade you were typing, kept on this device', () => {
@@ -32,7 +36,7 @@ describe('T-059e the trade you were typing, kept on this device', () => {
     expect(await clearTradeFormDraft(db, 'journal')).toBe(true);
     expect(await readTradeFormDraft(db, 'journal')).toBeNull();
     // The market alone is not a trade being typed: the form fills it with the first market you trade.
-    const blank: TradeFormDraft = { trade: { ...createEmptyManualTradeDraft(), marketType: 'crypto' }, quick: { entryPrice: ' ', exitPrice: '', quantity: '' }, executions: [], fees: [] };
+    const blank: TradeFormDraft = { trade: { ...createEmptyManualTradeDraft(), marketType: 'crypto' }, quick: { entryPrice: ' ', exitPrice: '', quantity: '' }, executions: [], fees: [], currencyFilledBy: null, currencyTyped: false };
     await keepTradeFormDraft(db, 'journal', { mode: 'full', draft: typed }, { now });
     expect(await keepTradeFormDraft(db, 'journal', { mode: 'full', draft: blank }, { now })).toBe(true);
     expect(await db.metadata.get(tradeFormDraftKey('journal'))).toBeUndefined();
@@ -54,6 +58,8 @@ describe('T-059e the trade you were typing, kept on this device', () => {
       JSON.stringify({ ...good, draft: { ...typed, fees: {} } }),
       JSON.stringify({ ...good, draft: { ...typed, trade: { ...typed.trade, plan: { plannedEntryPrice: '' } } } }),
       JSON.stringify({ ...good, script: 'x' }),
+      JSON.stringify({ ...good, draft: { ...typed, currencyTyped: 'no' } }),
+      JSON.stringify({ ...good, draft: { ...typed, currencyFilledBy: 7 } }),
     ];
     for (const value of damaged) {
       await db.metadata.put({ key, value, updatedAt: now() });
@@ -83,5 +89,26 @@ describe('T-059e the trade you were typing, kept on this device', () => {
     expect((await readTradeFormDraft(db, 'practice'))?.mode).toBe('full');
     await clearTradeFormDraft(db, 'journal');
     expect((await readTradeFormDraft(db, 'practice'))?.draft).toEqual(practice);
+  });
+
+  it('review r2: keeping the trade never tells other tabs the journal changed; a saved trade still does', async () => {
+    const db = await database();
+    const stop = listenForKairosJournalChanges(() => undefined);
+    const otherTab = new BroadcastChannel(KAIROS_JOURNAL_CHANNEL);
+    const heard: unknown[] = [];
+    otherTab.onmessage = event => { heard.push(event.data); };
+    try {
+      await keepTradeFormDraft(db, 'journal', { mode: 'quick', draft: typed }, { now });
+      await clearTradeFormDraft(db, 'journal');
+      await new Promise(resolve => setTimeout(resolve, 50));
+      expect(heard).toEqual([]);
+      const saved = await saveManualTrade(db, { symbol: 'BTCUSDT', marketType: 'crypto', side: 'long', status: 'draft' });
+      expect(saved.ok).toBe(true);
+      await new Promise(resolve => setTimeout(resolve, 50));
+      expect(heard).toEqual([{ type: 'changed' }]);
+    } finally {
+      otherTab.close();
+      stop();
+    }
   });
 });

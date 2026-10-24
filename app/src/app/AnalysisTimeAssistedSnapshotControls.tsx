@@ -35,28 +35,32 @@ type SavedStatus =
   | { readonly kind: 'deleted'; readonly id: string }
   | { readonly kind: 'error'; readonly reason: string };
 
-const shortId = (id: string): string => id.slice(0, 8);
 const savedErrorText = (reason: string): string => {
   switch (reason) {
-    case 'saved-time-assisted-snapshot-not-found': return 'That saved snapshot no longer exists.';
-    case 'saved-time-assisted-snapshot-load-failed': return 'The saved snapshot could not be read.';
-    case 'saved-time-assisted-snapshot-delete-failed': return 'The saved snapshot could not be deleted. It is still saved.';
-    default: return 'Saved snapshots are unavailable right now.';
+    case 'saved-time-assisted-snapshot-not-found': return 'That saved estimate no longer exists.';
+    case 'saved-time-assisted-snapshot-load-failed': return 'The saved estimate could not be read.';
+    case 'saved-time-assisted-snapshot-delete-failed': return 'The saved estimate could not be deleted. It is still saved.';
+    default: return 'Saved estimates are unavailable right now.';
   }
 };
 
-const utcClock = (iso: string): string => iso.replace('T', ' ').replace(/\.\d{3}Z$/, ' UTC');
+/** "10 Sep 02:13" in this device's time, as the trade form's times are typed. */
+const localWhen = (iso: string): string => {
+  const parts = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(iso));
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find(item => item.type === type)?.value ?? '';
+  return `${part('day')} ${part('month')} ${part('hour')}:${part('minute')}`;
+};
 const savedMessage = (status: SavedStatus, listed: number): string => {
   switch (status.kind) {
-    case 'loading': return 'Loading the saved snapshot…';
-    case 'loaded': return `Loaded snapshot ${shortId(status.id)} saved ${utcClock(status.savedAt)}; estimates as acquired then, not re-estimated.`;
-    case 'deleting': return 'Deleting the saved snapshot…';
-    case 'deleted': return `Deleted snapshot ${shortId(status.id)}. The shown estimate is unchanged.`;
+    case 'loading': return 'Opening the saved estimate…';
+    case 'loaded': return `Opened the estimate saved ${localWhen(status.savedAt)}. Its prices are as they were then.`;
+    case 'deleting': return 'Deleting the saved estimate…';
+    case 'deleted': return 'Deleted the saved estimate. What is shown is unchanged.';
     case 'error': return status.reason;
-    default: return listed === 0 ? 'No saved snapshots for this market.' : `${listed === 1 ? '1 saved snapshot' : `${listed} saved snapshots`} for this market.`;
+    default: return listed === 0 ? 'No saved estimates for this market.' : `${listed === 1 ? '1 saved estimate' : `${listed} saved estimates`} for this market.`;
   }
 };
-const savedOption = (item: AnalysisSavedTimeAssistedSnapshotSummary): string => `${item.label === undefined ? '' : `${item.label} · `}${shortId(item.id)} · ${item.side === 'long' ? 'Long' : 'Short'} · opened ${utcClock(item.openedAtUtc)}${item.closedAtUtc === null ? ' · still open' : ''}`;
+const savedOption = (item: AnalysisSavedTimeAssistedSnapshotSummary): string => `${item.label === undefined ? '' : `${item.label} · `}${item.side === 'long' ? 'Long' : 'Short'} · opened ${localWhen(item.openedAtUtc)}${item.closedAtUtc === null ? ' · still open' : ''} · saved ${localWhen(item.savedAt)}`;
 const seconds = (ms: number): string => `${Math.round(ms / 1000)}s`;
 const duration = (ms: number): string => {
   const total = Math.round(ms / 1000), h = Math.floor(total / 3600), m = Math.floor((total % 3600) / 60), s = total % 60;
@@ -75,30 +79,30 @@ const unavailableText = (reason: Extract<EstimatedMarketReference, { kind: 'unav
   const forexWords = forex ? forexUnavailableText(reason) : null;
   if (forexWords !== null) return forexWords;
   switch (reason) {
-    case 'future-instant': return 'That time is in the future; no market candle exists yet.';
+    case 'future-instant': return "That time hadn't happened yet, so there is no market price for it.";
     case 'invalid-instant': return 'That time could not be read.';
-    case 'no-candle': return 'No market candle exists for that minute on this venue.';
-    case 'candle-mismatch': return 'The venue returned a candle for a different minute; nothing is estimated.';
+    case 'no-candle': return 'There is no market price for that minute.';
+    case 'candle-mismatch': return 'Binance gave a price for a different minute, so nothing is estimated.';
     case 'http-error': return 'Binance refused the request.';
-    case 'transport-failed': case 'cancelled': return 'The history request did not complete. Check your connection.';
-    default: return 'The venue response could not be used.';
+    case 'transport-failed': case 'cancelled': return "The prices didn't arrive. Check your connection.";
+    default: return "Binance's answer couldn't be read.";
   }
 };
 
 const windowText = (result: AnalysisTimeAssistedWindowResult): string => {
   switch (result.kind) {
-    case 'shown': return result.visible === null ? 'Showing the trade interval…' : `The chart now shows ${utcClock(new Date(result.visible.fromMs).toISOString())} to ${utcClock(new Date(result.visible.toMs).toISOString())}.`;
+    case 'shown': return result.visible === null ? 'Showing the trade on the chart…' : `The chart now shows ${localWhen(new Date(result.visible.fromMs).toISOString())} to ${localWhen(new Date(result.visible.toMs).toISOString())}.`;
     case 'pending-chart': return 'The chart is not live yet; try again once candles are connected.';
-    case 'unsupported': return 'This chart cannot be scrolled to a time range.';
-    case 'invalid-range': return 'The trade interval could not be shown.';
+    case 'unsupported': return "This chart can't move to those times.";
+    case 'invalid-range': return "The trade's times couldn't be shown on the chart.";
   }
 };
 
 const markerText = (markers: AnalysisTimeAssistedMarkerSessionPresentation): string => {
   switch (markers.kind) {
-    case 'pending-series': return 'Chart markers appear once the chart is live.';
-    case 'cleared': return 'No estimate markers on the chart.';
-    default: return markers.markerCount === 0 ? 'No estimate markers on the chart.' : `${markers.markerCount === 1 ? '1 estimate marker' : `${markers.markerCount} estimate markers`} on the chart, on the containing candles${markers.unplaced.length ? ` (${markers.unplaced.join(' and ')} not placed)` : ''}.`;
+    case 'pending-series': return 'The estimates are marked on the chart once it is live.';
+    case 'cleared': return 'Nothing is marked on the chart.';
+    default: return markers.markerCount === 0 ? 'Nothing is marked on the chart.' : `${markers.markerCount === 1 ? '1 estimate is' : `${markers.markerCount} estimates are`} marked on the chart, on their minutes' candles${markers.unplaced.length ? ` (${markers.unplaced.join(' and ')} not placed)` : ''}.`;
   }
 };
 
@@ -107,11 +111,11 @@ function Estimate({ label, estimate, forex = false }: { readonly label: string; 
   const { candle } = estimate;
   return <div className="kairos-time-assisted__estimate" data-estimate={label.toLowerCase()} data-estimate-kind="candle-range" data-candle-open-time={candle.openTime} data-candle-low={candle.low} data-candle-high={candle.high}>
     <strong>{label}</strong>
-    <p>Estimated from the 1-minute market candle at {utcClock(candle.openTime)}, {seconds(estimate.gapMs)} after its open. Not your fill.</p>
+    <p>Estimated from the market's 1-minute candle at {localWhen(candle.openTime)}, {seconds(estimate.gapMs)} into that minute. Not the price you got.</p>
     <dl>
-      <div><dt>Range</dt><dd>{candle.low} – {candle.high}</dd></div>
-      <div><dt>Open</dt><dd>{candle.open}</dd></div>
-      <div><dt>Close</dt><dd>{candle.close}</dd></div>
+      <div><dt>Lowest – highest</dt><dd>{candle.low} – {candle.high}</dd></div>
+      <div><dt>First price</dt><dd>{candle.open}</dd></div>
+      <div><dt>Last price</dt><dd>{candle.close}</dd></div>
     </dl>
   </div>;
 }
@@ -128,7 +132,7 @@ export function AnalysisTimeAssistedSnapshotControls({ instrument, saved = analy
   const [savedList, setSavedList] = useState<readonly AnalysisSavedTimeAssistedSnapshotSummary[]>([]);
   const [selectedSavedId, setSelectedSavedId] = useState('');
   const [savedStatus, setSavedStatus] = useState<SavedStatus>({ kind: 'idle' });
-  // "Delete snapshot" asks first (D178); the saved estimate is removed only on "Delete for good".
+  // "Delete estimate" asks first (D178); the saved estimate is removed only on "Delete for good".
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [listRevision, setListRevision] = useState(0);
   const marketKey = instrument === null ? null : `${instrument.venue}|${instrument.symbol}`;
@@ -185,7 +189,7 @@ export function AnalysisTimeAssistedSnapshotControls({ instrument, saved = analy
   const removeSnapshot = () => {
     if (selectedSavedId === '') return;
     setSavedStatus({ kind: 'deleting' });
-    // The dialog stays open and busy until the delete answers, so its focus return lands on an enabled "Delete snapshot".
+    // The dialog stays open and busy until the delete answers, so its focus return lands on an enabled "Delete estimate".
     saved.remove(selectedSavedId).then(outcome => {
       setConfirmingDelete(false);
       if (outcome.ok) { focusAfterDelete.current = true; setSavedStatus({ kind: 'deleted', id: outcome.savedTimeAssistedSnapshotId }); setListRevision(value => value + 1); }
@@ -194,12 +198,12 @@ export function AnalysisTimeAssistedSnapshotControls({ instrument, saved = analy
   };
   const forex = instrument.venue === OANDA_FOREX_VENUE;
   return <section className="kairos-time-assisted" aria-labelledby="kairos-time-assisted-title" data-time-assisted-status={dataStatus}>
-    <h3 id="kairos-time-assisted-title" ref={titleRef} tabIndex={-1}>Your saved trades estimated from time</h3>
+    <h3 id="kairos-time-assisted-title" ref={titleRef} tabIndex={-1}>Trades estimated from time</h3>
     <p className="kairos-analysis-chart__note">Your saved trades estimated from time. To check a price at a minute, use "See the market price at that minute" in the trade form.</p>
     <div aria-live="polite" data-time-assisted-result="true">
       {shown !== null && result !== null ? <>
-        <p className="kairos-analysis-chart__note" data-time-assisted-times="true">{sideWord(result)} · opened {utcClock(shown.openedAtUtc)}{shown.closedAtUtc === null ? ' · still open' : ` · closed ${utcClock(shown.closedAtUtc)}`}</p>
-        <p className="kairos-analysis-chart__note">{result.durationMs === null ? 'Still open' : `Held ${duration(result.durationMs)}`} · {forex ? `${instrument.symbol} from OANDA` : `${instrument.symbol} on ${instrument.venue}`}</p>
+        <p className="kairos-analysis-chart__note" data-time-assisted-times="true">{sideWord(result)} · opened {localWhen(shown.openedAtUtc)}{shown.closedAtUtc === null ? ' · still open' : ` · closed ${localWhen(shown.closedAtUtc)}`}</p>
+        <p className="kairos-analysis-chart__note">{result.durationMs === null ? 'Still open' : `Held ${duration(result.durationMs)}`} · {forex ? `${instrument.symbol} from OANDA` : `${instrument.symbol} on Binance`}</p>
         <Estimate label="Entry" estimate={result.opening} forex={forex} />
         {result.closing === null ? null : <Estimate label="Exit" estimate={result.closing} forex={forex} />}
         {markers === null ? null : <p className="kairos-analysis-chart__note" data-time-assisted-markers={markers.kind === 'presented' ? String(markers.markerCount) : markers.kind}>{markerText(markers)}</p>}
@@ -210,12 +214,12 @@ export function AnalysisTimeAssistedSnapshotControls({ instrument, saved = analy
         }}>Show on chart</button>{windowResult === null ? null : <span aria-live="polite" data-time-assisted-window={windowResult.kind}>{windowText(windowResult)}</span>}</p>}
       </> : null}
     </div>
-    <div className="kairos-time-assisted__saved" role="group" aria-label="Saved snapshot" data-saved-snapshot-status={savedStatus.kind} data-saved-snapshot-count={savedList.length}>
-      <label><span>Saved snapshots</span><select aria-label="Saved snapshots" value={selectedSavedId} disabled={savedBusy || savedList.length === 0} onChange={event => setSelectedSavedId(event.target.value)}>
+    <div className="kairos-time-assisted__saved" role="group" aria-label="Your saved estimates" data-saved-snapshot-status={savedStatus.kind} data-saved-snapshot-count={savedList.length}>
+      <label><span>Saved estimate</span><select aria-label="Saved estimate" value={selectedSavedId} disabled={savedBusy || savedList.length === 0} onChange={event => setSelectedSavedId(event.target.value)}>
         {savedList.length === 0 ? <option value="">None saved</option> : savedList.map(item => <option key={item.id} value={item.id}>{savedOption(item)}</option>)}
       </select></label>
-      <button type="button" disabled={savedBusy || selectedSavedId === ''} onClick={loadSnapshot}>Load snapshot</button>
-      <button ref={deleteButton} type="button" disabled={savedBusy || selectedSavedId === ''} onClick={() => setConfirmingDelete(true)}>Delete snapshot</button>
+      <button type="button" disabled={savedBusy || selectedSavedId === ''} onClick={loadSnapshot}>Open estimate</button>
+      <button ref={deleteButton} type="button" disabled={savedBusy || selectedSavedId === ''} onClick={() => setConfirmingDelete(true)}>Delete estimate</button>
       <ConfirmDialog open={confirmingDelete} tone="danger" busy={savedStatus.kind === 'deleting'} title="Delete this saved estimate for good?"
         message="It will be gone from this device. Your trades stay as they are." confirmLabel="Delete for good" cancelLabel="Keep it"
         onConfirm={removeSnapshot} onCancel={() => setConfirmingDelete(false)} />

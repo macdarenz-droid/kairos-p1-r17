@@ -54,9 +54,9 @@ describe('P22.5 window navigation from the preview through the shared seam', () 
     }
     const view = render(<Harness selected />);
     const load = async (id: string) => {
-      await waitFor(() => expect(screen.getByRole('button', { name: 'Load snapshot' })).toHaveProperty('disabled', false));
-      fireEvent.change(screen.getByLabelText('Saved snapshots'), { target: { value: id } });
-      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Load snapshot' })); });
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Open estimate' })).toHaveProperty('disabled', false));
+      fireEvent.change(screen.getByLabelText('Saved estimate'), { target: { value: id } });
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Open estimate' })); });
       await waitFor(() => expect(screen.getByRole('button', { name: 'Show on chart' })).toBeTruthy());
     };
     await load(closedId);
@@ -68,7 +68,7 @@ describe('P22.5 window navigation from the preview through the shared seam', () 
     const fromMs = Date.parse(OPENED), toMs = Date.parse(CLOSED);
     const padding = Math.max(300_000, Math.round((toMs - fromMs) * 0.15));
     expect(h.setVisibleRange).toHaveBeenCalledWith({ from: Math.floor((fromMs - padding) / 1000), to: Math.ceil((toMs + padding) / 1000) });
-    await waitFor(() => expect(screen.getByText(/The chart now shows 2026-09-10 /).getAttribute('data-time-assisted-window')).toBe('shown'));
+    await waitFor(() => expect(screen.getByText(/^The chart now shows \d{1,2} [A-Z][a-z]{2,3} \d\d:\d\d to /).getAttribute('data-time-assisted-window')).toBe('shown'));
     // An open trade's window runs to the injected clock.
     await load(openId);
     await waitFor(() => expect(document.querySelector('[data-time-assisted-times]')!.textContent).toMatch(/· still open$/));

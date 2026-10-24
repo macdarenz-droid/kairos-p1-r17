@@ -2088,6 +2088,12 @@ test('(ag) Faster logging: a symbol you search, its currency filled in, and a st
   await page.getByLabel(/^Quantity/).fill('1');
   await page.getByRole('button', { name: 'Set opened time to now' }).click();
   await page.getByRole('button', { name: 'Set closed time to now' }).click();
+  // A finished minute: the running minute never gets "Typo?" (review r2).
+  const tenMinutesAgo = await page.evaluate(() => {
+    const at = new Date(Date.now() - 10 * 60_000), pad = (n: number) => String(n).padStart(2, '0');
+    return `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}T${pad(at.getHours())}:${pad(at.getMinutes())}`;
+  });
+  await page.getByLabel(/^Opened/).fill(tenMinutesAgo);
   // T-059d: 100 never traded in that minute (2509.5 to 2513): a soft "Typo?" that never blocks the save.
   await expect(page.getByText(/^ETHUSDT did not trade at 100 at \d\d:\d\d \(it traded between 2509\.5 and 2513\)\. Typo\?$/)).toBeVisible();
   await page.getByRole('button', { name: 'See the market price at that minute, opened' }).click();

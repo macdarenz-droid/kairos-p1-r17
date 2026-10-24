@@ -21,11 +21,13 @@ const snapshot: TimeAssistedTradeSnapshot = Object.freeze({
   opening: { kind: 'candle-range', isEstimate: true, source: 'market-reference', method: 'containing-candle', resolution: '1m', instrument, requestedAt: '2026-09-10T02:13:27', requestedAtUtc: new Date(Date.parse('2026-09-10T02:13:27')).toISOString(), candle: candleAt(Date.parse('2026-09-10T02:13:00')), gapMs: 27_000, acquiredAt: '2026-09-17T12:00:00.000Z' },
   closing: null, durationMs: null,
 }) as TimeAssistedTradeSnapshot;
+// This device's time, read with Date's own local getters: "10 Sep 02:13".
+const localWhen = (iso: string) => { const at = new Date(iso); return `${at.getDate()} ${at.toLocaleString('en-GB', { month: 'short' })} ${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`; };
 const names: string[] = [];
 async function database() { const name = `kairos-saved-time-assisted-round-trip-${names.length}`; names.push(name); const db = createKairosDatabase(name); await openKairosDatabase(db); return db; }
 afterEach(async () => { for (const name of names.splice(0)) await Dexie.delete(name); });
-const section = () => screen.getByRole('region', { name: 'Your saved trades estimated from time' });
-const group = () => screen.getByRole('group', { name: 'Saved snapshot' });
+const section = () => screen.getByRole('region', { name: 'Trades estimated from time' });
+const group = () => screen.getByRole('group', { name: 'Your saved estimates' });
 
 describe('P23.5 Analysis saved time-assisted snapshot round trip over the released P23 owners', () => {
   it('lists only the exact market newest first, loads a saved snapshot back with its provenance, and never touches the journal', async () => {
@@ -64,18 +66,18 @@ describe('P23.5 Analysis saved time-assisted snapshot round trip over the releas
     render(<AnalysisTimeAssistedSnapshotControls saved={ports} instrument={instrument} onSnapshot={onSnapshot} />);
     await waitFor(() => expect(group().getAttribute('data-saved-snapshot-count')).toBe('1'));
     expect(screen.getByText('Your saved trades estimated from time. To check a price at a minute, use "See the market price at that minute" in the trade form.')).toBeTruthy();
-    expect(screen.getByText('1 saved snapshot for this market.')).toBeTruthy();
+    expect(screen.getByText('1 saved estimate for this market.')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Estimate' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Save snapshot' })).toBeNull();
     expect(screen.queryByLabelText('Snapshot opened at')).toBeNull();
     expect(section().getAttribute('data-time-assisted-status')).toBe('idle');
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Load snapshot' })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Open estimate' })); });
     await waitFor(() => expect(group().getAttribute('data-saved-snapshot-status')).toBe('loaded'));
     expect(section().getAttribute('data-time-assisted-status')).toBe('snapshot');
-    expect(section().querySelector('[data-time-assisted-times]')!.textContent).toBe(`Short · opened ${record.openedAtUtc.replace('T', ' ').replace(/\.\d{3}Z$/, ' UTC')} · still open`);
+    expect(section().querySelector('[data-time-assisted-times]')!.textContent).toBe(`Short · opened ${localWhen(record.openedAtUtc)} · still open`);
     expect(section().querySelector('[data-estimate="entry"]')!.getAttribute('data-candle-open-time')).toBe(record.opening.kind === 'candle-range' ? record.opening.candle.openTime : '');
     expect(onSnapshot).toHaveBeenCalledWith(savedTimeAssistedSnapshotToSnapshot(record));
-    expect(screen.getByText(new RegExp(`Loaded snapshot ${record.id.slice(0, 8)} saved .* UTC; estimates as acquired then, not re-estimated\\.`))).toBeTruthy();
+    expect(screen.getByText(`Opened the estimate saved ${localWhen(record.savedAt)}. Its prices are as they were then.`)).toBeTruthy();
     expect(await db.savedTimeAssistedSnapshots.count()).toBe(1);
   });
 
@@ -86,7 +88,7 @@ describe('P23.5 Analysis saved time-assisted snapshot round trip over the releas
       remove: vi.fn(async () => ({ ok: false as const, type: 'not-found' as const, reason: 'saved-time-assisted-snapshot-not-found' as const })),
     };
     render(<AnalysisTimeAssistedSnapshotControls saved={failing} instrument={instrument} />);
-    await waitFor(() => expect(screen.getByText('Saved snapshots are unavailable right now.')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Saved estimates are unavailable right now.')).toBeTruthy());
     expect(section().getAttribute('data-time-assisted-status')).toBe('idle');
     expect(group().getAttribute('data-saved-snapshot-status')).toBe('error');
   });

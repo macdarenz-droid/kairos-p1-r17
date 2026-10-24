@@ -180,4 +180,24 @@ describe('T-059a the symbol search on the trade form', () => {
       Element.prototype.scrollIntoView = original;
     }
   });
+
+  it('review r2: a kept trade remembers that Kairos filled the currency, so it still follows the symbol', async () => {
+    const db = await database();
+    const provider = market();
+    const form = () => render(<TradeFormMarketContext.Provider value={provider}><TradeForm db={db} kind="journal" onSaved={async () => undefined} /></TradeFormMarketContext.Provider>);
+    const first = form();
+    fireEvent.click(screen.getByRole('button', { name: 'Quick log' }));
+    typeSymbol('btcusdt');
+    await waitFor(() => expect(results()).toHaveLength(1));
+    fireEvent.click(results()[0]!);
+    await waitFor(() => expect(currency()).toHaveValue('USDT'));
+    first.unmount();
+    form();
+    await waitFor(() => expect(symbol()).toHaveValue('BTCUSDT'));
+    await waitFor(() => expect(currency()).toHaveAccessibleDescription(expect.stringContaining(FILLED('BTCUSDT', 'USDT'))));
+    typeSymbol('ethbtc');
+    await waitFor(() => expect(results()).toHaveLength(1));
+    fireEvent.click(results()[0]!);
+    await waitFor(() => expect(currency()).toHaveValue('BTC'));
+  });
 });

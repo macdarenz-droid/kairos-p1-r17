@@ -8,10 +8,15 @@ import type { KairosDatabase } from '../../data/database';
 /** The trade being typed is written at most once a second while it changes (D258). */
 export const KEEP_TRADE_DRAFT_EVERY_MS = 1_000;
 
+type Kept = Readonly<{ mode: TradeFormDraftMode; draft: TradeFormDraft }>;
+/** What a write would leave on the device: nothing for an empty form, else the typed trade. */
+const persisted = (kept: Kept): string => (isTradeFormDraftEmpty(kept.draft) ? '' : JSON.stringify(kept));
+
 /**
  * U14 (D258): keeps the trade form's typing on this device. It reads the kept trade once when the form opens and hands
  * it to `onFound` only while nothing is typed yet; from then on it writes what is typed at most once a second, and at
- * once when the form goes away or the page is hidden. `clear` forgets it (a save, "Start over").
+ * once when the form goes away or the page is hidden. It writes only what differs from what it read or last wrote, so
+ * opening a form, or a plan handed to it, writes nothing. `clear` forgets it (a save, "Start over").
  */
 export function useKeptTradeFormDraft(
   db: KairosDatabase, scope: TradeFormDraftScope, current: Readonly<{ mode: TradeFormDraftMode; draft: TradeFormDraft }>,
@@ -19,6 +24,8 @@ export function useKeptTradeFormDraft(
 ): Readonly<{ clear: () => Promise<void> }> {
   const latest = useRef(current);
   latest.current = current;
+  // What the device holds now, as far as this form knows: what it read, else what it opened with, else what it wrote.
+  const written = useRef<string | null>(options.read ? null : persisted(current));
   const onFound = useRef(options.onFound);
   onFound.current = options.onFound;
   // Until the kept trade is read, only typing is written (when the form goes away): an empty form would remove it first.
@@ -30,6 +37,7 @@ export function useKeptTradeFormDraft(
     let active = true;
     void readTradeFormDraft(db, scope).then(kept => {
       if (!active) return;
+      written.current = kept === null ? '' : persisted(kept);
       if (kept !== null && isTradeFormDraftEmpty(latest.current.draft)) onFound.current(kept);
       setReady(true);
     });
@@ -44,6 +52,9 @@ export function useKeptTradeFormDraft(
     if (!pending.current) return;
     if (!readyNow.current && isTradeFormDraftEmpty(latest.current.draft)) return;
     pending.current = false;
+    const next = persisted(latest.current);
+    if (next === written.current) return;
+    written.current = next;
     void keepTradeFormDraft(db, scope, latest.current);
   }, [db, scope]);
   useEffect(() => {
@@ -60,6 +71,7 @@ export function useKeptTradeFormDraft(
   const clear = useCallback(async () => {
     if (timer.current !== null) { window.clearTimeout(timer.current); timer.current = null; }
     pending.current = false;
+    written.current = '';
     await clearTradeFormDraft(db, scope);
   }, [db, scope]);
   return { clear };

@@ -37,7 +37,7 @@ describe('T-059d where a price sits in its minute', () => {
     const crypto = deps(() => answer([minuteCandle]));
     const minute = await readMarketMinute(crypto.value, { marketType: 'crypto', symbol: 'btcusdt', at: AT }, { nowMs: NOW });
     expect(crypto.acquireHistory.mock.calls[0]![0]).toMatchObject({ instrument: { venue: 'binance-spot', symbol: 'BTCUSDT' }, interval: '1m', limit: 1, startTimeMs: Date.parse('2026-10-24T10:32:00.000Z') });
-    expect(minute).toEqual({ ok: true, low: '64980', high: '65120.5', at: '2026-10-24T10:32:00.000Z', source: 'binance', market: 'BTCUSDT', midPrice: false });
+    expect(minute).toEqual({ ok: true, low: '64980', high: '65120.5', at: '2026-10-24T10:32:00.000Z', source: 'binance', market: 'BTCUSDT', midPrice: false, futures: false });
     if (!minute.ok) return;
     expect(describeMarketMinute(minute)).toMatch(/^At \d\d:\d\d BTCUSDT traded between 64980 and 65120\.5 \(Binance, 1-minute candle\)\.$/);
     expect(describeTypo(minute, '6500')).toMatch(/^BTCUSDT did not trade at 6500 at \d\d:\d\d \(it traded between 64980 and 65120\.5\)\. Typo\?$/);
@@ -76,5 +76,14 @@ describe('T-059d where a price sits in its minute', () => {
     const stock = deps(() => answer([minuteCandle]));
     expect(await readMarketMinute(stock.value, { marketType: 'stock', symbol: 'AAPL', at: AT }, { nowMs: NOW })).toMatchObject({ ok: false, why: 'no-source' });
     expect(stock.acquireHistory).not.toHaveBeenCalled();
+  });
+
+  it('review r2: a futures minute says Binance Futures, and reads Binance Spot once when there are no futures candles', async () => {
+    const futures = await readMarketMinute(deps(() => answer([minuteCandle])).value, { marketType: 'futures', symbol: 'BTCUSDT', at: AT }, { nowMs: NOW });
+    if (!futures.ok) throw new Error('futures minute');
+    expect(describeMarketMinute(futures)).toMatch(/\(Binance Futures, 1-minute candle\)\.$/);
+    const fallback = deps(request => (request.instrument.venue === 'binance-usdm' ? { ok: false, reason: 'unavailable', why: 'unknown-market', retryAfterSeconds: null } : answer([minuteCandle])));
+    expect(await readMarketMinute(fallback.value, { marketType: 'futures', symbol: 'BTCUSDT', at: AT }, { nowMs: NOW })).toMatchObject({ ok: true, futures: false });
+    expect(fallback.acquireHistory.mock.calls.map(call => call[0].instrument.venue)).toEqual(['binance-usdm', 'binance-spot']);
   });
 });

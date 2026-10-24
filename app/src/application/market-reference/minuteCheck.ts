@@ -6,11 +6,12 @@
  */
 import { decimalCompare } from '../../domain/calculations/decimalKernel';
 import { parsePositiveDecimalString, type DecimalString, type MarketType } from '../../domain/trades';
-import type { MarketDataUnavailableWhy } from '../../services/market-data/marketDataTypes';
+import type { MarketDataInstrument, MarketDataUnavailableWhy } from '../../services/market-data/marketDataTypes';
 import { describeMarketDataUnavailable, type MarketSourceWords } from '../online/onlineWords';
 import { describeFuturesOnlyNotListed } from './cryptoMarket';
 import { readContainingMinute } from './estimatedMarketReference';
-import { resolveFormMarket, type PriceNowDeps } from './priceNow';
+import { FUTURES_CANDLE_VENUE } from '../trade-visualizer/tradePictureCandles';
+import { hasNoFuturesCandles, onSpot, resolveFormMarket, type PriceNowDeps } from './priceNow';
 
 export type MarketMinute =
   | Readonly<{
@@ -18,6 +19,8 @@ export type MarketMinute =
       /** When the minute opened (ISO). */
       at: string;
       source: 'binance' | 'oanda'; market: string; midPrice: boolean;
+      /** Read from Binance Futures (a futures trade). */
+      futures: boolean;
     }>
   | Readonly<{ ok: false; why: 'future' | 'invalid-time' | 'no-price' | 'not-listed' | 'no-source' | 'invalid-symbol' | MarketDataUnavailableWhy; retryAfterSeconds: number | null; note: string | null; source: MarketSourceWords }>;
 
@@ -36,9 +39,14 @@ export async function readMarketMinute(
   const fail = (why: Extract<MarketMinute, { ok: false }>['why'], source: MarketSourceWords, retryAfterSeconds: number | null = null, note: string | null = null): MarketMinute =>
     Object.freeze({ ok: false as const, why, retryAfterSeconds, note, source });
   try {
-    const market = await resolveFormMarket(deps, ask, signal);
-    if (!market.ok) return fail(market.why === 'no-candles' ? 'no-price' : market.why, market.source, market.retryAfterSeconds, market.note);
-    const minute = await readContainingMinute(deps.history, { instrument: market.instrument, requestedAt: ask.at }, { now: () => options.nowMs, ...(options.signal ? { signal: options.signal } : {}) });
+    const resolved = await resolveFormMarket(deps, ask, signal);
+    if (!resolved.ok) return fail(resolved.why === 'no-candles' ? 'no-price' : resolved.why, resolved.source, resolved.retryAfterSeconds, resolved.note);
+    const read = (instrument: MarketDataInstrument) => readContainingMinute(deps.history, { instrument, requestedAt: ask.at }, { now: () => options.nowMs, ...(options.signal ? { signal: options.signal } : {}) });
+    let market = resolved;
+    let minute = await read(market.instrument);
+    // A futures trade with no futures candles reads the same market on Binance Spot once, as the trade picture does.
+    const spot = !minute.ok && hasNoFuturesCandles({ reason: minute.reason, why: minute.why ?? null }) ? onSpot(market) : null;
+    if (spot !== null) { market = spot; minute = await read(spot.instrument); }
     if (!minute.ok) {
       if (minute.reason === 'future-instant') return fail('future', market.words);
       if (minute.reason === 'invalid-instant') return fail('invalid-time', market.words);
@@ -49,7 +57,7 @@ export async function readMarketMinute(
       if (market.futuresOnly !== null && minute.reason === 'invalid-request') return fail('not-listed', market.words, null, `${market.futuresOnly.spotNote} Futures candles need the Kairos server.`);
       return fail(minute.why ?? 'source-down', market.words, minute.retryAfterSeconds);
     }
-    return Object.freeze({ ok: true as const, low: minute.candle.low, high: minute.candle.high, at: minute.candle.openTime, source: market.source, market: market.market, midPrice: market.source === 'oanda' });
+    return Object.freeze({ ok: true as const, low: minute.candle.low, high: minute.candle.high, at: minute.candle.openTime, source: market.source, market: market.market, midPrice: market.source === 'oanda', futures: market.instrument.venue === FUTURES_CANDLE_VENUE });
   } catch {
     return fail('source-down', { provider: 'binance' });
   }
@@ -68,7 +76,7 @@ const clock = (iso: string) => new Intl.DateTimeFormat('en-GB', { hour: '2-digit
 
 /** "At 10:32 BTCUSDT traded between 64980 and 65120 (Binance, 1-minute candle)." The prices are the source's own text. */
 export function describeMarketMinute(minute: Extract<MarketMinute, { ok: true }>): string {
-  const from = minute.source === 'oanda' ? 'OANDA, 1-minute candle, mid prices' : 'Binance, 1-minute candle';
+  const from = minute.source === 'oanda' ? 'OANDA, 1-minute candle, mid prices' : `${minute.futures ? 'Binance Futures' : 'Binance'}, 1-minute candle`;
   return `At ${clock(minute.at)} ${minute.market} traded between ${minute.low} and ${minute.high} (${from}).`;
 }
 

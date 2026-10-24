@@ -61,7 +61,7 @@ describe('P22.4 estimated markers through the chart paths', () => {
     act(() => { latest!.lifecycle.attach(series); });
     expect(latest!.presentation).toEqual({ kind: 'presented', markerCount: 2, unplaced: [] });
     // The preview reflects the marker state beside its estimates once it has a snapshot to show.
-    expect(screen.getByRole('region', { name: 'Your saved trades estimated from time' })).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'Trades estimated from time' })).toBeTruthy();
     view.rerender(<Harness selected={false} />);
     expect(latest!.presentation).toBeNull();
     view.unmount();

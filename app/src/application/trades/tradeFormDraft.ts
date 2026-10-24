@@ -19,6 +19,9 @@ export interface TradeFormDraft {
   readonly quick: QuickTradeLogDraft;
   readonly executions: readonly ManualExecutionRow[];
   readonly fees: readonly ManualFeeRow[];
+  /** Who set the currency (D254): the listed market Kairos filled it from, or the trader. Neither: null and false. */
+  readonly currencyFilledBy: string | null;
+  readonly currencyTyped: boolean;
 }
 
 export interface KeptTradeFormDraft {
@@ -56,7 +59,10 @@ const isQuick = (value: unknown): value is QuickTradeLogDraft => isObject(value)
 const isExecution = (value: unknown): boolean => isObject(value) && hasOnly(value, { key: isText, type: oneOf(['entry', 'exit']), price: isText, quantity: isText, executedAt: isText });
 const isFee = (value: unknown): boolean => isObject(value) && hasOnly(value, { key: isText, amount: isText, currency: isText });
 const rowsOf = (check: (value: unknown) => boolean) => (value: unknown): boolean => Array.isArray(value) && value.every(check);
-const isDraft = (value: unknown): value is TradeFormDraft => isObject(value) && hasOnly(value, { trade: isTrade, quick: isQuick, executions: rowsOf(isExecution), fees: rowsOf(isFee) });
+const isDraft = (value: unknown): value is TradeFormDraft => isObject(value) && hasOnly(value, {
+  trade: isTrade, quick: isQuick, executions: rowsOf(isExecution), fees: rowsOf(isFee),
+  currencyFilledBy: value => value === null || isText(value), currencyTyped: value => typeof value === 'boolean',
+});
 
 /** The record as stored, or null when any part of it fails. */
 function parseKept(text: string): KeptTradeFormDraft | null {
@@ -79,9 +85,12 @@ export function isTradeFormDraftEmpty(draft: TradeFormDraft): boolean {
   return draft.executions.length === 0 && draft.fees.length === 0 && texts.every(value => typeof value !== 'string' || value.trim() === '');
 }
 
+// The kept trade is this device's convenience: its writes never tell other tabs the journal changed.
+const QUIET = Object.freeze({ announce: false });
+
 async function removeRow(db: KairosDatabase, key: string): Promise<boolean> {
   try {
-    await runKairosAtomicWrite(db, ['metadata'], async ({ repositories }) => { await repositories.metadata.delete(key); });
+    await runKairosAtomicWrite(db, ['metadata'], async ({ repositories }) => { await repositories.metadata.delete(key); }, QUIET);
     return true;
   } catch {
     return false;
@@ -112,7 +121,7 @@ export async function keepTradeFormDraft(
   try {
     const savedAt = (dependencies.now ?? wallClock)();
     const value = JSON.stringify({ version: 1, savedAt, mode: kept.mode, draft: kept.draft });
-    await runKairosAtomicWrite(db, ['metadata'], async ({ repositories }) => { await repositories.metadata.put({ key, value, updatedAt: savedAt }); });
+    await runKairosAtomicWrite(db, ['metadata'], async ({ repositories }) => { await repositories.metadata.put({ key, value, updatedAt: savedAt }); }, QUIET);
     return true;
   } catch {
     return false;

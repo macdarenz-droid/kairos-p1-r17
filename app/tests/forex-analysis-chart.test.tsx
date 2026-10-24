@@ -157,8 +157,8 @@ describe('T-055c the forex Analysis chart reads again every 30 seconds (D234)', 
     const saved = await saveSavedTimeAssistedSnapshot(db, { snapshot, inputTimeZone: 'UTC' });
     if (!saved.ok) throw new Error('seed');
     const view = render(<AnalysisTimeAssistedSnapshotControls saved={createAnalysisSavedTimeAssistedSnapshotPorts(db)} instrument={instrument} />);
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Load snapshot' })).toBeEnabled());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Load snapshot' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Open estimate' })).toBeEnabled());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Open estimate' })); });
     return view;
   }
   const requestedAt = '2026-10-23T07:00:10';

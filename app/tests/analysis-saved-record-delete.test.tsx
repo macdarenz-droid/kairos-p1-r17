@@ -59,17 +59,17 @@ describe('P24.2 saved record delete controls over the released P24.1 commands', 
     if (!saved.ok) return;
     const onSnapshot = vi.fn();
     render(<AnalysisTimeAssistedSnapshotControls saved={ports} instrument={instrument} onSnapshot={onSnapshot} />);
-    const group = () => screen.getByRole('group', { name: 'Saved snapshot' });
+    const group = () => screen.getByRole('group', { name: 'Your saved estimates' });
     await waitFor(() => expect(group().getAttribute('data-saved-snapshot-count')).toBe('1'));
-    expect((screen.getByRole('button', { name: 'Delete snapshot' }) as HTMLButtonElement).disabled).toBe(false);
-    await deleteAndConfirm('Delete snapshot');
+    expect((screen.getByRole('button', { name: 'Delete estimate' }) as HTMLButtonElement).disabled).toBe(false);
+    await deleteAndConfirm('Delete estimate');
     await waitFor(() => expect(group().getAttribute('data-saved-snapshot-status')).toBe('deleted'));
     await waitFor(() => expect(group().getAttribute('data-saved-snapshot-count')).toBe('0'));
-    expect(screen.getByText(`Deleted snapshot ${saved.savedTimeAssistedSnapshotId.slice(0, 8)}. The shown estimate is unchanged.`)).toBeTruthy();
+    expect(screen.getByText('Deleted the saved estimate. What is shown is unchanged.')).toBeTruthy();
     expect(await db.savedTimeAssistedSnapshots.count()).toBe(0);
-    expect(screen.getByRole('region', { name: 'Your saved trades estimated from time' }).getAttribute('data-time-assisted-status')).toBe('idle');
+    expect(screen.getByRole('region', { name: 'Trades estimated from time' }).getAttribute('data-time-assisted-status')).toBe('idle');
     expect(onSnapshot).not.toHaveBeenCalled();
-    expect((screen.getByRole('button', { name: 'Delete snapshot' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: 'Delete estimate' }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('reports a vanished record and a storage failure in plain words and refreshes the list only for not-found', async () => {
@@ -90,10 +90,10 @@ describe('P24.2 saved record delete controls over the released P24.1 commands', 
       remove: vi.fn(async () => ({ ok: false as const, type: 'storage-error' as const, reason: 'saved-time-assisted-snapshot-delete-failed' as const })),
     };
     render(<AnalysisTimeAssistedSnapshotControls saved={snapshotPorts} instrument={instrument} />);
-    await waitFor(() => expect(screen.getByRole('group', { name: 'Saved snapshot' }).getAttribute('data-saved-snapshot-count')).toBe('1'));
-    await deleteAndConfirm('Delete snapshot');
-    await waitFor(() => expect(screen.getByText('The saved snapshot could not be deleted. It is still saved.')).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole('group', { name: 'Your saved estimates' }).getAttribute('data-saved-snapshot-count')).toBe('1'));
+    await deleteAndConfirm('Delete estimate');
+    await waitFor(() => expect(screen.getByText('The saved estimate could not be deleted. It is still saved.')).toBeTruthy());
     expect(snapshotPorts.list).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole('group', { name: 'Saved snapshot' }).getAttribute('data-saved-snapshot-count')).toBe('1');
+    expect(screen.getByRole('group', { name: 'Your saved estimates' }).getAttribute('data-saved-snapshot-count')).toBe('1');
   });
 });

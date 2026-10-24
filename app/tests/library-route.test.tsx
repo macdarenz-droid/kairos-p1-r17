@@ -17,6 +17,8 @@ import { createKairosRepositories } from '../src/data/repositories';
 import type { ChartDrawing } from '../src/features/chart';
 import type { DecimalString } from '../src/domain/trades/tradeTypes';
 
+// This device's time, read with Date's own local getters: "10 Sep 02:13".
+const localWhen = (iso: string) => { const at = new Date(iso); return `${at.getDate()} ${at.toLocaleString('en-GB', { month: 'short' })} ${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`; };
 const names: string[] = [];
 async function database() { const name = `kairos-library-route-${names.length}-${crypto.randomUUID()}`; names.push(name); const db = createKairosDatabase(name); await openKairosDatabase(db); return db; }
 afterEach(async () => { for (const name of names.splice(0)) await Dexie.delete(name); });
@@ -92,9 +94,9 @@ describe('P27.2 Library route and the Analysis handoff', () => {
     const ports = createAnalysisSavedTimeAssistedSnapshotPorts(db);
     const onSnapshot = vi.fn();
     render(<AnalysisHandoffContext.Provider value={{ market: { venue: 'binance-spot', instrument: 'ETHUSDT' }, open: { kind: 'snapshot', id: 's-1' } }}><AnalysisTimeAssistedSnapshotControls saved={ports} instrument={instrument} onSnapshot={onSnapshot} /></AnalysisHandoffContext.Provider>);
-    await waitFor(() => expect(screen.getByRole('group', { name: 'Saved snapshot' }).getAttribute('data-saved-snapshot-status')).toBe('loaded'));
-    const section = screen.getByRole('region', { name: 'Your saved trades estimated from time' });
-    expect(section.querySelector('[data-time-assisted-times]')!.textContent).toBe('Short · opened 2026-09-10 02:13:27 UTC · still open');
+    await waitFor(() => expect(screen.getByRole('group', { name: 'Your saved estimates' }).getAttribute('data-saved-snapshot-status')).toBe('loaded'));
+    const section = screen.getByRole('region', { name: 'Trades estimated from time' });
+    expect(section.querySelector('[data-time-assisted-times]')!.textContent).toBe(`Short · opened ${localWhen('2026-09-10T02:13:27.000Z')} · still open`);
     expect(section.getAttribute('data-time-assisted-status')).toBe('snapshot');
     expect(screen.queryByLabelText('Snapshot side')).toBeNull();
     expect(onSnapshot).toHaveBeenCalledTimes(1);
@@ -116,7 +118,7 @@ describe('P27.2 Library route and the Analysis handoff', () => {
       <AnalysisHistoryWorkspace ports={{ metadata, forexCandles: true }} LiveCanvas={LiveCanvas} savedSnapshots={createAnalysisSavedTimeAssistedSnapshotPorts(db)} />
     </AnalysisHandoffContext.Provider>);
     expect(await screen.findByTestId('live-candle-canvas')).toHaveTextContent('oanda-forex EURUSD/5m USD');
-    await waitFor(() => expect(screen.getByRole('group', { name: 'Saved snapshot' }).getAttribute('data-saved-snapshot-status')).toBe('loaded'));
+    await waitFor(() => expect(screen.getByRole('group', { name: 'Your saved estimates' }).getAttribute('data-saved-snapshot-status')).toBe('loaded'));
     expect(screen.getByText('No candle at that minute. Forex is closed at weekends, and a quiet minute can have none.')).toBeTruthy();
     expect(metadata.acquireInstrumentMetadata).not.toHaveBeenCalled();
     cleanup();

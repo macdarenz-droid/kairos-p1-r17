@@ -46,8 +46,10 @@ export function LogTradeScreen({ db = kairosDatabase, now = wallClock }: { reado
     if (fromButton && saved === null && formRound === 0) document.getElementById('kairos-trade-symbol')?.focus();
     // Once per arrival: the page's first form only.
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // The heading takes focus after a save, and again when "Try again" draws the picture (its button is gone).
+  const focusHeading = useRef(false);
   useEffect(() => {
-    if (saved?.kind === 'reading') savedHeading.current?.focus();
+    if (saved?.kind === 'reading' || (saved?.kind === 'shown' && focusHeading.current)) { focusHeading.current = false; savedHeading.current?.focus(); }
   }, [saved?.kind]);
 
   async function onSaved(tradeId: TradeId): Promise<void> {
@@ -60,8 +62,9 @@ export function LogTradeScreen({ db = kairosDatabase, now = wallClock }: { reado
     }
     await readBack(tradeId);
   }
-  async function readBack(tradeId: TradeId): Promise<void> {
+  async function readBack(tradeId: TradeId, fromRetry = false): Promise<void> {
     const entry = await getJournalHistoryEntry(db, tradeId).catch(() => null);
+    if (fromRetry && entry !== null) focusHeading.current = true;
     setSaved(current => (current !== null && current.kind !== 'shown' && current.tradeId === tradeId ? (entry === null ? { kind: 'unreadable', tradeId } : { kind: 'shown', entry }) : current));
   }
   function logAnother(): void {
@@ -77,7 +80,7 @@ export function LogTradeScreen({ db = kairosDatabase, now = wallClock }: { reado
       : <section className="kairos-log-trade-page__saved" aria-labelledby={SAVED_TITLE}>
         <h2 id={SAVED_TITLE} ref={savedHeading} tabIndex={-1}>Trade saved to your journal.</h2>
         {saved.kind === 'shown' ? <TradePicture entry={saved.entry} variant="full" />
-          : saved.kind === 'unreadable' ? <UnavailableNotice message="Kairos could not read your trade back to draw it. It is saved in your journal." retryLabel="Try again" onRetry={() => { void readBack(saved.tradeId); }} />
+          : saved.kind === 'unreadable' ? <UnavailableNotice message="Kairos could not read your trade back to draw it. It is saved in your journal." retryLabel="Try again" onRetry={() => { void readBack(saved.tradeId, true); }} />
           : <p role="status">Drawing your trade…</p>}
         <div className="kairos-log-trade-page__next">
           <Button variant="primary" onClick={logAnother}>Log another trade</Button>

@@ -29,18 +29,26 @@ function JournalLink({ to, children }: { readonly to: string; readonly children:
   return useInRouterContext() ? <Link to={to}>{children}</Link> : <a href={to}>{children}</a>;
 }
 
-/** D258: the old log address `/journal?log=1` (an app shortcut installed before, a bookmark) now opens the log page, in its place. */
-function LogAddress() {
-  const [params] = useSearchParams();
-  return params.get('log') === '1' ? <Navigate to={LOG_TRADE_ADDRESS} replace /> : null;
+
+
+/**
+ * D258: the old log address `/journal?log=1` (an app shortcut installed before, a bookmark) opens the log page in its
+ * place, before the Journal reads anything.
+ */
+export function JournalRoute(props: JournalRouteProps) {
+  return useInRouterContext() ? <JournalAddress {...props} /> : <JournalPage {...props} />;
 }
 
-export function JournalRoute({ db = kairosDatabase, now }: JournalRouteProps) {
+function JournalAddress(props: JournalRouteProps) {
+  const [params] = useSearchParams();
+  return params.get('log') === '1' ? <Navigate to={LOG_TRADE_ADDRESS} replace /> : <JournalPage {...props} />;
+}
+
+function JournalPage({ db = kairosDatabase, now }: JournalRouteProps) {
   const [updateNotice, setUpdateNotice] = useState<HistoryNotice>('');
   const [historyStatus, setHistoryStatus] = useState<TradeStatus | ''>('');
   const [journalRevision, setJournalRevision] = useState(0);
   const [disciplineRevision, setDisciplineRevision] = useState(0);
-  const inRouter = useInRouterContext();
   // D223: the trade form starts on the first market the trader trades (none saved: blank, as before).
   const [firstMarket, setFirstMarket] = useState<TradeMarket | null>(null);
   useEffect(() => {
@@ -72,7 +80,6 @@ export function JournalRoute({ db = kairosDatabase, now }: JournalRouteProps) {
       <PageHeader eyebrow="Manual trade" title="Journal" titleId="kairos-journal-title" intro="Log what you know now; plan numbers are optional."
         action={<span className="kairos-journal__badge">Saved on this device</span>} />
 
-      {inRouter ? <LogAddress /> : null}
       <BackupReminderCard db={db} now={now ?? wallClock} />
       <TradeForm db={db} kind="journal" defaultMarket={firstMarket} onSaved={async () => { keepMyData(); await pages.refresh(); setJournalRevision(current => current + 1); }} />
 

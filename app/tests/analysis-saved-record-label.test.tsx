@@ -66,14 +66,14 @@ describe('P25.2 saved record labels on the Analysis page', () => {
     expect((await saveSavedTimeAssistedSnapshot(db, { snapshot, inputTimeZone: 'UTC', label: ' Morning scalp ' })).ok).toBe(true);
     const ports = createAnalysisSavedTimeAssistedSnapshotPorts(db);
     render(<AnalysisTimeAssistedSnapshotControls saved={ports} instrument={instrument} />);
-    const group = () => screen.getByRole('group', { name: 'Saved snapshot' });
+    const group = () => screen.getByRole('group', { name: 'Your saved estimates' });
     await waitFor(() => expect(group().getAttribute('data-saved-snapshot-count')).toBe('1'));
     const [record] = await db.savedTimeAssistedSnapshots.toArray();
     expect(record.label).toBe('Morning scalp');
     expect((screen.getByRole('option', { name: /^Morning scalp · / }) as HTMLOptionElement).value).toBe(record.id);
-    await click('Load snapshot');
+    await click('Open estimate');
     await waitFor(() => expect(group().getAttribute('data-saved-snapshot-status')).toBe('loaded'));
-    expect(screen.getByRole('region', { name: 'Your saved trades estimated from time' }).getAttribute('data-time-assisted-status')).toBe('snapshot');
+    expect(screen.getByRole('region', { name: 'Trades estimated from time' }).getAttribute('data-time-assisted-status')).toBe('snapshot');
     expect(await db.savedTimeAssistedSnapshots.count()).toBe(1);
   });
 });

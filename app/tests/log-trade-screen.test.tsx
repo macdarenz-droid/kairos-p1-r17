@@ -3,14 +3,25 @@ import '@testing-library/jest-dom/vitest';
 import Dexie from 'dexie';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AppShell } from '../src/app/AppShell';
+import { createEmptyManualTradeDraft } from '../src/application/trades';
 import { tradeFormDraftKey } from '../src/application/trades/tradeFormDraft';
 import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
 import { ToastProvider } from '../src/design-system/primitives';
 import { LogTradeScreen } from '../src/features/journal/LogTradeScreen';
 import { TradeForm } from '../src/features/journal/TradeForm';
 import { axeViolations } from './fixtures/axe';
+
+// Review r2: the first read-back of a saved trade can be made to fail.
+const readBack = vi.hoisted(() => ({ failNext: 0 }));
+vi.mock('../src/application/journal', async importOriginal => {
+  const actual = await importOriginal<typeof import('../src/application/journal')>();
+  return { ...actual, getJournalHistoryEntry: async (...args: Parameters<typeof actual.getJournalHistoryEntry>) => {
+    if (readBack.failNext > 0) { readBack.failNext -= 1; throw new Error('read failed'); }
+    return actual.getJournalHistoryEntry(...args);
+  } };
+});
 
 const names: string[] = [];
 const opened: Dexie[] = [];
@@ -107,5 +118,45 @@ describe('T-059e the log page', () => {
     expect(symbol().value).toBe('');
     await waitFor(() => expect(symbol()).toHaveFocus());
     expect(screen.queryByText(KEPT)).toBeNull();
+  });
+
+  it('review r2: an opened form writes nothing, so a trade another tab kept meanwhile stays; a Practice plan is not kept as typing', async () => {
+    const db = await database();
+    page(db);
+    await screen.findByRole('heading', { level: 1, name: 'Log a trade' });
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 100)); });
+    // Another tab keeps a trade after this form has read.
+    const other = { version: 1, savedAt: '2026-10-24T10:00:00.000Z', mode: 'quick', draft: {
+      trade: { symbol: 'ETHUSDT', marketType: 'crypto', side: '', status: '', openedAt: '', closedAt: '', plan: { plannedEntryPrice: '', plannedStopPrice: '', plannedTargetPrice: '', plannedQuantity: '' } },
+      quick: { entryPrice: '', exitPrice: '', quantity: '' }, executions: [], fees: [], currencyFilledBy: null, currencyTyped: false } };
+    await db.metadata.put({ key: tradeFormDraftKey('journal'), value: JSON.stringify(other), updatedAt: other.savedAt });
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 1500)); });
+    expect(await db.metadata.get(tradeFormDraftKey('journal'))).toBeDefined();
+    cleanup();
+    render(<TradeForm db={db} kind="practice" initialDraft={{ ...createEmptyManualTradeDraft(), side: 'long', plan: { plannedEntryPrice: '100', plannedStopPrice: '95', plannedTargetPrice: '', plannedQuantity: '1' } }} onSaved={async () => undefined} />);
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 1500)); });
+    cleanup();
+    expect(await db.metadata.get(tradeFormDraftKey('practice'))).toBeUndefined();
+  });
+
+  it('review r2: when the saved trade can\'t be read back, "Try again" draws it and focus goes to the saved heading', async () => {
+    const db = await database();
+    page(db);
+    fireEvent.click(screen.getByRole('button', { name: 'Quick log' }));
+    type(/^Symbol/, 'BTCUSDT');
+    type(/^Market/, 'crypto');
+    type(/^Direction/, 'long');
+    type(/^Entry price/, '100');
+    type(/^Exit price/, '120');
+    type(/^Quantity/, '2');
+    type(/^Opened/, '2026-09-12T10:00');
+    type(/^Closed/, '2026-09-12T11:00');
+    readBack.failNext = 1;
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save trade' })); });
+    const retry = await screen.findByRole('button', { name: 'Try again' });
+    retry.focus();
+    await act(async () => { fireEvent.click(retry); });
+    expect(await screen.findByRole('heading', { name: 'Your trade' })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('heading', { level: 2, name: 'Trade saved to your journal.' })).toHaveFocus());
   });
 });
