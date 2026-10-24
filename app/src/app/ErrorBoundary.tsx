@@ -49,9 +49,12 @@ function CrashScreen({ error, componentStack, ports }: { readonly error: unknown
   }
 
   return <main className="kairos-crash">
-    <section className="kairos-crash__panel" role="alert" aria-labelledby="kairos-crash-title">
-      <h1 id="kairos-crash-title" ref={heading} tabIndex={-1}>Kairos hit a problem</h1>
-      <p>Your journal is safe on this device. Reload to try again.</p>
+    <section className="kairos-crash__panel" aria-labelledby="kairos-crash-title">
+      {/* The alert is the heading and its sentence only, so the status lines below are not live regions inside it. */}
+      <div className="kairos-crash__alert" role="alert">
+        <h1 id="kairos-crash-title" ref={heading} tabIndex={-1}>Kairos hit a problem</h1>
+        <p>Your journal is safe on this device. Reload to try again.</p>
+      </div>
       <div className="kairos-crash__actions">
         <Button emphasis="main" onClick={ports.reload}>Reload</Button>
         <Button variant="secondary" onClick={() => { void downloadCopy(); }} aria-disabled={copy.kind === 'busy' || undefined}>{copy.kind === 'busy' ? 'Making a copy…' : 'Download a copy of my data'}</Button>

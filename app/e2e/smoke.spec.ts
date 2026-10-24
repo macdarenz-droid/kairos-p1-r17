@@ -1615,7 +1615,9 @@ test('(ab) A crash: Reload, a copy of my data, and the error details', async ({ 
   await expect(page.getByText(`Downloaded ${download.suggestedFilename()}.`)).toBeVisible();
 
   await page.getByRole('button', { name: 'Copy error details' }).click();
-  await expect(page.getByText('Copied.')).toBeVisible();
+  await expect(page.getByText('Copied. This is the text:')).toBeVisible();
+  // The trader sees exactly what was copied (T-054e fix r1).
+  expect(await page.getByRole('textbox', { name: 'Error details' }).inputValue()).toBe(await page.evaluate(() => sessionStorage.getItem('qa-copied')));
   const copied = await page.evaluate(() => sessionStorage.getItem('qa-copied'));
   expect(copied).toContain('Error: Error: QA crash on purpose (e2e)');
   expect(copied).not.toContain('CRASHSAFE');

@@ -76,11 +76,24 @@ describe('T-054e the crash screen', () => {
     const copied: string[] = [];
     await crash({ writeText: async text => { copied.push(text); } });
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Copy error details' })); });
-    expect(await screen.findByText('Copied.')).toBeInTheDocument();
+    expect(await screen.findByText('Copied. This is the text:')).toBeInTheDocument();
     expect(copied).toHaveLength(1);
+    // The trader sees exactly what was copied.
+    expect((screen.getByRole('textbox', { name: 'Error details' }) as HTMLTextAreaElement).value).toBe(copied[0]);
     expect(copied[0]).toContain('Error: Error: test render failure');
     expect(copied[0]).toContain('at BrokenChild');
     expect(copied[0]).not.toContain('ETHUSDT');
+  });
+
+  it('says when the copy was saved but could not be noted, and keeps live messages out of the alert', async () => {
+    await crash(null);
+    cleanup();
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    render(<AppErrorBoundary ports={{ downloadCopy: async () => ({ ok: false, reason: 'record-failed' }), clipboard: null, reload: vi.fn() }}><BrokenChild /></AppErrorBoundary>);
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Download a copy of my data' })); });
+    const said = await screen.findByText('The backup file was saved, but Kairos could not note when. Nothing else was changed.');
+    expect(screen.getByRole('alert')).not.toContainElement(said);
+    expect(screen.getByRole('alert')).toHaveTextContent('Kairos hit a problem');
   });
 
   it('without a clipboard, or when the browser refuses, shows the details in a box with "Select all"', async () => {

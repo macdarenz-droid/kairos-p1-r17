@@ -74,7 +74,7 @@ describe('P1 routing shell', () => {
     render(<RouterProvider router={router} />);
     await screen.findByRole('heading', { name: 'Page unavailable' });
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Copy error details' })); });
-    expect(await screen.findByText('Copied.')).toBeInTheDocument();
+    expect(await screen.findByText('Copied. This is the text:')).toBeInTheDocument();
     expect(copied[0]).toContain('Error: Error: chunk missing');
     Reflect.deleteProperty(navigator, 'clipboard');
   });

@@ -20,14 +20,14 @@ export function CopyErrorDetails({ details, clipboard = browserClipboard() }: {
 }) {
   const boxId = useId();
   const box = useRef<HTMLTextAreaElement>(null);
-  const [state, setState] = useState<Readonly<{ kind: 'idle' }> | Readonly<{ kind: 'copied' }> | Readonly<{ kind: 'shown'; text: string }>>({ kind: 'idle' });
+  const [state, setState] = useState<Readonly<{ kind: 'idle' }> | Readonly<{ kind: 'copied' | 'shown'; text: string }>>({ kind: 'idle' });
 
   async function copy(): Promise<void> {
     const text = details();
     if (clipboard !== null) {
       try {
         await clipboard.writeText(text);
-        setState({ kind: 'copied' });
+        setState({ kind: 'copied', text });
         return;
       } catch {
         // Refused (no permission, or the page is not focused): the text is shown to copy by hand.
@@ -38,9 +38,9 @@ export function CopyErrorDetails({ details, clipboard = browserClipboard() }: {
 
   return <div className="kairos-error-details">
     <Button variant="secondary" onClick={() => { void copy(); }}>Copy error details</Button>
-    {state.kind === 'copied' ? <p role="status">Copied.</p> : null}
-    {state.kind === 'shown' ? <>
-      <p role="status">Kairos could not copy. Select the text below and copy it.</p>
+    {/* The text is always shown, so the trader sees exactly what they send (a browser's own error words could quote data). */}
+    {state.kind !== 'idle' ? <>
+      <p role="status">{state.kind === 'copied' ? 'Copied. This is the text:' : 'Kairos could not copy. Select the text below and copy it.'}</p>
       <label htmlFor={boxId}>Error details</label>
       <textarea id={boxId} ref={box} readOnly rows={8} value={state.text} />
       <Button variant="secondary" onClick={() => { box.current?.focus(); box.current?.select(); }}>Select all</Button>
