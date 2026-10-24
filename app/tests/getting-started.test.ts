@@ -65,6 +65,15 @@ describe('T-053e Getting started', () => {
     expect(await doneOf(db)).toMatchObject({ 'first-goal': false });
   });
 
+  it('T-058a: a loss limit or a habit alone is a goal set', async () => {
+    const db = await database();
+    await saveGoalsPreference(db, { lossLimitPerDay: '100', lossLimitCurrency: 'USDT' }, { now });
+    expect(await doneOf(db)).toMatchObject({ 'first-goal': true });
+    const other = await database();
+    await saveGoalsPreference(other, { reviewEveryTrade: true }, { now });
+    expect(await doneOf(other)).toMatchObject({ 'first-goal': true });
+  });
+
   it('remembers that the trader hid the card', async () => {
     const db = await database();
     await hideGettingStarted(db, { now });

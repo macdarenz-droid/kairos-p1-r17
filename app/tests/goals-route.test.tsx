@@ -26,7 +26,7 @@ describe('P26.3 Goals route', () => {
     type('Closed trades per month', '12');
     fireEvent.click(screen.getByRole('button', { name: 'Save goals' }));
     await waitFor(() => expect(screen.getByText('Goals saved.')).toBeTruthy());
-    expect(await readGoalsPreference(createKairosRepositories(db).metadata)).toEqual({ tradesPerMonthTarget: 12, maxTradesPerDay: null, monthlyResultTarget: null });
+    expect(await readGoalsPreference(createKairosRepositories(db).metadata)).toEqual({ tradesPerMonthTarget: 12, maxTradesPerDay: null, monthlyResultTarget: null, lossLimits: null, reviewEveryTrade: false, tickEveryStep: false });
   });
 
   it('shows progress from the journal in the explicit time zone, refreshes after a save, and reports invalid targets without writing', async () => {
@@ -43,7 +43,7 @@ describe('P26.3 Goals route', () => {
     expect(route().querySelector('[data-goal="max-trades-per-day"]')!.textContent).toContain('1 of 1 allowed · at your limit');
     expect(route().querySelector('[data-goal="monthly-result"]')!.textContent).toContain('No result target set.');
     expect((screen.getByLabelText('Closed trades per month') as HTMLInputElement).value).toBe('2');
-    type('Max trades per day', '3');
+    type('Most trades in a day', '3');
     type('Monthly result target', '250');
     type('Currency', 'usdt');
     fireEvent.click(screen.getByRole('button', { name: 'Save goals' }));

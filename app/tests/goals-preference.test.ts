@@ -13,7 +13,7 @@ afterEach(async () => { for (const name of names.splice(0)) await Dexie.delete(n
 describe('P26.1 goals preference foundation', () => {
   it('parses typed targets: blank fields are unset goals, counts are positive integers within the cap, the result target needs a positive decimal and an upper-case currency', () => {
     expect(parseGoalsPreferenceInput({})).toEqual({ ok: true, preference: EMPTY_GOALS_PREFERENCE });
-    expect(parseGoalsPreferenceInput({ tradesPerMonthTarget: ' 20 ', maxTradesPerDay: '3', monthlyResultTargetAmount: ' 500.50 ', monthlyResultTargetCurrency: ' usdt ' })).toEqual({ ok: true, preference: { tradesPerMonthTarget: 20, maxTradesPerDay: 3, monthlyResultTarget: { amount: '500.50', currency: 'USDT' } } });
+    expect(parseGoalsPreferenceInput({ tradesPerMonthTarget: ' 20 ', maxTradesPerDay: '3', monthlyResultTargetAmount: ' 500.50 ', monthlyResultTargetCurrency: ' usdt ' })).toEqual({ ok: true, preference: { tradesPerMonthTarget: 20, maxTradesPerDay: 3, monthlyResultTarget: { amount: '500.50', currency: 'USDT' }, lossLimits: null, reviewEveryTrade: false, tickEveryStep: false } });
     expect(parseGoalsPreferenceInput({ tradesPerMonthTarget: '0' })).toEqual({ ok: false, reason: 'trades-per-month-invalid' });
     expect(parseGoalsPreferenceInput({ tradesPerMonthTarget: '2.5' })).toEqual({ ok: false, reason: 'trades-per-month-invalid' });
     expect(parseGoalsPreferenceInput({ tradesPerMonthTarget: String(GOALS_COUNT_TARGET_MAX + 1) })).toEqual({ ok: false, reason: 'trades-per-month-invalid' });
@@ -33,12 +33,12 @@ describe('P26.1 goals preference foundation', () => {
     expect(written.ok).toBe(true);
     const stored = await metadata.get(goalsPreferenceMetadataKey);
     expect(stored).toMatchObject({ key: 'preferences.goals.v1', updatedAt: '2026-09-18T14:00:00.000Z' });
-    expect(JSON.parse(stored!.value)).toEqual({ version: 1, tradesPerMonthTarget: 20, maxTradesPerDay: 3, monthlyResultTarget: { amount: '500.50', currency: 'USDT' } });
-    expect(await readGoalsPreference(metadata)).toEqual({ tradesPerMonthTarget: 20, maxTradesPerDay: 3, monthlyResultTarget: { amount: '500.50', currency: 'USDT' } });
+    expect(JSON.parse(stored!.value)).toEqual({ version: 2, periods: [{ from: '2026-09-18', goals: { tradesPerMonthTarget: 20, maxTradesPerDay: 3, monthlyResultTarget: { amount: '500.50', currency: 'USDT' }, lossLimits: null, reviewEveryTrade: false, tickEveryStep: false } }] });
+    expect(await readGoalsPreference(metadata)).toEqual({ tradesPerMonthTarget: 20, maxTradesPerDay: 3, monthlyResultTarget: { amount: '500.50', currency: 'USDT' }, lossLimits: null, reviewEveryTrade: false, tickEveryStep: false });
     expect(await writeGoalsPreference(metadata, { tradesPerMonthTarget: 'x' }, '2026-09-18T14:01:00.000Z')).toEqual({ ok: false, reason: 'trades-per-month-invalid' });
     expect(await readGoalsPreference(metadata)).toMatchObject({ tradesPerMonthTarget: 20 });
     await writeGoalsPreference(metadata, { maxTradesPerDay: '5' }, '2026-09-18T14:02:00.000Z');
-    expect(await readGoalsPreference(metadata)).toEqual({ tradesPerMonthTarget: null, maxTradesPerDay: 5, monthlyResultTarget: null });
+    expect(await readGoalsPreference(metadata)).toEqual({ tradesPerMonthTarget: null, maxTradesPerDay: 5, monthlyResultTarget: null, lossLimits: null, reviewEveryTrade: false, tickEveryStep: false });
     await clearGoalsPreference(metadata);
     expect(await metadata.get(goalsPreferenceMetadataKey)).toBeUndefined();
     expect(await readGoalsPreference(metadata)).toEqual(EMPTY_GOALS_PREFERENCE);

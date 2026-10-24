@@ -21,7 +21,7 @@ function entry(id: string, status: Status, openedAt: string | null, closedAt: st
   return { trade, plans: [], executions: [], fees: [], metrics: null, metricsError: null, visualPnl } as unknown as JournalHistoryEntry;
 }
 const now = '2026-09-18T14:30:00.000Z';
-const preference = { tradesPerMonthTarget: 4, maxTradesPerDay: 2, monthlyResultTarget: { amount: '250' as DecimalString, currency: 'USDT' } } as const;
+const preference = { ...EMPTY_GOALS_PREFERENCE, tradesPerMonthTarget: 4, maxTradesPerDay: 2, monthlyResultTarget: { amount: '250' as DecimalString, currency: 'USDT' } } as const;
 
 describe('P26.2 goals progress projection', () => {
   it('counts closed trades this month and trades opened today from the released day-key contract, and sums the month result only over comparable days', () => {
@@ -70,7 +70,7 @@ describe('P26.2 goals progress projection', () => {
     await openKairosDatabase(db);
     const { metadata } = createKairosRepositories(db);
     await writeGoalsPreference(metadata, { tradesPerMonthTarget: '3' }, now);
-    expect(await loadGoalsProgress(db, now)).toEqual({ kind: 'time-zone-unconfigured', preference: { tradesPerMonthTarget: 3, maxTradesPerDay: null, monthlyResultTarget: null } });
+    expect(await loadGoalsProgress(db, now)).toEqual({ kind: 'time-zone-unconfigured', preference: { ...EMPTY_GOALS_PREFERENCE, tradesPerMonthTarget: 3 } });
     await writeVisualPnlTimeZonePreference(metadata, 'UTC', now);
     const result = await loadGoalsProgress(db, now);
     expect(result).toMatchObject({ kind: 'ready', timeZone: 'UTC', progress: { kind: 'ready', consideredEntries: 0, tradesPerMonth: { kind: 'progress', target: 3, current: 0, reached: false }, maxTradesPerDay: { kind: 'unset' }, monthlyResult: { kind: 'unset' } } });

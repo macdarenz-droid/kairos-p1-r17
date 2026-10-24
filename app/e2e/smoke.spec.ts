@@ -1828,9 +1828,9 @@ test("(ae) Before you save, then the guided flow: past the daily limit a planned
   const deviceZone = page.getByRole('button', { name: /\(this device\)$/ });
   if (await deviceZone.isVisible()) await deviceZone.click();
   await expect(goals).toHaveAttribute('data-goals-status', 'ready');
-  await page.getByLabel('Max trades per day').fill('1');
+  await page.getByLabel('Most trades in a day').fill('1');
   await page.getByRole('button', { name: 'Save goals' }).click();
-  await expect(page.getByLabel('Max trades per day')).toHaveValue('1');
+  await expect(page.getByLabel('Most trades in a day')).toHaveValue('1');
 
   // One trade opened now uses up the day.
   await page.goto('/journal');
