@@ -1,0 +1,3 @@
+/* T-054e: "Copy error details" and its read-only box. */
+.kairos-error-details { display: grid; gap: var(--kairos-space-2); justify-items: start; }
+.kairos-error-details textarea { width: 100%; font-family: var(--kairos-font-mono, ui-monospace, monospace); font-size: var(--kairos-font-size-xs); color: var(--kairos-text-primary); background: var(--kairos-background-base); border: 1px solid var(--kairos-border-default); border-radius: var(--kairos-radius-md); padding: var(--kairos-space-2); }

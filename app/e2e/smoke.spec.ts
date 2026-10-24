@@ -1577,3 +1577,42 @@ test('(aa) Two tabs: a save shows in the other tab, and an update in another tab
   expect(await other.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   expect(errors).toEqual([]);
 });
+
+test('(ab) A crash: Reload, a copy of my data, and the error details', async ({ page }) => {
+  // The clipboard as the page sees it; what it copied is kept for the test.
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (text: string) => { sessionStorage.setItem('qa-copied', text); } } });
+  });
+  await activate(page);
+  await page.goto('/journal');
+  await page.getByLabel(/^Symbol/).fill('CRASHSAFE');
+  await page.getByLabel(/^Market/).selectOption('crypto');
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Status/).selectOption('cancelled');
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.locator('.kairos-journal__feedback--success')).toBeVisible();
+
+  // The QA build's page that crashes on purpose.
+  await page.goto('/qa/crash');
+  const title = page.getByRole('heading', { level: 1, name: 'Kairos hit a problem' });
+  await expect(title).toBeVisible();
+  await expect(title).toBeFocused();
+  await expect(page.getByText('Your journal is safe on this device. Reload to try again.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Reload' })).toBeVisible();
+
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download a copy of my data' }).click()]);
+  const saved = JSON.parse(readFileSync((await download.path())!, 'utf8')) as { formatName: string; payload: { trades: Array<{ symbol: string }> } };
+  expect(saved.formatName).toBe('kairos-full-backup');
+  expect(saved.payload.trades.map(trade => trade.symbol)).toEqual(['CRASHSAFE']);
+  await expect(page.getByText(`Downloaded ${download.suggestedFilename()}.`)).toBeVisible();
+
+  await page.getByRole('button', { name: 'Copy error details' }).click();
+  await expect(page.getByText('Copied.')).toBeVisible();
+  const copied = await page.evaluate(() => sessionStorage.getItem('qa-copied'));
+  expect(copied).toContain('Error: Error: QA crash on purpose (e2e)');
+  expect(copied).not.toContain('CRASHSAFE');
+
+  const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(axe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
