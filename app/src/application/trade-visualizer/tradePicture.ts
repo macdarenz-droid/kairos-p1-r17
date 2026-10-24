@@ -19,7 +19,7 @@ import type { MarketCandle } from '../../services/market-data/MarketCandleHistor
 import { parseForexPair, projectForexPips, projectForexPipValue, projectForexSize } from '../markets/forexPair';
 import { projectStockResultPerShare } from '../markets/stockTicker';
 import { projectPriceMove, type PriceMove } from '../performance/priceMove';
-import { describeMoneyAtRisk, NEEDS_CONTRACT_SIZE_WORDS } from '../performance/performanceWords';
+import { describeMoneyAtRisk, describePointValue, NEEDS_CONTRACT_SIZE_WORDS } from '../performance/performanceWords';
 import { describeTradeDuration, projectTradeDurationMs } from '../performance/tradeDuration';
 import { describeTimesRisked, projectTradeMoneyAtRisk, projectTradeTimesRisked, signedText, TIMES_RISKED_PLACES } from '../performance/tradeRisk';
 import {
@@ -83,7 +83,8 @@ export interface TradePictureMarker {
 
 export type TradePictureInfoKey =
   | 'market' | 'direction' | 'opened' | 'closed' | 'planned-entry' | 'average-entry' | 'stop' | 'target' | 'average-exit' | 'price-now'
-  | 'size' | 'point-value' | 'money-at-risk' | 'result-before-fees' | 'fees' | 'result' | 'planned-reward' | 'actual-r' | 'duration' | 'status' | 'pips' | 'pip-value' | 'per-share';
+  | 'size' | 'point-value' | 'money-at-risk' | 'result-before-fees' | 'fees' | 'result' | 'planned-reward' | 'actual-r' | 'duration' | 'status' | 'pips' | 'pip-value' | 'per-share'
+  | 'exchange' | 'leverage' | 'reason';
 
 export interface TradePictureInfoRow {
   readonly key: TradePictureInfoKey;
@@ -339,10 +340,18 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
   const moneyAtRisk = projectTradeMoneyAtRisk({ trade, plans, executions, metrics });
   const needsContractSize = metrics?.needsContractSize === true;
   // D237: futures and options say how much one point is worth: their own value, or 1 for a crypto perpetual priced in a stablecoin.
-  const pointValue = trade.marketType !== 'futures' && trade.marketType !== 'options' ? []
+  const pointValueText = describePointValue(contractSize, priceCurrency);
+  const pointValue = pointValueText === null ? []
     : contractSize.ok
-      ? [row('point-value', 'Each point is worth', contractSize.value, priceCurrency, value => `${withUnit(priceCurrency)(value)}${contractSize.basis === 'stablecoin' ? ' (crypto perpetual)' : ''}`)]
-      : [reasonRow('point-value', 'Each point is worth', 'Not saved yet')];
+      ? [row('point-value', 'Each point is worth', contractSize.value, priceCurrency, () => pointValueText)]
+      : [reasonRow('point-value', 'Each point is worth', pointValueText)];
+  // U11: where it was traded, the leverage and why, only when saved.
+  const reason = latestTradePlan(plans)?.reason ?? null;
+  const tradeFacts = [
+    ...(trade.exchange ? [row('exchange', 'Where you traded', trade.exchange, null, value => value)] : []),
+    ...(trade.leverage ? [row('leverage', 'Leverage', trade.leverage, null, value => `${value}×`)] : []),
+    ...(reason ? [row('reason', "Why I'm taking it", reason, null, value => value)] : []),
+  ];
   const lastCandle = candles && candles.length > 0 ? candles[candles.length - 1]! : null;
   const priceNow = planned && lastCandle !== null ? Object.freeze({ price: lastCandle.close, at: lastCandle.openTime }) : null;
 
@@ -386,6 +395,7 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
     row('actual-r', 'Actual result', realizedText === null ? null : realized, null, () => realizedText ?? ''),
     row('duration', 'How long it lasted', durationMs === null ? null : String(durationMs), 'ms', value => describeTradeDuration(Number(value))),
     row('status', 'Status', STATUS_WORDS[trade.status], null, value => value),
+    ...tradeFacts,
   ];
 
   const missing: TradePictureMissing[] = [];

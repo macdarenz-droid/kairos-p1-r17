@@ -1787,7 +1787,32 @@ test('(ad) New trade fields: a futures trade with how much one point is worth, t
   const card = page.locator('.kairos-history-card').filter({ hasText: 'ESZ6' });
   await card.scrollIntoViewIfNeeded();
   await expect(card.locator('.kairos-history-card__outcome')).toContainText('+500 USD');
+  await expect(card.getByRole('list', { name: 'Tags' }).getByRole('listitem')).toHaveText(['breakout', 'London open']);
   const cardAxe = await new AxeBuilder({ page }).include('.kairos-history-card').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
   expect(cardAxe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+
+  // T-056d: a trade saved without how much one point is worth says what to add, gets it once, and shows its result.
+  await page.getByLabel(/^Market/).selectOption('futures');
+  await page.getByLabel(/^Symbol/).fill('NQZ6');
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Entry price/).fill('5000');
+  await page.getByLabel(/^Exit price/).fill('5010');
+  await page.getByLabel(/^Quantity/).fill('1');
+  await page.getByRole('button', { name: 'Set opened time to now' }).click();
+  await page.getByRole('button', { name: 'Set closed time to now' }).click();
+  await page.getByLabel('Currency code').fill('USD');
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+  const old = page.locator('.kairos-history-card').filter({ hasText: 'NQZ6' });
+  await old.scrollIntoViewIfNeeded();
+  await expect(old.getByText('Add how much one point is worth to see this result.')).toBeVisible();
+  await old.getByRole('button', { name: 'Add how much one point is worth' }).click();
+  await expect(old.getByLabel('Each point is worth')).toBeFocused();
+  await page.keyboard.type('20');
+  await page.keyboard.press('Enter');
+  await expect(old.locator('.kairos-history-card__outcome')).toContainText('+200 USD');
+  await expect(old.locator('dl > div').filter({ hasText: 'Result after fees' })).toBeFocused();
+  await expect(old.getByRole('button', { name: 'Add how much one point is worth' })).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   expect(errors).toEqual([]);
 });

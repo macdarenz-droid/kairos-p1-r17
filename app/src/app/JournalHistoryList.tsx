@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { JOURNAL_HISTORY_SOURCES, type JournalHistoryEntry, type JournalHistoryScope } from '../application/journal';
 import { saveTradeDiscipline } from '../application/discipline';
 import { Button, EmptyState, ErrorState, Field, ResultText, Select, Skeleton } from '../design-system/primitives';
@@ -9,14 +9,15 @@ import { checkSavedTradeStrategy } from '../application/discipline/strategyCheck
 import { projectTradePlanVsExecution } from '../application/trades/planVsExecution';
 import { describeTradePlanVsExecution } from '../application/coach/coachWords';
 import { useTradeDisciplineCards } from '../features/discipline/useTradeDisciplineCards';
-import type { TradeSource, TradeStatus } from '../domain/trades';
+import type { TradeId, TradeSource, TradeStatus } from '../domain/trades';
 import { TradePicture } from '../features/journal/TradePicture';
 import { ReviewTradeLink } from './ReviewTradeLink';
 import { JournalOpenTradeUpdate } from './JournalOpenTradeUpdate';
 import { JournalDraftTradeActivation } from './JournalDraftTradeActivation';
 import { JournalTradeDeleteControl } from './JournalTradeDeleteControl';
 import type { KairosDatabase } from '../data/database';
-import { updateTradeExecution } from '../application/trades';
+import { addTradeContractSize, canAddTradeContractSize, updateTradeExecution } from '../application/trades';
+import { AddContractSizeControl } from '../features/journal/AddContractSizeControl';
 import { EntriesAndExitsEditor } from '../features/journal/EntriesAndExitsEditor';
 import { GlossaryHint } from '../features/learn/GlossaryHint';
 import { CLOSED_PART_NEEDS_CONTRACT_SIZE_WORDS, describeClosedPart, describeMoneyAtRisk, NEEDS_CONTRACT_SIZE_WORDS } from '../application/performance/performanceWords';
@@ -79,6 +80,18 @@ function formatTimestamp(value: string): string {
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 }
 
+const cardResultId = (tradeId: string): string => `kairos-card-result-${tradeId}`;
+
+/** U11 (D239): a trade's tags on its card, at most 3, then how many more. */
+const CARD_TAGS_SHOWN = 3;
+function TradeTagChips({ tags }: { readonly tags: readonly string[] }) {
+  const more = tags.length - CARD_TAGS_SHOWN;
+  return <ul className="kairos-history-card__tags" aria-label="Tags">
+    {tags.slice(0, CARD_TAGS_SHOWN).map(tag => <li key={tag}>{tag}</li>)}
+    {more > 0 ? <li>+{more}<span className="kairos-visually-hidden"> more {more === 1 ? 'tag' : 'tags'}</span></li> : null}
+  </ul>;
+}
+
 export function JournalHistoryList({ entries, isLoading, errorMessage, statusFilter, onStatusFilterChange, onRetry, db, onTradeUpdated, updateNotice, onTradeDeleted, onTradeOpened, allowedSources = ['manual'], hasOlder = false, isLoadingOlder = false, olderFailed = false, onShowOlder, onDisciplineSaved, disciplineSources = allowedSources }: JournalHistoryListProps) {
   const discipline = useTradeDisciplineCards(db, entries.map(entry => entry.trade.id));
   const news = useNewsNearTrades(db, entries.map(entry => entry.trade));
@@ -96,6 +109,13 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
   const retryLoad = onRetry === undefined ? undefined : () => { const tapped = tappedRetry(); refocus.current = tapped ? { kind: 'load', tapped } : null; onRetry(); };
   const retryOlder = onShowOlder === undefined ? undefined : () => { const tapped = tappedRetry(); refocus.current = tapped ? { kind: 'older', shown: entries.length, tapped } : null; onShowOlder(); };
   const tradeDeleted = onTradeDeleted === undefined ? undefined : async (notice: string) => { await onTradeDeleted(notice); heading.current?.focus(); };
+  // U11: after a point value is added and the list read again, that card's "Result after fees" row takes focus once it shows the value.
+  const [focusResultOf, setFocusResultOf] = useState<TradeId | null>(null);
+  useEffect(() => {
+    if (focusResultOf === null || entries.find(entry => entry.trade.id === focusResultOf)?.trade.contractSize == null) return;
+    document.getElementById(cardResultId(focusResultOf))?.focus();
+    setFocusResultOf(null);
+  }, [focusResultOf, entries]);
 
   useEffect(() => {
     const target = refocus.current;
@@ -156,6 +176,7 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
                   {entry.trade.source === 'replay' ? <span className="kairos-history-card__source">From replay</span> : null}
                 </div>
                 <time dateTime={timestamp}>{formatTimestamp(timestamp)}</time>
+                {entry.trade.tags?.length ? <TradeTagChips tags={entry.trade.tags} /> : null}
                 <ReviewTradeLink id={entry.trade.id} className="kairos-history-card__review" />
                 {db && (entry.trade.status === 'draft' || entry.trade.status === 'open') && disciplineSources.includes(entry.trade.source)
                   ? discipline.state.kind === 'ready'
@@ -178,6 +199,10 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
                 <ResultText outcome={entry.visualPnl.outcome} label={entry.visualPnl.label} amount={entry.visualPnl.amount} currency={entry.visualPnl.currency}
                   className={`kairos-history-card__outcome kairos-history-card__outcome--${entry.visualPnl.outcome}`} />
                 {entry.metrics?.needsContractSize ? <p className="kairos-history-card__notice">{NEEDS_CONTRACT_SIZE_WORDS}</p> : null}
+                {db && onTradeUpdated && canAddTradeContractSize(entry.trade)
+                  ? <AddContractSizeControl entry={entry} idPrefix={`kairos-card-${entry.trade.id}`} save={input => addTradeContractSize(db, input)}
+                    onSaved={async () => { await onTradeUpdated(); setFocusResultOf(entry.trade.id); }} />
+                  : null}
                 {closedPart.available ? <p className="kairos-history-card__closed-part"><ResultText outcome={closedPart.outcome} label="Closed part" amount={closedPart.resultBeforeFees} currency={closedPart.currency} /> <span>{describeClosedPart(closedPart)}</span></p>
                   : closedPart.reason === 'needs-contract-size' ? <p className="kairos-history-card__closed-part">{CLOSED_PART_NEEDS_CONTRACT_SIZE_WORDS}</p> : null}
                 <TradePicture entry={entry} variant="thumbnail" strategyName={discipline.state.kind === 'ready' ? discipline.state.records.get(entry.trade.id)?.strategy?.name ?? null : null} />
@@ -186,7 +211,7 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
                   <div><dt><span>Entries and exits</span>{index === 0 ? <GlossaryHint termId="entries-and-exits" label="Entries and exits" /> : null}</dt><dd>{entry.executions.length}</dd></div>
                   <div><dt><span>Fees</span>{index === 0 ? <GlossaryHint termId="fees" label="Fees" /> : null}</dt><dd>{entry.fees.length}</dd></div>
                   <div><dt><span>Result before fees</span>{index === 0 ? <GlossaryHint termId="result-before-fees" label="Result before fees" /> : null}</dt><dd>{money(entry.metrics?.grossPnl, entry.trade.grossPnlCurrency)}</dd></div>
-                  <div><dt><span>Result after fees</span>{index === 0 ? <GlossaryHint termId="result-after-fees" label="Result after fees" /> : null}</dt><dd>{entry.metrics?.netPnl != null && entry.metrics.netPnlCurrency ? money(entry.metrics.netPnl, entry.metrics.netPnlCurrency) : entry.metrics?.netPnl ?? 'Not available'}</dd></div>
+                  <div id={cardResultId(entry.trade.id)} tabIndex={-1}><dt><span>Result after fees</span>{index === 0 ? <GlossaryHint termId="result-after-fees" label="Result after fees" /> : null}</dt><dd>{entry.metrics?.netPnl != null && entry.metrics.netPnlCurrency ? money(entry.metrics.netPnl, entry.metrics.netPnlCurrency) : entry.metrics?.netPnl ?? 'Not available'}</dd></div>
                   <div><dt><span>Money at risk</span>{index === 0 ? <GlossaryHint termId="money-at-risk" label="Money at risk" /> : null}</dt><dd>{describeMoneyAtRisk(projectTradeMoneyAtRisk(entry))}</dd></div>
                 </dl>
                 {coach.length > 0 ? <p className="kairos-history-card__coach"><span>Your coach</span>{coach.map(line => <span key={line}>{line}</span>)}</p> : null}

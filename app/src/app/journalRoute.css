@@ -140,3 +140,6 @@
 }
 
 .kairos-history-card__review { display: flex; align-items: center; justify-content: center; min-height: var(--kairos-control-md); margin-top: var(--kairos-space-3); padding: var(--kairos-space-2) var(--kairos-space-3); border: 1px solid var(--kairos-border-default); border-radius: var(--kairos-radius-md); color: var(--kairos-accent-primary); background: var(--kairos-surface-input); font-size: var(--kairos-font-size-sm); text-decoration: none; }
+/* U11 (D239): a trade's tags on its card, at most 3, then how many more. */
+.kairos-history-card__tags { display: flex; flex-wrap: wrap; gap: var(--kairos-space-1); margin: 0; padding: 0; list-style: none; min-width: 0; }
+.kairos-history-card__tags li { max-width: 100%; padding: 0 var(--kairos-space-2); border: 1px solid var(--kairos-border-subtle); border-radius: var(--kairos-radius-full); color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-xs); overflow-wrap: anywhere; }

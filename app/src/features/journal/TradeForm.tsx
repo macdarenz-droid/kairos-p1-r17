@@ -25,6 +25,7 @@ import { StockTradeNote, STOCK_QUANTITY_HINT, STOCK_TICKER_MESSAGES } from './St
 import { JournalPriceCurrencyField } from './JournalPriceCurrencyField';
 import { TradeStrategyField } from './TradeStrategyField';
 import { TradeTagsField } from './TradeTagsField';
+import { CONTRACT_SIZE_HINT } from './AddContractSizeControl';
 import './tradeForm.css';
 
 export type TradeFormKind = 'journal' | 'practice';
@@ -79,8 +80,6 @@ const NEW_FIELD_MESSAGES: Readonly<Partial<Record<ManualTradeValidationField, st
   exchange: '"Where you traded" can be up to 40 letters.',
   'plan.reason': '"Why I\'m taking it" can be up to 500 letters.',
 };
-
-const CONTRACT_SIZE_HINT = 'For one contract, in your price currency. For example 50 for one e-mini S&P 500 point, or 100 for most US stock options. Leave it empty for crypto perpetuals priced in USDT.';
 
 const pad = (value: number): string => String(value).padStart(2, '0');
 

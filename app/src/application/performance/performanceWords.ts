@@ -2,6 +2,7 @@
  * U4 (P11.A1, D194): the plain words for a trade's money at risk and its closed part. Words only: every number comes from its owner as given.
  */
 
+import type { ContractSize } from '../../domain/calculations/contractSize';
 import type { PriceMove } from './priceMove';
 import type { TradeClosedPart } from './tradeClosedPart';
 import type { TradeMoneyAtRisk, TradeMoneyAtRiskReason } from './tradeRisk';
@@ -19,6 +20,14 @@ const NOT_GIVEN: Readonly<Record<TradeMoneyAtRiskReason, string>> = Object.freez
 /** D237: shown where a futures or options result would be when the trade has no "how much one point is worth". */
 export const NEEDS_CONTRACT_SIZE_WORDS = 'Add how much one point is worth to see this result.';
 export const CLOSED_PART_NEEDS_CONTRACT_SIZE_WORDS = 'Closed part: add how much one point is worth to see its result.';
+
+/** "50 USD", "1 USDT (crypto perpetual)" or "Not saved yet" for futures and options; null where a point is simply one unit (D237). */
+export function describePointValue(contractSize: ContractSize, priceCurrency: string | null): string | null {
+  if (!contractSize.ok) return 'Not saved yet';
+  if (contractSize.basis === 'not-needed') return null;
+  const amount = priceCurrency ? `${contractSize.value} ${priceCurrency}` : contractSize.value;
+  return contractSize.basis === 'stablecoin' ? `${amount} (crypto perpetual)` : amount;
+}
 
 export function describeMoneyAtRisk(value: TradeMoneyAtRisk): string {
   if (!value.available) return NOT_GIVEN[value.reason];

@@ -39,3 +39,5 @@
 @media (prefers-reduced-motion: reduce) {
   .kairos-review :is(button, select, .kairos-symbol-picker input) { transition: none; }
 }
+.kairos-review__reason { margin: var(--kairos-space-2) 0 0; overflow-wrap: anywhere; white-space: pre-line; }
+.kairos-review__reason strong { display: block; font-size: var(--kairos-font-size-sm); color: var(--kairos-text-secondary); font-weight: var(--kairos-font-weight-medium); }
