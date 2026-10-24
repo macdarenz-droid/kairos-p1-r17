@@ -30,8 +30,8 @@ export interface TradeStrategyCheckInput {
   readonly plan: Readonly<{ entry: DecimalString | null; stop: DecimalString | null; target: DecimalString | null; quantity: DecimalString | null }>;
   /** From summarizeTradeChecklist; null when no checklist is saved. */
   readonly checklist: TradeChecklistSummary | null;
-  /** How much one point is worth, from `resolveContractSize` (D237); the money at risk is times it. Absent means 1. */
-  readonly contractSize?: ContractSize;
+  /** How much one point is worth, from `resolveContractSize` (D237); the money at risk is times it. */
+  readonly contractSize: ContractSize;
 }
 export type StrategyRuleResult =
   | Readonly<{ kind: 'max-risk'; ruleId: StrategyRuleId; verdict: StrategyRuleVerdict; reason: 'within' | 'over' | 'plan-incomplete' | 'levels-not-ordered' | 'needs-contract-size' | 'no-currency' | 'other-currency'; risk: DecimalString | null; limit: DecimalString; currency: string; tradeCurrency: string | null; bars: StrategyRuleBars | null }>
@@ -69,12 +69,13 @@ function checkRule(rule: StrategyRule, input: TradeStrategyCheckInput): Strategy
       if (input.side === null || entry === null || stop === null || quantity === null) return unknown('plan-incomplete', null);
       const money = calculateMoneyAtRiskFromPrice(input.side, entry, stop, quantity);
       if (!money.ok) return unknown(money.reason === 'stop-at-entry' || money.reason === 'stop-not-on-loss-side' ? 'levels-not-ordered' : 'plan-incomplete', null);
-      if (input.contractSize?.ok === false) return unknown('needs-contract-size', null);
-      const pointRisk = input.contractSize ? decimalMultiply(money.amount, input.contractSize.value) : null;
+      const pointRisk = input.contractSize.ok ? decimalMultiply(money.amount, input.contractSize.value) : null;
       if (pointRisk && !pointRisk.ok) return unknown('plan-incomplete', null);
-      const risk = pointRisk?.value ?? money.amount;
+      const risk = pointRisk?.value ?? null;
+      // The currency first: for a futures trade, a stablecoin price currency is enough (D237).
       if (input.priceCurrency === null) return unknown('no-currency', risk);
       if (input.priceCurrency !== rule.currency) return unknown('other-currency', risk);
+      if (risk === null) return unknown('needs-contract-size', null);
       const order = decimalCompare(risk, rule.amount);
       if (order === null) return unknown('plan-incomplete', risk);
       return { ...base, verdict: order <= 0 ? 'kept' : 'broken', reason: order <= 0 ? 'within' : 'over', risk, bars: projectStrategyRuleBars(risk, rule.amount) };

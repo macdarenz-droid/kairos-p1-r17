@@ -18,9 +18,10 @@ import { projectTradePicture } from '../src/application/trade-visualizer/tradePi
 import { createEmptyManualTradeDraft } from '../src/application/trades/manualTradeDraft';
 import { saveManualTrade, type SaveManualTradeInput } from '../src/application/trades';
 import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
-import { resolveContractSize } from '../src/domain/calculations';
+import { calculateTradeMetrics, resolveContractSize } from '../src/domain/calculations';
 import type { StrategyId, StrategyRuleId, TradeDisciplineRecord } from '../src/domain/discipline';
 import type { DecimalString, TradeId } from '../src/domain/trades';
+import { describeTradePicture } from '../src/features/journal/TradePictureCard';
 import { TradePictureCandleLoaderContext, type TradePictureCandleLoader } from '../src/features/journal/tradePictureCandleQueue';
 
 const names: string[] = [];
@@ -202,5 +203,31 @@ describe('T-056b the words where the result would be', () => {
     const region = await screen.findByRole('region', { name: 'Recorded result' });
     expect(within(region).getByText(WORDS)).toBeInTheDocument();
     expect(within(region).queryByText('Some results are not available for this trade.')).toBeNull();
+  });
+});
+
+describe('T-056b review r1', () => {
+  it('the picture says what to add as its own sentence for screen readers', async () => {
+    const entry = await entryOf(es(), null);
+    expect(describeTradePicture(picture(entry))).toBe('ESZ6 long trade, closed. Add how much one point is worth to see this result.');
+    const priced = await entryOf(es(), '50');
+    expect(describeTradePicture(picture(priced))).toBe('ESZ6 long trade, closed. Result after fees 500 USD. +1× what you risked.');
+  });
+
+  it('the "most risk" rule asks for the price currency first: a stablecoin currency is enough for a perpetual', () => {
+    const rule = { id: 'rule-most' as StrategyRuleId, kind: 'max-risk' as const, amount: '400' as DecimalString, currency: 'USD' };
+    const strategy = { id: 's' as StrategyId, name: 'ES plan', rules: [rule] } as unknown as Parameters<typeof previewTradeStrategyCheck>[2];
+    const draft = { ...createEmptyManualTradeDraft(), symbol: 'ESZ6', marketType: 'futures' as const, side: 'long' as const, priceCurrency: '', plan: { plannedEntryPrice: '5000', plannedStopPrice: '4990', plannedTargetPrice: '', plannedQuantity: '1' } };
+    expect(previewTradeStrategyCheck(draft, 'draft', strategy).results[0]).toMatchObject({ verdict: 'unknown', reason: 'no-currency' });
+    expect(previewTradeStrategyCheck({ ...draft, priceCurrency: 'USD' }, 'draft', strategy).results[0]).toMatchObject({ verdict: 'unknown', reason: 'needs-contract-size' });
+  });
+
+  it('a point value that is not a number is named as the failure', () => {
+    const fills = [
+      { id: 'e', tradeId: 't', type: 'entry', price: '5000', quantity: '1', executedAt: at, createdAt: at },
+      { id: 'x', tradeId: 't', type: 'exit', price: '5010', quantity: '1', executedAt: end, createdAt: end },
+    ] as unknown as Parameters<typeof calculateTradeMetrics>[1];
+    expect(calculateTradeMetrics('long', fills, undefined, [], undefined, undefined, undefined, { ok: true, value: 'abc' as DecimalString, basis: 'saved' }))
+      .toEqual({ ok: false, reason: 'invalid-contract-size' });
   });
 });

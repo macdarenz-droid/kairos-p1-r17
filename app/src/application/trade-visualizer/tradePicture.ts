@@ -1,5 +1,5 @@
 import {
-  calculateTradeMetrics,
+  calculateSavedTradeMetrics,
   resolveContractSize,
   decimalAbs,
   decimalAdd,
@@ -243,11 +243,9 @@ function describePlanNote(input: {
 export function projectTradePicture(input: TradePictureInput): TradePictureModel {
   const { trade, plans, executions, fees, candles, now } = input;
   const facts = projectTradeVisualizerFacts(trade, plans, executions);
-  // D237: the result is times how much one point is worth, from its one owner, so the Journal and the picture never disagree.
+  // D237: the same call as the Journal's, so the Journal and the picture never disagree.
   const contractSize = resolveContractSize(trade);
-  const metricsResult = calculateTradeMetrics(
-    trade.side, executions, undefined, fees, trade.grossPnlCurrency ? { grossPnlCurrency: trade.grossPnlCurrency } : undefined, undefined, undefined, contractSize,
-  );
+  const metricsResult = calculateSavedTradeMetrics(trade, executions, fees);
   const metrics = metricsResult.ok ? metricsResult.value : null;
   const plannedQuantity = latestTradePlan(plans)?.plannedQuantity ?? null;
 

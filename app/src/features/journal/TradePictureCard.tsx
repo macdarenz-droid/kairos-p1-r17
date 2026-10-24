@@ -167,11 +167,12 @@ function rowText(model: TradePictureModel, key: string): string | null {
 
 /** One sentence for screen readers: market, direction, result and R. */
 export function describeTradePicture(model: TradePictureModel): string {
-  const result = rowText(model, 'result');
+  const result = model.info.find(row => row.key === 'result');
   const r = rowText(model, 'actual-r');
   return [
     `${model.symbol} ${model.side === 'long' ? 'long' : 'short'} trade, ${rowText(model, 'status')?.toLowerCase() ?? 'status unknown'}.`,
-    result === null ? 'Result not available yet.' : `Result after fees ${result}.`,
+    // A result with no value but a reason (D237: "Add how much one point is worth…") says the reason as its own sentence.
+    result?.text == null ? 'Result not available yet.' : result.value === null ? result.text : `Result after fees ${result.text}.`,
     r === null ? null : `${r}.`,
   ].filter(Boolean).join(' ');
 }

@@ -2,9 +2,10 @@ import type {
   DecimalString,
   TradeExecutionRecord,
   TradeFeeRecord,
+  TradeRecord,
   TradeSide,
 } from '../trades';
-import type { ContractSize } from './contractSize';
+import { resolveContractSize, type ContractSize } from './contractSize';
 import { decimalMultiply } from './decimalKernel';
 import { assessExecutionBalance } from './executionBalance';
 import { calculateFlatTradeGrossRealizedPnl } from './grossRealizedPnl';
@@ -80,6 +81,7 @@ export type TradeMetricsResult =
         | 'invalid-execution-decimal'
         | 'exit-without-entry'
         | 'over-exited'
+        | 'invalid-contract-size'
         | 'invalid-risk-performance-decimal'
         | 'zero-initial-risk'
         | 'invalid-fee-decimal'
@@ -106,7 +108,7 @@ export function calculateTradeMetrics(
   netPnlCurrencyInput?: TradeMetricsNetPnlCurrencyInput,
   pnlPercentageInput?: TradeMetricsPnlPercentageInput,
   rMultipleInput?: TradeMetricsRMultipleInput,
-  /** From `resolveContractSize` (D237); the gross result is multiplied by it. Absent means 1. */
+  /** From `resolveContractSize` (D237); the gross result is multiplied by it. Absent means 1: a saved trade's metrics go through `calculateSavedTradeMetrics`. */
   contractSize?: ContractSize,
 ): TradeMetricsResult {
   const balance = assessExecutionBalance(executions);
@@ -125,7 +127,7 @@ export function calculateTradeMetrics(
     ? decimalMultiply(grossPnlResult.grossRealizedPnl, contractSize.value)
     : null;
   if (contractGross && !contractGross.ok) {
-    return { ok: false, reason: 'invalid-execution-decimal' };
+    return { ok: false, reason: 'invalid-contract-size' };
   }
   const grossPnl = !grossPnlResult.available || needsContractSize
     ? null
@@ -249,4 +251,15 @@ export function calculateTradeMetrics(
       }),
     }),
   };
+}
+
+/** A saved trade's metrics, with its price currency and how much one point is worth (D237): the one way the Journal and the picture read them. */
+export function calculateSavedTradeMetrics(
+  trade: Pick<TradeRecord, 'side' | 'marketType' | 'grossPnlCurrency' | 'contractSize'>,
+  executions: readonly TradeExecutionRecord[],
+  fees: readonly TradeFeeRecord[],
+): TradeMetricsResult {
+  return calculateTradeMetrics(
+    trade.side, executions, undefined, fees, trade.grossPnlCurrency ? { grossPnlCurrency: trade.grossPnlCurrency } : undefined, undefined, undefined, resolveContractSize(trade),
+  );
 }
