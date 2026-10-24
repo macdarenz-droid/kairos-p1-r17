@@ -8,23 +8,28 @@ export type TradeTagsResult =
   | Readonly<{ ok: false; reason: 'too-many' | 'too-long' }>;
 
 /**
- * U11 (D239): a trade's tags written the one way. Each tag is trimmed and its inner spaces joined into one; an empty
- * tag is dropped; a tag that differs from an earlier one only in case is left out, keeping the first spelling.
+ * U11 (D239): tags written the one way, before the limits. Each tag is trimmed and its inner spaces joined into one; an empty
+ * tag is dropped; a tag that differs from an earlier one only in case is left out, keeping the first spelling. The form shows these.
  */
-export function normalizeTradeTags(input: readonly string[]): TradeTagsResult {
+export function writeTradeTags(input: readonly string[]): readonly string[] {
   const tags: string[] = [];
   const seen = new Set<string>();
   for (const raw of input) {
     const tag = raw.trim().replace(/\s+/g, ' ');
-    if (tag === '') continue;
-    if (Array.from(tag).length > TRADE_TAG_MAX_LENGTH) return Object.freeze({ ok: false as const, reason: 'too-long' as const });
     const key = tag.toLowerCase();
-    if (seen.has(key)) continue;
+    if (tag === '' || seen.has(key)) continue;
     seen.add(key);
     tags.push(tag);
   }
+  return Object.freeze(tags);
+}
+
+/** U11 (D239): a trade's tags written the one way, within the limits: at most TRADE_TAGS_MAX tags of at most TRADE_TAG_MAX_LENGTH characters. */
+export function normalizeTradeTags(input: readonly string[]): TradeTagsResult {
+  const tags = writeTradeTags(input);
+  if (tags.some(tag => Array.from(tag).length > TRADE_TAG_MAX_LENGTH)) return Object.freeze({ ok: false as const, reason: 'too-long' as const });
   if (tags.length > TRADE_TAGS_MAX) return Object.freeze({ ok: false as const, reason: 'too-many' as const });
-  return Object.freeze({ ok: true as const, tags: Object.freeze(tags) });
+  return Object.freeze({ ok: true as const, tags });
 }
 
 /** Whether stored tags are already in their one written form (a list of strings that normalizing leaves unchanged). */

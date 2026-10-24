@@ -3,8 +3,11 @@ import type { KairosDatabase } from '../../data/database/KairosDatabase';
 import { runKairosAtomicWrite } from '../../data/database/transactions';
 import {
   createTradeDomainId,
+  normalizeTradeTags,
   parsePositiveDecimalString,
+  validateTradePlanFields,
   validateTradeRecord,
+  writeTradeExchange,
   type DecimalString,
   type MarketType,
   type TradeExecutionId,
@@ -25,6 +28,8 @@ export interface ManualTradePlanInput {
   readonly plannedStopPrice?: string | null;
   readonly plannedTargetPrice?: string | null;
   readonly plannedQuantity?: string | null;
+  /** "Why I'm taking it" (U11, D240); empty means none. */
+  readonly reason?: string | null;
 }
 
 export interface ManualTradeExecutionInput {
@@ -50,12 +55,22 @@ export interface SaveManualTradeInput {
   readonly plan?: ManualTradePlanInput | null;
   readonly executions?: readonly ManualTradeExecutionInput[];
   readonly fees?: readonly ManualTradeFeeInput[];
+  /** U11 (D237–D240): how much one point is worth, where it was traded, tags (written one way here) and leverage. Empty means none. */
+  readonly contractSize?: string | null;
+  readonly exchange?: string | null;
+  readonly tags?: readonly string[] | null;
+  readonly leverage?: string | null;
 }
 
 export type ManualTradeValidationField =
   | 'grossPnlCurrency'
   | 'symbol'
   | 'trade'
+  | 'contractSize'
+  | 'exchange'
+  | 'tags'
+  | 'leverage'
+  | 'plan.reason'
   | 'plan.plannedEntryPrice'
   | 'plan.plannedStopPrice'
   | 'plan.plannedTargetPrice'
@@ -127,6 +142,15 @@ function requiredPositiveDecimal(
   return { ok: true, value: parsed.value };
 }
 
+/** Which form field a trade record's refusal points at. */
+const TRADE_FIELD_OF: Readonly<Partial<Record<string, ManualTradeValidationField>>> = Object.freeze({
+  'symbol-required': 'symbol',
+  'invalid-contract-size': 'contractSize',
+  'invalid-exchange': 'exchange',
+  'invalid-tags': 'tags',
+  'invalid-leverage': 'leverage',
+});
+
 export function isIsoLikeTimestamp(value: string): boolean {
   return value.trim() !== '' && Number.isFinite(Date.parse(value));
 }
@@ -143,8 +167,16 @@ export function prepareManualTrade(
   if (grossPnlCurrency && !isPriceCurrencyInput(grossPnlCurrency)) {
     return validationFailure('grossPnlCurrency', 'invalid-pnl-currency');
   }
+  const contractSize = optionalPositiveDecimal(input.contractSize, 'contractSize');
+  if (!contractSize.ok) return contractSize;
+  const leverage = optionalPositiveDecimal(input.leverage, 'leverage');
+  if (!leverage.ok) return leverage;
+  const tags = normalizeTradeTags(input.tags ?? []);
+  if (!tags.ok) return validationFailure('tags', tags.reason);
+  const exchange = writeTradeExchange(input.exchange ?? '') || null;
   const timestamp = now();
   const tradeId = createId<TradeId>();
+  // An empty field stays absent, never stored as null or [] (restore verification compares records exactly).
   const trade: TradeRecord = {
     id: tradeId,
     symbol: input.symbol.trim().toUpperCase(),
@@ -157,11 +189,15 @@ export function prepareManualTrade(
     closedAt: input.closedAt?.trim() || null,
     createdAt: timestamp,
     updatedAt: timestamp,
+    ...(contractSize.value ? { contractSize: contractSize.value } : {}),
+    ...(exchange ? { exchange } : {}),
+    ...(tags.tags.length > 0 ? { tags: tags.tags } : {}),
+    ...(leverage.value ? { leverage: leverage.value } : {}),
   };
 
   const tradeValidation = validateTradeRecord(trade);
   if (!tradeValidation.ok) {
-    return validationFailure(tradeValidation.reason === 'symbol-required' ? 'symbol' : 'trade', tradeValidation.reason);
+    return validationFailure(TRADE_FIELD_OF[tradeValidation.reason] ?? 'trade', tradeValidation.reason);
   }
 
   let plan: TradePlanRecord | null = null;
@@ -174,6 +210,8 @@ export function prepareManualTrade(
     if (!target.ok) return target;
     const quantity = optionalPositiveDecimal(input.plan.plannedQuantity, 'plan.plannedQuantity');
     if (!quantity.ok) return quantity;
+    const reason = input.plan.reason?.trim() || null;
+    if (reason !== null && !validateTradePlanFields({ reason }).ok) return validationFailure('plan.reason', 'invalid-plan-reason');
 
     plan = {
       id: createId<TradePlanId>(),
@@ -182,6 +220,7 @@ export function prepareManualTrade(
       plannedStopPrice: stop.value,
       plannedTargetPrice: target.value,
       plannedQuantity: quantity.value,
+      ...(reason !== null ? { reason } : {}),
       createdAt: timestamp,
       updatedAt: timestamp,
     };

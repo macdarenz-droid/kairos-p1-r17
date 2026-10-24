@@ -1757,3 +1757,37 @@ test('(ac) Forex candles: a EUR/USD trade and a practice gold trade drawn with O
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   expect(errors).toEqual([]);
 });
+
+test('(ad) New trade fields: a futures trade with how much one point is worth, tags and why', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  await activate(page);
+  await page.goto('/journal');
+  await page.getByRole('button', { name: 'Quick log' }).click();
+  await page.getByLabel(/^Market/).selectOption('futures');
+  await page.getByLabel(/^Symbol/).fill('ESZ6');
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Entry price/).fill('5000');
+  await page.getByLabel(/^Exit price/).fill('5010');
+  await page.getByLabel(/^Quantity/).fill('1');
+  await page.getByLabel(/^Each point is worth/).fill('50');
+  await page.getByRole('button', { name: 'Set opened time to now' }).click();
+  await page.getByRole('button', { name: 'Set closed time to now' }).click();
+  await page.getByLabel('Currency code').fill('USD');
+  await page.getByLabel(/^Tags/).fill('breakout, London open');
+  await expect(page.getByRole('list', { name: 'Your tags' }).getByRole('listitem')).toHaveCount(2);
+  await page.getByText('Trade plan · Optional').click();
+  await page.getByLabel(/^Why I'm taking it/).fill('Retest of the high after the open.');
+  const formAxe = await new AxeBuilder({ page }).include('.kairos-trade-form').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(formAxe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+  // One e-mini point is 50 USD, so 10 points on one contract make 500 USD, not 10.
+  const card = page.locator('.kairos-history-card').filter({ hasText: 'ESZ6' });
+  await card.scrollIntoViewIfNeeded();
+  await expect(card.locator('.kairos-history-card__outcome')).toContainText('+500 USD');
+  const cardAxe = await new AxeBuilder({ page }).include('.kairos-history-card').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(cardAxe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+  expect(errors).toEqual([]);
+});

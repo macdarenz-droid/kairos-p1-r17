@@ -9,3 +9,6 @@
 .kairos-trade-form__strategy-note [data-verdict="kept"] { color:var(--kairos-state-success); }
 .kairos-trade-form__strategy-note [data-verdict="broken"] { color:var(--kairos-state-error); }
 .kairos-trade-form__strategy-note [data-verdict="unknown"] { color:var(--kairos-text-muted); }
+.kairos-trade-form__tags { display:grid; gap:var(--kairos-space-2); margin-top:var(--kairos-space-3); min-width:0; }
+.kairos-trade-form__tag-list { display:flex; flex-wrap:wrap; gap:var(--kairos-space-2); margin:0; padding:0; list-style:none; }
+.kairos-trade-form__tag { display:inline-flex; align-items:center; gap:var(--kairos-space-1); max-width:100%; padding-left:var(--kairos-space-3); border:1px solid var(--kairos-border-subtle); border-radius:var(--kairos-radius-full); background:var(--kairos-accent-soft); color:var(--kairos-text-primary); font-size:var(--kairos-font-size-sm); overflow-wrap:anywhere; }

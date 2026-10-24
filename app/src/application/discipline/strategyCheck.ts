@@ -165,8 +165,8 @@ export function previewTradeStrategyCheck(draft: ManualTradeDraft, status: Trade
     side: draft.side || null,
     status: status || null,
     priceCurrency: currency !== '' && isPriceCurrencyInput(currency) ? currency : null,
-    // Until the form asks how much one point is worth, a futures or options draft priced in a currency other than a stablecoin can't be checked.
-    contractSize: resolveContractSize({ marketType: draft.marketType || 'other', grossPnlCurrency: currency, contractSize: null }),
+    // As typed: a futures or options draft with no "Each point is worth" (and no stablecoin price) can't be checked.
+    contractSize: resolveContractSize({ marketType: draft.marketType || 'other', grossPnlCurrency: currency, contractSize: typedDecimal(draft.contractSize ?? '') }),
     plan: {
       entry: typedDecimal(draft.plan.plannedEntryPrice),
       stop: typedDecimal(draft.plan.plannedStopPrice),
