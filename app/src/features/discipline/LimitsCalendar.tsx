@@ -126,7 +126,9 @@ export function LimitsCalendar({ db, now, revision = 0 }: { readonly db: KairosD
       </div>
       <MonthGrid month={month} selected={selected} onSelect={dayKey => setSelected(current => (current === dayKey ? null : dayKey))} />
       <p className="kairos-goals__note">✓ Inside your limits · ! Over a limit · ? Kairos can't tell · Empty: no trades</p>
-      <p>{monthName(month.monthKey)}{isThisMonth ? ' so far' : ''}: {month.inside + month.over + month.unknown === 0 ? 'no days with trades under your limits yet.' : `${days(month.inside)} inside your limits, ${month.over} over, ${month.unknown} Kairos can't tell.`}</p>
+      <p>{monthName(month.monthKey)}{isThisMonth ? ' so far' : ''}: {month.inside + month.over + month.unknown > 0 ? `${days(month.inside)} inside your limits, ${month.over} over, ${month.unknown} Kairos can't tell.`
+        : month.days.every(day => day.state === 'no-limits' || day.state === 'later') ? 'no limits set then.'
+        : `no days with trades under your limits${isThisMonth ? ' yet' : ''}.`}</p>
       <div className="kairos-limits__details" aria-live="polite">{selectedDay !== null ? <DayDetails day={selectedDay} /> : null}</div>
       {homeWords ? <p className="kairos-goals__note">{homeWords.text} <CalendarLink to="/currency">{homeWords.link}</CalendarLink></p> : null}
     </> : null}

@@ -89,4 +89,14 @@ describe('T-058e goals kept month by month', () => {
   it('"tick every step" can\'t be judged while the checklist has no steps', () => {
     expect(month(months([], 0), '2026-09').goals!.find(item => item.goal === 'tick-every-step')).toMatchObject({ state: 'unknown' });
   });
+
+  it('counts the trades Kairos can\'t count in each week once, then adds the weeks (review r1)', () => {
+    const weekOnly: GoalsSettings = { periods: [{ from: '2026-08-15', goals: { ...EMPTY_GOALS_PREFERENCE, lossLimits: { currency: 'USDT', perDay: null, perWeek: d('250') } } }] };
+    // Monday 7 and Monday 14 September: one trade without a result each; the first week's later days repeat its count.
+    const unknown = [trade('u1', '2026-09-08T10:00:00.000Z', null), trade('u2', '2026-09-10T10:00:00.000Z', '-5'), trade('u3', '2026-09-15T10:00:00.000Z', null)];
+    const weekCalendar = projectLimitsCalendar({ settings: weekOnly, entries: unknown, inHome: null, timeZone: 'UTC', todayKey, firstMonthKey: '2026-09' });
+    const list = projectGoalsMonths({ settings: weekOnly, calendar: weekCalendar, closedEntries: unknown, inHome: null, scores: new Map(), checklistSteps: 1, timeZone: 'UTC', todayKey });
+    expect(month(list, '2026-09').goals).toEqual([{ goal: 'weekly-loss', state: 'unknown', missedWeeks: 0, uncounted: 2, currency: 'USDT' }]);
+  });
 });
+

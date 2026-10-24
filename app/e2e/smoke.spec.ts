@@ -1927,6 +1927,8 @@ test('(af) Goals you can see: limits, a loss, the rings and Home', async ({ page
   await page.getByRole('checkbox', { name: /^Review every trade/ }).check();
   await page.getByRole('button', { name: 'Save goals' }).click();
   await expect(page.getByText('Goals saved.')).toBeVisible();
+  // Review r1: a save never drops focus to the page.
+  await expect(page.getByRole('button', { name: 'Save goals' })).toBeFocused();
 
   // A closed trade that lost 40 USDT now.
   await page.goto('/journal');
@@ -1987,9 +1989,17 @@ test('(af) Goals you can see: limits, a loss, the rings and Home', async ({ page
   await page.goto('/goals');
   const today = page.getByRole('button', { name: /: over a limit$/ });
   await expect(today).toHaveCount(1);
-  await today.click();
+  // Review r1: by keyboard, Enter opens a day and Space closes it; focus stays on the day.
+  await today.focus();
+  await page.keyboard.press('Enter');
   await expect(page.getByText('Lost that day: 120 of 100 USDT · over your limit')).toBeVisible();
   await expect(page.getByRole('link', { name: "See this day's trades" })).toBeVisible();
+  await expect(today).toHaveAttribute('aria-pressed', 'true');
+  await expect(today).toBeFocused();
+  await page.keyboard.press('Space');
+  await expect(today).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByText('Lost that day: 120 of 100 USDT · over your limit')).toHaveCount(0);
+  await today.click();
   await axeOk('.kairos-limits');
   await page.getByRole('button', { name: 'Previous month' }).click();
   await expect(page.getByRole('button', { name: /: over a limit$/ })).toHaveCount(0);

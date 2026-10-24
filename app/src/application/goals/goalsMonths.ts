@@ -110,7 +110,13 @@ export function projectGoalsMonths(input: GoalsMonthsInput): readonly GoalsMonth
       // A week over its limit counts once, however many of its days show it.
       const overWeeks = new Set(judged.filter(day => day.weekLoss?.kind === 'counted' && day.weekLoss.state === 'over').map(day => mondayOf(day.dayKey)));
       const unknownDays = judged.filter(day => day.weekLoss?.kind === 'unknown');
-      const uncounted = unknownDays.reduce((count, day) => Math.max(count, day.weekLoss?.kind === 'unknown' ? day.weekLoss.uncounted : 0), 0);
+      // A day shows its week so far, so each week counts once, at its most; then the weeks add up.
+      const byWeek = new Map<string, number>();
+      for (const day of unknownDays) {
+        const week = mondayOf(day.dayKey);
+        byWeek.set(week, Math.max(byWeek.get(week) ?? 0, day.weekLoss?.kind === 'unknown' ? day.weekLoss.uncounted : 0));
+      }
+      const uncounted = [...byWeek.values()].reduce((count, week) => count + week, 0);
       judgments.push({ goal: 'weekly-loss', state: limitState(judged.length, overWeeks.size, unknownDays.length), missedWeeks: overWeeks.size, uncounted, currency: limits.currency });
     }
 

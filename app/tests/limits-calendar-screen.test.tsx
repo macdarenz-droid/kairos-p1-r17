@@ -85,6 +85,8 @@ describe('T-058d the limits calendar on the Goals page', () => {
     expect(screen.getByText('September 2026: 1 day inside your limits, 0 over, 0 Kairos can\'t tell.')).toBeInTheDocument();
     for (let step = 0; step < 12; step += 1) fireEvent.click(previous);
     expect(screen.getByText('November 2025', { selector: '.kairos-limits__month' })).toBeInTheDocument();
+    // Review r1: before the first limit, a month says so; a past month never says "yet".
+    expect(screen.getByText('November 2025: no limits set then.')).toBeInTheDocument();
     expect(previous).toHaveAttribute('aria-disabled', 'true');
     expect(previous).toBeEnabled();
   });

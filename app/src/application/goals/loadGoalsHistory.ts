@@ -32,7 +32,7 @@ function monthsBack(monthKey: string, months: number): string {
 
 /**
  * U13 (D250): one read of the last 12 months of real trades, from the Monday on or before the first day so the first
- * week is whole, plus the open trades and the home-currency copy when a loss limit is in that currency. A failed read
+ * week is whole, plus the open trades and the home-currency copy when a loss limit or result target is in that currency. A failed read
  * throws; the screen offers "Try again".
  */
 export async function loadGoalsHistory(db: KairosDatabase, options: Readonly<{ now: string }>): Promise<GoalsHistoryResult> {
@@ -47,9 +47,11 @@ export async function loadGoalsHistory(db: KairosDatabase, options: Readonly<{ n
     listJournalOpenTrades(db),
   ]);
   if (!closed.ok) throw new Error(`Goals could not read your trades: ${closed.reason}.`);
-  const lossCurrencies = new Set((settings?.periods ?? []).flatMap(period => (period.goals.lossLimits === null ? [] : [period.goals.lossLimits.currency])));
-  const inHome = lossCurrencies.size === 0 ? null : await loadResultsInHomeCurrency(db, closed.entries);
-  const usesHome = inHome !== null && inHome.homeCurrency !== null && lossCurrencies.has(inHome.homeCurrency);
+  // A loss limit or a result target in the home currency counts converted results, as the Goals card does (D116).
+  const goalCurrencies = new Set((settings?.periods ?? []).flatMap(period => [period.goals.lossLimits?.currency, period.goals.monthlyResultTarget?.currency]
+    .filter((currency): currency is string => typeof currency === 'string')));
+  const inHome = goalCurrencies.size === 0 ? null : await loadResultsInHomeCurrency(db, closed.entries);
+  const usesHome = inHome !== null && inHome.homeCurrency !== null && goalCurrencies.has(inHome.homeCurrency);
   const calendar = projectLimitsCalendar({ settings, entries: [...closed.entries, ...open], inHome, timeZone, todayKey: today.dayKey, firstMonthKey });
   // D251: one read of the discipline records for the window; each month's score from its own closed trades.
   const idsByMonth = new Map<string, TradeId[]>();

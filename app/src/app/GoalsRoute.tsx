@@ -104,11 +104,13 @@ export function GoalsRoute({ db = kairosDatabase, now = wallClock }: GoalsRouteP
       setIsSaving(false);
     }
   }
+  const withLimitsHint = (describedBy: string | undefined) => [describedBy, 'kairos-goals-limits-hint'].filter(Boolean).join(' ');
   const field = (name: TextField) => (event: { target: { value: string } }) => { setForm(current => ({ ...current, [name]: event.target.value })); setFeedback(null); };
-  const toggle = (name: 'reviewEveryTrade' | 'tickEveryStep') => () => { setForm(current => ({ ...current, [name]: !current[name] })); setFeedback(null); };
+  const toggle = (name: 'reviewEveryTrade' | 'tickEveryStep') => () => { if (isSaving) return; setForm(current => ({ ...current, [name]: !current[name] })); setFeedback(null); };
   const lossCurrency = form.lossLimitCurrency.trim().toUpperCase();
   const otherCurrency = homeCurrency !== null && lossCurrency !== '' && lossCurrency !== homeCurrency && (form.lossLimitPerDay.trim() !== '' || form.lossLimitPerWeek.trim() !== '');
-  const busy = state.kind === 'loading' || isSaving;
+  // Review r1: while a save runs, controls stay focusable (read-only, aria-disabled), so focus never falls to the page.
+  const loading = state.kind === 'loading';
 
   return <section className="kairos-route kairos-goals" aria-labelledby="kairos-goals-title" data-goals-status={state.kind === 'ready' ? state.result.kind : state.kind}>
     <PageHeader eyebrow="Discipline" title="Goals" titleId="kairos-goals-title" />
@@ -120,30 +122,30 @@ export function GoalsRoute({ db = kairosDatabase, now = wallClock }: GoalsRouteP
     {state.kind === 'ready' && state.result.kind === 'ready' ? <LimitsCalendar db={db} now={now} revision={revision} /> : null}
     <Card as="form" className="kairos-goals-card kairos-goals__form" onSubmit={handleSubmit} noValidate>
       <div><h2>Your targets</h2><p>Leave a field blank to keep no target. Targets are yours to change any time; they never alter your journal.</p></div>
-      <Field label="Closed trades per month" id="kairos-goals-trades-per-month">{control => <input {...control} inputMode="numeric" value={form.tradesPerMonthTarget} onChange={field('tradesPerMonthTarget')} placeholder="20" autoComplete="off" disabled={busy} />}</Field>
-      <Field label="Most trades in a day" id="kairos-goals-max-trades-per-day">{control => <input {...control} inputMode="numeric" value={form.maxTradesPerDay} onChange={field('maxTradesPerDay')} placeholder="3" autoComplete="off" disabled={busy} />}</Field>
+      <Field label="Closed trades per month" id="kairos-goals-trades-per-month">{control => <input {...control} inputMode="numeric" value={form.tradesPerMonthTarget} onChange={field('tradesPerMonthTarget')} placeholder="20" autoComplete="off" disabled={loading} readOnly={isSaving} />}</Field>
+      <Field label="Most trades in a day" id="kairos-goals-max-trades-per-day">{control => <input {...control} inputMode="numeric" value={form.maxTradesPerDay} onChange={field('maxTradesPerDay')} placeholder="3" autoComplete="off" disabled={loading} readOnly={isSaving} />}</Field>
       <div className="kairos-goals-field__pair">
-        <Field label="Monthly result target" id="kairos-goals-monthly-result-amount">{control => <input {...control} inputMode="decimal" value={form.monthlyResultTargetAmount} onChange={field('monthlyResultTargetAmount')} placeholder="250" autoComplete="off" disabled={busy} />}</Field>
-        <Field label="Currency" id="kairos-goals-monthly-result-currency">{control => <input {...control} value={form.monthlyResultTargetCurrency} onChange={field('monthlyResultTargetCurrency')} placeholder="USDT" autoComplete="off" spellCheck={false} disabled={busy} />}</Field>
+        <Field label="Monthly result target" id="kairos-goals-monthly-result-amount">{control => <input {...control} inputMode="decimal" value={form.monthlyResultTargetAmount} onChange={field('monthlyResultTargetAmount')} placeholder="250" autoComplete="off" disabled={loading} readOnly={isSaving} />}</Field>
+        <Field label="Currency" id="kairos-goals-monthly-result-currency">{control => <input {...control} value={form.monthlyResultTargetCurrency} onChange={field('monthlyResultTargetCurrency')} placeholder="USDT" autoComplete="off" spellCheck={false} disabled={loading} readOnly={isSaving} />}</Field>
       </div>
       <div><h2>Your limits</h2><p id="kairos-goals-limits-hint">Counted from the trades you close, after fees. A week runs Monday to Sunday. Open trades count when they close.</p></div>
       <div className="kairos-goals-field__pair">
-        <Field label="Most I can lose in a day" id="kairos-goals-loss-per-day">{control => <input {...control} inputMode="decimal" value={form.lossLimitPerDay} onChange={field('lossLimitPerDay')} placeholder="100" autoComplete="off" disabled={busy} />}</Field>
-        <Field label="Most I can lose in a week" id="kairos-goals-loss-per-week">{control => <input {...control} inputMode="decimal" value={form.lossLimitPerWeek} onChange={field('lossLimitPerWeek')} placeholder="250" autoComplete="off" disabled={busy} />}</Field>
+        <Field label="Most I can lose in a day" id="kairos-goals-loss-per-day">{control => <input {...control} inputMode="decimal" value={form.lossLimitPerDay} onChange={field('lossLimitPerDay')} aria-describedby={withLimitsHint(control['aria-describedby'])} placeholder="100" autoComplete="off" disabled={loading} readOnly={isSaving} />}</Field>
+        <Field label="Most I can lose in a week" id="kairos-goals-loss-per-week">{control => <input {...control} inputMode="decimal" value={form.lossLimitPerWeek} onChange={field('lossLimitPerWeek')} aria-describedby={withLimitsHint(control['aria-describedby'])} placeholder="250" autoComplete="off" disabled={loading} readOnly={isSaving} />}</Field>
       </div>
       <Field label="Currency of your loss limits" id="kairos-goals-loss-currency" hint={otherCurrency ? `Your totals are in ${homeCurrency}. A limit in ${lossCurrency} counts only trades with results in ${lossCurrency}.` : undefined}>
-        {control => <input {...control} value={form.lossLimitCurrency} onChange={field('lossLimitCurrency')} placeholder="USDT" autoComplete="off" spellCheck={false} disabled={busy} />}
+        {control => <input {...control} value={form.lossLimitCurrency} onChange={field('lossLimitCurrency')} aria-describedby={withLimitsHint(control['aria-describedby'])} placeholder="USDT" autoComplete="off" spellCheck={false} disabled={loading} readOnly={isSaving} />}
       </Field>
       <div><h2>Your habits</h2></div>
       <label className="kairos-goals-check">
-        <input type="checkbox" name="reviewEveryTrade" checked={form.reviewEveryTrade} onChange={toggle('reviewEveryTrade')} disabled={busy} aria-describedby="kairos-goals-review-hint" />
+        <input type="checkbox" name="reviewEveryTrade" checked={form.reviewEveryTrade} onChange={toggle('reviewEveryTrade')} disabled={loading} aria-disabled={isSaving || undefined} aria-describedby="kairos-goals-review-hint" />
         <span>Review every trade<span className="kairos-goals-check__hint" id="kairos-goals-review-hint">Every trade you close gets its "After the trade" review.</span></span>
       </label>
       <label className="kairos-goals-check">
-        <input type="checkbox" name="tickEveryStep" checked={form.tickEveryStep} onChange={toggle('tickEveryStep')} disabled={busy} aria-describedby="kairos-goals-tick-hint" />
+        <input type="checkbox" name="tickEveryStep" checked={form.tickEveryStep} onChange={toggle('tickEveryStep')} disabled={loading} aria-disabled={isSaving || undefined} aria-describedby="kairos-goals-tick-hint" />
         <span>Tick every step<span className="kairos-goals-check__hint" id="kairos-goals-tick-hint">Every trade has its "Before you trade" checklist with every step ticked. A trade logged after it closed has no checklist, so it counts as not ticked.</span></span>
       </label>
-      <div className="kairos-goals-card__actions"><Button type="submit" disabled={busy}>{isSaving ? 'Saving…' : 'Save goals'}</Button></div>
+      <div className="kairos-goals-card__actions"><Button type="submit" disabled={loading} aria-disabled={isSaving || undefined}>{isSaving ? 'Saving…' : 'Save goals'}</Button></div>
       {feedback ? <p className={`kairos-goals-card__feedback kairos-goals-card__feedback--${feedback.kind}`} role={feedback.kind === 'error' ? 'alert' : 'status'}>{feedback.message}</p> : null}
     </Card>
   </section>;

@@ -5,13 +5,15 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it } from 'vitest';
 import { projectDisciplineScore, projectDisciplineTrend } from '../src/application/discipline/disciplineScore';
-import { EMPTY_GOALS_PREFERENCE, projectGoalsMonths, projectLimitsCalendar, saveGoalsPreference, type GoalsPreference, type GoalsSettings } from '../src/application/goals';
+import { saveHomeCurrency } from '../src/application/currency/homeCurrency';
+import { EMPTY_GOALS_PREFERENCE, loadGoalsHistory, loadGoalsProgress, projectGoalsMonths, projectLimitsCalendar, saveGoalsPreference, type GoalsPreference, type GoalsSettings } from '../src/application/goals';
 import type { JournalHistoryEntry } from '../src/application/journal';
 import { saveManualTrade } from '../src/application/trades';
 import { writeVisualPnlTimeZonePreference } from '../src/application/visual-pnl';
 import { createKairosDatabase, openKairosDatabase } from '../src/data/database';
 import { createKairosRepositories } from '../src/data/repositories';
 import type { DisciplineMistakeMark, TradeDisciplineId, TradeDisciplineRecord } from '../src/domain/discipline';
+import { exchangeRateId } from '../src/domain/calculations/currencyConversion';
 import type { DecimalString, TradeId } from '../src/domain/trades';
 import { DisciplineOverview } from '../src/features/discipline/DisciplineOverview';
 import { GoalsByMonth } from '../src/features/discipline/GoalsByMonth';
@@ -148,5 +150,27 @@ describe('T-058e month by month on the Goals page', () => {
     expect(score.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(await screen.findByRole('heading', { level: 2, name: 'Your goals' })).toBeInTheDocument();
     expect(link.compareDocumentPosition(screen.getByRole('heading', { level: 2, name: 'Your goals' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('judges this month\'s result in the home currency as the Goals card does, with no loss limit set (review r1)', async () => {
+    const name = `kairos-goals-by-month-${crypto.randomUUID()}`; names.push(name);
+    const db = createKairosDatabase(name); opened.push(db); await openKairosDatabase(db);
+    const at = '2026-10-15T10:00:00.000Z';
+    await writeVisualPnlTimeZonePreference(createKairosRepositories(db).metadata, 'UTC', at);
+    expect((await saveHomeCurrency(db, { currency: 'EUR', usdStablecoins: [] }, { now: () => at })).ok).toBe(true);
+    expect((await saveGoalsPreference(db, { monthlyResultTargetAmount: '100', monthlyResultTargetCurrency: 'EUR' }, { now: () => '2026-10-01T00:00:00.000Z' })).ok).toBe(true);
+    // +25 USD at 1.25 dollars a euro is +20 EUR.
+    expect((await saveManualTrade(db, {
+      symbol: 'AAPL', marketType: 'stock', side: 'long', status: 'closed', grossPnlCurrency: 'USD', openedAt: at, closedAt: at,
+      executions: [{ type: 'entry', price: '187.5', quantity: '10', executedAt: at }, { type: 'exit', price: '190', quantity: '10', executedAt: at }],
+    })).ok).toBe(true);
+    await db.exchangeRates.put({ id: exchangeRateId('ecb', 'EUR', 'USD', '2026-10-15'), source: 'ecb', from: 'EUR', to: 'USD', day: '2026-10-15', rateDay: '2026-10-15', rate: '1.25' as DecimalString, savedAt: at });
+    const now = '2026-10-24T14:30:00.000Z';
+    const card = await loadGoalsProgress(db, now);
+    if (card.kind !== 'ready') throw new Error('card not ready');
+    expect(card.progress).toMatchObject({ monthlyResult: { kind: 'progress', current: '20' } });
+    const history = await loadGoalsHistory(db, { now });
+    if (history.kind !== 'ready') throw new Error('history not ready');
+    expect(history.months.at(-1)!.goals!.find(item => item.goal === 'monthly-result')).toMatchObject({ state: 'in-progress', current: '20', currency: 'EUR', incompleteDays: 0 });
   });
 });

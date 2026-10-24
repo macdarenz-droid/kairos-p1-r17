@@ -78,6 +78,29 @@ describe('T-058a the new goals on the Goals page', () => {
     type('Most I can lose in a day', '100');
     expect(screen.queryByText(/A limit in/)).toBeNull();
     type('Currency of your loss limits', 'usdt');
-    expect(screen.getByLabelText('Currency of your loss limits')).toHaveAccessibleDescription('Your totals are in EUR. A limit in USDT counts only trades with results in USDT.');
+    expect(screen.getByLabelText('Currency of your loss limits')).toHaveAccessibleDescription('Your totals are in EUR. A limit in USDT counts only trades with results in USDT. Counted from the trades you close, after fees. A week runs Monday to Sunday. Open trades count when they close.');
+  });
+
+  it('keeps every control usable by focus while a save runs, and tells each limit field what counts (review r1)', async () => {
+    const db = await database();
+    mount(db);
+    await ready();
+    const limitsHint = 'Counted from the trades you close, after fees. A week runs Monday to Sunday. Open trades count when they close.';
+    for (const label of ['Most I can lose in a day', 'Most I can lose in a week', 'Currency of your loss limits']) expect(screen.getByLabelText(label)).toHaveAccessibleDescription(limitsHint);
+    type('Most I can lose in a day', '100');
+    type('Currency of your loss limits', 'USDT');
+    const button = screen.getByRole('button', { name: 'Save goals' });
+    button.focus();
+    save();
+    expect(button).toHaveTextContent('Saving…');
+    expect(button).toBeEnabled();
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByLabelText('Most I can lose in a day')).toBeEnabled();
+    expect(screen.getByLabelText('Most I can lose in a day')).toHaveAttribute('readonly');
+    expect(screen.getByRole('checkbox', { name: /^Review every trade/ })).toBeEnabled();
+    expect(await screen.findByText('Goals saved.')).toBeInTheDocument();
+    expect(button).toHaveFocus();
+    expect(button).not.toHaveAttribute('aria-disabled');
   });
 });
+
