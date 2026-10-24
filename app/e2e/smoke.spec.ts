@@ -1816,3 +1816,53 @@ test('(ad) New trade fields: a futures trade with how much one point is worth, t
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   expect(errors).toEqual([]);
 });
+
+test('(ae) Before you save: past the daily limit, the next planned trade says so, takes a reason and still saves', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  await activate(page);
+  await page.goto('/goals');
+  const deviceZone = page.getByRole('button', { name: /\(this device\)$/ });
+  if (await deviceZone.isVisible()) await deviceZone.click();
+  await page.getByLabel('Max trades per day').fill('1');
+  await page.getByRole('button', { name: 'Save goals' }).click();
+  await expect(page.getByLabel('Max trades per day')).toHaveValue('1');
+
+  // One trade opened now uses up the day.
+  await page.goto('/journal');
+  const local = await page.evaluate(() => { const d = new Date(); const p = (n: number) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; });
+  await page.getByLabel(/^Symbol/).fill('BTCUSDT');
+  await page.getByLabel(/^Market/).selectOption('crypto');
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Status/).selectOption('open');
+  await page.getByLabel(/^Opened/).fill(local);
+  await page.getByLabel('Currency code').fill('USDT');
+  await page.getByText('Trade plan · Optional').click();
+  await page.getByLabel('Planned entry').fill('100');
+  await page.getByLabel('Planned stop').fill('95');
+  await expect(page.getByRole('region', { name: 'Before you save' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+
+  // The next planned trade: the box names the limit, a reason is typed, and Save is still one tap.
+  await page.getByLabel(/^Symbol/).fill('ETHUSDT');
+  await page.getByLabel(/^Market/).selectOption('crypto');
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Status/).selectOption('draft');
+  await page.getByLabel('Currency code').fill('USDT');
+  // The plan stays open after a save when it was opened by hand.
+  if (!(await page.getByLabel('Planned entry').isVisible())) await page.getByText('Trade plan · Optional').click();
+  await page.getByLabel('Planned entry').fill('100');
+  await page.getByLabel('Planned stop').fill('95');
+  const box = page.getByRole('region', { name: 'Before you save' });
+  await expect(box.getByRole('listitem')).toHaveText(['This would be trade 2 today. Your most is 1.']);
+  await page.getByLabel(/Why save anyway\?/).fill('A clean retest, half size.');
+  const formAxe = await new AxeBuilder({ page }).include('.kairos-trade-form').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(formAxe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+  await expect(box).toHaveCount(0);
+  await expect(page.locator('.kairos-history-card').filter({ hasText: 'ETHUSDT' })).toHaveCount(1);
+  expect(errors).toEqual([]);
+});

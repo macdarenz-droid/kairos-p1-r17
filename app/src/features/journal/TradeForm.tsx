@@ -1,6 +1,9 @@
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import type { DisciplineAnswerInput, TradeDisciplineParts } from '../../application/discipline';
+import {
+  beforeYouSaveSymbol, loadBeforeYouSave, loadRecentSizes, previewBeforeYouSave, type BeforeYouSaveFacts, type LoadBeforeYouSaveResult, type LoadRecentSizesResult,
+} from '../../application/discipline/beforeYouSave';
 import { savePracticeTrade } from '../../application/practice';
 import {
   createEmptyManualTradeDraft,
@@ -17,6 +20,7 @@ import { PRICE_CURRENCY_INPUT_ERROR } from '../../application/trades/priceCurren
 import { createEmptyQuickTradeLogDraft, quickTradeLogFieldFor, quickTradeLogRows, type QuickTradeLogDraft, type QuickTradeLogField } from '../../application/trades/quickTradeLog';
 import type { KairosDatabase } from '../../data/database';
 import type { StrategyId } from '../../domain/discipline';
+import type { DecimalString } from '../../domain/trades';
 import { Button, Field, PriceInput, Segmented, Select } from '../../design-system/primitives';
 import { JournalClosedTradeGuidance } from './JournalClosedTradeGuidance';
 import { JournalExecutionFields } from './JournalExecutionFields';
@@ -26,6 +30,7 @@ import { JournalPriceCurrencyField } from './JournalPriceCurrencyField';
 import { TradeStrategyField } from './TradeStrategyField';
 import { TradeTagsField } from './TradeTagsField';
 import { BeforeYouTradeField } from './BeforeYouTradeField';
+import { BeforeYouSaveBox } from './BeforeYouSaveBox';
 import { CONTRACT_SIZE_HINT } from './AddContractSizeControl';
 import './tradeForm.css';
 
@@ -203,6 +208,13 @@ function validationMessage(text: TradeFormText, field: ManualTradeValidationFiel
   return 'Review this value and try again.';
 }
 
+type BeforeSaveRead = Readonly<{ facts: BeforeYouSaveFacts | null; failed: boolean }>;
+type SizesRead = Readonly<{ symbol: string; sizes: readonly DecimalString[] | null; failed: boolean }>;
+const factsRead = (result: LoadBeforeYouSaveResult): BeforeSaveRead => (result.ok ? { facts: result.facts, failed: false } : { facts: null, failed: true });
+const sizesReadFor = (symbol: string, result: LoadRecentSizesResult): SizesRead => (result.ok ? { symbol, sizes: result.sizes, failed: false } : { symbol, sizes: null, failed: true });
+/** The usual size is read for the symbol once typing pauses, not on every key. */
+const SIZES_READ_PAUSE_MS = 300;
+
 function fieldHasError(feedback: Feedback, field: string): boolean {
   return feedback?.kind === 'error' && feedback.field === field;
 }
@@ -228,6 +240,14 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
   // U12 (D241): what is ticked before Save, saved with the trade in one write.
   const [checklistAnswers, setChecklistAnswers] = useState<readonly DisciplineAnswerInput[]>([]);
   const [strategyAnswers, setStrategyAnswers] = useState<readonly DisciplineAnswerInput[]>([]);
+  // U12 (D242): what "Before you save" read (again after each save and on "Try again"), and the optional reason.
+  const beforeSaveScope = kind === 'practice' ? 'practice' : 'real';
+  const [beforeSaveRead, setBeforeSaveRead] = useState<BeforeSaveRead>({ facts: null, failed: false });
+  const [beforeSaveReads, setBeforeSaveReads] = useState(0);
+  const [brokenRules, setBrokenRules] = useState(0);
+  const [saveAnywayReason, setSaveAnywayReason] = useState('');
+  const [sizesRead, setSizesRead] = useState<SizesRead>({ symbol: '', sizes: null, failed: false });
+  const [retrying, setRetrying] = useState(false);
   const [mode, setMode] = useState<TradeFormMode>(readTradeFormMode);
   const [quick, setQuick] = useState<QuickTradeLogDraft>(createEmptyQuickTradeLogDraft);
   const isQuick = mode === 'quick';
@@ -244,6 +264,39 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
   const showOpenedAt = isQuick || draft.status === 'open' || draft.status === 'closed';
   const checklistMode = isQuick || draft.status === 'closed' || draft.status === 'cancelled' ? 'after' : draft.status === 'draft' || draft.status === 'open' ? 'checklist' : null;
   const showClosedAt = isQuick || draft.status === 'closed';
+  // Read only while the box can show (a draft or open trade in All details): when it starts to, and after each save.
+  const asksBeforeSave = checklistMode === 'checklist';
+  useEffect(() => {
+    if (!asksBeforeSave) return;
+    let ignore = false;
+    void loadBeforeYouSave(db, { scope: beforeSaveScope, now: now().toISOString() }).then(result => { if (!ignore) setBeforeSaveRead(factsRead(result)); });
+    return () => { ignore = true; };
+  }, [db, beforeSaveScope, beforeSaveReads, asksBeforeSave]);
+  const sizesSymbol = asksBeforeSave ? beforeYouSaveSymbol(draft.symbol) : '';
+  useEffect(() => {
+    if (sizesSymbol === '') return;
+    let ignore = false;
+    const timer = setTimeout(() => {
+      void loadRecentSizes(db, { scope: beforeSaveScope, symbol: sizesSymbol }).then(result => { if (!ignore) setSizesRead(sizesReadFor(sizesSymbol, result)); });
+    }, SIZES_READ_PAUSE_MS);
+    return () => { ignore = true; clearTimeout(timer); };
+  }, [db, beforeSaveScope, sizesSymbol, beforeSaveReads]);
+  const sizesForSymbol = sizesRead.symbol === sizesSymbol ? sizesRead : null;
+  /** "Try again": both reads again, then the box moves focus once their result is on screen. */
+  async function retryBeforeSaveReads(): Promise<void> {
+    setRetrying(true);
+    const symbol = sizesSymbol;
+    const [facts, sizes] = await Promise.all([
+      loadBeforeYouSave(db, { scope: beforeSaveScope, now: now().toISOString() }),
+      symbol === '' ? null : loadRecentSizes(db, { scope: beforeSaveScope, symbol }),
+    ]);
+    flushSync(() => {
+      setBeforeSaveRead(factsRead(facts));
+      if (sizes !== null) setSizesRead(sizesReadFor(symbol, sizes));
+      setRetrying(false);
+    });
+  }
+  const beforeSaveNotes = checklistMode === 'checklist' ? previewBeforeYouSave(draft, executions, brokenRules, now().toISOString(), beforeSaveRead.facts, sizesForSymbol?.sizes ?? null) : [];
   const errorField = feedback?.kind === 'error' ? feedback.field : undefined;
   const quickInvalid = (field: QuickTradeLogField): boolean => isQuick && quickTradeLogFieldFor(errorField) === field;
   const fieldError = (field: ManualTradeValidationField): string | undefined => (feedback?.kind === 'error' && feedback.field === field ? feedback.message : undefined);
@@ -315,6 +368,8 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
     const discipline: TradeDisciplineParts = {
       ...(checklistMode === 'checklist' && checklistAnswers.length > 0 ? { checklist: checklistAnswers } : {}),
       ...(strategyId !== '' ? { strategy: { strategyId, answers: strategyAnswers } } : {}),
+      // What "Before you save" named, as the trader saw it, with their reason; nothing when it named nothing.
+      ...(beforeSaveNotes.length > 0 ? { beforeSave: { notes: beforeSaveNotes.map(note => note.kind), reason: saveAnywayReason.trim() || null } } : {}),
     };
     setIsSaving(true);
     const input = { ...prepared.input, discipline };
@@ -348,6 +403,8 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
       setStrategyId('');
       setChecklistAnswers([]);
       setStrategyAnswers([]);
+      setSaveAnywayReason('');
+      setBeforeSaveReads(current => current + 1);
       setFeedback({ kind: 'success', message: saved });
     });
     await onSaved();
@@ -531,9 +588,12 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
         </details>
 
         <TradeStrategyField db={db} idPrefix={idPrefix} value={strategyId} onChange={value => { setStrategyId(value); setStrategyAnswers([]); setFeedback(null); }} draft={draft} status={isQuick ? 'closed' : draft.status} disabled={isSaving}
-          answers={strategyAnswers} onAnswersChange={answers => { setStrategyAnswers(answers); setFeedback(null); }} checklist={checklistMode === 'checklist' ? checklistAnswers : null} />
+          answers={strategyAnswers} onAnswersChange={answers => { setStrategyAnswers(answers); setFeedback(null); }} checklist={checklistMode === 'checklist' ? checklistAnswers : null} onBrokenRulesChange={setBrokenRules} />
 
         <BeforeYouTradeField db={db} idPrefix={idPrefix} mode={checklistMode} answers={checklistAnswers} onAnswersChange={answers => { setChecklistAnswers(answers); setFeedback(null); }} disabled={isSaving} />
+
+        {checklistMode === 'checklist' ? <BeforeYouSaveBox idPrefix={idPrefix} notes={beforeSaveNotes} readsFailed={beforeSaveRead.failed || sizesForSymbol?.failed === true} retrying={retrying}
+          onRetry={retryBeforeSaveReads} reason={saveAnywayReason} onReasonChange={value => { setSaveAnywayReason(value); setFeedback(null); }} disabled={isSaving} afterRef={submitRef} /> : null}
 
         <div className="kairos-trade-form__actions">
           <Button ref={submitRef} type="submit" busy={isSaving} emphasis="main" aria-describedby={strategyId ? `${idPrefix}-strategy-note` : undefined}>{isSaving ? 'Saving…' : text.submit}</Button>

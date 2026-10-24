@@ -15,3 +15,7 @@
 .kairos-trade-form__check { display:flex; align-items:flex-start; gap:var(--kairos-space-2); min-height:44px; padding:var(--kairos-space-2) 0; overflow-wrap:anywhere; }
 .kairos-trade-form__check input { flex:none; width:1.25rem; height:1.25rem; margin-top:0.1rem; }
 .kairos-trade-form__before-title { margin:0; font-size:var(--kairos-font-size-md); }
+.kairos-trade-form__before-save { display:grid; gap:var(--kairos-space-3); border-left:3px solid var(--kairos-state-warning); min-width:0; overflow-wrap:anywhere; }
+.kairos-trade-form__before-save-title { margin:0; font-size:var(--kairos-font-size-md); }
+.kairos-trade-form__before-save-list { display:grid; gap:var(--kairos-space-2); margin:0; padding-left:var(--kairos-space-5); }
+.kairos-trade-form__before-save .kairos-button { justify-self:start; }

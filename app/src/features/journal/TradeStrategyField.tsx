@@ -23,13 +23,15 @@ interface TradeStrategyFieldProps {
   readonly onAnswersChange: (answers: readonly DisciplineAnswerInput[]) => void;
   /** The checklist as ticked in the form, or null when none applies; the preview reads it. */
   readonly checklist: readonly DisciplineAnswerInput[] | null;
+  /** U12 (D242): how many rules the preview says are broken, for "Before you save". */
+  readonly onBrokenRulesChange: (broken: number) => void;
 }
 
 type LoadState = { readonly kind: 'loading' } | { readonly kind: 'failed' } | { readonly kind: 'ready'; readonly strategies: readonly Strategy[] };
 const MARKS = { kept: '✓', broken: '✗', unknown: '?' } as const;
 
 /** P28: choose the strategy a trade follows, and see before saving which of its rules the trade keeps, breaks or can't be checked yet. It never blocks a save. */
-export function TradeStrategyField({ db, idPrefix, value, onChange, draft, status, disabled, answers, onAnswersChange, checklist }: TradeStrategyFieldProps) {
+export function TradeStrategyField({ db, idPrefix, value, onChange, draft, status, disabled, answers, onAnswersChange, checklist, onBrokenRulesChange }: TradeStrategyFieldProps) {
   const [load, setLoad] = useState<LoadState>({ kind: 'loading' });
   useEffect(() => {
     let ignore = false;
@@ -50,6 +52,8 @@ export function TradeStrategyField({ db, idPrefix, value, onChange, draft, statu
     const summary = checklist && ticked > 0 ? { ticked, asked: checklist.length, complete: ticked === checklist.length } : null;
     return previewTradeStrategyCheck(draft, status, strategy, { checklist: summary, answers: answers.map(({ itemId, answer }) => ({ ruleId: itemId as StrategyRule['id'], answer })) });
   }, [strategy, draft, status, checklist, answers]);
+  const broken = check?.broken ?? 0;
+  useEffect(() => { onBrokenRulesChange(broken); }, [broken, onBrokenRulesChange]);
   const toggleRule = (ruleId: string) => {
     const next = new Set(ruleTicked);
     if (next.has(ruleId)) next.delete(ruleId); else next.add(ruleId);
