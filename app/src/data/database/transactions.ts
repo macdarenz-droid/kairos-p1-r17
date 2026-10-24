@@ -42,6 +42,11 @@ export async function runKairosAtomicWrite<T>(
   db: KairosDatabase,
   storeNames: readonly KairosTransactionStoreName[],
   work: KairosAtomicWriteWork<T>,
+  /**
+   * `announce: false` for a write only this device's convenience needs (the kept trade form, D258): other tabs are not
+   * told the journal changed, so they don't read their lists again while you type.
+   */
+  options: Readonly<{ announce?: boolean }> = {},
 ): Promise<T> {
   const normalizedStoreNames = normalizeTransactionStores(storeNames);
   const tables = normalizedStoreNames.map((storeName) => db.table(storeName));
@@ -51,7 +56,7 @@ export async function runKairosAtomicWrite<T>(
     const result = await db.transaction('rw', tables, (transaction) =>
       work(Object.freeze({ transaction, repositories })),
     );
-    reportWriteCommitted();
+    reportWriteCommitted(options.announce !== false);
     return result;
   } catch (error) {
     reportWriteFailure(classifyKairosWriteFailure(error));
@@ -109,11 +114,12 @@ export const KAIROS_JOURNAL_CHANNEL = 'kairos-journal';
 let journalChannel: BroadcastChannel | null = null;
 const changeListeners = new Set<() => void>();
 
-function reportWriteCommitted(): void {
+function reportWriteCommitted(announce: boolean): void {
   if (failing) {
     failing = false;
     for (const listener of failureListeners) listener(null);
   }
+  if (!announce) return;
   try {
     journalChannel?.postMessage({ type: 'changed' });
   } catch {

@@ -7,8 +7,10 @@ import { Icon } from '../../design-system/icons/Icon';
 import { Button, Card } from '../../design-system/primitives';
 import './setup.css';
 
-/** The address that opens the Journal's trade form (D225). */
-export const LOG_TRADE_ADDRESS = '/journal?log=1';
+/** The page that logs a trade (D225, D258). */
+export const LOG_TRADE_ADDRESS = '/journal/log';
+/** Set in the navigation state by "+ Log trade": the log page then focuses Symbol (D258). */
+export const LOG_TRADE_FOCUS_STATE = 'kairosLogTradeFocus';
 
 /** SPA navigation inside the app, a plain link outside a router (features never import app). */
 function CardLink({ to, children }: { readonly to: string; readonly children: ReactNode }) {

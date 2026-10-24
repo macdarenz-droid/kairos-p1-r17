@@ -97,6 +97,7 @@ export interface KairosPageParent {
 /** Pages that other pages sit under, with the title each shows. */
 const PARENT_PAGES: Readonly<Record<string, string>> = Object.freeze({
   '/': 'Home',
+  '/journal': 'Journal',
   '/library': 'Library',
   '/library/lessons': 'Lessons',
   '/practice': 'Practice',

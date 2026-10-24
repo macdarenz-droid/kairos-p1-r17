@@ -52,7 +52,7 @@ describe('P8.1 navigation shell', () => {
 
 /** Every route in the table, with the tab it belongs to and where "up" goes (D218): a new route must be added here. */
 const ROUTE_HOMES: Readonly<Record<string, readonly [tab: string | null, parent: string | null]>> = {
-  '/': ['/', null], '/journal': ['/journal', null], '/analysis': ['/analysis', null], '/library': ['/library', null], '/more': ['/more', null],
+  '/': ['/', null], '/journal': ['/journal', null], '/journal/log': ['/journal', '/journal'], '/analysis': ['/analysis', null], '/library': ['/library', null], '/more': ['/more', null],
   '/library/words': ['/library', '/library'], '/library/calculators': ['/library', '/library'], '/library/lessons': ['/library', '/library'],
   '/library/lessons/:lessonId': ['/library', '/library/lessons'],
   '/practice': ['/more', '/more'], '/practice/replay': ['/more', '/practice'], '/practice/coach': ['/more', '/practice'], '/practice/patterns': ['/more', '/practice'],

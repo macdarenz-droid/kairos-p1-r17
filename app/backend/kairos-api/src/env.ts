@@ -26,6 +26,10 @@ export interface KairosApiEnv {
   readonly KAIROS_FOREX_SOURCE?: string;
   /** secret: the owner's OANDA API token (O4a), sent only as OANDA's Bearer header. */
   readonly MARKET_DATA_API_KEY?: string;
+  /** secret: the owner's CoinGecko key (O6), sent only as CoinGecko's key header; without it there are no coin names (U14, D255). */
+  readonly COIN_DATA_API_KEY?: string;
+  /** vars: "pro" for a paid CoinGecko key; anything else, or missing, means the demo plan (D255). */
+  readonly COIN_DATA_PLAN?: string;
   readonly KAIROS_API_CACHE?: KvStore;
   readonly KAIROS_API_DEVICE_LIMITER?: RateLimiter;
   readonly KAIROS_API_ANONYMOUS_LIMITER?: RateLimiter;

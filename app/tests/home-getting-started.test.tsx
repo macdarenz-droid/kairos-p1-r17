@@ -57,7 +57,7 @@ describe('T-053e Getting started on Home', () => {
     expect(section.getByText('What you trade')).toHaveTextContent('What you trade (done)');
     expect(section.queryByRole('link', { name: 'Your time zone' })).toBeNull();
     expect(section.getAllByRole('link').map(link => [link.textContent, link.getAttribute('href')])).toEqual([
-      ['Your home currency', '/setup?step=2'], ['Your checklist', '/setup?step=4'], ['Your first goal', '/setup?step=5'], ['Your first trade', '/journal?log=1'],
+      ['Your home currency', '/setup?step=2'], ['Your checklist', '/setup?step=4'], ['Your first goal', '/setup?step=5'], ['Your first trade', '/journal/log'],
     ]);
     // It sits above the dashboard control.
     const control = screen.getByRole('group', { name: 'Dashboard view' });

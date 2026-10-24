@@ -1237,7 +1237,7 @@ test('(w) First run: the setup step by step, then the Journal; it can be opened 
   await expect(stepTitle("You're set")).toBeFocused();
   await axeOk('step 6');
   await page.getByRole('link', { name: 'Log your first trade' }).click();
-  await expect(page).toHaveURL(/\/journal$/);
+  await expect(page).toHaveURL(/\/journal\/log$/);
   // The trade form starts on the market chosen first.
   await expect(page.getByLabel(/^Market/)).toHaveValue('forex');
 
@@ -1307,15 +1307,16 @@ test('(x) Log a trade from anywhere: "+ Log trade", the log address and Getting 
   };
   const logTrade = page.getByRole('link', { name: 'Log trade' });
   const symbol = page.getByLabel(/^Symbol/);
-  // Symbol has focus, and the form is in view: below the sticky header and above the button.
+  // T-059e: the log page, with Symbol focused and in view below the sticky header; the button is not on it.
   const formReady = async () => {
-    await expect(page).toHaveURL(/\/journal$/);
+    await expect(page).toHaveURL(/\/journal\/log$/);
+    await expect(page.getByRole('heading', { level: 1, name: 'Log a trade' })).toBeVisible();
     await expect(symbol).toBeFocused();
     const header = (await page.locator('.kairos-shell__header').boundingBox())!;
     const field = (await symbol.boundingBox())!;
-    const button = (await logTrade.boundingBox())!;
     expect(field.y).toBeGreaterThanOrEqual(header.y + header.height);
-    expect(field.y + field.height).toBeLessThanOrEqual(button.y);
+    expect(field.y + field.height).toBeLessThanOrEqual(page.viewportSize()!.height);
+    await expect(logTrade).toHaveCount(0);
   };
   await activate(page);
 
@@ -1328,12 +1329,19 @@ test('(x) Log a trade from anywhere: "+ Log trade", the log address and Getting 
   await axeOk('Home');
   await logTrade.click();
   await formReady();
-  await axeOk('Journal');
+  await axeOk('Log a trade');
   // T-053e fix r1: the button is inside the page's landmark (axe's "region" rule, not in the WCAG tags above).
   const inLandmarks = async (where: string) => {
     const axe = await new AxeBuilder({ page }).withRules(['region']).analyze();
     expect(axe.violations.map(violation => `${where} ${violation.id}: ${violation.nodes.map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
   };
+  await inLandmarks('Log a trade');
+  // Back goes to where you came from.
+  await page.getByRole('button', { name: /Home/ }).click();
+  await expect(page).toHaveURL(/\/$/);
+
+  await page.goto('/journal');
+  await expect(page.getByRole('heading', { level: 1, name: 'Journal' })).toBeVisible();
   await inLandmarks('Journal');
   // A part of the page brought into view at the bottom stops above the button.
   const save = page.getByRole('button', { name: 'Save trade' });
@@ -1358,7 +1366,7 @@ test('(x) Log a trade from anywhere: "+ Log trade", the log address and Getting 
   await logTrade.click();
   await formReady();
 
-  // A trade saved, then the Journal scrolled to its end: the button covers no card.
+  // A trade saved on the log page: its picture, then the Journal scrolled to its end, where the button covers no card.
   await page.getByLabel(/^Market/).selectOption('crypto');
   await symbol.fill('BTCUSDT');
   await page.getByLabel(/^Direction/).selectOption('long');
@@ -1375,6 +1383,10 @@ test('(x) Log a trade from anywhere: "+ Log trade", the log address and Getting 
   await page.getByLabel('Exit 2 quantity').fill('0.1');
   await page.getByLabel('Exit 2 date and time').fill('2026-09-20T10:00');
   await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.getByRole('heading', { level: 2, name: 'Trade saved to your journal.' })).toBeFocused();
+  await expect(page.getByRole('img', { name: /^BTCUSDT long trade, closed\. Result after fees 150 USDT\./ })).toBeVisible();
+  await axeOk('Saved');
+  await page.getByRole('link', { name: 'See it in your journal' }).click();
   await expect(page.locator('[data-outcome="profit"]').first()).toContainText('150 USDT');
   // The card's picture arrives after the save and the page grows, so the end is reached again until the page settles.
   const lastCardClear = async () => {
@@ -1386,16 +1398,18 @@ test('(x) Log a trade from anywhere: "+ Log trade", the log address and Getting 
     });
   };
   await expect.poll(lastCardClear).toBe(true);
-  await expect(symbol).not.toBeInViewport();
-  // On the Journal the button brings the form back, without a step added to Back.
+  // From the Journal the button opens the log page; Back returns to the Journal.
   await logTrade.click();
   await formReady();
   await page.goBack();
-  await expect(page.getByRole('heading', { level: 1, name: 'Analysis' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Journal' })).toBeVisible();
 
-  // Opened directly (the app shortcut's address).
+  // Opened directly: the app shortcut's address, and the old one in its place.
+  await page.goto('/journal/log');
+  await expect(page.getByRole('heading', { level: 1, name: 'Log a trade' })).toBeVisible();
   await page.goto('/journal?log=1');
-  await formReady();
+  await expect(page).toHaveURL(/\/journal\/log$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Log a trade' })).toBeVisible();
 
   // Getting started ticks the first trade; the button is not on Practice.
   await page.goto('/');
@@ -2017,5 +2031,107 @@ test('(af) Goals you can see: limits, a loss, the rings and Home', async ({ page
   await expect(twelve).toBeFocused();
   await expect(tiles).toHaveCount(12);
   await axeOk('.kairos-goals-months');
+  expect(errors).toEqual([]);
+});
+
+test('(ag) Faster logging: a symbol you search, its currency filled in, and a stop in Quick log', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  const axeOk = async (include: string) => {
+    const axe = await new AxeBuilder({ page }).include(include).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+    expect(axe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  };
+  await activate(page);
+  const cors = { 'Access-Control-Allow-Origin': '*' };
+  const market = (symbol: string, base: string, quote: string) => ({ symbol, base, quote, tickSize: '0.01', stepSize: '0.0001' });
+  await page.route(url => url.hostname === 'api.qa.invalid' && url.pathname === '/market/symbols', route => route.fulfill({
+    headers: cors, contentType: 'application/json',
+    body: JSON.stringify({ apiVersion: 1, ok: true, data: { source: 'binance-spot', fetchedAt: new Date().toISOString(), markets: [market('BTCUSDT', 'BTC', 'USDT'), market('ETHBTC', 'ETH', 'BTC'), market('ETHUSDT', 'ETH', 'USDT')], leftOut: 0 } }),
+  }));
+
+  // T-059c: the latest 1-minute candle, a minute before now, closes at 2,512.34.
+  await page.route(url => url.hostname === 'api.qa.invalid' && url.pathname === '/market/candles', route => {
+    const url = new URL(route.request().url());
+    // A one-candle read is the minute check (T-059d): the candle of that minute. Otherwise the latest minute.
+    const end = Number(url.searchParams.get('end'));
+    const openMs = url.searchParams.get('limit') === '1' ? Number(url.searchParams.get('start')) : Math.floor(end / 60_000) * 60_000 - 60_000;
+    const minute = { openTime: new Date(openMs).toISOString(), closeTime: new Date(openMs + 59_999).toISOString(), open: '2510', high: '2513', low: '2509.5', close: '2512.34', volume: '3' };
+    return route.fulfill({ headers: cors, contentType: 'application/json', body: JSON.stringify({ apiVersion: 1, ok: true, data: { source: { provider: 'binance', market: 'spot', symbol: url.searchParams.get('symbol') }, backup: null, interval: '1m', fetchedAt: new Date().toISOString(), candles: [minute], next: null } }) });
+  });
+
+  await page.goto('/journal');
+  await page.getByRole('button', { name: 'Quick log' }).click();
+  const symbol = page.getByRole('combobox', { name: /^Symbol/ });
+  await symbol.fill('eth');
+  const results = page.getByRole('listbox', { name: 'Search results' }).getByRole('option');
+  await expect(results).toHaveText(['ETHUSDT · ETH/USDT', 'ETHBTC · ETH/BTC']);
+  await axeOk('.kairos-trade-form');
+  await results.first().click();
+  await expect(symbol).toHaveValue('ETHUSDT');
+  await expect(page.getByLabel(/^Market/)).toHaveValue('crypto');
+  await expect(page.getByLabel('Currency code')).toHaveValue('USDT');
+  await expect(page.getByText('Filled from ETHUSDT: prices are in USDT. You can change it.')).toBeVisible();
+
+  await page.getByLabel(/^Direction/).selectOption('long');
+  const priceNow = page.getByRole('button', { name: 'Price now for the entry price' });
+  await priceNow.click();
+  await expect(page.getByLabel(/^Entry price/)).toHaveValue('2512.34');
+  await expect(page.getByText(/^Binance · ETHUSDT · \d\d:\d\d$/)).toBeVisible();
+  await expect(priceNow).toBeFocused();
+  await axeOk('.kairos-trade-form');
+  await page.getByLabel(/^Entry price/).fill('100');
+  await page.getByLabel(/^Exit price/).fill('110');
+  await expect(page.getByText("Without a stop, Kairos can't draw your risk or show × what you risked.")).toBeVisible();
+  await page.getByLabel(/^Planned stop/).fill('95');
+  await page.getByLabel(/^Planned target/).fill('120');
+  await page.getByLabel(/^Quantity/).fill('1');
+  await page.getByRole('button', { name: 'Set opened time to now' }).click();
+  await page.getByRole('button', { name: 'Set closed time to now' }).click();
+  // A finished minute: the running minute never gets "Typo?" (review r2).
+  const tenMinutesAgo = await page.evaluate(() => {
+    const at = new Date(Date.now() - 10 * 60_000), pad = (n: number) => String(n).padStart(2, '0');
+    return `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}T${pad(at.getHours())}:${pad(at.getMinutes())}`;
+  });
+  await page.getByLabel(/^Opened/).fill(tenMinutesAgo);
+  // T-059d: 100 never traded in that minute (2509.5 to 2513): a soft "Typo?" that never blocks the save.
+  await expect(page.getByText(/^ETHUSDT did not trade at 100 at \d\d:\d\d \(it traded between 2509\.5 and 2513\)\. Typo\?$/)).toBeVisible();
+  await page.getByRole('button', { name: 'See the market price at that minute, opened' }).click();
+  await expect(page.getByText(/^At \d\d:\d\d ETHUSDT traded between 2509\.5 and 2513 \(Binance, 1-minute candle\)\.$/)).toBeVisible();
+  await axeOk('.kairos-trade-form');
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+  // The stop from Quick log gives the trade its risk: 10 USDT on 5 risked.
+  await expect(page.getByRole('img', { name: 'ETHUSDT long trade, closed. Result after fees 10 USDT. +2× what you risked.' })).toBeVisible();
+  await axeOk('.kairos-shell__content');
+
+  // T-059e: half a trade on the log page is kept when you leave, and filled in when you come back.
+  await page.getByRole('link', { name: 'Log trade' }).click();
+  await expect(page).toHaveURL(/\/journal\/log$/);
+  await expect(symbol).toBeFocused();
+  await symbol.fill('ETHUSDT');
+  await page.keyboard.press('Escape');
+  await page.getByLabel(/^Market/).selectOption('crypto');
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Entry price/).fill('100');
+  await page.getByRole('navigation', { name: 'Primary navigation' }).getByRole('link', { name: 'Home' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Home' })).toBeVisible();
+  await page.getByRole('link', { name: 'Log trade' }).click();
+  await expect(page.getByText('Kairos kept the trade you were typing.')).toBeVisible();
+  await expect(symbol).toHaveValue('ETHUSDT');
+  await expect(page.getByLabel(/^Entry price/)).toHaveValue('100');
+  await expect(page.getByLabel(/^Direction/)).toHaveValue('long');
+  await page.getByLabel(/^Exit price/).fill('110');
+  await page.getByLabel(/^Planned stop/).fill('95');
+  await page.getByLabel(/^Quantity/).fill('1');
+  await page.getByRole('button', { name: 'Set opened time to now' }).click();
+  await page.getByRole('button', { name: 'Set closed time to now' }).click();
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.getByRole('heading', { level: 2, name: 'Trade saved to your journal.' })).toBeFocused();
+  await expect(page.getByRole('img', { name: 'ETHUSDT long trade, closed. Result after fees 10 USDT. +2× what you risked.' })).toBeVisible();
+  await axeOk('.kairos-shell__content');
+  await page.getByRole('button', { name: 'Log another trade' }).click();
+  await expect(symbol).toHaveValue('');
+  await expect(page.getByText('Kairos kept the trade you were typing.')).toHaveCount(0);
   expect(errors).toEqual([]);
 });
