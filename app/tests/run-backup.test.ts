@@ -4,8 +4,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { describeBackupFailure, readLastBackup, runBackup, type BackupDeliveryOutcome, type KairosBackupFile } from '../src/application/backup';
 import { parseKairosBackup } from '../src/data/backup';
 import { saveManualTrade } from '../src/application/trades';
-import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
-import { createKairosRepositories } from '../src/data/repositories';
+import { createKairosDatabase, openKairosDatabase, subscribeKairosWriteFailures, type KairosDatabase, type KairosWriteFailureKind } from '../src/data/database';
+import { createKairosRepositories, MetadataRepository } from '../src/data/repositories';
 
 const names: string[] = [];
 const opened: Dexie[] = [];
@@ -70,5 +70,23 @@ describe('T-054a one backup run', () => {
     vi.restoreAllMocks();
     expect(await readLastBackup(createKairosRepositories(db).metadata)).toBeNull();
   });
-});
 
+  it('T-054d fix r1: a last-backup note that cannot be written fails the write as what it was, never as a commit', async () => {
+    const db = await database();
+    await saveManualTrade(db, { symbol: 'ETHUSDT', marketType: 'crypto', side: 'long', status: 'open', openedAt: '2026-10-01T08:00:00.000Z' }, { now });
+    const kinds: Array<KairosWriteFailureKind | null> = [];
+    const stop = subscribeKairosWriteFailures(kind => kinds.push(kind));
+    const put = MetadataRepository.prototype.put;
+    vi.spyOn(MetadataRepository.prototype, 'put').mockImplementation(function (this: MetadataRepository, record) {
+      return record.key === 'device.backup.last-export.v1' ? Promise.reject(new DOMException('The quota has been exceeded.', 'QuotaExceededError')) : put.call(this, record);
+    });
+    try {
+      expect(await runBackup(db, port('saved').deliver, { now })).toEqual({ ok: false, reason: 'record-failed' });
+      expect(kinds).toEqual(['storage-full']);
+    } finally {
+      stop();
+    }
+    vi.restoreAllMocks();
+    expect(await readLastBackup(createKairosRepositories(db).metadata)).toBeNull();
+  });
+});

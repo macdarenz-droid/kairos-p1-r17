@@ -1572,6 +1572,14 @@ test('(aa) Two tabs: a save shows in the other tab, and an update in another tab
   const banner = other.getByRole('alert').filter({ hasText: 'Kairos was updated in another tab. Reload to keep saving.' });
   await expect(banner).toBeVisible();
   await expect(banner.getByRole('button', { name: 'Reload' })).toBeVisible();
+  // Analysis's chart opens the journal again on each read (coming back to the tab, too); the note stays until Reload
+  // (T-054d fix r1).
+  await other.getByRole('navigation', { name: 'Primary navigation' }).getByRole('link', { name: 'Analysis' }).click();
+  await other.getByRole('group', { name: 'Analysis view' }).getByRole('button', { name: 'Chart' }).click();
+  await expect(other).toHaveURL(/view=chart/);
+  await other.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await other.waitForTimeout(500);
+  await expect(banner).toBeVisible();
   const axe = await new AxeBuilder({ page: other }).include('.kairos-database-status').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
   expect(axe.violations.map(violation => violation.id)).toEqual([]);
   expect(await other.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);

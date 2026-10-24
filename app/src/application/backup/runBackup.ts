@@ -5,7 +5,7 @@
 
 import { runKairosAtomicWrite, type KairosDatabase } from '../../data/database';
 import { exportKairosBackup, type ExportKairosBackupResult, type KairosBackupFile } from './exportBackup';
-import { recordLastBackup, type LastBackupRecord } from './lastBackup';
+import { writeLastBackup, type LastBackupRecord } from './lastBackup';
 
 /** What the browser side did with the file. */
 export type BackupDeliveryOutcome = 'saved' | 'cancelled' | 'failed';
@@ -35,16 +35,15 @@ export async function runBackup(db: KairosDatabase, deliver: BackupDeliver, depe
   try { delivered = await deliver(exported.file); } catch { delivered = 'failed'; }
   if (delivered === 'cancelled') return { ok: false, reason: 'cancelled' };
   if (delivered === 'failed') return { ok: false, reason: 'delivery-failed' };
-  let recorded: Awaited<ReturnType<typeof recordLastBackup>>;
+  let record: LastBackupRecord;
   try {
-    // One atomic write, like every write (T-054a fix r1).
-    recorded = await runKairosAtomicWrite(db, ['metadata'], ({ repositories }) => recordLastBackup(repositories.metadata, exported.file));
+    // One atomic write, like every write (T-054a fix r1); a failed put fails the write, never a quiet commit (T-054d fix r1).
+    record = await runKairosAtomicWrite(db, ['metadata'], ({ repositories }) => writeLastBackup(repositories.metadata, exported.file));
   } catch {
     return { ok: false, reason: 'record-failed' };
   }
-  if (!recorded.ok) return { ok: false, reason: 'record-failed' };
   const { skipped } = exported;
   const skippedCount = skipped.savedAnalyses + skipped.savedTimeAssistedSnapshots + skipped.tradeDiscipline + skipped.exchangeRates + skipped.economicEvents;
   const way = delivered === 'saved' ? { via: null, place: null, missedFolder: null } : { via: delivered.via, place: delivered.place, missedFolder: delivered.missedFolder ?? null };
-  return { ok: true, file: exported.file, skippedCount, record: recorded.record, ...way };
+  return { ok: true, file: exported.file, skippedCount, record, ...way };
 }

@@ -45,18 +45,23 @@ export function DatabaseStatusBanner({ port, onGone }: { readonly port: Database
   // "Lost its link" needs a link first: an open that never worked also reports "closed" (Dexie closes after it).
   const wasReady = useRef(false);
 
+  // "Updated in another tab" stays until the trader reloads: this tab's code is older than the journal now, even when
+  // a screen opens the journal again (T-054d fix r1).
+  const keep = (next: Note | null) => setLifecycle(current => (current === 'version-change' ? current : next));
   useEffect(() => port.subscribe(status => {
     if (status.state === 'ready') {
       wasReady.current = true;
-      setLifecycle(null);
+      keep(null);
       setStill(false);
       // The link is back: a closed-database failure is over.
       setWrite(current => (current === 'closed' ? null : current));
-    } else if (status.state === 'version-change' || status.state === 'upgrade-blocked' || (status.state === 'closed' && wasReady.current)) {
-      setLifecycle(status.state);
+    } else if (status.state === 'version-change') {
+      setLifecycle('version-change');
+    } else if (status.state === 'upgrade-blocked' || (status.state === 'closed' && wasReady.current)) {
+      keep(status.state);
     } else if (status.state === 'opening') {
-      // Opening keeps "Try again" under the finger; any other note was a planned close (a restore reopens the journal).
-      setLifecycle(current => (current === 'upgrade-blocked' ? current : null));
+      // Opening keeps "Try again" under the finger; a "lost its link" was a planned close (a restore reopens the journal).
+      setLifecycle(current => (current === 'upgrade-blocked' || current === 'version-change' ? current : null));
     }
     // An open that failed keeps the note shown.
   }), [port]);

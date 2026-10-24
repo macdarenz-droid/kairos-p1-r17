@@ -108,6 +108,18 @@ describe('T-054d the database status banner', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
+  it('T-054d fix r1: "updated in another tab" stays until Reload, even when a screen opens the journal again', async () => {
+    const db = database();
+    page(db.port);
+    await db.publish('version-change');
+    await db.publish('closed', 'opening');
+    await db.publish('ready');
+    expect(screen.getByRole('alert')).toHaveTextContent('Kairos was updated in another tab. Reload to keep saving.');
+    await db.fail('closed');
+    await db.fail(null);
+    expect(screen.getByRole('alert')).toHaveTextContent('Kairos was updated in another tab. Reload to keep saving.');
+  });
+
   it('a planned close and reopen (a restore) never shows the note', async () => {
     const db = database();
     page(db.port);
