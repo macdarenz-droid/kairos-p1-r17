@@ -159,4 +159,18 @@ describe('T-059e the log page', () => {
     expect(await screen.findByRole('heading', { name: 'Your trade' })).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole('heading', { level: 2, name: 'Trade saved to your journal.' })).toHaveFocus());
   });
+
+  it('review r3: a restored kept trade left alone is never written again, so another tab\'s newer one stays', async () => {
+    const db = await database();
+    const key = tradeFormDraftKey('journal');
+    const kept = (symbol: string, savedAt: string) => JSON.stringify({ version: 1, savedAt, mode: 'quick', draft: {
+      trade: { symbol, marketType: 'crypto', side: '', status: '', openedAt: '', closedAt: '', plan: { plannedEntryPrice: '', plannedStopPrice: '', plannedTargetPrice: '', plannedQuantity: '' } },
+      quick: { entryPrice: '', exitPrice: '', quantity: '' }, executions: [], fees: [], currencyFilledBy: null, currencyTyped: false } });
+    await db.metadata.put({ key, value: kept('BTCUSDT', '2026-10-24T10:00:00.000Z'), updatedAt: '2026-10-24T10:00:00.000Z' });
+    page(db);
+    expect(await screen.findByText(KEPT)).toBeInTheDocument();
+    await db.metadata.put({ key, value: kept('ETHBTC', '2026-10-24T11:00:00.000Z'), updatedAt: '2026-10-24T11:00:00.000Z' });
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 1500)); });
+    expect(JSON.parse((await db.metadata.get(key))!.value).draft.trade.symbol).toBe('ETHBTC');
+  });
 });

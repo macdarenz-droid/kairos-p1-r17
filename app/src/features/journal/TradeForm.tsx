@@ -262,7 +262,6 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
   const [quick, setQuick] = useState<QuickTradeLogDraft>(createEmptyQuickTradeLogDraft);
   const isQuick = mode === 'quick';
 
-
   // U14 (D254): the symbol search and the currency from a crypto market's quote asset. The list is read once the
   // trader types a symbol; a currency Kairos filled follows the symbol, one the trader typed is never replaced.
   const searchable = useContext(TradeFormMarketContext) !== null;

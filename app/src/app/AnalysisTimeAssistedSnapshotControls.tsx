@@ -44,11 +44,13 @@ const savedErrorText = (reason: string): string => {
   }
 };
 
-/** "10 Sep 02:13" in this device's time, as the trade form's times are typed. */
+/** "10 Sep 02:13" in this device's time, as the trade form's times are typed; "10 Sep 2025 02:13" in another year. */
 const localWhen = (iso: string): string => {
-  const parts = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(iso));
+  const at = new Date(iso);
+  const parts = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(at);
   const part = (type: Intl.DateTimeFormatPartTypes) => parts.find(item => item.type === type)?.value ?? '';
-  return `${part('day')} ${part('month')} ${part('hour')}:${part('minute')}`;
+  const year = at.getFullYear() === new Date().getFullYear() ? '' : ` ${part('year')}`;
+  return `${part('day')} ${part('month')}${year} ${part('hour')}:${part('minute')}`;
 };
 const savedMessage = (status: SavedStatus, listed: number): string => {
   switch (status.kind) {
@@ -92,7 +94,7 @@ const unavailableText = (reason: Extract<EstimatedMarketReference, { kind: 'unav
 const windowText = (result: AnalysisTimeAssistedWindowResult): string => {
   switch (result.kind) {
     case 'shown': return result.visible === null ? 'Showing the trade on the chart…' : `The chart now shows ${localWhen(new Date(result.visible.fromMs).toISOString())} to ${localWhen(new Date(result.visible.toMs).toISOString())}.`;
-    case 'pending-chart': return 'The chart is not live yet; try again once candles are connected.';
+    case 'pending-chart': return "The chart isn't showing prices yet. Try again once it does.";
     case 'unsupported': return "This chart can't move to those times.";
     case 'invalid-range': return "The trade's times couldn't be shown on the chart.";
   }

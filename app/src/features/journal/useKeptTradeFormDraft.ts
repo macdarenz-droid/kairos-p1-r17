@@ -37,7 +37,8 @@ export function useKeptTradeFormDraft(
     let active = true;
     void readTradeFormDraft(db, scope).then(kept => {
       if (!active) return;
-      written.current = kept === null ? '' : persisted(kept);
+      // As the form will hold it (no save time), so a restored trade left alone is never written again.
+      written.current = kept === null ? '' : persisted({ mode: kept.mode, draft: kept.draft });
       if (kept !== null && isTradeFormDraftEmpty(latest.current.draft)) onFound.current(kept);
       setReady(true);
     });

@@ -22,7 +22,7 @@ const snapshot: TimeAssistedTradeSnapshot = Object.freeze({
   closing: null, durationMs: null,
 }) as TimeAssistedTradeSnapshot;
 // This device's time, read with Date's own local getters: "10 Sep 02:13".
-const localWhen = (iso: string) => { const at = new Date(iso); return `${at.getDate()} ${at.toLocaleString('en-GB', { month: 'short' })} ${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`; };
+const localWhen = (iso: string) => { const at = new Date(iso); const year = at.getFullYear() === new Date().getFullYear() ? '' : ` ${at.getFullYear()}`; return `${at.getDate()} ${at.toLocaleString('en-GB', { month: 'short' })}${year} ${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`; };
 const names: string[] = [];
 async function database() { const name = `kairos-saved-time-assisted-round-trip-${names.length}`; names.push(name); const db = createKairosDatabase(name); await openKairosDatabase(db); return db; }
 afterEach(async () => { for (const name of names.splice(0)) await Dexie.delete(name); });

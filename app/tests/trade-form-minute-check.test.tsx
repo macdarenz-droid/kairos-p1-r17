@@ -14,7 +14,7 @@ const names: string[] = [];
 afterEach(async () => { cleanup(); localStorage.clear(); for (const name of names.splice(0)) await Dexie.delete(name); });
 
 const minute = (market = 'BTCUSDT', source: 'binance' | 'oanda' = 'binance'): MarketMinute =>
-  ({ ok: true, low: '64980' as DecimalString, high: '65120' as DecimalString, at: '2026-10-24T10:32:00.000Z', source, market, midPrice: source === 'oanda', futures: false });
+  ({ ok: true, low: '64980' as DecimalString, high: '65120' as DecimalString, at: '2026-10-24T10:32:00.000Z', source, market, midPrice: source === 'oanda', futures: false, complete: true });
 type Ask = Readonly<{ marketType: MarketType; symbol: string; at: string }>;
 function provider(answer: (ask: Ask) => Promise<MarketMinute> = async () => minute()) {
   return { marketList: vi.fn(async () => ({ ok: true as const, markets: [] })), minute: vi.fn((ask: Ask, _signal: AbortSignal) => answer(ask)) } satisfies TradeFormMarket;
@@ -110,17 +110,25 @@ describe('T-059d the minute check on the trade form', () => {
     expect(link).toHaveFocus();
   });
 
-  it('review r2: never says "Typo?" while the minute is still running', async () => {
-    const now = new Date();
-    // The next minute's start: still running for the whole test, whatever second it starts on.
-    const running = new Date(Math.ceil((now.getTime() + 1) / 60_000) * 60_000).toISOString();
-    const local = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    const market = provider(async () => ({ ...minute(), at: running }));
+  it('review r2–r3: never says "Typo?" on a minute read before it ended (its range is not final)', async () => {
+    const market = provider(async () => ({ ...minute(), complete: false }));
     await mount(market);
-    fireEvent.change(screen.getByLabelText(/^Opened/), { target: { value: local } });
     typeEntry('6500');
     await waitFor(() => expect(market.minute).toHaveBeenCalled(), { timeout: 2000 });
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 50)); });
     expect(screen.queryByText(/Typo\?/)).toBeNull();
+  });
+
+  it('review r3: a futures price is never judged against Binance Spot\'s minute', async () => {
+    const spot = provider(async () => minute());
+    await mount(spot, 'futures', 'BTCUSDT');
+    typeEntry('6500');
+    await waitFor(() => expect(spot.minute).toHaveBeenCalled(), { timeout: 2000 });
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 50)); });
+    expect(screen.queryByText(/Typo\?/)).toBeNull();
+    cleanup();
+    await mount(provider(async () => ({ ...minute(), futures: true })), 'futures', 'BTCUSDT');
+    typeEntry('6500');
+    expect(await screen.findByText(TYPO, undefined, { timeout: 2000 })).toBeInTheDocument();
   });
 });

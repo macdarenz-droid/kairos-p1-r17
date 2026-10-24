@@ -37,7 +37,7 @@ describe('T-059d where a price sits in its minute', () => {
     const crypto = deps(() => answer([minuteCandle]));
     const minute = await readMarketMinute(crypto.value, { marketType: 'crypto', symbol: 'btcusdt', at: AT }, { nowMs: NOW });
     expect(crypto.acquireHistory.mock.calls[0]![0]).toMatchObject({ instrument: { venue: 'binance-spot', symbol: 'BTCUSDT' }, interval: '1m', limit: 1, startTimeMs: Date.parse('2026-10-24T10:32:00.000Z') });
-    expect(minute).toEqual({ ok: true, low: '64980', high: '65120.5', at: '2026-10-24T10:32:00.000Z', source: 'binance', market: 'BTCUSDT', midPrice: false, futures: false });
+    expect(minute).toEqual({ ok: true, low: '64980', high: '65120.5', at: '2026-10-24T10:32:00.000Z', source: 'binance', market: 'BTCUSDT', midPrice: false, futures: false, complete: true });
     if (!minute.ok) return;
     expect(describeMarketMinute(minute)).toMatch(/^At \d\d:\d\d BTCUSDT traded between 64980 and 65120\.5 \(Binance, 1-minute candle\)\.$/);
     expect(describeTypo(minute, '6500')).toMatch(/^BTCUSDT did not trade at 6500 at \d\d:\d\d \(it traded between 64980 and 65120\.5\)\. Typo\?$/);
@@ -85,5 +85,12 @@ describe('T-059d where a price sits in its minute', () => {
     const fallback = deps(request => (request.instrument.venue === 'binance-usdm' ? { ok: false, reason: 'unavailable', why: 'unknown-market', retryAfterSeconds: null } : answer([minuteCandle])));
     expect(await readMarketMinute(fallback.value, { marketType: 'futures', symbol: 'BTCUSDT', at: AT }, { nowMs: NOW })).toMatchObject({ ok: true, futures: false });
     expect(fallback.acquireHistory.mock.calls.map(call => call[0].instrument.venue)).toEqual(['binance-usdm', 'binance-spot']);
+  });
+
+  it('review r3: a minute is complete only when the source read it after the minute ended, not when this device asked', async () => {
+    const running = (observedAt: string) => ({ ok: true, snapshot: { source: 'market-reference', timeZone: 'UTC', observedAt, candles: [minuteCandle] } }) as unknown as MarketCandleHistoryResult;
+    // A copy the server or browser kept from 10:32:55 is still a running minute, even read at 10:33:05.
+    expect(await readMarketMinute(deps(() => running('2026-10-24T10:32:55.000Z')).value, { marketType: 'crypto', symbol: 'BTCUSDT', at: AT }, { nowMs: Date.parse('2026-10-24T10:33:05.000Z') })).toMatchObject({ ok: true, complete: false });
+    expect(await readMarketMinute(deps(() => running('2026-10-24T10:33:01.000Z')).value, { marketType: 'crypto', symbol: 'BTCUSDT', at: AT }, { nowMs: Date.parse('2026-10-24T10:33:05.000Z') })).toMatchObject({ ok: true, complete: true });
   });
 });

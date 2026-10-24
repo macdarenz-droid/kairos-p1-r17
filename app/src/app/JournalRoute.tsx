@@ -29,8 +29,6 @@ function JournalLink({ to, children }: { readonly to: string; readonly children:
   return useInRouterContext() ? <Link to={to}>{children}</Link> : <a href={to}>{children}</a>;
 }
 
-
-
 /**
  * D258: the old log address `/journal?log=1` (an app shortcut installed before, a bookmark) opens the log page in its
  * place, before the Journal reads anything.

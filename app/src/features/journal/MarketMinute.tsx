@@ -10,7 +10,6 @@ import './tradeForm.css';
 
 /** How long typing must pause before "Typo?" reads the market. */
 export const TYPO_CHECK_PAUSE_MS = 600;
-const MINUTE_MS = 60_000;
 
 /**
  * U14 (D257): "BTCUSDT did not trade at 6500 at 10:32 … Typo?" for a crypto or futures price whose time is set, or null.
@@ -30,10 +29,11 @@ export function useTypoCheck(ask: Readonly<{ marketType: MarketType | ''; symbol
     const timer = window.setTimeout(() => {
       void read({ marketType, symbol: symbol.trim(), at }, controller.signal).then(minute => {
         if (controller.signal.aborted) return;
-        // An unfinished minute's range is still growing (and the server may hold a copy a few seconds old): no "Typo?".
-        const finished = minute.ok && Date.parse(minute.at) + MINUTE_MS <= Date.now();
+        // Only a final range can judge a price: never a running minute (read before it ended), and never a futures
+        // price against Binance Spot's minute (read when there are no futures candles).
+        const judged = minute.ok && minute.complete && (marketType !== 'futures' || minute.futures);
         const outside = minute.ok && checkPriceAtMinute(minute, price) !== 'inside' && checkPriceAtMinute(minute, price) !== null;
-        setWarning({ key, text: minute.ok && finished && outside ? describeTypo(minute, price) : null });
+        setWarning({ key, text: minute.ok && judged && outside ? describeTypo(minute, price) : null });
       });
     }, TYPO_CHECK_PAUSE_MS);
     return () => { window.clearTimeout(timer); controller.abort(); };

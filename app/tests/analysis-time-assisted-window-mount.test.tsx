@@ -17,6 +17,8 @@ const instrument = { venue: 'binance-spot', symbol: 'ETHUSDT' } as const;
 const candleAt = (startTimeMs: number) => ({ openTime: new Date(startTimeMs).toISOString(), closeTime: new Date(startTimeMs + 59_999).toISOString(), open: '2100.5' as DecimalString, high: '2104' as DecimalString, low: '2099.25' as DecimalString, close: '2102' as DecimalString });
 const estimate = (requestedAt: string): EstimatedMarketReference => ({ kind: 'candle-range', isEstimate: true, source: 'market-reference', method: 'containing-candle', resolution: '1m', instrument, requestedAt, requestedAtUtc: new Date(Date.parse(requestedAt)).toISOString(), candle: candleAt(Math.floor(Date.parse(requestedAt) / 60_000) * 60_000), gapMs: Date.parse(requestedAt) % 60_000, acquiredAt: '2026-09-17T12:00:00.000Z' }) as EstimatedMarketReference;
 const OPENED = '2026-09-10T02:13:27', CLOSED = '2026-09-10T04:30:05';
+// This device's time, read with Date's own local getters: "10 Sep 02:13" (with the year when it is not this year).
+const localWhen = (iso: string) => { const at = new Date(iso); const year = at.getFullYear() === new Date().getFullYear() ? '' : ` ${at.getFullYear()}`; return `${at.getDate()} ${at.toLocaleString('en-GB', { month: 'short' })}${year} ${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`; };
 const names: string[] = [];
 afterEach(async () => { for (const name of names.splice(0)) await Dexie.delete(name); });
 // U14 (D12): Analysis makes no new estimates, so a closed and an open one are seeded through their save command.
@@ -61,14 +63,15 @@ describe('P22.5 window navigation from the preview through the shared seam', () 
     };
     await load(closedId);
     act(() => { fireEvent.click(screen.getByRole('button', { name: 'Show on chart' })); });
-    expect(screen.getByText('The chart is not live yet; try again once candles are connected.').getAttribute('data-time-assisted-window')).toBe('pending-chart');
+    expect(screen.getByText("The chart isn't showing prices yet. Try again once it does.").getAttribute('data-time-assisted-window')).toBe('pending-chart');
     // The drawing-tools lifecycle carries the window lifecycle to the same chart and handle.
     act(() => { tools!.lifecycle.attach(h.binding, h.handle); });
     act(() => { fireEvent.click(screen.getByRole('button', { name: 'Show on chart' })); });
     const fromMs = Date.parse(OPENED), toMs = Date.parse(CLOSED);
     const padding = Math.max(300_000, Math.round((toMs - fromMs) * 0.15));
     expect(h.setVisibleRange).toHaveBeenCalledWith({ from: Math.floor((fromMs - padding) / 1000), to: Math.ceil((toMs + padding) / 1000) });
-    await waitFor(() => expect(screen.getByText(/^The chart now shows \d{1,2} [A-Z][a-z]{2,3} \d\d:\d\d to /).getAttribute('data-time-assisted-window')).toBe('shown'));
+    const shown = `The chart now shows ${localWhen(new Date(Math.floor((fromMs - padding) / 1000) * 1000).toISOString())} to ${localWhen(new Date(Math.ceil((toMs + padding) / 1000) * 1000).toISOString())}.`;
+    await waitFor(() => expect(screen.getByText(shown).getAttribute('data-time-assisted-window')).toBe('shown'));
     // An open trade's window runs to the injected clock.
     await load(openId);
     await waitFor(() => expect(document.querySelector('[data-time-assisted-times]')!.textContent).toMatch(/· still open$/));

@@ -21,6 +21,8 @@ export type MarketMinute =
       source: 'binance' | 'oanda'; market: string; midPrice: boolean;
       /** Read from Binance Futures (a futures trade). */
       futures: boolean;
+      /** Read after the minute ended, so its range is final (a server or browser copy of a running minute is not). */
+      complete: boolean;
     }>
   | Readonly<{ ok: false; why: 'future' | 'invalid-time' | 'no-price' | 'not-listed' | 'no-source' | 'invalid-symbol' | MarketDataUnavailableWhy; retryAfterSeconds: number | null; note: string | null; source: MarketSourceWords }>;
 
@@ -57,7 +59,12 @@ export async function readMarketMinute(
       if (market.futuresOnly !== null && minute.reason === 'invalid-request') return fail('not-listed', market.words, null, `${market.futuresOnly.spotNote} Futures candles need the Kairos server.`);
       return fail(minute.why ?? 'source-down', market.words, minute.retryAfterSeconds);
     }
-    return Object.freeze({ ok: true as const, low: minute.candle.low, high: minute.candle.high, at: minute.candle.openTime, source: market.source, market: market.market, midPrice: market.source === 'oanda', futures: market.instrument.venue === FUTURES_CANDLE_VENUE });
+    return Object.freeze({
+      ok: true as const, low: minute.candle.low, high: minute.candle.high, at: minute.candle.openTime, source: market.source, market: market.market, midPrice: market.source === 'oanda',
+      futures: market.instrument.venue === FUTURES_CANDLE_VENUE,
+      // When the source read it (the server's own fetch time, kept with a cached copy), not when this device asked.
+      complete: Date.parse(minute.acquiredAt) > Date.parse(minute.candle.closeTime),
+    });
   } catch {
     return fail('source-down', { provider: 'binance' });
   }
