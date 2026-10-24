@@ -1822,8 +1822,12 @@ test("(ae) Before you save, then the guided flow: past the daily limit a planned
   page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
   await activate(page);
   await page.goto('/goals');
+  // Wait for the page to read your goals: only then does it offer this device's time zone, when none is saved.
+  const goals = page.locator('[data-goals-status]');
+  await expect(goals).not.toHaveAttribute('data-goals-status', 'loading');
   const deviceZone = page.getByRole('button', { name: /\(this device\)$/ });
   if (await deviceZone.isVisible()) await deviceZone.click();
+  await expect(goals).toHaveAttribute('data-goals-status', 'ready');
   await page.getByLabel('Max trades per day').fill('1');
   await page.getByRole('button', { name: 'Save goals' }).click();
   await expect(page.getByLabel('Max trades per day')).toHaveValue('1');
