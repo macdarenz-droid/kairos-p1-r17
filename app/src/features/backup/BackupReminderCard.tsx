@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   describeBackupFailure,
   describeBackupReminder,
@@ -57,9 +57,9 @@ export function BackupReminderCard({ db, now = wallClock, downloads, deliver }: 
     return () => { ignore = true; };
   }, [db, now]);
 
-  // Found while the card is there, focused after the commit that removes its buttons; only when focus was still in the
-  // card (or fell to the page), never when the trader moved on during the save.
-  useEffect(() => {
+  // Found while the card is there, focused in the same commit that removes its buttons (so focus never rests on the
+  // page); only when focus was still in the card (or fell to the page), never when the trader moved on during the save.
+  useLayoutEffect(() => {
     if (moveFocus === 0 || next.current === null) return;
     const active = document.activeElement;
     if (active === null || active === document.body || card.current?.contains(active)) next.current.focus();
