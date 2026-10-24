@@ -83,10 +83,11 @@ export const KAIROS_V14_STORES = Object.freeze({});
 
 /**
  * V15 (U15, D259, D265) restates the trades store with `[journalAt+id]`: the Journal's order, when the trade happened
- * (`tradeJournalAt`), stamped on every trade by the trade repository and never in a backup. A trade may also carry a note.
+ * (`tradeJournalAt`), stamped on every trade by the database (`KairosDatabase`) and never in a backup.
+ * `[status+journalAt+id]` is the same order for one status. A trade may also carry a note.
  */
 export const KAIROS_V15_STORES = Object.freeze({
-  trades: '&id,status,symbol,updatedAt,[status+updatedAt],[status+closedAt],*tags,[journalAt+id]',
+  trades: '&id,status,symbol,updatedAt,[status+updatedAt],[status+closedAt],*tags,[journalAt+id],[status+journalAt+id]',
 });
 
 /** Current complete store authority used by transactions/integrity only. */

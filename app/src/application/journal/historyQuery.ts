@@ -143,7 +143,7 @@ export async function listJournalHistoryPage(
       .listPageByJournalAt(options.status ?? null, options.before ?? null, JOURNAL_HISTORY_PAGE_SIZE + 1);
     const kept = rows.slice(0, JOURNAL_HISTORY_PAGE_SIZE);
     const last = kept[kept.length - 1];
-    const nextCursor = rows.length > JOURNAL_HISTORY_PAGE_SIZE && last ? Object.freeze({ journalAt: tradeJournalAt(last), id: last.id }) : null;
+    const nextCursor = rows.length > JOURNAL_HISTORY_PAGE_SIZE && last ? Object.freeze({ journalAt: last.journalAt ?? tradeJournalAt(last), id: last.id }) : null;
     return Object.freeze({ entries: await hydrateJournalHistoryEntries(repositories, kept), nextCursor });
   });
 }

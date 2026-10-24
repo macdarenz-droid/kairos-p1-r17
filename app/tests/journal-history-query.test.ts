@@ -66,7 +66,7 @@ describe('P12.1 journal history query foundation', () => {
     db.close();
   });
 
-  it('uses the indexed status + updatedAt path and applies the bound before child evidence hydration', async () => {
+  it('uses the indexed status + Journal date path and applies the bound before child evidence hydration', async () => {
     const db = createKairosDatabase(dbName());
     await openKairosDatabase(db);
     const repos = createKairosRepositories(db);

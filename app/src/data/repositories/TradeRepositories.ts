@@ -31,10 +31,12 @@ export class SourceScopedTradeRepository {
   listRecentByUpdatedAt(limit: number) { return this.db.trades.orderBy('updatedAt').reverse().filter(trade => this.sources.has(trade.source)).limit(limit).toArray(); }
   /**
    * U15 (D259): one page in the Journal's order, latest first (when the trade was opened, else planned), strictly before
-   * the cursor (journalAt, then id), through the `[journalAt+id]` index. A status, when given, is tested while walking.
+   * the cursor (journalAt, then id), through the `[journalAt+id]` index, or `[status+journalAt+id]` for one status.
    */
   listPageByJournalAt(status: TradeStatus | null, before: { readonly journalAt: string; readonly id: TradeId } | null, limit: number) {
-    const start = before === null ? this.db.trades.orderBy('[journalAt+id]') : this.db.trades.where('[journalAt+id]').below([before.journalAt, before.id]);
+    const start = status !== null
+      ? this.db.trades.where('[status+journalAt+id]').between([status, '', ''], before === null ? [status, '\uffff', '\uffff'] : [status, before.journalAt, before.id], true, false)
+      : before === null ? this.db.trades.orderBy('[journalAt+id]') : this.db.trades.where('[journalAt+id]').below([before.journalAt, before.id]);
     return start.reverse().filter(trade => this.sources.has(trade.source) && (status === null || trade.status === status)).limit(limit).toArray();
   }
   /** Every trade of one status in scope, newest edit first, through the [status+updatedAt] index. No limit. */

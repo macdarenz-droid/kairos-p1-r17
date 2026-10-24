@@ -81,9 +81,12 @@ function isTradeRecord(value: unknown): boolean {
   return isRecord(value) && !('note' in value) && isTradeRecordWithNote(value);
 }
 
-/** A trade in format 13 and up: it may carry its note (D265), checked by `validateTradeRecord`. */
+/**
+ * A trade in format 13 and up: it may carry its note (D265), checked by `validateTradeRecord`. Never its Journal date
+ * (`journalAt`, D259): Kairos derives it and never writes it into a backup.
+ */
 function isTradeRecordWithNote(value: unknown): boolean {
-  if (!isRecord(value)) return false;
+  if (!isRecord(value) || 'journalAt' in value) return false;
   if (
     !isNonEmptyString(value.id) ||
     !isNonEmptyString(value.symbol) ||

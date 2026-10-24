@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { commitBackupRestore, exportKairosBackup, prepareBackupRestore } from '../src/application/backup';
 import { getJournalHistoryEntry, listJournalHistoryPage, type JournalHistoryCursor } from '../src/application/journal';
 import { openDraftTrade, saveManualTrade, updateTradeExecution } from '../src/application/trades';
@@ -13,7 +13,7 @@ import { TRADE_NOTE_MAX_LENGTH, tradeJournalAt, validateTradeRecord, type TradeI
 const names: string[] = [];
 const opened: Dexie[] = [];
 const newName = (label: string) => { const name = `kairos-journal-order-v15-${label}-${crypto.randomUUID()}`; names.push(name); return name; };
-afterEach(async () => { for (const db of opened.splice(0)) db.close(); for (const name of names.splice(0)) await Dexie.delete(name); });
+afterEach(async () => { vi.restoreAllMocks(); for (const db of opened.splice(0)) db.close(); for (const name of names.splice(0)) await Dexie.delete(name); });
 async function current(label: string): Promise<KairosDatabase> {
   const db = createKairosDatabase(newName(label)); opened.push(db); await openKairosDatabase(db); return db;
 }
@@ -81,6 +81,10 @@ describe('T-060a backup format 13', () => {
     expect(parsed).toMatchObject({ formatVersion: 13, databaseSchemaVersion: 15, recordCounts: { trades: 2 } });
     expect(parsed.payload.trades.every(row => !('journalAt' in row))).toBe(true);
     expect(parsed.payload.trades.find(row => row.id === closed.id)?.note).toBe('Entered late; the plan was fine.');
+    // Review r1: a file that carries a Journal date was not written by Kairos; it is refused before anything is replaced.
+    const file = JSON.parse(exported.file.contents) as { payload: { trades: Record<string, unknown>[] } };
+    file.payload.trades[0] = { ...file.payload.trades[0], journalAt: '2030-01-01T00:00:00.000Z' };
+    expect(() => parseKairosBackup(JSON.stringify(file))).toThrow(expect.objectContaining({ code: 'INVALID_PAYLOAD' }));
     const target = await current('restore');
     const prepared = await prepareBackupRestore(target, exported.file.contents);
     if (!prepared.ok) throw new Error(prepared.type);
@@ -127,6 +131,20 @@ describe('T-060a the Journal in the order trades happened', () => {
     const fixed = await updateTradeExecution(db, { expected: entry, fee: { id: entry.fees[0]!.id, amount: '1.5', currency: 'USDT' } }, { now: () => '2026-10-20T08:00:00.000Z' });
     expect(fixed.ok).toBe(true);
     expect((await listJournalHistoryPage(db)).entries.map(row => row.trade.id)).toEqual([newer.tradeId, older.tradeId]);
+  });
+
+  it('review r1: the Open list reads only open trades, however many closed trades are newer', async () => {
+    const db = await current('status');
+    const closedRows = Array.from({ length: 400 }, (_, index) => trade(`t-c${String(index).padStart(3, '0')}`, { status: 'closed', openedAt: '2026-10-09T08:00:00.000Z', closedAt: '2026-10-09T09:00:00.000Z' }));
+    const openRows = [1, 2, 3].map(day => trade(`t-o${day}`, { status: 'open', openedAt: `2026-10-0${day}T08:00:00.000Z` }));
+    await db.trades.bulkPut([...closedRows, ...openRows]);
+    const steps = vi.spyOn(IDBCursor.prototype, 'continue');
+    const page = await listJournalHistoryPage(db, { status: 'open' });
+    expect(page.entries.map(row => row.trade.id)).toEqual(['t-o3', 't-o2', 't-o1']);
+    const onTrades = (cursor: IDBCursor) => { const source = cursor.source as IDBIndex | IDBObjectStore; return ('objectStore' in source ? source.objectStore : source).name === 'trades'; };
+    expect(steps.mock.contexts.filter(cursor => onTrades(cursor as IDBCursor)).length).toBeLessThan(10);
+    const older = await listJournalHistoryPage(db, { status: 'closed', before: { journalAt: '2026-10-09T08:00:00.000Z', id: 't-c002' as TradeId } });
+    expect(older.entries.map(row => row.trade.id)).toEqual(['t-c001', 't-c000']);
   });
 
   it('pages trades with the same date by id, each once', async () => {
