@@ -16,7 +16,7 @@ afterEach(async () => { cleanup(); localStorage.clear(); for (const name of name
 const fact = (baseAsset: string, quoteAsset: string): LiveMarketUniverseInstrumentMetadataFact =>
   ({ instrument: { venue: 'binance-spot', symbol: `${baseAsset}${quoteAsset}` }, baseAsset, quoteAsset, tradingEnabled: true }) as LiveMarketUniverseInstrumentMetadataFact;
 const listed = [fact('BTC', 'USDT'), fact('ETH', 'USDT'), fact('ETH', 'BTC')];
-function market(result: Awaited<ReturnType<TradeFormMarket['marketList']>> = { ok: true, markets: listed }) {
+function market(result: Awaited<ReturnType<TradeFormMarket['marketList']>> = { ok: true, markets: listed, names: null }) {
   return { marketList: vi.fn(async () => result) } satisfies TradeFormMarket;
 }
 async function mount(provider: TradeFormMarket | null) {
@@ -116,4 +116,19 @@ describe('T-059a the symbol search on the trade form', () => {
     expect(screen.queryByRole('listbox')).toBeNull();
     expect(within(field.parentElement!).queryByRole('combobox')).toBeNull();
   });
+
+  it('T-059b finds a coin by its name, with CoinGecko credited, only when the names are there', async () => {
+    await mount(market({ ok: true, markets: listed, names: new Map([['BTC', 'Bitcoin'], ['ETH', 'Ethereum']]) }));
+    typeSymbol('bitcoin');
+    await waitFor(() => expect(results().map(option => option.textContent)).toEqual(['BTCUSDT · Bitcoin']));
+    expect(screen.getByText('Coin names: CoinGecko')).toBeInTheDocument();
+    fireEvent.keyDown(symbol(), { key: 'Enter' });
+    expect(symbol()).toHaveValue('BTCUSDT');
+    cleanup();
+    await mount(market());
+    typeSymbol('eth');
+    await waitFor(() => expect(results()).toHaveLength(2));
+    expect(screen.queryByText('Coin names: CoinGecko')).toBeNull();
+  });
 });
+

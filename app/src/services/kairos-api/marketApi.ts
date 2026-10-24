@@ -25,6 +25,11 @@ export const MARKET_TICKERS_MAX_SYMBOLS = 100;
 export const MARKET_TICKERS_MAX_QUERY = 3_000;
 const MARKET_LIST_CACHE = 'kairos-market-list';
 const MARKET_LIST_KEY = '/kairos-market-list/binance-spot';
+export const COIN_NAMES_STORE_KEY = '/kairos-market-list/coin-names';
+/** U14 (D255): a device copy of the coin names younger than a day is used without asking; up to 7 days when the server fails. */
+export const COIN_NAMES_FRESH_MS = 24 * 60 * 60 * 1000;
+export const COIN_NAMES_KEEP_MS = 7 * 24 * 60 * 60 * 1000;
+export const COIN_NAMES_MAX = 250;
 const SPOT_VENUE = 'binance-spot';
 
 export interface ServerMarket {
@@ -188,11 +193,14 @@ export interface MarketListStore {
   write(text: string): Promise<void>;
 }
 
-/** Cache Storage `kairos-market-list` (the service worker deletes only kairos-app-shell-* caches); null without Cache Storage. */
-export function browserMarketListStore(): MarketListStore | null {
+/**
+ * Cache Storage `kairos-market-list` (the service worker deletes only kairos-app-shell-* caches); null without Cache
+ * Storage. The coin names (U14) are a second entry in the same cache.
+ */
+export function browserMarketListStore(entry: string = MARKET_LIST_KEY): MarketListStore | null {
   const storage = globalThis.caches;
   if (storage === undefined) return null;
-  const key = () => new Request(MARKET_LIST_KEY);
+  const key = () => new Request(entry);
   return Object.freeze({
     async read() {
       try {
@@ -380,4 +388,91 @@ export function createKairosMarketDataPorts(client: KairosApiClient, options: Ka
   };
 
   return Object.freeze({ history, metadata, baseline });
+}
+
+/** U14 (D255): a coin's name by its symbol (BTC → Bitcoin), as the server checked it. */
+export interface ServerCoinName {
+  readonly symbol: string;
+  readonly name: string;
+}
+
+const COIN_SYMBOL = /^[A-Z0-9]{1,20}$/;
+// Control characters are never part of a name.
+const CONTROL = /[\u0000-\u001f\u007f]/;
+
+/** The /market/coin-names data, checked again: at most 250 names, symbols A→Z and each once; null for any fault. */
+export function decodeCoinNames(data: unknown): readonly ServerCoinName[] | null {
+  if (!isRecord(data) || data.source !== 'coingecko' || !isCanonicalIso(data.fetchedAt) || !Array.isArray(data.names) || data.names.length > COIN_NAMES_MAX) return null;
+  const names: ServerCoinName[] = [];
+  for (const item of data.names as unknown[]) {
+    if (!isRecord(item) || typeof item.symbol !== 'string' || !COIN_SYMBOL.test(item.symbol) || typeof item.name !== 'string') return null;
+    if (item.name.trim() !== item.name || item.name.length === 0 || item.name.length > 60 || CONTROL.test(item.name)) return null;
+    if (names.length > 0 && !(names[names.length - 1]!.symbol < item.symbol)) return null;
+    names.push(Object.freeze({ symbol: item.symbol, name: item.name }));
+  }
+  return Object.freeze(names);
+}
+
+export type CoinNamesResult = Readonly<{ ok: true; names: ReadonlyMap<string, string> }> | MarketDataUnavailable;
+
+export interface KairosCoinNames {
+  /** The names by symbol; a caller's abort ends only its own wait. */
+  coinNames(options?: Readonly<{ signal?: AbortSignal }>): Promise<CoinNamesResult>;
+}
+
+const coinNamesMap = (names: readonly ServerCoinName[]): ReadonlyMap<string, string> => new Map(names.map((coin) => [coin.symbol, coin.name]));
+
+/**
+ * U14 (D255): the coin names from the Kairos server, read at most once at a time; a device copy younger than a day is
+ * used without asking, and one up to 7 days old when the server fails. "Not set up" (no CoinGecko key, O6) is said as such.
+ */
+export function createKairosCoinNames(client: KairosApiClient, options: Readonly<{ store: MarketListStore | null; now?: () => number; isOnline?: () => boolean }>): KairosCoinNames {
+  const now = options.now ?? (() => Date.now());
+  const isOnline = options.isOnline ?? (() => globalThis.navigator?.onLine !== false);
+  let session: { readonly names: ReadonlyMap<string, string>; readonly storedAt: number } | null = null;
+  let inFlight: Promise<CoinNamesResult> | null = null;
+  const ageOk = (storedAt: number, limit: number) => { const age = now() - storedAt; return age >= 0 && age <= limit; };
+  const readCopy = async (): Promise<{ readonly storedAt: number; readonly names: readonly ServerCoinName[] } | null> => {
+    const text = (await options.store?.read()) ?? null;
+    if (text === null) return null;
+    let body: unknown;
+    try { body = JSON.parse(text); } catch { return null; }
+    if (!isRecord(body) || typeof body.storedAt !== 'number' || !Number.isSafeInteger(body.storedAt)) return null;
+    const names = decodeCoinNames({ source: 'coingecko', fetchedAt: new Date(0).toISOString(), names: body.names });
+    return names === null || names.length === 0 ? null : { storedAt: body.storedAt, names };
+  };
+  const ask = async (): Promise<CoinNamesResult> => {
+    const result = await client.request('/market/coin-names', {}, decodeCoinNames);
+    if (result.ok && result.value.length > 0) {
+      const storedAt = now();
+      session = { names: coinNamesMap(result.value), storedAt };
+      await options.store?.write(JSON.stringify({ storedAt, names: result.value }));
+      return { ok: true, names: session.names };
+    }
+    const failure = result.ok ? unavailable('unreadable') : marketDataUnavailableOf(result, isOnline);
+    const copy = await readCopy();
+    return copy !== null && ageOk(copy.storedAt, COIN_NAMES_KEEP_MS) ? { ok: true, names: coinNamesMap(copy.names) } : failure;
+  };
+  return Object.freeze({
+    async coinNames(callerOptions?: Readonly<{ signal?: AbortSignal }>): Promise<CoinNamesResult> {
+      if (session !== null && ageOk(session.storedAt, COIN_NAMES_FRESH_MS)) return { ok: true, names: session.names };
+      if (inFlight === null) {
+        const copy = await readCopy();
+        if (copy !== null && ageOk(copy.storedAt, COIN_NAMES_FRESH_MS)) {
+          session = { names: coinNamesMap(copy.names), storedAt: copy.storedAt };
+          return { ok: true, names: session.names };
+        }
+      }
+      if (inFlight === null) inFlight = ask().finally(() => { inFlight = null; });
+      const shared = inFlight;
+      const signal = callerOptions?.signal;
+      if (signal === undefined) return shared;
+      return new Promise((resolve) => {
+        const stop = () => resolve(unavailable(isOnline() ? 'source-down' : 'offline'));
+        if (signal.aborted) { stop(); return; }
+        signal.addEventListener('abort', stop, { once: true });
+        void shared.then((result) => { signal.removeEventListener('abort', stop); resolve(result); });
+      });
+    },
+  });
 }

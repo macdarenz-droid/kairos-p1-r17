@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createKairosApiClient, type KairosApiFailure } from '../src/services/kairos-api/kairosApi';
-import { createKairosMarketDataPorts, marketDataUnavailableOf, type MarketListStore } from '../src/services/kairos-api/marketApi';
+import { createKairosCoinNames, createKairosMarketDataPorts, decodeCoinNames, marketDataUnavailableOf, type MarketListStore } from '../src/services/kairos-api/marketApi';
 import type { MarketCandleHistoryRequest } from '../src/services/market-data/MarketCandleHistoryPort';
 
 const BASE = 'https://api.test';
@@ -228,3 +228,59 @@ describe('the server-backed 24-hour prices', () => {
     expect(result).toEqual({ ok: false, reason: 'unavailable', why: 'busy', retryAfterSeconds: 20 });
   });
 });
+
+describe('T-059b coin names: the session, the device copy and the server', () => {
+  const NAMES = [{ symbol: 'BTC', name: 'Bitcoin' }, { symbol: 'ETH', name: 'Ethereum' }];
+  const namesAnswer = () => okAnswer({ source: 'coingecko', fetchedAt: FETCHED_AT, names: NAMES });
+  const names = (fetchImpl: typeof fetch, store: MarketListStore | null = null) => createKairosCoinNames(createKairosApiClient({ baseUrl: BASE, fetchImpl }), { store, now: () => NOW, isOnline: () => true });
+  const stored = (ageMs: number) => JSON.stringify({ storedAt: NOW - ageMs, names: NAMES });
+  const asMap = new Map([['BTC', 'Bitcoin'], ['ETH', 'Ethereum']]);
+
+  it('asks the server once, keeps the names on the device, and shares one request between two callers', async () => {
+    const store = memoryStore(null);
+    const fetchImpl = vi.fn<typeof fetch>(async () => namesAnswer());
+    const port = names(fetchImpl, store);
+    const [first, second] = await Promise.all([port.coinNames(), port.coinNames()]);
+    expect(String(fetchImpl.mock.calls[0][0])).toBe('https://api.test/market/coin-names');
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(first).toEqual({ ok: true, names: asMap });
+    expect(second).toEqual(first);
+    expect(JSON.parse(store.text as string)).toEqual({ storedAt: NOW, names: NAMES });
+    expect(await port.coinNames()).toEqual(first);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses a copy younger than a day without asking, and one up to 7 days old only when the server fails', async () => {
+    const quiet = vi.fn<typeof fetch>(async () => namesAnswer());
+    expect(await names(quiet, memoryStore(stored(20 * HOUR))).coinNames()).toEqual({ ok: true, names: asMap });
+    expect(quiet).not.toHaveBeenCalled();
+    const down = vi.fn<typeof fetch>(async () => failAnswer('source-unavailable', 502, 30));
+    expect(await names(down, memoryStore(stored(6 * 24 * HOUR))).coinNames()).toEqual({ ok: true, names: asMap });
+    expect(await names(down, memoryStore(stored(8 * 24 * HOUR))).coinNames()).toEqual({ ok: false, reason: 'unavailable', why: 'source-down', retryAfterSeconds: 30 });
+  });
+
+  it('says "not set up" without the owner\'s key, and refuses names it cannot trust', async () => {
+    expect(await names(vi.fn<typeof fetch>(async () => failAnswer('not-set-up', 503))).coinNames()).toMatchObject({ ok: false, why: 'not-set-up' });
+    const repeated = vi.fn<typeof fetch>(async () => okAnswer({ source: 'coingecko', fetchedAt: FETCHED_AT, names: [...NAMES, NAMES[1]] }));
+    expect(await names(repeated).coinNames()).toMatchObject({ ok: false, why: 'unreadable' });
+    expect(decodeCoinNames({ source: 'coingecko', fetchedAt: FETCHED_AT, names: [{ symbol: 'btc', name: 'Bitcoin' }] })).toBeNull();
+    expect(decodeCoinNames({ source: 'coingecko', fetchedAt: FETCHED_AT, names: [{ symbol: 'BTC', name: 'Bit\u0007coin' }] })).toBeNull();
+    expect(decodeCoinNames({ source: 'coingecko', fetchedAt: FETCHED_AT, names: [{ symbol: 'BTC', name: ' Bitcoin' }] })).toBeNull();
+    expect(decodeCoinNames({ source: 'coingecko', fetchedAt: FETCHED_AT, names: NAMES })).toEqual(NAMES);
+  });
+
+  it('a caller\'s abort ends only its own wait', async () => {
+    let release: (response: Response) => void = () => undefined;
+    const fetchImpl = vi.fn<typeof fetch>(() => new Promise<Response>(resolve => { release = resolve; }));
+    const port = names(fetchImpl);
+    const controller = new AbortController();
+    const leaving = port.coinNames({ signal: controller.signal });
+    const staying = port.coinNames();
+    await vi.waitFor(() => expect(fetchImpl).toHaveBeenCalledTimes(1));
+    controller.abort();
+    expect(await leaving).toMatchObject({ ok: false });
+    release(namesAnswer());
+    expect(await staying).toEqual({ ok: true, names: asMap });
+  });
+});
+

@@ -47,4 +47,14 @@ describe('T-059a searching markets by what a trader types', () => {
     expect(checkTypedCryptoSymbol('BTCUSTD', crypto)).toEqual({ kind: 'not-listed', note: "Binance doesn't list BTCUSTD. Check the spelling, for example BTCUSDT. You can still save." });
     expect(checkTypedCryptoSymbol('  ', crypto)).toEqual({ kind: 'empty' });
   });
+
+  it('T-059b finds a coin by its name when the names list is there, and says the name; without it, ticker only', () => {
+    const names = new Map([['BTC', 'Bitcoin'], ['ETH', 'Ethereum']]);
+    const rows = searchMarketSymbols('bitcoin', { marketType: 'crypto', crypto, names });
+    expect(rows.map(row => row.label)).toEqual(['BTCUSDT · Bitcoin', 'BTCFDUSD · Bitcoin']);
+    expect(searchMarketSymbols('bitcoin', { marketType: 'crypto', crypto, names: null })).toEqual([]);
+    expect(searchMarketSymbols('sol', { marketType: 'crypto', crypto, names }).map(row => row.label)).toEqual(['SOLUSDT · SOL/USDT']);
+    expect(searchMarketSymbols('b', { marketType: 'crypto', crypto, names }).map(row => row.symbol)).toEqual(['BTCUSDT', 'BTCFDUSD', 'ETHBTC']);
+  });
 });
+

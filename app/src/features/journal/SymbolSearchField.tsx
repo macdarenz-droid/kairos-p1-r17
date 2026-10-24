@@ -9,6 +9,8 @@ interface Props {
   readonly marketType: MarketType | '';
   /** Binance's list when it has been read; forex pairs need no list. */
   readonly markets: readonly CryptoMarketOption[] | null;
+  /** Coin names by base asset (D255), or null. */
+  readonly names?: ReadonlyMap<string, string> | null;
   /** False without a market provider: a plain text field, as before U14. */
   readonly searchable: boolean;
   readonly onType: (text: string) => void;
@@ -19,11 +21,11 @@ interface Props {
  * U14 (D254): the trade form's "Symbol": type to search Binance's markets and the forex pairs, arrows to move, Enter
  * or tap to choose. Typing alone still works; a symbol that is not on a list can be saved.
  */
-export function SymbolSearchField({ control, value, marketType, markets, searchable, onType, onChoose }: Props) {
+export function SymbolSearchField({ control, value, marketType, markets, names = null, searchable, onType, onChoose }: Props) {
   const listId = `${control.id}-list`;
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
-  const rows = useMemo(() => (searchable && open ? searchMarketSymbols(value, { marketType, crypto: markets ?? [] }) : []), [searchable, open, value, marketType, markets]);
+  const rows = useMemo(() => (searchable && open ? searchMarketSymbols(value, { marketType, crypto: markets ?? [], names }) : []), [searchable, open, value, marketType, markets, names]);
   const expanded = rows.length > 0;
   const activeIndex = Math.min(active, rows.length - 1);
   const choose = (row: SymbolSearchRow) => { onChoose(row); setOpen(false); };
@@ -43,9 +45,12 @@ export function SymbolSearchField({ control, value, marketType, markets, searcha
     <input {...common} type="text" role="combobox" aria-autocomplete="list" aria-controls={listId} aria-expanded={expanded}
       aria-activedescendant={expanded ? `${listId}-${activeIndex}` : undefined} placeholder="Search, e.g. BTC or EURUSD"
       onKeyDown={onKeyDown} onBlur={() => setOpen(false)} />
-    <ul id={listId} role="listbox" aria-label="Search results" className="kairos-symbol-search__list" hidden={!expanded}>
+    <div className="kairos-symbol-search__popup" hidden={!expanded}>
+    <ul id={listId} role="listbox" aria-label="Search results" className="kairos-symbol-search__list">
       {rows.map((row, index) => <li key={`${row.marketType}-${row.symbol}`} id={`${listId}-${index}`} role="option" aria-selected={index === activeIndex}
         className="kairos-symbol-search__option" onMouseDown={event => event.preventDefault()} onClick={() => choose(row)}>{row.label}</li>)}
     </ul>
+    {names !== null && rows.some(row => row.marketType === 'crypto') ? <p className="kairos-symbol-search__credit">Coin names: CoinGecko</p> : null}
+    </div>
   </div>;
 }

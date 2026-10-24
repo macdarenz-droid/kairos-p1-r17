@@ -2,12 +2,13 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import type { LiveMarketUniverseInstrumentMetadataFact } from '../../services/market-data/liveMarketUniverseInstrumentMetadataFact';
 
 export type TradeFormMarketListResult =
-  | Readonly<{ ok: true; markets: readonly LiveMarketUniverseInstrumentMetadataFact[] }>
+  /** names: coin names by base asset (U14, D255), or null when there are none (not set up or unavailable). */
+  | Readonly<{ ok: true; markets: readonly LiveMarketUniverseInstrumentMetadataFact[]; names: ReadonlyMap<string, string> | null }>
   | Readonly<{ ok: false }>;
 
 /** What the trade form may ask the market for (U14). The app shell provides the real one; without it the form works offline as before. */
 export interface TradeFormMarket {
-  /** The markets the symbol search lists (searchableCryptoMarkets), from the device copy of the market list when it is fresh. */
+  /** The markets the symbol search lists (searchableCryptoMarkets), from the device copy of the market list when it is fresh, with coin names when there are any. */
   readonly marketList: (signal: AbortSignal) => Promise<TradeFormMarketListResult>;
 }
 
@@ -16,7 +17,7 @@ export const TradeFormMarketContext = createContext<TradeFormMarket | null>(null
 export type TradeFormMarketListState =
   | Readonly<{ phase: 'absent' }>
   | Readonly<{ phase: 'waiting' }>
-  | Readonly<{ phase: 'ready'; markets: readonly LiveMarketUniverseInstrumentMetadataFact[] }>
+  | Readonly<{ phase: 'ready'; markets: readonly LiveMarketUniverseInstrumentMetadataFact[]; names: ReadonlyMap<string, string> | null }>
   | Readonly<{ phase: 'unavailable' }>;
 
 /**
@@ -31,7 +32,7 @@ export function useTradeFormMarketList(wanted: boolean): TradeFormMarketListStat
     if (!start || market === null) return;
     const controller = new AbortController();
     market.marketList(controller.signal).then(
-      result => { if (!controller.signal.aborted) setState(result.ok ? { phase: 'ready', markets: result.markets } : { phase: 'unavailable' }); },
+      result => { if (!controller.signal.aborted) setState(result.ok ? { phase: 'ready', markets: result.markets, names: result.names } : { phase: 'unavailable' }); },
       () => { if (!controller.signal.aborted) setState({ phase: 'unavailable' }); },
     );
     return () => controller.abort();

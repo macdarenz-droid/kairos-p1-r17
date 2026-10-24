@@ -264,6 +264,7 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
   const cryptoOrOpen = draft.marketType === 'crypto' || draft.marketType === '';
   const marketList = useTradeFormMarketList(searchable && cryptoOrOpen && draft.symbol.trim() !== '');
   const markets = marketList.phase === 'ready' ? marketList.markets : null;
+  const coinNames = marketList.phase === 'ready' ? marketList.names : null;
   const typedCrypto = draft.marketType === 'crypto' && markets !== null ? checkTypedCryptoSymbol(draft.symbol, markets) : null;
   const [currencyFilledBy, setCurrencyFilledBy] = useState<string | null>(null);
   const listedSymbol = typedCrypto?.kind === 'listed' ? typedCrypto.symbol : null;
@@ -480,7 +481,7 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
           <legend>{text.legend}</legend>
           <div className="kairos-trade-form__grid">
             <Field label="Symbol" id={`${idPrefix}-symbol`} required wide invalid={fieldHasError(feedback, 'symbol')} hint={symbolNote}>
-              {control => <SymbolSearchField control={control} value={draft.symbol} marketType={draft.marketType} markets={markets} searchable={searchable}
+              {control => <SymbolSearchField control={control} value={draft.symbol} marketType={draft.marketType} markets={markets} names={coinNames} searchable={searchable}
                 onType={text => update('symbol', text)} onChoose={chooseSymbol} />}
             </Field>
 
