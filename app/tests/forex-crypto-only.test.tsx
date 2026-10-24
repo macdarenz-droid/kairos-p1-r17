@@ -13,7 +13,7 @@ import { saveManualTrade } from '../src/application/trades';
 import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
 import { ReplayScreen } from '../src/features/practice/ReplayScreen';
 import type { LiveMarketUniverseInstrumentMetadataFact } from '../src/services/market-data/liveMarketUniverseInstrumentMetadataFact';
-import { fakeReplayMarket } from './fixtures/replayCandles';
+import { fakeReplayMarket, HOUR, replayCandle } from './fixtures/replayCandles';
 
 beforeAll(async () => { await import('../src/features/practice/ReplayScreen'); }, 30_000);
 const names: string[] = [];
@@ -77,13 +77,17 @@ describe('T-043d crypto only for now, in plain words', () => {
 
   it('Replay replays a forex pair from OANDA (T-055d), and keeps the spelling note otherwise', async () => {
     const NOW = Date.parse('2024-04-01T00:00:00.000Z');
-    const pair = fakeReplayMarket({ nowMs: NOW });
+    // Forex is read by count: 60 candles back from the moment and 240 forward from it.
+    const pair = fakeReplayMarket({ nowMs: NOW, history: request => Array.from({ length: request.limit }, (_, i) => {
+      const openMs = request.startTimeMs !== undefined ? request.startTimeMs + i * HOUR : request.endTimeMs! + 1 - (request.limit - i) * HOUR;
+      return replayCandle(openMs, '1.085', '1.086', '1.084', '1.0855');
+    }) });
     render(<MemoryRouter><ReplayScreen db={await database()} market={pair.market} playStepMs={25} /></MemoryRouter>);
     fireEvent.change(screen.getByLabelText(/^Market/), { target: { value: 'EUR/USD' } });
     fireEvent.change(screen.getByLabelText(/^Start from/), { target: { value: '2024-03-01T12:00' } });
     fireEvent.click(screen.getByRole('button', { name: 'Start replay' }));
     expect(await screen.findByText('Candles: OANDA · EUR/USD · mid prices')).toBeInTheDocument();
-    expect(pair.requests.map(request => request.instrument)).toEqual([{ venue: 'oanda-forex', symbol: 'EURUSD' }]);
+    expect(pair.requests.map(request => request.instrument)).toEqual([{ venue: 'oanda-forex', symbol: 'EURUSD' }, { venue: 'oanda-forex', symbol: 'EURUSD' }]);
     expect(pair.state.metadataCalls).toBe(0);
     cleanup();
     for (const [typed, message] of [

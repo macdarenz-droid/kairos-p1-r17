@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { composeTimeAssistedTradeSnapshot, type EstimatedMarketReference, type TimeAssistedTradeSide, type TimeAssistedTradeSnapshot, type TimeAssistedTradeSnapshotResult } from '../application/market-reference';
 import type { MarketCandleHistoryPort } from '../services/market-data/MarketCandleHistoryPort';
-import type { MarketDataInstrument } from '../services/market-data/marketDataTypes';
+import { OANDA_FOREX_VENUE, type MarketDataInstrument } from '../services/market-data/marketDataTypes';
 import { analysisHistoryPorts } from './analysisHistoryPorts';
 import { useAnalysisHandoff } from './analysisHandoff';
 import { ConfirmDialog } from '../design-system/primitives';
@@ -233,7 +233,7 @@ export function AnalysisTimeAssistedSnapshotControls({ history = analysisHistory
       {status.kind === 'estimating' ? <p className="kairos-analysis-chart__note">Looking up market candles…</p> : null}
       {result?.kind === 'invalid' ? <p role="alert">{invalidText(result.reason)}</p> : null}
       {result?.kind === 'snapshot' ? <>
-        <p className="kairos-analysis-chart__note">{result.side === 'long' ? 'Long' : 'Short'} · {result.durationMs === null ? 'still open' : `held ${duration(result.durationMs)}`} · {instrument.symbol} on {instrument.venue}</p>
+        <p className="kairos-analysis-chart__note">{result.side === 'long' ? 'Long' : 'Short'} · {result.durationMs === null ? 'still open' : `held ${duration(result.durationMs)}`} · {instrument.venue === OANDA_FOREX_VENUE ? `${instrument.symbol} from OANDA` : `${instrument.symbol} on ${instrument.venue}`}</p>
         <Estimate label="Entry" estimate={result.opening} />
         {result.closing === null ? null : <Estimate label="Exit" estimate={result.closing} />}
         {markers === null ? null : <p className="kairos-analysis-chart__note" data-time-assisted-markers={markers.kind === 'presented' ? String(markers.markerCount) : markers.kind}>{markerText(markers)}</p>}

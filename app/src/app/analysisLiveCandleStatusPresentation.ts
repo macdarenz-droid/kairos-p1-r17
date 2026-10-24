@@ -66,6 +66,7 @@ const activationFailure = (
     return status('loading', 'Loading candles', 'Waiting for the latest chart selection.');
   }
   if (result.reason === 'history-empty') {
+    if (forexPair !== null) return status('empty', 'No candles yet', `OANDA has no candles for ${forexPair} at this size.`);
     return status('empty', 'No candles returned', 'No authoritative candles are available for this selection.');
   }
   if (result.reason === 'history-failed') {
@@ -88,6 +89,7 @@ const activationFailure = (
   if (result.reason === 'renderer-failed') {
     return status('error', 'Chart unavailable', 'The candle chart could not be displayed on this device.');
   }
+  if (forexPair !== null) return FOREX.error;
   return status('error', 'Live candles unavailable', 'The selected live-candle session could not be started.');
 };
 

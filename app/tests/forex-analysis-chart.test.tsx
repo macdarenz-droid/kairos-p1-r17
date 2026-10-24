@@ -1,8 +1,9 @@
 import '@testing-library/jest-dom/vitest';
-import { render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AnalysisHistoryWorkspace, FOREX_ANALYSIS_INTERVALS } from '../src/app/AnalysisHistoryWorkspace';
 import { AnalysisLiveCandleCanvas, type AnalysisLiveCandleCanvasProps } from '../src/app/AnalysisLiveCandleCanvas';
+import { AnalysisTimeAssistedSnapshotControls } from '../src/app/AnalysisTimeAssistedSnapshotControls';
 import type { AnalysisSavedTradeOverlayLiveCandleCanvasProps } from '../src/app/AnalysisSavedTradeOverlayLiveCandleCanvas';
 import { projectAnalysisSavedTradeChartReference } from '../src/app/analysisSavedTradeChartReferenceProjection';
 import { presentAnalysisLiveCandleStatus, type AnalysisLiveCandleStatusPresentationInput } from '../src/app/analysisLiveCandleStatusPresentation';
@@ -136,6 +137,19 @@ describe('T-055c the forex Analysis chart reads again every 30 seconds (D234)', 
     expect(presentAnalysisLiveCandleStatus(input({ activation: { ok: false, reason: 'history-failed', failure: { ok: false, reason: 'unavailable', why: 'unknown-market', retryAfterSeconds: null } } })))
       .toMatchObject({ kind: 'unavailable', detail: "Candles: OANDA doesn't list EUR/USD." });
     expect(presentAnalysisLiveCandleStatus(input({ forexPair: null }))).toMatchObject({ kind: 'live', label: 'Live candles connected' });
+    // The rarer states have forex words too, never "authoritative" or "live-candle session".
+    expect(presentAnalysisLiveCandleStatus(input({ activation: { ok: false, reason: 'history-empty' } }))).toMatchObject({ kind: 'empty', detail: 'OANDA has no candles for EUR/USD at this size.' });
+    expect(presentAnalysisLiveCandleStatus(input({ activation: { ok: false, reason: 'session-failed', detail: 'venue-mismatch' } }))).toMatchObject({ kind: 'error', label: 'Updates stopped' });
+  });
+
+  it('the time-assisted snapshot names the pair and OANDA, never the venue code', async () => {
+    const history: MarketCandleHistoryPort = { acquireHistory: vi.fn(async request => answer(request, [candle(request.startTimeMs!)])) };
+    render(<AnalysisTimeAssistedSnapshotControls history={history} instrument={instrument} now={() => T0 + 3 * MINUTE} />);
+    fireEvent.change(screen.getByLabelText('Snapshot side'), { target: { value: 'long' } });
+    fireEvent.change(screen.getByLabelText('Snapshot opened at'), { target: { value: '2026-10-23T07:00:10' } });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Estimate' })); });
+    expect(await screen.findByText(/^Long · still open · EURUSD from OANDA$/)).toBeInTheDocument();
+    expect(screen.queryByText(/oanda-forex/)).toBeNull();
   });
 
   it('the chart names the pair and its 30-second updates', () => {

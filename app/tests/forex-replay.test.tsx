@@ -22,28 +22,35 @@ async function database(): Promise<KairosDatabase> { const name = `kairos-forex-
 afterEach(async () => { cleanup(); vi.restoreAllMocks(); for (const name of names.splice(0)) await Dexie.delete(name); });
 
 const NOW = Date.parse('2024-04-01T00:00:00.000Z');
+const STEP: Record<string, number> = { '15m': HOUR / 4, '1h': HOUR, '4h': 4 * HOUR, '1d': 24 * HOUR };
 /** Forex trades Sunday 22:00 to Friday 22:00 UTC: no candles in between (weekends are gaps, never made-up candles). */
 const weekend = (openMs: number) => { const date = new Date(openMs); const day = date.getUTCDay(), hour = date.getUTCHours(); return day === 6 || (day === 5 && hour >= 22) || (day === 0 && hour < 22); };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 
-/** The Kairos server's /market/candles for oanda-forex: hourly mid prices, none at weekends, no volume. */
+/** The Kairos server's /market/candles for oanda-forex: mid prices at each size, none at weekends, no volume; read forward from a start or back from an end, by count. */
 function fakeServer(failure: { reason: string; status: number } | null = null) {
   return vi.fn<typeof fetch>(async (input) => {
     const url = new URL(String(input));
     if (url.pathname !== '/market/candles') return json({ apiVersion: 1, ok: false, error: 'unavailable', reason: 'source-unavailable', retryAfter: 30 }, 502);
     if (failure !== null) return json({ apiVersion: 1, ok: false, error: 'unavailable', reason: failure.reason, retryAfter: null }, failure.status);
     const symbol = url.searchParams.get('symbol') ?? '';
-    const start = Number(url.searchParams.get('start')), end = Number(url.searchParams.get('end')), limit = Number(url.searchParams.get('limit'));
+    const interval = url.searchParams.get('interval') ?? '';
+    const ms = STEP[interval];
+    const start = url.searchParams.get('start'), end = url.searchParams.get('end'), limit = Number(url.searchParams.get('limit'));
     const [low, step, places] = symbol === 'XAUUSD' ? [2100, 0.5, 2] : [1.08, 0.0001, 4];
-    const candles: unknown[] = [];
-    for (let openMs = start; openMs <= end && candles.length < limit; openMs += HOUR) {
-      if (weekend(openMs)) continue;
-      const k = candles.length % 9;
-      const price = (n: number) => (low + n * step).toFixed(places);
-      candles.push({ openTime: new Date(openMs).toISOString(), closeTime: new Date(openMs + HOUR - 1).toISOString(), open: price(k + 1), high: price(k + 3), low: price(k), close: price(k + 2), volume: null });
+    const opens: number[] = [];
+    if (start !== null) {
+      for (let openMs = Math.ceil(Number(start) / ms) * ms; openMs < NOW && opens.length < limit; openMs += ms) if (!weekend(openMs)) opens.push(openMs);
+    } else {
+      for (let openMs = Math.floor(Number(end) / ms) * ms; opens.length < limit; openMs -= ms) if (!weekend(openMs)) opens.unshift(openMs);
     }
+    const candles = opens.map((openMs, index) => {
+      const k = index % 9;
+      const price = (n: number) => (low + n * step).toFixed(places);
+      return { openTime: new Date(openMs).toISOString(), closeTime: new Date(openMs + ms - 1).toISOString(), open: price(k + 1), high: price(k + 3), low: price(k), close: price(k + 2), volume: null };
+    });
     const source = { provider: 'oanda', market: 'forex', symbol: `${symbol.slice(0, 3)}_${symbol.slice(3)}` };
-    return json({ apiVersion: 1, ok: true, data: { source, backup: null, interval: url.searchParams.get('interval'), fetchedAt: new Date(NOW).toISOString(), candles, next: null } });
+    return json({ apiVersion: 1, ok: true, data: { source, backup: null, interval, fetchedAt: new Date(NOW).toISOString(), candles, next: null } });
   });
 }
 function serverMarket(fetchImpl: typeof fetch): ReplayMarketDeps & { readonly metadataCalls: () => number } {
@@ -63,27 +70,44 @@ describe('T-055d forex and metals in Replay', () => {
     const eur = await loadReplayCandles({ market: 'EUR/USD', candleSize: '1h', startAt: '2024-03-05T12:00:00Z' }, market);
     const gold = await loadReplayCandles({ market: 'xauusd', candleSize: '1h', startAt: '2024-03-05T12:00:00Z' }, market);
     const asked = fetchImpl.mock.calls.map(([input]) => new URL(String(input)).searchParams);
-    expect(asked.map(params => [params.get('market'), params.get('symbol'), params.get('interval'), params.get('limit')])).toEqual([['oanda-forex', 'EURUSD', '1h', '300'], ['oanda-forex', 'XAUUSD', '1h', '300']]);
+    // By count: the 60 candles before the moment, read back from it, and the 240 after it, read forward.
+    const moment = String(Date.parse('2024-03-05T12:00:00Z'));
+    expect(asked.map(params => [params.get('market'), params.get('symbol'), params.get('interval'), params.get('limit'), params.get('start'), params.get('end')])).toEqual([
+      ['oanda-forex', 'EURUSD', '1h', '60', null, String(Number(moment) - 1)], ['oanda-forex', 'EURUSD', '1h', '240', moment, null],
+      ['oanda-forex', 'XAUUSD', '1h', '60', null, String(Number(moment) - 1)], ['oanda-forex', 'XAUUSD', '1h', '240', moment, null],
+    ]);
     expect(asked.every(params => !params.has('base') && !params.has('quote'))).toBe(true);
     expect(market.metadataCalls()).toBe(0);
     expect(eur).toMatchObject({ ok: true, replay: { symbol: 'EURUSD', quoteAsset: 'USD', marketType: 'forex', source: 'Candles: OANDA · EUR/USD · mid prices', note: null } });
     expect(gold).toMatchObject({ ok: true, replay: { symbol: 'XAUUSD', quoteAsset: 'USD', marketType: 'forex', source: 'Candles: OANDA · XAU/USD · mid prices' } });
+    // Every Replay size: 60 candles before the moment, then the ones after it.
+    for (const candleSize of ['15m', '1h', '4h', '1d']) {
+      const sized = await loadReplayCandles({ market: 'EURUSD', candleSize, startAt: '2024-03-05T12:00:00Z' }, market);
+      expect(sized.ok && sized.replay.startIndex, candleSize).toBe(60);
+    }
   });
 
   it('a six-letter crypto market stays with Binance; only plain currency pairs and metals are forex', () => {
-    for (const typed of ['EURUSD', 'EUR/USD', 'usd-jpy', 'XAUUSD', 'XAGEUR', 'USDTRY']) expect(plainForexPair(typed), typed).not.toBeNull();
-    for (const typed of ['ETHBTC', 'BTCEUR', 'BNBETH', 'EURUSX', 'XAUBTC', 'BTCUSDT', 'AAPL']) expect(plainForexPair(typed), typed).toBeNull();
+    for (const typed of ['EURUSD', 'EUR/USD', 'usd-jpy', 'XAUUSD', 'XAGEUR', 'USDTRY', 'USD/CNH', 'XAU/XAG']) expect(plainForexPair(typed), typed).not.toBeNull();
+    for (const typed of ['ETHBTC', 'BTCEUR', 'BNBETH', 'EURUSX', 'XAUBTC', 'BTCUSDT', 'AAPL', 'USDXAU']) expect(plainForexPair(typed), typed).toBeNull();
   });
 
-  it('weekends have no candles: the replay steps over them, even from a Saturday', async () => {
+  it('weekends have no candles: the replay steps over them, even from a Saturday or a Sunday at 15 minutes', async () => {
     const result = await loadReplayCandles({ market: 'EURUSD', candleSize: '1h', startAt: '2024-03-09T12:00:00Z' }, serverMarket(fakeServer()));
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     const { candles, startIndex } = result.replay;
     expect(candles.some(candle => weekend(Date.parse(candle.openTime)))).toBe(false);
     // The last candle before the start is Friday's; the first after it is Sunday evening's.
+    expect(startIndex).toBe(60);
     expect(candles[startIndex - 1].openTime).toBe('2024-03-08T21:00:00.000Z');
     expect(candles[startIndex].openTime).toBe('2024-03-10T22:00:00.000Z');
+    // Sunday noon at 15 minutes: still Friday's last 60 quarter hours before it.
+    const sunday = await loadReplayCandles({ market: 'EURUSD', candleSize: '15m', startAt: '2024-03-10T12:00:00Z' }, serverMarket(fakeServer()));
+    expect(sunday).toMatchObject({ ok: true, replay: { startIndex: 60 } });
+    if (!sunday.ok) return;
+    expect(sunday.replay.candles[59].openTime).toBe('2024-03-08T21:45:00.000Z');
+    expect(sunday.replay.candles[60].openTime).toBe('2024-03-10T22:00:00.000Z');
   });
 
   it('a finished forex replay is saved as a forex practice trade with its quote as the currency', async () => {
@@ -118,6 +142,33 @@ describe('T-055d forex and metals in Replay', () => {
     expect(await screen.findByText('Forex replay needs the Kairos server.')).toBeInTheDocument();
     await waitFor(() => expect(screen.getByLabelText(/^Market/)).toHaveFocus());
     expect(connect).not.toHaveBeenCalled();
+  });
+
+  it('focus never falls to the page: "Try again" after "Unavailable", and "Choose another moment" after the last candle', async () => {
+    const { unmount } = render(<MemoryRouter><ReplayScreen db={await database()} market={serverMarket(fakeServer({ reason: 'source-unavailable', status: 502 }))} playStepMs={25} /></MemoryRouter>);
+    fireEvent.change(screen.getByLabelText(/^Market/), { target: { value: 'EUR/USD' } });
+    fireEvent.change(screen.getByLabelText(/^Start from/), { target: { value: '2024-03-05T12:00' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Start replay' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Try again' })).toHaveFocus());
+    unmount();
+    // Two candles after the moment: the second "Next candle" is the last one.
+    const start = Date.parse('2024-03-05T12:00:00Z');
+    const short: ReplayMarketDeps = {
+      ...serverMarket(fakeServer()),
+      history: { acquireHistory: async request => ({ ok: true, snapshot: { source: 'market-reference', timeZone: 'UTC', request, observedAt: new Date(NOW).toISOString(),
+        candles: request.startTimeMs !== undefined ? [replayCandle(start, '1.08', '1.09', '1.07', '1.085'), replayCandle(start + HOUR, '1.08', '1.09', '1.07', '1.085')]
+          : Array.from({ length: 60 }, (_, i) => replayCandle(start - (60 - i) * HOUR, '1.08', '1.09', '1.07', '1.085')) } }) },
+    };
+    render(<MemoryRouter><ReplayScreen db={await database()} market={short} playStepMs={25} /></MemoryRouter>);
+    fireEvent.change(screen.getByLabelText(/^Market/), { target: { value: 'EUR/USD' } });
+    fireEvent.change(screen.getByLabelText(/^Start from/), { target: { value: '2024-03-05T12:00' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Start replay' }));
+    const next = await screen.findByRole('button', { name: 'Next candle' });
+    next.focus();
+    fireEvent.click(next);
+    fireEvent.click(next);
+    expect(await screen.findByText('No candles left')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Choose another moment' })).toHaveFocus();
   });
 
   it('a pair OANDA does not list says so on the market field', async () => {

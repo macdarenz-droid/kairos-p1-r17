@@ -84,27 +84,31 @@ function finishedCandles(candles: readonly MarketCandle[], alignedStart: number,
   return { candles: Object.freeze(finished), startIndex: finished.filter(candle => Date.parse(candle.openTime) < alignedStart).length };
 }
 
-/** A forex pair or metal's candles from OANDA through the Kairos server (D236): no market list, no backup, mid prices. */
+/**
+ * A forex pair or metal's candles from OANDA through the Kairos server (D236): no market list, no backup, mid prices.
+ * Forex closes at weekends, so the 60 candles before the moment and the 240 after it are read by count, not by time:
+ * a replay started on a Sunday still gets Friday's candles before it.
+ */
 async function loadForexReplay(
-  pair: ForexPair, size: ReplayCandleSize, fromMs: number, alignedStart: number, nowMs: number, deps: ReplayMarketDeps, options: { readonly signal?: AbortSignal } | undefined,
+  pair: ForexPair, size: ReplayCandleSize, alignedStart: number, nowMs: number, deps: ReplayMarketDeps, options: { readonly signal?: AbortSignal } | undefined,
 ): Promise<ReplayLoadResult> {
-  const history = await deps.history.acquireHistory({
-    instrument: { venue: FOREX_CANDLE_VENUE, symbol: pair.symbol },
-    interval: size.interval,
-    limit: REPLAY_HISTORY_CANDLES + REPLAY_FUTURE_CANDLES,
-    startTimeMs: fromMs,
-    endTimeMs: Math.min(alignedStart + (REPLAY_FUTURE_CANDLES - 1) * size.ms, nowMs),
-  }, options);
-  if (!history.ok) {
-    if (history.reason === 'invalid-request' && history.detail === 'venue-mismatch') return fail('needs-server');
-    if (history.reason === 'unavailable' && history.why === 'unknown-market') return fail('forex-not-listed');
-    return unavailable(history);
+  const instrument = { venue: FOREX_CANDLE_VENUE, symbol: pair.symbol };
+  const [before, after] = await Promise.all([
+    deps.history.acquireHistory({ instrument, interval: size.interval, limit: REPLAY_HISTORY_CANDLES, endTimeMs: alignedStart - 1 }, options),
+    deps.history.acquireHistory({ instrument, interval: size.interval, limit: REPLAY_FUTURE_CANDLES, startTimeMs: alignedStart }, options),
+  ]);
+  for (const page of [before, after]) {
+    if (page.ok) continue;
+    if (page.reason === 'invalid-request' && page.detail === 'venue-mismatch') return fail('needs-server');
+    if (page.reason === 'unavailable' && page.why === 'unknown-market') return fail('forex-not-listed');
+    return unavailable(page);
   }
-  const finished = finishedCandles(history.snapshot.candles, alignedStart, nowMs);
+  if (!before.ok || !after.ok) return unavailable();
+  const finished = finishedCandles([...before.snapshot.candles, ...after.snapshot.candles], alignedStart, nowMs);
   if (finished === null) return Object.freeze({ ok: false as const, reason: 'unavailable' as const, why: 'unreadable' as const, retryAfterSeconds: null });
   if (finished.startIndex === 0) return fail('no-history');
   if (finished.startIndex === finished.candles.length) return fail('no-future');
-  const origin: MarketCandleOrigin = history.snapshot.origin ?? { provider: 'oanda', market: 'forex', symbol: pair.symbol, backup: null };
+  const origin: MarketCandleOrigin = after.snapshot.origin ?? before.snapshot.origin ?? { provider: 'oanda', market: 'forex', symbol: pair.symbol, backup: null };
   return Object.freeze({ ok: true as const, replay: Object.freeze({
     symbol: pair.symbol, quoteAsset: pair.quote, candleSize: size, candles: finished.candles, startIndex: finished.startIndex,
     source: describeCandleSource(origin, pair, 'spot'), note: null, marketType: 'forex' as const,
@@ -132,7 +136,7 @@ export async function loadReplayCandles(request: ReplayRequest, deps: ReplayMark
 
     const options = deps.signal ? { signal: deps.signal } : undefined;
     const forex = plainForexPair(request.market);
-    if (forex !== null) return await loadForexReplay(forex, size, fromMs, alignedStart, nowMs, deps, options);
+    if (forex !== null) return await loadForexReplay(forex, size, alignedStart, nowMs, deps, options);
     const metadata = await deps.metadata.acquireInstrumentMetadata(options);
     if (!metadata.ok) return unavailable(metadata);
     const match = matchCryptoMarket(request.market, 'crypto', metadata.facts);
