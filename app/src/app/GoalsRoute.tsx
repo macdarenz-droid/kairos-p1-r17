@@ -9,6 +9,7 @@ import { createKairosRepositories } from '../data/repositories';
 import { Button, Card, ErrorState, Field, PageHeader } from '../design-system/primitives';
 import { DeviceTimeZoneButton } from '../features/settings/DeviceTimeZoneButton';
 import { GoalsProgress } from '../features/discipline/GoalsProgressCard';
+import { LimitsCalendar } from '../features/discipline/LimitsCalendar';
 import '../features/discipline/goals.css';
 
 interface GoalsRouteProps {
@@ -116,6 +117,7 @@ export function GoalsRoute({ db = kairosDatabase, now = wallClock }: GoalsRouteP
     {state.kind === 'ready' && state.result.kind === 'time-zone-unconfigured' ? <p className="kairos-goals__unconfigured" role="status">Goals follow your daily-results calendar. <Link to="/settings">Set your time zone in Settings</Link> first.</p> : null}
     {state.kind === 'ready' && state.result.kind === 'time-zone-unconfigured' ? <DeviceTimeZoneButton metadata={repositories.metadata} onSaved={() => { void load(() => false); }} /> : null}
     {state.kind === 'ready' && state.result.kind === 'ready' ? <GoalsProgress progress={state.result.progress} inHomeCurrency={state.result.inHomeCurrency} /> : null}
+    {state.kind === 'ready' && state.result.kind === 'ready' ? <LimitsCalendar db={db} now={now} revision={revision} /> : null}
     <Card as="form" className="kairos-goals-card kairos-goals__form" onSubmit={handleSubmit} noValidate>
       <div><h2>Your targets</h2><p>Leave a field blank to keep no target. Targets are yours to change any time; they never alter your journal.</p></div>
       <Field label="Closed trades per month" id="kairos-goals-trades-per-month">{control => <input {...control} inputMode="numeric" value={form.tradesPerMonthTarget} onChange={field('tradesPerMonthTarget')} placeholder="20" autoComplete="off" disabled={busy} />}</Field>

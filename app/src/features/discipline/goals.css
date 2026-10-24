@@ -21,3 +21,21 @@
 .kairos-goals-card__row p { flex:1 1 12rem; }
 .kairos-goals-card__mark { color:var(--kairos-state-error); font-weight:700; }
 .kairos-goals-card[data-goal-state="over"] h2, .kairos-goals-card[data-goal-state="over"] h3 { color:var(--kairos-state-error); }
+.kairos-limits { display:grid; gap:var(--kairos-space-3); min-width:0; }
+.kairos-limits h2 { margin:0; font-size:var(--kairos-font-size-md); }
+.kairos-limits__months { display:flex; align-items:center; justify-content:space-between; gap:var(--kairos-space-2); flex-wrap:wrap; }
+.kairos-limits__month { margin:0; font-weight:600; color:var(--kairos-text-primary); }
+.kairos-limits__months [aria-disabled="true"] { opacity:0.5; cursor:default; }
+.kairos-limits__grid { width:100%; border-collapse:separate; border-spacing:2px; table-layout:fixed; }
+.kairos-limits__grid th { font-size:var(--kairos-font-size-xs); font-weight:600; color:var(--kairos-text-muted); text-align:center; }
+.kairos-limits__grid td { padding:0; text-align:center; }
+.kairos-limits__day { display:grid; place-items:center; width:100%; min-height:44px; padding:2px 0; border:1px solid transparent; border-radius:var(--kairos-radius-md); background:none; color:var(--kairos-text-secondary); font:inherit; }
+button.kairos-limits__day { cursor:pointer; border-color:var(--kairos-border-subtle); }
+.kairos-limits__grid td[data-day-state="inside"] .kairos-limits__day { border-color:var(--kairos-state-success); color:var(--kairos-state-success); }
+.kairos-limits__grid td[data-day-state="over"] .kairos-limits__day { border-color:var(--kairos-state-error); color:var(--kairos-state-error); }
+.kairos-limits__grid td[data-day-state="unknown"] .kairos-limits__day { border-style:dashed; }
+.kairos-limits__day[aria-pressed="true"] { outline:2px solid var(--kairos-state-focus); outline-offset:1px; }
+.kairos-limits__date { font-size:var(--kairos-font-size-xs); }
+.kairos-limits__mark { font-weight:700; line-height:1; }
+.kairos-limits__details h3 { margin:0 0 var(--kairos-space-1); font-size:var(--kairos-font-size-sm); }
+.kairos-limits__details p { margin:0; }

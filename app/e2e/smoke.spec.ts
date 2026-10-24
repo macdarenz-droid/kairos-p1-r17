@@ -1978,5 +1978,17 @@ test('(af) Goals you can see: limits, a loss, the rings and Home', async ({ page
   await page.getByLabel(/Why save anyway\?/).fill('Half size, clear stop.');
   await page.getByRole('button', { name: 'Save trade' }).click();
   await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+
+  // T-058d: today is over a limit on the limits calendar; its details say why.
+  await page.goto('/goals');
+  const today = page.getByRole('button', { name: /: over a limit$/ });
+  await expect(today).toHaveCount(1);
+  await today.click();
+  await expect(page.getByText('Lost that day: 120 of 100 USDT · over your limit')).toBeVisible();
+  await expect(page.getByRole('link', { name: "See this day's trades" })).toBeVisible();
+  await axeOk('.kairos-limits');
+  await page.getByRole('button', { name: 'Previous month' }).click();
+  await expect(page.getByRole('button', { name: /: over a limit$/ })).toHaveCount(0);
+  await axeOk('.kairos-limits');
   expect(errors).toEqual([]);
 });
