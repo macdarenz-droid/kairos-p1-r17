@@ -45,13 +45,19 @@ export function describeUnavailable(failure: KairosApiFailure, subject: string):
   }
 }
 
+/** Which source market data words name (U10, D235): Binance for crypto, or OANDA for a forex pair or metal, with the pair as the trader reads it (EUR/USD). */
+export type MarketSourceWords = Readonly<{ provider: 'binance' }> | Readonly<{ provider: 'oanda'; pair: string }>;
+
+const BINANCE: MarketSourceWords = Object.freeze({ provider: 'binance' });
+
 /** The words for market data that could not be had (U2): one sentence per `why`, and "Try again" unless it cannot help. */
-export function describeMarketDataUnavailable(failure: MarketDataUnavailable, subject: string): UnavailableWords {
+export function describeMarketDataUnavailable(failure: MarketDataUnavailable, subject: string, source: MarketSourceWords = BINANCE): UnavailableWords {
   switch (failure.why) {
     case 'offline': return words(`${subject}: you're offline. Kairos will try again when you're back online.`, true, null, true);
-    case 'unknown-market': return words(unknownMarket(subject), false, null);
+    case 'unknown-market': return words(source.provider === 'oanda' ? `${subject}: OANDA doesn't list ${source.pair}.` : unknownMarket(subject), false, null);
     case 'busy': return words(`${subject}: too many requests right now. Wait a minute, then try again.`, true, failure.retryAfterSeconds);
-    case 'region': return words(regionRefused(subject), true, null);
+    // OANDA refusing the Kairos server is the server's own access, not the trader's region.
+    case 'region': return words(source.provider === 'oanda' ? `${subject}: OANDA refused the Kairos server. Try again later.` : regionRefused(subject), true, null);
     case 'source-down': return words(`${subject}: the price source didn't answer. Try again in a moment.`, true, null);
     case 'not-set-up': return words(`${subject}: not set up in this version of Kairos.`, false, null);
     case 'unreadable': return words(`${subject}: the answer could not be read. Try again later.`, true, null);

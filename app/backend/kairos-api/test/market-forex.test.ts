@@ -73,6 +73,18 @@ describe('T-055a forex and metal candles from OANDA', () => {
     expect([...urlOf(newest).searchParams.keys()]).not.toContain('from');
   });
 
+  it('never sends OANDA a time in the future: an end not yet past reads the newest candles, and a start to come has none', async () => {
+    const soon = answer(page([candle(NOW - HOUR, {}, false)]));
+    await call(`/market/candles?market=oanda-forex&symbol=EURUSD&interval=1h&limit=3&end=${NOW + HOUR}`, soon);
+    expect(Object.fromEntries(urlOf(soon).searchParams)).toEqual({ ...ALIGNMENT, granularity: 'H1', count: '3' });
+    const later = answer(page([]));
+    const response = await call(`/market/candles?market=oanda-forex&symbol=EURUSD&interval=1h&limit=3&start=${NOW + HOUR}`, later);
+    expect(later).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect((await dataOf(response)).candles).toEqual([]);
+    expect(response.headers.get('cache-control')).toBe('public, max-age=10');
+  });
+
   it('leaves out the candle that holds the start and any after the end, never sending from, to and count together', async () => {
     const start = START + 10 * 60_000; // 00:10: OANDA answers from the 00:00 candle
     const fetchImpl = answer(page([candle(START), candle(START + HOUR), candle(START + 2 * HOUR)]));

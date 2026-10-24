@@ -166,8 +166,9 @@ export function matchNoteFor(match: CryptoMarketMatch, shown: CryptoCandleMarket
   return match.note.slice(0, -FUTURES_CANDLES.length);
 }
 
-/** The source line under a picture: where the candles came from, and why when it is not the usual place. */
-export function describeCandleSource(origin: MarketCandleOrigin | undefined, match: CryptoMarketMatch, asked: CryptoCandleMarket): string {
+/** The source line under a picture: where the candles came from, and why when it is not the usual place. OANDA's are mid prices (D232). */
+export function describeCandleSource(origin: MarketCandleOrigin | undefined, match: Pick<CryptoMarketMatch, 'base' | 'quote'>, asked: CryptoCandleMarket): string {
+  if (origin?.provider === 'oanda') return `Candles: OANDA · ${match.base}/${match.quote} · mid prices`;
   const spot = origin === undefined || origin.market === 'spot';
   const provider = origin?.provider === 'okx' ? 'OKX' : 'Binance';
   let line = `Candles: ${provider} ${spot ? 'Spot' : 'Futures'} · ${match.base}/${match.quote}`;

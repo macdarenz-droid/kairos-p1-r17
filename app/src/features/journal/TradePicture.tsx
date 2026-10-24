@@ -1,7 +1,7 @@
 import { useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { JournalHistoryEntry } from '../../application/journal';
 import { describeMarketDataUnavailable, type UnavailableWords } from '../../application/online/onlineWords';
-import { projectTradePicture, tradePictureHasCandleSource, type TradePictureCandlesResult } from '../../application/trade-visualizer';
+import { projectTradePicture, tradePictureCandleSource, type TradePictureCandlesResult } from '../../application/trade-visualizer';
 import { Sheet } from '../../design-system/primitives';
 import { TradePictureCard } from './TradePictureCard';
 import { TradePictureCandleLoaderContext } from './tradePictureCandleQueue';
@@ -22,11 +22,12 @@ function candleCardProps(state: CandleState): { candleSource: string | null; can
   const { result } = state;
   if (result.ok) return { candleSource: result.source, candleNote: result.note, candleFailure: null };
   switch (result.why) {
-    case 'no-candle-source':
+    // A source this build cannot ask says so in its note ("Forex candles need the Kairos server.").
+    case 'no-candle-source': return { candleSource: null, candleNote: result.note, candleFailure: null };
     case 'no-start':
     case 'no-candles': return { candleSource: null, candleNote: null, candleFailure: null };
     case 'not-listed': return { candleSource: null, candleNote: result.note, candleFailure: null };
-    default: return { candleSource: null, candleNote: null, candleFailure: describeMarketDataUnavailable({ ok: false, reason: 'unavailable', why: result.why, retryAfterSeconds: result.retryAfterSeconds }, 'Candles') };
+    default: return { candleSource: null, candleNote: null, candleFailure: describeMarketDataUnavailable({ ok: false, reason: 'unavailable', why: result.why, retryAfterSeconds: result.retryAfterSeconds }, 'Candles', result.source) };
   }
 }
 
@@ -38,7 +39,7 @@ function useTradePictureCandles(entry: JournalHistoryEntry, target: React.RefObj
   const [revision, setRevision] = useState(0);
   const retryRequested = useRef(false);
   const reload = useCallback(() => { retryRequested.current = true; setRevision(value => value + 1); }, []);
-  const hasSource = tradePictureHasCandleSource(entry.trade.marketType);
+  const hasSource = tradePictureCandleSource(entry.trade.marketType, entry.trade.symbol) !== null;
   useEffect(() => {
     if (visible) return;
     const element = target.current;

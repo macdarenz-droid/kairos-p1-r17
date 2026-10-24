@@ -5,10 +5,9 @@
 import { decimalCompare, decimalRound, decimalScaleToSteps } from '../../domain/calculations/decimalKernel';
 import { calculateMoneyAtRiskFromPrice } from '../../domain/calculations/riskCalculator';
 import type { Strategy, StrategyRule, StrategyRuleAnswer, StrategyRuleId, TradeDisciplineRecord } from '../../domain/discipline';
-import { parsePositiveDecimalString, type DecimalString, type TradePlanRecord, type TradeRecord, type TradeSide, type TradeStatus } from '../../domain/trades';
+import { normalizeTradeSymbol, parsePositiveDecimalString, type DecimalString, type TradePlanRecord, type TradeRecord, type TradeSide, type TradeStatus } from '../../domain/trades';
 import { projectPlannedRewardToRisk } from '../risk-reward/plannedRewardToRisk';
 import { TRADE_PICTURE_RATIO_PLACES } from '../trade-visualizer/tradePicture';
-import { normalizeTradeSymbol } from '../trade-visualizer/tradePictureCandles';
 import { latestTradePlan } from '../trade-visualizer/tradeVisualizerFacts';
 import { isPriceCurrencyInput } from '../trades/priceCurrencyInput';
 import type { ManualTradeDraft } from '../trades/manualTradeDraft';

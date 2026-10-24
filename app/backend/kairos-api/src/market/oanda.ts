@@ -39,14 +39,16 @@ export function oandaInstrument(symbol: string): string | null {
 /**
  * The candles URL for an ask. OANDA refuses `count` with both `from` and `to`, returns the candle that holds `from`, and
  * leaves out the candle that opens exactly at `to`. So a start reads forward one extra candle (the decoder drops what
- * opened before the start and after the end), and an end alone reads back to one second after it.
+ * opened before the start and after the end), and an end alone reads back to one second after it. OANDA refuses a `from`
+ * or `to` in the future (checked 2026-10-24): the caller never asks with a future start, and an end that is not yet past
+ * reads the newest candles instead.
  */
-export function oandaCandlesUrl(host: string, instrument: string, granularity: string, ask: CandleAsk): string {
+export function oandaCandlesUrl(host: string, instrument: string, granularity: string, ask: CandleAsk, nowMs: number): string {
   const params = new URLSearchParams({ price: 'M', granularity, dailyAlignment: '0', alignmentTimezone: 'UTC', weeklyAlignment: 'Monday' });
   if (ask.startMs !== null) {
     params.set('from', String(Math.floor(ask.startMs / 1_000)));
     params.set('count', String(ask.limit + 1));
-  } else if (ask.endMs !== null) {
+  } else if (ask.endMs !== null && Math.floor(ask.endMs / 1_000) + 1 < Math.floor(nowMs / 1_000)) {
     params.set('to', String(Math.floor(ask.endMs / 1_000) + 1));
     params.set('count', String(ask.limit));
   } else {

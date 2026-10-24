@@ -23,7 +23,7 @@ import {
 import { SymbolPicker } from '../features/analysis/SymbolPicker';
 import { pickTradeReviewInterval, tradeReviewTimes } from '../features/analysis/tradeReviewInterval';
 import { useAnalysisTradeFocus } from '../features/analysis/useAnalysisTradeFocus';
-import { tradePictureHasCandleSource } from '../application/trade-visualizer/tradePictureCandles';
+import { tradePictureCandleSource } from '../application/trade-visualizer/tradePictureCandles';
 import { describeFuturesOnlyOnChart, futuresOnlyMarket, matchCryptoMarket, matchNoteFor } from '../application/market-reference/cryptoMarket';
 import { describeMarketDataUnavailable } from '../application/online/onlineWords';
 import type { MarketDataUnavailable } from '../services/market-data/marketDataTypes';
@@ -77,8 +77,8 @@ export function AnalysisHistoryWorkspace({
   const tradeApplied = useRef<string | null>(null);
   const tradeId = entry?.trade.id ?? null;
   const tradeSymbol = typeof entry?.trade.symbol === 'string' ? entry.trade.symbol : null;
-  // P31/P32: forex and stock trades have no market chart yet (tradePictureHasCandleSource, D99, D106); they are never matched to a Binance symbol.
-  const tradeOffChart = entry != null && !tradePictureHasCandleSource(entry.trade.marketType);
+  // P31/P32: forex and stock trades have no market chart yet (tradePictureCandleSource, D106, D235); they are never matched to a Binance symbol.
+  const tradeOffChart = entry != null && tradePictureCandleSource(entry.trade.marketType, tradeSymbol ?? '') !== 'crypto';
   const offChartTrade = entry?.trade.marketType === 'stock' ? 'Your stock trade' : entry?.trade.marketType === 'forex' ? 'Your forex trade' : 'This trade';
   const tradeTimes = entry && Array.isArray(entry.executions) ? tradeReviewTimes(entry) : null;
   const tradeStartMs = tradeTimes?.startMs ?? null, tradeEndMs = tradeTimes?.endMs ?? null;

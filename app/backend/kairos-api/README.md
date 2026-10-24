@@ -296,7 +296,7 @@ with `npm ci --ignore-scripts`.
 - **O4a · Forex and metal candles (U10)** (never blocking): Kairos shows forex and gold or silver candles from OANDA once the server has your OANDA API token.
   1. On OANDA's site, generate a personal API token for your account (the page is called "Manage API Access" in OANDA's account settings; the exact menu names are UNVERIFIED). A practice (demo) account's token works.
   2. Cloudflare dashboard → Workers & Pages → `kairos-api` → Settings → Variables and Secrets → Add → type Secret, name `MARKET_DATA_API_KEY`, value: the token → Deploy. (Or in `app/backend/kairos-api`: `npm ci`, then `npx wrangler secret put MARKET_DATA_API_KEY`.)
-  3. If the token is from a live (real money) account, say so: a coder changes `KAIROS_FOREX_SOURCE` to `"oanda-live"` in `wrangler.jsonc` (one line). A practice token needs nothing more.
+  3. If the token is from a live (real money) account, say so: a coder changes `KAIROS_FOREX_SOURCE` to `"oanda-live"` in `wrangler.jsonc` and moves both candle cache policies up one version (`MARKET_CANDLES_OPEN_CACHE`, `MARKET_CANDLES_SETTLED_CACHE`), so the server serves no practice candles it kept. A practice token needs nothing more. How to tell: a practice token comes from a practice (demo) account, a live one from a real-money account. A token for the other kind of account is refused (UNVERIFIED), so forex pictures say "OANDA refused the Kairos server"; then switch the setting. Browsers may still show candles they kept for up to 7 days.
   4. Please confirm that OANDA's terms let your journal app show its candles (UNVERIFIED).
   5. Check: a forex trade's picture shows candles with "Candles: OANDA · EUR/USD · mid prices" (after U10's app tasks).
 

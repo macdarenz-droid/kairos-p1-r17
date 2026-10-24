@@ -165,13 +165,16 @@ async function forexCandles(query: URLSearchParams, env: KairosApiEnv, upstream:
   // Not set up until the owner adds the token (O4a): said as such, never as a made-up or empty page.
   if (source === null || key === undefined || key === '') return { ok: false, reason: 'not-set-up' };
   const ask = { interval, limit, startMs, endMs };
-  const result = await upstream(oandaCandlesUrl(oandaHost(source), instrument, granularity, ask), {
+  const answerSource = { provider: 'oanda', market: 'forex', symbol: instrument };
+  // OANDA refuses a start in the future; there are no candles there yet.
+  if (startMs !== null && startMs > now.getTime()) return candlesAnswer(answerSource, null, interval, [], true, ask, now);
+  const result = await upstream(oandaCandlesUrl(oandaHost(source), instrument, granularity, ask, now.getTime()), {
     accept: 'application/json', headers: { authorization: `Bearer ${key}` }, readErrorBody: true,
   });
   if (!result.ok) return oandaFailure(result);
   const decoded = decodeOandaCandles(result.text, instrument, granularity, ask);
   if (decoded === null) return { ok: false, reason: 'source-unavailable' };
-  return candlesAnswer({ provider: 'oanda', market: 'forex', symbol: instrument }, null, interval, decoded.candles, decoded.closed, ask, now);
+  return candlesAnswer(answerSource, null, interval, decoded.candles, decoded.closed, ask, now);
 }
 
 /**

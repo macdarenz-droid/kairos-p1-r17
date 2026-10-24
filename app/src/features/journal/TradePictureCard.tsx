@@ -335,7 +335,7 @@ export function TradePictureCard({ model, candlesLoading = false, svgRef, compac
       <p className="kairos-trade-picture__readout">{readout}</p>
     </div> : null}
     {/* Outside the image role, so screen readers hear why there are no candles. */}
-    {notes && noCandles && candleFailure === null ? <p className="kairos-trade-picture__note">{!model.marketHasCandles ? 'Candles are shown for crypto trades only for now.' : candlesLoading ? 'Loading candles…' : candleNote ?? 'No candles for this time.'}</p> : null}
+    {notes && noCandles && candleFailure === null ? <p className="kairos-trade-picture__note">{!model.marketHasCandles ? model.noCandleSourceWords : candlesLoading ? 'Loading candles…' : candleNote ?? 'No candles for this time.'}</p> : null}
     {/* Outside the image role, so its words and button reach screen readers. The thumbnail sits inside a button:
         it shows the reason and retries quietly; the full picture has "Try again". */}
     {notes && noCandles && model.marketHasCandles && !candlesLoading && candleFailure !== null

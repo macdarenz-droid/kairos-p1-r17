@@ -58,6 +58,33 @@ describe('the server-backed candle history port', () => {
     }
   });
 
+  it('asks OANDA forex by its six letters with no base or quote, and keeps a missing volume missing (T-055b)', async () => {
+    const forex: MarketCandleHistoryRequest = { ...REQUEST, instrument: { venue: 'oanda-forex', symbol: 'EURUSD' } };
+    const oanda = (candles: unknown[], overrides: Record<string, unknown> = {}) => candlesData(candles, { source: { provider: 'oanda', market: 'forex', symbol: 'EUR_USD' }, backup: null, ...overrides });
+    const mid = (openMs: number) => candle(openMs, { open: '1.0851', high: '1.0874', low: '1.0842', close: '1.0866', volume: null });
+    const fetchImpl = vi.fn<typeof fetch>(async () => okAnswer(oanda([mid(START), mid(START + HOUR)])));
+    const result = await ports(fetchImpl).history.acquireHistory(forex);
+    expect(String(fetchImpl.mock.calls[0][0])).toBe('https://api.test/market/candles?end=1704074399999&interval=1h&limit=3&market=oanda-forex&start=1704067200000&symbol=EURUSD');
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.snapshot.candles[0]).toEqual({ openTime: '2024-01-01T00:00:00.000Z', closeTime: '2024-01-01T00:59:59.999Z', open: '1.0851', high: '1.0874', low: '1.0842', close: '1.0866' });
+    expect(result.snapshot.origin).toEqual({ provider: 'oanda', market: 'forex', symbol: 'EUR_USD', backup: null });
+
+    // A source that does not fit the market asked is not trusted.
+    const faults: [string, MarketCandleHistoryRequest, unknown][] = [
+      ['OANDA for a Binance market', REQUEST, oanda([mid(START)])],
+      ['Binance for a forex pair', forex, candlesData([candle(START)], { backup: null })],
+      ['an OANDA spot market', forex, oanda([mid(START)], { source: { provider: 'oanda', market: 'spot', symbol: 'EUR_USD' } })],
+      ['an OANDA backup', forex, oanda([mid(START)], { backup: 'refused' })],
+      ['a forex volume', forex, oanda([candle(START, { volume: '12' })])],
+      ['a crypto candle without volume', REQUEST, candlesData([candle(START, { volume: null })])],
+    ];
+    for (const [label, request, data] of faults) {
+      const fault = await ports(vi.fn<typeof fetch>(async () => okAnswer(data))).history.acquireHistory(request);
+      expect(fault, label).toEqual({ ok: false, reason: 'unavailable', why: 'unreadable', retryAfterSeconds: null });
+    }
+  });
+
   it('refuses another venue without asking, and answers cancelled for an aborted signal', async () => {
     const fetchImpl = vi.fn<typeof fetch>(async () => okAnswer(candlesData([])));
     expect(await ports(fetchImpl).history.acquireHistory({ ...REQUEST, instrument: { venue: 'other', symbol: 'BTCUSDT' } })).toEqual({ ok: false, reason: 'invalid-request', detail: 'venue-mismatch' });

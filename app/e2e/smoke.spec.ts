@@ -415,10 +415,14 @@ test('(k) Patterns: a closed trade, then your patterns and your practice pattern
   expect(errors).toEqual([]);
 });
 
-test('(l) Forex: a EUR/USD trade in units, its picture without crypto candles, and Analysis', async ({ page }) => {
+test('(l) Forex: a EUR/USD trade in units, its picture asking only the Kairos server, and Analysis', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
   await activate(page);
+  // A Kairos server without the OANDA token yet (O4a): forex candles are not set up; (ac) has them.
+  await page.route(url => url.hostname === 'api.qa.invalid' && url.pathname.startsWith('/market/'), route => route.fulfill({
+    status: 503, headers: { 'Access-Control-Allow-Origin': '*' }, contentType: 'application/json', body: JSON.stringify({ apiVersion: 1, ok: false, error: 'unavailable', reason: 'not-set-up', retryAfter: null }),
+  }));
   await page.goto('/journal');
   const marketRequests: string[] = [];
   page.on('request', request => {
@@ -443,7 +447,9 @@ test('(l) Forex: a EUR/USD trade in units, its picture without crypto candles, a
 
   const card = page.locator('.kairos-history-card').filter({ hasText: 'EUR/USD' });
   await expect(card.locator('[data-outcome="profit"]')).toContainText('50 USD');
-  await expect(card).toContainText('Candles are shown for crypto trades only for now.');
+  // The picture asks for candles once it is on screen.
+  await card.scrollIntoViewIfNeeded();
+  await expect(card).toContainText('Candles: not set up in this version of Kairos.');
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 
   await page.getByRole('button', { name: 'Open the EUR/USD trade picture' }).click();
@@ -452,7 +458,8 @@ test('(l) Forex: a EUR/USD trade in units, its picture without crypto candles, a
   await expect(dialog.locator('[data-info="size"] dd')).toHaveText('10000 units (0.1 lots)');
   await expect(dialog.locator('[data-info="pips"] dd')).toHaveText('+50 pips');
   await expect(dialog.locator('[data-info="pip-value"] dd')).toHaveText('1 USD');
-  expect(marketRequests).toEqual([]);
+  // Only the server's candles, never Binance or the market list.
+  expect([...new Set(marketRequests)]).toEqual(['/market/candles']);
   await dialog.getByRole('button', { name: 'Close' }).click();
 
   await card.getByRole('link', { name: 'View trade' }).click();
@@ -497,7 +504,7 @@ test('(m) Stocks: an AAPL trade in shares, its picture without crypto candles, A
 
   const card = page.locator('.kairos-history-card').filter({ hasText: 'AAPL' });
   await expect(card.locator('[data-outcome="profit"]')).toContainText('25 USD');
-  await expect(card).toContainText('Candles are shown for crypto trades only for now.');
+  await expect(card).toContainText('Candles are shown for crypto and forex trades for now.');
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 
   await page.getByRole('button', { name: 'Open the AAPL trade picture' }).click();
@@ -1625,4 +1632,89 @@ test('(ab) A crash: Reload, a copy of my data, and the error details', async ({ 
   const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
   expect(axe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+
+test('(ac) Forex candles: a EUR/USD trade and a practice gold trade drawn with OANDA candles through the Kairos server', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  await activate(page);
+  const cors = { 'Access-Control-Allow-Origin': '*' };
+  const serverAnswer = (data: unknown) => JSON.stringify({ apiVersion: 1, ok: true, data });
+  const intervalMs: Record<string, number> = { '1m': 60_000, '3m': 180_000, '5m': 300_000, '15m': 900_000, '30m': 1_800_000, '1h': 3_600_000 };
+  const asked: string[] = [];
+  // The Kairos server's forex answer (T-055a): OANDA's mid prices as text, no volume, OANDA's own name for the pair.
+  await page.route(url => url.hostname === 'api.qa.invalid' && url.pathname.startsWith('/market/'), async route => {
+    const url = new URL(route.request().url());
+    const market = url.searchParams.get('market'), symbol = url.searchParams.get('symbol') ?? '', interval = url.searchParams.get('interval') ?? '';
+    asked.push(`${url.pathname} ${market} ${symbol}`);
+    const step = intervalMs[interval];
+    if (url.pathname !== '/market/candles' || market !== 'oanda-forex' || step === undefined) return route.abort();
+    const limit = Number(url.searchParams.get('limit'));
+    const end = Math.min(Number(url.searchParams.get('end') ?? Date.now()), Date.now());
+    const start = Number(url.searchParams.get('start') ?? end - limit * step);
+    const [low, tick] = symbol === 'XAUUSD' ? [2648, 1] : [1.083, 0.0005];
+    const price = (n: number) => (low + n * tick).toFixed(symbol === 'XAUUSD' ? 2 : 5);
+    const candles: unknown[] = [];
+    for (let openMs = Math.ceil(start / step) * step; openMs <= end && candles.length < limit; openMs += step) {
+      const k = candles.length % 7;
+      candles.push({ openTime: new Date(openMs).toISOString(), closeTime: new Date(openMs + step - 1).toISOString(), open: price(k + 1), high: price(k + 3), low: price(k), close: price(k + 2), volume: null });
+    }
+    const source = { provider: 'oanda', market: 'forex', symbol: `${symbol.slice(0, 3)}_${symbol.slice(3)}` };
+    return route.fulfill({ headers: cors, contentType: 'application/json', body: serverAnswer({ source, backup: null, interval, fetchedAt: new Date().toISOString(), candles, next: null }) });
+  });
+
+  // A closed EUR/USD trade in the Journal.
+  await page.goto('/journal');
+  await page.getByRole('button', { name: 'Quick log' }).click();
+  await page.getByLabel(/^Market/).selectOption('forex');
+  await page.getByLabel(/^Symbol/).fill('EUR/USD');
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Entry price/).fill('1.085');
+  await page.getByLabel(/^Exit price/).fill('1.087');
+  await page.getByLabel(/^Quantity/).fill('10000');
+  await page.getByRole('button', { name: 'Set opened time to now' }).click();
+  await page.getByRole('button', { name: 'Set closed time to now' }).click();
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+  const card = page.locator('.kairos-history-card').filter({ hasText: 'EUR/USD' });
+  await card.scrollIntoViewIfNeeded();
+  await expect(card.locator('.kairos-trade-picture__candle').first()).toBeVisible();
+  await page.getByRole('button', { name: 'Open the EUR/USD trade picture' }).click();
+  const dialog = page.getByRole('dialog', { name: 'EUR/USD trade' });
+  await expect(dialog.getByText('Candles: OANDA · EUR/USD · mid prices')).toBeVisible();
+  await expect(dialog.locator('.kairos-trade-picture__candle').first()).toBeVisible();
+  const axe = await new AxeBuilder({ page }).include('[role="dialog"]').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(axe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+  await dialog.getByRole('button', { name: 'Close' }).click();
+
+  // A practice gold trade gets the same picture.
+  await page.goto('/practice');
+  const money = page.getByRole('region', { name: 'Your practice money' });
+  await money.getByLabel(/^Starting amount/).fill('10000');
+  await money.getByLabel(/^Money currency/).fill('usd');
+  await money.getByRole('button', { name: 'Start practising' }).click();
+  await expect(money.locator('.kairos-practice-money__now strong')).toHaveText('10000 USD');
+  // The form keeps the Journal's Quick log.
+  await expect(page.getByRole('button', { name: 'Quick log' })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByLabel(/^Market/).selectOption('forex');
+  await page.getByLabel(/^Symbol/).fill('XAUUSD');
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Entry price/).fill('2650');
+  await page.getByLabel(/^Exit price/).fill('2655');
+  await page.getByLabel(/^Quantity/).fill('1');
+  await page.getByRole('button', { name: 'Set opened time to now' }).click();
+  await page.getByRole('button', { name: 'Set closed time to now' }).click();
+  await page.getByRole('button', { name: 'Save practice trade' }).click();
+  await expect(page.locator('.kairos-journal__feedback--success')).toHaveText('Practice trade saved. It stays out of your journal results.');
+  const gold = page.locator('.kairos-history-card').filter({ hasText: 'XAU' });
+  await gold.scrollIntoViewIfNeeded();
+  await expect(gold.locator('.kairos-trade-picture__candle').first()).toBeVisible();
+  await page.getByRole('button', { name: /^Open the XAU.?USD trade picture$/ }).click();
+  await expect(page.getByRole('dialog').getByText('Candles: OANDA · XAU/USD · mid prices')).toBeVisible();
+
+  // Only the server's forex candles: never Binance, never the market list.
+  expect(asked.length).toBeGreaterThan(0);
+  expect(asked.filter(line => !/^\/market\/candles oanda-forex (EURUSD|XAUUSD)$/.test(line))).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  expect(errors).toEqual([]);
 });

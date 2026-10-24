@@ -7,7 +7,7 @@ import type { LiveMarketUniverseInstrumentMetadataAcquisitionPort } from '../../
 import type { MarketCandle, MarketCandleHistoryPort } from '../../services/market-data/MarketCandleHistoryPort';
 import type { MarketDataUnavailableWhy } from '../../services/market-data/marketDataTypes';
 import { describeCandleSource, matchCryptoMarket, matchNoteFor } from '../market-reference/cryptoMarket';
-import { normalizeTradeSymbol } from '../trade-visualizer/tradePictureCandles';
+import { normalizeTradeSymbol } from '../../domain/trades';
 import { isPriceCurrencyInput } from '../trades/priceCurrencyInput';
 
 export const REPLAY_HISTORY_CANDLES = 60;

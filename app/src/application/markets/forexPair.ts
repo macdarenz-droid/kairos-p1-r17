@@ -3,8 +3,7 @@
  */
 
 import { decimalCompare, decimalDivide, decimalMultiply, decimalSubtract } from '../../domain/calculations';
-import { parsePositiveDecimalString, type DecimalString, type TradeSide } from '../../domain/trades';
-import { normalizeTradeSymbol } from '../trade-visualizer/tradePictureCandles';
+import { normalizeTradeSymbol, parsePositiveDecimalString, type DecimalString, type TradeSide } from '../../domain/trades';
 
 /** The eight most traded currencies, in the market's quoting order: a standard pair puts the earlier one first (EUR/USD, GBP/JPY, USD/CAD). */
 export const FOREX_MAJOR_CURRENCIES = Object.freeze(['EUR', 'GBP', 'AUD', 'NZD', 'USD', 'CAD', 'CHF', 'JPY'] as const);
@@ -57,6 +56,12 @@ export function parseForexPair(symbol: string): ForexPairResult {
   const pipSize = standard ? (quote === 'JPY' ? FOREX_JPY_PIP_SIZE : FOREX_PIP_SIZE) : null;
   const pair: ForexPair = Object.freeze({ symbol: code, base, quote, quoteKnown, label: `${base}/${quote}`, standard, pipSize });
   return Object.freeze({ ok: true as const, pair });
+}
+
+/** U10 (D235): the six letters the Kairos server asks OANDA for (EURUSD, XAUUSD), for any pair parseForexPair reads, standard or not; else null. */
+export function forexCandleInstrument(symbol: string): string | null {
+  const parsed = parseForexPair(symbol);
+  return parsed.ok ? parsed.pair.symbol : null;
 }
 
 export function projectForexSize(pair: ForexPair, units: string): ForexSize | null {
