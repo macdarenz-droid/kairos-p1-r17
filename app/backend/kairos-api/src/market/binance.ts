@@ -140,7 +140,8 @@ export interface MarketCandle {
   readonly high: string;
   readonly low: string;
   readonly close: string;
-  readonly volume: string;
+  /** Traded size; null where the source has none (OANDA forex, D232). */
+  readonly volume: string | null;
 }
 
 /** The checked candles query: startMs and endMs are open times, inclusive, or null. */

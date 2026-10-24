@@ -190,6 +190,15 @@ jobs:
           if ! grep -q '"ok":true' "$RUNNER_TEMP/symbols.json" 2>/dev/null; then
             echo "::warning::The market list did not load. On the Free plan it can exceed the CPU limit: owner step O10 (Workers Paid)."
           fi
+          # U10: one settled EUR/USD hour (Wednesday 2024-01-03 12:00 UTC) from OANDA, once the owner has set the token (O4a).
+          curl -sS "$url/market/candles?market=oanda-forex&symbol=EURUSD&interval=1h&limit=1&start=1704283200000&end=1704286799999" -o "$RUNNER_TEMP/forex.json" || true
+          if grep -q '"ok":true' "$RUNNER_TEMP/forex.json" 2>/dev/null; then
+            echo "Forex candles answer (OANDA)." >> "$GITHUB_STEP_SUMMARY"
+          elif grep -q '"not-set-up"' "$RUNNER_TEMP/forex.json" 2>/dev/null; then
+            echo "::notice::Forex candles are not set up yet: owner step O4a (the OANDA token as MARKET_DATA_API_KEY)."
+          else
+            echo "::warning::Forex candles did not answer. Check the OANDA token (MARKET_DATA_API_KEY) and KAIROS_FOREX_SOURCE."
+          fi
 
   preview-api:
     name: preview kairos-api (pull request)
