@@ -286,7 +286,8 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
     if (isSaving) return;
     setFeedback(null);
 
-    const base = prepareManualTradeSubmission(isQuick ? { ...draft, status: 'closed' } : draft);
+    // Quick log saves only what it shows: "Where you traded" and "Leverage" live in All details, like its entries and fees.
+    const base = prepareManualTradeSubmission(isQuick ? { ...draft, status: 'closed', exchange: '', leverage: '' } : draft);
     const prepared = !base.ok ? base : isQuick
       ? prepareManualTradeExecutionDetails(base.input, quickTradeLogRows(quick, draft.openedAt, draft.closedAt), [])
       : prepareManualTradeExecutionDetails(base.input, executions, fees);

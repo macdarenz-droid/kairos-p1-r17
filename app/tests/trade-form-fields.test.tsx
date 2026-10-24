@@ -75,6 +75,23 @@ describe('T-056c the new trade fields on the form', () => {
     expect((await getJournalHistoryEntry(db, trade!.id as TradeId))?.metrics).toMatchObject({ grossPnl: '500', netPnl: '500' });
   });
 
+  it('Quick log never saves "Where you traded" or "Leverage", which it does not show (review r1)', async () => {
+    const db = await database();
+    mount(db);
+    type(/Where you traded/, 'CME');
+    type(/Leverage/, '2000');
+    fireEvent.click(screen.getByRole('button', { name: 'Quick log' }));
+    type(/Symbol/, 'ESZ6'); type(/Market/, 'futures'); type(/Direction/, 'long');
+    type(/Entry price/, '5000'); type(/Exit price/, '5010'); type(/^Quantity/, '1'); type(/Each point is worth/, '50');
+    type(/^Opened/, '2026-09-21T14:00'); type(/^Closed/, '2026-09-21T15:00');
+    save();
+    await screen.findByRole('status');
+    const [trade] = await db.trades.toArray();
+    expect(trade).toMatchObject({ contractSize: '50' });
+    expect(trade).not.toHaveProperty('exchange');
+    expect(trade).not.toHaveProperty('leverage');
+  });
+
   it('a crypto, stock or forex trade never shows "Each point is worth"; a value typed before changing market and blank fields are not saved', async () => {
     const db = await database();
     mount(db);
