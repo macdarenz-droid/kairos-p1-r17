@@ -1903,3 +1903,51 @@ test("(ae) Before you save, then the guided flow: past the daily limit a planned
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   expect(errors).toEqual([]);
 });
+
+test('(af) Goals you can see: limits, a loss, the rings and Home', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  const axeOk = async (include: string) => {
+    const axe = await new AxeBuilder({ page }).include(include).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+    expect(axe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  };
+  await activate(page);
+  await page.goto('/goals');
+  const deviceZone = page.getByRole('button', { name: /\(this device\)$/ });
+  if (await deviceZone.isVisible()) await deviceZone.click();
+  await page.getByLabel('Most trades in a day').fill('3');
+  await page.getByLabel('Most I can lose in a day').fill('100');
+  await page.getByLabel('Most I can lose in a week').fill('250');
+  await page.getByLabel('Currency of your loss limits').fill('USDT');
+  await page.getByRole('checkbox', { name: /^Review every trade/ }).check();
+  await page.getByRole('button', { name: 'Save goals' }).click();
+  await expect(page.getByText('Goals saved.')).toBeVisible();
+
+  // A closed trade that lost 40 USDT now.
+  await page.goto('/journal');
+  await page.getByRole('button', { name: 'Quick log' }).click();
+  await page.getByLabel(/^Symbol/).fill('BTCUSDT');
+  await page.getByLabel(/^Market/).selectOption('crypto');
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Entry price/).fill('100');
+  await page.getByLabel(/^Exit price/).fill('60');
+  await page.getByLabel(/^Quantity/).fill('1');
+  await page.getByRole('button', { name: 'Set opened time to now' }).click();
+  await page.getByRole('button', { name: 'Set closed time to now' }).click();
+  await page.getByLabel('Currency code').fill('USDT');
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+
+  await page.goto('/goals');
+  await expect(page.locator('[data-goal="daily-loss"]')).toContainText('Lost 40 of 100 USDT · 60 left');
+  await expect(page.locator('[data-goal="weekly-loss"]')).toContainText('Lost 40 of 250 USDT · 210 left');
+  await expect(page.locator('[data-goal="review-every-trade"]')).toContainText('0 of 1 closed trades reviewed · 1 to review');
+  await axeOk('.kairos-goals');
+
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Your Trades' }).click();
+  await expect(page.getByText('Lost today: 40 of 100 USDT')).toBeVisible();
+  await axeOk('.kairos-home-discipline');
+  expect(errors).toEqual([]);
+});

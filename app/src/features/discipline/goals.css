@@ -16,3 +16,8 @@
 .kairos-goals-check { display:flex; align-items:flex-start; gap:var(--kairos-space-2); min-height:44px; overflow-wrap:anywhere; }
 .kairos-goals-check input { flex:none; width:1.25rem; height:1.25rem; margin-top:0.1rem; }
 .kairos-goals-check__hint { display:block; color:var(--kairos-text-muted); font-size:var(--kairos-font-size-sm); }
+.kairos-goals-card__row { display:flex; align-items:center; gap:var(--kairos-space-3); flex-wrap:wrap; min-width:0; overflow-wrap:anywhere; }
+.kairos-goals-card__row .kairos-progress-bar { flex:1 1 100%; }
+.kairos-goals-card__row p { flex:1 1 12rem; }
+.kairos-goals-card__mark { color:var(--kairos-state-error); font-weight:700; }
+.kairos-goals-card[data-goal-state="over"] h2, .kairos-goals-card[data-goal-state="over"] h3 { color:var(--kairos-state-error); }

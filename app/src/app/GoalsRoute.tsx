@@ -6,7 +6,7 @@ import {
 } from '../application/goals';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
 import { createKairosRepositories } from '../data/repositories';
-import { Button, Card, Field, PageHeader } from '../design-system/primitives';
+import { Button, Card, ErrorState, Field, PageHeader } from '../design-system/primitives';
 import { DeviceTimeZoneButton } from '../features/settings/DeviceTimeZoneButton';
 import { GoalsProgress } from '../features/discipline/GoalsProgressCard';
 import '../features/discipline/goals.css';
@@ -57,6 +57,8 @@ export function GoalsRoute({ db = kairosDatabase, now = wallClock }: GoalsRouteP
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [revision, setRevision] = useState(0);
+  const [retrying, setRetrying] = useState(false);
+  const retried = useRef(false);
   const seeded = useRef(false);
 
   const load = useCallback(async (ignore: () => boolean) => {
@@ -77,6 +79,13 @@ export function GoalsRoute({ db = kairosDatabase, now = wallClock }: GoalsRouteP
     void load(() => ignored);
     return () => { ignored = true; };
   }, [load, revision]);
+  // After "Try again" works, focus goes to the page's title; while it fails, the error box keeps it.
+  useEffect(() => {
+    if (!retried.current || state.kind !== 'ready') return;
+    retried.current = false;
+    document.getElementById('kairos-goals-title')?.focus();
+  }, [state]);
+  const retry = async () => { retried.current = true; setRetrying(true); await load(() => false); setRetrying(false); };
 
   async function handleSubmit(event: FormEvent<HTMLElement>): Promise<void> {
     event.preventDefault();
@@ -103,7 +112,7 @@ export function GoalsRoute({ db = kairosDatabase, now = wallClock }: GoalsRouteP
   return <section className="kairos-route kairos-goals" aria-labelledby="kairos-goals-title" data-goals-status={state.kind === 'ready' ? state.result.kind : state.kind}>
     <PageHeader eyebrow="Discipline" title="Goals" titleId="kairos-goals-title" />
     {state.kind === 'loading' ? <p className="kairos-goals__note">Loading your goals…</p> : null}
-    {state.kind === 'error' ? <p role="alert">Kairos could not load your goals.</p> : null}
+    {state.kind === 'error' ? <ErrorState message="Kairos could not load your goals." onRetry={() => { void retry(); }} busy={retrying} /> : null}
     {state.kind === 'ready' && state.result.kind === 'time-zone-unconfigured' ? <p className="kairos-goals__unconfigured" role="status">Goals follow your daily-results calendar. <Link to="/settings">Set your time zone in Settings</Link> first.</p> : null}
     {state.kind === 'ready' && state.result.kind === 'time-zone-unconfigured' ? <DeviceTimeZoneButton metadata={repositories.metadata} onSaved={() => { void load(() => false); }} /> : null}
     {state.kind === 'ready' && state.result.kind === 'ready' ? <GoalsProgress progress={state.result.progress} inHomeCurrency={state.result.inHomeCurrency} /> : null}

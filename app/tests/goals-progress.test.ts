@@ -37,10 +37,11 @@ describe('P26.2 goals progress projection', () => {
     ];
     const progress = projectGoalsProgress({ preference, entries, timeZone: 'UTC', now });
     expect(progress).toEqual({
-      kind: 'ready', timeZone: 'UTC', todayKey: '2026-09-18', monthKey: '2026-09', consideredEntries: 8,
-      tradesPerMonth: { kind: 'progress', target: 4, current: 4, reached: true },
-      maxTradesPerDay: { kind: 'limit', limit: 2, today: 3, remaining: 0, exceeded: true },
-      monthlyResult: { kind: 'progress', target: '250', currency: 'USDT', current: '159.5', remaining: '90.5', reached: false, comparableDays: 3, incompleteDays: 1 },
+      kind: 'ready', timeZone: 'UTC', todayKey: '2026-09-18', monthKey: '2026-09', weekFromDayKey: '2026-09-14', consideredEntries: 8,
+      tradesPerMonth: { kind: 'progress', target: 4, current: 4, reached: true, fill: 100 },
+      maxTradesPerDay: { kind: 'limit', limit: 2, today: 3, remaining: 0, exceeded: true, fill: 100 },
+      monthlyResult: { kind: 'progress', target: '250', currency: 'USDT', current: '159.5', remaining: '90.5', reached: false, comparableDays: 3, incompleteDays: 1, fill: 64 },
+      dailyLoss: { kind: 'unset' }, weeklyLoss: { kind: 'unset' }, reviewEveryTrade: { kind: 'unset' }, tickEveryStep: { kind: 'unset' },
     });
   });
 

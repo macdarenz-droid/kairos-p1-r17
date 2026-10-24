@@ -17,3 +17,5 @@ export { PriceInput, type PriceInputProps } from './PriceInput';
 export { ConfirmDialog, type ConfirmDialogProps } from './ConfirmDialog';
 export { ToastProvider, useToast, TOAST_MS, TOAST_WITH_ACTION_MS, type ToastInput } from './Toast';
 export { useModalFocus } from './modalFocus';
+export { ProgressRing, type ProgressTone } from './ProgressRing';
+export { ProgressBar } from './ProgressBar';

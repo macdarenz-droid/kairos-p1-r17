@@ -41,7 +41,7 @@ describe('P26.3 Goals route', () => {
     expect(route().querySelector('[data-goal="trades-per-month"]')!.textContent).toContain('0 of 2 · 2 to go');
     expect(route().querySelector('[data-goal="max-trades-per-day"]')!.getAttribute('data-goal-state')).toBe('at-limit');
     expect(route().querySelector('[data-goal="max-trades-per-day"]')!.textContent).toContain('1 of 1 allowed · at your limit');
-    expect(route().querySelector('[data-goal="monthly-result"]')!.textContent).toContain('No result target set.');
+    expect(route().querySelector('[data-goals-unset]')!.textContent).toBe('Not set yet: Result this month, Review every trade, Tick every step, Most I can lose in a day, Most I can lose in a week. Set them below.');
     expect((screen.getByLabelText('Closed trades per month') as HTMLInputElement).value).toBe('2');
     type('Most trades in a day', '3');
     type('Monthly result target', '250');
