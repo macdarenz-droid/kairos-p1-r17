@@ -145,8 +145,9 @@ export interface TradePictureCandleDeps {
 /** The USDⓈ-M futures venue the history port serves for futures trades (D165). */
 const FUTURES_VENUE = 'binance-usdm';
 /** The Kairos server's forex and metal candles from OANDA (D231); a build without the server has no port for it. */
-const FOREX_VENUE = 'oanda-forex';
-const FOREX_NEEDS_SERVER = 'Forex candles need the Kairos server.';
+export const FOREX_CANDLE_VENUE = 'oanda-forex';
+/** The words when this build has no Kairos server: forex candles come only through it. */
+export const FOREX_CANDLES_NEED_SERVER = 'Forex candles need the Kairos server.';
 
 export type TradePictureCandlesFailure = 'no-candle-source' | 'no-start' | 'not-listed' | 'no-candles' | MarketDataUnavailableWhy;
 
@@ -211,18 +212,18 @@ async function loadFuturesOnlyCandles(
 async function loadForexCandles(
   pair: ForexPair, window: TradePictureCandleWindow, keep: boolean, deps: TradePictureCandleDeps, options: { readonly signal?: AbortSignal } | undefined,
 ): Promise<TradePictureCandlesResult> {
-  const key = [pair.symbol, FOREX_VENUE, window.interval, window.startTimeMs, window.endTimeMs].join('|');
+  const key = [pair.symbol, FOREX_CANDLE_VENUE, window.interval, window.startTimeMs, window.endTimeMs].join('|');
   const stored = keep ? cache.get(key) : undefined;
   if (stored) return stored;
   const result = await deps.history.acquireHistory({
-    instrument: { venue: FOREX_VENUE, symbol: pair.symbol },
+    instrument: { venue: FOREX_CANDLE_VENUE, symbol: pair.symbol },
     interval: window.interval,
     limit: window.limit,
     startTimeMs: window.startTimeMs,
     endTimeMs: window.endTimeMs,
   }, options);
   if (!result.ok) {
-    if (result.reason === 'invalid-request' && result.detail === 'venue-mismatch') return failed('no-candle-source', null, FOREX_NEEDS_SERVER);
+    if (result.reason === 'invalid-request' && result.detail === 'venue-mismatch') return failed('no-candle-source', null, FOREX_CANDLES_NEED_SERVER);
     return unavailable(result, null, { provider: 'oanda', pair: pair.label });
   }
   if (result.snapshot.candles.length === 0) return failed('no-candles');

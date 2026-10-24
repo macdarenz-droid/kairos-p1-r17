@@ -3,6 +3,7 @@
  */
 
 import { decimalCompare, decimalDivide, decimalMultiply, decimalSubtract } from '../../domain/calculations';
+import { ECB_REFERENCE_CURRENCIES } from '../../domain/calculations/currencyConversion';
 import { normalizeTradeSymbol, parsePositiveDecimalString, type DecimalString, type TradeSide } from '../../domain/trades';
 
 /** The eight most traded currencies, in the market's quoting order: a standard pair puts the earlier one first (EUR/USD, GBP/JPY, USD/CAD). */
@@ -62,6 +63,23 @@ export function parseForexPair(symbol: string): ForexPairResult {
 export function forexCandleInstrument(symbol: string): string | null {
   const parsed = parseForexPair(symbol);
   return parsed.ok ? parsed.pair.symbol : null;
+}
+
+/** Metals OANDA prices against currencies: gold, silver, platinum and palladium. */
+const FOREX_METALS: readonly string[] = Object.freeze(['XAU', 'XAG', 'XPT', 'XPD']);
+const FOREX_CURRENCIES: readonly string[] = ECB_REFERENCE_CURRENCIES;
+
+/**
+ * U10 (D236): a typed market that is plainly forex or a metal, for Replay, whose one field has no market type: two
+ * currencies the bank (ECB) publishes, or a metal against one (EUR/USD, USDJPY, XAUUSD). A six-letter crypto market
+ * (ETHBTC, BTCEUR) is not: one side is a coin, so it stays with Binance. Null otherwise.
+ */
+export function plainForexPair(market: string): ForexPair | null {
+  const parsed = parseForexPair(market);
+  if (!parsed.ok) return null;
+  const { base, quote } = parsed.pair;
+  const currency = (code: string) => FOREX_CURRENCIES.includes(code);
+  return (currency(base) || FOREX_METALS.includes(base)) && currency(quote) ? parsed.pair : null;
 }
 
 export function projectForexSize(pair: ForexPair, units: string): ForexSize | null {

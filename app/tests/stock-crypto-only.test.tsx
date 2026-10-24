@@ -80,7 +80,7 @@ describe('T-044d crypto only for now, for stocks too', () => {
     const fake = fakeReplayMarket({ nowMs: Date.parse('2024-04-01T00:00:00.000Z') });
     const db = await database();
     render(<MemoryRouter><ReplayScreen db={db} market={fake.market} playStepMs={25} /></MemoryRouter>);
-    expect(screen.getByLabelText(/^Market/)).toHaveAccessibleDescription('Replay has crypto markets from Binance only for now, such as BTCUSDT.');
+    expect(screen.getByLabelText(/^Market/)).toHaveAccessibleDescription('Replay has crypto markets from Binance and forex and metals from OANDA, such as BTCUSDT or EUR/USD.');
     fireEvent.change(screen.getByLabelText(/^Market/), { target: { value: 'AAPL' } });
     fireEvent.change(screen.getByLabelText(/^Start from/), { target: { value: '2024-03-01T12:00' } });
     fireEvent.click(screen.getByRole('button', { name: 'Start replay' }));

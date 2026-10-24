@@ -75,10 +75,18 @@ describe('T-043d crypto only for now, in plain words', () => {
     expect(screen.getByText('Its entry or exit is not available')).toBeInTheDocument();
   });
 
-  it('Replay says it is crypto-only for a forex pair, and keeps the spelling note otherwise', async () => {
+  it('Replay replays a forex pair from OANDA (T-055d), and keeps the spelling note otherwise', async () => {
     const NOW = Date.parse('2024-04-01T00:00:00.000Z');
+    const pair = fakeReplayMarket({ nowMs: NOW });
+    render(<MemoryRouter><ReplayScreen db={await database()} market={pair.market} playStepMs={25} /></MemoryRouter>);
+    fireEvent.change(screen.getByLabelText(/^Market/), { target: { value: 'EUR/USD' } });
+    fireEvent.change(screen.getByLabelText(/^Start from/), { target: { value: '2024-03-01T12:00' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Start replay' }));
+    expect(await screen.findByText('Candles: OANDA · EUR/USD · mid prices')).toBeInTheDocument();
+    expect(pair.requests.map(request => request.instrument)).toEqual([{ venue: 'oanda-forex', symbol: 'EURUSD' }]);
+    expect(pair.state.metadataCalls).toBe(0);
+    cleanup();
     for (const [typed, message] of [
-      ['EUR/USD', 'Replay has crypto markets from Binance only for now, so it cannot replay EUR/USD. Try a crypto market, for example BTCUSDT.'],
       ['EURUSX', "Kairos can't find this market on Binance. Check the spelling, for example BTCUSDT."],
     ] as const) {
       const fake = fakeReplayMarket({ nowMs: NOW });

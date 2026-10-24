@@ -23,7 +23,7 @@ import {
 import { SymbolPicker } from '../features/analysis/SymbolPicker';
 import { pickTradeReviewInterval, tradeReviewTimes } from '../features/analysis/tradeReviewInterval';
 import { useAnalysisTradeFocus } from '../features/analysis/useAnalysisTradeFocus';
-import { describeNoCandleSource, tradePictureCandleSource } from '../application/trade-visualizer/tradePictureCandles';
+import { describeNoCandleSource, FOREX_CANDLES_NEED_SERVER, tradePictureCandleSource } from '../application/trade-visualizer/tradePictureCandles';
 import { describeFuturesOnlyOnChart, futuresOnlyMarket, matchCryptoMarket, matchNoteFor } from '../application/market-reference/cryptoMarket';
 import { describeMarketDataUnavailable } from '../application/online/onlineWords';
 import { OANDA_FOREX_VENUE, type MarketDataInstrument, type MarketDataUnavailable } from '../services/market-data/marketDataTypes';
@@ -100,7 +100,7 @@ export function AnalysisHistoryWorkspace({
     : { instrument: Object.freeze({ venue: OANDA_FOREX_VENUE, symbol: forexPair.symbol }), quoteAsset: forexPair.quote }), [forexPair, forexWithoutServer]);
   const tradeOffChart = entry != null && (tradeSource === null || forexWithoutServer);
   const offChartTrade = entry?.trade.marketType === 'stock' ? 'Your stock trade' : entry?.trade.marketType === 'forex' ? 'Your forex trade' : 'This trade';
-  const offChartReason = forexWithoutServer ? 'Forex candles need the Kairos server.'
+  const offChartReason = forexWithoutServer ? FOREX_CANDLES_NEED_SERVER
     : entry?.trade.marketType === 'forex' ? describeNoCandleSource('forex') : 'The market chart has crypto and forex markets for now.';
   const tradeTimes = entry && Array.isArray(entry.executions) ? tradeReviewTimes(entry) : null;
   const tradeStartMs = tradeTimes?.startMs ?? null, tradeEndMs = tradeTimes?.endMs ?? null;

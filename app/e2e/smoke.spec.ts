@@ -528,7 +528,7 @@ test('(m) Stocks: an AAPL trade in shares, its picture without crypto candles, A
 
   await page.goto('/practice');
   await page.getByRole('link', { name: 'Replay the past, one candle at a time' }).click();
-  await expect(page.getByLabel(/^Market/)).toHaveAccessibleDescription('Replay has crypto markets from Binance only for now, such as BTCUSDT.');
+  await expect(page.getByLabel(/^Market/)).toHaveAccessibleDescription('Replay has crypto markets from Binance and forex and metals from OANDA, such as BTCUSDT or EUR/USD.');
   expect(errors).toEqual([]);
 });
 
@@ -1727,6 +1727,29 @@ test('(ac) Forex candles: a EUR/USD trade and a practice gold trade drawn with O
   await expect(gold.locator('.kairos-trade-picture__candle').first()).toBeVisible();
   await page.getByRole('button', { name: /^Open the XAU.?USD trade picture$/ }).click();
   await expect(page.getByRole('dialog').getByText('Candles: OANDA · XAU/USD · mid prices')).toBeVisible();
+
+  // Replay EUR/USD from OANDA: place a trade, play to its target, and save it as a practice trade with candles on its picture.
+  await page.goto('/practice/replay');
+  await page.getByLabel(/^Market/).fill('EUR/USD');
+  await page.getByLabel(/^Start from/).fill('2024-03-05T12:00');
+  await page.getByRole('button', { name: 'Start replay' }).click();
+  await expect(page.getByText('Candles: OANDA · EUR/USD · mid prices')).toBeVisible();
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Entry price/).fill('1.0845');
+  await page.getByLabel(/^Stop price/).fill('1.082');
+  await page.getByLabel(/^Target price/).fill('1.087');
+  await page.getByLabel(/^Quantity/).fill('10000');
+  await page.getByRole('button', { name: 'Place trade' }).click();
+  const target = page.getByText(/^Your target was reached: out at 1\.087 USD\.$/);
+  for (let i = 0; i < 30 && !(await target.isVisible()); i += 1) await page.getByRole('button', { name: 'Next candle' }).click();
+  await expect(target).toBeVisible();
+  await page.getByRole('button', { name: 'Save to my practice trades' }).click();
+  await expect(page.getByText('Saved with your practice trades. It never counts in your Journal.')).toBeVisible();
+  await page.getByRole('link', { name: 'See your practice trades' }).click();
+  const replayed = page.locator('.kairos-history-card').filter({ hasText: 'From replay' });
+  await expect(replayed).toContainText('EURUSD');
+  await replayed.scrollIntoViewIfNeeded();
+  await expect(replayed.locator('.kairos-trade-picture__candle').first()).toBeVisible();
 
   // Candles only from the server's forex market (Analysis may ask for the market list before it knows the trade).
   expect(asked.filter(line => line.startsWith('/market/candles')).length).toBeGreaterThan(0);

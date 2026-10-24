@@ -1,13 +1,15 @@
 /**
- * P27: the past candles for one replay. One Binance klines page on demand: 60 candles before the chosen moment and up to 240 after it, finished candles only. Candles are market reference held in memory by the page (D15); nothing is stored or cached here. The live price and the trade stream are never read.
+ * P27: the past candles for one replay. One candle page on demand: 60 candles before the chosen moment and up to 240 after it, finished candles only, from Binance for crypto or from OANDA through the Kairos server for a forex pair or metal (U10, D236). Candles are market reference held in memory by the page (D15); nothing is stored or cached here. The live price and the trade stream are never read.
  */
 
 import { decimalNormalize } from '../../domain/calculations/decimalKernel';
 import type { LiveMarketUniverseInstrumentMetadataAcquisitionPort } from '../../services/market-data/LiveMarketUniverseInstrumentMetadataAcquisitionPort';
-import type { MarketCandle, MarketCandleHistoryPort } from '../../services/market-data/MarketCandleHistoryPort';
+import type { MarketCandle, MarketCandleHistoryPort, MarketCandleOrigin } from '../../services/market-data/MarketCandleHistoryPort';
 import type { MarketDataUnavailableWhy } from '../../services/market-data/marketDataTypes';
 import { describeCandleSource, matchCryptoMarket, matchNoteFor } from '../market-reference/cryptoMarket';
 import { normalizeTradeSymbol } from '../../domain/trades';
+import { plainForexPair, type ForexPair } from '../markets/forexPair';
+import { FOREX_CANDLE_VENUE } from '../trade-visualizer/tradePictureCandles';
 import { isPriceCurrencyInput } from '../trades/priceCurrencyInput';
 
 export const REPLAY_HISTORY_CANDLES = 60;
@@ -40,8 +42,12 @@ export interface LoadedReplay {
   readonly source: string;
   /** How the typed market was matched, when it was not typed exactly; null otherwise. */
   readonly note: string | null;
+  /** 'forex' for a forex pair or metal from OANDA (D236); crypto when absent. */
+  readonly marketType?: 'crypto' | 'forex';
 }
-export type ReplayLoadFailure = 'market-required' | 'candle-size-invalid' | 'start-invalid' | 'start-in-future' | 'unknown-market' | 'no-history' | 'no-future' | 'unavailable';
+/** 'forex-not-listed': OANDA has no such pair; 'needs-server': this build has no Kairos server, so no forex candles. */
+export type ReplayLoadFailure =
+  | 'market-required' | 'candle-size-invalid' | 'start-invalid' | 'start-in-future' | 'unknown-market' | 'forex-not-listed' | 'needs-server' | 'no-history' | 'no-future' | 'unavailable';
 export type ReplayLoadResult =
   | { readonly ok: true; readonly replay: LoadedReplay }
   | { readonly ok: false; readonly reason: ReplayLoadFailure; readonly why?: MarketDataUnavailableWhy; readonly retryAfterSeconds?: number | null };
@@ -64,7 +70,51 @@ function normalizeCandle(candle: MarketCandle): MarketCandle | null {
   return volume.ok ? Object.freeze({ ...prices, volume: volume.value }) : null;
 }
 
-/** Past candles around one moment for a replay, always spot (practice is spot). It never rejects: any port failure is 'unavailable', with its reason. */
+/** The page's finished candles in their shortest exact form, and how many come before the start; null when a price is not a decimal. */
+function finishedCandles(candles: readonly MarketCandle[], alignedStart: number, nowMs: number): { readonly candles: readonly MarketCandle[]; readonly startIndex: number } | null {
+  // The last candle of a page may still be forming: only finished candles are replayed.
+  const finished: MarketCandle[] = [];
+  for (const candle of candles) {
+    if (!(Date.parse(candle.closeTime) < nowMs)) continue;
+    const normalized = normalizeCandle(candle);
+    if (normalized === null) return null;
+    finished.push(normalized);
+  }
+  // Weekends and holidays have no candles: the replay steps over them as over any gap.
+  return { candles: Object.freeze(finished), startIndex: finished.filter(candle => Date.parse(candle.openTime) < alignedStart).length };
+}
+
+/** A forex pair or metal's candles from OANDA through the Kairos server (D236): no market list, no backup, mid prices. */
+async function loadForexReplay(
+  pair: ForexPair, size: ReplayCandleSize, fromMs: number, alignedStart: number, nowMs: number, deps: ReplayMarketDeps, options: { readonly signal?: AbortSignal } | undefined,
+): Promise<ReplayLoadResult> {
+  const history = await deps.history.acquireHistory({
+    instrument: { venue: FOREX_CANDLE_VENUE, symbol: pair.symbol },
+    interval: size.interval,
+    limit: REPLAY_HISTORY_CANDLES + REPLAY_FUTURE_CANDLES,
+    startTimeMs: fromMs,
+    endTimeMs: Math.min(alignedStart + (REPLAY_FUTURE_CANDLES - 1) * size.ms, nowMs),
+  }, options);
+  if (!history.ok) {
+    if (history.reason === 'invalid-request' && history.detail === 'venue-mismatch') return fail('needs-server');
+    if (history.reason === 'unavailable' && history.why === 'unknown-market') return fail('forex-not-listed');
+    return unavailable(history);
+  }
+  const finished = finishedCandles(history.snapshot.candles, alignedStart, nowMs);
+  if (finished === null) return Object.freeze({ ok: false as const, reason: 'unavailable' as const, why: 'unreadable' as const, retryAfterSeconds: null });
+  if (finished.startIndex === 0) return fail('no-history');
+  if (finished.startIndex === finished.candles.length) return fail('no-future');
+  const origin: MarketCandleOrigin = history.snapshot.origin ?? { provider: 'oanda', market: 'forex', symbol: pair.symbol, backup: null };
+  return Object.freeze({ ok: true as const, replay: Object.freeze({
+    symbol: pair.symbol, quoteAsset: pair.quote, candleSize: size, candles: finished.candles, startIndex: finished.startIndex,
+    source: describeCandleSource(origin, pair, 'spot'), note: null, marketType: 'forex' as const,
+  }) });
+}
+
+/**
+ * Past candles around one moment for a replay, always spot (practice is spot). A market that is plainly forex or a metal
+ * (plainForexPair) comes from OANDA; any other from Binance's list. It never rejects: any port failure is 'unavailable', with its reason.
+ */
 export async function loadReplayCandles(request: ReplayRequest, deps: ReplayMarketDeps): Promise<ReplayLoadResult> {
   try {
     if (normalizeTradeSymbol(request.market) === '') return fail('market-required');
@@ -81,6 +131,8 @@ export async function loadReplayCandles(request: ReplayRequest, deps: ReplayMark
     if (fromMs < 0) return fail('no-history');
 
     const options = deps.signal ? { signal: deps.signal } : undefined;
+    const forex = plainForexPair(request.market);
+    if (forex !== null) return await loadForexReplay(forex, size, fromMs, alignedStart, nowMs, deps, options);
     const metadata = await deps.metadata.acquireInstrumentMetadata(options);
     if (!metadata.ok) return unavailable(metadata);
     const match = matchCryptoMarket(request.market, 'crypto', metadata.facts);
@@ -98,19 +150,13 @@ export async function loadReplayCandles(request: ReplayRequest, deps: ReplayMark
       pair: { base: match.base, quote: match.quote },
     }, options);
     if (!history.ok) return unavailable(history);
-    // The last candle of a page may still be forming: only finished candles are replayed.
-    const candles: MarketCandle[] = [];
-    for (const candle of history.snapshot.candles) {
-      if (!(Date.parse(candle.closeTime) < nowMs)) continue;
-      const normalized = normalizeCandle(candle);
-      if (normalized === null) return Object.freeze({ ok: false as const, reason: 'unavailable' as const, why: 'unreadable' as const, retryAfterSeconds: null });
-      candles.push(normalized);
-    }
-    const startIndex = candles.filter(candle => Date.parse(candle.openTime) < alignedStart).length;
+    const finished = finishedCandles(history.snapshot.candles, alignedStart, nowMs);
+    if (finished === null) return Object.freeze({ ok: false as const, reason: 'unavailable' as const, why: 'unreadable' as const, retryAfterSeconds: null });
+    const { candles, startIndex } = finished;
     if (startIndex === 0) return fail('no-history');
     if (startIndex === candles.length) return fail('no-future');
     return Object.freeze({ ok: true as const, replay: Object.freeze({
-      symbol, quoteAsset, candleSize: size, candles: Object.freeze(candles), startIndex,
+      symbol, quoteAsset, candleSize: size, candles, startIndex,
       source: describeCandleSource(history.snapshot.origin, match, 'spot'), note: matchNoteFor(match, 'spot'),
     }) });
   } catch {
