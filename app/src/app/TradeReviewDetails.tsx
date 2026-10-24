@@ -1,5 +1,5 @@
 import type { JournalHistoryEntry } from '../application/journal';
-import { describeClosedPart, describeMoneyAtRisk } from '../application/performance/performanceWords';
+import { CLOSED_PART_NEEDS_CONTRACT_SIZE_WORDS, describeClosedPart, describeMoneyAtRisk, NEEDS_CONTRACT_SIZE_WORDS } from '../application/performance/performanceWords';
 import { projectTradeClosedPart } from '../application/performance/tradeClosedPart';
 import { projectTradeMoneyAtRisk } from '../application/performance/tradeRisk';
 import { ResultText } from '../design-system/primitives';
@@ -34,7 +34,9 @@ export function TradeReviewDetails({ entry }: { readonly entry: JournalHistoryEn
     <section className="kairos-review__card" aria-label="Recorded result">
       <h2>Recorded result</h2>
       <p className={`kairos-review__result kairos-review__result--${visualPnl.outcome}`}><span>{visualPnl.label}</span><strong>{amount(visualPnl.amount, visualPnl.currency)}</strong></p>
-      {closedPart.available ? <p className="kairos-review__closed-part"><ResultText outcome={closedPart.outcome} label="Closed part" amount={closedPart.resultBeforeFees} currency={closedPart.currency} /> <span>{describeClosedPart(closedPart)}</span></p> : null}
+      {metrics?.needsContractSize ? <p className="kairos-review__note">{NEEDS_CONTRACT_SIZE_WORDS}</p> : null}
+      {closedPart.available ? <p className="kairos-review__closed-part"><ResultText outcome={closedPart.outcome} label="Closed part" amount={closedPart.resultBeforeFees} currency={closedPart.currency} /> <span>{describeClosedPart(closedPart)}</span></p>
+        : closedPart.reason === 'needs-contract-size' ? <p className="kairos-review__closed-part">{CLOSED_PART_NEEDS_CONTRACT_SIZE_WORDS}</p> : null}
       <dl className="kairos-review__facts"><div><dt>Result before fees</dt><dd>{amount(metrics?.grossPnl, trade.grossPnlCurrency)}</dd></div><div><dt>Result after fees</dt><dd>{amount(metrics?.netPnl, metrics?.netPnlCurrency)}</dd></div><div><dt>Money at risk</dt><dd>{describeMoneyAtRisk(projectTradeMoneyAtRisk(entry))}</dd></div></dl>
       {executions.length === 0 ? <p className="kairos-review__note">No entries or exits are recorded. Planned prices alone do not make a result.</p> : null}
       {entry.metricsError ? <p className="kairos-review__note">Some results are not available for this trade.</p> : null}

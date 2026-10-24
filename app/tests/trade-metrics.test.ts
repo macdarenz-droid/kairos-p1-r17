@@ -43,6 +43,7 @@ describe('P11.5 TradeMetrics foundation', () => {
         totalExitedQuantity: '0',
         remainingQuantity: '0',
         state: null,
+        needsContractSize: false,
         completeness: {
           hasEntryExecutions: false,
           hasExitExecutions: false,

@@ -4,6 +4,7 @@ export * from './executionBalance';
 export * from './closedPartResult';
 export * from './grossRealizedPnl';
 export * from './tradeMetrics';
+export * from './contractSize';
 export * from './percentageCalculator';
 export * from './rMultipleCalculator';
 export * from './riskCalculator';

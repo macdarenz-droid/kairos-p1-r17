@@ -19,7 +19,7 @@ import type { KairosDatabase } from '../data/database';
 import { updateTradeExecution } from '../application/trades';
 import { EntriesAndExitsEditor } from '../features/journal/EntriesAndExitsEditor';
 import { GlossaryHint } from '../features/learn/GlossaryHint';
-import { describeClosedPart, describeMoneyAtRisk } from '../application/performance/performanceWords';
+import { CLOSED_PART_NEEDS_CONTRACT_SIZE_WORDS, describeClosedPart, describeMoneyAtRisk, NEEDS_CONTRACT_SIZE_WORDS } from '../application/performance/performanceWords';
 import { projectTradeClosedPart } from '../application/performance/tradeClosedPart';
 import { projectTradeMoneyAtRisk } from '../application/performance/tradeRisk';
 import { useNewsNearTrades } from '../features/economic-calendar/useNewsNearTrades';
@@ -177,7 +177,9 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
                 {db && tradeDeleted ? <JournalTradeDeleteControl entry={entry} db={db} onDeleted={tradeDeleted} /> : null}
                 <ResultText outcome={entry.visualPnl.outcome} label={entry.visualPnl.label} amount={entry.visualPnl.amount} currency={entry.visualPnl.currency}
                   className={`kairos-history-card__outcome kairos-history-card__outcome--${entry.visualPnl.outcome}`} />
-                {closedPart.available ? <p className="kairos-history-card__closed-part"><ResultText outcome={closedPart.outcome} label="Closed part" amount={closedPart.resultBeforeFees} currency={closedPart.currency} /> <span>{describeClosedPart(closedPart)}</span></p> : null}
+                {entry.metrics?.needsContractSize ? <p className="kairos-history-card__notice">{NEEDS_CONTRACT_SIZE_WORDS}</p> : null}
+                {closedPart.available ? <p className="kairos-history-card__closed-part"><ResultText outcome={closedPart.outcome} label="Closed part" amount={closedPart.resultBeforeFees} currency={closedPart.currency} /> <span>{describeClosedPart(closedPart)}</span></p>
+                  : closedPart.reason === 'needs-contract-size' ? <p className="kairos-history-card__closed-part">{CLOSED_PART_NEEDS_CONTRACT_SIZE_WORDS}</p> : null}
                 <TradePicture entry={entry} variant="thumbnail" strategyName={discipline.state.kind === 'ready' ? discipline.state.records.get(entry.trade.id)?.strategy?.name ?? null : null} />
                 {/* The five words are explained once per list (D69): only the first card has the "?" buttons. */}
                 <dl className="kairos-history-card__facts">

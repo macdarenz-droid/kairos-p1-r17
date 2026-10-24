@@ -12,8 +12,13 @@ const NOT_GIVEN: Readonly<Record<TradeMoneyAtRiskReason, string>> = Object.freez
   'no-size': 'Not available: no size',
   'stop-at-entry': 'Not available: the stop is not on the losing side',
   'stop-not-on-loss-side': 'Not available: the stop is not on the losing side',
+  'needs-contract-size': 'Not available: add how much one point is worth',
   'invalid-decimal': 'Not available',
 });
+
+/** D237: shown where a futures or options result would be when the trade has no "how much one point is worth". */
+export const NEEDS_CONTRACT_SIZE_WORDS = 'Add how much one point is worth to see this result.';
+export const CLOSED_PART_NEEDS_CONTRACT_SIZE_WORDS = 'Closed part: add how much one point is worth to see its result.';
 
 export function describeMoneyAtRisk(value: TradeMoneyAtRisk): string {
   if (!value.available) return NOT_GIVEN[value.reason];

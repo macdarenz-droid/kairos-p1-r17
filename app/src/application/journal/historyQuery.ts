@@ -1,6 +1,6 @@
 import type { KairosDatabase } from '../../data/database';
 import { createKairosRepositories } from '../../data/repositories';
-import { calculateTradeMetrics, type TradeMetricsResult } from '../../domain/calculations';
+import { calculateTradeMetrics, resolveContractSize, type TradeMetricsResult } from '../../domain/calculations';
 import { projectVisualPnlOutcome, type VisualPnlOutcomeProjection } from '../visual-pnl';
 import type { TradeExecutionRecord, TradeFeeRecord, TradePlanRecord, TradeRecord, TradeSource, TradeStatus, TradeId } from '../../domain/trades';
 
@@ -71,9 +71,10 @@ function composeJournalHistoryEntry(
   executions: readonly TradeExecutionRecord[],
   fees: readonly TradeFeeRecord[],
 ): JournalHistoryEntry {
-  const metricsResult = trade.grossPnlCurrency
-    ? calculateTradeMetrics(trade.side, executions, undefined, fees, { grossPnlCurrency: trade.grossPnlCurrency })
-    : calculateTradeMetrics(trade.side, executions, undefined, fees);
+  // D237: the result is times how much one point is worth, from its one owner, so the Journal and the picture never disagree.
+  const metricsResult = calculateTradeMetrics(
+    trade.side, executions, undefined, fees, trade.grossPnlCurrency ? { grossPnlCurrency: trade.grossPnlCurrency } : undefined, undefined, undefined, resolveContractSize(trade),
+  );
   return Object.freeze({
     trade,
     plans: Object.freeze([...plans]),
