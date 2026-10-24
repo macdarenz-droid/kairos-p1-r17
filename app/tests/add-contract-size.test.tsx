@@ -60,11 +60,14 @@ describe('T-056d adding how much one point is worth to a saved trade', () => {
   });
 
   it('adds it once in one write, never changes it, and refuses a stale edit or a value that is not a positive number', async () => {
-    const { db, ids } = await database(es(), es({ symbol: 'BTCUSDT', marketType: 'crypto', grossPnlCurrency: 'USDT' }));
+    const { db, ids } = await database(es(), es({ symbol: 'BTCUSDT', marketType: 'crypto', grossPnlCurrency: 'USDT' }), es({ symbol: 'BTCUSDT-PERP', grossPnlCurrency: 'USDT' }));
     const before = await snapshot(db, ids[0]!);
     expect(await addTradeContractSize(db, { expected: before, contractSize: '0' })).toMatchObject({ ok: false, type: 'validation-error', field: 'contractSize' });
     expect(await addTradeContractSize(db, { expected: before, contractSize: 'abc' })).toMatchObject({ ok: false, type: 'validation-error' });
     expect(await addTradeContractSize(db, { expected: await snapshot(db, ids[1]!), contractSize: '5' })).toEqual({ ok: false, type: 'update-conflict', reason: 'not-futures-or-options' });
+    // Review r1: the command keeps the button's rule; a futures trade priced in a stablecoin is already 1 a point.
+    expect(await addTradeContractSize(db, { expected: await snapshot(db, ids[2]!), contractSize: '50' })).toEqual({ ok: false, type: 'update-conflict', reason: 'not-needed' });
+    expect((await db.trades.get(ids[2]!))?.contractSize).toBeUndefined();
 
     expect(await addTradeContractSize(db, { expected: before, contractSize: '50' }, () => '2026-09-22T08:00:00.000Z')).toEqual({ ok: true, tradeId: ids[0], contractSize: '50' });
     const after = await snapshot(db, ids[0]!);

@@ -14,7 +14,7 @@ export interface AddTradeContractSizeInput {
 export type AddTradeContractSizeResult =
   | { readonly ok: true; readonly tradeId: TradeId; readonly contractSize: DecimalString }
   | { readonly ok: false; readonly type: 'validation-error'; readonly field: 'contractSize'; readonly reason: string }
-  | { readonly ok: false; readonly type: 'update-conflict'; readonly reason: 'trade-not-found' | 'trade-changed' | 'not-futures-or-options' | 'contract-size-recorded' }
+  | { readonly ok: false; readonly type: 'update-conflict'; readonly reason: 'trade-not-found' | 'trade-changed' | 'not-futures-or-options' | 'contract-size-recorded' | 'not-needed' }
   | { readonly ok: false; readonly type: 'storage-error'; readonly reason: 'trade-save-failed' };
 
 /** Whether a trade can be given how much one point is worth: a futures or options trade with none, and no stablecoin price that makes it 1. */
@@ -34,6 +34,8 @@ export async function addTradeContractSize(
   const { trade } = input.expected;
   if (trade.marketType !== 'futures' && trade.marketType !== 'options') return { ok: false, type: 'update-conflict', reason: 'not-futures-or-options' };
   if (trade.contractSize != null) return { ok: false, type: 'update-conflict', reason: 'contract-size-recorded' };
+  // The one rule of where it is offered: a futures trade priced in a stablecoin is already 1 a point (D237).
+  if (!canAddTradeContractSize(trade)) return { ok: false, type: 'update-conflict', reason: 'not-needed' };
   const parsed = parsePositiveDecimalString(input.contractSize);
   if (!parsed.ok) return { ok: false, type: 'validation-error', field: 'contractSize', reason: parsed.reason };
   try {

@@ -13,6 +13,7 @@ const REFUSED: Readonly<Record<Exclude<AddTradeContractSizeResult, { ok: true }>
   'trade-changed': 'This trade changed in another tab. Reload the page to see it, then try again.',
   'not-futures-or-options': 'Only futures and options trades need how much one point is worth.',
   'contract-size-recorded': 'How much one point is worth is already saved for this trade.',
+  'not-needed': 'This trade is priced in a stablecoin, so one point is already worth 1.',
   'trade-save-failed': 'Kairos could not save it. Your value is kept, so you can try again.',
 };
 
