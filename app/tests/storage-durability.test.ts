@@ -4,6 +4,8 @@ import {
   inspectStorageDurability,
   requestPersistentStorage,
   subscribeStorageDurabilityStatus,
+  describeStorageUse,
+  estimateStorageUse,
 } from '../src/pwa/storageDurability';
 
 const originalStorageDescriptor = Object.getOwnPropertyDescriptor(navigator, 'storage');
@@ -59,5 +61,24 @@ describe('P4.3 storage durability owner', () => {
   it('surfaces API failures as an internal status instead of throwing at bootstrap', async () => {
     setStorage({ persisted: vi.fn().mockRejectedValue(new Error('blocked')) });
     await expect(inspectStorageDurability()).resolves.toEqual({ state: 'error', persistent: false });
+  });
+});
+
+describe('T-054d how much Kairos keeps on this device', () => {
+  it('reads the browser\'s estimate, and nothing it cannot trust', async () => {
+    setStorage({ estimate: vi.fn().mockResolvedValue({ usage: 12_400_000, quota: 2_112_400_000 }) });
+    await expect(estimateStorageUse()).resolves.toEqual({ usage: 12_400_000, quota: 2_112_400_000 });
+    setStorage({ estimate: vi.fn().mockResolvedValue({ usage: 5 }) });
+    await expect(estimateStorageUse()).resolves.toBeNull();
+    setStorage({ estimate: vi.fn().mockRejectedValue(new Error('denied')) });
+    await expect(estimateStorageUse()).resolves.toBeNull();
+    setStorage(undefined);
+    await expect(estimateStorageUse()).resolves.toBeNull();
+  });
+
+  it('says it in plain sizes', () => {
+    expect(describeStorageUse({ usage: 12_400_000, quota: 2_112_400_000 })).toBe('Kairos uses about 12 MB · 2.1 GB free');
+    expect(describeStorageUse({ usage: 640_000, quota: 300_640_000 })).toBe('Kairos uses less than 1 MB · 300 MB free');
+    expect(describeStorageUse({ usage: 2_450_000, quota: 52_450_000_000 })).toBe('Kairos uses about 2.5 MB · 52 GB free');
   });
 });

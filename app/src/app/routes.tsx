@@ -1,4 +1,4 @@
-import type { RouteObject } from 'react-router';
+import { useRouteError, type RouteObject } from 'react-router';
 import { AppShellRoute } from './AppShell';
 import { HomeRoute } from './HomeRoute';
 import { MoreRoute } from './MoreRoute';
@@ -14,6 +14,16 @@ import { ActivationReceiptRepository } from '../services/activation';
 function RouteLoading() {
   return <p className="kairos-route" role="status">Loading…</p>;
 }
+
+/** e2e (ab): a page that crashes on purpose, in the QA build only (`e2e/qa-build.mjs`); a release build drops it. */
+function QaCrash(): never {
+  throw new Error('QA crash on purpose (e2e)');
+}
+/** Hands the crash past the router, so the app's crash screen shows it. */
+function QaCrashOnward(): never {
+  throw useRouteError();
+}
+const QA_ROUTES: RouteObject[] = import.meta.env.VITE_BUILD_ID === 'qa-e2e' ? [{ path: '/qa/crash', Component: QaCrash, ErrorBoundary: QaCrashOnward }] : [];
 
 // Each screen's code loads when the screen opens; Home, More and not-found stay in the first script.
 /** U1: the app's Kairos server client (address from VITE_KAIROS_API_URL, device header from this device's receipt), the same for every screen that talks to the server. */
@@ -87,6 +97,10 @@ export const appRoutes = [
         const [{ SetupScreen }, { readDeviceTimeZone }] = await Promise.all([import('../features/setup/SetupScreen'), import('../features/settings/DeviceTimeZoneButton')]);
         return { Component: function SetupRoute() { return <SetupScreen db={kairosDatabase} deviceTimeZone={readDeviceTimeZone()} languages={navigator.languages} />; } };
       } },
+      { path: 'backup', lazy: async () => {
+        const { BackupScreen } = await import('../features/backup/BackupScreen');
+        return { Component: function BackupRoute() { return <BackupScreen db={kairosDatabase} />; } };
+      } },
       { path: 'profile', lazy: async () => {
         const [{ ProfileRoute }, kairosApi] = await Promise.all([import('./ProfileRoute'), import('../services/kairos-api/kairosApi')]);
         const client = kairosApiClientFrom(kairosApi);
@@ -96,4 +110,5 @@ export const appRoutes = [
       { path: '*', element: <NotFoundRoute /> },
     ],
   },
+  ...QA_ROUTES,
 ] satisfies RouteObject[];

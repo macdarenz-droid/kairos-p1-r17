@@ -41,7 +41,7 @@ test('(b) every route renders inside the phone width without page errors', async
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
   await activate(page);
-  for (const path of ['/', '/journal', '/analysis', '/library', '/more', '/practice', '/goals', '/strategies', '/coach', '/practice/coach', '/patterns', '/practice/patterns', '/news-calendar', '/currency', '/settings', '/profile', '/does-not-exist']) {
+  for (const path of ['/', '/journal', '/analysis', '/library', '/more', '/practice', '/goals', '/strategies', '/coach', '/practice/coach', '/patterns', '/practice/patterns', '/news-calendar', '/currency', '/settings', '/profile', '/backup', '/does-not-exist']) {
     await page.goto(path);
     await expect(page.locator('.kairos-shell'), path).toBeVisible();
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
@@ -75,6 +75,8 @@ test('(c) log a closed trade, find it in Your Trades and open it in Analysis', a
   await page.getByLabel('Exit 2 quantity').fill('0.1');
   await page.getByLabel('Exit 2 date and time').fill('2026-09-20T10:00');
   await page.getByRole('button', { name: 'Save trade' }).click();
+  // The saved message takes the focus the busy Save button gave up, never the page.
+  await expect(page.locator('.kairos-journal__feedback--success')).toBeFocused();
   const outcome = page.locator('[data-outcome="profit"]').first();
   await expect(outcome).toContainText('Profit');
   await expect(outcome).toContainText('150 USDT');
@@ -154,6 +156,9 @@ test('(f) Library: a lesson from start to finish', async ({ page }) => {
     if (await page.locator('.kairos-lesson-check').count() > 0) {
       await page.locator('.kairos-lesson-check button').first().click();
       await expect(page.locator('.kairos-lesson-check__feedback')).toHaveText(/^(Right\.|Not quite\.)/);
+      // The answered choices stay readable: not dimmed like a disabled button (T-054b fix r1).
+      const opacities = await page.locator('.kairos-lesson-check button').evaluateAll(buttons => buttons.map(button => getComputedStyle(button).opacity));
+      expect(opacities).toEqual(opacities.map(() => '1'));
     }
     await page.getByRole('button', { name: i < steps ? 'Next' : 'Finish', exact: true }).click();
   }
@@ -1402,4 +1407,222 @@ test('(x) Log a trade from anywhere: "+ Log trade", the log address and Getting 
   await expect(page.getByRole('heading', { level: 1, name: 'Practice' })).toBeVisible();
   await expect(logTrade).toHaveCount(0);
   expect(errors).toEqual([]);
+});
+
+test('(y) Back up when it is due: the reminder on Home and the Journal, "Back up now", and "Remind me"', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  const axeOk = async (where: string) => {
+    const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+    expect(axe.violations.map(violation => `${where} ${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  };
+  const reminder = page.getByRole('region', { name: 'Back up your journal' });
+  await activate(page);
+  // A fresh journal has nothing to lose: no reminder.
+  await expect(page.getByRole('region', { name: 'Getting started' })).toBeVisible();
+  await expect(reminder).toHaveCount(0);
+
+  // One trade, never backed up: the reminder is on the Journal and on Home.
+  await page.goto('/journal');
+  await page.getByLabel(/^Symbol/).fill('BTCUSDT');
+  await page.getByLabel(/^Market/).selectOption('crypto');
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Status/).selectOption('open');
+  await page.locator('#kairos-trade-opened-at').fill('2026-09-20T09:00');
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.getByText(/BTCUSDT/).first()).toBeVisible();
+  await page.reload();
+  await expect(reminder).toBeVisible();
+  await expect(reminder.getByText('No backup yet. Save a copy of your journal so you never lose it.')).toBeVisible();
+  await page.goto('/');
+  await expect(reminder).toBeVisible();
+  await axeOk('Home with the reminder');
+
+  // "Remind me: Never" keeps it away; "Every week" brings it back.
+  await page.goto('/backup');
+  await expect(page.getByRole('heading', { level: 1, name: 'Backup and restore' })).toBeVisible();
+  await expect(page.getByText('No backup yet on this device.')).toBeVisible();
+  await axeOk('Backup and restore');
+  await page.getByLabel('How often').selectOption('never');
+  await expect(page.getByText('Saved.')).toBeVisible();
+  await page.goto('/');
+  await expect(page.getByRole('region', { name: 'Getting started' })).toBeVisible();
+  await expect(reminder).toHaveCount(0);
+  await page.goto('/backup');
+  await page.getByLabel('How often').selectOption('7');
+  await expect(page.getByText('Saved.')).toBeVisible();
+
+  // "Back up now" on Home downloads a backup Kairos can read back; the reminder goes away.
+  await page.goto('/');
+  const [download] = await Promise.all([page.waitForEvent('download'), reminder.getByRole('button', { name: 'Back up now' }).click()]);
+  expect(download.suggestedFilename()).toMatch(/^kairos-backup-.*Z\.json$/);
+  const backupPath = (await download.path())!;
+  const saved = JSON.parse(readFileSync(backupPath, 'utf8')) as { formatName: string; payload: { trades: unknown[] } };
+  expect(saved.formatName).toBe('kairos-full-backup');
+  expect(saved.payload.trades).toHaveLength(1);
+  await expect(reminder.getByText('Backup saved.')).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('region', { name: 'Getting started' })).toBeVisible();
+  await expect(reminder).toHaveCount(0);
+  await page.goto('/backup');
+  await expect(page.getByText(/^Last backup today · /)).toBeVisible();
+
+  // T-054a fix r1: a refused file leaves focus on its field; a button that can't be used looks it (aria-disabled, dimmed).
+  // A tap on the field gives it focus before the phone's file picker opens.
+  const restoreField = page.getByLabel('Backup file', { exact: true });
+  await restoreField.focus();
+  await restoreField.setInputFiles({ name: 'notes.json', mimeType: 'application/json', buffer: Buffer.from('{"hello":true}') });
+  await expect(page.getByRole('alert')).toContainText('That file is not a Kairos backup');
+  expect(await page.evaluate(() => document.activeElement?.id)).toBe('kairos-backup-backup-file');
+  await page.getByLabel('Backup file to import from').setInputFiles(backupPath);
+  const add = page.getByRole('button', { name: 'Add these records' });
+  await expect(add).toBeFocused();
+  await expect(add).toHaveAttribute('aria-disabled', 'true');
+  expect(await add.evaluate(element => getComputedStyle(element).opacity)).toBe('0.58');
+  await page.getByRole('button', { name: 'Cancel' }).click();
+
+  // T-054b: on a phone the share sheet takes the backup (stubbed here: Playwright has no share sheet); a closed sheet saves nothing.
+  await page.addInitScript(() => {
+    const kept: Array<[string, string]> = [];
+    (window as unknown as { kairosShared: typeof kept }).kairosShared = kept;
+    Object.defineProperty(navigator, 'canShare', { configurable: true, value: () => true });
+    Object.defineProperty(navigator, 'share', { configurable: true, value: async ({ files }: { files: File[] }) => {
+      sessionStorage.setItem('kairos-qa-share-calls', String(Number(sessionStorage.getItem('kairos-qa-share-calls') ?? '0') + 1));
+      if (sessionStorage.getItem('kairos-qa-share') === 'cancel') throw new DOMException('closed', 'AbortError');
+      for (const shared of files) kept.push([shared.name, shared.type]);
+    } });
+  });
+  await page.reload();
+  await page.getByRole('button', { name: 'Back up now' }).click();
+  await expect(page.getByText("Shared. Kairos can't see where you shared it; keep it somewhere you can find.")).toBeVisible();
+  const shared = await page.evaluate(() => (window as unknown as { kairosShared: Array<[string, string]> }).kairosShared);
+  expect(shared).toHaveLength(1);
+  expect(shared[0]![0]).toMatch(/^kairos-backup-.*Z\.json$/);
+  expect(shared[0]![1]).toBe('application/json');
+  await page.evaluate(() => sessionStorage.setItem('kairos-qa-share', 'cancel'));
+  await page.reload();
+  const lastBefore = await page.getByText(/^Last backup today · /).textContent();
+  await page.getByRole('button', { name: 'Back up now' }).click();
+  await expect.poll(() => page.evaluate(() => sessionStorage.getItem('kairos-qa-share-calls'))).toBe('2');
+  await expect(page.locator('[data-backup-export]')).toHaveAttribute('data-backup-export', 'idle');
+  await expect(page.getByText(/^Backup saved:/)).toHaveCount(0);
+  expect(await page.getByText(/^Last backup today · /).textContent()).toBe(lastBefore);
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+
+test('(z) Install help: the Home Screen guide on iPhone Safari, and "Not now" kept', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  // Only iPhone and iPad Safari have `navigator.standalone` (D228); here it says "not on the Home Screen".
+  await page.addInitScript(() => { Object.defineProperty(navigator, 'standalone', { configurable: true, value: false }); });
+  await activate(page);
+  const help = page.getByRole('region', { name: 'Add Kairos to your Home Screen' });
+  await expect(help).toBeVisible();
+  // Below Getting started.
+  expect(await page.getByRole('region', { name: 'Getting started' }).evaluate((started, card) => (started.compareDocumentPosition(card!) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0, await help.elementHandle())).toBe(true);
+  const steps = help.getByRole('list', { name: 'How to add Kairos' }).getByRole('listitem');
+  await expect(steps).toHaveText(['1Tap Share.', '2Choose "Add to Home Screen".', '3Tap "Add". Kairos is now on your Home Screen.']);
+  for (const [index, icon] of ['share', 'plus', 'home'].entries()) await expect(steps.nth(index).locator(`svg[data-icon="${icon}"]`)).toBeVisible();
+  await expect(help.getByRole('button', { name: 'Install' })).toHaveCount(0);
+  const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(axe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+
+  await help.getByRole('button', { name: 'Not now' }).click();
+  await expect(help).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Live Market' })).toBeFocused();
+  await page.reload();
+  await expect(page.getByRole('group', { name: 'Dashboard view' })).toBeVisible();
+  await page.waitForTimeout(500);
+  await expect(help).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test('(aa) Two tabs: a save shows in the other tab, and an update in another tab says Reload', async ({ page, context }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`tab 1 ${page.url()}: ${error.message}`));
+  await activate(page);
+  // The second tab of the same browser: same journal, same activation.
+  const other = await context.newPage();
+  other.on('pageerror', error => errors.push(`tab 2 ${other.url()}: ${error.message}`));
+  await other.goto('/journal');
+  await expect(other.getByRole('heading', { level: 1, name: 'Journal' })).toBeVisible();
+  await expect(other.getByText('TWOTABS')).toHaveCount(0);
+
+  await page.goto('/journal');
+  await page.getByLabel(/^Symbol/).fill('TWOTABS');
+  await page.getByLabel(/^Market/).selectOption('crypto');
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Status/).selectOption('cancelled');
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.getByText('TWOTABS').first()).toBeVisible();
+  // Tab 2 reads again without a reload.
+  await expect(other.getByText('TWOTABS').first()).toBeVisible();
+  await expect(other.getByRole('alert')).toHaveCount(0);
+
+  // A newer Kairos opening the journal in another tab: tab 2 is told to reload.
+  await page.evaluate(name => new Promise<void>((resolve, reject) => {
+    const request = indexedDB.open(name, 100_000);
+    request.onsuccess = () => { request.result.close(); resolve(); };
+    request.onerror = () => reject(request.error);
+  }), 'kairos');
+  const banner = other.getByRole('alert').filter({ hasText: 'Kairos was updated in another tab. Reload to keep saving.' });
+  await expect(banner).toBeVisible();
+  await expect(banner.getByRole('button', { name: 'Reload' })).toBeVisible();
+  // Analysis's chart opens the journal again on each read (coming back to the tab, too); the note stays until Reload
+  // (T-054d fix r1).
+  await other.getByRole('navigation', { name: 'Primary navigation' }).getByRole('link', { name: 'Analysis' }).click();
+  await other.getByRole('group', { name: 'Analysis view' }).getByRole('button', { name: 'Chart' }).click();
+  await expect(other).toHaveURL(/view=chart/);
+  await other.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await other.waitForTimeout(500);
+  await expect(banner).toBeVisible();
+  const axe = await new AxeBuilder({ page: other }).include('.kairos-database-status').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(axe.violations.map(violation => violation.id)).toEqual([]);
+  expect(await other.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  expect(errors).toEqual([]);
+});
+
+test('(ab) A crash: Reload, a copy of my data, and the error details', async ({ page }) => {
+  // The clipboard as the page sees it; what it copied is kept for the test.
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (text: string) => { sessionStorage.setItem('qa-copied', text); } } });
+  });
+  await activate(page);
+  await page.goto('/journal');
+  await page.getByLabel(/^Symbol/).fill('CRASHSAFE');
+  await page.getByLabel(/^Market/).selectOption('crypto');
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Status/).selectOption('cancelled');
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.locator('.kairos-journal__feedback--success')).toBeVisible();
+
+  // The QA build's page that crashes on purpose.
+  await page.goto('/qa/crash');
+  const title = page.getByRole('heading', { level: 1, name: 'Kairos hit a problem' });
+  await expect(title).toBeVisible();
+  await expect(title).toBeFocused();
+  await expect(page.getByText('Your journal is safe on this device. Reload to try again.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Reload' })).toBeVisible();
+
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download a copy of my data' }).click()]);
+  const saved = JSON.parse(readFileSync((await download.path())!, 'utf8')) as { formatName: string; payload: { trades: Array<{ symbol: string }> } };
+  expect(saved.formatName).toBe('kairos-full-backup');
+  expect(saved.payload.trades.map(trade => trade.symbol)).toEqual(['CRASHSAFE']);
+  await expect(page.getByText(`Downloaded ${download.suggestedFilename()}.`)).toBeVisible();
+
+  await page.getByRole('button', { name: 'Copy error details' }).click();
+  await expect(page.getByText('Copied. This is the text:')).toBeVisible();
+  // The trader sees exactly what was copied (T-054e fix r1).
+  expect(await page.getByRole('textbox', { name: 'Error details' }).inputValue()).toBe(await page.evaluate(() => sessionStorage.getItem('qa-copied')));
+  const copied = await page.evaluate(() => sessionStorage.getItem('qa-copied'));
+  expect(copied).toContain('Error: Error: QA crash on purpose (e2e)');
+  expect(copied).not.toContain('CRASHSAFE');
+
+  const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(axe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });

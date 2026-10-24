@@ -9,6 +9,7 @@ import { kairosDatabase, openKairosDatabase } from './data/database';
 import { loadTradedMarkets } from './application/setup/tradedMarkets';
 import { ActivationBootstrap } from './features/activation';
 import { registerKairosServiceWorker } from './pwa/serviceWorkerRegistration';
+import { startInstallPrompt } from './pwa/installPrompt';
 import { inspectStorageDurability } from './pwa/storageDurability';
 import '@fontsource-variable/inter/wght.css';
 import './design-system/tokens.css';
@@ -20,6 +21,8 @@ diagnostics.record({ level: 'info', category: 'app', event: 'bootstrap' });
 applyInitialTheme();
 if (import.meta.env.PROD) void registerKairosServiceWorker();
 void inspectStorageDurability();
+// D228: listens before the browser offers its install prompt, which it does once per page.
+startInstallPrompt();
 const databaseStartup = openKairosDatabase().then(async (status) => {
   diagnostics.record({
     level: status.state === 'ready' ? 'info' : 'error',

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router';
+import { JOURNAL_CHANGED_EVENT } from './AppShell';
 import { ReviewTradeLink } from './ReviewTradeLink';
 import { loadHomeYourTrades, YOUR_TRADES_HISTORY_LIMIT, type HomeYourTrade } from '../application/dashboard/homeDashboardYourTradesQuery';
 import { GlassDecoration, GlassIcon, glassFieldBottom } from './HomeDashboardGlassBubbleMap';
@@ -28,7 +29,8 @@ export function HomeDashboardYourTrades({load=loadHomeYourTrades,glance}:{readon
   },[load,revision]);
   useEffect(()=>{const visible=()=>{setHidden(document.hidden);if(!document.hidden)refresh();};
     document.addEventListener('visibilitychange',visible);window.addEventListener('focus',refresh);
-    return()=>{document.removeEventListener('visibilitychange',visible);window.removeEventListener('focus',refresh);};
+    window.addEventListener(JOURNAL_CHANGED_EVENT,refresh); // D229: and when another tab saves.
+    return()=>{document.removeEventListener('visibilitychange',visible);window.removeEventListener('focus',refresh);window.removeEventListener(JOURNAL_CHANGED_EVENT,refresh);};
   },[refresh]);
   useEffect(()=>{
     const el=field.current;if(!el)return;

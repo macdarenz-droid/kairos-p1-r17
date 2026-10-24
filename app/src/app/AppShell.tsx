@@ -8,12 +8,23 @@ import { LOG_TRADE_ADDRESS } from '../features/setup/GettingStartedCard';
 import { isNavigationTabPage, navigationTabOf, normalizePathname, pageParentOf, primaryNavigation } from './navigation';
 import { backStepOf, backTrailEntryId, EMPTY_BACK_TRAIL, recordBackTrailNavigation, recordBackTrailTitle, type BackTrail } from './backTrail';
 import { UpdatePrompt, type UpdatePromptPort } from '../features/shell/UpdatePrompt';
+import { DatabaseStatusBanner, type DatabaseStatusPort } from '../features/shell/DatabaseStatusBanner';
+import { createBackupDelivery } from '../features/backup/backupDelivery';
+import { createBrowserBackupDownloadPorts, runBackup } from '../application/backup';
 import { readDeviceTimeZone } from '../features/settings/DeviceTimeZoneButton';
 import { startVisualPnlTimeZoneFromDevice } from '../application/visual-pnl';
-import { kairosDatabase, type KairosDatabase } from '../data/database';
+import { kairosDatabase, listenForKairosJournalChanges, openKairosDatabase, subscribeDatabaseLifecycle, subscribeKairosWriteFailures, type KairosDatabase } from '../data/database';
 import { activateWaitingServiceWorker, subscribeServiceWorkerStatus } from '../pwa/serviceWorkerRegistration';
 
 const updatePromptPort: UpdatePromptPort = Object.freeze({ subscribe: subscribeServiceWorkerStatus, activate: activateWaitingServiceWorker });
+/** D229: the database's own state for the shell's banner; "Download what can be read" is a backup handed over as a download only. */
+const databaseStatusPort: DatabaseStatusPort = Object.freeze({
+  subscribe: subscribeDatabaseLifecycle,
+  reopen: () => openKairosDatabase(kairosDatabase),
+  subscribeWriteFailures: subscribeKairosWriteFailures,
+  downloadReadable: () => runBackup(kairosDatabase, createBackupDelivery({ downloads: createBrowserBackupDownloadPorts(window) })),
+  reload: () => window.location.reload(),
+});
 
 /** The kit's icon for each bottom-bar destination; the label remains the accessible name. */
 const navigationIcons: Readonly<Record<string, IconName>> = Object.freeze({
@@ -62,6 +73,11 @@ function useScreenTitleAndFocus(pathname: string, onTitle: (title: string) => vo
 const SCROLL_PLACES_KEY = 'kairos.scroll-places.v1';
 /** A page that brings part of itself into view (the Journal's log address) says so, and the shell stops reaching for its place. */
 export const SCROLL_CLAIMED_EVENT = 'kairos:scroll-claimed';
+/**
+ * D229: another tab saved. The shell raises it once per message from the other tab; every screen that reads again when
+ * you come back to the app also reads again on it.
+ */
+export const JOURNAL_CHANGED_EVENT = 'kairos:journal-changed';
 /** Places kept across a reload (sessionStorage, this tab only); the newest are kept. */
 const SCROLL_PLACES_KEPT = 50;
 /** How long a returning page keeps reaching for its place while its data arrives. */
@@ -234,6 +250,7 @@ export function AppShell({ loading = false }: { readonly loading?: boolean }) {
   const logTrade = LOG_TRADE_PAGES.has(page);
   useScreenTitleAndFocus(location.pathname, back.onTitle);
   useScrollPlaces(location);
+  useEffect(() => listenForKairosJournalChanges(() => window.dispatchEvent(new Event(JOURNAL_CHANGED_EVENT))), []);
   return (
     <div className="kairos-shell" data-app="kairos" data-loading={loading ? 'true' : 'false'}>
       <a className="kairos-skip-link" href={`#${MAIN_ID}`}>Skip to main content</a>
@@ -242,6 +259,8 @@ export function AppShell({ loading = false }: { readonly loading?: boolean }) {
           <strong className="kairos-shell__brand">Kairos</strong>
         </div>
         <div className="kairos-shell__progress" role="progressbar" aria-label="Loading" aria-hidden={loading ? undefined : 'true'} />
+        {/* In the header, so it stays in view and inside a landmark; focus goes to the page when it goes. */}
+        <DatabaseStatusBanner port={databaseStatusPort} onGone={() => document.getElementById(MAIN_ID)?.focus()} />
       </header>
       <UpdatePrompt port={updatePromptPort} />
       <ToastProvider>

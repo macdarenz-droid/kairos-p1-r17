@@ -13,7 +13,7 @@
 .kairos-button--ghost:hover { border-color: var(--kairos-accent-primary); color: var(--kairos-accent-primary); }
 .kairos-button--danger { border-color: var(--kairos-state-error); background: var(--kairos-state-error); color: var(--kairos-background-depth); }
 .kairos-button[aria-pressed='true'] { border-color: var(--kairos-accent-primary); background: var(--kairos-accent-soft); color: var(--kairos-text-primary); }
-.kairos-button:disabled { opacity: .58; cursor: not-allowed; }
+.kairos-button:disabled, .kairos-button[aria-disabled='true'] { opacity: .58; cursor: not-allowed; }
 /* The one glow per screen (D183), on Button or StatTile; Ink and Paper set both glows to none. */
 [data-kairos-emphasis='main'] { box-shadow: var(--kairos-glow-active); }
 [data-kairos-emphasis='insight'] { box-shadow: var(--kairos-glow-emphasis); }

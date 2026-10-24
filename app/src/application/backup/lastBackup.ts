@@ -37,11 +37,19 @@ export async function readLastBackup(metadata: MetadataRepository): Promise<Last
  * file's own export moment, name and record count, nothing more.
  */
 export async function recordLastBackup(metadata: MetadataRepository, file: KairosBackupFile): Promise<RecordLastBackupResult> {
-  const record: LastBackupRecord = Object.freeze({ exportedAt: file.exportedAt, fileName: file.fileName, totalRecords: file.recordCounts.total });
   try {
-    await metadata.put({ key: lastBackupMetadataKey, value: JSON.stringify({ version: 1, ...record }), updatedAt: file.exportedAt });
-    return { ok: true, record };
+    return { ok: true, record: await writeLastBackup(metadata, file) };
   } catch {
     return { ok: false, type: 'storage-error', reason: 'last-backup-record-failed' };
   }
+}
+
+/**
+ * The same record, for a caller inside an atomic write: a failed put throws, so the write fails as a whole and is
+ * reported as what it was, never as a commit (T-054d fix r1).
+ */
+export async function writeLastBackup(metadata: MetadataRepository, file: KairosBackupFile): Promise<LastBackupRecord> {
+  const record: LastBackupRecord = Object.freeze({ exportedAt: file.exportedAt, fileName: file.fileName, totalRecords: file.recordCounts.total });
+  await metadata.put({ key: lastBackupMetadataKey, value: JSON.stringify({ version: 1, ...record }), updatedAt: file.exportedAt });
+  return record;
 }

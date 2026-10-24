@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
+import { JOURNAL_CHANGED_EVENT } from './AppShell';
 import { loadTradeDiscipline } from '../application/discipline';
 import { loadTradeReview, type TradeReviewResult } from '../application/journal/loadTradeReview';
 import { DEFAULT_JOURNAL_HISTORY_LIMIT } from '../application/journal/historyQuery';
@@ -117,7 +118,9 @@ export function AnalysisRoute({ load = loadTradeReview, db = kairosDatabase, now
     const visible = () => { if (!document.hidden) refresh(); };
     window.addEventListener('focus', refresh);
     document.addEventListener('visibilitychange', visible);
-    return () => { window.removeEventListener('focus', refresh); document.removeEventListener('visibilitychange', visible); };
+    // D229: and when another tab saves.
+    window.addEventListener(JOURNAL_CHANGED_EVENT, refresh);
+    return () => { window.removeEventListener('focus', refresh); document.removeEventListener('visibilitychange', visible); window.removeEventListener(JOURNAL_CHANGED_EVENT, refresh); };
   }, [refresh]);
 
   // In the chart part the heading takes focus once per selection after its first load, and again whenever focus was lost

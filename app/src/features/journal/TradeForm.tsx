@@ -211,7 +211,14 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
   const [quick, setQuick] = useState<QuickTradeLogDraft>(createEmptyQuickTradeLogDraft);
   const isQuick = mode === 'quick';
 
-  useEffect(() => { if (feedback?.kind === 'error') feedbackRef.current?.focus(); }, [feedback]);
+  const submitRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (feedback?.kind === 'error') { feedbackRef.current?.focus(); return; }
+    // A save disables "Save trade" while it runs, which drops focus to the page: the saved message takes it, unless the
+    // trader moved on meanwhile.
+    const active = document.activeElement;
+    if (feedback?.kind === 'success' && (active === null || active === document.body || active === submitRef.current)) feedbackRef.current?.focus();
+  }, [feedback]);
 
   const showOpenedAt = isQuick || draft.status === 'open' || draft.status === 'closed';
   const showClosedAt = isQuick || draft.status === 'closed';
@@ -477,7 +484,7 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
         <TradeStrategyField db={db} idPrefix={idPrefix} value={strategyId} onChange={value => { setStrategyId(value); setFeedback(null); }} draft={draft} status={isQuick ? 'closed' : draft.status} disabled={isSaving} />
 
         <div className="kairos-trade-form__actions">
-          <Button type="submit" busy={isSaving} emphasis="main" aria-describedby={strategyId ? `${idPrefix}-strategy-note` : undefined}>{isSaving ? 'Saving…' : text.submit}</Button>
+          <Button ref={submitRef} type="submit" busy={isSaving} emphasis="main" aria-describedby={strategyId ? `${idPrefix}-strategy-note` : undefined}>{isSaving ? 'Saving…' : text.submit}</Button>
         </div>
       </form>
     </>

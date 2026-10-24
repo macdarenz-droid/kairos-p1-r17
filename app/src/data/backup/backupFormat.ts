@@ -55,7 +55,7 @@ export interface KairosBackupEnvelopeV9 { readonly formatName:typeof KAIROS_BACK
 /** V10 adds the P34 saved news events (D124). It describes schema 11. */
 export interface KairosBackupPayloadV10 extends KairosBackupPayloadV9 { readonly economicEvents: readonly EconomicEventRecord[]; }
 export interface KairosBackupRecordCountsV10 extends KairosBackupRecordCountsV9 { readonly economicEvents:number; }
-export interface KairosBackupEnvelopeV10 { readonly formatName:typeof KAIROS_BACKUP_FORMAT_NAME; readonly formatVersion:10; readonly appVersion:string; readonly buildId:string; readonly exportedAt:string; readonly databaseSchemaVersion:11; readonly recordCounts:KairosBackupRecordCountsV10; readonly payload:KairosBackupPayloadV10; }
+export interface KairosBackupEnvelopeV10 { readonly formatName:typeof KAIROS_BACKUP_FORMAT_NAME; readonly formatVersion:10; readonly appVersion:string; readonly buildId:string; readonly exportedAt:string; readonly databaseSchemaVersion:11|12; readonly recordCounts:KairosBackupRecordCountsV10; readonly payload:KairosBackupPayloadV10; }
 
 export type KairosBackupEnvelope = KairosBackupEnvelopeV1|KairosBackupEnvelopeV2|KairosBackupEnvelopeV3|KairosBackupEnvelopeV4|KairosBackupEnvelopeV5|KairosBackupEnvelopeV6|KairosBackupEnvelopeV7|KairosBackupEnvelopeV8|KairosBackupEnvelopeV9|KairosBackupEnvelopeV10;
 export type KairosCurrentBackupEnvelope = KairosBackupEnvelopeV10;

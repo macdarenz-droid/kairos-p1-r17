@@ -59,6 +59,19 @@ body {
   padding: var(--kairos-space-3) var(--kairos-layout-page-padding);
 }
 .kairos-shell__brand { font-size: var(--kairos-font-size-md); font-weight: var(--kairos-font-weight-semibold); letter-spacing: -0.02em; }
+/* D229: the database's own state, under the brand in the sticky header (in view and inside a landmark). */
+.kairos-database-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--kairos-space-2) var(--kairos-space-3);
+  padding: var(--kairos-space-3) var(--kairos-layout-page-padding);
+  border-top: 1px solid var(--kairos-border-default);
+  background: var(--kairos-surface-raised);
+  color: var(--kairos-text-primary);
+}
+.kairos-database-status p { flex: 1 1 16rem; margin: 0; }
+.kairos-database-status .kairos-database-status__result { flex-basis: 100%; color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-sm); }
 .kairos-shell__content {
   width: min(100%, 72rem);
   margin: 0 auto;
@@ -191,6 +204,8 @@ body {
   .kairos-shell { padding-left: 13rem; }
   .kairos-shell__header { margin-left: -13rem; }
   .kairos-shell__header-inner { padding-right: var(--kairos-space-6); padding-left: var(--kairos-space-6); }
+  /* The side menu starts under the brand row and covers the left 13rem, so the note starts after it. */
+  .kairos-database-status { padding-right: var(--kairos-space-6); padding-left: calc(13rem + var(--kairos-space-6)); }
   .kairos-shell__navigation {
     top: calc(var(--kairos-control-lg) + (var(--kairos-space-3) * 2) + env(safe-area-inset-top, 0px));
     right: auto;

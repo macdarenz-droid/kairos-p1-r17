@@ -6,6 +6,14 @@ export class TradeRepository {
   constructor(private readonly db: KairosDatabase) {}
   get(id: TradeId) { return this.db.trades.get(id); }
   listAll() { return this.db.trades.toArray(); }
+  /** Every trade, of any source. */
+  count() { return this.db.trades.count(); }
+  /** Trades of any source created after an instant (U8, D226: trades since the last backup). */
+  countCreatedAfter(instant: string) {
+    // A trade's updatedAt is never before its createdAt, so the updatedAt index narrows the read first.
+    const after = Date.parse(instant);
+    return this.db.trades.where('updatedAt').aboveOrEqual(instant).filter(trade => Date.parse(trade.createdAt) > after).count();
+  }
   listRecentByUpdatedAt(limit: number) { return this.db.trades.orderBy('updatedAt').reverse().limit(limit).toArray(); }
   listRecentByStatusAndUpdatedAt(status: TradeStatus, limit: number) {
     return this.db.trades

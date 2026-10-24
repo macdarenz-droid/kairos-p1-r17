@@ -1,0 +1,8 @@
+/* T-054e: the crash screen, a calm panel with a way out. */
+.kairos-crash { min-height: 100dvh; display: grid; place-items: center; padding: var(--kairos-space-4); background: var(--kairos-background-base); color: var(--kairos-text-primary); }
+.kairos-crash__panel { display: grid; gap: var(--kairos-space-3); width: min(100%, 32rem); padding: var(--kairos-space-5); border: 1px solid var(--kairos-border-default); border-radius: var(--kairos-radius-lg); background: var(--kairos-surface-raised); }
+.kairos-crash__panel h1 { margin: 0; font-size: var(--kairos-font-size-xl); }
+.kairos-crash__panel p { margin: 0; }
+.kairos-crash__alert { display: grid; gap: var(--kairos-space-3); }
+.kairos-crash__actions { display: flex; flex-wrap: wrap; gap: var(--kairos-space-3); }
+.kairos-crash .kairos-crash__problem { color: var(--kairos-state-error); }

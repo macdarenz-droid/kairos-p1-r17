@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useLayoutEffect } from 'react';
 import { ErrorState } from './ErrorState';
 import './primitives.css';
 
@@ -17,7 +17,9 @@ export interface UnavailableNoticeProps {
 
 /** U1: the one "Unavailable · Try again" box for anything Kairos gets online. It never hides what is already saved. */
 export function UnavailableNotice({ message, retryLabel, onRetry, busy = false, live = true, retryWhenOnline = false }: UnavailableNoticeProps) {
-  useEffect(() => {
+  // Listening from the moment the box is on screen: a passive effect runs a moment later, and an "online" in that gap
+  // was missed.
+  useLayoutEffect(() => {
     if (!retryWhenOnline || onRetry === undefined) return;
     const online = () => onRetry();
     window.addEventListener('online', online);

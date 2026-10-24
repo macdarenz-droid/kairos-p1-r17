@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { createMemoryRouter } from 'react-router';
 import { RouteError } from '../src/app/RouteError';
 import { RouterProvider } from 'react-router/dom';
@@ -61,6 +61,22 @@ describe('P1 routing shell', () => {
     render(<RouterProvider router={router} />);
     expect(await screen.findByRole('heading', { name: 'Page unavailable' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Reload' })).toBeInTheDocument();
+  });
+
+  it('T-054e: offers "Copy error details" beside Reload, naming the error', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const copied: string[] = [];
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (text: string) => { copied.push(text); } } });
+    const router = createMemoryRouter([
+      { path: '/', ErrorBoundary: RouteError, children: [{ index: true, lazy: async () => { throw new Error('chunk missing'); } }] },
+    ], { initialEntries: ['/'] });
+    render(<RouterProvider router={router} />);
+    await screen.findByRole('heading', { name: 'Page unavailable' });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Copy error details' })); });
+    expect(await screen.findByText('Copied. This is the text:')).toBeInTheDocument();
+    expect(copied[0]).toContain('Error: Error: chunk missing');
+    Reflect.deleteProperty(navigator, 'clipboard');
   });
 
   it('renders the production not-found route for an unknown path', () => {

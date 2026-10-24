@@ -68,6 +68,17 @@ describe('TradeForm on its own', () => {
     expect(await db.trades.count()).toBe(1);
   });
 
+  it('gives focus to the saved message after "Save trade", which the save had disabled', async () => {
+    const db: KairosDatabase = await database();
+    render(<TradeForm db={db} kind="journal" onSaved={async () => undefined} />);
+    fillDraft();
+    const save = screen.getByRole('button', { name: 'Save trade' });
+    save.focus();
+    fireEvent.click(save);
+    const saved = await screen.findByText('Trade saved to your journal.');
+    await waitFor(() => expect(saved).toHaveFocus());
+  });
+
   it('uses the wording of its kind', async () => {
     const db = await database();
     const { unmount } = render(<TradeForm db={db} kind="journal" onSaved={async () => undefined} />);

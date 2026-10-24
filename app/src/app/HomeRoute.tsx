@@ -10,7 +10,9 @@ import { HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTextEvidenceRu
 import { createHomeDashboardLiveCryptoBubbleDefaultRuntimeProductConfiguration } from './homeDashboardLiveCryptoBubbleRuntimeProductPolicy';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
 import { HomeDisciplineCard } from '../features/discipline/HomeDisciplineCard';
+import { BackupReminderCard } from '../features/backup/BackupReminderCard';
 import { GettingStartedCard } from '../features/setup/GettingStartedCard';
+import { InstallCard } from '../features/install/InstallCard';
 import { PageHeader, Segmented } from '../design-system/primitives';
 
 /** A stable default clock, as in GoalsRoute: a new function each render would reload the card. */
@@ -25,6 +27,8 @@ export function HomeRoute({ db = kairosDatabase, now = wallClock }: { readonly d
   const [view,setViewState] = useState<'market'|'trades'>(() => viewFor(knownTradedMarkets(db)));
   const chosen = useRef(false);
   const control = useRef<HTMLDivElement>(null);
+  const install = useRef<HTMLDivElement>(null);
+  const focusControl = () => control.current?.querySelector<HTMLElement>('button[aria-pressed="true"]')?.focus();
   const setView = (next: 'market' | 'trades') => { chosen.current = true; setViewState(next); };
   // D222: a fresh journal opens the setup in Home's place once the read answers (only ever on a first run).
   const inRouter = useInRouterContext();
@@ -47,8 +51,10 @@ export function HomeRoute({ db = kairosDatabase, now = wallClock }: { readonly d
     >
       <PageHeader title="Home" titleId="kairos-route-home" intro="Your markets and your trades at a glance." />
       {openSetup && inRouter ? <Navigate to="/setup" replace /> : null}
-      {/* D224: after "Hide", focus goes to the dashboard control, the next thing on the page. */}
-      <GettingStartedCard db={db} now={now} onHidden={() => control.current?.querySelector<HTMLElement>('button[aria-pressed="true"]')?.focus()} />
+      <BackupReminderCard db={db} now={now} />
+      {/* D224: after "Hide", focus goes to the next thing on the page: the install card, or the dashboard control. */}
+      <GettingStartedCard db={db} now={now} onHidden={() => { const next = install.current?.querySelector<HTMLElement>('button'); if (next) next.focus(); else focusControl(); }} />
+      <div ref={install}><InstallCard db={db} now={now} onHidden={focusControl} /></div>
       <div ref={control}>
       <Segmented label="Dashboard view" value={view} onChange={setView}
         options={[{ value: 'market', label: 'Live Market' }, { value: 'trades', label: 'Your Trades' }]} />
