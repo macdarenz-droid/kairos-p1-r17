@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { checkSavedTradeStrategy, checkTradeStrategy, previewTradeStrategyCheck, projectStrategyRuleBars, type TradeStrategyCheckInput } from '../src/application/discipline/strategyCheck';
 import { latestTradePlan } from '../src/application/trade-visualizer/tradeVisualizerFacts';
 import { createEmptyManualTradeDraft } from '../src/application/trades/manualTradeDraft';
+import { resolveContractSize } from '../src/domain/calculations';
 import type { Strategy, StrategyRule, TradeDisciplineId, TradeDisciplineRecord } from '../src/domain/discipline';
 import type { DecimalString, TradeId, TradePlanId, TradePlanRecord, TradeRecord } from '../src/domain/trades';
 
@@ -17,6 +18,7 @@ const R: StrategyRule[] = [
 const base: TradeStrategyCheckInput = {
   rules: R, answers: [], symbol: 'btc/usdt', side: 'long', status: 'open', priceCurrency: 'USDT',
   plan: { entry: d('100'), stop: d('95'), target: d('110'), quantity: d('10') }, checklist: null,
+  contractSize: resolveContractSize({ marketType: 'crypto' }),
 };
 const withPlan = (plan: Partial<TradeStrategyCheckInput['plan']>, rest: Partial<TradeStrategyCheckInput> = {}) => ({ ...base, ...rest, plan: { ...base.plan, ...plan } });
 const result = (input: TradeStrategyCheckInput, id: string) => checkTradeStrategy(input).results.find(item => item.ruleId === id)!;
@@ -79,7 +81,7 @@ describe('T-040e the rule check', () => {
   });
 
   it('never counts missing data as kept or broken, except a plan with no stop', () => {
-    const check = checkTradeStrategy({ rules: R, answers: [], symbol: '', side: null, status: null, priceCurrency: null, plan: { entry: null, stop: null, target: null, quantity: null }, checklist: null });
+    const check = checkTradeStrategy({ rules: R, answers: [], symbol: '', side: null, status: null, priceCurrency: null, plan: { entry: null, stop: null, target: null, quantity: null }, checklist: null, contractSize: resolveContractSize({ marketType: 'crypto' }) });
     expect(check.results.map(item => item.verdict)).toEqual(['unknown', 'unknown', 'broken', 'unknown', 'unknown', 'unknown']);
   });
 });

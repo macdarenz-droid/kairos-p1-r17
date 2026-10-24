@@ -2,7 +2,8 @@
  * P28: the one owner of a strategy rule check. It judges the trade's plan (planned entry, stop, target, quantity), its symbol, its checklist and the trader's ticks, never its entries and exits. Every number comes from its owner. Missing data gives 'unknown', never 'kept' or 'broken'. It never blocks a save.
  */
 
-import { decimalCompare, decimalRound, decimalScaleToSteps } from '../../domain/calculations/decimalKernel';
+import { resolveContractSize, type ContractSize } from '../../domain/calculations/contractSize';
+import { decimalCompare, decimalMultiply, decimalRound, decimalScaleToSteps } from '../../domain/calculations/decimalKernel';
 import { calculateMoneyAtRiskFromPrice } from '../../domain/calculations/riskCalculator';
 import type { Strategy, StrategyRule, StrategyRuleAnswer, StrategyRuleId, TradeDisciplineRecord } from '../../domain/discipline';
 import { normalizeTradeSymbol, parsePositiveDecimalString, type DecimalString, type TradePlanRecord, type TradeRecord, type TradeSide, type TradeStatus } from '../../domain/trades';
@@ -29,9 +30,11 @@ export interface TradeStrategyCheckInput {
   readonly plan: Readonly<{ entry: DecimalString | null; stop: DecimalString | null; target: DecimalString | null; quantity: DecimalString | null }>;
   /** From summarizeTradeChecklist; null when no checklist is saved. */
   readonly checklist: TradeChecklistSummary | null;
+  /** How much one point is worth, from `resolveContractSize` (D237); the money at risk is times it. */
+  readonly contractSize: ContractSize;
 }
 export type StrategyRuleResult =
-  | Readonly<{ kind: 'max-risk'; ruleId: StrategyRuleId; verdict: StrategyRuleVerdict; reason: 'within' | 'over' | 'plan-incomplete' | 'levels-not-ordered' | 'no-currency' | 'other-currency'; risk: DecimalString | null; limit: DecimalString; currency: string; tradeCurrency: string | null; bars: StrategyRuleBars | null }>
+  | Readonly<{ kind: 'max-risk'; ruleId: StrategyRuleId; verdict: StrategyRuleVerdict; reason: 'within' | 'over' | 'plan-incomplete' | 'levels-not-ordered' | 'needs-contract-size' | 'no-currency' | 'other-currency'; risk: DecimalString | null; limit: DecimalString; currency: string; tradeCurrency: string | null; bars: StrategyRuleBars | null }>
   | Readonly<{ kind: 'min-reward-to-risk'; ruleId: StrategyRuleId; verdict: StrategyRuleVerdict; reason: 'at-least' | 'below' | 'plan-incomplete' | 'levels-not-ordered'; ratio: DecimalString | null; shownRatio: DecimalString | null; least: DecimalString; bars: StrategyRuleBars | null }>
   | Readonly<{ kind: 'stop-planned'; ruleId: StrategyRuleId; verdict: StrategyRuleVerdict; reason: 'planned' | 'no-stop'; stop: DecimalString | null }>
   | Readonly<{ kind: 'checklist-complete'; ruleId: StrategyRuleId; verdict: StrategyRuleVerdict; reason: 'every-step' | 'steps-missed' | 'no-checklist' | 'cancelled' | 'not-yet'; ticked: number | null; asked: number | null }>
@@ -62,13 +65,17 @@ function checkRule(rule: StrategyRule, input: TradeStrategyCheckInput): Strategy
   switch (rule.kind) {
     case 'max-risk': {
       const base = { kind: 'max-risk' as const, ruleId: rule.id, limit: rule.amount, currency: rule.currency, tradeCurrency: input.priceCurrency };
-      const unknown = (reason: 'plan-incomplete' | 'levels-not-ordered' | 'no-currency' | 'other-currency', risk: DecimalString | null) => ({ ...base, verdict: 'unknown' as const, reason, risk, bars: null });
+      const unknown = (reason: 'plan-incomplete' | 'levels-not-ordered' | 'needs-contract-size' | 'no-currency' | 'other-currency', risk: DecimalString | null) => ({ ...base, verdict: 'unknown' as const, reason, risk, bars: null });
       if (input.side === null || entry === null || stop === null || quantity === null) return unknown('plan-incomplete', null);
       const money = calculateMoneyAtRiskFromPrice(input.side, entry, stop, quantity);
       if (!money.ok) return unknown(money.reason === 'stop-at-entry' || money.reason === 'stop-not-on-loss-side' ? 'levels-not-ordered' : 'plan-incomplete', null);
-      const risk = money.amount;
+      const pointRisk = input.contractSize.ok ? decimalMultiply(money.amount, input.contractSize.value) : null;
+      if (pointRisk && !pointRisk.ok) return unknown('plan-incomplete', null);
+      const risk = pointRisk?.value ?? null;
+      // The currency first: for a futures trade, a stablecoin price currency is enough (D237).
       if (input.priceCurrency === null) return unknown('no-currency', risk);
       if (input.priceCurrency !== rule.currency) return unknown('other-currency', risk);
+      if (risk === null) return unknown('needs-contract-size', null);
       const order = decimalCompare(risk, rule.amount);
       if (order === null) return unknown('plan-incomplete', risk);
       return { ...base, verdict: order <= 0 ? 'kept' : 'broken', reason: order <= 0 ? 'within' : 'over', risk, bars: projectStrategyRuleBars(risk, rule.amount) };
@@ -132,6 +139,7 @@ export function checkSavedTradeStrategy(trade: TradeRecord, plans: readonly Trad
     side: trade.side,
     status: trade.status,
     priceCurrency: trade.grossPnlCurrency ?? null,
+    contractSize: resolveContractSize(trade),
     plan: {
       entry: plan?.plannedEntryPrice ?? null,
       stop: plan?.plannedStopPrice ?? null,
@@ -158,6 +166,8 @@ export function previewTradeStrategyCheck(draft: ManualTradeDraft, status: Trade
     side: draft.side || null,
     status: status || null,
     priceCurrency: currency !== '' && isPriceCurrencyInput(currency) ? currency : null,
+    // As typed: a futures or options draft with no "Each point is worth" (and no stablecoin price) can't be checked.
+    contractSize: resolveContractSize({ marketType: draft.marketType || 'other', grossPnlCurrency: currency, contractSize: typedDecimal(draft.contractSize ?? '') }),
     plan: {
       entry: typedDecimal(draft.plan.plannedEntryPrice),
       stop: typedDecimal(draft.plan.plannedStopPrice),

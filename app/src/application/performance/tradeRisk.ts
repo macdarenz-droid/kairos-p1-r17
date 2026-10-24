@@ -1,8 +1,10 @@
 /**
- * U4 (P11.A1, D190): the one owner of a trade's money at risk (which entry, stop and size) and its × what you risked. Every market uses price × size, the same basis as its result, until U11 adds the contract size to all of them together. The stop is the latest plan's. Money is never converted.
+ * U4 (P11.A1, D190): the one owner of a trade's money at risk (which entry, stop and size) and its × what you risked. It is price × size times how much one point is worth,
+ * the same basis as the result (D237); a futures or options trade with none has no money at risk. The stop is the latest plan's. Money is never converted.
  */
 
-import { decimalRound } from '../../domain/calculations/decimalKernel';
+import { resolveContractSize } from '../../domain/calculations/contractSize';
+import { decimalMultiply, decimalRound } from '../../domain/calculations/decimalKernel';
 import { aggregateTradeExecutions } from '../../domain/calculations/executionAggregation';
 import { calculateRMultiple } from '../../domain/calculations/rMultipleCalculator';
 import { calculateMoneyAtRisk, calculateMoneyAtRiskFromPrice } from '../../domain/calculations/riskCalculator';
@@ -12,7 +14,7 @@ import { latestTradePlan } from '../trade-visualizer/tradeVisualizerFacts';
 
 export interface TradeRiskInput { readonly trade: TradeRecord; readonly plans: readonly TradePlanRecord[]; readonly executions: readonly TradeExecutionRecord[]; readonly metrics: TradeMetrics | null }
 export type TradeRiskBasis = 'as-traded' | 'as-planned';
-export type TradeMoneyAtRiskReason = 'no-stop' | 'no-entry' | 'no-size' | 'stop-at-entry' | 'stop-not-on-loss-side' | 'invalid-decimal';
+export type TradeMoneyAtRiskReason = 'no-stop' | 'no-entry' | 'no-size' | 'stop-at-entry' | 'stop-not-on-loss-side' | 'needs-contract-size' | 'invalid-decimal';
 export type TradeMoneyAtRisk =
   | Readonly<{ available: true; basis: TradeRiskBasis; entryPrice: DecimalString; stopPrice: DecimalString; size: DecimalString; amount: DecimalString; currency: string | null }>
   | Readonly<{ available: false; basis: TradeRiskBasis; reason: TradeMoneyAtRiskReason }>;
@@ -27,8 +29,18 @@ type Worked =
   | Readonly<{ ok: true; basis: TradeRiskBasis; entryPrice: DecimalString; stopPrice: DecimalString; size: DecimalString; amount: DecimalString }>
   | Readonly<{ ok: false; basis: TradeRiskBasis; reason: TradeMoneyAtRiskReason }>;
 
-/** Money at risk as traded (from the entries) or, with no entries, as planned. */
+/** Money at risk as traded (from the entries) or, with no entries, as planned, times how much one point is worth. */
 function workOut(input: TradeRiskInput): Worked {
+  const worked = workOutPerPoint(input);
+  if (!worked.ok) return worked;
+  const contractSize = resolveContractSize(input.trade);
+  if (!contractSize.ok) return { ok: false, basis: worked.basis, reason: contractSize.reason };
+  const amount = decimalMultiply(worked.amount, contractSize.value);
+  return amount.ok ? { ...worked, amount: amount.value } : { ok: false, basis: worked.basis, reason: 'invalid-decimal' };
+}
+
+/** The same in price × size. */
+function workOutPerPoint(input: TradeRiskInput): Worked {
   const plan = latestTradePlan(input.plans);
   const stop = plan?.plannedStopPrice ?? null;
   const aggregate = aggregateTradeExecutions(input.executions);

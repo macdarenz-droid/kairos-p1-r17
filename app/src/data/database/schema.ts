@@ -6,7 +6,7 @@ import type { ExchangeRateRecord } from '../../domain/calculations/currencyConve
 import type { EconomicEventRecord } from '../../domain/economic-calendar/economicEvent';
 
 export const KAIROS_DATABASE_NAME = 'kairos';
-export const KAIROS_DB_SCHEMA_VERSION = 12 as const;
+export const KAIROS_DB_SCHEMA_VERSION = 13 as const;
 
 /** Immutable released V1 contract. Never edit. */
 export const KAIROS_V1_STORES = Object.freeze({
@@ -69,6 +69,15 @@ export const KAIROS_V11_STORES = Object.freeze({ economicEvents: '&id,startsAt' 
  */
 export const KAIROS_V12_STORES = Object.freeze({ deviceHandles: '&key' });
 
+/**
+ * V13 (U11, D240) restates the trades store with a multi-entry `*tags` index, for finding trades by tag. Trades and plans
+ * may now carry optional fields (contract size, where it was traded, tags, leverage; why on the plan). No record is
+ * rewritten: nothing is filled in for the trader (D237).
+ */
+export const KAIROS_V13_STORES = Object.freeze({
+  trades: '&id,status,symbol,updatedAt,[status+updatedAt],[status+closedAt],*tags',
+});
+
 /** Current complete store authority used by transactions/integrity only. */
 export const KAIROS_CURRENT_STORES = Object.freeze({
   ...KAIROS_V2_STORES,
@@ -82,6 +91,7 @@ export const KAIROS_CURRENT_STORES = Object.freeze({
   ...KAIROS_V10_STORES,
   ...KAIROS_V11_STORES,
   ...KAIROS_V12_STORES,
+  ...KAIROS_V13_STORES,
 });
 
 export interface DatabaseMetadataRecord {

@@ -1,4 +1,4 @@
-import type { MarketType, TradeSide, TradeStatus } from '../../domain/trades';
+import { writeTradeTags, type MarketType, type TradeSide, type TradeStatus } from '../../domain/trades';
 import { parseForexPair, type ForexPair, type ForexPairProblem } from '../markets/forexPair';
 import { parseStockTicker, type StockTickerProblem } from '../markets/stockTicker';
 import type { SaveManualTradeInput } from './saveManualTrade';
@@ -12,6 +12,8 @@ export interface ManualTradeDraftPlan {
   readonly plannedStopPrice: string;
   readonly plannedTargetPrice: string;
   readonly plannedQuantity: string;
+  /** "Why I'm taking it" (U11); absent on drafts made before it. */
+  readonly reason?: string;
 }
 
 export interface ManualTradeDraft {
@@ -23,6 +25,11 @@ export interface ManualTradeDraft {
   readonly openedAt: string;
   readonly closedAt: string;
   readonly plan: ManualTradeDraftPlan;
+  /** U11, as typed: how much one point is worth (futures and options only), where you traded, leverage, and tags separated by commas. */
+  readonly contractSize?: string;
+  readonly exchange?: string;
+  readonly leverage?: string;
+  readonly tags?: string;
 }
 
 export type ManualTradeDraftRequiredField = 'marketType' | 'side' | 'status';
@@ -65,7 +72,17 @@ function optionalText(value: string): string | null {
 }
 
 function hasPlanValue(plan: ManualTradeDraftPlan): boolean {
-  return Object.values(plan).some((value) => value.trim() !== '');
+  return Object.values(plan).some((value) => typeof value === 'string' && value.trim() !== '');
+}
+
+/** Only futures and options ask how much one point is worth (D237). */
+export function marketAsksContractSize(marketType: ManualTradeDraftMarketType): boolean {
+  return marketType === 'futures' || marketType === 'options';
+}
+
+/** The tags typed in one field, split by commas and written the one way; the save checks the limits. */
+export function draftTradeTags(text: string | undefined): readonly string[] {
+  return writeTradeTags((text ?? '').split(','));
 }
 
 export function prepareManualTradeSubmission(
@@ -100,6 +117,11 @@ export function prepareManualTradeSubmission(
     if (!ticker.ok) return { ok: false, type: 'stock-ticker', field: 'symbol', reason: ticker.reason };
   }
 
+  const contractSize = marketAsksContractSize(draft.marketType) ? optionalText(draft.contractSize ?? '') : null;
+  const exchange = optionalText(draft.exchange ?? '');
+  const leverage = optionalText(draft.leverage ?? '');
+  const tags = draftTradeTags(draft.tags);
+  const reason = optionalText(draft.plan.reason ?? '');
   const input: SaveManualTradeInput = {
     ...(priceCurrency?.trim() ? { grossPnlCurrency: priceCurrency } : {}),
     symbol: draft.symbol,
@@ -108,6 +130,10 @@ export function prepareManualTradeSubmission(
     status: draft.status,
     openedAt: optionalText(draft.openedAt),
     closedAt: optionalText(draft.closedAt),
+    ...(contractSize !== null ? { contractSize } : {}),
+    ...(exchange !== null ? { exchange } : {}),
+    ...(leverage !== null ? { leverage } : {}),
+    ...(tags.length > 0 ? { tags } : {}),
     ...(hasPlanValue(draft.plan)
       ? {
           plan: {
@@ -115,6 +141,7 @@ export function prepareManualTradeSubmission(
             plannedStopPrice: optionalText(draft.plan.plannedStopPrice),
             plannedTargetPrice: optionalText(draft.plan.plannedTargetPrice),
             plannedQuantity: optionalText(draft.plan.plannedQuantity),
+            ...(reason !== null ? { reason } : {}),
           },
         }
       : {}),

@@ -26,6 +26,7 @@ export function describeStrategyRuleResult(result: StrategyRuleResult): string {
         case 'over': return `Risk: ${result.risk} ${result.currency} is more than your most, ${result.limit} ${result.currency}.`;
         case 'plan-incomplete': return 'Risk: add the direction and your planned entry, stop and quantity so Kairos can check it.';
         case 'levels-not-ordered': return "Risk: your stop is at or on the wrong side of your entry, so Kairos can't check it.";
+        case 'needs-contract-size': return 'Risk: add how much one point is worth so Kairos can check it.';
         case 'no-currency': return `Risk: add the price currency so Kairos can compare it with your most, ${result.limit} ${result.currency}.`;
         case 'other-currency': return `Risk: this trade's prices are in ${result.tradeCurrency}, your most is in ${result.currency}. Kairos does not convert currencies.`;
       }

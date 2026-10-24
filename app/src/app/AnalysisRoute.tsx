@@ -4,6 +4,7 @@ import { JOURNAL_CHANGED_EVENT } from './AppShell';
 import { loadTradeDiscipline } from '../application/discipline';
 import { loadTradeReview, type TradeReviewResult } from '../application/journal/loadTradeReview';
 import { DEFAULT_JOURNAL_HISTORY_LIMIT } from '../application/journal/historyQuery';
+import { addTradeContractSize } from '../application/trades';
 import type { EcbReferenceRatesPort } from '../application/currency/ecbRates';
 import { readVisualPnlPeriodChoice, writeVisualPnlPeriodChoice } from '../application/visual-pnl';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
@@ -95,6 +96,10 @@ export function AnalysisRoute({ load = loadTradeReview, db = kairosDatabase, now
   /** A press on the switch: the part it opens leaves focus on the pressed option (D177, N10). */
   const switching = useRef(false);
   const refresh = useCallback(() => setRevision(value => value + 1), []);
+  // U11: after a point value is added, the trade is read again and its recorded result takes focus once.
+  const [focusReviewResult, setFocusReviewResult] = useState(false);
+  const reviewResultFocused = useCallback(() => setFocusReviewResult(false), []);
+  const addContractSize = { save: (input: Parameters<typeof addTradeContractSize>[1]) => addTradeContractSize(db, input), onSaved: () => { setFocusReviewResult(true); refresh(); } };
   const current = state.key === selectedId ? state : null;
   const loading = view === 'chart' && (current === null || (current.result === null && !current.error));
 
@@ -203,7 +208,7 @@ export function AnalysisRoute({ load = loadTradeReview, db = kairosDatabase, now
     {loading ? <p role="status" className="kairos-review__card">Loading your saved trade…</p> : current?.error ? <div role="alert" className="kairos-review__card"><p>Could not load this view. Your saved trades have not changed.</p><button type="button" onClick={refresh}>Try again</button></div> : result?.kind === 'missing' ? <div className="kairos-review__card"><h2>Trade not found</h2><p>This trade is not available on this device. Choose another saved trade to continue.</p></div> : result?.kind === 'selection' ? <section className="kairos-review__card" aria-label="Choose a saved trade">
       <h2>Choose a saved trade</h2>
       {result.entries.length === 0 ? <><p>No saved trades yet.</p><Link to="/journal">Log your first trade</Link></> : <><p className="kairos-review__note">Review the latest {DEFAULT_JOURNAL_HISTORY_LIMIT} updated trades. You can also open a trade from Journal or Your Trades.</p><label className="kairos-review__picker"><span>Saved trade</span><select value="" onChange={event => { if (event.target.value) setParams({ trade: event.target.value }); }}><option value="">Select a trade</option>{result.entries.map(({ trade }) => <option key={trade.id} value={trade.id}>{trade.symbol} · {trade.side} · {trade.status} · {reviewTimestamp(trade.openedAt ?? trade.updatedAt)}</option>)}</select></label></>}
-    </section> : result?.kind === 'trade' ? <TradeReviewDetails entry={result.entry} /> : null}
+    </section> : result?.kind === 'trade' ? <TradeReviewDetails entry={result.entry} addContractSize={addContractSize} focusResult={focusReviewResult} onResultFocused={reviewResultFocused} /> : null}
     </>}
   </section>;
 }

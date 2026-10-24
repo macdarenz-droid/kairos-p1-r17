@@ -4,6 +4,7 @@ import { saveTradeDiscipline } from '../../application/discipline';
 import { savePracticeTrade } from '../../application/practice';
 import {
   createEmptyManualTradeDraft,
+  marketAsksContractSize,
   prepareManualTradeSubmission,
   saveManualTrade,
   type ManualTradeDraft,
@@ -23,6 +24,8 @@ import { ForexTradeNote, forexQuantityHint } from './ForexTradeNote';
 import { StockTradeNote, STOCK_QUANTITY_HINT, STOCK_TICKER_MESSAGES } from './StockTradeNote';
 import { JournalPriceCurrencyField } from './JournalPriceCurrencyField';
 import { TradeStrategyField } from './TradeStrategyField';
+import { TradeTagsField } from './TradeTagsField';
+import { CONTRACT_SIZE_HINT } from './AddContractSizeControl';
 import './tradeForm.css';
 
 export type TradeFormKind = 'journal' | 'practice';
@@ -67,6 +70,15 @@ const QUICK_MESSAGES: Readonly<Record<QuickTradeLogField, string>> = {
   quantity: 'Enter the quantity as a number above 0, such as 0.5.',
   openedAt: 'Add when you opened the trade.',
   closedAt: 'Add when you closed the trade.',
+};
+
+/** U11: what each new field says when its value is refused (one message for the banner and under the field). */
+const NEW_FIELD_MESSAGES: Readonly<Partial<Record<ManualTradeValidationField, string>>> = {
+  contractSize: 'Enter how much one point is worth, such as 50.',
+  leverage: 'Leverage is a number such as 10, up to 1000.',
+  tags: 'At most 10 tags, each up to 24 letters.',
+  exchange: '"Where you traded" can be up to 40 letters.',
+  'plan.reason': '"Why I\'m taking it" can be up to 500 letters.',
 };
 
 const pad = (value: number): string => String(value).padStart(2, '0');
@@ -169,6 +181,8 @@ function requiredSelectionMessage(field: ManualTradeDraftRequiredField): string 
 }
 
 function validationMessage(text: TradeFormText, field: ManualTradeValidationField, reason: string): string {
+  const newField = NEW_FIELD_MESSAGES[field];
+  if (newField) return newField;
   if (field === 'grossPnlCurrency') return PRICE_CURRENCY_INPUT_ERROR;
   if (field === 'symbol') return 'Enter a symbol, such as BTCUSD or AAPL.';
   if (field === 'trade') {
@@ -198,7 +212,7 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
   useEffect(() => {
     if (defaultMarket !== null) setDraft(current => (current.marketType === '' ? { ...current, marketType: defaultMarket } : current));
   }, [defaultMarket]);
-  const [planShown, setPlanShown] = useState(() => initialDraft !== undefined && Object.values(initialDraft.plan).some(value => value.trim() !== ''));
+  const [planShown, setPlanShown] = useState(() => initialDraft !== undefined && Object.values(initialDraft.plan).some(value => typeof value === 'string' && value.trim() !== ''));
   const [executions, setExecutions] = useState<readonly ManualExecutionRow[]>([]);
   const [fees, setFees] = useState<readonly ManualFeeRow[]>([]);
   // Bumped when a save empties the form: the entry and fee rows mount fresh, which closes any Undo for the saved rows.
@@ -224,6 +238,11 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
   const showClosedAt = isQuick || draft.status === 'closed';
   const errorField = feedback?.kind === 'error' ? feedback.field : undefined;
   const quickInvalid = (field: QuickTradeLogField): boolean => isQuick && quickTradeLogFieldFor(errorField) === field;
+  const fieldError = (field: ManualTradeValidationField): string | undefined => (feedback?.kind === 'error' && feedback.field === field ? feedback.message : undefined);
+  const asksContractSize = marketAsksContractSize(draft.marketType);
+  const contractSizeField = asksContractSize ? <Field label="Each point is worth" id={`${idPrefix}-contract-size`} hint={CONTRACT_SIZE_HINT} error={fieldError('contractSize')}>
+    {control => <PriceInput {...control} name="contractSize" value={draft.contractSize ?? ''} onValueChange={text => update('contractSize', text)} />}
+  </Field> : null;
   const statusHint = useMemo(() => {
     if (draft.status === 'open') return text.hintOpen;
     if (draft.status === 'closed') return text.hintClosed;
@@ -267,7 +286,8 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
     if (isSaving) return;
     setFeedback(null);
 
-    const base = prepareManualTradeSubmission(isQuick ? { ...draft, status: 'closed' } : draft);
+    // Quick log saves only what it shows: "Where you traded" and "Leverage" live in All details, like its entries and fees.
+    const base = prepareManualTradeSubmission(isQuick ? { ...draft, status: 'closed', exchange: '', leverage: '' } : draft);
     const prepared = !base.ok ? base : isQuick
       ? prepareManualTradeExecutionDetails(base.input, quickTradeLogRows(quick, draft.openedAt, draft.closedAt), [])
       : prepareManualTradeExecutionDetails(base.input, executions, fees);
@@ -388,6 +408,7 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
               <Field label="Quantity" id={`${idPrefix}-quantity`} required invalid={quickInvalid('quantity')} hint={draft.marketType === 'forex' ? forexQuantityHint(draft.symbol, quick.quantity) ?? undefined : draft.marketType === 'stock' ? STOCK_QUANTITY_HINT : undefined}>
                 {control => <PriceInput {...control} name="quantity" value={quick.quantity} onValueChange={text => updateQuick('quantity', text)} />}
               </Field>
+              {contractSizeField}
             </> : (
               <Field label="Status" id={`${idPrefix}-status`} required wide hint={statusHint} invalid={fieldHasError(feedback, 'status') || fieldHasError(feedback, 'trade')}>
               {control => <Select
@@ -445,6 +466,18 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
         </fieldset>
 
         <JournalPriceCurrencyField value={draft.priceCurrency ?? ''} onChange={value => update('priceCurrency', value)} disabled={isSaving} error={feedback?.kind === 'error' && feedback.field === 'grossPnlCurrency' ? feedback.message : undefined} />
+        {isQuick ? null : <fieldset className="kairos-trade-form__section" disabled={isSaving}>
+          <legend>More about this trade</legend>
+          <div className="kairos-trade-form__grid">
+            {contractSizeField}
+            <Field label="Where you traded" id={`${idPrefix}-exchange`} hint="Optional. Such as Binance, CME or your broker." error={fieldError('exchange')}>
+              {control => <input {...control} name="exchange" value={draft.exchange ?? ''} onChange={event => update('exchange', event.target.value)} autoComplete="off" />}
+            </Field>
+            <Field label="Leverage" id={`${idPrefix}-leverage`} hint="Optional. For example 10 for 10×." error={fieldError('leverage')}>
+              {control => <PriceInput {...control} name="leverage" value={draft.leverage ?? ''} onValueChange={text => update('leverage', text)} />}
+            </Field>
+          </div>
+        </fieldset>}
         {isQuick ? null : <>
           <JournalExecutionFields
             key={formGeneration}
@@ -458,12 +491,17 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
           <JournalClosedTradeGuidance status={draft.status} types={executions.map(row => row.type)} />
         </>}
 
+        <TradeTagsField id={`${idPrefix}-tags`} value={draft.tags ?? ''} onChange={value => update('tags', value)} error={fieldError('tags')} disabled={isSaving} />
+
         <details className="kairos-trade-form__optional" open={(feedback?.kind === 'error' && feedback.field?.startsWith('plan.')) || planShown || undefined}>
           <summary>Trade plan · Optional</summary>
         <fieldset className="kairos-trade-form__section" disabled={isSaving}>
           <legend>Trade plan <span>Optional</span></legend>
           <p className="kairos-trade-form__section-copy">Use the numbers you planned before or during the trade. Your plan stays separate from actual entries and exits.</p>
           <div className="kairos-trade-form__grid">
+            <Field label="Why I'm taking it" id={`${planIdPrefix}-reason`} wide hint="Optional. Up to 500 letters." error={fieldError('plan.reason')}>
+              {control => <textarea {...control} name="reason" rows={3} value={draft.plan.reason ?? ''} onChange={event => updatePlan('reason', event.target.value)} />}
+            </Field>
             <Field label="Planned entry" id={`${planIdPrefix}-entry`} invalid={fieldHasError(feedback, 'plan.plannedEntryPrice')}>
               {control => <PriceInput {...control} value={draft.plan.plannedEntryPrice} onValueChange={text => updatePlan('plannedEntryPrice', text)} />}
             </Field>

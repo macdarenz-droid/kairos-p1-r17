@@ -1,5 +1,6 @@
 import {
-  calculateTradeMetrics,
+  calculateSavedTradeMetrics,
+  resolveContractSize,
   decimalAbs,
   decimalAdd,
   decimalMultiply,
@@ -18,7 +19,7 @@ import type { MarketCandle } from '../../services/market-data/MarketCandleHistor
 import { parseForexPair, projectForexPips, projectForexPipValue, projectForexSize } from '../markets/forexPair';
 import { projectStockResultPerShare } from '../markets/stockTicker';
 import { projectPriceMove, type PriceMove } from '../performance/priceMove';
-import { describeMoneyAtRisk } from '../performance/performanceWords';
+import { describeMoneyAtRisk, describePointValue, NEEDS_CONTRACT_SIZE_WORDS } from '../performance/performanceWords';
 import { describeTradeDuration, projectTradeDurationMs } from '../performance/tradeDuration';
 import { describeTimesRisked, projectTradeMoneyAtRisk, projectTradeTimesRisked, signedText, TIMES_RISKED_PLACES } from '../performance/tradeRisk';
 import {
@@ -82,7 +83,8 @@ export interface TradePictureMarker {
 
 export type TradePictureInfoKey =
   | 'market' | 'direction' | 'opened' | 'closed' | 'planned-entry' | 'average-entry' | 'stop' | 'target' | 'average-exit' | 'price-now'
-  | 'size' | 'money-at-risk' | 'result-before-fees' | 'fees' | 'result' | 'planned-reward' | 'actual-r' | 'duration' | 'status' | 'pips' | 'pip-value' | 'per-share';
+  | 'size' | 'point-value' | 'money-at-risk' | 'result-before-fees' | 'fees' | 'result' | 'planned-reward' | 'actual-r' | 'duration' | 'status' | 'pips' | 'pip-value' | 'per-share'
+  | 'exchange' | 'leverage' | 'reason';
 
 export interface TradePictureInfoRow {
   readonly key: TradePictureInfoKey;
@@ -242,9 +244,9 @@ function describePlanNote(input: {
 export function projectTradePicture(input: TradePictureInput): TradePictureModel {
   const { trade, plans, executions, fees, candles, now } = input;
   const facts = projectTradeVisualizerFacts(trade, plans, executions);
-  const metricsResult = trade.grossPnlCurrency
-    ? calculateTradeMetrics(trade.side, executions, undefined, fees, { grossPnlCurrency: trade.grossPnlCurrency })
-    : calculateTradeMetrics(trade.side, executions, undefined, fees);
+  // D237: the same call as the Journal's, so the Journal and the picture never disagree.
+  const contractSize = resolveContractSize(trade);
+  const metricsResult = calculateSavedTradeMetrics(trade, executions, fees);
   const metrics = metricsResult.ok ? metricsResult.value : null;
   const plannedQuantity = latestTradePlan(plans)?.plannedQuantity ?? null;
 
@@ -336,6 +338,20 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
   const perShareText = perShareShown !== null && perShareShown.ok
     ? `${signedText(perShareShown.value)}${priceCurrency ? ` ${priceCurrency}` : ''} before fees` : null;
   const moneyAtRisk = projectTradeMoneyAtRisk({ trade, plans, executions, metrics });
+  const needsContractSize = metrics?.needsContractSize === true;
+  // D237: futures and options say how much one point is worth: their own value, or 1 for a crypto perpetual priced in a stablecoin.
+  const pointValueText = describePointValue(contractSize, priceCurrency);
+  const pointValue = pointValueText === null ? []
+    : contractSize.ok
+      ? [row('point-value', 'Each point is worth', contractSize.value, priceCurrency, () => pointValueText)]
+      : [reasonRow('point-value', 'Each point is worth', pointValueText)];
+  // U11: where it was traded, the leverage and why, only when saved.
+  const reason = latestTradePlan(plans)?.reason ?? null;
+  const tradeFacts = [
+    ...(trade.exchange ? [row('exchange', 'Where you traded', trade.exchange, null, value => value)] : []),
+    ...(trade.leverage ? [row('leverage', 'Leverage', trade.leverage, null, value => `${value}×`)] : []),
+    ...(reason ? [row('reason', "Why I'm taking it", reason, null, value => value)] : []),
+  ];
   const lastCandle = candles && candles.length > 0 ? candles[candles.length - 1]! : null;
   const priceNow = planned && lastCandle !== null ? Object.freeze({ price: lastCandle.close, at: lastCandle.openTime }) : null;
 
@@ -357,14 +373,19 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
       : stock
         ? row('size', 'Size', size, 'shares', value => `${value} ${value === '1' ? 'share' : 'shares'}`)
         : row('size', 'Size', size, null, value => value),
+    ...pointValue,
     moneyAtRisk.available
       ? row('money-at-risk', 'Money at risk', moneyAtRisk.amount, moneyAtRisk.currency, () => describeMoneyAtRisk(moneyAtRisk))
       : reasonRow('money-at-risk', 'Money at risk', describeMoneyAtRisk(moneyAtRisk)),
-    row('result-before-fees', 'Result before fees', metrics?.grossPnl ?? null, priceCurrency, withUnit(priceCurrency)),
+    needsContractSize
+      ? reasonRow('result-before-fees', 'Result before fees', NEEDS_CONTRACT_SIZE_WORDS)
+      : row('result-before-fees', 'Result before fees', metrics?.grossPnl ?? null, priceCurrency, withUnit(priceCurrency)),
     fees.length === 0
       ? reasonRow('fees', 'Fees', 'None saved')
       : row('fees', 'Fees', metrics?.totalFees ?? null, metrics?.totalFeesCurrency ?? null, withUnit(metrics?.totalFeesCurrency ?? null)),
-    row('result', 'Result after fees', metrics?.netPnl ?? null, currency, value => (currency ? `${value} ${currency}` : value)),
+    needsContractSize
+      ? reasonRow('result', 'Result after fees', NEEDS_CONTRACT_SIZE_WORDS)
+      : row('result', 'Result after fees', metrics?.netPnl ?? null, currency, value => (currency ? `${value} ${currency}` : value)),
     ...(forex ? [
       row('pips', 'Pips won or lost', pipsText === null ? null : pips, 'pips', () => pipsText ?? ''),
       row('pip-value', 'Value of 1 pip', pipValue, pair?.quote ?? null, value => (pair ? `${value} ${pair.quote}` : value)),
@@ -374,6 +395,7 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
     row('actual-r', 'Actual result', realizedText === null ? null : realized, null, () => realizedText ?? ''),
     row('duration', 'How long it lasted', durationMs === null ? null : String(durationMs), 'ms', value => describeTradeDuration(Number(value))),
     row('status', 'Status', STATUS_WORDS[trade.status], null, value => value),
+    ...tradeFacts,
   ];
 
   const missing: TradePictureMissing[] = [];
@@ -382,13 +404,14 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
   if (entry === null) missing.push({ part: 'planned-entry', message: 'No planned entry, so no risk or reward box.' });
   if (stop === null) missing.push({ part: 'stop', message: 'No stop, so no risk box.' });
   if (target === null) missing.push({ part: 'target', message: 'No target, so no reward box.' });
-  if (metrics?.netPnl == null) missing.push({ part: 'result', message: 'No result after fees yet.' });
+  if (metrics?.netPnl == null) missing.push({ part: 'result', message: needsContractSize ? NEEDS_CONTRACT_SIZE_WORDS : 'No result after fees yet.' });
   if (realizedText === null) {
     const reason = timesRisked.available ? 'invalid-decimal' : timesRisked.reason;
     const message = reason === 'no-result' ? 'No × what you risked yet: it needs a result after fees.'
       : reason === 'no-stop' ? 'No × what you risked: it needs a stop.'
         : reason === 'stop-at-entry' || reason === 'stop-not-on-loss-side' ? 'No × what you risked: the stop is not on the losing side of your entry.'
-          : 'No × what you risked: it needs your entries.';
+          : reason === 'needs-contract-size' ? 'No × what you risked: add how much one point is worth.'
+            : 'No × what you risked: it needs your entries.';
     missing.push({ part: 'actual-r', message });
   }
 

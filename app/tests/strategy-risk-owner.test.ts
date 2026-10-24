@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { checkTradeStrategy, type TradeStrategyCheckInput } from '../src/application/discipline/strategyCheck';
 import { describeStrategyRuleResult } from '../src/application/discipline/strategyWords';
+import { resolveContractSize } from '../src/domain/calculations';
 import type { StrategyRule } from '../src/domain/discipline';
 import type { DecimalString } from '../src/domain/trades';
 
@@ -9,6 +10,7 @@ const rule: StrategyRule = { id: 'r1', kind: 'max-risk', amount: d('50'), curren
 const base: TradeStrategyCheckInput = {
   rules: [rule], answers: [], symbol: 'btc/usdt', side: 'long', status: 'open', priceCurrency: 'USDT',
   plan: { entry: d('100'), stop: d('95'), target: d('110'), quantity: d('10') }, checklist: null,
+  contractSize: resolveContractSize({ marketType: 'crypto' }),
 };
 const maxRisk = (input: TradeStrategyCheckInput) => checkTradeStrategy(input).results[0]!;
 

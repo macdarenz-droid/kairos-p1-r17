@@ -21,6 +21,14 @@ export interface TradeRecord {
   readonly source: TradeSource;
   /** Explicit user-recorded unit of execution prices/P&L. Missing remains unknown. */
   readonly grossPnlCurrency?: string | null;
+  /** U11 (D237): what one point of price is worth for one contract, in the price currency. Absent: not recorded. */
+  readonly contractSize?: DecimalString | null;
+  /** U11 (D238): where it was traded, as the trader named it (at most 40 characters). Absent: not recorded. */
+  readonly exchange?: string | null;
+  /** U11 (D239): the trader's own tags, written the one way by `normalizeTradeTags`. Absent: none. */
+  readonly tags?: readonly string[];
+  /** U11: the leverage used; 10 means 10×. Absent: not recorded. */
+  readonly leverage?: DecimalString | null;
   readonly openedAt: string | null;
   readonly closedAt: string | null;
   readonly createdAt: string;
@@ -34,6 +42,8 @@ export interface TradePlanRecord {
   readonly plannedStopPrice: DecimalString | null;
   readonly plannedTargetPrice: DecimalString | null;
   readonly plannedQuantity: DecimalString | null;
+  /** U11: "Why I'm taking it" (at most 500 characters). Absent: not written. */
+  readonly reason?: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
 }

@@ -1,6 +1,6 @@
 import type Dexie from 'dexie';
 import type { Transaction } from 'dexie';
-import { KAIROS_DB_SCHEMA_VERSION, KAIROS_V1_STORES, KAIROS_V2_STORES, KAIROS_V3_STORES, KAIROS_V4_STORES, KAIROS_V5_STORES, KAIROS_V6_STORES, KAIROS_V7_STORES, KAIROS_V8_STORES, KAIROS_V9_STORES, KAIROS_V10_STORES, KAIROS_V11_STORES, KAIROS_V12_STORES } from './schema';
+import { KAIROS_DB_SCHEMA_VERSION, KAIROS_V1_STORES, KAIROS_V2_STORES, KAIROS_V3_STORES, KAIROS_V4_STORES, KAIROS_V5_STORES, KAIROS_V6_STORES, KAIROS_V7_STORES, KAIROS_V8_STORES, KAIROS_V9_STORES, KAIROS_V10_STORES, KAIROS_V11_STORES, KAIROS_V12_STORES, KAIROS_V13_STORES } from './schema';
 import { isLegacyTradeDisciplineRecordShape, upgradeLegacyTradeDisciplineRecord } from '../../domain/discipline';
 
 export type KairosStoreSchema = Readonly<Record<string, string | null>>;
@@ -35,7 +35,10 @@ const KAIROS_V11_MIGRATION: KairosMigrationDefinition = Object.freeze({ version:
 /** V12 appends the device-only handle store (U8, D227); nothing to convert. */
 const KAIROS_V12_MIGRATION: KairosMigrationDefinition = Object.freeze({ version: 12, stores: KAIROS_V12_STORES });
 
-export const KAIROS_DATABASE_MIGRATIONS: readonly KairosMigrationDefinition[] = Object.freeze([KAIROS_V1_MIGRATION, KAIROS_V2_MIGRATION, KAIROS_V3_MIGRATION, KAIROS_V4_MIGRATION, KAIROS_V5_MIGRATION, KAIROS_V6_MIGRATION, KAIROS_V7_MIGRATION, KAIROS_V8_MIGRATION, KAIROS_V9_MIGRATION, KAIROS_V10_MIGRATION, KAIROS_V11_MIGRATION, KAIROS_V12_MIGRATION]);
+/** V13 adds the trades `*tags` index for U11's optional trade fields (D240); nothing to convert. */
+const KAIROS_V13_MIGRATION: KairosMigrationDefinition = Object.freeze({ version: 13, stores: KAIROS_V13_STORES });
+
+export const KAIROS_DATABASE_MIGRATIONS: readonly KairosMigrationDefinition[] = Object.freeze([KAIROS_V1_MIGRATION, KAIROS_V2_MIGRATION, KAIROS_V3_MIGRATION, KAIROS_V4_MIGRATION, KAIROS_V5_MIGRATION, KAIROS_V6_MIGRATION, KAIROS_V7_MIGRATION, KAIROS_V8_MIGRATION, KAIROS_V9_MIGRATION, KAIROS_V10_MIGRATION, KAIROS_V11_MIGRATION, KAIROS_V12_MIGRATION, KAIROS_V13_MIGRATION]);
 
 export function validateKairosMigrationSequence(migrations: readonly KairosMigrationDefinition[], expectedCurrentVersion: number = KAIROS_DB_SCHEMA_VERSION): void {
   if (migrations.length === 0) throw new Error('Kairos database migration registry must contain schema version 1.');

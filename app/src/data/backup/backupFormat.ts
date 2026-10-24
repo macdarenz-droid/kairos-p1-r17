@@ -6,7 +6,8 @@ import type { EconomicEventRecord } from '../../domain/economic-calendar/economi
 import type { DatabaseMetadataRecord, DatabaseTradeExecutionRecord, DatabaseTradeFeeRecord, DatabaseTradePlanRecord, DatabaseTradeRecord } from '../database/schema';
 
 export const KAIROS_BACKUP_FORMAT_NAME = 'kairos-full-backup' as const;
-export const KAIROS_BACKUP_FORMAT_VERSION = 10 as const;
+export const KAIROS_BACKUP_FORMAT_VERSION = 11 as const;
+export const KAIROS_NEWS_BACKUP_FORMAT_VERSION = 10 as const;
 export const KAIROS_EXCHANGE_RATE_BACKUP_FORMAT_VERSION = 9 as const;
 export const KAIROS_STRATEGY_MARK_BACKUP_FORMAT_VERSION = 8 as const;
 export const KAIROS_DISCIPLINE_ITEMS_BACKUP_FORMAT_VERSION = 7 as const;
@@ -57,5 +58,8 @@ export interface KairosBackupPayloadV10 extends KairosBackupPayloadV9 { readonly
 export interface KairosBackupRecordCountsV10 extends KairosBackupRecordCountsV9 { readonly economicEvents:number; }
 export interface KairosBackupEnvelopeV10 { readonly formatName:typeof KAIROS_BACKUP_FORMAT_NAME; readonly formatVersion:10; readonly appVersion:string; readonly buildId:string; readonly exportedAt:string; readonly databaseSchemaVersion:11|12; readonly recordCounts:KairosBackupRecordCountsV10; readonly payload:KairosBackupPayloadV10; }
 
-export type KairosBackupEnvelope = KairosBackupEnvelopeV1|KairosBackupEnvelopeV2|KairosBackupEnvelopeV3|KairosBackupEnvelopeV4|KairosBackupEnvelopeV5|KairosBackupEnvelopeV6|KairosBackupEnvelopeV7|KairosBackupEnvelopeV8|KairosBackupEnvelopeV9|KairosBackupEnvelopeV10;
-export type KairosCurrentBackupEnvelope = KairosBackupEnvelopeV10;
+/** V11 keeps the V10 payload; trades and plans may now carry U11's optional fields (D240). It describes schema 13. */
+export interface KairosBackupEnvelopeV11 { readonly formatName:typeof KAIROS_BACKUP_FORMAT_NAME; readonly formatVersion:11; readonly appVersion:string; readonly buildId:string; readonly exportedAt:string; readonly databaseSchemaVersion:13; readonly recordCounts:KairosBackupRecordCountsV10; readonly payload:KairosBackupPayloadV10; }
+
+export type KairosBackupEnvelope = KairosBackupEnvelopeV1|KairosBackupEnvelopeV2|KairosBackupEnvelopeV3|KairosBackupEnvelopeV4|KairosBackupEnvelopeV5|KairosBackupEnvelopeV6|KairosBackupEnvelopeV7|KairosBackupEnvelopeV8|KairosBackupEnvelopeV9|KairosBackupEnvelopeV10|KairosBackupEnvelopeV11;
+export type KairosCurrentBackupEnvelope = KairosBackupEnvelopeV11;

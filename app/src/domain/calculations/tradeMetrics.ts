@@ -2,8 +2,11 @@ import type {
   DecimalString,
   TradeExecutionRecord,
   TradeFeeRecord,
+  TradeRecord,
   TradeSide,
 } from '../trades';
+import { resolveContractSize, type ContractSize } from './contractSize';
+import { decimalMultiply } from './decimalKernel';
 import { assessExecutionBalance } from './executionBalance';
 import { calculateFlatTradeGrossRealizedPnl } from './grossRealizedPnl';
 import { calculateRiskPerformance } from './riskPerformanceCalculator';
@@ -65,6 +68,8 @@ export interface TradeMetrics {
   readonly totalExitedQuantity: DecimalString;
   readonly remainingQuantity: DecimalString;
   readonly state: TradeMetricsState | null;
+  /** D237: the trade is closed out, but its result (and fees net) need how much one point is worth; never price × size. */
+  readonly needsContractSize: boolean;
   readonly completeness: TradeMetricsCompleteness;
 }
 
@@ -76,6 +81,7 @@ export type TradeMetricsResult =
         | 'invalid-execution-decimal'
         | 'exit-without-entry'
         | 'over-exited'
+        | 'invalid-contract-size'
         | 'invalid-risk-performance-decimal'
         | 'zero-initial-risk'
         | 'invalid-fee-decimal'
@@ -102,6 +108,8 @@ export function calculateTradeMetrics(
   netPnlCurrencyInput?: TradeMetricsNetPnlCurrencyInput,
   pnlPercentageInput?: TradeMetricsPnlPercentageInput,
   rMultipleInput?: TradeMetricsRMultipleInput,
+  /** From `resolveContractSize` (D237); the gross result is multiplied by it. Absent means 1: a saved trade's metrics go through `calculateSavedTradeMetrics`. */
+  contractSize?: ContractSize,
 ): TradeMetricsResult {
   const balance = assessExecutionBalance(executions);
   if (!balance.ok) {
@@ -114,9 +122,16 @@ export function calculateTradeMetrics(
   }
 
   const { entry, exit, netQuantity } = balance.aggregate;
-  const grossPnl = grossPnlResult.available
-    ? grossPnlResult.grossRealizedPnl
+  const needsContractSize = grossPnlResult.available && contractSize?.ok === false;
+  const contractGross = grossPnlResult.available && contractSize?.ok
+    ? decimalMultiply(grossPnlResult.grossRealizedPnl, contractSize.value)
     : null;
+  if (contractGross && !contractGross.ok) {
+    return { ok: false, reason: 'invalid-contract-size' };
+  }
+  const grossPnl = !grossPnlResult.available || needsContractSize
+    ? null
+    : contractGross?.value ?? grossPnlResult.grossRealizedPnl;
 
   const riskPerformance = riskPerformanceInput
     ? calculateRiskPerformance(
@@ -221,6 +236,7 @@ export function calculateTradeMetrics(
       totalExitedQuantity: exit.quantity,
       remainingQuantity: netQuantity,
       state: toMetricsState(balance.state),
+      needsContractSize,
       completeness: Object.freeze({
         hasEntryExecutions: entry.quantity !== '0',
         hasExitExecutions: exit.quantity !== '0',
@@ -235,4 +251,15 @@ export function calculateTradeMetrics(
       }),
     }),
   };
+}
+
+/** A saved trade's metrics, with its price currency and how much one point is worth (D237): the one way the Journal and the picture read them. */
+export function calculateSavedTradeMetrics(
+  trade: Pick<TradeRecord, 'side' | 'marketType' | 'grossPnlCurrency' | 'contractSize'>,
+  executions: readonly TradeExecutionRecord[],
+  fees: readonly TradeFeeRecord[],
+): TradeMetricsResult {
+  return calculateTradeMetrics(
+    trade.side, executions, undefined, fees, trade.grossPnlCurrency ? { grossPnlCurrency: trade.grossPnlCurrency } : undefined, undefined, undefined, resolveContractSize(trade),
+  );
 }
