@@ -86,7 +86,18 @@ const invalidText = (reason: Extract<TimeAssistedTradeSnapshotResult, { kind: 'i
     case 'closed-before-opened': return 'The closing time must not be before the opening time.';
   }
 };
-const unavailableText = (reason: Extract<EstimatedMarketReference, { kind: 'unavailable' }>['reason']): string => {
+/** U10: a forex chart's words name OANDA and say why a minute can have no candle. */
+const forexUnavailableText = (reason: Extract<EstimatedMarketReference, { kind: 'unavailable' }>['reason']): string | null => {
+  switch (reason) {
+    case 'no-candle': return 'No candle at that minute. Forex is closed at weekends, and a quiet minute can have none.';
+    case 'candle-mismatch': return 'OANDA gave a candle for a different minute, so nothing is estimated.';
+    case 'http-error': return "OANDA didn't give a candle for that time. Try again later.";
+    default: return null;
+  }
+};
+const unavailableText = (reason: Extract<EstimatedMarketReference, { kind: 'unavailable' }>['reason'], forex: boolean): string => {
+  const forexWords = forex ? forexUnavailableText(reason) : null;
+  if (forexWords !== null) return forexWords;
   switch (reason) {
     case 'future-instant': return 'That time is in the future; no market candle exists yet.';
     case 'invalid-instant': return 'That time could not be read.';
@@ -115,8 +126,8 @@ const markerText = (markers: AnalysisTimeAssistedMarkerSessionPresentation): str
   }
 };
 
-function Estimate({ label, estimate }: { readonly label: string; readonly estimate: EstimatedMarketReference }) {
-  if (estimate.kind === 'unavailable') return <div className="kairos-time-assisted__estimate" data-estimate={label.toLowerCase()} data-estimate-kind="unavailable"><strong>{label}</strong><p>{unavailableText(estimate.reason)}</p></div>;
+function Estimate({ label, estimate, forex = false }: { readonly label: string; readonly estimate: EstimatedMarketReference; readonly forex?: boolean }) {
+  if (estimate.kind === 'unavailable') return <div className="kairos-time-assisted__estimate" data-estimate={label.toLowerCase()} data-estimate-kind="unavailable"><strong>{label}</strong><p>{unavailableText(estimate.reason, forex)}</p></div>;
   const { candle } = estimate;
   return <div className="kairos-time-assisted__estimate" data-estimate={label.toLowerCase()} data-estimate-kind="candle-range" data-candle-open-time={candle.openTime} data-candle-low={candle.low} data-candle-high={candle.high}>
     <strong>{label}</strong>
@@ -234,8 +245,8 @@ export function AnalysisTimeAssistedSnapshotControls({ history = analysisHistory
       {result?.kind === 'invalid' ? <p role="alert">{invalidText(result.reason)}</p> : null}
       {result?.kind === 'snapshot' ? <>
         <p className="kairos-analysis-chart__note">{result.side === 'long' ? 'Long' : 'Short'} · {result.durationMs === null ? 'still open' : `held ${duration(result.durationMs)}`} · {instrument.venue === OANDA_FOREX_VENUE ? `${instrument.symbol} from OANDA` : `${instrument.symbol} on ${instrument.venue}`}</p>
-        <Estimate label="Entry" estimate={result.opening} />
-        {result.closing === null ? null : <Estimate label="Exit" estimate={result.closing} />}
+        <Estimate label="Entry" estimate={result.opening} forex={instrument.venue === OANDA_FOREX_VENUE} />
+        {result.closing === null ? null : <Estimate label="Exit" estimate={result.closing} forex={instrument.venue === OANDA_FOREX_VENUE} />}
         {markers === null ? null : <p className="kairos-analysis-chart__note" data-time-assisted-markers={markers.kind === 'presented' ? String(markers.markerCount) : markers.kind}>{markerText(markers)}</p>}
         {onShowWindow === undefined ? null : <p className="kairos-time-assisted__window"><button type="button" onClick={() => {
           const fromMs = Date.parse(result.opening.requestedAt);

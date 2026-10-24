@@ -152,6 +152,24 @@ describe('T-055c the forex Analysis chart reads again every 30 seconds (D234)', 
     expect(screen.queryByText(/oanda-forex/)).toBeNull();
   });
 
+  it('the time-assisted snapshot says why there is no candle in forex words, never "Binance" or "venue"', async () => {
+    const failing: MarketCandleHistoryPort = { acquireHistory: vi.fn(async () => ({ ok: false as const, reason: 'unavailable' as const, why: 'busy' as const, retryAfterSeconds: 60 })) };
+    const { unmount } = render(<AnalysisTimeAssistedSnapshotControls history={failing} instrument={instrument} now={() => T0 + 3 * MINUTE} />);
+    fireEvent.change(screen.getByLabelText('Snapshot side'), { target: { value: 'long' } });
+    fireEvent.change(screen.getByLabelText('Snapshot opened at'), { target: { value: '2026-10-23T07:00:10' } });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Estimate' })); });
+    expect(await screen.findByText("OANDA didn't give a candle for that time. Try again later.")).toBeInTheDocument();
+    expect(screen.queryByText(/Binance/)).toBeNull();
+    unmount();
+    const weekend: MarketCandleHistoryPort = { acquireHistory: vi.fn(async request => answer(request, [])) };
+    render(<AnalysisTimeAssistedSnapshotControls history={weekend} instrument={instrument} now={() => T0 + 3 * MINUTE} />);
+    fireEvent.change(screen.getByLabelText('Snapshot side'), { target: { value: 'long' } });
+    fireEvent.change(screen.getByLabelText('Snapshot opened at'), { target: { value: '2026-10-23T07:00:10' } });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Estimate' })); });
+    expect(await screen.findByText('No candle at that minute. Forex is closed at weekends, and a quiet minute can have none.')).toBeInTheDocument();
+    expect(screen.queryByText(/venue/)).toBeNull();
+  });
+
   it('the chart names the pair and its 30-second updates', () => {
     const binding: AnalysisLiveCandleReactBindingResult = {
       availability: 'available', activation: { ok: false, reason: 'superseded' }, connection: 'live', disposition: null, backfillRequest: null, backfillRecovery: null, lastError: null,

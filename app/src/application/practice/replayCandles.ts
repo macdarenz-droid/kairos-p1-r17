@@ -95,7 +95,8 @@ async function loadForexReplay(
   const instrument = { venue: FOREX_CANDLE_VENUE, symbol: pair.symbol };
   const [before, after] = await Promise.all([
     deps.history.acquireHistory({ instrument, interval: size.interval, limit: REPLAY_HISTORY_CANDLES, endTimeMs: alignedStart - 1 }, options),
-    deps.history.acquireHistory({ instrument, interval: size.interval, limit: REPLAY_FUTURE_CANDLES, startTimeMs: alignedStart }, options),
+    // An end with room for weekends lets the server keep a settled page for days (D232's 7-day cache).
+    deps.history.acquireHistory({ instrument, interval: size.interval, limit: REPLAY_FUTURE_CANDLES, startTimeMs: alignedStart, endTimeMs: Math.min(alignedStart + 2 * REPLAY_FUTURE_CANDLES * size.ms - 1, nowMs) }, options),
   ]);
   for (const page of [before, after]) {
     if (page.ok) continue;

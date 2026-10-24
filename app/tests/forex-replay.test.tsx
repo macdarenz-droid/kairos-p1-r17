@@ -71,10 +71,12 @@ describe('T-055d forex and metals in Replay', () => {
     const gold = await loadReplayCandles({ market: 'xauusd', candleSize: '1h', startAt: '2024-03-05T12:00:00Z' }, market);
     const asked = fetchImpl.mock.calls.map(([input]) => new URL(String(input)).searchParams);
     // By count: the 60 candles before the moment, read back from it, and the 240 after it, read forward.
+    // The forward read ends 480 candles on (room for weekends), so the server can keep the settled page.
     const moment = String(Date.parse('2024-03-05T12:00:00Z'));
+    const forwardEnd = String(Number(moment) + 480 * HOUR - 1);
     expect(asked.map(params => [params.get('market'), params.get('symbol'), params.get('interval'), params.get('limit'), params.get('start'), params.get('end')])).toEqual([
-      ['oanda-forex', 'EURUSD', '1h', '60', null, String(Number(moment) - 1)], ['oanda-forex', 'EURUSD', '1h', '240', moment, null],
-      ['oanda-forex', 'XAUUSD', '1h', '60', null, String(Number(moment) - 1)], ['oanda-forex', 'XAUUSD', '1h', '240', moment, null],
+      ['oanda-forex', 'EURUSD', '1h', '60', null, String(Number(moment) - 1)], ['oanda-forex', 'EURUSD', '1h', '240', moment, forwardEnd],
+      ['oanda-forex', 'XAUUSD', '1h', '60', null, String(Number(moment) - 1)], ['oanda-forex', 'XAUUSD', '1h', '240', moment, forwardEnd],
     ]);
     expect(asked.every(params => !params.has('base') && !params.has('quote'))).toBe(true);
     expect(market.metadataCalls()).toBe(0);
