@@ -11,7 +11,7 @@ import type { LiveMarketUniverseInstrumentMetadataFact } from '../market-data/li
 import { validateLiveMarketSummaryBaselineSuccess } from '../market-data/liveMarketSummaryBaselineAcquisitionSemantics';
 import { validateLiveMarketSummaryFact } from '../market-data/liveMarketSummaryFactSemantics';
 import type { MarketCandle, MarketCandleHistoryPort, MarketCandleHistoryRequest, MarketCandleOrigin } from '../market-data/MarketCandleHistoryPort';
-import { BINANCE_USDM_VENUE, type LiveMarketSummaryFact, type MarketDataUnavailable, type MarketDataUnavailableWhy } from '../market-data/marketDataTypes';
+import { BINANCE_USDM_VENUE, OANDA_FOREX_VENUE, type LiveMarketSummaryFact, type MarketDataUnavailable, type MarketDataUnavailableWhy } from '../market-data/marketDataTypes';
 import type { KairosApiClient, KairosApiFailure, KairosApiQuery } from './kairosApi';
 
 /** A device copy of the market list younger than this is used without asking the server. */
@@ -107,6 +107,12 @@ export function decodeMarketTickers(data: unknown, requested: readonly string[])
 const PROVIDERS = ['binance', 'okx'] as const;
 const MARKETS = ['spot', 'usdm-futures', 'perpetual-swap'] as const;
 const BACKUPS = ['refused', 'busy', 'down'] as const;
+
+/** Whether the answer's source fits the market asked: OANDA forex with no backup for forex (D231), Binance or its backup otherwise. */
+function sourceFits(venue: string, provider: unknown, market: unknown, backup: unknown): boolean {
+  if (venue === OANDA_FOREX_VENUE) return provider === 'oanda' && market === 'forex' && backup === null;
+  return PROVIDERS.includes(provider as never) && MARKETS.includes(market as never) && (backup === null || BACKUPS.includes(backup as never));
+}
 const atLeast = (a: DecimalString, b: DecimalString) => { const order = decimalCompare(a, b); return order !== null && order >= 0; };
 
 export interface ServerCandlePage {
@@ -116,13 +122,13 @@ export interface ServerCandlePage {
   readonly next: number | null;
 }
 
-/** The /market/candles data for this request, or null for any fault. */
+/** The /market/candles data for this request, or null for any fault. Forex candles have no volume (D232). */
 export function decodeMarketCandles(data: unknown, request: MarketCandleHistoryRequest): ServerCandlePage | null {
   if (!isRecord(data) || !isRecord(data.source) || !isCanonicalIso(data.fetchedAt) || data.interval !== request.interval || !Array.isArray(data.candles)) return null;
   const { provider, market, symbol } = data.source;
   const backup = data.backup;
-  if (!PROVIDERS.includes(provider as never) || !MARKETS.includes(market as never) || !isText(symbol)) return null;
-  if (backup !== null && !BACKUPS.includes(backup as never)) return null;
+  if (!sourceFits(request.instrument.venue, provider, market, backup) || !isText(symbol)) return null;
+  const forex = provider === 'oanda';
   const rows = data.candles as unknown[];
   if (rows.length > request.limit) return null;
   const candles: MarketCandle[] = [];
@@ -134,10 +140,10 @@ export function decodeMarketCandles(data: unknown, request: MarketCandleHistoryR
     if (openMs <= previousOpenMs || closeMs <= openMs) return null;
     if ((request.startTimeMs !== undefined && openMs < request.startTimeMs) || (request.endTimeMs !== undefined && openMs > request.endTimeMs)) return null;
     const open = positive(row.open), high = positive(row.high), low = positive(row.low), close = positive(row.close);
-    const volume = nonNegative(row.volume);
+    const volume = forex ? (row.volume === null ? undefined : null) : nonNegative(row.volume);
     if (open === null || high === null || low === null || close === null || volume === null) return null;
     if (!atLeast(high, open) || !atLeast(high, close) || !atLeast(open, low) || !atLeast(close, low)) return null;
-    candles.push(Object.freeze({ openTime: row.openTime, closeTime: row.closeTime, open, high, low, close, volume }));
+    candles.push(Object.freeze(volume === undefined ? { openTime: row.openTime, closeTime: row.closeTime, open, high, low, close } : { openTime: row.openTime, closeTime: row.closeTime, open, high, low, close, volume }));
     previousOpenMs = openMs;
   }
   const next = data.next;
@@ -272,13 +278,14 @@ export function createKairosMarketDataPorts(client: KairosApiClient, options: Ka
   const history: MarketCandleHistoryPort = {
     async acquireHistory(request, callerOptions) {
       const { venue, symbol } = request.instrument;
-      if (venue !== SPOT_VENUE && venue !== BINANCE_USDM_VENUE) return { ok: false, reason: 'invalid-request', detail: 'venue-mismatch' };
+      if (venue !== SPOT_VENUE && venue !== BINANCE_USDM_VENUE && venue !== OANDA_FOREX_VENUE) return { ok: false, reason: 'invalid-request', detail: 'venue-mismatch' };
       const signal = callerOptions?.signal;
       if (signal?.aborted) return { ok: false, reason: 'cancelled' };
       const query: Record<string, string> = { market: venue, symbol, interval: request.interval, limit: String(request.limit) };
       if (request.startTimeMs !== undefined) query.start = String(request.startTimeMs);
       if (request.endTimeMs !== undefined) query.end = String(request.endTimeMs);
-      if (request.pair !== undefined) { query.base = request.pair.base; query.quote = request.pair.quote; }
+      // The server refuses a base and quote for forex: OANDA has no backup source.
+      if (request.pair !== undefined && venue !== OANDA_FOREX_VENUE) { query.base = request.pair.base; query.quote = request.pair.quote; }
       const result = await client.request('/market/candles', query as KairosApiQuery, (data) => decodeMarketCandles(data, request), signal === undefined ? undefined : { signal });
       if (signal?.aborted) return { ok: false, reason: 'cancelled' };
       if (!result.ok) return failed(result);

@@ -13,7 +13,7 @@ import { saveManualTrade } from '../src/application/trades';
 import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
 import { ReplayScreen } from '../src/features/practice/ReplayScreen';
 import type { LiveMarketUniverseInstrumentMetadataFact } from '../src/services/market-data/liveMarketUniverseInstrumentMetadataFact';
-import { fakeReplayMarket } from './fixtures/replayCandles';
+import { fakeReplayMarket, HOUR, replayCandle } from './fixtures/replayCandles';
 
 beforeAll(async () => { await import('../src/features/practice/ReplayScreen'); }, 30_000);
 const names: string[] = [];
@@ -38,14 +38,12 @@ function tradeEntry(symbol: string, daysAgo: number, marketType?: string): Journ
 }
 
 describe('T-043d crypto only for now, in plain words', () => {
-  it('the Analysis market chart says it is crypto-only for a forex trade', async () => {
+  it('the Analysis market chart draws a forex trade on its OANDA pair, never a Binance symbol (T-055c)', async () => {
     render(<AnalysisHistoryWorkspace entry={tradeEntry('EURUSD', 2, 'forex')} ports={ports()} LiveCanvas={LiveCanvas} SavedTradeLiveCanvas={SavedTradeLiveCanvas} />);
-    expect(await screen.findByText(/^The market chart has crypto markets from Binance only for now\./)).toBeInTheDocument();
-    await screen.findByRole('combobox', { name: 'Chart symbol' });
-    await new Promise(resolve => setTimeout(resolve, 20));
+    expect(await screen.findByTestId('saved-trade-canvas')).toHaveTextContent(/^EURUSD\/15m$/);
+    expect(screen.getByText('OANDA · EUR/USD · mid prices')).toBeInTheDocument();
     expect(screen.queryByText("This trade's symbol is not on Binance Spot.")).toBeNull();
-    expect(screen.getByRole('combobox', { name: 'Chart symbol' })).toHaveValue('');
-    expect(screen.queryByTestId('saved-trade-canvas')).toBeNull();
+    expect(screen.queryByRole('combobox', { name: 'Chart symbol' })).toBeNull();
   });
 
   it('a crypto-like trade with the same letters is still matched', async () => {
@@ -77,10 +75,22 @@ describe('T-043d crypto only for now, in plain words', () => {
     expect(screen.getByText('Its entry or exit is not available')).toBeInTheDocument();
   });
 
-  it('Replay says it is crypto-only for a forex pair, and keeps the spelling note otherwise', async () => {
+  it('Replay replays a forex pair from OANDA (T-055d), and keeps the spelling note otherwise', async () => {
     const NOW = Date.parse('2024-04-01T00:00:00.000Z');
+    // Forex is read by count: 60 candles back from the moment and 240 forward from it.
+    const pair = fakeReplayMarket({ nowMs: NOW, history: request => Array.from({ length: request.limit }, (_, i) => {
+      const openMs = request.startTimeMs !== undefined ? request.startTimeMs + i * HOUR : request.endTimeMs! + 1 - (request.limit - i) * HOUR;
+      return replayCandle(openMs, '1.085', '1.086', '1.084', '1.0855');
+    }) });
+    render(<MemoryRouter><ReplayScreen db={await database()} market={pair.market} playStepMs={25} /></MemoryRouter>);
+    fireEvent.change(screen.getByLabelText(/^Market/), { target: { value: 'EUR/USD' } });
+    fireEvent.change(screen.getByLabelText(/^Start from/), { target: { value: '2024-03-01T12:00' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Start replay' }));
+    expect(await screen.findByText('Candles: OANDA · EUR/USD · mid prices')).toBeInTheDocument();
+    expect(pair.requests.map(request => request.instrument)).toEqual([{ venue: 'oanda-forex', symbol: 'EURUSD' }, { venue: 'oanda-forex', symbol: 'EURUSD' }]);
+    expect(pair.state.metadataCalls).toBe(0);
+    cleanup();
     for (const [typed, message] of [
-      ['EUR/USD', 'Replay has crypto markets from Binance only for now, so it cannot replay EUR/USD. Try a crypto market, for example BTCUSDT.'],
       ['EURUSX', "Kairos can't find this market on Binance. Check the spelling, for example BTCUSDT."],
     ] as const) {
       const fake = fakeReplayMarket({ nowMs: NOW });

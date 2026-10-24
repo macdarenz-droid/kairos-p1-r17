@@ -22,6 +22,10 @@ export interface KairosApiEnv {
   readonly KAIROS_ACTIVATION_PUBLIC_KEY_SPKI?: string;
   /** vars: "okx" lets /market/candles ask OKX when Binance fails; anything else, or missing, means no backup. */
   readonly KAIROS_MARKET_BACKUP?: string;
+  /** vars: "oanda-practice" or "oanda-live", the OANDA account the forex token belongs to (U10, D231); anything else, or missing, means no forex candles. */
+  readonly KAIROS_FOREX_SOURCE?: string;
+  /** secret: the owner's OANDA API token (O4a), sent only as OANDA's Bearer header. */
+  readonly MARKET_DATA_API_KEY?: string;
   readonly KAIROS_API_CACHE?: KvStore;
   readonly KAIROS_API_DEVICE_LIMITER?: RateLimiter;
   readonly KAIROS_API_ANONYMOUS_LIMITER?: RateLimiter;

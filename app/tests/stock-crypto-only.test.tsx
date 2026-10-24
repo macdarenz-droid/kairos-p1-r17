@@ -41,7 +41,7 @@ const workspace = (entry: JournalHistoryEntry) => render(<AnalysisHistoryWorkspa
 describe('T-044d crypto only for now, for stocks too', () => {
   it('the Analysis market chart says it is crypto-only for a stock trade', async () => {
     workspace(tradeEntry('AAPL', 2, 'stock'));
-    expect(await screen.findByText('The market chart has crypto markets from Binance only for now. Your stock trade is drawn in its picture above, with your plan, entries and exits.')).toBeInTheDocument();
+    expect(await screen.findByText('The market chart has crypto and forex markets for now. Your stock trade is drawn in its picture above, with your plan, entries and exits.')).toBeInTheDocument();
     await screen.findByRole('combobox', { name: 'Chart symbol' });
     await new Promise(resolve => setTimeout(resolve, 20));
     expect(screen.queryByText("This trade's symbol is not on Binance Spot.")).toBeNull();
@@ -49,12 +49,13 @@ describe('T-044d crypto only for now, for stocks too', () => {
     expect(screen.queryByTestId('saved-trade-canvas')).toBeNull();
   });
 
-  it('a trade saved with no market is matched as before, and forex keeps its words', async () => {
+  it('a trade saved with no market is matched as before, and forex has its own chart', async () => {
     workspace(tradeEntry('AAPL', 2));
     expect(await screen.findByTestId('saved-trade-canvas')).toHaveTextContent(/^AAPL\/15m$/);
     cleanup();
     workspace(tradeEntry('EURUSD', 2, 'forex'));
-    expect(await screen.findByText('The market chart has crypto markets from Binance only for now. Your forex trade is drawn in its picture above, with your plan, entries and exits.')).toBeInTheDocument();
+    expect(await screen.findByText('OANDA · EUR/USD · mid prices')).toBeInTheDocument();
+    expect(screen.queryByText(/The market chart has crypto/)).toBeNull();
   });
 
   it('the Analysis review shows a stock trade in plain words', async () => {
@@ -79,7 +80,7 @@ describe('T-044d crypto only for now, for stocks too', () => {
     const fake = fakeReplayMarket({ nowMs: Date.parse('2024-04-01T00:00:00.000Z') });
     const db = await database();
     render(<MemoryRouter><ReplayScreen db={db} market={fake.market} playStepMs={25} /></MemoryRouter>);
-    expect(screen.getByLabelText(/^Market/)).toHaveAccessibleDescription('Replay has crypto markets from Binance only for now, such as BTCUSDT.');
+    expect(screen.getByLabelText(/^Market/)).toHaveAccessibleDescription('Replay has crypto markets from Binance and forex and metals from OANDA, such as BTCUSDT or EUR/USD.');
     fireEvent.change(screen.getByLabelText(/^Market/), { target: { value: 'AAPL' } });
     fireEvent.change(screen.getByLabelText(/^Start from/), { target: { value: '2024-03-01T12:00' } });
     fireEvent.click(screen.getByRole('button', { name: 'Start replay' }));

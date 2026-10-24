@@ -3,6 +3,8 @@ import type { LiveMarketUniverseInstrumentMetadataAcquisitionPort } from '../../
 import type { MarketCandle, MarketCandleHistoryPort, MarketCandleHistoryResult } from '../../services/market-data/MarketCandleHistoryPort';
 import type { MarketDataUnavailableWhy } from '../../services/market-data/marketDataTypes';
 import { describeCandleSource, describeFuturesOnlyNotListed, describeFuturesOnlySource, futuresOnlyMarket, matchCryptoMarket, matchNoteFor } from '../market-reference/cryptoMarket';
+import { forexCandleInstrument, parseForexPair, type ForexPair } from '../markets/forexPair';
+import type { MarketSourceWords } from '../online/onlineWords';
 
 const MINUTE_MS = 60_000;
 const HOUR_MS = 60 * MINUTE_MS;
@@ -49,17 +51,25 @@ export const TRADE_PICTURE_MAX_WINDOW_CANDLES = 48;
 export const TRADE_PICTURE_PADDING_FRACTION = 0.2;
 export const TRADE_PICTURE_MIN_PADDING_CANDLES = 3;
 
-/** Journal symbols may be typed as "BTC/USDT" or "btc-usdt"; Binance Spot symbols have no separators. */
-export function normalizeTradeSymbol(symbol: string): string {
-  return symbol.replace(/[/\-\s]/g, '').toUpperCase();
-}
+/** OANDA has no 3-day candles (D232): a forex window that would take 3 days takes 1 week. */
+export const FOREX_PICTURE_INTERVALS = Object.freeze(TRADE_PICTURE_INTERVALS.filter(choice => choice.interval !== '3d'));
+
+export type TradePictureCandleSource = 'crypto' | 'forex';
 
 /**
- * P31/P32: whether Kairos has a candle source for this market, for the trade picture and the Analysis market chart.
- * Forex and stocks have none yet: no keyless browser source gives clean candles for them (D99, D106). Every other market asks as before, by symbol.
+ * U10 (D235): where a trade's candles come from, for the trade picture, the Analysis market chart and Replay. Forex
+ * pairs and metals that parseForexPair reads come from OANDA through the Kairos server ('forex'); stocks have no source
+ * yet (D233), nor has a forex symbol that is not a pair. Every other market asks Binance as before, by symbol ('crypto').
  */
-export function tradePictureHasCandleSource(marketType: MarketType): boolean {
-  return marketType !== 'forex' && marketType !== 'stock';
+export function tradePictureCandleSource(marketType: MarketType, symbol: string): TradePictureCandleSource | null {
+  if (marketType === 'stock') return null;
+  if (marketType === 'forex') return forexCandleInstrument(symbol) === null ? null : 'forex';
+  return 'crypto';
+}
+
+/** Why a trade has no candles when its market has no source: the card's sentence (D233, D235). */
+export function describeNoCandleSource(marketType: MarketType): string {
+  return marketType === 'forex' ? 'Forex candles need a six-letter pair, such as EURUSD or XAUUSD.' : 'Candles are shown for crypto and forex trades for now.';
 }
 
 /** A planned trade (D212): the recent market on 15-minute candles, 36 up to now, and room for 12 more on the right for its boxes. */
@@ -78,10 +88,12 @@ export interface TradePictureCandleWindow {
 /**
  * The picture window: the trade padded by max(20% of its length, 3 candles) on
  * each side, on the smallest timeframe whose whole window holds at most
- * TRADE_PICTURE_MAX_WINDOW_CANDLES candles (1w when none does). Null when the
- * trade has no start or ends before it starts.
+ * TRADE_PICTURE_MAX_WINDOW_CANDLES candles (the largest when none does). Null when the
+ * trade has no start or ends before it starts. `intervals` are the source's sizes, smallest first.
  */
-export function planTradePictureCandleWindow(startMs: number, endMs: number): TradePictureCandleWindow | null {
+export function planTradePictureCandleWindow(
+  startMs: number, endMs: number, intervals: readonly (typeof TRADE_PICTURE_INTERVALS)[number][] = TRADE_PICTURE_INTERVALS,
+): TradePictureCandleWindow | null {
   if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs < startMs) return null;
   const length = endMs - startMs;
   const windowFor = (choice: (typeof TRADE_PICTURE_INTERVALS)[number]): TradePictureCandleWindow => {
@@ -89,11 +101,11 @@ export function planTradePictureCandleWindow(startMs: number, endMs: number): Tr
     const startTimeMs = Math.floor(startMs - padding), endTimeMs = Math.ceil(endMs + padding);
     return Object.freeze({ interval: choice.interval, startTimeMs, endTimeMs, limit: Math.ceil((endTimeMs - startTimeMs) / choice.ms) + 1 });
   };
-  for (const choice of TRADE_PICTURE_INTERVALS) {
+  for (const choice of intervals) {
     const window = windowFor(choice);
     if (window.limit <= TRADE_PICTURE_MAX_WINDOW_CANDLES) return window;
   }
-  return windowFor(TRADE_PICTURE_INTERVALS[TRADE_PICTURE_INTERVALS.length - 1]);
+  return windowFor(intervals[intervals.length - 1]);
 }
 
 /** A planned trade's window (D212): the 36 fifteen-minute candles up to and including the one forming at `nowMs`. Null when `nowMs` is not a time. */
@@ -132,12 +144,20 @@ export interface TradePictureCandleDeps {
 
 /** The USDⓈ-M futures venue the history port serves for futures trades (D165). */
 const FUTURES_VENUE = 'binance-usdm';
+/** The Kairos server's forex and metal candles from OANDA (D231); a build without the server has no port for it. */
+export const FOREX_CANDLE_VENUE = 'oanda-forex';
+/** The words when this build has no Kairos server: forex candles come only through it. */
+export const FOREX_CANDLES_NEED_SERVER = 'Forex candles need the Kairos server.';
 
 export type TradePictureCandlesFailure = 'no-candle-source' | 'no-start' | 'not-listed' | 'no-candles' | MarketDataUnavailableWhy;
 
 export type TradePictureCandlesResult =
   | Readonly<{ ok: true; candles: readonly MarketCandle[]; source: string; note: string | null; /** The window's candle size; a loader may leave it out. */ interval?: TradePictureInterval }>
-  | Readonly<{ ok: false; why: TradePictureCandlesFailure; retryAfterSeconds: number | null; note: string | null }>;
+  | Readonly<{
+    ok: false; why: TradePictureCandlesFailure; retryAfterSeconds: number | null; note: string | null;
+    /** Which source the "Unavailable" words name when it is not Binance (OANDA for forex, D235). */
+    source?: MarketSourceWords;
+  }>;
 
 type TradePictureCandlesSuccess = Extract<TradePictureCandlesResult, { ok: true }>;
 
@@ -148,12 +168,14 @@ export function resetTradePictureCandleCache(): void {
   cache.clear();
 }
 
-const failed = (why: TradePictureCandlesFailure, retryAfterSeconds: number | null = null, note: string | null = null): TradePictureCandlesResult =>
-  Object.freeze({ ok: false as const, why, retryAfterSeconds, note });
+const failed = (why: TradePictureCandlesFailure, retryAfterSeconds: number | null = null, note: string | null = null, source?: MarketSourceWords): TradePictureCandlesResult =>
+  Object.freeze(source === undefined ? { ok: false as const, why, retryAfterSeconds, note } : { ok: false as const, why, retryAfterSeconds, note, source });
 
 /** A port failure's reason: the typed one when the port gave it, else "the source didn't answer". */
-const unavailable = (result: { readonly reason: string; readonly why?: MarketDataUnavailableWhy; readonly retryAfterSeconds?: number | null }, note: string | null = null): TradePictureCandlesResult =>
-  result.reason === 'unavailable' && result.why !== undefined ? failed(result.why, result.retryAfterSeconds ?? null, note) : failed('source-down', null, note);
+const unavailable = (
+  result: { readonly reason: string; readonly why?: MarketDataUnavailableWhy; readonly retryAfterSeconds?: number | null }, note: string | null = null, source?: MarketSourceWords,
+): TradePictureCandlesResult =>
+  result.reason === 'unavailable' && result.why !== undefined ? failed(result.why, result.retryAfterSeconds ?? null, note, source) : failed('source-down', null, note, source);
 
 /**
  * A futures market on no spot list (D171): its own name on USDⓈ-M, with no pair (so no backup source).
@@ -184,9 +206,39 @@ async function loadFuturesOnlyCandles(
 }
 
 /**
+ * A forex pair or metal's candles from OANDA through the Kairos server (D231, D235): its six letters, no market list and
+ * no backup. A build that asks Binance directly refuses the forex market: it has no forex source.
+ */
+async function loadForexCandles(
+  pair: ForexPair, window: TradePictureCandleWindow, keep: boolean, deps: TradePictureCandleDeps, options: { readonly signal?: AbortSignal } | undefined,
+): Promise<TradePictureCandlesResult> {
+  const key = [pair.symbol, FOREX_CANDLE_VENUE, window.interval, window.startTimeMs, window.endTimeMs].join('|');
+  const stored = keep ? cache.get(key) : undefined;
+  if (stored) return stored;
+  const result = await deps.history.acquireHistory({
+    instrument: { venue: FOREX_CANDLE_VENUE, symbol: pair.symbol },
+    interval: window.interval,
+    limit: window.limit,
+    startTimeMs: window.startTimeMs,
+    endTimeMs: window.endTimeMs,
+  }, options);
+  if (!result.ok) {
+    if (result.reason === 'invalid-request' && result.detail === 'venue-mismatch') return failed('no-candle-source', null, FOREX_CANDLES_NEED_SERVER);
+    return unavailable(result, null, { provider: 'oanda', pair: pair.label });
+  }
+  if (result.snapshot.candles.length === 0) return failed('no-candles');
+  const success: TradePictureCandlesSuccess = Object.freeze({
+    ok: true as const, candles: result.snapshot.candles, source: describeCandleSource(result.snapshot.origin, pair, 'spot'), note: null, interval: window.interval,
+  });
+  if (keep) cache.set(key, success);
+  return success;
+}
+
+/**
  * Candles around one trade for its picture, with the line that says where they came from, or why there are none:
  * no candle source for the market, no start time, a market Binance doesn't list, no candles for the time, or the
- * source's own reason. Futures trades ask futures candles, and spot candles once when there is no futures market. A planned
+ * source's own reason. Futures trades ask futures candles, and spot candles once when there is no futures market. Forex
+ * pairs and metals ask OANDA through the Kairos server, on sizes up to 1 week without 3 days (D232). A planned
  * trade asks the recent market up to now (D212), never from the cache. It never throws.
  */
 export async function loadTradePictureCandles(
@@ -195,7 +247,8 @@ export async function loadTradePictureCandles(
   deps: TradePictureCandleDeps,
 ): Promise<TradePictureCandlesResult> {
   try {
-    if (!tradePictureHasCandleSource(trade.marketType)) return failed('no-candle-source');
+    const candleSource = tradePictureCandleSource(trade.marketType, trade.symbol);
+    if (candleSource === null) return failed('no-candle-source');
     const nowMs = (deps.nowMs ?? Date.now)();
     // A planned trade has no time of its own: it is drawn against the market up to now, which is never kept (it ends now).
     const planned = trade.status === 'draft';
@@ -206,12 +259,16 @@ export async function loadTradePictureCandles(
       const times = tradePictureTimes(trade, executions, nowMs);
       if (times.startMs === null) return failed('no-start');
       // An open trade is still in the market after a partial exit, so its candles run to now (D192 "so far").
-      window = planTradePictureCandleWindow(times.startMs, trade.status === 'open' ? nowMs : times.endMs);
+      window = planTradePictureCandleWindow(times.startMs, trade.status === 'open' ? nowMs : times.endMs, candleSource === 'forex' ? FOREX_PICTURE_INTERVALS : TRADE_PICTURE_INTERVALS);
     }
     if (window === null) return failed('no-start');
     // Windows that end now are never kept: the next look must see the newer candles.
     const keep = !planned && trade.status !== 'open';
     const options = deps.signal ? { signal: deps.signal } : undefined;
+    if (candleSource === 'forex') {
+      const pair = parseForexPair(trade.symbol);
+      return pair.ok ? await loadForexCandles(pair.pair, window, keep, deps, options) : failed('no-candle-source');
+    }
 
     const metadata = await deps.metadata.acquireInstrumentMetadata(options);
     if (!metadata.ok) return unavailable(metadata);

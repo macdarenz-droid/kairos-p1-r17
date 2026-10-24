@@ -13,7 +13,7 @@ import {
   type StrategyInvalidReason,
   type StrategyRuleId,
 } from '../../domain/discipline';
-import { normalizeTradeSymbol } from '../trade-visualizer/tradePictureCandles';
+import { normalizeTradeSymbol } from '../../domain/trades';
 import { isPriceCurrencyInput } from '../trades/priceCurrencyInput';
 
 export const strategiesPreferenceMetadataKey = 'preferences.strategies.v1';

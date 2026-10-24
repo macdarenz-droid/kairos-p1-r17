@@ -8,6 +8,8 @@ export type MarketDataConnectionState =
   | 'error';
 
 export const BINANCE_USDM_VENUE = 'binance-usdm' as const;
+/** Forex pairs and metals from OANDA, only through the Kairos server (D231). */
+export const OANDA_FOREX_VENUE = 'oanda-forex' as const;
 
 /** Why market data could not be had; the words are application/online/onlineWords.ts's. */
 export type MarketDataUnavailableWhy = 'offline' | 'unknown-market' | 'busy' | 'region' | 'source-down' | 'not-set-up' | 'unreadable';

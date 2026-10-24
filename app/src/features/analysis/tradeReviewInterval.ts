@@ -60,4 +60,4 @@ export function tradeReviewTimes(entry: JournalHistoryEntry): { readonly startMs
 }
 
 /** One owner for trade → market symbol normalisation (the trade picture uses it too). */
-export { normalizeTradeSymbol } from '../../application/trade-visualizer/tradePictureCandles';
+export { normalizeTradeSymbol } from '../../domain/trades';

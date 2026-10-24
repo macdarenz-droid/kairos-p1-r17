@@ -9,7 +9,7 @@ export interface MarketCandleHistoryRequest {
   readonly limit: number;
   readonly startTimeMs?: number;
   readonly endTimeMs?: number;
-  /** Base and quote asset of a Binance market, from the market list; lets the server use its backup source. */
+  /** Base and quote asset of a Binance market, from the market list; lets the server use its backup source. Never sent for forex. */
   readonly pair?: Readonly<{ base: string; quote: string }>;
 }
 
@@ -20,14 +20,14 @@ export interface MarketCandle {
   readonly high: DecimalString;
   readonly low: DecimalString;
   readonly close: DecimalString;
-  /** Traded amount in the base asset; absent when the source gave none (never 0 for unknown). */
+  /** Traded amount in the base asset; absent when the source gave none, as for forex (never 0 for unknown, D232). */
   readonly volume?: DecimalString;
 }
 
 export interface MarketCandleOrigin {
-  readonly provider: 'binance' | 'okx';
-  readonly market: 'spot' | 'usdm-futures' | 'perpetual-swap';
-  /** The provider's own name for the market, such as BTCUSDT or BTC-USDT-SWAP. */
+  readonly provider: 'binance' | 'okx' | 'oanda';
+  readonly market: 'spot' | 'usdm-futures' | 'perpetual-swap' | 'forex';
+  /** The provider's own name for the market, such as BTCUSDT, BTC-USDT-SWAP or EUR_USD. */
   readonly symbol: string;
   /** Why a backup source answered instead of Binance; null when Binance answered. */
   readonly backup: 'refused' | 'busy' | 'down' | null;

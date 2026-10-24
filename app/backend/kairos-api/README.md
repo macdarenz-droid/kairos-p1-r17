@@ -203,6 +203,24 @@ decimal text and times as ISO 8601 UTC (`src/market/marketRoutes.ts`, `binance.t
 - Live check: after each production deploy, CI asks the live `/market/candles` for one settled BTCUSDT hour (an error
   fails the job) and `/market/symbols` (a failure only warns: on the Free plan it can exceed the CPU limit, O10).
 
+## Forex candles (U10)
+
+`GET /market/candles?market=oanda-forex&symbol=EURUSD&interval=1h&limit=…[&start=…][&end=…]` reads OANDA's candles
+(`src/market/oanda.ts`, D231, D232) with the owner's token, for forex pairs and metals (EURUSD, XAUUSD: six letters,
+read as OANDA's `EUR_USD`). The answer has the same shape as crypto, with `source` `{ provider: 'oanda', market: 'forex',
+symbol: 'EUR_USD' }` and `backup` null.
+- Mid prices, day candles from 00:00 UTC and weeks from Monday (`dailyAlignment=0&alignmentTimezone=UTC&weeklyAlignment=Monday`).
+- No volume: `volume` is null (OANDA counts price changes, not traded size). The candle caches are version 2 since this change.
+- Sizes 1m 3m 5m 15m 30m 1h 2h 4h 6h 8h 12h 1d 1w; 1s, 3d and 1M are refused (OANDA has no 3-day candles, and its month
+  candles start on the last day of the month before).
+- `base`/`quote` are refused for forex. OANDA has no backup source.
+- `KAIROS_FOREX_SOURCE` (`wrangler.jsonc`: `oanda-practice`; `oanda-live` for a live account's token) picks the host
+  (`api-fxpractice.oanda.com` or `api-fxtrade.oanda.com`). The token is the secret `MARKET_DATA_API_KEY`, sent only as
+  OANDA's `Authorization: Bearer` header. Without it the answer is `not-set-up` (503), and OANDA is never asked.
+- OANDA's answers: an unknown instrument is `unknown-market`; 401/403 `source-refused`; 429 `source-busy`; anything else
+  `source-unavailable`.
+- The deploy's live check asks for one settled EUR/USD hour; while the token is missing it only notes owner step O4a.
+
 ## Scheduled reads (P34)
 
 A cron trigger (`wrangler.jsonc`, `*/20 * * * *`) runs `src/scheduled.ts` every 20 minutes. Each run reads ONE of the
@@ -274,6 +292,13 @@ with `npm ci --ignore-scripts`.
   2. Cloudflare dashboard → Workers & Pages → Plans → choose Workers Paid and confirm the payment (USD 5 a month; 10 million requests a month included; higher KV and CPU limits).
   3. Nothing else changes: no deploy, no setting, no code. (The app asks again by itself only once, when the connection comes back; every other retry is the trader's tap.)
 - **O11 · OKX as the backup source for candles** (optional, never blocking): Kairos shows OKX candles only when Binance refuses a region or is down, and names OKX on the picture. Whether OKX's terms allow showing its public candles in another app is UNVERIFIED. If you want it off, say so: a coder changes `KAIROS_MARKET_BACKUP` to `"off"` in `wrangler.jsonc` (one line), and the next deploy stops using OKX.
+
+- **O4a · Forex and metal candles (U10)** (never blocking): Kairos shows forex and gold or silver candles from OANDA once the server has your OANDA API token.
+  1. On OANDA's site, generate a personal API token for your account (the page is called "Manage API Access" in OANDA's account settings; the exact menu names are UNVERIFIED). A practice (demo) account's token works.
+  2. Cloudflare dashboard → Workers & Pages → `kairos-api` → Settings → Variables and Secrets → Add → type Secret, name `MARKET_DATA_API_KEY`, value: the token → Deploy. (Or in `app/backend/kairos-api`: `npm ci`, then `npx wrangler secret put MARKET_DATA_API_KEY`.)
+  3. If the token is from a live (real money) account, say so: a coder changes `KAIROS_FOREX_SOURCE` to `"oanda-live"` in `wrangler.jsonc` and moves both candle cache policies up one version (`MARKET_CANDLES_OPEN_CACHE`, `MARKET_CANDLES_SETTLED_CACHE`), so the server serves no practice candles it kept. A practice token needs nothing more. How to tell: a practice token comes from a practice (demo) account, a live one from a real-money account. A token for the other kind of account is refused (UNVERIFIED), so forex pictures say "OANDA refused the Kairos server"; then switch the setting. Browsers may still show candles they kept for up to 7 days.
+  4. Please confirm that OANDA's terms let your journal app show its candles (UNVERIFIED).
+  5. Check: a forex trade's picture shows candles with "Candles: OANDA · EUR/USD · mid prices" (after U10's app tasks).
 
 Setting a provider key later: in `app/backend/kairos-api`, `npm ci`, then `npx wrangler secret put <NAME>` and paste the key
 when asked (or the dashboard, type Secret).

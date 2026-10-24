@@ -3,8 +3,8 @@
  */
 
 import { decimalCompare, decimalDivide, decimalMultiply, decimalSubtract } from '../../domain/calculations';
-import { parsePositiveDecimalString, type DecimalString, type TradeSide } from '../../domain/trades';
-import { normalizeTradeSymbol } from '../trade-visualizer/tradePictureCandles';
+import { ECB_REFERENCE_CURRENCIES } from '../../domain/calculations/currencyConversion';
+import { normalizeTradeSymbol, parsePositiveDecimalString, type DecimalString, type TradeSide } from '../../domain/trades';
 
 /** The eight most traded currencies, in the market's quoting order: a standard pair puts the earlier one first (EUR/USD, GBP/JPY, USD/CAD). */
 export const FOREX_MAJOR_CURRENCIES = Object.freeze(['EUR', 'GBP', 'AUD', 'NZD', 'USD', 'CAD', 'CHF', 'JPY'] as const);
@@ -57,6 +57,31 @@ export function parseForexPair(symbol: string): ForexPairResult {
   const pipSize = standard ? (quote === 'JPY' ? FOREX_JPY_PIP_SIZE : FOREX_PIP_SIZE) : null;
   const pair: ForexPair = Object.freeze({ symbol: code, base, quote, quoteKnown, label: `${base}/${quote}`, standard, pipSize });
   return Object.freeze({ ok: true as const, pair });
+}
+
+/** U10 (D235): the six letters the Kairos server asks OANDA for (EURUSD, XAUUSD), for any pair parseForexPair reads, standard or not; else null. */
+export function forexCandleInstrument(symbol: string): string | null {
+  const parsed = parseForexPair(symbol);
+  return parsed.ok ? parsed.pair.symbol : null;
+}
+
+/** Metals OANDA prices against currencies and against each other: gold, silver, platinum and palladium. */
+const FOREX_METALS: readonly string[] = Object.freeze(['XAU', 'XAG', 'XPT', 'XPD']);
+/** The ECB's currencies and the offshore yuan (OANDA lists USD/CNH and EUR/CNH, checked 2026-10-24). */
+const FOREX_CURRENCIES: readonly string[] = Object.freeze([...ECB_REFERENCE_CURRENCIES, 'CNH']);
+
+/**
+ * U10 (D236): a typed market that is plainly forex or a metal, for Replay, whose one field has no market type: two
+ * currencies the bank (ECB) publishes or the offshore yuan, a metal against one, or two metals (EUR/USD, USD/CNH,
+ * XAUUSD, XAU/XAG). A six-letter crypto market (ETHBTC, BTCEUR) is not: one side is a coin, so it stays with Binance.
+ * Null otherwise.
+ */
+export function plainForexPair(market: string): ForexPair | null {
+  const parsed = parseForexPair(market);
+  if (!parsed.ok) return null;
+  const known = (code: string) => FOREX_CURRENCIES.includes(code) || FOREX_METALS.includes(code);
+  const { base, quote } = parsed.pair;
+  return known(base) && known(quote) && !(FOREX_METALS.includes(quote) && !FOREX_METALS.includes(base)) ? parsed.pair : null;
 }
 
 export function projectForexSize(pair: ForexPair, units: string): ForexSize | null {

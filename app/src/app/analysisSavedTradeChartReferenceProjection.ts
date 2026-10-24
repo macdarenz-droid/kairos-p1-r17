@@ -3,9 +3,11 @@ import {
   projectTradeVisualizerFacts,
   type TradeVisualizerFactsProjection,
 } from '../application/trade-visualizer';
-import type { MarketDataInstrument } from '../services/market-data/marketDataTypes';
+import { forexCandleInstrument } from '../application/markets/forexPair';
+import { OANDA_FOREX_VENUE, type MarketDataInstrument } from '../services/market-data/marketDataTypes';
 
 export type AnalysisSavedTradeChartReferenceUnavailableReason =
+  | 'stock-not-on-chart'
   | 'market-type-mismatch'
   | 'symbol-mismatch'
   | 'price-currency-missing'
@@ -40,7 +42,8 @@ export type AnalysisSavedTradeChartReferenceProjection =
 /**
  * Item-5 integration prerequisite between an exact saved trade and one
  * caller-selected market-reference chart. It fails closed unless the saved
- * market type, symbol and recorded price currency align with the chart scope.
+ * market type, symbol and recorded price currency align with the chart scope:
+ * a crypto trade on a Binance chart, or a forex trade on its pair's OANDA chart.
  * A successful result still makes no execution-venue claim.
  */
 export function projectAnalysisSavedTradeChartReference(
@@ -62,8 +65,11 @@ export function projectAnalysisSavedTradeChartReference(
     reason,
   });
 
-  if (entry.trade.marketType !== 'crypto') return unavailable('market-type-mismatch');
-  if (entry.trade.symbol !== scope.instrument.symbol) return unavailable('symbol-mismatch');
+  // U10 (D235): a forex pair is drawn on its OANDA chart, matched by its six letters (EUR/USD is EURUSD).
+  const forex = entry.trade.marketType === 'forex' && scope.instrument.venue === OANDA_FOREX_VENUE;
+  if (entry.trade.marketType === 'stock') return unavailable('stock-not-on-chart');
+  if (entry.trade.marketType !== 'crypto' && !forex) return unavailable('market-type-mismatch');
+  if ((forex ? forexCandleInstrument(entry.trade.symbol) : entry.trade.symbol) !== scope.instrument.symbol) return unavailable('symbol-mismatch');
 
   const priceCurrency = entry.trade.grossPnlCurrency;
   if (priceCurrency == null || priceCurrency === '') return unavailable('price-currency-missing');

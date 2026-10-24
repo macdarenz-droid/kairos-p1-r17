@@ -91,7 +91,8 @@ describe('Analysis saved-trade chart reference projection', () => {
   });
 
   it.each([
-    [{ marketType: 'stock' as const }, scope, 'market-type-mismatch'],
+    [{ marketType: 'stock' as const }, scope, 'stock-not-on-chart'],
+    [{ marketType: 'forex' as const }, scope, 'market-type-mismatch'],
     [{ symbol: 'BTCUSDT' }, scope, 'symbol-mismatch'],
     [{ grossPnlCurrency: null }, scope, 'price-currency-missing'],
     [{ grossPnlCurrency: undefined }, scope, 'price-currency-missing'],

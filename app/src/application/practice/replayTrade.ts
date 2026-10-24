@@ -13,7 +13,8 @@ import type { LoadedReplay } from './replayCandles';
 export type SaveReplayTradeResult = SavePracticeTradeResult | { readonly ok: false; readonly type: 'not-finished' };
 
 function replayTradeInput(replay: LoadedReplay, order: ReplayOrder | null, outcome: ReplayOutcome | null): SavePracticeTradeInput {
-  const base = { symbol: replay.symbol, marketType: 'crypto' as const, ...(replay.quoteAsset === null ? {} : { grossPnlCurrency: replay.quoteAsset }) };
+  // A forex replay is saved as forex, so Practice shows it with the forex rules (D236); its prices are in the quote.
+  const base = { symbol: replay.symbol, marketType: replay.marketType ?? 'crypto', ...(replay.quoteAsset === null ? {} : { grossPnlCurrency: replay.quoteAsset }) };
   if (order === null) return { ...base, side: 'long', status: 'draft' };
   const plan = { plannedEntryPrice: order.entryPrice, plannedStopPrice: order.stopPrice, plannedTargetPrice: order.targetPrice, plannedQuantity: order.quantity };
   if (outcome === null || outcome.kind === 'waiting') return { ...base, side: order.side, status: 'draft', plan };

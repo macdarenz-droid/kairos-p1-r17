@@ -22,7 +22,7 @@ import { describeMoneyAtRisk } from '../performance/performanceWords';
 import { describeTradeDuration, projectTradeDurationMs } from '../performance/tradeDuration';
 import { describeTimesRisked, projectTradeMoneyAtRisk, projectTradeTimesRisked, signedText, TIMES_RISKED_PLACES } from '../performance/tradeRisk';
 import {
-  describeTradePictureInterval, TRADE_PICTURE_PLANNED_INTERVAL, TRADE_PICTURE_PLANNED_ROOM_CANDLES, tradePictureHasCandleSource, tradePictureIntervalMs, tradePictureTimes,
+  describeNoCandleSource, describeTradePictureInterval, TRADE_PICTURE_PLANNED_INTERVAL, TRADE_PICTURE_PLANNED_ROOM_CANDLES, tradePictureCandleSource, tradePictureIntervalMs, tradePictureTimes,
   type TradePictureInterval,
 } from './tradePictureCandles';
 import { latestTradePlan, projectTradeVisualizerFacts } from './tradeVisualizerFacts';
@@ -112,8 +112,10 @@ export interface TradePictureModel {
   /** The trade's candles, the plan's entry, stop and target, and every entry and exit, plus TRADE_PICTURE_PRICE_PADDING; all candles when none of these exist. Candles before or after the trade may go past it: the card cuts them at the edge. */
   readonly priceRange: Readonly<{ low: DecimalString; high: DecimalString }> | null;
   readonly candles: readonly TradePictureCandle[];
-  /** False when Kairos has no candle source for the trade's market (forex, P31): the card then says candles are crypto-only for now, never that they need a connection. */
+  /** False when Kairos has no candle source for the trade's market (stocks, a forex symbol that is not a pair; D233, D235): the card then says why, never that they need a connection. */
   readonly marketHasCandles: boolean;
+  /** The card's sentence when the market has no candle source; null when it has one. */
+  readonly noCandleSourceWords: string | null;
   readonly riskBox: TradePictureBox | null;
   readonly rewardBox: TradePictureBox | null;
   readonly markers: readonly TradePictureMarker[];
@@ -327,6 +329,7 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
   const unitWord = (value: string) => (value === '1' ? 'unit' : 'units');
   // P32: a stock trade's size is shares; what it won or lost per share comes from the one ticker owner (D105).
   const stock = trade.marketType === 'stock';
+  const candleSource = tradePictureCandleSource(trade.marketType, trade.symbol);
   const perShare = stock && metrics !== null ? projectStockResultPerShare(metrics) : null;
   const perShareShown = perShare === null ? null : decimalRound(perShare, TRADE_PICTURE_PER_SHARE_PLACES, 'half-up');
   const priceCurrency = trade.grossPnlCurrency || null;
@@ -374,7 +377,7 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
   ];
 
   const missing: TradePictureMissing[] = [];
-  if (candles === null || candles.length === 0) missing.push({ part: 'candles', message: forex ? 'No forex candles yet, so only your plan, entries and exits are shown.' : stock ? 'No stock candles yet, so only your plan, entries and exits are shown.' : 'No candles, so only your plan and fills are shown.' });
+  if (candles === null || candles.length === 0) missing.push({ part: 'candles', message: stock ? 'No stock candles yet, so only your plan, entries and exits are shown.' : 'No candles, so only your plan and fills are shown.' });
   if (startAt === null && !planned) missing.push({ part: 'start-time', message: 'No start time, so no risk or reward box.' });
   if (entry === null) missing.push({ part: 'planned-entry', message: 'No planned entry, so no risk or reward box.' });
   if (stop === null) missing.push({ part: 'stop', message: 'No stop, so no risk box.' });
@@ -396,7 +399,8 @@ export function projectTradePicture(input: TradePictureInput): TradePictureModel
     timeRange,
     priceRange: priceRange === null ? null : Object.freeze(priceRange),
     candles: Object.freeze(pictureCandles),
-    marketHasCandles: tradePictureHasCandleSource(trade.marketType),
+    marketHasCandles: candleSource !== null,
+    noCandleSourceWords: candleSource === null ? describeNoCandleSource(trade.marketType) : null,
     riskBox,
     rewardBox,
     markers: Object.freeze(markers),

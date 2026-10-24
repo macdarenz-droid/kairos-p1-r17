@@ -6,7 +6,7 @@ import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { JournalRoute } from '../src/app/JournalRoute';
 import { listJournalHistory } from '../src/application/journal';
-import { loadTradePictureCandles, projectTradePicture, tradePictureHasCandleSource, type TradePictureInput } from '../src/application/trade-visualizer';
+import { loadTradePictureCandles, projectTradePicture, tradePictureCandleSource, type TradePictureInput } from '../src/application/trade-visualizer';
 import { saveManualTrade } from '../src/application/trades';
 import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
 import { calculateTradeMetrics, decimalDivide, decimalMultiply } from '../src/domain/calculations';
@@ -135,10 +135,10 @@ describe('T-044c the stock trade picture', () => {
     const fx = projectTradePicture(simple('EURUSD', 'long', '10000', '1.085', '1.09', 'USD', 'forex'));
     expect(value(fx, 'pips')).toBeDefined();
     expect(value(fx, 'per-share')).toBeUndefined();
-    expect(fx.marketHasCandles).toBe(false);
-    expect(tradePictureHasCandleSource('forex')).toBe(false);
-    expect(tradePictureHasCandleSource('stock')).toBe(false);
-    for (const market of ['crypto', 'futures', 'options', 'other'] as MarketType[]) expect(tradePictureHasCandleSource(market)).toBe(true);
+    expect(fx.marketHasCandles).toBe(true);
+    expect(tradePictureCandleSource('forex', 'EURUSD')).toBe('forex');
+    expect(tradePictureCandleSource('stock', 'AAPL')).toBeNull();
+    for (const market of ['crypto', 'futures', 'options', 'other'] as MarketType[]) expect(tradePictureCandleSource(market, 'BTCUSDT')).toBe('crypto');
   });
 
   it('never asks the network for a stock trade', async () => {
@@ -150,13 +150,13 @@ describe('T-044c the stock trade picture', () => {
     expect(acquireHistory).not.toHaveBeenCalled();
   });
 
-  it('the card says candles are crypto-only and explains "per share"', async () => {
+  it('the card says candles are crypto and forex only and explains "per share"', async () => {
     const model = projectTradePicture(aapl);
     const { container, rerender } = render(<TradePictureCard model={model} />);
-    expect(screen.getByText('Candles are shown for crypto trades only for now.')).toBeTruthy();
+    expect(screen.getByText('Candles are shown for crypto and forex trades for now.')).toBeTruthy();
     expect(screen.queryByText('No candles for this time.')).toBeNull();
     rerender(<TradePictureCard model={model} candlesLoading />);
-    expect(screen.getByText('Candles are shown for crypto trades only for now.')).toBeTruthy();
+    expect(screen.getByText('Candles are shown for crypto and forex trades for now.')).toBeTruthy();
     expect(screen.queryByText('Loading candles…')).toBeNull();
     expect(container.querySelector('[data-info="per-share"] dd')!.textContent).toBe('+2.5 USD before fees');
     expect(container.querySelector('[data-info="size"] dd')!.textContent).toBe('10 shares');
@@ -165,7 +165,7 @@ describe('T-044c the stock trade picture', () => {
     expect(await within(dialog).findByText(/A small piece of a company/)).toBeInTheDocument();
   });
 
-  it('asks for crypto candles only, in the Journal and in Analysis', async () => {
+  it('never asks for stock candles, in the Journal and in Analysis', async () => {
     const db = await database();
     const stock = await saveManualTrade(db, {
       symbol: 'AAPL', marketType: 'stock', side: 'long', status: 'closed', openedAt: opened, closedAt: closed, grossPnlCurrency: 'USD',
@@ -182,7 +182,7 @@ describe('T-044c the stock trade picture', () => {
     const loader = vi.fn(offline);
     render(<TradePictureCandleLoaderContext.Provider value={loader}><MemoryRouter><JournalRoute db={db} /></MemoryRouter></TradePictureCandleLoaderContext.Provider>);
     const aaplButton = await screen.findByRole('button', { name: 'Open the AAPL trade picture' });
-    await waitFor(() => expect(within(aaplButton).getByText('Candles are shown for crypto trades only for now.')).toBeInTheDocument());
+    await waitFor(() => expect(within(aaplButton).getByText('Candles are shown for crypto and forex trades for now.')).toBeInTheDocument());
     const crypto = screen.getByRole('button', { name: 'Open the BTCUSDT trade picture' });
     await waitFor(() => expect(within(crypto).getByText('No candles for this time.')).toBeInTheDocument());
     expect(loader.mock.calls.map(([record]) => record.symbol)).toEqual(['BTCUSDT']);
@@ -191,7 +191,7 @@ describe('T-044c the stock trade picture', () => {
     const entry = (await listJournalHistory(db)).find(item => item.trade.symbol === 'AAPL')!;
     const analysisLoader = vi.fn(offline);
     render(<TradePictureCandleLoaderContext.Provider value={analysisLoader}><TradePicture entry={entry} variant="full" /></TradePictureCandleLoaderContext.Provider>);
-    expect(await screen.findByText('Candles are shown for crypto trades only for now.')).toBeInTheDocument();
+    expect(await screen.findByText('Candles are shown for crypto and forex trades for now.')).toBeInTheDocument();
     expect(analysisLoader).not.toHaveBeenCalled();
   });
 });

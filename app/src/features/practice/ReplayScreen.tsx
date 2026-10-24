@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { parseForexPair } from '../../application/markets/forexPair';
+import { plainForexPair } from '../../application/markets/forexPair';
 import { loadReplayCandles, REPLAY_CANDLE_SIZES, type LoadedReplay, type ReplayLoadFailure, type ReplayLoadResult, type ReplayMarketDeps } from '../../application/practice/replayCandles';
 import { projectReplayView, type ReplayOrder } from '../../application/practice/replayEngine';
 import { projectReplayPicture } from '../../application/practice/replayTrade';
@@ -32,6 +32,8 @@ const FIELD_ERRORS: Readonly<Partial<Record<ReplayLoadFailure, { readonly field:
   'start-in-future': { field: 'startAt', text: 'Pick a time in the past: a replay only uses candles that have finished.' },
   'no-history': { field: 'startAt', text: 'Binance has no candles for this market before that moment. Pick a later time.' },
   'no-future': { field: 'startAt', text: 'There are no finished candles after that moment yet. Pick an earlier time.' },
+  'needs-server': { field: 'market', text: 'Forex replay needs the Kairos server.' },
+  'forex-not-listed': { field: 'market', text: "OANDA doesn't list this pair. Check the spelling, for example EUR/USD." },
 };
 
 const formatTime = (iso: string) => new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
@@ -50,7 +52,9 @@ export function ReplayScreen({ db, market, playStepMs = REPLAY_PLAY_STEP_MS }: {
   const controller = useRef<AbortController | null>(null);
   const stageHeading = useRef<HTMLHeadingElement>(null);
   const pictureSvg = useRef<SVGSVGElement>(null);
-  const focusAfterLoad = useRef<'stage' | FieldName | null>(null);
+  const focusAfterLoad = useRef<'stage' | 'unavailable' | FieldName | null>(null);
+  const unavailableBox = useRef<HTMLDivElement>(null);
+  const nextButton = useRef<HTMLButtonElement>(null), playButton = useRef<HTMLButtonElement>(null), anotherButton = useRef<HTMLButtonElement>(null);
 
   useEffect(() => () => controller.current?.abort(), []);
 
@@ -78,7 +82,8 @@ export function ReplayScreen({ db, market, playStepMs = REPLAY_PLAY_STEP_MS }: {
       focusAfterLoad.current = 'stage';
       setLoad({ kind: 'ready', replay: result.replay });
     } else {
-      focusAfterLoad.current = FIELD_ERRORS[result.reason]?.field ?? null;
+      // "Start replay" is busy while loading: focus goes to the refusal's field, or to the "Unavailable" box's "Try again".
+      focusAfterLoad.current = FIELD_ERRORS[result.reason]?.field ?? (result.reason === 'unavailable' ? 'unavailable' : null);
       setLoad({ kind: 'failed', reason: result.reason, market: form.market, why: result.why ?? 'source-down', retryAfterSeconds: result.retryAfterSeconds ?? null });
     }
   }, [form, market, play]);
@@ -89,6 +94,7 @@ export function ReplayScreen({ db, market, playStepMs = REPLAY_PLAY_STEP_MS }: {
     if (target === null) return;
     focusAfterLoad.current = null;
     if (target === 'stage') stageHeading.current?.focus();
+    else if (target === 'unavailable') (unavailableBox.current?.querySelector<HTMLElement>('button') ?? unavailableBox.current?.querySelector<HTMLElement>('[tabindex="-1"]'))?.focus();
     else document.getElementById({ market: marketId, candleSize: sizeId, startAt: startId }[target])?.focus();
   }, [load, marketId, sizeId, startId]);
 
@@ -116,6 +122,13 @@ export function ReplayScreen({ db, market, playStepMs = REPLAY_PLAY_STEP_MS }: {
   useEffect(() => {
     if (playing && candlesLeft === 0) play(false);
   }, [playing, candlesLeft, play]);
+
+  // The last candle turns off Next and Play: their focus moves to "Choose another moment" instead of falling to the page.
+  useLayoutEffect(() => {
+    if (candlesLeft !== 0) return;
+    const active = document.activeElement;
+    if (active === nextButton.current || active === playButton.current || active === document.body) anotherButton.current?.focus();
+  }, [candlesLeft]);
 
   // The trade changed: stop, so the beginner sees the entry or the exit happen.
   const outcomeKind = view?.outcome?.kind ?? null;
@@ -149,12 +162,12 @@ export function ReplayScreen({ db, market, playStepMs = REPLAY_PLAY_STEP_MS }: {
     void start();
   };
 
-  const forex = load.kind === 'failed' && load.reason === 'unknown-market' ? parseForexPair(load.market) : null;
-  const fieldError = load.kind === 'failed'
-    ? (forex !== null && forex.ok && forex.pair.standard
-      ? { field: 'market' as const, text: `Replay has crypto markets from Binance only for now, so it cannot replay ${forex.pair.label}. Try a crypto market, for example BTCUSDT.` }
-      : FIELD_ERRORS[load.reason])
-    : undefined;
+  // A forex pair's refusals name OANDA and the pair (D236).
+  const forex = load.kind === 'failed' ? plainForexPair(load.market) : null;
+  const fieldError = load.kind !== 'failed' ? undefined
+    : load.reason === 'forex-not-listed' && forex !== null ? { field: 'market' as const, text: `OANDA doesn't list ${forex.label}. Check the spelling, for example EUR/USD.` }
+      : load.reason === 'no-history' && forex !== null ? { field: 'startAt' as const, text: `OANDA has no candles for ${forex.label} before that moment. Pick a later time.` }
+        : FIELD_ERRORS[load.reason];
   const errorFor = (field: FieldName) => (fieldError?.field === field ? fieldError.text : undefined);
   const loading = load.kind === 'loading';
 
@@ -174,10 +187,10 @@ export function ReplayScreen({ db, market, playStepMs = REPLAY_PLAY_STEP_MS }: {
         {closedPicture !== null ? <TradeShareControls model={closedPicture} svg={closedSvg} /> : null}
         <p className="kairos-replay__now" aria-live={playing ? 'off' : 'polite'}>Now in the replay: <time dateTime={view.replayTime}>{time}</time>. Price: <strong>{view.last.close}{quote}</strong></p>
         <div className="kairos-replay__controls" role="group" aria-label="Replay controls">
-          <Button onClick={next} disabled={playing || candlesLeft === 0}>Next candle</Button>
-          <Button variant="secondary" onClick={() => play(!playingNow.current)} disabled={candlesLeft === 0}>{playing && candlesLeft > 0 ? 'Pause' : 'Play'}</Button>
+          <Button ref={nextButton} onClick={next} disabled={playing || candlesLeft === 0}>Next candle</Button>
+          <Button ref={playButton} variant="secondary" onClick={() => play(!playingNow.current)} disabled={candlesLeft === 0}>{playing && candlesLeft > 0 ? 'Pause' : 'Play'}</Button>
           <span>{candlesLeft === 0 ? 'No candles left' : candlesLeft === 1 ? '1 candle left' : `${candlesLeft} candles left`}</span>
-          <Button variant="ghost" onClick={again}>Choose another moment</Button>
+          <Button ref={anotherButton} variant="ghost" onClick={again}>Choose another moment</Button>
         </div>
         {candlesLeft === 0 ? <p>This replay has no candles left. Choose another moment to keep practising.</p> : null}
       </section>
@@ -186,7 +199,7 @@ export function ReplayScreen({ db, market, playStepMs = REPLAY_PLAY_STEP_MS }: {
     })() : <>
       <Card as="form" className="kairos-replay__setup" aria-labelledby={setupTitleId} noValidate onSubmit={submit}>
         <h2 id={setupTitleId} tabIndex={-1}>Choose a market and a moment</h2>
-        <Field label="Market" id={marketId} required hint="Replay has crypto markets from Binance only for now, such as BTCUSDT." error={errorFor('market')}>
+        <Field label="Market" id={marketId} required hint="Replay has crypto markets from Binance and forex and metals from OANDA, such as BTCUSDT or EUR/USD." error={errorFor('market')}>
           {control => <input {...control} value={form.market} autoCapitalize="characters" autoComplete="off" spellCheck={false} onChange={event => setForm(value => ({ ...value, market: event.target.value }))} />}
         </Field>
         <Field label="Candle size" id={sizeId} required hint="How much time each candle covers." error={errorFor('candleSize')}>
@@ -201,8 +214,8 @@ export function ReplayScreen({ db, market, playStepMs = REPLAY_PLAY_STEP_MS }: {
         {loading ? <p>Loading past prices…</p> : null}
       </Card>
       {load.kind === 'failed' && load.reason === 'unavailable' ? (() => {
-        const words = describeMarketDataUnavailable({ ok: false, reason: 'unavailable', why: load.why, retryAfterSeconds: load.retryAfterSeconds }, 'Past prices');
-        return <div className="kairos-replay__unavailable">
+        const words = describeMarketDataUnavailable({ ok: false, reason: 'unavailable', why: load.why, retryAfterSeconds: load.retryAfterSeconds }, 'Past prices', forex === null ? undefined : { provider: 'oanda', pair: forex.label });
+        return <div className="kairos-replay__unavailable" ref={unavailableBox}>
           <UnavailableNotice message={words.message} retryLabel={words.retryLabel} onRetry={() => { void start(); }} retryWhenOnline={words.retryWhenOnline} />
           <p>Your saved trades are not affected.</p>
         </div>;

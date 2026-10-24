@@ -6,7 +6,7 @@ import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { JournalRoute } from '../src/app/JournalRoute';
 import { listJournalHistory } from '../src/application/journal';
-import { loadTradePictureCandles, projectTradePicture, tradePictureHasCandleSource, type TradePictureInput } from '../src/application/trade-visualizer';
+import { loadTradePictureCandles, projectTradePicture, tradePictureCandleSource, type TradePictureInput } from '../src/application/trade-visualizer';
 import { saveManualTrade } from '../src/application/trades';
 import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
 import { calculateTradeMetrics, decimalMultiply } from '../src/domain/calculations';
@@ -68,7 +68,7 @@ describe('T-043c the forex trade picture', () => {
     expect(value(model, 'pips')).toMatchObject({ label: 'Pips won or lost', value: '50', unit: 'pips', text: '+50 pips' });
     expect(value(model, 'pip-value')).toMatchObject({ label: 'Value of 1 pip', value: '1', unit: 'USD', text: '1 USD' });
     expect(model.info.map(row => row.key)).toEqual(['market', 'direction', 'opened', 'closed', 'planned-entry', 'average-entry', 'stop', 'target', 'average-exit', 'size', 'money-at-risk', 'result-before-fees', 'fees', 'result', 'pips', 'pip-value', 'planned-reward', 'actual-r', 'duration', 'status']);
-    expect(model.marketHasCandles).toBe(false);
+    expect(model.marketHasCandles).toBe(true);
     expect(model.missing.map(item => item.part)).toContain('candles');
     const metrics = calculateTradeMetrics('long', eurUsd.executions, undefined, eurUsd.fees, { grossPnlCurrency: 'USD' });
     const product = decimalMultiply(value(model, 'pips')!.value!, value(model, 'pip-value')!.value!);
@@ -119,34 +119,42 @@ describe('T-043c the forex trade picture', () => {
     expect(model.info.map(row => row.key)).toEqual(['market', 'direction', 'opened', 'closed', 'planned-entry', 'average-entry', 'stop', 'target', 'average-exit', 'size', 'money-at-risk', 'result-before-fees', 'fees', 'result', 'planned-reward', 'actual-r', 'duration', 'status']);
     expect(value(model, 'size')).toMatchObject({ unit: null, text: '2' });
     expect(model.marketHasCandles).toBe(true);
-    expect(tradePictureHasCandleSource('forex')).toBe(false);
-    expect(tradePictureHasCandleSource('stock')).toBe(false);
-    for (const market of ['crypto', 'futures', 'options', 'other'] as MarketType[]) expect(tradePictureHasCandleSource(market)).toBe(true);
+    expect(tradePictureCandleSource('forex', 'EUR/USD')).toBe('forex');
+    expect(tradePictureCandleSource('forex', 'XAUUSD')).toBe('forex');
+    expect(tradePictureCandleSource('forex', 'EURUSDM')).toBeNull();
+    expect(tradePictureCandleSource('stock', 'AAPL')).toBeNull();
+    for (const market of ['crypto', 'futures', 'options', 'other'] as MarketType[]) expect(tradePictureCandleSource(market, 'BTCUSDT')).toBe('crypto');
   });
 
-  it('never asks the network for a forex trade', async () => {
+  it('asks OANDA through the Kairos server for a forex pair, never the market list, and never for a symbol that is not a pair', async () => {
     const acquireInstrumentMetadata = vi.fn();
-    const acquireHistory = vi.fn();
+    const acquireHistory = vi.fn(async () => ({ ok: false, reason: 'unavailable', why: 'source-down', retryAfterSeconds: null }));
     const deps = { venue: 'test', metadata: { acquireInstrumentMetadata }, history: { acquireHistory } } as unknown as Parameters<typeof loadTradePictureCandles>[2];
-    expect(await loadTradePictureCandles(eurUsd.trade, eurUsd.executions, deps)).toMatchObject({ ok: false, why: 'no-candle-source' });
+    expect(await loadTradePictureCandles(eurUsd.trade, eurUsd.executions, deps)).toMatchObject({ ok: false, why: 'source-down', source: { provider: 'oanda', pair: 'EUR/USD' } });
+    expect(acquireHistory).toHaveBeenCalledTimes(1);
+    expect((acquireHistory.mock.calls[0] as unknown[])[0]).toMatchObject({ instrument: { venue: 'oanda-forex', symbol: 'EURUSD' } });
+    expect((acquireHistory.mock.calls[0] as unknown[])[0]).not.toHaveProperty('pair');
+    const odd = simple('EURUSDM', 'long', '10000', '1.085', '1.09', 'USD');
+    expect(await loadTradePictureCandles(odd.trade, odd.executions, deps)).toMatchObject({ ok: false, why: 'no-candle-source' });
+    expect(acquireHistory).toHaveBeenCalledTimes(1);
     expect(acquireInstrumentMetadata).not.toHaveBeenCalled();
-    expect(acquireHistory).not.toHaveBeenCalled();
   });
 
-  it('says candles are crypto-only on the card', () => {
+  it('the card waits for forex candles, and says when a symbol is not a pair', () => {
     const model = projectTradePicture(eurUsd);
     const { container, rerender } = render(<TradePictureCard model={model} />);
-    expect(screen.getByText('Candles are shown for crypto trades only for now.')).toBeTruthy();
-    expect(screen.queryByText('No candles for this time.')).toBeNull();
+    expect(screen.getByText('No candles for this time.')).toBeTruthy();
     rerender(<TradePictureCard model={model} candlesLoading />);
-    expect(screen.getByText('Candles are shown for crypto trades only for now.')).toBeTruthy();
-    expect(screen.queryByText('Loading candles…')).toBeNull();
+    expect(screen.getByText('Loading candles…')).toBeTruthy();
+    expect(screen.queryByText('Candles are shown for crypto and forex trades for now.')).toBeNull();
     expect(container.querySelector('[data-info="pips"] dd')!.textContent).toBe('+50 pips');
     expect(container.querySelector('[data-info="size"] dd')!.textContent).toBe('10000 units (0.1 lots)');
     expect(screen.getByRole('button', { name: 'What does "Pips won or lost" mean?' })).toBeTruthy();
+    rerender(<TradePictureCard model={projectTradePicture(simple('EURUSDM', 'long', '10000', '1.085', '1.09', 'USD'))} />);
+    expect(screen.getByText('Forex candles need a six-letter pair, such as EURUSD or XAUUSD.')).toBeTruthy();
   });
 
-  it('asks for crypto candles only, in the Journal and in Analysis', async () => {
+  it('asks for forex candles too, in the Journal and in Analysis', async () => {
     const db = await database();
     const fx = await saveManualTrade(db, {
       symbol: 'EURUSD', marketType: 'forex', side: 'long', status: 'closed', openedAt: opened, closedAt: closed, grossPnlCurrency: 'USD',
@@ -162,16 +170,16 @@ describe('T-043c the forex trade picture', () => {
     const loader = vi.fn(offline);
     render(<TradePictureCandleLoaderContext.Provider value={loader}><MemoryRouter><JournalRoute db={db} /></MemoryRouter></TradePictureCandleLoaderContext.Provider>);
     const forex = await screen.findByRole('button', { name: 'Open the EURUSD trade picture' });
-    await waitFor(() => expect(within(forex).getByText('Candles are shown for crypto trades only for now.')).toBeInTheDocument());
+    await waitFor(() => expect(within(forex).getByText('No candles for this time.')).toBeInTheDocument());
     const crypto = screen.getByRole('button', { name: 'Open the BTCUSDT trade picture' });
     await waitFor(() => expect(within(crypto).getByText('No candles for this time.')).toBeInTheDocument());
-    expect(loader.mock.calls.map(([record]) => record.symbol)).toEqual(['BTCUSDT']);
+    expect(loader.mock.calls.map(([record]) => record.symbol).sort()).toEqual(['BTCUSDT', 'EURUSD']);
     cleanup();
 
     const entry = (await listJournalHistory(db)).find(item => item.trade.symbol === 'EURUSD')!;
     const analysisLoader = vi.fn(offline);
     render(<TradePictureCandleLoaderContext.Provider value={analysisLoader}><TradePicture entry={entry} variant="full" /></TradePictureCandleLoaderContext.Provider>);
-    expect(await screen.findByText('Candles are shown for crypto trades only for now.')).toBeInTheDocument();
-    expect(analysisLoader).not.toHaveBeenCalled();
+    expect(await screen.findByText('No candles for this time.')).toBeInTheDocument();
+    expect(analysisLoader.mock.calls.map(([record]) => record.symbol)).toEqual(['EURUSD']);
   });
 });

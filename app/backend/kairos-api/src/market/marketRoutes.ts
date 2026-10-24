@@ -3,12 +3,15 @@
  * same for every trader. Each reads one fixed host; no request value becomes a host.
  */
 import type { RouteCachePolicy } from '../cache';
+import type { KairosApiEnv } from '../env';
 import type { KairosApiRoute, RouteAnswer } from '../router';
+import type { UpstreamFetch } from '../upstream';
 import {
   BINANCE_SPOT_HOST, BINANCE_USDM_HOST, binanceFailure, decodeBinanceExchangeInfo, decodeBinanceKlines, decodeBinanceTickers, failureAnswer, type MarketCandle,
 } from './binance';
 import { isMarketInterval, isSettled, type MarketInterval } from './marketValues';
 import { decodeOkxCandles, OKX_BARS, OKX_HOST, okxInstrument, readOkxPages, type CandleMarket } from './okx';
+import { decodeOandaCandles, forexSource, OANDA_GRANULARITY, OANDA_LIVE_HOST, OANDA_PRACTICE_HOST, oandaCandlesUrl, oandaFailure, oandaHost, oandaInstrument } from './oanda';
 
 /** The market list changes a few times a day: 1 hour in Workers Cache and memory, 6 hours in KV. */
 export const MARKET_SYMBOLS_CACHE: RouteCachePolicy = Object.freeze({ version: 1, edgeSeconds: 3_600, memorySeconds: 3_600, kvSeconds: 21_600 });
@@ -60,10 +63,13 @@ const marketTickersRoute: KairosApiRoute = {
   },
 };
 
-/** A candles page that may still move: 10 seconds in Workers Cache and memory, never in KV. */
-export const MARKET_CANDLES_OPEN_CACHE: RouteCachePolicy = Object.freeze({ version: 1, edgeSeconds: 10, memorySeconds: 10, kvSeconds: null });
+/**
+ * A candles page that may still move: 10 seconds in Workers Cache and memory, never in KV. Version 2 since U10: a
+ * candle's volume may be null (D232), so no page cached in the old shape is read again.
+ */
+export const MARKET_CANDLES_OPEN_CACHE: RouteCachePolicy = Object.freeze({ version: 2, edgeSeconds: 10, memorySeconds: 10, kvSeconds: null });
 /** A settled page (only closed candles) never changes: 7 days in Workers Cache (and the browser), 1 hour in memory, never in KV. */
-export const MARKET_CANDLES_SETTLED_CACHE: RouteCachePolicy = Object.freeze({ version: 1, edgeSeconds: 604_800, memorySeconds: 3_600, kvSeconds: null });
+export const MARKET_CANDLES_SETTLED_CACHE: RouteCachePolicy = Object.freeze({ version: 2, edgeSeconds: 604_800, memorySeconds: 3_600, kvSeconds: null });
 export const MAX_CANDLES = 1_000;
 
 const MARKET_TEXT_RULE = /^[A-Z0-9一-鿿]{1,20}$/u;
@@ -80,7 +86,7 @@ const marketCandlesRoute: KairosApiRoute = {
   access: 'public',
   rateLimited: true,
   query: {
-    market: { pattern: /^(?:binance-spot|binance-usdm)$/, required: true },
+    market: { pattern: /^(?:binance-spot|binance-usdm|oanda-forex)$/, required: true },
     symbol: { pattern: MARKET_TEXT_RULE, required: true },
     interval: { pattern: /^(?:1s|1m|3m|5m|15m|30m|1h|2h|4h|6h|8h|12h|1d|3d|1w|1M)$/, required: true },
     limit: { pattern: /^[1-9][0-9]{0,3}$/, required: true },
@@ -90,9 +96,10 @@ const marketCandlesRoute: KairosApiRoute = {
     base: { pattern: MARKET_TEXT_RULE, required: false },
     quote: { pattern: MARKET_TEXT_RULE, required: false },
   },
-  upstreamHosts: [BINANCE_SPOT_HOST, BINANCE_USDM_HOST, OKX_HOST],
+  upstreamHosts: [BINANCE_SPOT_HOST, BINANCE_USDM_HOST, OKX_HOST, OANDA_PRACTICE_HOST, OANDA_LIVE_HOST],
   cache: MARKET_CANDLES_OPEN_CACHE,
   async handle({ query, env, upstream, now }) {
+    if (query.get('market') === 'oanda-forex') return forexCandles(query, env, upstream, now);
     const market = query.get('market') as CandleMarket;
     const symbol = query.get('symbol') ?? '';
     const interval = query.get('interval');
@@ -139,6 +146,36 @@ const marketCandlesRoute: KairosApiRoute = {
     return candlesAnswer(source, null, interval, candles, true, { limit, startMs, endMs }, now);
   },
 };
+
+/**
+ * U10 (D231): forex and metal candles from OANDA with the owner's token. Without the source and the key the answer is
+ * "not set up", never a made-up candle. OANDA has no backup source.
+ */
+async function forexCandles(query: URLSearchParams, env: KairosApiEnv, upstream: UpstreamFetch, now: Date): Promise<RouteAnswer> {
+  const instrument = oandaInstrument(query.get('symbol') ?? '');
+  const interval = query.get('interval');
+  const granularity = isMarketInterval(interval) ? OANDA_GRANULARITY[interval] : undefined;
+  const limit = digits(query.get('limit')) ?? 0;
+  const startMs = digits(query.get('start'));
+  const endMs = digits(query.get('end'));
+  if (instrument === null || !isMarketInterval(interval) || granularity === undefined || query.has('base') || query.has('quote')
+    || limit > MAX_CANDLES || (startMs !== null && endMs !== null && startMs > endMs)) return { ok: false, reason: 'bad-request' };
+  const source = forexSource(env.KAIROS_FOREX_SOURCE);
+  const key = env.MARKET_DATA_API_KEY;
+  // Not set up until the owner adds the token (O4a): said as such, never as a made-up or empty page.
+  if (source === null || key === undefined || key === '') return { ok: false, reason: 'not-set-up' };
+  const ask = { interval, limit, startMs, endMs };
+  const answerSource = { provider: 'oanda', market: 'forex', symbol: instrument };
+  // OANDA refuses a start in the future; there are no candles there yet.
+  if (startMs !== null && startMs > now.getTime()) return candlesAnswer(answerSource, null, interval, [], true, ask, now);
+  const result = await upstream(oandaCandlesUrl(oandaHost(source), instrument, granularity, ask, now.getTime()), {
+    accept: 'application/json', headers: { authorization: `Bearer ${key}` }, readErrorBody: true,
+  });
+  if (!result.ok) return oandaFailure(result);
+  const decoded = decodeOandaCandles(result.text, instrument, granularity, ask);
+  if (decoded === null) return { ok: false, reason: 'source-unavailable' };
+  return candlesAnswer(answerSource, null, interval, decoded.candles, decoded.closed, ask, now);
+}
 
 /**
  * The candles answer: the next page start when a page read forward from `start` is full and the window goes on (a page

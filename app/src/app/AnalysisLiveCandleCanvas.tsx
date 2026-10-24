@@ -1,7 +1,8 @@
 import { useCallback, useContext, useEffect, useId, useRef, useState } from 'react';
 import { useTheme } from '../design-system/themes';
 import type { MarketCandle, MarketCandleHistorySnapshot } from '../services/market-data/MarketCandleHistoryPort';
-import type { MarketDataInstrument } from '../services/market-data/marketDataTypes';
+import { OANDA_FOREX_VENUE, type MarketDataInstrument } from '../services/market-data/marketDataTypes';
+import { parseForexPair } from '../application/markets/forexPair';
 import type { createAnalysisLiveCandleRouteSession } from './analysisLiveCandleRouteSession';
 import { presentAnalysisLiveCandleStatus } from './analysisLiveCandleStatusPresentation';
 import { AnalysisLiveSessionFactoryContext } from './analysisDrawingToolsContext';
@@ -34,6 +35,15 @@ interface MountedPresentationProps extends AnalysisLiveCandleCanvasProps {
   readonly helpId: string;
   readonly themeId: ReturnType<typeof useTheme>['themeId'];
   readonly publishControls: (controls: ViewportControls | null) => void;
+  /** EUR/USD when the chart is OANDA forex, read again every 30 seconds (D234); null for Binance. */
+  readonly forexPair: string | null;
+}
+
+/** The pair as the trader reads it (EUR/USD) for an OANDA forex chart; null for any other market. */
+function forexPairOf(instrument: MarketDataInstrument): string | null {
+  if (instrument.venue !== OANDA_FOREX_VENUE) return null;
+  const parsed = parseForexPair(instrument.symbol);
+  return parsed.ok ? parsed.pair.label : null;
 }
 
 function MountedPresentation({
@@ -49,9 +59,11 @@ function MountedPresentation({
   themeId,
   useBinding = useAnalysisLiveCandleRouteSession,
   publishControls,
+  forexPair,
 }: MountedPresentationProps) {
   const binding = useBinding({ container, instrument, interval, themeId, revision, createSession });
-  const presentation = presentAnalysisLiveCandleStatus(binding);
+  const presentation = presentAnalysisLiveCandleStatus({ ...binding, forexPair });
+  const market = forexPair ?? instrument.symbol;
   const activationSnapshot = binding.activation?.ok ? binding.activation.snapshot : null;
   const snapshot = activationSnapshot
     && activationSnapshot.request.instrument.venue === instrument.venue
@@ -86,7 +98,7 @@ function MountedPresentation({
       aria-live={urgent ? 'assertive' : 'polite'}
       data-live-candle-status={presentation.kind}
     >
-      <strong>{instrument.symbol} · {interval} · {presentation.label}</strong>
+      <strong>{market} · {interval} · {presentation.label}</strong>
       <span>{presentation.detail}</span>
     </div>
     <div className="kairos-analysis-chart__tools" aria-label="Live chart view controls">
@@ -96,12 +108,14 @@ function MountedPresentation({
     </div>
     {snapshot ? <>
       <p className="kairos-analysis-chart__note">{snapshot.candles.length} candles · Prices in {quoteAsset} · Times in UTC</p>
-      <p className="kairos-analysis-chart__note">Snapshot received {snapshot.observedAt.replace('T', ' ').replace('Z', ' UTC')}. Live updates follow this authoritative page; the final candle may be unfinished.</p>
+      <p className="kairos-analysis-chart__note">{forexPair !== null
+        ? `Read at ${snapshot.observedAt.replace('T', ' ').replace('Z', ' UTC')}. OANDA's mid prices; the last candle may still be forming.`
+        : `Snapshot received ${snapshot.observedAt.replace('T', ' ').replace('Z', ' UTC')}. Live updates follow this authoritative page; the final candle may be unfinished.`}</p>
       <details className="kairos-analysis-chart__data">
         <summary>Candle values</summary>
         <div className="kairos-analysis-chart__table-scroll" tabIndex={0} role="region" aria-label="Candle values table">
           <table>
-            <caption>{instrument.symbol} · {interval} · UTC · {quoteAsset}</caption>
+            <caption>{market} · {interval} · UTC · {quoteAsset}</caption>
             <thead><tr><th scope="col">Open time</th><th scope="col">Open</th><th scope="col">High</th><th scope="col">Low</th><th scope="col">Close</th></tr></thead>
             <tbody>{snapshot.candles.map(candle => <tr key={candle.openTime}><th scope="row">{candle.openTime.replace('T', ' ').replace('.000Z', '')}</th><td>{candle.open}</td><td>{candle.high}</td><td>{candle.low}</td><td>{candle.close}</td></tr>)}</tbody>
           </table>
@@ -127,6 +141,7 @@ export function AnalysisLiveCandleCanvas(props: AnalysisLiveCandleCanvasProps) {
   // A higher composition may supply the released route-session factory through context; the prop still wins.
   const contextCreateSession = useContext(AnalysisLiveSessionFactoryContext);
   const createSession = props.createSession ?? contextCreateSession ?? undefined;
+  const forexPair = forexPairOf(props.instrument);
 
   return <>
     <div
@@ -134,7 +149,7 @@ export function AnalysisLiveCandleCanvas(props: AnalysisLiveCandleCanvasProps) {
       ref={setContainer}
       tabIndex={0}
       role="group"
-      aria-label={`${props.instrument.symbol} ${props.interval} live candlestick chart`}
+      aria-label={forexPair !== null ? `${forexPair} ${props.interval} candlestick chart` : `${props.instrument.symbol} ${props.interval} live candlestick chart`}
       aria-describedby={helpId}
       onKeyDown={event => {
         const current = controls.current;
@@ -148,6 +163,6 @@ export function AnalysisLiveCandleCanvas(props: AnalysisLiveCandleCanvasProps) {
         event.preventDefault();
       }}
     />
-    {container ? <MountedPresentation {...props} createSession={createSession} container={container} helpId={helpId} themeId={themeId} publishControls={publishControls} /> : null}
+    {container ? <MountedPresentation {...props} createSession={createSession} container={container} helpId={helpId} themeId={themeId} publishControls={publishControls} forexPair={forexPair} /> : null}
   </>;
 }

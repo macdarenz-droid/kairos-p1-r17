@@ -19,6 +19,7 @@ const unplacedLabel = (reason: AnalysisSavedTradeUnplacedExecution['reason']): s
 const unavailableDetail = (result: AnalysisSavedTradeMarkerPresentationResult): string => {
   if (result.reference.kind === 'unavailable') {
     switch (result.reference.reason) {
+      case 'stock-not-on-chart': return 'Stock trades are not on the market chart yet.';
       case 'market-type-mismatch': return 'This saved trade is not recorded as crypto.';
       case 'symbol-mismatch': return 'Choose the saved trade’s exact symbol to show its executions.';
       case 'price-currency-missing': return 'The saved trade has no recorded price currency.';
