@@ -7,7 +7,7 @@ import { kairosRepositories } from '../data/repositories';
 import { ActivationReceiptRepository } from '../services/activation';
 import type { ActivationReceipt } from '../services/activation/activationTypes';
 import { createKairosApiClient, parseKairosApiBaseUrl, storedReceiptReader } from '../services/kairos-api/kairosApi';
-import { browserMarketListStore, createKairosMarketDataPorts, type MarketListStore } from '../services/kairos-api/marketApi';
+import { browserMarketListStore, COIN_NAMES_STORE_KEY, createKairosCoinNames, createKairosMarketDataPorts, type KairosCoinNames, type MarketListStore } from '../services/kairos-api/marketApi';
 import type { LiveMarketSummaryBaselineAcquisitionPort } from '../services/market-data/LiveMarketSummaryBaselineAcquisitionPort';
 import type { LiveMarketUniverseInstrumentMetadataAcquisitionPort } from '../services/market-data/LiveMarketUniverseInstrumentMetadataAcquisitionPort';
 import type { MarketCandleHistoryPort, MarketCandleHistoryResult } from '../services/market-data/MarketCandleHistoryPort';
@@ -25,20 +25,27 @@ export interface MarketDataPortSet {
 
 export interface AppMarketDataPorts extends MarketDataPortSet {
   readonly route: 'server' | 'direct';
+  /** U14 (D255): coin names, from the Kairos server only; without it they are "not set up". */
+  readonly coinNames: KairosCoinNames;
 }
+
+const NO_COIN_NAMES: KairosCoinNames = Object.freeze({
+  coinNames: async () => Object.freeze({ ok: false as const, reason: 'unavailable' as const, why: 'not-set-up' as const, retryAfterSeconds: null }),
+});
 
 export interface ChooseMarketDataPortsOptions {
   readonly baseUrl: string | null;
   readonly readReceipt?: () => Promise<ActivationReceipt | null>;
   readonly fetchImpl?: typeof fetch;
   readonly store?: MarketListStore | null;
+  readonly coinNamesStore?: MarketListStore | null;
   readonly direct: MarketDataPortSet;
 }
 
-export function chooseMarketDataPorts({ baseUrl, readReceipt, fetchImpl, store = null, direct }: ChooseMarketDataPortsOptions): AppMarketDataPorts {
-  if (baseUrl === null) return Object.freeze({ route: 'direct' as const, ...withTypedFailures(direct) });
+export function chooseMarketDataPorts({ baseUrl, readReceipt, fetchImpl, store = null, coinNamesStore = null, direct }: ChooseMarketDataPortsOptions): AppMarketDataPorts {
+  if (baseUrl === null) return Object.freeze({ route: 'direct' as const, ...withTypedFailures(direct), coinNames: NO_COIN_NAMES });
   const client = createKairosApiClient({ baseUrl, readReceipt, fetchImpl });
-  return Object.freeze({ route: 'server' as const, ...createKairosMarketDataPorts(client, { store }) });
+  return Object.freeze({ route: 'server' as const, ...createKairosMarketDataPorts(client, { store }), coinNames: createKairosCoinNames(client, { store: coinNamesStore }) });
 }
 
 const unavailable = (why: MarketDataUnavailableWhy, retryAfterSeconds: number | null = null): MarketDataUnavailable =>
@@ -89,6 +96,7 @@ export function appMarketDataPorts(): AppMarketDataPorts {
     baseUrl: parseKairosApiBaseUrl(import.meta.env.VITE_KAIROS_API_URL),
     readReceipt: storedReceiptReader(new ActivationReceiptRepository(kairosRepositories.metadata)),
     store: browserMarketListStore(),
+    coinNamesStore: browserMarketListStore(COIN_NAMES_STORE_KEY),
     direct: {
       history: createBinanceSpotCandleHistoryPort(connectBinanceSpotCandleHistoryBrowser, () => new Date().toISOString()),
       metadata: createBinanceSpotExchangeInfoBrowserInstrumentMetadataAcquisitionPort(),

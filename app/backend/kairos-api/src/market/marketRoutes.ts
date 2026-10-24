@@ -11,6 +11,7 @@ import {
 } from './binance';
 import { isMarketInterval, isSettled, type MarketInterval } from './marketValues';
 import { decodeOkxCandles, OKX_BARS, OKX_HOST, okxInstrument, readOkxPages, type CandleMarket } from './okx';
+import { COINGECKO_DEMO_HOST, COINGECKO_PRO_HOST, coinDataPlan, coinGeckoFailure, coinNamesRequest, decodeCoinGeckoMarkets } from './coinGecko';
 import { decodeOandaCandles, forexSource, OANDA_GRANULARITY, OANDA_LIVE_HOST, OANDA_PRACTICE_HOST, oandaCandlesUrl, oandaFailure, oandaHost, oandaInstrument } from './oanda';
 
 /** The market list changes a few times a day: 1 hour in Workers Cache and memory, 6 hours in KV. */
@@ -194,4 +195,31 @@ function candlesAnswer(
   return settled ? { ok: true, data, cache: MARKET_CANDLES_SETTLED_CACHE } : { ok: true, data };
 }
 
-export const MARKET_ROUTES: readonly KairosApiRoute[] = Object.freeze([marketSymbolsRoute, marketTickersRoute, marketCandlesRoute]);
+/** Coin names change rarely: a day in Workers Cache and KV, an hour in memory (D255). */
+export const MARKET_COIN_NAMES_CACHE: RouteCachePolicy = Object.freeze({ version: 1, edgeSeconds: 86_400, memorySeconds: 3_600, kvSeconds: 86_400 });
+/** CoinGecko's 250 coins with their prices and supply are about 200 KB. */
+const COIN_NAMES_MAX_BYTES = 2_097_152;
+
+/** U14 (D255): coin names for the symbol search, only with the owner's CoinGecko key (O6); never a guessed name. */
+const marketCoinNamesRoute: KairosApiRoute = {
+  id: 'market-coin-names',
+  path: '/market/coin-names',
+  access: 'public',
+  rateLimited: true,
+  query: {},
+  upstreamHosts: [COINGECKO_DEMO_HOST, COINGECKO_PRO_HOST],
+  cache: MARKET_COIN_NAMES_CACHE,
+  async handle({ env, upstream, now }) {
+    const key = env.COIN_DATA_API_KEY;
+    // Not set up until the owner adds the key (O6): said as such, never as an empty list.
+    if (key === undefined || key === '') return { ok: false, reason: 'not-set-up' };
+    const { url, headers } = coinNamesRequest(coinDataPlan(env.COIN_DATA_PLAN), key);
+    const result = await upstream(url, { accept: 'application/json', headers, maxBytes: COIN_NAMES_MAX_BYTES, readErrorBody: true });
+    if (!result.ok) return coinGeckoFailure(result);
+    const names = decodeCoinGeckoMarkets(result.text);
+    if (names === null || names.length === 0) return { ok: false, reason: 'source-unavailable' };
+    return { ok: true, data: { source: 'coingecko', fetchedAt: now.toISOString(), names } };
+  },
+};
+
+export const MARKET_ROUTES: readonly KairosApiRoute[] = Object.freeze([marketSymbolsRoute, marketTickersRoute, marketCandlesRoute, marketCoinNamesRoute]);

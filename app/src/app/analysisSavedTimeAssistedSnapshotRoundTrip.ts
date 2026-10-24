@@ -1,5 +1,5 @@
 import type { TimeAssistedTradeSide, TimeAssistedTradeSnapshot } from '../application/market-reference';
-import { listSavedTimeAssistedSnapshots, loadSavedTimeAssistedSnapshot, saveSavedTimeAssistedSnapshot, type LoadSavedTimeAssistedSnapshotResult, type SaveSavedTimeAssistedSnapshotResult } from '../application/saved-time-assisted-snapshot';
+import { listSavedTimeAssistedSnapshots, loadSavedTimeAssistedSnapshot, type LoadSavedTimeAssistedSnapshotResult } from '../application/saved-time-assisted-snapshot';
 import { deleteSavedTimeAssistedSnapshot, type DeleteSavedTimeAssistedSnapshotResult } from '../application/saved-time-assisted-snapshot';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
 import type { MarketDataInstrument } from '../services/market-data/marketDataTypes';
@@ -15,9 +15,8 @@ export interface AnalysisSavedTimeAssistedSnapshotSummary {
   readonly label?: string;
 }
 
-/** Save, list and load saved time-assisted snapshots for one exact market through the released P23 owners. */
+/** List, load and delete saved time-assisted snapshots for one exact market through the released P23 owners; new ones are no longer made (U14, D12). */
 export interface AnalysisSavedTimeAssistedSnapshotPorts {
-  save(snapshot: TimeAssistedTradeSnapshot, inputTimeZone: string, label?: string): Promise<SaveSavedTimeAssistedSnapshotResult>;
   list(instrument: MarketDataInstrument): Promise<readonly AnalysisSavedTimeAssistedSnapshotSummary[]>;
   load(savedTimeAssistedSnapshotId: SavedTimeAssistedSnapshotId): Promise<LoadSavedTimeAssistedSnapshotResult>;
   /** P24.1 delete-one; the released P23 owners above are unchanged. */
@@ -41,15 +40,12 @@ export function savedTimeAssistedSnapshotToSnapshot(record: SavedTimeAssistedSna
 }
 
 /**
- * P23.3 save (one atomic write, fresh id, save moment), P23.4 listing filtered to the
+ * P23.4 listing filtered to the
  * exact market (newest save first), P23.4 load-one-by-id. Nothing here re-estimates:
  * a loaded snapshot shows the provenance it was saved with.
  */
 export function createAnalysisSavedTimeAssistedSnapshotPorts(db: KairosDatabase = kairosDatabase): AnalysisSavedTimeAssistedSnapshotPorts {
   return {
-    save(snapshot, inputTimeZone, label) {
-      return saveSavedTimeAssistedSnapshot(db, { snapshot, inputTimeZone, ...(label === undefined ? {} : { label }) });
-    },
     async list(instrument) {
       const result = await listSavedTimeAssistedSnapshots(db);
       if (!result.ok) throw new Error(result.reason);

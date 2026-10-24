@@ -78,30 +78,55 @@ const STORED_REASON_FOR_WHY: Readonly<Record<MarketDataUnavailableWhy, Estimated
   'not-set-up': 'http-error',
 });
 
-export async function estimateMarketReferenceAt(
+/**
+ * U14 (D257): the one-minute candle that holds an instant, with the source's own reason when there is none (`why`),
+ * for the trade form's minute check. `estimateMarketReferenceAt` is this read in the stored shape (D164, D170).
+ */
+export type ContainingMinute =
+  | Readonly<{ ok: true; candle: Omit<MarketCandle, 'volume'>; requestedAtUtc: string; gapMs: number; acquiredAt: string }>
+  | Readonly<{ ok: false; reason: EstimatedMarketReferenceUnavailableReason; why: MarketDataUnavailableWhy | null; retryAfterSeconds: number | null }>;
+
+export async function readContainingMinute(
   port: Pick<MarketCandleHistoryPort, 'acquireHistory'>,
   request: EstimatedMarketReferenceRequest,
   options: EstimateMarketReferenceOptions = {},
-): Promise<EstimatedMarketReference> {
-  const unavailable = (reason: EstimatedMarketReferenceUnavailableReason): EstimatedMarketReferenceUnavailable =>
-    Object.freeze({ kind: 'unavailable' as const, instrument: request.instrument, requestedAt: request.requestedAt, reason });
+): Promise<ContainingMinute> {
+  const none = (reason: EstimatedMarketReferenceUnavailableReason, why: MarketDataUnavailableWhy | null = null, retryAfterSeconds: number | null = null): ContainingMinute =>
+    Object.freeze({ ok: false as const, reason, why, retryAfterSeconds });
   const instantMs = parseInstant(request.requestedAt);
-  if (instantMs === null) return unavailable('invalid-instant');
+  if (instantMs === null) return none('invalid-instant');
   const now = (options.now ?? Date.now)();
-  if (instantMs > now) return unavailable('future-instant');
+  if (instantMs > now) return none('future-instant');
   const startTimeMs = Math.floor(instantMs / MINUTE_MS) * MINUTE_MS;
   const result = await port.acquireHistory(
     { instrument: request.instrument, interval: ESTIMATED_MARKET_REFERENCE_RESOLUTION, limit: 1, startTimeMs, endTimeMs: startTimeMs + MINUTE_MS - 1 },
     options.signal === undefined ? undefined : { signal: options.signal },
   );
   if (!result.ok) {
-    if (result.reason === 'unavailable') return unavailable(STORED_REASON_FOR_WHY[result.why]);
-    return unavailable(result.reason);
+    if (result.reason === 'unavailable') return none(STORED_REASON_FOR_WHY[result.why], result.why, result.retryAfterSeconds);
+    return none(result.reason);
   }
   const candle = result.snapshot.candles[0];
-  if (candle === undefined) return unavailable('no-candle');
+  if (candle === undefined) return none('no-candle');
   const openMs = Date.parse(candle.openTime), closeMs = Date.parse(candle.closeTime);
-  if (!Number.isFinite(openMs) || !Number.isFinite(closeMs) || openMs !== startTimeMs || instantMs < openMs || instantMs > closeMs) return unavailable('candle-mismatch');
+  if (!Number.isFinite(openMs) || !Number.isFinite(closeMs) || openMs !== startTimeMs || instantMs < openMs || instantMs > closeMs) return none('candle-mismatch');
+  return Object.freeze({
+    ok: true as const,
+    // Exactly today's six fields, never volume: a saved snapshot keeps its stored shape (D164).
+    candle: Object.freeze({ openTime: candle.openTime, closeTime: candle.closeTime, open: candle.open, high: candle.high, low: candle.low, close: candle.close }),
+    requestedAtUtc: new Date(instantMs).toISOString(),
+    gapMs: instantMs - openMs,
+    acquiredAt: result.snapshot.observedAt,
+  });
+}
+
+export async function estimateMarketReferenceAt(
+  port: Pick<MarketCandleHistoryPort, 'acquireHistory'>,
+  request: EstimatedMarketReferenceRequest,
+  options: EstimateMarketReferenceOptions = {},
+): Promise<EstimatedMarketReference> {
+  const minute = await readContainingMinute(port, request, options);
+  if (!minute.ok) return Object.freeze({ kind: 'unavailable' as const, instrument: request.instrument, requestedAt: request.requestedAt, reason: minute.reason });
   return Object.freeze({
     kind: 'candle-range' as const,
     isEstimate: true as const,
@@ -110,10 +135,9 @@ export async function estimateMarketReferenceAt(
     resolution: ESTIMATED_MARKET_REFERENCE_RESOLUTION,
     instrument: request.instrument,
     requestedAt: request.requestedAt,
-    requestedAtUtc: new Date(instantMs).toISOString(),
-    // Exactly today's six fields, never volume: a saved snapshot keeps its stored shape (D164).
-    candle: Object.freeze({ openTime: candle.openTime, closeTime: candle.closeTime, open: candle.open, high: candle.high, low: candle.low, close: candle.close }),
-    gapMs: instantMs - openMs,
-    acquiredAt: result.snapshot.observedAt,
+    requestedAtUtc: minute.requestedAtUtc,
+    candle: minute.candle,
+    gapMs: minute.gapMs,
+    acquiredAt: minute.acquiredAt,
   });
 }

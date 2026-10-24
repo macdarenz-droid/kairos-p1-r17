@@ -1,9 +1,12 @@
+import 'fake-indexeddb/auto';
 import '@testing-library/jest-dom/vitest';
+import Dexie from 'dexie';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AnalysisHistoryWorkspace, FOREX_ANALYSIS_INTERVALS } from '../src/app/AnalysisHistoryWorkspace';
 import { AnalysisLiveCandleCanvas, type AnalysisLiveCandleCanvasProps } from '../src/app/AnalysisLiveCandleCanvas';
 import { AnalysisTimeAssistedSnapshotControls } from '../src/app/AnalysisTimeAssistedSnapshotControls';
+import { createAnalysisSavedTimeAssistedSnapshotPorts } from '../src/app/analysisSavedTimeAssistedSnapshotRoundTrip';
 import type { AnalysisSavedTradeOverlayLiveCandleCanvasProps } from '../src/app/AnalysisSavedTradeOverlayLiveCandleCanvas';
 import { projectAnalysisSavedTradeChartReference } from '../src/app/analysisSavedTradeChartReferenceProjection';
 import { presentAnalysisLiveCandleStatus, type AnalysisLiveCandleStatusPresentationInput } from '../src/app/analysisLiveCandleStatusPresentation';
@@ -15,6 +18,9 @@ import type {
 import { FOREX_ANALYSIS_REFRESH_LIMIT, FOREX_ANALYSIS_REFRESH_MS, startForexAnalysisCandleRefresh } from '../src/app/forexAnalysisCandleRefresh';
 import type { AnalysisLiveCandleReactBindingResult } from '../src/app/useAnalysisLiveCandleRouteSession';
 import type { JournalHistoryEntry } from '../src/application/journal';
+import type { EstimatedMarketReference, TimeAssistedTradeSnapshot } from '../src/application/market-reference';
+import { saveSavedTimeAssistedSnapshot } from '../src/application/saved-time-assisted-snapshot';
+import { createKairosDatabase, openKairosDatabase } from '../src/data/database';
 import { ThemeProvider } from '../src/design-system/themes';
 import { parseDecimalString, type DecimalString, type TradeExecutionId, type TradeId } from '../src/domain/trades';
 import type { MarketCandle, MarketCandleHistoryPort, MarketCandleHistoryRequest, MarketCandleHistoryResult } from '../src/services/market-data/MarketCandleHistoryPort';
@@ -29,7 +35,8 @@ const candle = (openMs: number, close = '1.0866'): MarketCandle => ({
 const answer = (request: MarketCandleHistoryRequest, candles: readonly MarketCandle[]): MarketCandleHistoryResult =>
   ({ ok: true, snapshot: { source: 'market-reference', timeZone: 'UTC', request, observedAt: '2026-10-23T07:02:00.000Z', candles } });
 
-afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
+const databases: string[] = [];
+afterEach(async () => { vi.useRealTimers(); vi.restoreAllMocks(); for (const name of databases.splice(0)) await Dexie.delete(name); });
 
 function browser() {
   const listeners = new Map<string, Set<() => void>>();
@@ -142,30 +149,34 @@ describe('T-055c the forex Analysis chart reads again every 30 seconds (D234)', 
     expect(presentAnalysisLiveCandleStatus(input({ activation: { ok: false, reason: 'session-failed', detail: 'venue-mismatch' } }))).toMatchObject({ kind: 'error', label: 'Updates stopped' });
   });
 
-  it('the time-assisted snapshot names the pair and OANDA, never the venue code', async () => {
-    const history: MarketCandleHistoryPort = { acquireHistory: vi.fn(async request => answer(request, [candle(request.startTimeMs!)])) };
-    render(<AnalysisTimeAssistedSnapshotControls history={history} instrument={instrument} now={() => T0 + 3 * MINUTE} />);
-    fireEvent.change(screen.getByLabelText('Snapshot side'), { target: { value: 'long' } });
-    fireEvent.change(screen.getByLabelText('Snapshot opened at'), { target: { value: '2026-10-23T07:00:10' } });
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Estimate' })); });
-    expect(await screen.findByText(/^Long · still open · EURUSD from OANDA$/)).toBeInTheDocument();
+  // U14 (D12): Analysis makes no new estimates; saved forex ones still load with the same forex words.
+  async function loadSaved(opening: EstimatedMarketReference) {
+    const name = `kairos-forex-saved-${crypto.randomUUID()}`; databases.push(name);
+    const db = createKairosDatabase(name); await openKairosDatabase(db);
+    const snapshot = { kind: 'snapshot', isEstimate: true, source: 'market-reference', instrument, side: 'long', opening, closing: null, durationMs: null } as TimeAssistedTradeSnapshot;
+    const saved = await saveSavedTimeAssistedSnapshot(db, { snapshot, inputTimeZone: 'UTC' });
+    if (!saved.ok) throw new Error('seed');
+    const view = render(<AnalysisTimeAssistedSnapshotControls saved={createAnalysisSavedTimeAssistedSnapshotPorts(db)} instrument={instrument} />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Open estimate' })).toBeEnabled());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Open estimate' })); });
+    return view;
+  }
+  const requestedAt = '2026-10-23T07:00:10';
+  const missing = (reason: 'http-error' | 'no-candle'): EstimatedMarketReference => ({ kind: 'unavailable', instrument, requestedAt, reason });
+
+  it('a saved time-assisted estimate names the pair and OANDA, never the venue code', async () => {
+    const opening = { kind: 'candle-range', isEstimate: true, source: 'market-reference', method: 'containing-candle', resolution: '1m', instrument, requestedAt, requestedAtUtc: new Date(Date.parse(requestedAt)).toISOString(), candle: candle(Date.parse('2026-10-23T07:00:00')), gapMs: 10_000, acquiredAt: '2026-10-23T07:03:00.000Z' } as EstimatedMarketReference;
+    await loadSaved(opening);
+    expect(await screen.findByText(/^Still open · EURUSD from OANDA$/)).toBeInTheDocument();
     expect(screen.queryByText(/oanda-forex/)).toBeNull();
   });
 
-  it('the time-assisted snapshot says why there is no candle in forex words, never "Binance" or "venue"', async () => {
-    const failing: MarketCandleHistoryPort = { acquireHistory: vi.fn(async () => ({ ok: false as const, reason: 'unavailable' as const, why: 'busy' as const, retryAfterSeconds: 60 })) };
-    const { unmount } = render(<AnalysisTimeAssistedSnapshotControls history={failing} instrument={instrument} now={() => T0 + 3 * MINUTE} />);
-    fireEvent.change(screen.getByLabelText('Snapshot side'), { target: { value: 'long' } });
-    fireEvent.change(screen.getByLabelText('Snapshot opened at'), { target: { value: '2026-10-23T07:00:10' } });
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Estimate' })); });
+  it('a saved time-assisted estimate says why there is no candle in forex words, never "Binance" or "venue"', async () => {
+    const { unmount } = await loadSaved(missing('http-error'));
     expect(await screen.findByText("OANDA didn't give a candle for that time. Try again later.")).toBeInTheDocument();
     expect(screen.queryByText(/Binance/)).toBeNull();
     unmount();
-    const weekend: MarketCandleHistoryPort = { acquireHistory: vi.fn(async request => answer(request, [])) };
-    render(<AnalysisTimeAssistedSnapshotControls history={weekend} instrument={instrument} now={() => T0 + 3 * MINUTE} />);
-    fireEvent.change(screen.getByLabelText('Snapshot side'), { target: { value: 'long' } });
-    fireEvent.change(screen.getByLabelText('Snapshot opened at'), { target: { value: '2026-10-23T07:00:10' } });
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Estimate' })); });
+    await loadSaved(missing('no-candle'));
     expect(await screen.findByText('No candle at that minute. Forex is closed at weekends, and a quiet minute can have none.')).toBeInTheDocument();
     expect(screen.queryByText(/venue/)).toBeNull();
   });

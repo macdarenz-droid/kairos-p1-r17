@@ -40,6 +40,11 @@ export const appRoutes = [
     children: [
       { index: true, element: <HomeRoute /> },
       { path: 'journal', lazy: async () => ({ Component: (await import('./JournalRoute')).JournalRoute }) },
+      // D258: the log page wears the Journal page's look (its form, fields and Save), so it loads the Journal's styles too.
+      { path: 'journal/log', lazy: async () => {
+        const [{ LogTradeScreen }] = await Promise.all([import('../features/journal/LogTradeScreen'), import('./journalRoute.css')]);
+        return { Component: LogTradeScreen };
+      } },
       { path: 'analysis', lazy: async () => {
         const [{ AnalysisRoute }, { createEcbReferenceRatesPort }] = await Promise.all([import('./AnalysisRoute'), import('../services/exchange-rates/ecbReferenceRates')]);
         const rates = createEcbReferenceRatesPort();

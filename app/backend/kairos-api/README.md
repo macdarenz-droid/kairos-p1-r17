@@ -221,6 +221,20 @@ symbol: 'EUR_USD' }` and `backup` null.
   `source-unavailable`.
 - The deploy's live check asks for one settled EUR/USD hour; while the token is missing it only notes owner step O4a.
 
+## Coin names (U14)
+
+`GET /market/coin-names` reads CoinGecko's top 250 coins by market value (`src/market/coinGecko.ts`, D255) with the
+owner's key, for the trade form's symbol search ("bitcoin" finds BTCUSDT). The answer is `{ source: 'coingecko',
+fetchedAt, names: [{ symbol, name }] }`, symbols A→Z.
+- A name is kept only when its symbol is not shared by another of the 250: a clash means no name. Rows with a bad
+  symbol (1–20 of A–Z and 0–9) or name (1–60 characters, no control characters) are left out.
+- `COIN_DATA_PLAN` (`demo`, the default, or `pro`) picks the host (`api.coingecko.com` or `pro-api.coingecko.com`) and the
+  key header (`x-cg-demo-api-key` or `x-cg-pro-api-key`; CoinGecko's documentation, read 2026-10-24). The key is the
+  secret `COIN_DATA_API_KEY`. Without it the answer is `not-set-up` (503), and CoinGecko is never asked. Keyless reads are
+  not used: CoinGecko limits them by IP, and Workers share IPs.
+- Kept a day in Workers Cache and KV, an hour in memory.
+- CoinGecko's answers: 401/403 `source-refused`; 429 `source-busy`; anything else `source-unavailable`.
+
 ## Scheduled reads (P34)
 
 A cron trigger (`wrangler.jsonc`, `*/20 * * * *`) runs `src/scheduled.ts` every 20 minutes. Each run reads ONE of the
@@ -299,6 +313,12 @@ with `npm ci --ignore-scripts`.
   3. If the token is from a live (real money) account, say so: a coder changes `KAIROS_FOREX_SOURCE` to `"oanda-live"` in `wrangler.jsonc` and moves both candle cache policies up one version (`MARKET_CANDLES_OPEN_CACHE`, `MARKET_CANDLES_SETTLED_CACHE`), so the server serves no practice candles it kept. A practice token needs nothing more. How to tell: a practice token comes from a practice (demo) account, a live one from a real-money account. A token for the other kind of account is refused (UNVERIFIED), so forex pictures say "OANDA refused the Kairos server"; then switch the setting. Browsers may still show candles they kept for up to 7 days.
   4. Please confirm that OANDA's terms let your journal app show its candles (UNVERIFIED).
   5. Check: a forex trade's picture shows candles with "Candles: OANDA · EUR/USD · mid prices" (after U10's app tasks).
+
+- **O6 · Coin names (U14)** (optional, never blocking): with a CoinGecko key, the symbol search also finds coins by name.
+  1. On CoinGecko's site, create an API key (a free demo key or a paid one; the menu names are UNVERIFIED).
+  2. Cloudflare dashboard → Workers & Pages → `kairos-api` → Settings → Variables and Secrets → Add → type Secret, name `COIN_DATA_API_KEY`, value: the key → Deploy. For a paid key, also say so: a coder sets `COIN_DATA_PLAN` to `"pro"` in `wrangler.jsonc`.
+  3. Please check that CoinGecko's plan allows this app's use, and what credit it asks for (UNVERIFIED). Kairos shows "Coin names: CoinGecko" under the list.
+  4. Check: typing "bitcoin" in the trade form's Symbol shows "BTCUSDT · Bitcoin".
 
 Setting a provider key later: in `app/backend/kairos-api`, `npm ci`, then `npx wrangler secret put <NAME>` and paste the key
 when asked (or the dashboard, type Secret).

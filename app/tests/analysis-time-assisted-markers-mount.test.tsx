@@ -42,7 +42,7 @@ describe('P22.4 estimated markers through the chart paths', () => {
     function Harness({ selected }: { selected: boolean }) {
       const markers = useAnalysisTimeAssistedMarkers(selected ? 'binance-spot|ETHUSDT|5m|0' : null, createSession);
       latest = markers;
-      return <AnalysisTimeAssistedSnapshotControls instrument={selected ? instrument : null} onSnapshot={markers.present} markers={markers.presentation} history={{ acquireHistory: async () => ({ ok: false, reason: 'transport-failed' }) }} />;
+      return <AnalysisTimeAssistedSnapshotControls instrument={selected ? instrument : null} onSnapshot={markers.present} markers={markers.presentation} />;
     }
     const view = render(<Harness selected={false} />);
     expect(latest!.presentation).toBeNull();
@@ -61,7 +61,7 @@ describe('P22.4 estimated markers through the chart paths', () => {
     act(() => { latest!.lifecycle.attach(series); });
     expect(latest!.presentation).toEqual({ kind: 'presented', markerCount: 2, unplaced: [] });
     // The preview reflects the marker state beside its estimates once it has a snapshot to show.
-    expect(screen.getByRole('region', { name: 'Time-assisted snapshot' })).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'Trades estimated from time' })).toBeTruthy();
     view.rerender(<Harness selected={false} />);
     expect(latest!.presentation).toBeNull();
     view.unmount();

@@ -15,6 +15,7 @@ import { AnalysisTimeAssistedSnapshotControls } from './AnalysisTimeAssistedSnap
 import { useAnalysisTimeAssistedMarkers } from './useAnalysisTimeAssistedMarkers';
 import { useAnalysisTimeAssistedWindow } from './useAnalysisTimeAssistedWindow';
 import { analysisMarketReference, analysisSavedAnalysisPorts, type AnalysisSavedAnalysisPorts } from './analysisSavedAnalysisRoundTrip';
+import type { AnalysisSavedTimeAssistedSnapshotPorts } from './analysisSavedTimeAssistedSnapshotRoundTrip';
 import { AnalysisLiveCandleCanvas, type AnalysisLiveCandleCanvasProps } from './AnalysisLiveCandleCanvas';
 import {
   AnalysisSavedTradeOverlayLiveCandleCanvas,
@@ -54,6 +55,7 @@ export function AnalysisHistoryWorkspace({
   LiveCanvas = AnalysisLiveCandleCanvas,
   SavedTradeLiveCanvas = AnalysisSavedTradeOverlayLiveCandleCanvas,
   savedAnalysis = analysisSavedAnalysisPorts,
+  savedSnapshots,
 }: {
   readonly entry?: JournalHistoryEntry | null;
   readonly savedTradePending?: boolean;
@@ -61,6 +63,8 @@ export function AnalysisHistoryWorkspace({
   readonly LiveCanvas?: LiveCandleCanvas;
   readonly SavedTradeLiveCanvas?: SavedTradeLiveCandleCanvas;
   readonly savedAnalysis?: AnalysisSavedAnalysisPorts;
+  /** The saved estimates' list/load/delete ports; the controls' own default when absent. */
+  readonly savedSnapshots?: AnalysisSavedTimeAssistedSnapshotPorts;
 }) {
   const [metadata, setMetadata] = useState<Metadata>({ phase: 'loading', facts: [] });
   const [metadataRevision, setMetadataRevision] = useState(0);
@@ -73,14 +77,6 @@ export function AnalysisHistoryWorkspace({
   const autoSymbol = useRef(false), autoInterval = useRef(false);
   const handoff = useAnalysisHandoff();
   const handoffApplied = useRef(false);
-  useEffect(() => {
-    if (handoff === null || handoffApplied.current || metadata.phase !== 'ready') return;
-    handoffApplied.current = true;
-    const match = metadata.facts.find(item => item.instrument.venue === handoff.market.venue && item.instrument.symbol === handoff.market.instrument);
-    if (!match) return;
-    setSymbol(current => (current === '' || autoSymbol.current ? (autoSymbol.current = true, match.instrument.symbol) : current));
-    setTimeframe(current => (current === '' || autoInterval.current ? (autoInterval.current = true, ANALYSIS_HANDOFF_DEFAULT_INTERVAL) : current));
-  }, [handoff, metadata]);
   // "View trade" (?trade=): pre-select the trade's symbol and a timeframe that fits it, once per trade, never over a user's choice.
   // The matching owner's sentence for the trade's symbol: not listed, or matched from another spelling (null when exact).
   const [tradeSymbolNote, setTradeSymbolNote] = useState<{ readonly symbol: string | null; readonly note: string } | null>(null);
@@ -90,14 +86,32 @@ export function AnalysisHistoryWorkspace({
   // U10 (D235): a forex pair's chart is OANDA's, through the Kairos server; stocks and a forex symbol that is not a pair have none.
   // Neither is ever matched to a Binance symbol.
   const tradeSource = entry != null ? tradePictureCandleSource(entry.trade.marketType, tradeSymbol ?? '') : null;
+  // U14 (D12): a saved forex record handed off from the Library names its OANDA pair; with no trade shown, the chart opens on it.
+  const handoffPair = entry == null && handoff !== null && handoff.market.venue === OANDA_FOREX_VENUE ? handoff.market.instrument : null;
+  const forexSymbol = tradeSource === 'forex' ? tradeSymbol : handoffPair;
   const forexPair = useMemo(() => {
-    if (tradeSource !== 'forex' || tradeSymbol === null) return null;
-    const parsed = parseForexPair(tradeSymbol);
+    if (forexSymbol === null) return null;
+    const parsed = parseForexPair(forexSymbol);
     return parsed.ok ? parsed.pair : null;
-  }, [tradeSource, tradeSymbol]);
+  }, [forexSymbol]);
   const forexWithoutServer = forexPair !== null && ports.forexCandles === false;
   const forexMarket = useMemo<ChartMarket | null>(() => (forexPair === null || forexWithoutServer ? null
     : { instrument: Object.freeze({ venue: OANDA_FOREX_VENUE, symbol: forexPair.symbol }), quoteAsset: forexPair.quote }), [forexPair, forexWithoutServer]);
+  useEffect(() => {
+    if (handoff === null || handoffApplied.current) return;
+    // A saved forex record opens on its pair's OANDA chart, which needs no Binance market list.
+    if (handoffPair !== null && forexMarket !== null) {
+      handoffApplied.current = true;
+      setTimeframe(current => (current === '' || autoInterval.current ? (autoInterval.current = true, ANALYSIS_HANDOFF_DEFAULT_INTERVAL) : current));
+      return;
+    }
+    if (metadata.phase !== 'ready') return;
+    handoffApplied.current = true;
+    const match = metadata.facts.find(item => item.instrument.venue === handoff.market.venue && item.instrument.symbol === handoff.market.instrument);
+    if (!match) return;
+    setSymbol(current => (current === '' || autoSymbol.current ? (autoSymbol.current = true, match.instrument.symbol) : current));
+    setTimeframe(current => (current === '' || autoInterval.current ? (autoInterval.current = true, ANALYSIS_HANDOFF_DEFAULT_INTERVAL) : current));
+  }, [handoff, metadata, handoffPair, forexMarket]);
   const tradeOffChart = entry != null && (tradeSource === null || forexWithoutServer);
   const offChartTrade = entry?.trade.marketType === 'stock' ? 'Your stock trade' : entry?.trade.marketType === 'forex' ? 'Your forex trade' : 'This trade';
   const offChartReason = forexWithoutServer ? FOREX_CANDLES_NEED_SERVER
@@ -174,7 +188,8 @@ export function AnalysisHistoryWorkspace({
     </div>
     {tradeOffChart && !fact ? <p role="status">{`${offChartReason} ${offChartTrade} is drawn in its picture above, with your plan, entries and exits.`}</p>
       : tradeSymbolNote !== null && tradeSymbolNote.symbol === null && !fact ? <p role="status">This trade's symbol is not on Binance Spot. <span>{tradeSymbolNote.note}</span></p>
-      : tradeSymbolNote !== null && fact && tradeSymbolNote.symbol === symbol ? <p role="status">{tradeSymbolNote.note}</p> : null}
+      : tradeSymbolNote !== null && fact && tradeSymbolNote.symbol === symbol ? <p role="status">{tradeSymbolNote.note}</p>
+      : handoffPair !== null && forexWithoutServer && forexPair !== null && !fact ? <p role="status">{`${FOREX_CANDLES_NEED_SERVER} Your saved ${forexPair.label} record can't open here.`}</p> : null}
     {forexMarket !== null ? (!selected ? <p role="status">Choose a timeframe to see this pair's candles.</p> : null)
       : metadata.phase === 'loading' ? <p role="status">Loading supported symbols…</p> : metadata.phase === 'error' ? <MarketsUnavailable failure={metadata.failure ?? noAnswer()} onRetry={retryMetadata} /> : !metadata.facts.length ? <p role="status">No supported symbols are available.</p> : !selected ? <div className="kairos-analysis-chart__empty"><p>Choose a symbol and timeframe to explore its candles.</p><p className="kairos-analysis-chart__note">You can use this chart without a saved trade.</p></div> : null}
     {selected && market ? <>
@@ -182,7 +197,7 @@ export function AnalysisHistoryWorkspace({
       <div className="kairos-analysis-chart__controls">
         <AnalysisDrawingToolsControls state={drawingTools.state} drawingCount={drawingTools.drawingCount} onSelectTrendLine={drawingTools.selectTrendLineTool} onCancel={drawingTools.cancel} onDeleteSelected={drawingTools.deleteSelected} onSelectZone={drawingTools.selectZoneTool} zoneCount={drawingTools.zoneCount} selectedKind={drawingTools.selectedKind} onSelectRiskBox={drawingTools.selectRiskBoxTool} riskBoxCount={drawingTools.riskBoxCount} selectedLabel={drawingTools.selectedLabel} />
         <AnalysisSavedAnalysisControls ports={savedAnalysis} market={interval ? analysisMarketReference(market.instrument) : null} drawingCount={drawingTools.drawingCount} getDrawings={drawingTools.getDrawings} onLoad={drawingTools.loadDrawings} riskBoxCount={drawingTools.riskBoxCount} getRiskBoxes={drawingTools.getRiskBoxes} onLoadRiskBoxes={drawingTools.loadRiskBoxes} />
-        <AnalysisTimeAssistedSnapshotControls instrument={market.instrument} onSnapshot={estimateMarkers.present} markers={estimateMarkers.presentation} onShowWindow={estimateWindow.show} window={estimateWindow.last} />
+        <AnalysisTimeAssistedSnapshotControls instrument={market.instrument} {...(savedSnapshots === undefined ? {} : { saved: savedSnapshots })} onSnapshot={estimateMarkers.present} markers={estimateMarkers.presentation} onShowWindow={estimateWindow.show} window={estimateWindow.last} />
       </div>
       {savedTradePending ? <p role="status">Preparing the saved trade chart…</p> : null}
       <AnalysisOverlaySessionFactoryContext.Provider value={drawingTools.overlaySessionFactory}>

@@ -12,7 +12,7 @@
     {
       "name": "Log a trade",
       "short_name": "Log trade",
-      "url": "/journal?log=1",
+      "url": "/journal/log",
       "icons": [{ "src": "/icons/kairos-icon-192.png", "sizes": "192x192", "type": "image/png" }]
     }
   ],
