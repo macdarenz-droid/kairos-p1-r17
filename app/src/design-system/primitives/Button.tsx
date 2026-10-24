@@ -5,7 +5,7 @@ import './primitives.css';
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   readonly variant?: ButtonVariant;
   readonly size?: ButtonSize;
-  /** Work in progress: the button is disabled and announced as busy. */
+  /** Work in progress: the button is disabled and announced as busy. A button that must keep focus while busy passes `aria-busy` (and `aria-disabled`) instead. */
   readonly busy?: boolean;
   /** One soft glow per screen at most (D183): `main` for the main action, `insight` for coach and patterns. */
   readonly emphasis?: 'main' | 'insight';
@@ -16,5 +16,5 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 /** The shared button. It never submits a form unless the caller asks for `type="submit"`. */
 export function Button({ variant = 'primary', size = 'md', busy = false, emphasis, type = 'button', className, disabled, ...rest }: ButtonProps) {
   const classes = ['kairos-button', `kairos-button--${variant}`, `kairos-button--${size}`, className].filter(Boolean).join(' ');
-  return <button {...rest} type={type} className={classes} disabled={busy || disabled} aria-busy={busy ? true : undefined} data-kairos-emphasis={emphasis} />;
+  return <button {...rest} type={type} className={classes} disabled={busy || disabled} aria-busy={busy ? true : rest['aria-busy']} data-kairos-emphasis={emphasis} />;
 }

@@ -17,7 +17,7 @@ const minute = (market = 'BTCUSDT', source: 'binance' | 'oanda' = 'binance'): Ma
   ({ ok: true, low: '64980' as DecimalString, high: '65120' as DecimalString, at: '2026-10-24T10:32:00.000Z', source, market, midPrice: source === 'oanda' });
 type Ask = Readonly<{ marketType: MarketType; symbol: string; at: string }>;
 function provider(answer: (ask: Ask) => Promise<MarketMinute> = async () => minute()) {
-  return { marketList: vi.fn(async () => ({ ok: true as const, markets: [], names: null })), minute: vi.fn((ask: Ask, _signal: AbortSignal) => answer(ask)) } satisfies TradeFormMarket;
+  return { marketList: vi.fn(async () => ({ ok: true as const, markets: [] })), minute: vi.fn((ask: Ask, _signal: AbortSignal) => answer(ask)) } satisfies TradeFormMarket;
 }
 async function mount(market: TradeFormMarket, marketType = 'crypto', symbol = 'BTCUSDT') {
   const name = `kairos-minute-${crypto.randomUUID()}`; names.push(name);
@@ -87,5 +87,23 @@ describe('T-059d the minute check on the trade form', () => {
     expect(market.minute.mock.calls[0]![1].aborted).toBe(true);
     await act(async () => { answers[1]!(minute()); });
     expect(screen.queryByText(/Typo\?/)).toBeNull();
+  });
+
+  it('review r1: during a retry "Try again" stays, busy, and keeps focus; an answer without "Try again" moves focus to the link', async () => {
+    const answers: ((value: MarketMinute) => void)[] = [];
+    await mount(provider(() => new Promise<MarketMinute>(resolve => { answers.push(resolve); })));
+    const link = screen.getByRole('button', { name: 'See the market price at that minute, opened' });
+    link.focus();
+    fireEvent.click(link);
+    expect(link).toHaveAttribute('aria-busy', 'true');
+    await act(async () => { answers[0]!({ ok: false, why: 'offline', retryAfterSeconds: null, note: null, source: { provider: 'binance' } }); });
+    const retry = screen.getByRole('button', { name: 'Try again' });
+    await waitFor(() => expect(retry).toHaveFocus());
+    fireEvent.click(retry);
+    expect(retry).toHaveAttribute('aria-busy', 'true');
+    expect(retry).toHaveFocus();
+    await act(async () => { answers[1]!({ ok: false, why: 'future', retryAfterSeconds: null, note: null, source: { provider: 'binance' } }); });
+    expect(screen.getByText("That time hasn't happened yet.")).toBeInTheDocument();
+    expect(link).toHaveFocus();
   });
 });

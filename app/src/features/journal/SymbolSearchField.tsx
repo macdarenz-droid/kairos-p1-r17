@@ -1,4 +1,4 @@
-import { useMemo, useState, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import { searchMarketSymbols, type CryptoMarketOption, type SymbolSearchRow } from '../../application/market-reference/symbolSearch';
 import type { MarketType } from '../../domain/trades';
 import type { FieldControlProps } from '../../design-system/primitives/Field';
@@ -28,6 +28,10 @@ export function SymbolSearchField({ control, value, marketType, markets, names =
   const rows = useMemo(() => (searchable && open ? searchMarketSymbols(value, { marketType, crypto: markets ?? [], names }) : []), [searchable, open, value, marketType, markets, names]);
   const expanded = rows.length > 0;
   const activeIndex = Math.min(active, rows.length - 1);
+  // The row Enter would choose stays in sight while the arrows move through a long list.
+  useEffect(() => {
+    if (expanded) document.getElementById(`${listId}-${activeIndex}`)?.scrollIntoView?.({ block: 'nearest' });
+  }, [expanded, activeIndex, listId]);
   const choose = (row: SymbolSearchRow) => { onChoose(row); setOpen(false); };
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (!searchable) return;

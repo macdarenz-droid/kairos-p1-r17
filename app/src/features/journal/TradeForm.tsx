@@ -275,6 +275,7 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
     setMode(kept.mode);
     setPlanShown(Object.values(kept.draft.trade.plan).some(value => typeof value === 'string' && value.trim() !== ''));
     setCurrencyFilledBy(null);
+    setCurrencyTyped(false);
     setFormGeneration(current => current + 1);
   }
   const keptDraft = useKeptTradeFormDraft(db, kind, { mode, draft: typed }, {
@@ -285,6 +286,7 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
   function emptyForm(): void {
     setDraft({ ...createEmptyManualTradeDraft(), marketType: defaultMarket ?? '' });
     setCurrencyFilledBy(null);
+    setCurrencyTyped(false);
     setPlanShown(false);
     setExecutions([]);
     setFees([]);
@@ -313,11 +315,14 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
   const coinNames = marketList.phase === 'ready' ? marketList.names : null;
   const typedCrypto = draft.marketType === 'crypto' && markets !== null ? checkTypedCryptoSymbol(draft.symbol, markets) : null;
   const [currencyFilledBy, setCurrencyFilledBy] = useState<string | null>(null);
+  // Once the trader edits the currency (even to blank it), it is theirs: Kairos never fills it again in this form.
+  const [currencyTyped, setCurrencyTyped] = useState(false);
   const listedSymbol = typedCrypto?.kind === 'listed' ? typedCrypto.symbol : null;
   const listedQuote = typedCrypto?.kind === 'listed' ? typedCrypto.quote : null;
   const judged = typedCrypto !== null || draft.marketType !== 'crypto';
   const currencyBlank = (draft.priceCurrency ?? '').trim() === '';
   useEffect(() => {
+    if (currencyTyped) return;
     if (listedSymbol !== null && listedQuote !== null) {
       if (!currencyBlank && currencyFilledBy === null) return;
       if (currencyFilledBy === listedSymbol && draft.priceCurrency === listedQuote) return;
@@ -328,13 +333,17 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
       setDraft(current => ({ ...current, priceCurrency: '' }));
       setCurrencyFilledBy(null);
     }
-  }, [listedSymbol, listedQuote, judged, currencyBlank, currencyFilledBy, draft.priceCurrency]);
+  }, [listedSymbol, listedQuote, judged, currencyBlank, currencyFilledBy, currencyTyped, draft.priceCurrency]);
   function chooseSymbol(row: SymbolSearchRow): void {
     setDraft(current => ({ ...current, symbol: row.symbol, marketType: row.marketType }));
     setFeedback(null);
   }
   const symbolNote = typedCrypto?.kind === 'near'
-    ? <>On Binance this market is {typedCrypto.symbol}. <Button variant="ghost" size="sm" onClick={() => update('symbol', typedCrypto.symbol)}>Use {typedCrypto.symbol}</Button></>
+    ? <>On Binance this market is {typedCrypto.symbol}. <Button variant="ghost" size="sm" onClick={() => {
+      update('symbol', typedCrypto.symbol);
+      // The note and its button go once the symbol is listed: focus moves to Symbol, never to the page.
+      document.getElementById(`${idPrefix}-symbol`)?.focus();
+    }}>Use {typedCrypto.symbol}</Button></>
     : typedCrypto?.kind === 'not-listed' ? typedCrypto.note
     : marketList.phase === 'unavailable' && draft.marketType === 'crypto' && draft.symbol.trim() !== '' ? "The market list is unavailable, so Kairos can't check the symbol. You can still type it."
     : undefined;
@@ -617,7 +626,7 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
           {draft.marketType === 'stock' ? <StockTradeNote symbol={draft.symbol} priceCurrency={draft.priceCurrency ?? ''} /> : null}
         </fieldset>
 
-        <JournalPriceCurrencyField value={draft.priceCurrency ?? ''} onChange={value => { update('priceCurrency', value); setCurrencyFilledBy(null); }} disabled={isSaving}
+        <JournalPriceCurrencyField value={draft.priceCurrency ?? ''} onChange={value => { update('priceCurrency', value); setCurrencyFilledBy(null); setCurrencyTyped(true); }} disabled={isSaving}
           filledFrom={currencyFilledBy !== null && listedQuote !== null && draft.priceCurrency === listedQuote ? { symbol: currencyFilledBy, currency: listedQuote } : null} error={feedback?.kind === 'error' && feedback.field === 'grossPnlCurrency' ? feedback.message : undefined} />
         {isQuick ? null : <fieldset className="kairos-trade-form__section" disabled={isSaving}>
           <legend>More about this trade</legend>

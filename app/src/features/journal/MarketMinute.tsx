@@ -40,7 +40,8 @@ export function useTypoCheck(ask: Readonly<{ marketType: MarketType | ''; symbol
 
 type MinuteState =
   | Readonly<{ kind: 'idle' }>
-  | Readonly<{ kind: 'reading'; fromRetry: boolean }>
+  /** A retry keeps the failure and its "Try again" on screen (busy), so focus stays where it is. */
+  | Readonly<{ kind: 'reading'; fromRetry: boolean; failed: Extract<MinuteState, { kind: 'failed' }> | null }>
   | Readonly<{ kind: 'shown'; key: string; text: string }>
   | Readonly<{ kind: 'failed'; key: string; message: string; retry: boolean }>;
 
@@ -70,7 +71,7 @@ export function MarketMinuteLink({ marketType, symbol, localTime, id, of }: {
     controller.current?.abort();
     const mine = new AbortController();
     controller.current = mine;
-    setState({ kind: 'reading', fromRetry });
+    setState({ kind: 'reading', fromRetry, failed: fromRetry && state.kind === 'failed' ? state : null });
     const minute = await read({ marketType, symbol: symbol.trim(), at }, mine.signal);
     if (mine.signal.aborted) return;
     if (minute.ok) {
@@ -81,17 +82,21 @@ export function MarketMinuteLink({ marketType, symbol, localTime, id, of }: {
     }
     const words = describeMarketMinuteFailure(minute);
     setState({ kind: 'failed', key, message: words.message, retry: words.retry });
+    // A retry whose answer has no "Try again" moves focus to the link, never to the page.
+    if (fromRetry && !words.retry) linkRef.current?.focus();
   }
 
   // An answer for another time or market is never shown.
-  const current = (state.kind === 'shown' || state.kind === 'failed') && state.key === key ? state : null;
+  const reading = state.kind === 'reading';
+  const shownState = state.kind === 'reading' ? state.failed : state;
+  const current = shownState !== null && (shownState.kind === 'shown' || shownState.kind === 'failed') && shownState.key === key ? shownState : null;
   return <div className="kairos-market-minute">
-    <Button ref={linkRef} variant="ghost" size="sm" aria-label={`See the market price at that minute, ${of}`} aria-describedby={current ? `${id}-minute` : undefined} aria-disabled={state.kind === 'reading' || undefined}
+    <Button ref={linkRef} variant="ghost" size="sm" aria-label={`See the market price at that minute, ${of}`} aria-describedby={current ? `${id}-minute` : undefined} aria-disabled={reading || undefined} aria-busy={reading || undefined}
       onClick={() => { void ask(false); }}>See the market price at that minute</Button>
     <div aria-live="polite">
       {current?.kind === 'shown' ? <small id={`${id}-minute`} className="kairos-market-minute__line">{current.text}</small> : null}
       {current?.kind === 'failed' ? <small id={`${id}-minute`} className="kairos-market-minute__line">{current.message}
-        {current.retry ? <> <Button ref={retryRef} variant="ghost" size="sm" onClick={() => { void ask(true); }}>Try again</Button></> : null}</small> : null}
+        {current.retry ? <> <Button ref={retryRef} variant="ghost" size="sm" aria-disabled={reading || undefined} aria-busy={reading || undefined} onClick={() => { void ask(true); }}>Try again</Button></> : null}</small> : null}
     </div>
   </div>;
 }

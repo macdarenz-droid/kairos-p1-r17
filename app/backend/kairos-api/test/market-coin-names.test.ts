@@ -97,6 +97,10 @@ describe('T-059b the coin-names decoder', () => {
     expect(decoded).toEqual([{ symbol: 'BTC', name: 'Bitcoin' }, { symbol: 'SOL', name: 'Solana' }]);
   });
 
+  it('review r1: leaves out names with C1 control characters too', () => {
+    expect(decodeCoinGeckoMarkets(JSON.stringify([coin('btc', 'Bitcoin'), coin('abc', 'Abc\u0085coin'), coin('def', 'Def\u009bcoin')]))).toEqual([{ symbol: 'BTC', name: 'Bitcoin' }]);
+  });
+
   it('refuses an answer that is not a list of at most 250 rows', () => {
     expect(decodeCoinGeckoMarkets('not json')).toBeNull();
     expect(decodeCoinGeckoMarkets(JSON.stringify({ coins: [] }))).toBeNull();

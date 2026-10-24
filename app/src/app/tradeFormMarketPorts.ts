@@ -13,9 +13,13 @@ export function browserTradeFormMarket(): TradeFormMarket {
   const ports = appMarketDataPorts();
   browserMarket = Object.freeze<TradeFormMarket>({
     async marketList(signal: AbortSignal) {
-      // Names are a help, never a condition: the list shows without them (D255).
-      const [result, names] = await Promise.all([ports.metadata.acquireInstrumentMetadata({ signal }), ports.coinNames.coinNames({ signal })]);
-      return result.ok ? { ok: true as const, markets: searchableCryptoMarkets(result.facts), names: names.ok && names.names.size > 0 ? names.names : null } : { ok: false as const };
+      const result = await ports.metadata.acquireInstrumentMetadata({ signal });
+      return result.ok ? { ok: true as const, markets: searchableCryptoMarkets(result.facts) } : { ok: false as const };
+    },
+    // Names are a help, never a condition: asked beside the list, which never waits for them (D255).
+    async coinNames(signal: AbortSignal) {
+      const names = await ports.coinNames.coinNames({ signal });
+      return names.ok && names.names.size > 0 ? names.names : null;
     },
     // The same candles and market list as the trade picture (D256).
     priceNow: (ask, signal) => readPriceNow(createTradePictureCandleBrowserDeps(), ask, { nowMs: Date.now(), signal }),

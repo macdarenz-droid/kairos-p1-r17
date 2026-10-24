@@ -8,7 +8,8 @@ import './tradeForm.css';
 
 type State =
   | Readonly<{ kind: 'idle' }>
-  | Readonly<{ kind: 'reading'; fromRetry: boolean }>
+  /** A retry keeps the failure and its "Try again" on screen (busy), so focus stays where it is. */
+  | Readonly<{ kind: 'reading'; fromRetry: boolean; failed: Readonly<{ message: string; retry: boolean }> | null }>
   | Readonly<{ kind: 'filled'; price: string; line: string }>
   | Readonly<{ kind: 'failed'; message: string; retry: boolean }>;
 
@@ -50,7 +51,7 @@ export function PriceNowInput({ input, value, onValueChange, marketType, symbol,
     controller.current?.abort();
     const mine = new AbortController();
     controller.current = mine;
-    setState({ kind: 'reading', fromRetry });
+    setState({ kind: 'reading', fromRetry, failed: fromRetry && state.kind === 'failed' ? state : null });
     const result = await read({ marketType, symbol: symbol.trim() }, mine.signal);
     if (mine.signal.aborted) return;
     if (result.ok) {
@@ -62,23 +63,27 @@ export function PriceNowInput({ input, value, onValueChange, marketType, symbol,
     }
     const words = describePriceNowFailure(result);
     setState({ kind: 'failed', message: words.message, retry: words.retry });
+    // A retry whose answer has no "Try again" moves focus to the button, never to the page.
+    if (fromRetry && !words.retry) buttonRef.current?.focus();
   }
 
   const typo = useTypoCheck({ marketType, symbol, price: value, localTime: pairedTime });
   const typoId = `${input.id}-typo`;
   const statusId = `${input.id}-price-now`;
   const line = state.kind === 'filled' && state.price === value ? state.line : null;
-  const shows = line !== null || state.kind === 'failed';
+  const failed = state.kind === 'failed' ? state : state.kind === 'reading' ? state.failed : null;
+  const reading = state.kind === 'reading';
+  const shows = line !== null || failed !== null;
   const describedBy = [input['aria-describedby'], shows ? statusId : null, typo !== null ? typoId : null].filter(Boolean).join(' ') || undefined;
   return <div className="kairos-price-now">
     <div className="kairos-price-now__row">
       <PriceInput {...input} aria-describedby={describedBy} value={value} onValueChange={onValueChange} />
-      {offered ? <Button ref={buttonRef} variant="secondary" size="sm" aria-label={`Price now for ${fills}`} aria-disabled={state.kind === 'reading' || undefined}
+      {offered ? <Button ref={buttonRef} variant="secondary" size="sm" aria-label={`Price now for ${fills}`} aria-disabled={reading || undefined} aria-busy={reading || undefined}
         onClick={() => { void ask(false); }}>Price now</Button> : null}
     </div>
     {offered && line !== null ? <small id={statusId} className="kairos-price-now__source">{line}</small> : null}
-    {offered && state.kind === 'failed' ? <small id={statusId} className="kairos-price-now__failed">{state.message}
-      {state.retry ? <> <Button ref={retryRef} variant="ghost" size="sm" onClick={() => { void ask(true); }}>Try again</Button></> : null}</small> : null}
+    {offered && failed !== null ? <small id={statusId} className="kairos-price-now__failed">{failed.message}
+      {failed.retry ? <> <Button ref={retryRef} variant="ghost" size="sm" aria-disabled={reading || undefined} aria-busy={reading || undefined} onClick={() => { void ask(true); }}>Try again</Button></> : null}</small> : null}
     <div aria-live="polite">{typo !== null ? <small id={typoId} className="kairos-price-now__typo">{typo}</small> : null}</div>
   </div>;
 }

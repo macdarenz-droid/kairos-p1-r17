@@ -17,7 +17,7 @@ const FILLED: PriceNowResult = { ok: true, price: '65000.5' as DecimalString, at
 const OFFLINE: PriceNowResult = { ok: false, why: 'offline', retryAfterSeconds: null, note: null, source: { provider: 'binance' } };
 function provider(...results: PriceNowResult[]) {
   const queue = [...results];
-  return { marketList: vi.fn(async () => ({ ok: true as const, markets: [], names: null })), priceNow: vi.fn(async () => queue.shift() ?? FILLED) } satisfies TradeFormMarket;
+  return { marketList: vi.fn(async () => ({ ok: true as const, markets: [] })), priceNow: vi.fn(async () => queue.shift() ?? FILLED) } satisfies TradeFormMarket;
 }
 async function mount(market: TradeFormMarket, mode: 'Quick log' | 'All details' = 'Quick log') {
   const name = `kairos-price-now-${crypto.randomUUID()}`; names.push(name);
@@ -73,5 +73,36 @@ describe('T-059c "Price now" beside the prices', () => {
     expect(await screen.findByRole('button', { name: 'Price now for entry 1' })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText(/^Market/), { target: { value: 'stock' } });
     expect(screen.queryByRole('button', { name: /^Price now/ })).toBeNull();
+  });
+
+  it('review r1: during a retry "Try again" stays, busy, and keeps focus; an answer without "Try again" moves focus to "Price now"', async () => {
+    const answers: ((result: PriceNowResult) => void)[] = [];
+    const market = { marketList: vi.fn(async () => ({ ok: true as const, markets: [] })), priceNow: vi.fn(() => new Promise<PriceNowResult>(resolve => { answers.push(resolve); })) } satisfies TradeFormMarket;
+    await mount(market);
+    const button = screen.getByRole('button', { name: 'Price now for the entry price' });
+    button.focus();
+    fireEvent.click(button);
+    expect(button).toHaveAttribute('aria-busy', 'true');
+    expect(button).toHaveFocus();
+    await act(async () => { answers[0]!(OFFLINE); });
+    const retry = screen.getByRole('button', { name: 'Try again' });
+    await waitFor(() => expect(retry).toHaveFocus());
+    fireEvent.click(retry);
+    expect(retry).toBeInTheDocument();
+    expect(retry).toHaveAttribute('aria-busy', 'true');
+    expect(retry).toHaveFocus();
+    await act(async () => { answers[1]!({ ok: false, why: 'not-set-up', retryAfterSeconds: null, note: null, source: { provider: 'binance' } }); });
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
+    expect(button).toHaveFocus();
+    expect(button).not.toHaveAttribute('aria-busy');
+  });
+
+  it('review r1: offers no "Price now" for options or other markets', async () => {
+    await mount(provider());
+    for (const [marketType, symbol] of [['options', 'AAPL240119C00150000'], ['other', 'GOLDCOIN']]) {
+      fireEvent.change(screen.getByLabelText(/^Market/), { target: { value: marketType } });
+      fireEvent.change(screen.getByRole('combobox', { name: /^Symbol/ }), { target: { value: symbol } });
+      expect(screen.queryByRole('button', { name: /^Price now/ }), marketType).toBeNull();
+    }
   });
 });

@@ -398,7 +398,7 @@ export interface ServerCoinName {
 
 const COIN_SYMBOL = /^[A-Z0-9]{1,20}$/;
 // Control characters are never part of a name.
-const CONTROL = /[\u0000-\u001f\u007f]/;
+const CONTROL = /[\u0000-\u001f\u007f-\u009f]/;
 
 /** The /market/coin-names data, checked again: at most 250 names, symbols A→Z and each once; null for any fault. */
 export function decodeCoinNames(data: unknown): readonly ServerCoinName[] | null {

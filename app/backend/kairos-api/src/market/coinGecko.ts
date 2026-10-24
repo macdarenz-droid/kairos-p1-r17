@@ -31,7 +31,7 @@ export interface CoinName {
 }
 
 const SYMBOL = /^[A-Z0-9]{1,20}$/;
-const CONTROL = /[\u0000-\u001f\u007f]/;
+const CONTROL = /[\u0000-\u001f\u007f-\u009f]/;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);

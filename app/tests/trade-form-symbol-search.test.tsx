@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import '@testing-library/jest-dom/vitest';
 import Dexie from 'dexie';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
 import { TradeForm } from '../src/features/journal/TradeForm';
@@ -16,8 +16,8 @@ afterEach(async () => { cleanup(); localStorage.clear(); for (const name of name
 const fact = (baseAsset: string, quoteAsset: string): LiveMarketUniverseInstrumentMetadataFact =>
   ({ instrument: { venue: 'binance-spot', symbol: `${baseAsset}${quoteAsset}` }, baseAsset, quoteAsset, tradingEnabled: true }) as LiveMarketUniverseInstrumentMetadataFact;
 const listed = [fact('BTC', 'USDT'), fact('ETH', 'USDT'), fact('ETH', 'BTC')];
-function market(result: Awaited<ReturnType<TradeFormMarket['marketList']>> = { ok: true, markets: listed, names: null }) {
-  return { marketList: vi.fn(async () => result) } satisfies TradeFormMarket;
+function market(result: Awaited<ReturnType<TradeFormMarket['marketList']>> = { ok: true, markets: listed }, names?: () => Promise<ReadonlyMap<string, string> | null>) {
+  return { marketList: vi.fn(async () => result), ...(names === undefined ? {} : { coinNames: vi.fn(names) }) } satisfies TradeFormMarket;
 }
 async function mount(provider: TradeFormMarket | null) {
   const db = await database();
@@ -118,7 +118,7 @@ describe('T-059a the symbol search on the trade form', () => {
   });
 
   it('T-059b finds a coin by its name, with CoinGecko credited, only when the names are there', async () => {
-    await mount(market({ ok: true, markets: listed, names: new Map([['BTC', 'Bitcoin'], ['ETH', 'Ethereum']]) }));
+    await mount(market(undefined, async () => new Map([['BTC', 'Bitcoin'], ['ETH', 'Ethereum']])));
     typeSymbol('bitcoin');
     await waitFor(() => expect(results().map(option => option.textContent)).toEqual(['BTCUSDT · Bitcoin']));
     expect(screen.getByText('Coin names: CoinGecko')).toBeInTheDocument();
@@ -130,5 +130,54 @@ describe('T-059a the symbol search on the trade form', () => {
     await waitFor(() => expect(results()).toHaveLength(2));
     expect(screen.queryByText('Coin names: CoinGecko')).toBeNull();
   });
-});
 
+  it('review r1: the list never waits for coin names; the names join it when they arrive', async () => {
+    let answer: (names: ReadonlyMap<string, string> | null) => void = () => undefined;
+    await mount(market(undefined, () => new Promise(resolve => { answer = resolve; })));
+    typeSymbol('btcusdt');
+    await waitFor(() => expect(results().map(option => option.textContent)).toEqual(['BTCUSDT · BTC/USDT']));
+    expect(screen.queryByText('Coin names: CoinGecko')).toBeNull();
+    await act(async () => { answer(new Map([['BTC', 'Bitcoin']])); });
+    await waitFor(() => expect(results().map(option => option.textContent)).toEqual(['BTCUSDT · Bitcoin']));
+    expect(screen.getByText('Coin names: CoinGecko')).toBeInTheDocument();
+  });
+
+  it('review r1: "Use BTCUSDT" leaves focus on Symbol, never on the page', async () => {
+    await mount(market());
+    fireEvent.change(screen.getByLabelText(/^Market/), { target: { value: 'crypto' } });
+    typeSymbol('XBTUSD');
+    const use = await screen.findByRole('button', { name: 'Use BTCUSDT' });
+    use.focus();
+    fireEvent.click(use);
+    expect(screen.queryByRole('button', { name: 'Use BTCUSDT' })).toBeNull();
+    expect(symbol()).toHaveFocus();
+  });
+
+  it('review r1: a currency you clear stays yours: Kairos does not fill it again', async () => {
+    await mount(market());
+    typeSymbol('eth');
+    await waitFor(() => expect(results()).toHaveLength(2));
+    fireEvent.click(results()[0]!);
+    await waitFor(() => expect(currency()).toHaveValue('USDT'));
+    fireEvent.change(currency(), { target: { value: '' } });
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 20)); });
+    expect(currency()).toHaveValue('');
+    fireEvent.change(currency(), { target: { value: 'USD' } });
+    expect(currency()).toHaveValue('USD');
+  });
+
+  it('review r1: the row the arrows reach is brought into view', async () => {
+    const scrolled = vi.fn();
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function scrollIntoView(this: Element) { scrolled(this.id); };
+    try {
+      await mount(market());
+      typeSymbol('eth');
+      await waitFor(() => expect(results()).toHaveLength(2));
+      fireEvent.keyDown(symbol(), { key: 'ArrowDown' });
+      expect(scrolled).toHaveBeenLastCalledWith(results()[1]!.id);
+    } finally {
+      Element.prototype.scrollIntoView = original;
+    }
+  });
+});

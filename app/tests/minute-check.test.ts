@@ -58,7 +58,7 @@ describe('T-059d where a price sits in its minute', () => {
     expect(await say(() => answer([]), { marketType: 'crypto', symbol: 'BTCUSDT', at: AT })).toEqual({ message: 'There is no market price for that minute. The market may have been closed.', retry: false });
     expect(await say(() => answer([]), { marketType: 'crypto', symbol: 'BTCUSTD', at: AT })).toEqual({ message: "Binance doesn't list BTCUSTD. Check the spelling, for example BTCUSDT.", retry: false });
     expect(await say(() => ({ ok: false, reason: 'unavailable', why: 'offline', retryAfterSeconds: null }), { marketType: 'crypto', symbol: 'BTCUSDT', at: AT }))
-      .toEqual({ message: "The market price at that minute: you're offline. Kairos will try again when you're back online.", retry: true });
+      .toEqual({ message: "The market price at that minute: you're offline. Try again when you're back online.", retry: true });
     expect(await say(() => ({ ok: false, reason: 'unavailable', why: 'not-set-up', retryAfterSeconds: null }), { marketType: 'forex', symbol: 'EURUSD', at: AT }))
       .toEqual({ message: "The market price at that minute: OANDA isn't connected to the Kairos server yet.", retry: false });
   });
@@ -67,5 +67,14 @@ describe('T-059d where a price sits in its minute', () => {
     expect(localTimeToInstant('2026-10-24T10:32')).toBe(new Date('2026-10-24T10:32').toISOString());
     expect(localTimeToInstant('')).toBeNull();
     expect(localTimeToInstant('yesterday')).toBeNull();
+  });
+
+  it('review r1: a futures-only market reads its minute from Binance Futures; a market without a price reads nothing', async () => {
+    const futures = deps(() => answer([minuteCandle]));
+    expect(await readMarketMinute(futures.value, { marketType: 'futures', symbol: '1000PEPEUSDT', at: AT }, { nowMs: NOW })).toMatchObject({ ok: true, market: '1000PEPEUSDT' });
+    expect(futures.acquireHistory.mock.calls[0]![0].instrument).toEqual({ venue: 'binance-usdm', symbol: '1000PEPEUSDT' });
+    const stock = deps(() => answer([minuteCandle]));
+    expect(await readMarketMinute(stock.value, { marketType: 'stock', symbol: 'AAPL', at: AT }, { nowMs: NOW })).toMatchObject({ ok: false, why: 'no-source' });
+    expect(stock.acquireHistory).not.toHaveBeenCalled();
   });
 });

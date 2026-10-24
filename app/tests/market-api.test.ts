@@ -265,6 +265,9 @@ describe('T-059b coin names: the session, the device copy and the server', () =>
     expect(await names(repeated).coinNames()).toMatchObject({ ok: false, why: 'unreadable' });
     expect(decodeCoinNames({ source: 'coingecko', fetchedAt: FETCHED_AT, names: [{ symbol: 'btc', name: 'Bitcoin' }] })).toBeNull();
     expect(decodeCoinNames({ source: 'coingecko', fetchedAt: FETCHED_AT, names: [{ symbol: 'BTC', name: 'Bit\u0007coin' }] })).toBeNull();
+    // Review r1: C1 control characters too.
+    expect(decodeCoinNames({ source: 'coingecko', fetchedAt: FETCHED_AT, names: [{ symbol: 'BTC', name: 'Bit\u0085coin' }] })).toBeNull();
+    expect(decodeCoinNames({ source: 'coingecko', fetchedAt: FETCHED_AT, names: [{ symbol: 'BTC', name: 'Bit\u009bcoin' }] })).toBeNull();
     expect(decodeCoinNames({ source: 'coingecko', fetchedAt: FETCHED_AT, names: [{ symbol: 'BTC', name: ' Bitcoin' }] })).toBeNull();
     expect(decodeCoinNames({ source: 'coingecko', fetchedAt: FETCHED_AT, names: NAMES })).toEqual(NAMES);
   });

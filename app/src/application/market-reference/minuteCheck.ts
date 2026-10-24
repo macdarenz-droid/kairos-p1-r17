@@ -8,6 +8,7 @@ import { decimalCompare } from '../../domain/calculations/decimalKernel';
 import { parsePositiveDecimalString, type DecimalString, type MarketType } from '../../domain/trades';
 import type { MarketDataUnavailableWhy } from '../../services/market-data/marketDataTypes';
 import { describeMarketDataUnavailable, type MarketSourceWords } from '../online/onlineWords';
+import { describeFuturesOnlyNotListed } from './cryptoMarket';
 import { readContainingMinute } from './estimatedMarketReference';
 import { resolveFormMarket, type PriceNowDeps } from './priceNow';
 
@@ -18,7 +19,7 @@ export type MarketMinute =
       at: string;
       source: 'binance' | 'oanda'; market: string; midPrice: boolean;
     }>
-  | Readonly<{ ok: false; why: 'future' | 'invalid-time' | 'no-price' | 'not-listed' | MarketDataUnavailableWhy; retryAfterSeconds: number | null; note: string | null; source: MarketSourceWords }>;
+  | Readonly<{ ok: false; why: 'future' | 'invalid-time' | 'no-price' | 'not-listed' | 'no-source' | 'invalid-symbol' | MarketDataUnavailableWhy; retryAfterSeconds: number | null; note: string | null; source: MarketSourceWords }>;
 
 /** A `datetime-local` value ("2026-10-24T10:32") as an instant in this device's time zone, or null. */
 export function localTimeToInstant(value: string): string | null {
@@ -43,6 +44,9 @@ export async function readMarketMinute(
       if (minute.reason === 'invalid-instant') return fail('invalid-time', market.words);
       if (minute.reason === 'no-candle') return fail('no-price', market.words);
       if (minute.reason === 'candle-mismatch') return fail('unreadable', market.words);
+      // A futures-only market (D171) Binance Futures doesn't have, or a source without futures candles.
+      if (market.futuresOnly !== null && minute.why === 'unknown-market') return fail('not-listed', market.words, null, describeFuturesOnlyNotListed(market.futuresOnly.typed));
+      if (market.futuresOnly !== null && minute.reason === 'invalid-request') return fail('not-listed', market.words, null, `${market.futuresOnly.spotNote} Futures candles need the Kairos server.`);
       return fail(minute.why ?? 'source-down', market.words, minute.retryAfterSeconds);
     }
     return Object.freeze({ ok: true as const, low: minute.candle.low, high: minute.candle.high, at: minute.candle.openTime, source: market.source, market: market.market, midPrice: market.source === 'oanda' });
@@ -75,6 +79,10 @@ export function describeMarketMinuteFailure(minute: Extract<MarketMinute, { ok: 
     case 'invalid-time': return Object.freeze({ message: 'Enter a date and time first.', retry: false });
     case 'no-price': return Object.freeze({ message: 'There is no market price for that minute. The market may have been closed.', retry: false });
     case 'not-listed': return Object.freeze({ message: minute.note ?? "Binance doesn't list this market.", retry: false });
+    case 'no-source': return Object.freeze({ message: 'Kairos has no market price for this market.', retry: false });
+    case 'invalid-symbol': return Object.freeze({ message: 'Type a symbol first.', retry: false });
+    // Nothing is read again by itself, so the words never say so.
+    case 'offline': return Object.freeze({ message: "The market price at that minute: you're offline. Try again when you're back online.", retry: true });
     default: {
       const words = describeMarketDataUnavailable({ ok: false, reason: 'unavailable', why: minute.why, retryAfterSeconds: minute.retryAfterSeconds }, 'The market price at that minute', minute.source);
       return Object.freeze({ message: words.message, retry: words.retryLabel !== null });
