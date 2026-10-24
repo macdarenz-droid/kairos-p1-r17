@@ -69,7 +69,7 @@ describe('T-004 imported trades can be updated like manual ones', () => {
     expect(await db.trades.get(id)).toMatchObject({ source: 'import', status: 'open', openedAt });
   });
 
-  it('shows "Update trade" and "Open this trade" for imported trades in Journal, and neither in Practice', async () => {
+  it('shows "Update trade" and "I\'m in" for imported trades in Journal, and neither in Practice', async () => {
     const db = await database();
     await importedTrade(db, 'BTCUSDT', 'open');
     await importedTrade(db, 'ETHUSDT', 'draft');
@@ -78,12 +78,12 @@ describe('T-004 imported trades can be updated like manual ones', () => {
     const card = (symbol: string) => screen.getByText(symbol, { selector: '.kairos-history-card__topline strong' }).closest('li')!;
     await waitFor(() => expect(card('BTCUSDT')).toBeTruthy());
     expect(within(card('BTCUSDT')).getByRole('button', { name: 'Update trade' })).toBeTruthy();
-    expect(within(card('ETHUSDT')).getByRole('button', { name: 'Open this trade' })).toBeTruthy();
+    expect(within(card('ETHUSDT')).getByRole('button', { name: "I'm in" })).toBeTruthy();
     journal.unmount();
 
     render(<MemoryRouter><PracticeRoute db={db} /></MemoryRouter>);
     await waitFor(() => expect(screen.getByRole('region', { name: 'Practice' }).getAttribute('data-practice-status')).toBe('ready'));
     expect(screen.queryByRole('button', { name: 'Update trade' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Open this trade' })).toBeNull();
+    expect(screen.queryByRole('button', { name: "I'm in" })).toBeNull();
   });
 });

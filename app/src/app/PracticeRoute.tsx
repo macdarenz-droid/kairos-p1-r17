@@ -10,7 +10,7 @@ import { useJournalHistoryPages } from '../features/journal/useJournalHistoryPag
 import { CoachCard } from '../features/discipline/CoachCard';
 import { PracticeMoneyCard } from '../features/practice/PracticeMoneyCard';
 import { ResultsDashboard } from '../features/results/ResultsDashboard';
-import { JournalHistoryList } from './JournalHistoryList';
+import { JournalHistoryList, type HistoryNotice } from './JournalHistoryList';
 import { ReviewTradeLink } from './ReviewTradeLink';
 import './journalRoute.css';
 import './practiceRoute.css';
@@ -33,7 +33,7 @@ const PLAN_KEYS = ['side', 'entry', 'stop', 'quantity'] as const;
 export function PracticeRoute({ db = kairosDatabase, now, rates = null }: PracticeRouteProps) {
   const clock = now ?? wallClock;
   const [historyStatus, setHistoryStatus] = useState<TradeStatus | ''>('');
-  const [listNotice, setListNotice] = useState('');
+  const [listNotice, setListNotice] = useState<HistoryNotice>('');
   const pages = useJournalHistoryPages(db, 'practice', historyStatus);
   const [searchParams, setSearchParams] = useSearchParams();
   const planStart = readPracticePlanStart(searchParams);
@@ -61,7 +61,7 @@ export function PracticeRoute({ db = kairosDatabase, now, rates = null }: Practi
         renderTradeLink={id => <ReviewTradeLink id={id} />} refreshRevision={practiceRevision + disciplineRevision} glow={false} live={false} rates={rates} />
       <CoachCard db={db} scope="practice" now={clock} refreshRevision={practiceRevision} disciplineRevision={disciplineRevision} />
 
-      <JournalHistoryList db={db} updateNotice={listNotice} onTradeDeleted={async notice => { await pages.refresh(); changed(); setListNotice(notice); }} onTradeUpdated={async () => { await pages.refresh(); changed(); setListNotice('Practice trade updated. Your saved details are below.'); }} onTradeOpened={async notice => { await pages.refresh(); changed(); setListNotice(notice); }} onDisciplineSaved={() => setDisciplineRevision(value => value + 1)} allowedSources={['paper']} disciplineSources={['paper', 'replay']} entries={pages.entries} isLoading={pages.isLoading} errorMessage={pages.failed ? 'Kairos could not load your practice trades. Your stored trades were not changed.' : null} hasOlder={pages.hasOlder} isLoadingOlder={pages.isLoadingOlder} olderFailed={pages.olderFailed} onShowOlder={pages.showOlder} onRetry={pages.refresh} statusFilter={historyStatus} onStatusFilterChange={setHistoryStatus} />
+      <JournalHistoryList db={db} updateNotice={listNotice} onTradeDeleted={async notice => { await pages.refresh(); changed(); setListNotice(notice); }} onTradeUpdated={async closedTradeId => { await pages.refresh(); changed(); setListNotice(closedTradeId ? { kind: 'closed', tradeId: closedTradeId } : 'Practice trade updated. Your saved details are below.'); }} onTradeOpened={async notice => { await pages.refresh(); changed(); setListNotice(notice); }} onDisciplineSaved={() => setDisciplineRevision(value => value + 1)} allowedSources={['paper']} disciplineSources={['paper', 'replay']} entries={pages.entries} isLoading={pages.isLoading} errorMessage={pages.failed ? 'Kairos could not load your practice trades. Your stored trades were not changed.' : null} hasOlder={pages.hasOlder} isLoadingOlder={pages.isLoadingOlder} olderFailed={pages.olderFailed} onShowOlder={pages.showOlder} onRetry={pages.refresh} statusFilter={historyStatus} onStatusFilterChange={setHistoryStatus} />
     </section>
   );
 }

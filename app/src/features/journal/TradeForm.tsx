@@ -126,11 +126,11 @@ const TRADE_FORM_TEXT: Record<TradeFormKind, TradeFormText> = {
     legend: 'Trade details',
     hintOpen: 'Open trades need an opened date and time.',
     hintClosed: 'Closed trades need both opened and closed date and time.',
-    hintDraft: 'Draft trades have no entries, exits or times yet.',
+    hintDraft: 'A planned trade has no entries, exits or times yet.',
     hintNone: 'Choose the state that matches the trade right now.',
     openRequiresOpenedAt: 'Add the opened date and time for an open trade.',
     closedRequiresTimes: 'Add both opened and closed date and time for a closed trade.',
-    draftCannotHaveTimes: 'Draft trades cannot have opened or closed times yet.',
+    draftCannotHaveTimes: 'A planned trade cannot have opened or closed times yet.',
     reviewTrade: 'Review the trade details and try again.',
     submit: 'Save trade',
     saved: 'Trade saved to your journal.',
@@ -142,11 +142,11 @@ const TRADE_FORM_TEXT: Record<TradeFormKind, TradeFormText> = {
     legend: 'Practice trade details',
     hintOpen: 'Open practice trades need an opened date and time.',
     hintClosed: 'Closed practice trades need both opened and closed date and time.',
-    hintDraft: 'Draft practice trades have no entries, exits or times yet.',
+    hintDraft: 'A planned practice trade has no entries, exits or times yet.',
     hintNone: 'Choose the state that matches the practice trade right now.',
     openRequiresOpenedAt: 'Add the opened date and time for an open practice trade.',
     closedRequiresTimes: 'Add both opened and closed date and time for a closed practice trade.',
-    draftCannotHaveTimes: 'Draft practice trades cannot have opened or closed times yet.',
+    draftCannotHaveTimes: 'A planned practice trade cannot have opened or closed times yet.',
     reviewTrade: 'Review the practice trade details and try again.',
     submit: 'Save practice trade',
     saved: 'Practice trade saved. It stays out of your journal results.',
@@ -171,7 +171,8 @@ const SIDE_OPTIONS = [
 ] as const;
 
 const STATUS_OPTIONS = [
-  ['draft', 'Draft'],
+  // U12 (D245): the stored value stays `draft`.
+  ['draft', 'Planned (not in yet)'],
   ['open', 'Open'],
   ['closed', 'Closed'],
   ['cancelled', 'Cancelled'],

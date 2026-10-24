@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { summarizeTradeReview, type SaveTradeDisciplineInput, type SaveTradeDisciplineResult } from '../../application/discipline';
 import type { JournalHistoryScope } from '../../application/journal';
 import { Button, Field, Sheet } from '../../design-system/primitives';
@@ -17,6 +17,9 @@ export interface TradeReviewControlProps {
   /** The host binds the database; this component never touches storage. */
   readonly save: (input: SaveTradeDisciplineInput) => Promise<SaveTradeDisciplineResult>;
   readonly onSaved: (record: TradeDisciplineRecord) => void;
+  /** U12 (D245): "Review it now" after a close opens this sheet; closing it then returns focus to this card's button. */
+  readonly openRequested?: boolean;
+  readonly onOpenRequestHandled?: () => void;
 }
 
 interface Row { readonly itemId: string; readonly label: string; readonly ticked: boolean; }
@@ -47,7 +50,7 @@ function cardText(record: TradeDisciplineRecord | null): { readonly state: strin
 }
 
 /** "After the trade" on a closed card: what went well, any mistakes and a short note, saved in one write. */
-export function TradeReviewControl({ symbol, tradeId, scope, reviewItems, mistakeItems, record, save, onSaved }: TradeReviewControlProps) {
+export function TradeReviewControl({ symbol, tradeId, scope, reviewItems, mistakeItems, record, save, onSaved, openRequested = false, onOpenRequestHandled }: TradeReviewControlProps) {
   const [open, setOpen] = useState(false);
   const [review, setReview] = useState<Row[]>([]);
   const [mistakes, setMistakes] = useState<Row[]>([]);
@@ -55,6 +58,8 @@ export function TradeReviewControl({ symbol, tradeId, scope, reviewItems, mistak
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const text = cardText(record);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const backToButton = useRef(false);
 
   function openSheet(): void {
     setReview(reviewRows(reviewItems, record));
@@ -63,6 +68,20 @@ export function TradeReviewControl({ symbol, tradeId, scope, reviewItems, mistak
     setFailure(null);
     setOpen(true);
   }
+
+  useEffect(() => {
+    if (!openRequested) return;
+    backToButton.current = true;
+    openSheet();
+    onOpenRequestHandled?.();
+    // Only the request starts this; the sheet reads the record and lists as they are now.
+  }, [openRequested]);
+  useEffect(() => {
+    // Runs after the sheet gave focus back to where it came from (the prompt, which is gone): the card's button takes it.
+    if (open || !backToButton.current) return;
+    backToButton.current = false;
+    buttonRef.current?.focus();
+  }, [open]);
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -89,7 +108,7 @@ export function TradeReviewControl({ symbol, tradeId, scope, reviewItems, mistak
   const toggle = (setRows: typeof setReview, index: number) => setRows(current => current.map((row, at) => (at === index ? { ...row, ticked: !row.ticked } : row)));
 
   return <>
-    <Button variant="secondary" size="sm" className="kairos-discipline-control" onClick={openSheet} aria-label={text.label}>
+    <Button ref={buttonRef} variant="secondary" size="sm" className="kairos-discipline-control" onClick={openSheet} aria-label={text.label}>
       {text.reviewed ? <span className="kairos-discipline-control__mark" aria-hidden="true">✓</span> : null}
       <span className="kairos-discipline-control__title">After the trade</span>
       <span className="kairos-discipline-control__state">{text.state}</span>

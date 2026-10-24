@@ -6,7 +6,10 @@ import { saveManualTrade } from '../src/application/trades';
 import { updateOpenManualTrade, type UpdateOpenManualTradeInput } from '../src/application/trades/updateOpenManualTrade';
 import { listJournalHistory } from '../src/application/journal';
 import { loadHomeYourTrades } from '../src/application/dashboard/homeDashboardYourTradesQuery';
+import { MemoryRouter } from 'react-router';
 import { JournalRoute } from '../src/app/JournalRoute';
+import { PracticeRoute } from '../src/app/PracticeRoute';
+import { savePracticeTrade } from '../src/application/practice';
 import type { TradeExecutionId } from '../src/domain/trades';
 
 let db: KairosDatabase;
@@ -113,7 +116,7 @@ describe('open trade update Journal UI', () => {
     expect(ui.getByLabelText('Exit 1 quantity')).toHaveValue('0'); expect(await db.tradeExecutions.count()).toBe(1);
     fireEvent.change(ui.getByLabelText('Exit 1 quantity'), { target: { value: '2' } });
     fireEvent.click(ui.getByRole('button', { name: 'Save update' }));
-    await screen.findByText('Trade updated. Your saved details are below.');
+    await screen.findByText('Trade closed. How did it go?');
     expect(await db.trades.count()).toBe(1); expect(await db.tradeExecutions.count()).toBe(2);
     expect(screen.queryByRole('button', { name: 'Update trade' })).toBeNull();
   });
@@ -130,6 +133,64 @@ describe('open trade update Journal UI', () => {
     fireEvent.click(ui.getByRole('button', { name: 'Save update' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('kept so you can retry'); expect(await facts()).toEqual(before);
     failure.mockRestore(); fireEvent.click(ui.getByRole('button', { name: 'Save update' }));
-    await screen.findByText('Trade updated. Your saved details are below.'); expect(await db.tradeExecutions.count()).toBe(2);
+    await screen.findByText('Trade closed. How did it go?'); expect(await db.tradeExecutions.count()).toBe(2);
+  });
+});
+
+describe('T-057e one guided flow: planned, "I\'m in", close, review', () => {
+  const closeIt = async () => {
+    const ui = within(await screen.findByRole('region', { name: 'Update BTCUSDT' }));
+    fireEvent.click(ui.getByRole('button', { name: 'Add exit' }));
+    for (const [name, value] of [['price', '120'], ['quantity', '2'], ['date and time', '2026-09-12T15:00']]) fireEvent.change(ui.getByLabelText(`Exit 1 ${name}`), { target: { value } });
+    fireEvent.change(ui.getByLabelText('Trade status'), { target: { value: 'closed' } });
+    fireEvent.change(ui.getByLabelText('Closed date & time'), { target: { value: '2026-09-12T15:00' } });
+    fireEvent.click(ui.getByRole('button', { name: 'Save update' }));
+  };
+  const reviewButton = () => screen.getByRole('button', { name: 'After the trade: not reviewed yet' });
+
+  it('a planned trade reads "Planned (not in yet)" in the form and "Planned" with "I\'m in" on its card', async () => {
+    db = createKairosDatabase('guided-' + crypto.randomUUID()); await db.open();
+    expect((await saveManualTrade(db, { symbol: 'ETHUSDT', marketType: 'crypto', side: 'long', status: 'draft' })).ok).toBe(true);
+    render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
+    expect(await screen.findByRole('button', { name: "I'm in" })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Planned (not in yet)' })).toHaveAttribute('value', 'draft');
+    expect(screen.getByRole('option', { name: 'Planned' })).toHaveAttribute('value', 'draft');
+    expect(screen.queryByRole('option', { name: 'Draft' })).toBeNull();
+  });
+
+  it('after an update closes a trade, "Review it now" opens its review, and closing it returns focus to the card', async () => {
+    await start();
+    render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: 'Update trade' }));
+    await closeIt();
+    expect(await screen.findByText('Trade closed. How did it go?')).toBeInTheDocument();
+    await waitFor(() => expect(reviewButton()).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Review it now' }));
+    const sheet = await screen.findByRole('dialog', { name: 'After the trade: BTCUSDT' });
+    await waitFor(() => expect(sheet.contains(document.activeElement)).toBe(true));
+    // The prompt has done its job.
+    expect(screen.queryByText('Trade closed. How did it go?')).toBeNull();
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Close' }));
+    await waitFor(() => expect(reviewButton()).toHaveFocus());
+  });
+
+  it('a closed trade hidden by the Open filter shows again, and its review opens', async () => {
+    await start();
+    render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
+    fireEvent.change(await screen.findByLabelText(/^Show/), { target: { value: 'open' } });
+    fireEvent.click(await screen.findByRole('button', { name: 'Update trade' }));
+    await closeIt();
+    fireEvent.click(await screen.findByRole('button', { name: 'Review it now' }));
+    expect(await screen.findByRole('dialog', { name: 'After the trade: BTCUSDT' })).toBeInTheDocument();
+  });
+
+  it('Practice says the same and opens the same review', async () => {
+    db = createKairosDatabase('guided-practice-' + crypto.randomUUID()); await db.open();
+    expect((await savePracticeTrade(db, { symbol: 'BTCUSDT', marketType: 'crypto', side: 'long', status: 'open', openedAt, executions: [{ type: 'entry', price: '100', quantity: '2', executedAt: openedAt }] })).ok).toBe(true);
+    render(<MemoryRouter><PracticeRoute db={db} /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: 'Update trade' }));
+    await closeIt();
+    fireEvent.click(await screen.findByRole('button', { name: 'Review it now' }));
+    expect(await screen.findByRole('dialog', { name: 'After the trade: BTCUSDT' })).toBeInTheDocument();
   });
 });

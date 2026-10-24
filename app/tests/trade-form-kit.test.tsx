@@ -162,14 +162,14 @@ describe('T-049g fix r1', () => {
     const db = await database();
     await saveManualTrade(db, { symbol: 'BTCUSDT', marketType: 'crypto', side: 'long', status: 'draft', plan: { plannedEntryPrice: '100', plannedQuantity: '2' } });
     render(<MemoryRouter><ToastProvider><JournalRoute db={db} /></ToastProvider></MemoryRouter>);
-    fireEvent.click(await screen.findByRole('button', { name: 'Open this trade' }));
+    fireEvent.click(await screen.findByRole('button', { name: "I'm in" }));
     const panel = screen.getByRole('region', { name: 'Open BTCUSDT' });
     fireEvent.click(within(panel).getByRole('button', { name: 'Add entry' }));
     fireEvent.change(within(panel).getByLabelText('Entry 1 price'), { target: { value: '100' } });
     fireEvent.click(within(panel).getByRole('button', { name: 'Remove entry 1' }));
     fireEvent.click(within(panel).getByRole('button', { name: 'Cancel' }));
     expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Open this trade' }));
+    fireEvent.click(screen.getByRole('button', { name: "I'm in" }));
     expect(within(screen.getByRole('region', { name: 'Open BTCUSDT' })).queryByLabelText('Entry 1 price')).toBeNull();
   });
 

@@ -23,8 +23,8 @@ describe('P31.2 draft trade activation control', () => {
     await saveManualTrade(db, { symbol: 'ETHUSDT', marketType: 'crypto', side: 'short', status: 'open', openedAt: '2026-09-18T07:00:00.000Z' });
     render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
     await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(2));
-    expect(within(card('ETHUSDT')).queryByRole('button', { name: 'Open this trade' })).toBeNull();
-    fireEvent.click(within(card('BTCUSDT')).getByRole('button', { name: 'Open this trade' }));
+    expect(within(card('ETHUSDT')).queryByRole('button', { name: "I'm in" })).toBeNull();
+    fireEvent.click(within(card('BTCUSDT')).getByRole('button', { name: "I'm in" }));
     const panel = screen.getByRole('region', { name: 'Open BTCUSDT' });
     fireEvent.click(within(panel).getByRole('button', { name: 'Save opening' }));
     expect((await within(panel).findByRole('alert')).textContent).toBe('Add the opened date and time to open this trade.');
@@ -43,7 +43,7 @@ describe('P31.2 draft trade activation control', () => {
     expect((await db.tradePlans.toArray()).map(plan => [plan.tradeId, plan.plannedEntryPrice])).toEqual([[opened.id, '100']]);
     expect((await db.tradeExecutions.toArray()).map(e => [e.tradeId, e.type, e.price])).toEqual([[opened.id, 'entry', '101']]);
     expect((await listJournalHistory(db, { status: 'open' })).map(e => e.trade.symbol).sort()).toEqual(['BTCUSDT', 'ETHUSDT']);
-    expect(within(card('BTCUSDT')).queryByRole('button', { name: 'Open this trade' })).toBeNull();
+    expect(within(card('BTCUSDT')).queryByRole('button', { name: "I'm in" })).toBeNull();
   });
 
   it('keeps the draft when cancelled or when the write fails on the Journal page', async () => {
@@ -52,10 +52,10 @@ describe('P31.2 draft trade activation control', () => {
     await savePracticeTrade(db, { ...draft, symbol: 'SOLUSDT' });
     const view = render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
     await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(1));
-    fireEvent.click(screen.getByRole('button', { name: 'Open this trade' }));
+    fireEvent.click(screen.getByRole('button', { name: "I'm in" }));
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(screen.queryByRole('region', { name: 'Open BTCUSDT' })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Open this trade' }));
+    fireEvent.click(screen.getByRole('button', { name: "I'm in" }));
     fireEvent.change(screen.getByLabelText(/Opened date/), { target: { value: '2026-09-18T09:00' } });
     vi.spyOn(db, 'transaction').mockRejectedValue(new Error('quota'));
     fireEvent.click(screen.getByRole('button', { name: 'Save opening' }));
@@ -73,7 +73,7 @@ describe('P31.2 draft trade activation control', () => {
     await savePracticeTrade(db, { ...draft, symbol: 'SOLUSDT' });
     render(<MemoryRouter><PracticeRoute db={db} /></MemoryRouter>);
     await waitFor(() => expect(screen.getByRole('region', { name: 'Practice' }).getAttribute('data-practice-count')).toBe('1'));
-    fireEvent.click(screen.getByRole('button', { name: 'Open this trade' }));
+    fireEvent.click(screen.getByRole('button', { name: "I'm in" }));
     const panel = screen.getByRole('region', { name: 'Open SOLUSDT' });
     fireEvent.change(within(panel).getByLabelText(/Opened date/), { target: { value: '2026-09-18T09:00' } });
     fireEvent.click(within(panel).getByRole('button', { name: 'Save opening' }));
