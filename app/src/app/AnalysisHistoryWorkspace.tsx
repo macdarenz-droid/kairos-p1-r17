@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ComponentType } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import { ANALYSIS_HANDOFF_DEFAULT_INTERVAL, useAnalysisHandoff } from './analysisHandoff';
 import type { JournalHistoryEntry } from '../application/journal';
 import type { LiveMarketUniverseInstrumentMetadataAcquisitionPort } from '../services/market-data/LiveMarketUniverseInstrumentMetadataAcquisitionPort';
@@ -23,18 +23,28 @@ import {
 import { SymbolPicker } from '../features/analysis/SymbolPicker';
 import { pickTradeReviewInterval, tradeReviewTimes } from '../features/analysis/tradeReviewInterval';
 import { useAnalysisTradeFocus } from '../features/analysis/useAnalysisTradeFocus';
-import { tradePictureCandleSource } from '../application/trade-visualizer/tradePictureCandles';
+import { describeNoCandleSource, tradePictureCandleSource } from '../application/trade-visualizer/tradePictureCandles';
 import { describeFuturesOnlyOnChart, futuresOnlyMarket, matchCryptoMarket, matchNoteFor } from '../application/market-reference/cryptoMarket';
 import { describeMarketDataUnavailable } from '../application/online/onlineWords';
-import type { MarketDataUnavailable } from '../services/market-data/marketDataTypes';
+import { OANDA_FOREX_VENUE, type MarketDataInstrument, type MarketDataUnavailable } from '../services/market-data/marketDataTypes';
+import { parseForexPair } from '../application/markets/forexPair';
 import { UnavailableNotice } from '../design-system/primitives';
 import './analysisHistory.css';
 
-type Ports = { readonly metadata: LiveMarketUniverseInstrumentMetadataAcquisitionPort };
+type Ports = {
+  readonly metadata: LiveMarketUniverseInstrumentMetadataAcquisitionPort;
+  /** False in a build without the Kairos server: no forex candles (D231). */
+  readonly forexCandles?: boolean;
+};
 type Metadata = { readonly phase: 'loading' | 'ready' | 'error'; readonly facts: readonly LiveMarketUniverseInstrumentMetadataFact[]; readonly failure?: MarketDataUnavailable };
 type LiveCandleCanvas = ComponentType<AnalysisLiveCandleCanvasProps>;
 type SavedTradeLiveCandleCanvas = ComponentType<AnalysisSavedTradeOverlayLiveCandleCanvasProps>;
 export const ANALYSIS_HISTORY_REQUEST_TIMEOUT_MS = 15000;
+/** U10 (D234): the forex chart's timeframes, all of which OANDA has. */
+export const FOREX_ANALYSIS_INTERVALS = Object.freeze(['1m', '5m', '15m', '30m', '1h', '4h', '1d', '1w'] as const);
+
+/** What the chart draws: a Binance Spot market from the list, or a forex trade's OANDA pair. */
+type ChartMarket = { readonly instrument: MarketDataInstrument; readonly quoteAsset: string };
 
 /** Ephemeral Analysis selection lifecycle. The released live canvas owns history and transport; the released overlay composition owns saved-trade markers and Risk/Reward. */
 export function AnalysisHistoryWorkspace({
@@ -77,9 +87,21 @@ export function AnalysisHistoryWorkspace({
   const tradeApplied = useRef<string | null>(null);
   const tradeId = entry?.trade.id ?? null;
   const tradeSymbol = typeof entry?.trade.symbol === 'string' ? entry.trade.symbol : null;
-  // P31/P32: forex and stock trades have no market chart yet (tradePictureCandleSource, D106, D235); they are never matched to a Binance symbol.
-  const tradeOffChart = entry != null && tradePictureCandleSource(entry.trade.marketType, tradeSymbol ?? '') !== 'crypto';
+  // U10 (D235): a forex pair's chart is OANDA's, through the Kairos server; stocks and a forex symbol that is not a pair have none.
+  // Neither is ever matched to a Binance symbol.
+  const tradeSource = entry != null ? tradePictureCandleSource(entry.trade.marketType, tradeSymbol ?? '') : null;
+  const forexPair = useMemo(() => {
+    if (tradeSource !== 'forex' || tradeSymbol === null) return null;
+    const parsed = parseForexPair(tradeSymbol);
+    return parsed.ok ? parsed.pair : null;
+  }, [tradeSource, tradeSymbol]);
+  const forexWithoutServer = forexPair !== null && ports.forexCandles === false;
+  const forexMarket = useMemo<ChartMarket | null>(() => (forexPair === null || forexWithoutServer ? null
+    : { instrument: Object.freeze({ venue: OANDA_FOREX_VENUE, symbol: forexPair.symbol }), quoteAsset: forexPair.quote }), [forexPair, forexWithoutServer]);
+  const tradeOffChart = entry != null && (tradeSource === null || forexWithoutServer);
   const offChartTrade = entry?.trade.marketType === 'stock' ? 'Your stock trade' : entry?.trade.marketType === 'forex' ? 'Your forex trade' : 'This trade';
+  const offChartReason = forexWithoutServer ? 'Forex candles need the Kairos server.'
+    : entry?.trade.marketType === 'forex' ? describeNoCandleSource('forex') : 'The market chart has crypto and forex markets for now.';
   const tradeTimes = entry && Array.isArray(entry.executions) ? tradeReviewTimes(entry) : null;
   const tradeStartMs = tradeTimes?.startMs ?? null, tradeEndMs = tradeTimes?.endMs ?? null;
   useEffect(() => {
@@ -87,7 +109,14 @@ export function AnalysisHistoryWorkspace({
     if (tradeId === null) setTradeSymbolNote(null);
   }, [tradeId]);
   useEffect(() => {
-    if (tradeId === null || tradeSymbol === null || metadata.phase !== 'ready' || tradeApplied.current === tradeId) return;
+    // A forex pair needs no market list: its timeframe is picked at once.
+    if (tradeId === null || forexMarket === null || tradeApplied.current === tradeId) return;
+    tradeApplied.current = tradeId;
+    setTradeSymbolNote(null);
+    if (tradeStartMs !== null) setTimeframe(current => (current === '' || autoInterval.current ? (autoInterval.current = true, pickTradeReviewInterval(tradeStartMs, Date.now())) : current));
+  }, [tradeId, forexMarket, tradeStartMs]);
+  useEffect(() => {
+    if (tradeId === null || tradeSymbol === null || forexMarket !== null || metadata.phase !== 'ready' || tradeApplied.current === tradeId) return;
     tradeApplied.current = tradeId;
     if (tradeOffChart) { setTradeSymbolNote(null); return; }
     const marketType = entry?.trade.marketType ?? 'crypto';
@@ -99,16 +128,23 @@ export function AnalysisHistoryWorkspace({
     if (!match.ok) return;
     setSymbol(current => (current === '' || autoSymbol.current ? (autoSymbol.current = true, match.symbol) : current));
     if (tradeStartMs !== null) setTimeframe(current => (current === '' || autoInterval.current ? (autoInterval.current = true, pickTradeReviewInterval(tradeStartMs, Date.now())) : current));
-  }, [tradeId, tradeSymbol, tradeOffChart, tradeStartMs, metadata, entry?.trade.marketType]);
+  }, [tradeId, tradeSymbol, tradeOffChart, forexMarket, tradeStartMs, metadata, entry?.trade.marketType]);
   const fact = metadata.phase === 'ready' ? metadata.facts.find(item => item.instrument.symbol === symbol) : undefined;
-  const selected = Boolean(fact && interval);
+  const market: ChartMarket | undefined = forexMarket ?? fact;
+  const intervals: readonly string[] = forexMarket !== null ? FOREX_ANALYSIS_INTERVALS : BINANCE_SPOT_CANDLE_INTERVALS;
+  // A forex chart takes only OANDA's timeframes; a Binance choice made before stays unselected.
+  const forexIntervalMissing = forexMarket !== null && !intervals.includes(interval);
+  const selected = Boolean(market && interval && !forexIntervalMissing);
   // The saved-trade chart opens on the trade's time window (the renderer session applies it after the first render).
   const tradeWindow = useAnalysisTradeFocus(savedTradePending ? null : entry, interval, revision);
-  const estimateMarkers = useAnalysisTimeAssistedMarkers(fact && interval ? [fact.instrument.venue, fact.instrument.symbol, interval, String(revision)].join('|') : null);
-  const estimateWindow = useAnalysisTimeAssistedWindow(fact && interval ? [fact.instrument.venue, fact.instrument.symbol, interval, String(revision)].join('|') : null);
-  const drawingTools = useAnalysisDrawingTools(fact && interval ? { venue: fact.instrument.venue, symbol: fact.instrument.symbol, interval, revision } : null, estimateMarkers.lifecycle, estimateWindow.lifecycle);
+  const estimateMarkers = useAnalysisTimeAssistedMarkers(market && interval ? [market.instrument.venue, market.instrument.symbol, interval, String(revision)].join('|') : null);
+  const estimateWindow = useAnalysisTimeAssistedWindow(market && interval ? [market.instrument.venue, market.instrument.symbol, interval, String(revision)].join('|') : null);
+  const drawingTools = useAnalysisDrawingTools(market && interval ? { venue: market.instrument.venue, symbol: market.instrument.symbol, interval, revision } : null, estimateMarkers.lifecycle, estimateWindow.lifecycle);
 
+  // A forex pair's chart needs no Binance market list.
+  const needsMarketList = forexMarket === null;
   useEffect(() => {
+    if (!needsMarketList) return;
     let active = true;
     const controller = new AbortController();
     setMetadata({ phase: 'loading', facts: [] });
@@ -126,33 +162,36 @@ export function AnalysisHistoryWorkspace({
       setMetadata({ phase: 'ready', facts });
     }).catch(() => { if (active) { window.clearTimeout(timeout); setMetadata({ phase: 'error', facts: [], failure: noAnswer() }); } });
     return () => { active = false; window.clearTimeout(timeout); controller.abort(); };
-  }, [ports.metadata, metadataRevision]);
+  }, [ports.metadata, metadataRevision, needsMarketList]);
 
   return <section className="kairos-analysis-chart" aria-labelledby="kairos-chart-title">
-    <div className="kairos-analysis-chart__heading"><h2 id="kairos-chart-title">Market chart</h2><span>Binance Spot · Historical + live</span></div>
+    <div className="kairos-analysis-chart__heading"><h2 id="kairos-chart-title">Market chart</h2><span>{forexPair !== null && forexMarket !== null ? `OANDA · ${forexPair.label} · mid prices` : 'Binance Spot · Historical + live'}</span></div>
     <div className="kairos-analysis-chart__selection">
-      <SymbolPicker facts={metadata.facts} value={fact ? symbol : ''} onChange={next => { autoSymbol.current = false; setSymbol(next); }} disabled={metadata.phase !== 'ready' || !metadata.facts.length} />
-      <label><span>Timeframe</span><select aria-label="Timeframe" value={interval} onChange={event => { autoInterval.current = false; setTimeframe(event.target.value); }}><option value="">Choose timeframe</option>{BINANCE_SPOT_CANDLE_INTERVALS.map(value => <option key={value} value={value}>{value === '1M' ? '1 month' : value}</option>)}</select></label>
+      {forexMarket !== null && forexPair !== null
+        ? <p className="kairos-analysis-chart__pair"><span>Market</span> <strong>{forexPair.label}</strong></p>
+        : <SymbolPicker facts={metadata.facts} value={fact ? symbol : ''} onChange={next => { autoSymbol.current = false; setSymbol(next); }} disabled={metadata.phase !== 'ready' || !metadata.facts.length} />}
+      <label><span>Timeframe</span><select aria-label="Timeframe" value={forexIntervalMissing ? '' : interval} onChange={event => { autoInterval.current = false; setTimeframe(event.target.value); }}><option value="">Choose timeframe</option>{intervals.map(value => <option key={value} value={value}>{value === '1M' ? '1 month' : value}</option>)}</select></label>
     </div>
-    {tradeOffChart && !fact ? <p role="status">{`The market chart has crypto markets from Binance only for now. ${offChartTrade} is drawn in its picture above, with your plan, entries and exits.`}</p>
+    {tradeOffChart && !fact ? <p role="status">{`${offChartReason} ${offChartTrade} is drawn in its picture above, with your plan, entries and exits.`}</p>
       : tradeSymbolNote !== null && tradeSymbolNote.symbol === null && !fact ? <p role="status">This trade's symbol is not on Binance Spot. <span>{tradeSymbolNote.note}</span></p>
       : tradeSymbolNote !== null && fact && tradeSymbolNote.symbol === symbol ? <p role="status">{tradeSymbolNote.note}</p> : null}
-    {metadata.phase === 'loading' ? <p role="status">Loading supported symbols…</p> : metadata.phase === 'error' ? <MarketsUnavailable failure={metadata.failure ?? noAnswer()} onRetry={retryMetadata} /> : !metadata.facts.length ? <p role="status">No supported symbols are available.</p> : !selected ? <div className="kairos-analysis-chart__empty"><p>Choose a symbol and timeframe to explore its candles.</p><p className="kairos-analysis-chart__note">You can use this chart without a saved trade.</p></div> : null}
-    {selected ? <>
-      <div className="kairos-analysis-chart__heading"><strong>{symbol} · {interval === '1M' ? '1 month' : interval}</strong><button type="button" onClick={() => setRevision(value => value + 1)}>Refresh candles</button></div>
+    {forexMarket !== null ? (!selected ? <p role="status">Choose a timeframe to see this pair's candles.</p> : null)
+      : metadata.phase === 'loading' ? <p role="status">Loading supported symbols…</p> : metadata.phase === 'error' ? <MarketsUnavailable failure={metadata.failure ?? noAnswer()} onRetry={retryMetadata} /> : !metadata.facts.length ? <p role="status">No supported symbols are available.</p> : !selected ? <div className="kairos-analysis-chart__empty"><p>Choose a symbol and timeframe to explore its candles.</p><p className="kairos-analysis-chart__note">You can use this chart without a saved trade.</p></div> : null}
+    {selected && market ? <>
+      <div className="kairos-analysis-chart__heading"><strong>{forexMarket !== null && forexPair !== null ? forexPair.label : symbol} · {interval === '1M' ? '1 month' : interval}</strong><button type="button" onClick={() => setRevision(value => value + 1)}>Refresh candles</button></div>
       <div className="kairos-analysis-chart__controls">
         <AnalysisDrawingToolsControls state={drawingTools.state} drawingCount={drawingTools.drawingCount} onSelectTrendLine={drawingTools.selectTrendLineTool} onCancel={drawingTools.cancel} onDeleteSelected={drawingTools.deleteSelected} onSelectZone={drawingTools.selectZoneTool} zoneCount={drawingTools.zoneCount} selectedKind={drawingTools.selectedKind} onSelectRiskBox={drawingTools.selectRiskBoxTool} riskBoxCount={drawingTools.riskBoxCount} selectedLabel={drawingTools.selectedLabel} />
-        <AnalysisSavedAnalysisControls ports={savedAnalysis} market={fact && interval ? analysisMarketReference(fact.instrument) : null} drawingCount={drawingTools.drawingCount} getDrawings={drawingTools.getDrawings} onLoad={drawingTools.loadDrawings} riskBoxCount={drawingTools.riskBoxCount} getRiskBoxes={drawingTools.getRiskBoxes} onLoadRiskBoxes={drawingTools.loadRiskBoxes} />
-        <AnalysisTimeAssistedSnapshotControls instrument={fact ? fact.instrument : null} onSnapshot={estimateMarkers.present} markers={estimateMarkers.presentation} onShowWindow={estimateWindow.show} window={estimateWindow.last} />
+        <AnalysisSavedAnalysisControls ports={savedAnalysis} market={interval ? analysisMarketReference(market.instrument) : null} drawingCount={drawingTools.drawingCount} getDrawings={drawingTools.getDrawings} onLoad={drawingTools.loadDrawings} riskBoxCount={drawingTools.riskBoxCount} getRiskBoxes={drawingTools.getRiskBoxes} onLoadRiskBoxes={drawingTools.loadRiskBoxes} />
+        <AnalysisTimeAssistedSnapshotControls instrument={market.instrument} onSnapshot={estimateMarkers.present} markers={estimateMarkers.presentation} onShowWindow={estimateWindow.show} window={estimateWindow.last} />
       </div>
-      {fact && savedTradePending ? <p role="status">Preparing the saved trade chart…</p> : null}
+      {savedTradePending ? <p role="status">Preparing the saved trade chart…</p> : null}
       <AnalysisOverlaySessionFactoryContext.Provider value={drawingTools.overlaySessionFactory}>
       <AnalysisTradeWindowContext.Provider value={tradeWindow}>
-      {fact && !savedTradePending && entry ? <SavedTradeLiveCanvas entry={entry} instrument={fact.instrument} interval={interval} quoteAsset={fact.quoteAsset} revision={revision} /> : null}
+      {!savedTradePending && entry ? <SavedTradeLiveCanvas entry={entry} instrument={market.instrument} interval={interval} quoteAsset={market.quoteAsset} revision={revision} /> : null}
       </AnalysisTradeWindowContext.Provider>
       </AnalysisOverlaySessionFactoryContext.Provider>
       <AnalysisLiveSessionFactoryContext.Provider value={drawingTools.liveSessionFactory}>
-      {fact && !savedTradePending && !entry ? <LiveCanvas instrument={fact.instrument} interval={interval} quoteAsset={fact.quoteAsset} revision={revision} /> : null}
+      {!savedTradePending && !entry ? <LiveCanvas instrument={market.instrument} interval={interval} quoteAsset={market.quoteAsset} revision={revision} /> : null}
       </AnalysisLiveSessionFactoryContext.Provider>
       <p className="kairos-analysis-chart__note">Shows the latest {ANALYSIS_LIVE_CANDLE_HISTORY_LIMIT} candles. Connection status is shown above the chart.</p>
     </> : null}

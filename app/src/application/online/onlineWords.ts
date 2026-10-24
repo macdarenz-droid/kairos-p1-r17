@@ -59,7 +59,8 @@ export function describeMarketDataUnavailable(failure: MarketDataUnavailable, su
     // OANDA refusing the Kairos server is the server's own access, not the trader's region.
     case 'region': return words(source.provider === 'oanda' ? `${subject}: OANDA refused the Kairos server. Try again later.` : regionRefused(subject), true, null);
     case 'source-down': return words(`${subject}: the price source didn't answer. Try again in a moment.`, true, null);
-    case 'not-set-up': return words(`${subject}: not set up in this version of Kairos.`, false, null);
+    // Forex waits for the owner's OANDA token on the server (O4a).
+    case 'not-set-up': return words(source.provider === 'oanda' ? `${subject}: OANDA isn't connected to the Kairos server yet.` : `${subject}: not set up in this version of Kairos.`, false, null);
     case 'unreadable': return words(`${subject}: the answer could not be read. Try again later.`, true, null);
   }
 }

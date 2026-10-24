@@ -38,14 +38,12 @@ function tradeEntry(symbol: string, daysAgo: number, marketType?: string): Journ
 }
 
 describe('T-043d crypto only for now, in plain words', () => {
-  it('the Analysis market chart says it is crypto-only for a forex trade', async () => {
+  it('the Analysis market chart draws a forex trade on its OANDA pair, never a Binance symbol (T-055c)', async () => {
     render(<AnalysisHistoryWorkspace entry={tradeEntry('EURUSD', 2, 'forex')} ports={ports()} LiveCanvas={LiveCanvas} SavedTradeLiveCanvas={SavedTradeLiveCanvas} />);
-    expect(await screen.findByText(/^The market chart has crypto markets from Binance only for now\./)).toBeInTheDocument();
-    await screen.findByRole('combobox', { name: 'Chart symbol' });
-    await new Promise(resolve => setTimeout(resolve, 20));
+    expect(await screen.findByTestId('saved-trade-canvas')).toHaveTextContent(/^EURUSD\/15m$/);
+    expect(screen.getByText('OANDA · EUR/USD · mid prices')).toBeInTheDocument();
     expect(screen.queryByText("This trade's symbol is not on Binance Spot.")).toBeNull();
-    expect(screen.getByRole('combobox', { name: 'Chart symbol' })).toHaveValue('');
-    expect(screen.queryByTestId('saved-trade-canvas')).toBeNull();
+    expect(screen.queryByRole('combobox', { name: 'Chart symbol' })).toBeNull();
   });
 
   it('a crypto-like trade with the same letters is still matched', async () => {

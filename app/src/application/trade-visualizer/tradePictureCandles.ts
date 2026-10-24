@@ -222,7 +222,7 @@ async function loadForexCandles(
     endTimeMs: window.endTimeMs,
   }, options);
   if (!result.ok) {
-    if (result.reason === 'invalid-request') return failed('no-candle-source', null, FOREX_NEEDS_SERVER);
+    if (result.reason === 'invalid-request' && result.detail === 'venue-mismatch') return failed('no-candle-source', null, FOREX_NEEDS_SERVER);
     return unavailable(result, null, { provider: 'oanda', pair: pair.label });
   }
   if (result.snapshot.candles.length === 0) return failed('no-candles');

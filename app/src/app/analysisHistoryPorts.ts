@@ -4,4 +4,6 @@ import { appMarketDataPorts } from './marketDataPorts';
 export const analysisHistoryPorts = {
   metadata: appMarketDataPorts().metadata,
   history: appMarketDataPorts().history,
+  /** U10 (D231): forex candles come only through the Kairos server. */
+  forexCandles: appMarketDataPorts().route === 'server',
 };

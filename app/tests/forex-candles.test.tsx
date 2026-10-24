@@ -119,6 +119,9 @@ describe('T-055b forex and metal candles on the trade picture', () => {
     expect(await screen.findByText('Forex candles need the Kairos server.')).toBeInTheDocument();
     expect(screen.queryByText('Unavailable')).toBeNull();
     expect(connect).not.toHaveBeenCalled();
+    // Only the port's "not this market" means no server; any other refusal is the source's own failure.
+    const refused: TradePictureCandleDeps = { ...deps, history: { acquireHistory: vi.fn(async () => ({ ok: false as const, reason: 'invalid-request' as const, detail: 'limit-invalid' })) } };
+    expect(await loadTradePictureCandles(record, fills('1.085', '1.09'), refused)).toMatchObject({ ok: false, why: 'source-down', source: { provider: 'oanda', pair: 'EUR/USD' } });
     expect(acquireInstrumentMetadata).not.toHaveBeenCalled();
   });
 
@@ -146,5 +149,9 @@ describe('T-055b forex and metal candles on the trade picture', () => {
     expect(describeMarketDataUnavailable(failure('region'), 'Candles', oanda)).toMatchObject({ message: 'Candles: OANDA refused the Kairos server. Try again later.', retryLabel: 'Try again' });
     expect(describeMarketDataUnavailable(failure('unknown-market'), 'Candles').message).toBe("Candles: Binance doesn't list this market. Check the spelling, for example BTCUSDT.");
     expect(describeMarketDataUnavailable(failure('region'), 'Candles').message).toBe("Candles: Binance isn't available in your region, and the backup source couldn't help. Try again later.");
+    // Before the owner sets the OANDA token (O4a).
+    const notSetUp = { ok: false as const, reason: 'unavailable' as const, why: 'not-set-up' as const, retryAfterSeconds: null };
+    expect(describeMarketDataUnavailable(notSetUp, 'Candles', oanda)).toMatchObject({ message: "Candles: OANDA isn't connected to the Kairos server yet.", retryLabel: null });
+    expect(describeMarketDataUnavailable(notSetUp, 'Candles').message).toBe('Candles: not set up in this version of Kairos.');
   });
 });
