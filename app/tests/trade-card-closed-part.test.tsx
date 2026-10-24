@@ -13,6 +13,7 @@ import { saveManualTrade, type SaveManualTradeInput } from '../src/application/t
 import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
 import { TradePictureCandleLoaderContext, type TradePictureCandleLoader } from '../src/features/journal/tradePictureCandleQueue';
 import { axeViolations } from './fixtures/axe';
+import { renderTradePage, tradePageHeading } from './fixtures/tradePage';
 
 const names: string[] = [];
 const opened: Dexie[] = [];
@@ -59,38 +60,52 @@ const fact = (card: HTMLElement, term: string) => {
   return row?.querySelector('dd')?.textContent ?? null;
 };
 
-describe('T-050g the closed part and money at risk on the trade card', () => {
+/** A trade's own page (U15, D261): the closed part and money at risk live in its "Recorded result"; the Journal's row is one link. */
+async function recordedResult(db: KairosDatabase, id: string, symbol: string): Promise<HTMLElement> {
+  renderTradePage(db, id, { wrap: node => <TradePictureCandleLoaderContext.Provider value={offline}>{node}</TradePictureCandleLoaderContext.Provider> });
+  await tradePageHeading(`${symbol} · Long`);
+  return screen.getByRole('region', { name: 'Recorded result' });
+}
+
+describe('T-050g the closed part and money at risk on the trade page', () => {
   it('shows the closed part of a partly closed trade and its money at risk; a flat trade has no closed-part line', async () => {
-    const { db } = await database(partly(), flat());
+    const { db, ids } = await database(partly(), flat());
     const cards = await journal(db, 2);
-    const bySymbol = (symbol: string) => cards.find(card => card.querySelector('strong')?.textContent === symbol)!;
-    const card = bySymbol('BTCUSDT'), flatCard = bySymbol('ETHUSDT');
-    expect(card.querySelector('.kairos-history-card__outcome')).toHaveTextContent('Not available');
-    const line = card.querySelector<HTMLElement>('.kairos-history-card__closed-part');
+    const row = cards.find(card => card.querySelector('strong')?.textContent === 'BTCUSDT')!;
+    expect(row.querySelector('.kairos-history-card__outcome')).toHaveTextContent('Not available');
+    cleanup();
+
+    const region = await recordedResult(db, ids[0]!, 'BTCUSDT');
+    const line = region.querySelector<HTMLElement>('.kairos-review__closed-part');
     expect(line).not.toBeNull();
     const result = line!.querySelector('[data-outcome="profit"]');
     expect(result).toHaveTextContent('Closed part');
     expect(result).toHaveTextContent('+8 USDT');
     expect(within(line!).getByText(WORDS)).toBeInTheDocument();
-    expect(fact(card, 'Money at risk')).toBe('24 USDT');
-    expect(flatCard.querySelector('.kairos-history-card__closed-part')).toBeNull();
-    expect(fact(flatCard, 'Money at risk')).toBe('24 USDT');
+    expect(fact(region, 'Money at risk')).toBe('24 USDT');
     expect(await axeViolations(document.body)).toEqual([]);
+    cleanup();
+
+    const flatRegion = await recordedResult(db, ids[1]!, 'ETHUSDT');
+    expect(flatRegion.querySelector('.kairos-review__closed-part')).toBeNull();
+    expect(fact(flatRegion, 'Money at risk')).toBe('24 USDT');
   });
 
-  it('explains "Money at risk" once, on the first card', async () => {
-    const { db } = await database(partly(), flat());
-    const [first, second] = await journal(db, 2);
-    expect(within(second).queryByRole('button', { name: hintName })).toBeNull();
-    fireEvent.click(within(first).getByRole('button', { name: hintName }));
+  it('explains "Money at risk" on the trade page, and on no row of the list', async () => {
+    const { db, ids } = await database(partly(), flat());
+    const cards = await journal(db, 2);
+    for (const card of cards) expect(within(card).queryByRole('button', { name: hintName })).toBeNull();
+    cleanup();
+    await recordedResult(db, ids[0]!, 'BTCUSDT');
+    fireEvent.click(screen.getByRole('button', { name: hintName }));
     const dialog = screen.getByRole('dialog', { name: 'Money at risk' });
     await waitFor(() => expect(within(dialog).getByText(findGlossaryEntry('money-at-risk')!.term.explanation)).toBeInTheDocument());
   });
 
   it('works out a futures trade like crypto', async () => {
-    const { db } = await database(partly({ symbol: 'BTCUSDT-PERP', marketType: 'futures' }));
-    const [card] = await journal(db, 1);
-    expect(fact(card, 'Money at risk')).toBe('24 USDT');
+    const { db, ids } = await database(partly({ symbol: 'BTCUSDT-PERP', marketType: 'futures' }));
+    const region = await recordedResult(db, ids[0]!, 'BTCUSDT-PERP');
+    expect(fact(region, 'Money at risk')).toBe('24 USDT');
   });
 
   it('shows the same in Analysis → a saved trade', async () => {

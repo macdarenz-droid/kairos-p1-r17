@@ -1,13 +1,13 @@
 import 'fake-indexeddb/auto';
 import { afterEach, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, screen, within } from '@testing-library/react';
 import { createKairosDatabase, type KairosDatabase } from '../src/data/database';
 import { createKairosDatabaseSnapshot, parseKairosBackup, prepareKairosRestore, replaceKairosDatabaseFromPreparedRestore, serializeKairosBackup } from '../src/data/backup';
 import { saveManualTrade, type SaveManualTradeInput } from '../src/application/trades';
 import { updateOpenManualTrade } from '../src/application/trades/updateOpenManualTrade';
 import { listJournalHistory, listJournalVisualPnlDailySummary } from '../src/application/journal';
 import { loadHomeYourTrades } from '../src/application/dashboard/homeDashboardYourTradesQuery';
-import { JournalRoute } from '../src/app/JournalRoute';
+import { renderTradePage } from './fixtures/tradePage';
 
 let db: KairosDatabase;
 const openedAt = '2026-09-12T04:00:00.000Z', closedAt = '2026-09-12T05:00:00.000Z';
@@ -85,7 +85,7 @@ it('roundtrips currency through full backup/restore; legacy absence survives; re
   }
 });
 it('allows UI currency-only updates with discard protection and then shows saved currency read-only', async () => {
-  const expected = await start({ status: 'open', closedAt: null, executions: [entry] }); render(<JournalRoute db={db}/>);
+  const expected = await start({ status: 'open', closedAt: null, executions: [entry] }); renderTradePage(db, expected.trade.id);
   fireEvent.click(await screen.findByRole('button', { name: 'Update trade' }));
   let ui = within(screen.getByRole('region', { name: 'Update BTCUSDT' }));
   fireEvent.change(ui.getByLabelText('Currency code'), { target: { value: 'USDT' } });
@@ -94,7 +94,7 @@ it('allows UI currency-only updates with discard protection and then shows saved
   expect(await db.trades.get(expected.trade.id)).toEqual(expected.trade);
   fireEvent.click(ui.getByRole('button', { name: 'Keep editing' }));
   fireEvent.click(ui.getByRole('button', { name: 'Save update' }));
-  await screen.findByText('Trade updated. Your saved details are below.');
+  await screen.findByText('Trade updated. Your saved details are on this page.');
   fireEvent.click(screen.getByRole('button', { name: 'Update trade' }));
   ui = within(screen.getByRole('region', { name: 'Update BTCUSDT' }));
   expect(ui.getByLabelText('Currency code')).toHaveValue('USDT');

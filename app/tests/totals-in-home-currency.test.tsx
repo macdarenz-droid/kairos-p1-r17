@@ -6,7 +6,6 @@ import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it } from 'vitest';
 import { GoalsRoute } from '../src/app/GoalsRoute';
 import { useState } from 'react';
-import { JournalRoute } from '../src/app/JournalRoute';
 import { describeConversionStep, describeTotalsInHomeCurrency, describeTradeInHomeCurrency } from '../src/application/currency/currencyWords';
 import { saveHomeCurrency } from '../src/application/currency/homeCurrency';
 import { writeGoalsPreference } from '../src/application/goals';
@@ -24,6 +23,7 @@ import { StockTradeNote } from '../src/features/journal/StockTradeNote';
 import { PatternsScreen } from '../src/features/patterns/PatternsScreen';
 import { PracticeMoneyCard } from '../src/features/practice/PracticeMoneyCard';
 import { ResultsDashboard } from '../src/features/results/ResultsDashboard';
+import { renderTradePage } from './fixtures/tradePage';
 
 const NOW = '2026-09-20T12:00:00.000Z';
 const now = () => NOW;
@@ -239,11 +239,11 @@ describe('T-045h Goals, Home, Patterns and practice money', () => {
 });
 
 describe('T-045h what a trade keeps', () => {
-  it('explains fees in another currency on the trade card', async () => {
+  it('explains fees in another currency on the trade page', async () => {
     const db = await database();
     await saveAll(db, [trade('MSFT', 'stock', 'USD', '1', '400', '410', closedAt, [{ amount: '1', currency: 'AUD' }])]);
-    render(<JournalRoute db={db} now={now} />);
-    expect(await screen.findByText("Result after fees needs fees in the same currency as your recorded prices, or in pounds (GBP) for prices in pence (GBX). Kairos does not convert a trade's fees with exchange rates.")).toBeInTheDocument();
+    renderTradePage(db, (await db.trades.toArray())[0]!.id);
+    expect(await screen.findByText("Result after fees needs a recorded price currency and fees in that same currency, or in pounds (GBP) for prices in pence (GBX). Kairos does not convert a trade's fees with exchange rates.")).toBeInTheDocument();
   });
 
   it('says the stock and forex notes never change a trade\'s prices', () => {

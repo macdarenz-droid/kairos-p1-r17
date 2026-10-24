@@ -32,6 +32,10 @@
 @media (max-width: 480px) { .kairos-trade-picture { grid-template-columns: minmax(0, 1fr); } }
 .kairos-trade-picture-thumb__open { display: block; width: 100%; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: zoom-in; }
 .kairos-trade-picture-thumb .kairos-trade-picture { grid-template-columns: minmax(0, 1fr); }
+/* U15 (D261): the small drawing on a Journal row; its words are the row's, so the card's own text stays hidden. */
+.kairos-trade-picture-row { width: 5.5rem; flex: none; pointer-events: none; }
+.kairos-trade-picture-row .kairos-trade-picture { grid-template-columns: minmax(0, 1fr); padding: 0; border: 0; background: none; }
+.kairos-trade-picture-row .kairos-trade-picture :is(p, .kairos-unavailable) { display: none; }
 .kairos-trade-picture-panel h2 { margin: 0; font-size: var(--kairos-font-size-md); }
 .kairos-trade-picture-panel { display: grid; gap: var(--kairos-space-3); }
 .kairos-trade-picture-panel__actions { display: flex; flex-wrap: wrap; gap: var(--kairos-space-2); align-items: center; }

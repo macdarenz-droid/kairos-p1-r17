@@ -4,7 +4,6 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router';
 import { JournalRoute } from '../src/app/JournalRoute';
-import { PracticeRoute } from '../src/app/PracticeRoute';
 import { loadTradeDiscipline, saveTradeDiscipline } from '../src/application/discipline';
 import { deleteStrategy, saveStrategy, strategyDraftFrom } from '../src/application/discipline/strategies';
 import { savePracticeTrade } from '../src/application/practice';
@@ -13,13 +12,21 @@ import { createKairosDatabase, openKairosDatabase, runKairosAtomicWrite, type Ka
 import type { Strategy, TradeDisciplineId, TradeDisciplineRecord } from '../src/domain/discipline';
 import type { TradeId, TradeRecord } from '../src/domain/trades';
 import { TradeStrategyControl } from '../src/features/discipline/TradeStrategyControl';
+import { renderTradePage, tradePageHeading, tradePagePart } from './fixtures/tradePage';
 
 const names: string[] = [];
 async function database(): Promise<KairosDatabase> { const name = `kairos-strategy-control-${crypto.randomUUID()}`; names.push(name); const db = createKairosDatabase(name); await openKairosDatabase(db); return db; }
 afterEach(async () => { cleanup(); vi.restoreAllMocks(); for (const name of names.splice(0)) await Dexie.delete(name); });
 
-const card = (symbol: string) => screen.getAllByRole('listitem').find(item => within(item).queryByText(symbol) !== null)!;
-const cardButton = async (symbol: string, name: string | RegExp) => { let found: HTMLElement | null = null; await waitFor(() => { found = within(card(symbol)).getByRole('button', { name }); }); return found!; };
+// T-060c: the control sits on the trade's own page, in "Before and after the trade".
+const part = () => tradePagePart('Before and after the trade');
+const pageButton = async (name: string | RegExp) => { let found: HTMLElement | null = null; await waitFor(() => { found = part().getByRole('button', { name }); }); return found!; };
+/** Opens one trade's page and waits for its heading ("BTCUSDT · Long"). */
+async function pageOf(db: KairosDatabase, id: string, heading: string, scope?: 'real' | 'practice') {
+  const view = renderTradePage(db, id, { scope });
+  await tradePageHeading(heading);
+  return view;
+}
 const idOf = (saved: { ok: boolean; tradeId?: unknown }) => { if (!saved.ok) throw new Error('fixture'); return saved.tradeId as TradeId; };
 const WAIT = 'I wait for a close above the line';
 
@@ -34,15 +41,15 @@ async function breakout(db: KairosDatabase): Promise<Strategy> {
   return saved.strategy;
 }
 
-async function journal(db: KairosDatabase, strategy: Strategy | null): Promise<TradeId> {
+async function journal(db: KairosDatabase, strategy: Strategy | null): Promise<{ readonly btc: TradeId; readonly eth: TradeId; readonly sol: TradeId }> {
   const btc = idOf(await saveManualTrade(db, { symbol: 'BTCUSDT', marketType: 'crypto', side: 'long', status: 'draft', grossPnlCurrency: 'USDT', plan: { plannedEntryPrice: '100', plannedStopPrice: '95', plannedTargetPrice: '110', plannedQuantity: '10' } }));
-  await saveManualTrade(db, { symbol: 'ETHUSDT', marketType: 'crypto', side: 'short', status: 'open', grossPnlCurrency: 'USDT', openedAt: '2026-09-18T07:00:00.000Z' });
-  await saveManualTrade(db, { symbol: 'SOLUSDT', marketType: 'crypto', side: 'long', status: 'closed', grossPnlCurrency: 'USDT', openedAt: '2026-09-18T09:00:00.000Z', closedAt: '2026-09-18T10:00:00.000Z', executions: [{ type: 'entry', price: '100', quantity: '1', executedAt: '2026-09-18T09:00:00.000Z' }, { type: 'exit', price: '110', quantity: '1', executedAt: '2026-09-18T10:00:00.000Z' }] });
+  const eth = idOf(await saveManualTrade(db, { symbol: 'ETHUSDT', marketType: 'crypto', side: 'short', status: 'open', grossPnlCurrency: 'USDT', openedAt: '2026-09-18T07:00:00.000Z' }));
+  const sol = idOf(await saveManualTrade(db, { symbol: 'SOLUSDT', marketType: 'crypto', side: 'long', status: 'closed', grossPnlCurrency: 'USDT', openedAt: '2026-09-18T09:00:00.000Z', closedAt: '2026-09-18T10:00:00.000Z', executions: [{ type: 'entry', price: '100', quantity: '1', executedAt: '2026-09-18T09:00:00.000Z' }, { type: 'exit', price: '110', quantity: '1', executedAt: '2026-09-18T10:00:00.000Z' }] }));
   if (strategy) {
     const marked = await saveTradeDiscipline(db, { tradeId: btc, scope: 'real', half: 'strategy', strategyId: strategy.id, answers: [] });
     if (!marked.ok) throw new Error('fixture');
   }
-  return btc;
+  return { btc, eth, sol };
 }
 
 async function saveSheet(dialog: HTMLElement) {
@@ -56,15 +63,21 @@ const choose = (dialog: HTMLElement, name: string) => {
 };
 const before = (a: Node, b: Node) => expect(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
-describe('T-040i the trade card: its strategy, the rule check and your ticks', () => {
-  it('shows the strategy on the card, draws the bars and saves ticks', async () => {
+describe('T-040i the trade page: its strategy, the rule check and your ticks', () => {
+  it('shows the strategy on the trade page, draws the bars and saves ticks', async () => {
     const db = await database();
-    await journal(db, await breakout(db));
+    const { btc, eth, sol } = await journal(db, await breakout(db));
     render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
-    const button = await cardButton('BTCUSDT', 'Strategy Breakout: keeps 3 of 4 rules, 1 to check');
-    expect(await cardButton('ETHUSDT', 'Strategy: none chosen')).toBeTruthy();
-    expect(await cardButton('SOLUSDT', 'Strategy: none chosen')).toBeTruthy();
-    expect(screen.getAllByRole('listitem')).toHaveLength(3);
+    await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(3));
+    cleanup();
+    await pageOf(db, eth, 'ETHUSDT · Short');
+    expect(await pageButton('Strategy: none chosen')).toBeTruthy();
+    cleanup();
+    await pageOf(db, sol, 'SOLUSDT · Long');
+    expect(await pageButton('Strategy: none chosen')).toBeTruthy();
+    cleanup();
+    await pageOf(db, btc, 'BTCUSDT · Long');
+    const button = await pageButton('Strategy Breakout: keeps 3 of 4 rules, 1 to check');
 
     fireEvent.click(button);
     const dialog = screen.getByRole('dialog', { name: 'Strategy: BTCUSDT' });
@@ -86,45 +99,45 @@ describe('T-040i the trade card: its strategy, the rule check and your ticks', (
 
     fireEvent.click(within(dialog).getByRole('checkbox', { name: WAIT }));
     await saveSheet(dialog);
-    fireEvent.click(await cardButton('BTCUSDT', 'Strategy Breakout: keeps all 4 rules'));
+    fireEvent.click(await pageButton('Strategy Breakout: keeps all 4 rules'));
     const again = screen.getByRole('dialog', { name: 'Strategy: BTCUSDT' });
     const box = within(again).getByRole('checkbox', { name: WAIT }) as HTMLInputElement;
     expect(box.checked).toBe(true);
     fireEvent.click(box);
     await saveSheet(again);
-    expect(await cardButton('BTCUSDT', 'Strategy Breakout: breaks 1 of 4 rules')).toBeTruthy();
+    expect(await pageButton('Strategy Breakout: breaks 1 of 4 rules')).toBeTruthy();
   });
 
   it('chooses a strategy for a trade and takes it off again', async () => {
     const db = await database();
-    await journal(db, await breakout(db));
-    render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
-    fireEvent.click(await cardButton('ETHUSDT', 'Strategy: none chosen'));
+    const { eth } = await journal(db, await breakout(db));
+    await pageOf(db, eth, 'ETHUSDT · Short');
+    fireEvent.click(await pageButton('Strategy: none chosen'));
     let dialog = screen.getByRole('dialog', { name: 'Strategy: ETHUSDT' });
     choose(dialog, 'Breakout');
     expect(within(dialog).getByText('Save to use your Breakout rules as they are now. Then open this again to tick the rules you keep yourself.')).toBeTruthy();
     await saveSheet(dialog);
-    fireEvent.click(await cardButton('ETHUSDT', /^Strategy Breakout:/));
+    fireEvent.click(await pageButton(/^Strategy Breakout:/));
     dialog = screen.getByRole('dialog', { name: 'Strategy: ETHUSDT' });
     choose(dialog, 'No strategy');
     expect(within(dialog).getByText('Save to take the strategy off this trade. The trade itself is not changed.')).toBeTruthy();
     await saveSheet(dialog);
-    expect(await cardButton('ETHUSDT', 'Strategy: none chosen')).toBeTruthy();
+    expect(await pageButton('Strategy: none chosen')).toBeTruthy();
   });
 
   it('judges an old trade by the rules it was chosen with', async () => {
     const db = await database();
     const strategy = await breakout(db);
-    await journal(db, strategy);
+    const { btc } = await journal(db, strategy);
     const changed = await saveStrategy(db, { ...strategyDraftFrom(strategy), rules: strategyDraftFrom(strategy).rules.map(rule => (rule.kind === 'max-risk' ? { ...rule, amount: '40' } : rule)) });
     expect(changed.ok && changed.strategy.revision).toBe(2);
-    render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
-    expect(await cardButton('BTCUSDT', 'Strategy Breakout: keeps 3 of 4 rules, 1 to check')).toBeTruthy();
+    await pageOf(db, btc, 'BTCUSDT · Long');
+    expect(await pageButton('Strategy Breakout: keeps 3 of 4 rules, 1 to check')).toBeTruthy();
     cleanup();
 
     expect((await deleteStrategy(db, strategy.id)).ok).toBe(true);
-    render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
-    fireEvent.click(await cardButton('BTCUSDT', 'Strategy Breakout: keeps 3 of 4 rules, 1 to check'));
+    await pageOf(db, btc, 'BTCUSDT · Long');
+    fireEvent.click(await pageButton('Strategy Breakout: keeps 3 of 4 rules, 1 to check'));
     const dialog = screen.getByRole('dialog', { name: 'Strategy: BTCUSDT' });
     const kept = within(dialog).getByRole('option', { name: 'Breakout (kept on this trade)' }) as HTMLOptionElement;
     expect(kept.selected).toBe(true);
@@ -158,13 +171,14 @@ describe('T-040i the trade card: its strategy, the rule check and your ticks', (
     const paper = idOf(await savePracticeTrade(db, { symbol: 'ETHUSDT', marketType: 'crypto', side: 'long', status: 'closed', grossPnlCurrency: 'USDT', openedAt: '2026-09-18T09:00:00.000Z', closedAt: '2026-09-18T10:00:00.000Z', executions: [{ type: 'entry', price: '100', quantity: '1', executedAt: '2026-09-18T09:00:00.000Z' }, { type: 'exit', price: '110', quantity: '1', executedAt: '2026-09-18T10:00:00.000Z' }] }));
     const replay: TradeRecord = { id: 'replay-1' as TradeId, symbol: 'BTCUSDT', marketType: 'crypto', side: 'long', status: 'closed', source: 'replay', grossPnlCurrency: 'USDT', openedAt: '2026-09-18T11:00:00.000Z', closedAt: '2026-09-18T12:00:00.000Z', createdAt: '2026-09-18T11:00:00.000Z', updatedAt: '2026-09-18T12:00:00.000Z' };
     await runKairosAtomicWrite(db, ['trades'], async ({ repositories }) => { await repositories.trades.put(replay); });
-    render(<MemoryRouter><PracticeRoute db={db} /></MemoryRouter>);
-    for (const symbol of ['ETHUSDT', 'BTCUSDT']) {
-      fireEvent.click(await cardButton(symbol, 'Strategy: none chosen'));
+    for (const [symbol, id] of [['ETHUSDT', paper], ['BTCUSDT', replay.id]] as const) {
+      await pageOf(db, id, `${symbol} · Long`, 'practice');
+      fireEvent.click(await pageButton('Strategy: none chosen'));
       const dialog = screen.getByRole('dialog', { name: `Strategy: ${symbol}` });
       choose(dialog, 'Breakout');
       await saveSheet(dialog);
-      expect(await cardButton(symbol, /^Strategy Breakout:/)).toBeTruthy();
+      expect(await pageButton(/^Strategy Breakout:/)).toBeTruthy();
+      cleanup();
     }
     const loaded = await loadTradeDiscipline(db, [paper, replay.id]);
     expect(loaded.ok && [...loaded.records.values()].map(item => item.strategy?.name)).toEqual(['Breakout', 'Breakout']);
@@ -172,9 +186,13 @@ describe('T-040i the trade card: its strategy, the rule check and your ticks', (
 
   it('shows no strategy button when there are no strategies and no marks', async () => {
     const db = await database();
-    await journal(db, null);
-    render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
-    await cardButton('ETHUSDT', 'Before you trade: not done yet');
-    for (const symbol of ['BTCUSDT', 'ETHUSDT', 'SOLUSDT']) expect(within(card(symbol)).queryByRole('button', { name: /^Strategy/ })).toBeNull();
+    const { btc, eth, sol } = await journal(db, null);
+    // On each page, the control that does show (once the page has read the trade's discipline) comes first.
+    for (const [id, heading, shown] of [[btc, 'BTCUSDT · Long', 'Before you trade: not done yet'], [eth, 'ETHUSDT · Short', 'Before you trade: not done yet'], [sol, 'SOLUSDT · Long', 'After the trade: not reviewed yet']] as const) {
+      await pageOf(db, id, heading);
+      await pageButton(shown);
+      expect(part().queryByRole('button', { name: /^Strategy/ })).toBeNull();
+      cleanup();
+    }
   });
 });

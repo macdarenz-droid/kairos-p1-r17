@@ -1,15 +1,14 @@
 import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { MemoryRouter } from 'react-router';
-import { JournalRoute } from '../src/app/JournalRoute';
-import { PracticeRoute } from '../src/app/PracticeRoute';
 import { JOURNAL_HISTORY_SOURCES, listJournalHistory } from '../src/application/journal';
 import { openDraftTrade, saveManualTrade } from '../src/application/trades';
 import { updateOpenManualTrade } from '../src/application/trades/updateOpenManualTrade';
 import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
 import type { TradeId } from '../src/domain/trades';
+import { tradePageHref } from '../src/features/journal/tradeAddress';
+import { renderTradePage, tradePageHeading, tradePagePart } from './fixtures/tradePage';
 
 const names: string[] = [];
 async function database(): Promise<KairosDatabase> {
@@ -71,17 +70,30 @@ describe('T-004 imported trades can be updated like manual ones', () => {
 
   it('shows "Update trade" and "I\'m in" for imported trades in Journal, and neither in Practice', async () => {
     const db = await database();
-    await importedTrade(db, 'BTCUSDT', 'open');
-    await importedTrade(db, 'ETHUSDT', 'draft');
+    const open = await importedTrade(db, 'BTCUSDT', 'open');
+    const draft = await importedTrade(db, 'ETHUSDT', 'draft');
 
-    const journal = render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
+    const journal = renderTradePage(db, open);
+    await act(async () => { await journal.router.navigate('/journal'); });
     const card = (symbol: string) => screen.getByText(symbol, { selector: '.kairos-history-card__topline strong' }).closest('li')!;
     await waitFor(() => expect(card('BTCUSDT')).toBeTruthy());
-    expect(within(card('BTCUSDT')).getByRole('button', { name: 'Update trade' })).toBeTruthy();
-    expect(within(card('ETHUSDT')).getByRole('button', { name: "I'm in" })).toBeTruthy();
+    fireEvent.click(within(card('BTCUSDT')).getByRole('link'));
+    await tradePageHeading('BTCUSDT · Long');
+    expect(tradePagePart('Change this trade').getByRole('button', { name: 'Update trade' })).toBeTruthy();
+    await act(async () => { await journal.router.navigate(-1); });
+    await waitFor(() => expect(card('ETHUSDT')).toBeTruthy());
+    fireEvent.click(within(card('ETHUSDT')).getByRole('link'));
+    await tradePageHeading('ETHUSDT · Long');
+    expect(tradePagePart('Change this trade').getByRole('button', { name: "I'm in" })).toBeTruthy();
     journal.unmount();
 
-    render(<MemoryRouter><PracticeRoute db={db} /></MemoryRouter>);
+    const practice = renderTradePage(db, open, { scope: 'practice' });
+    await screen.findByRole('heading', { level: 1, name: "This trade isn't in your journal." });
+    expect(screen.queryByRole('button', { name: 'Update trade' })).toBeNull();
+    await act(async () => { await practice.router.navigate(tradePageHref(draft, 'practice')); });
+    await screen.findByRole('heading', { level: 1, name: "This trade isn't in your journal." });
+    expect(screen.queryByRole('button', { name: "I'm in" })).toBeNull();
+    await act(async () => { await practice.router.navigate('/practice'); });
     await waitFor(() => expect(screen.getByRole('region', { name: 'Practice' }).getAttribute('data-practice-status')).toBe('ready'));
     expect(screen.queryByRole('button', { name: 'Update trade' })).toBeNull();
     expect(screen.queryByRole('button', { name: "I'm in" })).toBeNull();

@@ -1,16 +1,14 @@
 import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { createKairosDatabase, type KairosDatabase } from '../src/data/database';
 import { saveManualTrade } from '../src/application/trades';
 import { updateOpenManualTrade, type UpdateOpenManualTradeInput } from '../src/application/trades/updateOpenManualTrade';
 import { listJournalHistory } from '../src/application/journal';
 import { loadHomeYourTrades } from '../src/application/dashboard/homeDashboardYourTradesQuery';
-import { MemoryRouter } from 'react-router';
-import { JournalRoute } from '../src/app/JournalRoute';
-import { PracticeRoute } from '../src/app/PracticeRoute';
 import { savePracticeTrade } from '../src/application/practice';
 import type { TradeExecutionId } from '../src/domain/trades';
+import { renderTradePage, tradePageHeading, tradePagePart } from './fixtures/tradePage';
 
 let db: KairosDatabase;
 const openedAt = '2026-09-12T04:00:00.000Z';
@@ -102,7 +100,7 @@ describe('existing open manual trade updates', () => {
 });
 
 describe('open trade update Journal UI', () => {
-  async function open() { await start(); render(<JournalRoute db={db}/>); fireEvent.click(await screen.findByRole('button', { name: 'Update trade' })); return within(screen.getByRole('region', { name: 'Update BTCUSDT' })); }
+  async function open() { const { trade } = await start(); renderTradePage(db, trade.id); await tradePageHeading('BTCUSDT · Long'); fireEvent.click(tradePagePart('Change this trade').getByRole('button', { name: 'Update trade' })); return within(screen.getByRole('region', { name: 'Update BTCUSDT' })); }
   function fill(ui: ReturnType<typeof within>, quantity = '2') {
     fireEvent.click(ui.getByRole('button', { name: 'Add exit' }));
     for (const [name, value] of [['price', '120'], ['quantity', quantity], ['date and time', '2026-09-12T15:00']]) fireEvent.change(ui.getByLabelText(`Exit 1 ${name}`), { target: { value } });
@@ -148,20 +146,24 @@ describe('T-057e one guided flow: planned, "I\'m in", close, review', () => {
   };
   const reviewButton = () => screen.getByRole('button', { name: 'After the trade: not reviewed yet' });
 
-  it('a planned trade reads "Planned (not in yet)" in the form and "Planned" with "I\'m in" on its card', async () => {
+  it('a planned trade reads "Planned (not in yet)" in the form and "Planned" with "I\'m in" on its page', async () => {
     db = createKairosDatabase('guided-' + crypto.randomUUID()); await db.open();
     expect((await saveManualTrade(db, { symbol: 'ETHUSDT', marketType: 'crypto', side: 'long', status: 'draft' })).ok).toBe(true);
-    render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
-    expect(await screen.findByRole('button', { name: "I'm in" })).toBeInTheDocument();
+    const { router } = renderTradePage(db, (await db.trades.toArray())[0].id);
+    await tradePageHeading('ETHUSDT · Long');
+    expect(tradePagePart('Change this trade').getByRole('button', { name: "I'm in" })).toBeInTheDocument();
+    await act(async () => { await router.navigate('/journal'); });
+    expect(await screen.findByRole('heading', { name: 'Trade history' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Planned (not in yet)' })).toHaveAttribute('value', 'draft');
     expect(screen.getByRole('option', { name: 'Planned' })).toHaveAttribute('value', 'draft');
     expect(screen.queryByRole('option', { name: 'Draft' })).toBeNull();
   });
 
-  it('after an update closes a trade, "Review it now" opens its review, and closing it returns focus to the card', async () => {
-    await start();
-    render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
-    fireEvent.click(await screen.findByRole('button', { name: 'Update trade' }));
+  it('after an update closes a trade, "Review it now" opens its review, and closing it returns focus to the review button', async () => {
+    const { trade } = await start();
+    renderTradePage(db, trade.id);
+    await tradePageHeading('BTCUSDT · Long');
+    fireEvent.click(tradePagePart('Change this trade').getByRole('button', { name: 'Update trade' }));
     await closeIt();
     expect(await screen.findByText('Trade closed. How did it go?')).toBeInTheDocument();
     // The update's form is gone, so its next step takes the focus.
@@ -178,28 +180,33 @@ describe('T-057e one guided flow: planned, "I\'m in", close, review', () => {
   });
 
   it('an update that keeps the trade open gives its notice the focus, every time', async () => {
-    await start();
-    render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
+    const { trade } = await start();
+    renderTradePage(db, trade.id);
+    await tradePageHeading('BTCUSDT · Long');
     for (const quantity of ['1', '0.5']) {
-      fireEvent.click(await screen.findByRole('button', { name: 'Update trade' }));
+      fireEvent.click(await tradePagePart('Change this trade').findByRole('button', { name: 'Update trade' }));
       const ui = within(await screen.findByRole('region', { name: 'Update BTCUSDT' }));
       fireEvent.click(ui.getByRole('button', { name: 'Add exit' }));
       for (const [name, value] of [['price', '120'], ['quantity', quantity], ['date and time', '2026-09-12T15:00']]) fireEvent.change(ui.getByLabelText(`Exit 1 ${name}`), { target: { value } });
       fireEvent.click(ui.getByRole('button', { name: 'Save update' }));
       // The same notice twice in a row still takes the focus.
-      await waitFor(() => expect(screen.getByText('Trade updated. Your saved details are below.')).toHaveFocus());
+      await waitFor(() => expect(screen.getByText('Trade updated. Your saved details are on this page.')).toHaveFocus());
     }
   });
 
-  it('a closed trade hidden by the Open filter shows again, and its review opens', async () => {
-    await start();
-    render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
+  it('a trade opened from the Open-filtered list closes on its page, and its review opens', async () => {
+    const { trade } = await start();
+    const { router } = renderTradePage(db, trade.id);
+    await tradePageHeading('BTCUSDT · Long');
+    await act(async () => { await router.navigate('/journal'); });
     fireEvent.change(await screen.findByLabelText(/^Show/), { target: { value: 'open' } });
-    fireEvent.click(await screen.findByRole('button', { name: 'Update trade' }));
+    fireEvent.click(await screen.findByRole('link', { name: /^BTCUSDT long, open, / }));
+    await tradePageHeading('BTCUSDT · Long');
+    fireEvent.click(await tradePagePart('Change this trade').findByRole('button', { name: 'Update trade' }));
     await closeIt();
     fireEvent.click(await screen.findByRole('button', { name: 'Review it now' }));
     const sheet = await screen.findByRole('dialog', { name: 'After the trade: BTCUSDT' });
-    // Even when its card had to show again first, the prompt stays behind the sheet until it closes.
+    // The prompt stays behind the sheet until it closes.
     expect(screen.getByText('Trade closed. How did it go?')).toBeInTheDocument();
     fireEvent.click(within(sheet).getByRole('button', { name: 'Close' }));
     await waitFor(() => expect(reviewButton()).toHaveFocus());
@@ -209,8 +216,9 @@ describe('T-057e one guided flow: planned, "I\'m in", close, review', () => {
   it('Practice says the same and opens the same review', async () => {
     db = createKairosDatabase('guided-practice-' + crypto.randomUUID()); await db.open();
     expect((await savePracticeTrade(db, { symbol: 'BTCUSDT', marketType: 'crypto', side: 'long', status: 'open', openedAt, executions: [{ type: 'entry', price: '100', quantity: '2', executedAt: openedAt }] })).ok).toBe(true);
-    render(<MemoryRouter><PracticeRoute db={db} /></MemoryRouter>);
-    fireEvent.click(await screen.findByRole('button', { name: 'Update trade' }));
+    renderTradePage(db, (await db.trades.toArray())[0].id, { scope: 'practice' });
+    await tradePageHeading('BTCUSDT · Long');
+    fireEvent.click(tradePagePart('Change this trade').getByRole('button', { name: 'Update trade' }));
     await closeIt();
     fireEvent.click(await screen.findByRole('button', { name: 'Review it now' }));
     expect(await screen.findByRole('dialog', { name: 'After the trade: BTCUSDT' })).toBeInTheDocument();

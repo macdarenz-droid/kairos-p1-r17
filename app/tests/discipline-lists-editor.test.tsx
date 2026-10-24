@@ -3,13 +3,13 @@ import Dexie from 'dexie';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { MemoryRouter } from 'react-router';
-import { JournalRoute } from '../src/app/JournalRoute';
 import { DisciplineOverview } from '../src/features/discipline/DisciplineOverview';
 import { disciplineListsPreferenceMetadataKey, loadDisciplineLists } from '../src/application/discipline';
 import { saveManualTrade } from '../src/application/trades';
 import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
 import { ThemeProvider } from '../src/design-system/themes';
 import { KAIROS_DEFAULT_DISCIPLINE_LISTS } from '../src/domain/discipline';
+import { renderTradePage, tradePageHeading, tradePagePart } from './fixtures/tradePage';
 
 const names: string[] = [];
 async function database(): Promise<KairosDatabase> { const name = `kairos-lists-editor-${crypto.randomUUID()}`; names.push(name); const db = createKairosDatabase(name); await openKairosDatabase(db); return db; }
@@ -74,17 +74,19 @@ describe('T-032c "Your checklist" in Analysis › Discipline', () => {
     expect(await db.metadata.get(disciplineListsPreferenceMetadataKey)).toBeUndefined();
   });
 
-  it('shows the renamed step on an unanswered draft card', async () => {
+  it('shows the renamed step on an unanswered draft trade\'s page', async () => {
     const db = await database();
-    await saveManualTrade(db, { symbol: 'BTCUSDT', marketType: 'crypto', side: 'long', status: 'draft', plan: { plannedEntryPrice: '100', plannedQuantity: '2' } });
+    const saved = await saveManualTrade(db, { symbol: 'BTCUSDT', marketType: 'crypto', side: 'long', status: 'draft', plan: { plannedEntryPrice: '100', plannedQuantity: '2' } });
+    if (!saved.ok) throw new Error('fixture');
     await mount(db);
     fireEvent.change(within(card()).getByRole('textbox', { name: 'Step 1' }), { target: { value: 'My plan is on paper' } });
     await save();
     expect(await within(card()).findByRole('status')).toBeTruthy();
     cleanup();
-    render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
+    renderTradePage(db, saved.tradeId);
+    await tradePageHeading('BTCUSDT · Long');
     let button: HTMLElement | null = null;
-    await waitFor(() => { button = screen.getByRole('button', { name: 'Before you trade: not done yet' }); });
+    await waitFor(() => { button = tradePagePart('Before and after the trade').getByRole('button', { name: 'Before you trade: not done yet' }); });
     fireEvent.click(button!);
     expect(within(screen.getByRole('dialog')).getByText('My plan is on paper')).toBeTruthy();
   });

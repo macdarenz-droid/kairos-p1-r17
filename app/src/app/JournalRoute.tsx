@@ -5,8 +5,7 @@ import { JOURNAL_CHANGED_EVENT } from './AppShell';
 import { LOG_TRADE_ADDRESS } from '../features/setup/GettingStartedCard';
 import { BackupReminderCard } from '../features/backup/BackupReminderCard';
 import { askToKeepDataOnce } from '../application/setup/deviceKeeping';
-import { JOURNAL_HISTORY_SOURCES } from '../application/journal';
-import { JournalHistoryList, type HistoryNotice } from './JournalHistoryList';
+import { JournalHistoryList } from './JournalHistoryList';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
 import type { MarketType as TradeMarket, TradeStatus } from '../domain/trades';
 import './journalRoute.css';
@@ -47,10 +46,10 @@ function JournalAddress(props: JournalRouteProps) {
 }
 
 function JournalPage({ db = kairosDatabase, now, arrivedNotice }: JournalRouteProps) {
-  const [updateNotice, setUpdateNotice] = useState<HistoryNotice>(arrivedNotice ?? '');
+  // What a trade's page said when it sent you here (a delete); a new save here replaces it.
+  const [listNotice, setListNotice] = useState(arrivedNotice ?? '');
   const [historyStatus, setHistoryStatus] = useState<TradeStatus | ''>('');
   const [journalRevision, setJournalRevision] = useState(0);
-  const [disciplineRevision, setDisciplineRevision] = useState(0);
   // D223: the trade form starts on the first market the trader trades (none saved: blank, as before).
   const [firstMarket, setFirstMarket] = useState<TradeMarket | null>(null);
   useEffect(() => {
@@ -83,21 +82,17 @@ function JournalPage({ db = kairosDatabase, now, arrivedNotice }: JournalRoutePr
         action={<span className="kairos-journal__badge">Saved on this device</span>} />
 
       <BackupReminderCard db={db} now={now ?? wallClock} />
-      <TradeForm db={db} kind="journal" defaultMarket={firstMarket} onSaved={async () => { keepMyData(); await pages.refresh(); setJournalRevision(current => current + 1); }} />
+      <TradeForm db={db} kind="journal" defaultMarket={firstMarket} onSaved={async () => { keepMyData(); setListNotice(''); await pages.refresh(); setJournalRevision(current => current + 1); }} />
 
       <Card className="kairos-journal__results-link">
         <h2>Your results</h2>
         <p>Your calendar, your numbers and their pictures are in Analysis. <JournalLink to="/analysis">Open your results</JournalLink></p>
       </Card>
-      <CoachCard db={db} scope="real" now={now ?? wallClock} refreshRevision={journalRevision} disciplineRevision={disciplineRevision} />
+      <CoachCard db={db} scope="real" now={now ?? wallClock} refreshRevision={journalRevision} disciplineRevision={0} />
 
       <JournalHistoryList
-        db={db}
-        allowedSources={JOURNAL_HISTORY_SOURCES.real}
-        updateNotice={updateNotice}
-        onTradeUpdated={async closedTradeId => { await pages.refresh(); setJournalRevision(current => current + 1); setUpdateNotice(closedTradeId ? { kind: 'closed', tradeId: closedTradeId } : 'Trade updated. Your saved details are below.'); }}
-        onTradeDeleted={async notice => { await pages.refresh(); setJournalRevision(current => current + 1); setUpdateNotice(notice); }}
-        onTradeOpened={async notice => { await pages.refresh(); setJournalRevision(current => current + 1); setUpdateNotice(notice); }}
+        scope="real"
+        notice={listNotice}
         entries={pages.entries}
         isLoading={pages.isLoading}
         errorMessage={pages.failed ? 'Kairos could not load your saved trade history. Your stored trades were not changed.' : null}
@@ -108,7 +103,6 @@ function JournalPage({ db = kairosDatabase, now, arrivedNotice }: JournalRoutePr
         onRetry={pages.refresh}
         statusFilter={historyStatus}
         onStatusFilterChange={setHistoryStatus}
-        onDisciplineSaved={() => setDisciplineRevision(value => value + 1)}
         focusOnArrival={arrivedNotice !== undefined}
       />
     </section>

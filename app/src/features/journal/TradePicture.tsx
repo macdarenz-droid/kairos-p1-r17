@@ -65,13 +65,15 @@ function useTradePictureCandles(entry: JournalHistoryEntry, target: React.RefObj
 }
 
 /**
- * The trade picture for one saved trade. `thumbnail` (Journal, Practice) is a
- * small card that opens the full picture in a dialog; `full` (Analysis) shows
- * it at once under "Your trade". Candles load only while the picture is on screen.
+ * The trade picture for one saved trade. `thumbnail` is a small card that opens
+ * the full picture in a dialog; `row` (the Journal's and Practice's rows, D261)
+ * is the small drawing alone, decorative inside the row's link; `full` (the
+ * trade's page, Analysis) shows it at once under "Your trade". Candles load only
+ * while the picture is on screen.
  */
 export function TradePicture({ entry, variant, savePorts, strategyName = null }: {
   readonly entry: JournalHistoryEntry;
-  readonly variant: 'thumbnail' | 'full';
+  readonly variant: 'thumbnail' | 'row' | 'full';
   readonly savePorts?: TradePictureSavePorts;
   /** The strategy the trader chose for this trade, for the share card (P28). */
   readonly strategyName?: string | null;
@@ -98,6 +100,11 @@ export function TradePicture({ entry, variant, savePorts, strategyName = null }:
       <div className="kairos-trade-picture-panel__actions"><TradeShareControls model={model} svg={svg} strategyName={strategyName} ports={savePorts} /></div>
     </section>;
   }
+
+  // The row's link names the trade; its picture is only seen.
+  if (variant === 'row') return <div className="kairos-trade-picture-row" ref={container} aria-hidden="true">
+    <TradePictureCard model={model} candlesLoading={loading} compact {...candleProps} />
+  </div>;
 
   return <div className="kairos-trade-picture-thumb" ref={container}>
     <button type="button" className="kairos-trade-picture-thumb__open" aria-label={`Open the ${model.symbol} trade picture`} onClick={() => setOpen(true)}>

@@ -1,11 +1,14 @@
 import 'fake-indexeddb/auto';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router';
 import { JournalRoute } from '../src/app/JournalRoute';
 import { createKairosDatabase, openKairosDatabase } from '../src/data/database';
 import { createKairosRepositories } from '../src/data/repositories';
 import { createTradeDomainId, type TradeId } from '../src/domain/trades';
+import { saveManualTrade } from '../src/application/trades';
+import { axeViolations } from './fixtures/axe';
 
 const names = new Set<string>();
 const dbName = () => { const value = `kairos-p123r1-${crypto.randomUUID()}`; names.add(value); return value; };
@@ -92,4 +95,34 @@ describe('P12.3R1 journal history route presentation', () => {
     db.close();
   });
 
+});
+
+describe('T-060c one short row per trade (D261)', () => {
+  it('makes each row one link to the trade\'s page, named for the trade, with nothing else to press', async () => {
+    const db = createKairosDatabase(dbName()); await openKairosDatabase(db);
+    const closedAt = '2026-09-12T05:00:00.000Z';
+    const closed = await saveManualTrade(db, {
+      symbol: 'BTCUSDT', marketType: 'crypto', side: 'long', status: 'closed', openedAt: '2026-09-12T04:00:00.000Z', closedAt, grossPnlCurrency: 'USDT',
+      plan: { plannedStopPrice: '90', plannedQuantity: '2' },
+      executions: [{ type: 'entry', price: '100', quantity: '2', executedAt: '2026-09-12T04:00:00.000Z' }, { type: 'exit', price: '120', quantity: '2', executedAt: closedAt }],
+      fees: [{ amount: '0.5', currency: 'USDT' }],
+    });
+    const planned = await saveManualTrade(db, { symbol: 'SOLUSDT', marketType: 'crypto', side: 'short', status: 'draft' }, { now: () => '2026-09-01T08:00:00.000Z' });
+    if (!closed.ok || !planned.ok) throw new Error('fixture');
+    render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
+    await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(2));
+    const rows = screen.getAllByRole('listitem');
+    // Newest first (D259); each row holds exactly one link and nothing else that takes focus.
+    for (const row of rows) {
+      expect(row.querySelectorAll('a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])')).toHaveLength(1);
+      expect(within(row).getAllByRole('link')).toHaveLength(1);
+    }
+    expect(within(rows[0]!).getByRole('link')).toHaveAttribute('href', `/journal/trades/${encodeURIComponent(closed.tradeId)}`);
+    expect(within(rows[0]!).getByRole('link')).toHaveAccessibleName(/^BTCUSDT long, closed, opened .+, profit \+39\.5 USDT, \+1\.98× what you risked$/);
+    expect(within(rows[0]!).getByText('+1.98× what you risked')).toBeInTheDocument();
+    expect(within(rows[1]!).getByRole('link')).toHaveAccessibleName(/^SOLUSDT short, planned, planned .+$/);
+    expect(within(rows[1]!).getByText('Planned')).toBeInTheDocument();
+    expect(await axeViolations(document.body)).toEqual([]);
+    db.close();
+  });
 });

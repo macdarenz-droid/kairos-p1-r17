@@ -4,7 +4,6 @@ import Dexie from 'dexie';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { JournalRoute } from '../src/app/JournalRoute';
 import { PracticeRoute } from '../src/app/PracticeRoute';
 import { savePracticeTrade } from '../src/application/practice';
 import { saveManualTrade } from '../src/application/trades';
@@ -12,6 +11,7 @@ import { writeVisualPnlTimeZonePreference } from '../src/application/visual-pnl'
 import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
 import { createKairosRepositories } from '../src/data/repositories';
 import { axeViolations } from './fixtures/axe';
+import { renderTradePage, tradePageHeading, tradePagePart } from './fixtures/tradePage';
 
 beforeAll(async () => { await import('../src/application/coach/loadCoachNotes'); }, 30_000);
 const names: string[] = [];
@@ -38,8 +38,11 @@ const input = (label: RegExp) => screen.getByLabelText(label, { selector: 'input
 describe('T-051e the Journal hands its results to Analysis', () => {
   it('shows a card that opens your results, and keeps the coach after the trade form', async () => {
     const db = await database();
-    expect((await saveManualTrade(db, beyondStop)).ok).toBe(true);
-    const { container } = render(<MemoryRouter><JournalRoute db={db} now={now} /></MemoryRouter>);
+    const saved = await saveManualTrade(db, beyondStop);
+    if (!saved.ok) throw new Error('fixture');
+    // T-060c: the review is made on the trade's own page; the Journal is where the coach shows. Start on the Journal.
+    const { container, router } = renderTradePage(db, saved.tradeId, { now });
+    await act(async () => { await router.navigate('/journal'); });
     const coach = await screen.findByRole('region', { name: 'Your coach' });
     await waitFor(() => expect(within(coach).getByText('3 notes')).toBeInTheDocument());
     expect(screen.queryByRole('region', { name: 'Daily results' })).toBeNull();
@@ -53,9 +56,11 @@ describe('T-051e the Journal hands its results to Analysis', () => {
     expect(container.querySelectorAll('[data-results-status]')).toHaveLength(0);
     expect(await axeViolations(card)).toEqual([]);
 
-    const tradeCard = await waitFor(() => screen.getAllByRole('listitem').find(item => within(item).queryByText('BTCUSDT') !== null)!);
-    fireEvent.click(await within(tradeCard).findByRole('button', { name: 'After the trade: not reviewed yet' }));
+    fireEvent.click(await screen.findByRole('link', { name: /^BTCUSDT long, closed/ }));
+    await tradePageHeading('BTCUSDT · Long');
+    fireEvent.click(await waitFor(() => tradePagePart('Before and after the trade').getByRole('button', { name: 'After the trade: not reviewed yet' })));
     await act(async () => { fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Save review' })); });
+    await act(async () => { await router.navigate(-1); });
     await waitFor(() => expect(within(screen.getByRole('region', { name: 'Your coach' })).getByText('2 notes')).toBeInTheDocument());
   });
 });

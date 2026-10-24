@@ -19,6 +19,7 @@ import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '.
 import type { ChartDrawing } from '../src/features/chart';
 import type { DecimalString } from '../src/domain/trades/tradeTypes';
 import { axeViolations } from './fixtures/axe';
+import { renderTradePage, tradePageHeading } from './fixtures/tradePage';
 
 const names: string[] = [];
 async function database(): Promise<KairosDatabase> { const name = `kairos-journal-list-kit-${crypto.randomUUID()}`; names.push(name); const db = createKairosDatabase(name); await openKairosDatabase(db); return db; }
@@ -87,14 +88,21 @@ describe('T-049h the trade list on the kit', () => {
   });
 });
 
+/** Saves a closed trade and opens its own page (U15): a trade's "Delete trade" lives there, not on the Journal's row. */
+async function tradePageOf(db: KairosDatabase, symbol: string) {
+  const saved = await saveManualTrade(db, closed(symbol));
+  if (!saved.ok) throw new Error('fixture');
+  const view = renderTradePage(db, saved.tradeId);
+  await tradePageHeading(`${symbol} · Long`);
+  return view;
+}
+
 const closed = (symbol: string) => ({ symbol, marketType: 'crypto', side: 'long', status: 'closed', grossPnlCurrency: 'USDT', openedAt: '2026-09-18T09:00:00.000Z', closedAt: '2026-09-18T10:00:00.000Z', executions: [{ type: 'entry', price: '100', quantity: '1', executedAt: '2026-09-18T09:00:00.000Z' }, { type: 'exit', price: '110', quantity: '1', executedAt: '2026-09-18T10:00:00.000Z' }], fees: [{ amount: '0.5', currency: 'USDT' }] } as const);
 
 describe('T-049h a question before any saved record is deleted', () => {
   it('deleting a trade asks in a dialog; "Keep trade" keeps it and "Delete for good" deletes it', async () => {
     const db = await database();
-    await saveManualTrade(db, closed('ETHUSDT'));
-    render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
-    await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(1));
+    await tradePageOf(db, 'ETHUSDT');
     fireEvent.click(screen.getByRole('button', { name: 'Delete trade' }));
     let dialog = screen.getByRole('alertdialog', { name: 'Delete ETHUSDT for good?' });
     expect(dialog).toHaveTextContent('Its 2 entries and exits and 1 fee go with it.');
@@ -264,25 +272,21 @@ describe('T-049h fix r1: focus stays on something usable', () => {
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Trade history' })).toHaveFocus());
   });
 
-  it('after a trade is deleted, focus is on "Trade history"', async () => {
+  it('after a trade is deleted, focus is on the list\'s notice of it, under "Trade history" (T-060b review r1: so it is read out)', async () => {
     const db = await database();
-    await saveManualTrade(db, closed('ETHUSDT'));
     await saveManualTrade(db, closed('BTCUSDT'));
-    render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
-    await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(2));
-    const trigger = screen.getAllByRole('button', { name: 'Delete trade' })[0]!;
+    await tradePageOf(db, 'ETHUSDT');
+    const trigger = screen.getByRole('button', { name: 'Delete trade' });
     trigger.focus();
     fireEvent.click(trigger);
     await act(async () => { fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Delete for good' })); });
     await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(1));
-    await waitFor(() => expect(screen.getByRole('heading', { name: 'Trade history' })).toHaveFocus());
+    await waitFor(() => expect(screen.getByText('ETHUSDT deleted, with its 2 entries and exits and 1 fee.')).toHaveFocus());
   });
 
-  it('a delete that cannot be stored leaves no dialog and puts focus on the card\'s alert', async () => {
+  it('a delete that cannot be stored leaves no dialog and puts focus on the page\'s alert', async () => {
     const db = await database();
-    await saveManualTrade(db, closed('ETHUSDT'));
-    render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
-    await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(1));
+    await tradePageOf(db, 'ETHUSDT');
     vi.spyOn(db, 'transaction').mockImplementation((() => Promise.reject(new Error('storage'))) as never);
     fireEvent.click(screen.getByRole('button', { name: 'Delete trade' }));
     await act(async () => { fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Delete for good' })); });
@@ -295,9 +299,7 @@ describe('T-049h fix r1: focus stays on something usable', () => {
 
   it('"Keep trade" keeps the trade, its entries and exits, and its fees', async () => {
     const db = await database();
-    await saveManualTrade(db, closed('ETHUSDT'));
-    render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
-    await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(1));
+    await tradePageOf(db, 'ETHUSDT');
     fireEvent.click(screen.getByRole('button', { name: 'Delete trade' }));
     fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Keep trade' }));
     expect(screen.queryByRole('alertdialog')).toBeNull();

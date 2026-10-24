@@ -1,15 +1,13 @@
 import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter } from 'react-router';
-import { JournalRoute } from '../src/app/JournalRoute';
-import { PracticeRoute } from '../src/app/PracticeRoute';
 import { defineSavedAnalysis } from '../src/domain/saved-records/savedAnalysisContract';
 import { savePracticeTrade } from '../src/application/practice';
 import { saveManualTrade } from '../src/application/trades';
 import { createKairosDatabase, openKairosDatabase } from '../src/data/database';
 import { createKairosRepositories } from '../src/data/repositories';
+import { renderTradePage, tradePageHeading, tradePagePart } from './fixtures/tradePage';
 
 const names: string[] = [];
 async function database() { const name = `kairos-trade-delete-${names.length}-${crypto.randomUUID()}`; names.push(name); const db = createKairosDatabase(name); await openKairosDatabase(db); return db; }
@@ -25,14 +23,18 @@ describe('P30.2 trade delete control', () => {
     await saveManualTrade(db, closed('BTCUSDT'));
     await saveManualTrade(db, closed('ETHUSDT'));
     await createKairosRepositories(db).savedAnalyses.put(defineSavedAnalysis({ id: 'a-1', market: eth, drawings: [], riskRewards: [] }));
-    render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
+    const { router } = renderTradePage(db, (await db.trades.toArray())[0].id);
+    await act(async () => { await router.navigate('/journal'); });
     await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(2));
-    fireEvent.click(within(card('ETHUSDT')).getByRole('button', { name: 'Delete trade' }));
+    fireEvent.click(within(card('ETHUSDT')).getByRole('link'));
+    await tradePageHeading('ETHUSDT · Long');
+    fireEvent.click(tradePagePart('Change this trade').getByRole('button', { name: 'Delete trade' }));
     const confirm = screen.getByRole('alertdialog', { name: 'Delete ETHUSDT for good?' });
     expect(confirm).toHaveAccessibleDescription('Its 2 entries and exits and 1 fee go with it. A backup taken before this keeps it.');
     fireEvent.click(within(confirm).getByRole('button', { name: 'Delete for good' }));
     await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(1));
     expect(screen.getByRole('status').textContent).toBe('ETHUSDT deleted, with its 2 entries and exits and 1 fee.');
+    expect(screen.getByRole('status')).toHaveFocus();
     expect((await db.trades.toArray()).map(trade => trade.symbol)).toEqual(['BTCUSDT']);
     expect(await counts(db)).toEqual({ trades: 1, executions: 2, fees: 1, analyses: 1 });
   });
@@ -40,8 +42,11 @@ describe('P30.2 trade delete control', () => {
   it('keeps the trade when the confirmation is declined and reports a storage failure without changing anything', async () => {
     const db = await database();
     await saveManualTrade(db, closed('BTCUSDT'));
-    render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
+    const { router } = renderTradePage(db, (await db.trades.toArray())[0].id);
+    await act(async () => { await router.navigate('/journal'); });
     await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(1));
+    fireEvent.click(within(card('BTCUSDT')).getByRole('link'));
+    await tradePageHeading('BTCUSDT · Long');
     fireEvent.click(screen.getByRole('button', { name: 'Delete trade' }));
     fireEvent.click(screen.getByRole('button', { name: 'Keep trade' }));
     expect(screen.queryByRole('alertdialog', { name: 'Delete BTCUSDT for good?' })).toBeNull();
@@ -52,15 +57,20 @@ describe('P30.2 trade delete control', () => {
     expect((await screen.findByRole('alert')).textContent).toBe('Kairos could not delete BTCUSDT. Nothing was changed.');
     vi.restoreAllMocks();
     expect(await db.trades.count()).toBe(1);
-    expect(screen.getAllByRole('listitem')).toHaveLength(1);
+    expect(screen.getByRole('heading', { level: 1, name: 'BTCUSDT · Long' })).toBeInTheDocument();
+    await act(async () => { await router.navigate('/journal'); });
+    await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(1));
   });
 
   it('deletes a practice trade from the Practice page without touching the journal', async () => {
     const db = await database();
     await saveManualTrade(db, closed('BTCUSDT'));
     await savePracticeTrade(db, closed('SOLUSDT'));
-    render(<MemoryRouter><PracticeRoute db={db} /></MemoryRouter>);
+    const { router } = renderTradePage(db, (await db.trades.toArray()).find(trade => trade.source === 'paper')!.id, { scope: 'practice' });
+    await act(async () => { await router.navigate('/practice'); });
     await waitFor(() => expect(screen.getByRole('region', { name: 'Practice' }).getAttribute('data-practice-count')).toBe('1'));
+    fireEvent.click(within(card('SOLUSDT')).getByRole('link'));
+    await tradePageHeading('SOLUSDT · Long');
     fireEvent.click(screen.getByRole('button', { name: 'Delete trade' }));
     fireEvent.click(screen.getByRole('button', { name: 'Delete for good' }));
     await waitFor(() => expect(screen.getByRole('region', { name: 'Practice' }).getAttribute('data-practice-count')).toBe('0'));
