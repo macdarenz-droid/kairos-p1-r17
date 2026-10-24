@@ -1,12 +1,12 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
-import type { JournalHistoryEntry } from '../application/journal';
-import { openDraftTrade } from '../application/trades/openDraftTrade';
-import { prepareManualTradeExecutionDetails, type ManualExecutionRow, type ManualFeeRow } from '../application/trades/manualTradeExecutionDraft';
-import { PRICE_CURRENCY_INPUT_ERROR } from '../application/trades/priceCurrencyInput';
-import type { KairosDatabase } from '../data/database';
-import type { TradeSource } from '../domain/trades';
-import { JournalExecutionFields } from '../features/journal/JournalExecutionFields';
-import { JournalPriceCurrencyField } from '../features/journal/JournalPriceCurrencyField';
+import type { JournalHistoryEntry } from '../../application/journal';
+import { openDraftTrade } from '../../application/trades/openDraftTrade';
+import { prepareManualTradeExecutionDetails, type ManualExecutionRow, type ManualFeeRow } from '../../application/trades/manualTradeExecutionDraft';
+import { PRICE_CURRENCY_INPUT_ERROR } from '../../application/trades/priceCurrencyInput';
+import type { KairosDatabase } from '../../data/database';
+import type { TradeSource } from '../../domain/trades';
+import { JournalExecutionFields } from './JournalExecutionFields';
+import { JournalPriceCurrencyField } from './JournalPriceCurrencyField';
 import './journalDraftTradeActivation.css';
 
 interface Props {

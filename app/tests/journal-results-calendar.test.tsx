@@ -104,7 +104,7 @@ describe('the results calendar', () => {
     const heading = await screen.findByRole('heading', { name: 'Trades closed on 2 September 2026' });
     const panel = within(heading.closest('.kairos-results-day-trades') as HTMLElement);
     expect(await panel.findByText('BTCUSDT')).toBeInTheDocument();
-    expect(panel.getByRole('link', { name: 'View trade' })).toHaveAttribute('href', `/analysis?trade=${encodeURIComponent(september.tradeId as TradeId)}`);
+    expect(panel.getByRole('link', { name: 'View trade' })).toHaveAttribute('href', `/journal/trades/${encodeURIComponent(september.tradeId as TradeId)}`);
 
     fireEvent.click(screen.getByRole('button', { name: 'Previous month' }));
     expect(await screen.findByRole('heading', { name: 'August 2026' })).toBeInTheDocument();

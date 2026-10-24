@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { COACH_NOTE_KINDS, type CoachNote, type CoachTrade } from '../src/application/coach/coachNotes';
-import { describeCoachNote, describeCoachTradeFacts, describeTradePlanVsExecution } from '../src/application/coach/coachWords';
+import { describeCoachNote, describeCoachTradeFacts, describePlanAndWhatHappened, describeTradePlanVsExecution } from '../src/application/coach/coachWords';
 import type { StrategyRuleResult } from '../src/application/discipline/strategyCheck';
 import type { DecimalString, TradeId } from '../src/domain/trades';
 
@@ -65,5 +65,17 @@ describe('T-041c the coach words', () => {
         expect(text).not.toMatch(/\d+\.\d|\bprice (of|at) \d/);
       }
     }
+  });
+});
+
+describe('T-060b plan and what happened, on the trade page', () => {
+  it('says every verdict the owner gave, kept or not, and nothing for one it could not give', () => {
+    expect(describePlanAndWhatHappened({ stop: { verdict: 'kept', stop: d('90'), averageExit: d('120') }, size: { verdict: 'as-planned', planned: d('2'), traded: d('2') } }))
+      .toEqual(['Your stop was 90, and you closed at 120 on average, without reaching it.', 'You traded the size you planned: 2.']);
+    expect(describePlanAndWhatHappened({ stop: { verdict: 'passed', stop: d('95'), averageExit: d('90') }, size: { verdict: 'smaller', planned: d('2'), traded: d('1.5') } }))
+      .toEqual(['Your stop was 95, and you closed at 90 on average, beyond it.', 'You planned a size of 2 and traded 1.5, less than planned.']);
+    expect(describePlanAndWhatHappened({ stop: { verdict: 'unknown', reason: 'no-stop' }, size: { verdict: 'bigger', planned: d('1'), traded: d('3') } }))
+      .toEqual(['You planned a size of 1 and traded 3.']);
+    expect(describePlanAndWhatHappened({ stop: { verdict: 'unknown', reason: 'from-candles' }, size: { verdict: 'unknown', reason: 'from-candles' } })).toEqual([]);
   });
 });

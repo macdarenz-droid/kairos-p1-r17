@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { JOURNAL_HISTORY_SOURCES, type JournalHistoryEntry, type JournalHistoryScope } from '../application/journal';
 import { saveTradeDiscipline } from '../application/discipline';
 import { Button, EmptyState, ErrorState, Field, ResultText, Select, Skeleton } from '../design-system/primitives';
@@ -12,9 +12,9 @@ import { useTradeDisciplineCards } from '../features/discipline/useTradeDiscipli
 import type { TradeId, TradeSource, TradeStatus } from '../domain/trades';
 import { TradePicture } from '../features/journal/TradePicture';
 import { ReviewTradeLink } from './ReviewTradeLink';
-import { JournalOpenTradeUpdate } from './JournalOpenTradeUpdate';
-import { JournalDraftTradeActivation } from './JournalDraftTradeActivation';
-import { JournalTradeDeleteControl } from './JournalTradeDeleteControl';
+import { JournalOpenTradeUpdate } from '../features/journal/JournalOpenTradeUpdate';
+import { JournalDraftTradeActivation } from '../features/journal/JournalDraftTradeActivation';
+import { JournalTradeDeleteControl } from '../features/journal/JournalTradeDeleteControl';
 import type { KairosDatabase } from '../data/database';
 import { addTradeContractSize, canAddTradeContractSize, updateTradeExecution } from '../application/trades';
 import { AddContractSizeControl } from '../features/journal/AddContractSizeControl';
@@ -53,6 +53,8 @@ interface JournalHistoryListProps {
   readonly onDisciplineSaved?: () => void;
   /** P27: which sources get the "Before you trade" and "After the trade" controls. Defaults to `allowedSources`. Practice adds `'replay'`, whose entries and exits come from past candles and stay read-only. */
   readonly disciplineSources?: readonly TradeSource[];
+  /** U15 (D264): the list was opened after a trade's page deleted that trade; its heading takes focus on arrival. */
+  readonly focusHeadingOnArrival?: boolean;
 }
 
 /** U12 (D245): a plain notice, or the prompt after an update closed a trade: "Trade closed. How did it go?" with "Review it now". */
@@ -96,7 +98,7 @@ function TradeTagChips({ tags }: { readonly tags: readonly string[] }) {
   </ul>;
 }
 
-export function JournalHistoryList({ entries, isLoading, errorMessage, statusFilter, onStatusFilterChange, onRetry, db, onTradeUpdated, updateNotice, onTradeDeleted, onTradeOpened, allowedSources = ['manual'], hasOlder = false, isLoadingOlder = false, olderFailed = false, onShowOlder, onDisciplineSaved, disciplineSources = allowedSources }: JournalHistoryListProps) {
+export function JournalHistoryList({ entries, isLoading, errorMessage, statusFilter, onStatusFilterChange, onRetry, db, onTradeUpdated, updateNotice, onTradeDeleted, onTradeOpened, allowedSources = ['manual'], hasOlder = false, isLoadingOlder = false, olderFailed = false, onShowOlder, onDisciplineSaved, disciplineSources = allowedSources, focusHeadingOnArrival = false }: JournalHistoryListProps) {
   const discipline = useTradeDisciplineCards(db, entries.map(entry => entry.trade.id));
   // U12 (D245): "Review it now" asks that trade's "After the trade" control to open; the prompt goes once that sheet
   // closes, so focus always has somewhere to return to.
@@ -135,6 +137,8 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
   const retryLoad = onRetry === undefined ? undefined : () => { const tapped = tappedRetry(); refocus.current = tapped ? { kind: 'load', tapped } : null; onRetry(); };
   const retryOlder = onShowOlder === undefined ? undefined : () => { const tapped = tappedRetry(); refocus.current = tapped ? { kind: 'older', shown: entries.length, tapped } : null; onShowOlder(); };
   const tradeDeleted = onTradeDeleted === undefined ? undefined : async (notice: string) => { await onTradeDeleted(notice); heading.current?.focus(); };
+  // In the commit that shows the list, before the shell would move focus to the page's own heading (D179).
+  useLayoutEffect(() => { if (focusHeadingOnArrival) heading.current?.focus(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // U11: after a point value is added and the list read again, that card's "Result after fees" row takes focus once it shows the value.
   const [focusResultOf, setFocusResultOf] = useState<TradeId | null>(null);
   useEffect(() => {
@@ -207,7 +211,7 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
                 </div>
                 <time dateTime={timestamp}>{formatTimestamp(timestamp)}</time>
                 {entry.trade.tags?.length ? <TradeTagChips tags={entry.trade.tags} /> : null}
-                <ReviewTradeLink id={entry.trade.id} className="kairos-history-card__review" />
+                <ReviewTradeLink id={entry.trade.id} scope={scope} className="kairos-history-card__review" />
                 {db && (entry.trade.status === 'draft' || entry.trade.status === 'open') && disciplineSources.includes(entry.trade.source)
                   ? discipline.state.kind === 'ready' && discipline.state.ids.has(entry.trade.id)
                     ? <TradeChecklistControl symbol={entry.trade.symbol} tradeId={entry.trade.id} scope={scope} items={discipline.state.lists.checklist} record={discipline.state.records.get(entry.trade.id) ?? null} save={input => saveTradeDiscipline(db, input)} onSaved={disciplineSaved} />

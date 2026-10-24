@@ -14,9 +14,12 @@ import { TradeForm } from '../features/journal/TradeForm';
 import { Card, PageHeader, useToast } from '../design-system/primitives';
 import { CoachCard } from '../features/discipline/CoachCard';
 import { useJournalHistoryPages } from '../features/journal/useJournalHistoryPages';
+import { useArrivedNotice } from '../features/journal/TradePageScreen';
 
 interface JournalRouteProps {
   readonly db?: KairosDatabase;
+  /** What a trade's page said when it sent you here (a delete, D264): shown in the list, with focus on its heading. */
+  readonly arrivedNotice?: string;
   /** The current instant as a canonical UTC ISO string, for the coach card; tests inject a fixed one. */
   readonly now?: () => string;
 }
@@ -39,11 +42,12 @@ export function JournalRoute(props: JournalRouteProps) {
 
 function JournalAddress(props: JournalRouteProps) {
   const [params] = useSearchParams();
-  return params.get('log') === '1' ? <Navigate to={LOG_TRADE_ADDRESS} replace /> : <JournalPage {...props} />;
+  const arrivedNotice = useArrivedNotice();
+  return params.get('log') === '1' ? <Navigate to={LOG_TRADE_ADDRESS} replace /> : <JournalPage {...props} arrivedNotice={arrivedNotice} />;
 }
 
-function JournalPage({ db = kairosDatabase, now }: JournalRouteProps) {
-  const [updateNotice, setUpdateNotice] = useState<HistoryNotice>('');
+function JournalPage({ db = kairosDatabase, now, arrivedNotice }: JournalRouteProps) {
+  const [updateNotice, setUpdateNotice] = useState<HistoryNotice>(arrivedNotice ?? '');
   const [historyStatus, setHistoryStatus] = useState<TradeStatus | ''>('');
   const [journalRevision, setJournalRevision] = useState(0);
   const [disciplineRevision, setDisciplineRevision] = useState(0);
@@ -105,6 +109,7 @@ function JournalPage({ db = kairosDatabase, now }: JournalRouteProps) {
         statusFilter={historyStatus}
         onStatusFilterChange={setHistoryStatus}
         onDisciplineSaved={() => setDisciplineRevision(value => value + 1)}
+        focusHeadingOnArrival={arrivedNotice !== undefined}
       />
     </section>
   );

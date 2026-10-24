@@ -1,0 +1,8 @@
+/* U15 (D260): a trade's own page. The picture, then its parts as cards; what changes it last. */
+.kairos-trade-page { display: grid; gap: var(--kairos-space-4); min-width: 0; }
+.kairos-trade-page__part { display: grid; justify-items: start; gap: var(--kairos-space-3); min-width: 0; }
+.kairos-trade-page__part h2 { margin: 0; font-size: var(--kairos-font-size-lg); }
+.kairos-trade-page__part p { margin: 0; overflow-wrap: anywhere; }
+.kairos-trade-page__notice { display: flex; flex-wrap: wrap; align-items: center; gap: var(--kairos-space-3); margin: 0; }
+.kairos-trade-page__notice p { margin: 0; }
+.kairos-trade-page__chart { margin: 0; }

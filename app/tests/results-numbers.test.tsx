@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ReviewTradeLink, tradeReviewHref } from '../src/app/ReviewTradeLink';
+import { ReviewTradeLink, tradePageHref } from '../src/app/ReviewTradeLink';
 import { saveHomeCurrency } from '../src/application/currency/homeCurrency';
 import { loadResultsDashboard, type ResultsDashboardProjection } from '../src/application/performance/resultsDashboard';
 import { saveManualTrade, type SaveManualTradeInput } from '../src/application/trades';
@@ -101,7 +101,7 @@ describe('T-051g your numbers as pictures', () => {
     const best = tile(numbers, 'Best trade');
     expect(best).toHaveTextContent('+20 USDT');
     const bestId = dashboard.summary.bestTrade.available ? dashboard.summary.bestTrade.tradeId : '';
-    expect(within(best).getByRole('link', { name: 'View trade' })).toHaveAttribute('href', tradeReviewHref(bestId));
+    expect(within(best).getByRole('link', { name: 'View trade' })).toHaveAttribute('href', tradePageHref(bestId));
     expect(tile(numbers, 'Worst trade')).toHaveTextContent('-15 USDT');
     expect(within(tile(numbers, 'Worst trade')).getByRole('link', { name: 'View trade' })).toBeInTheDocument();
     expect(numbers.querySelector('[data-kairos-emphasis]')).toBeNull();
@@ -184,7 +184,7 @@ describe('T-051g your numbers as pictures', () => {
     expect(tile(numbers, 'Best trade')).toHaveTextContent('+7 USDT');
     expect(tile(numbers, 'Worst trade')).toHaveTextContent('+7 USDT');
     const id = dashboard.entries[0]!.trade.id;
-    for (const label of ['Best trade', 'Worst trade']) expect(within(tile(numbers, label)).getByRole('link', { name: 'View trade' })).toHaveAttribute('href', tradeReviewHref(id));
+    for (const label of ['Best trade', 'Worst trade']) expect(within(tile(numbers, label)).getByRole('link', { name: 'View trade' })).toHaveAttribute('href', tradePageHref(id));
   });
 
   it('names the missing exchange rate in the home currency, never "Choose a home currency"', async () => {

@@ -92,7 +92,7 @@ describe('T-051h the calendar with amounts, a week column and the month total', 
     await waitFor(() => expect(found).not.toHaveAttribute('aria-busy'));
     fireEvent.click(within(cell(found, '2026-09-09')).getByRole('button'));
     const heading = await within(found).findByRole('heading', { name: 'Trades closed on 9 September 2026' });
-    const id = within(heading.closest('.kairos-results-day-trades') as HTMLElement).getByRole('link', { name: 'View trade' }).getAttribute('href')!.split('=')[1]!;
+    const id = within(heading.closest('.kairos-results-day-trades') as HTMLElement).getByRole('link', { name: 'View trade' }).getAttribute('href')!.split('/').pop()!;
     expect((await deleteTradeRecord(db, decodeURIComponent(id) as never)).ok).toBe(true);
     view.rerender(<MemoryRouter><Host db={db} initial={{ kind: 'month', at: null }} revision={1} /></MemoryRouter>);
     await waitFor(() => expect(within(cell(found, '2026-09-09')).queryByRole('button')).toBeNull());

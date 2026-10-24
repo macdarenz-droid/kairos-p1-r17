@@ -15,7 +15,7 @@ import { createBackupDelivery } from '../features/backup/backupDelivery';
 import { createBrowserBackupDownloadPorts, runBackup } from '../application/backup';
 import { readDeviceTimeZone } from '../features/settings/DeviceTimeZoneButton';
 import { startVisualPnlTimeZoneFromDevice } from '../application/visual-pnl';
-import { kairosDatabase, listenForKairosJournalChanges, openKairosDatabase, subscribeDatabaseLifecycle, subscribeKairosWriteFailures, type KairosDatabase } from '../data/database';
+import { JOURNAL_CHANGED_EVENT, kairosDatabase, listenForKairosJournalChanges, openKairosDatabase, subscribeDatabaseLifecycle, subscribeKairosWriteFailures, type KairosDatabase } from '../data/database';
 import { activateWaitingServiceWorker, subscribeServiceWorkerStatus } from '../pwa/serviceWorkerRegistration';
 
 const updatePromptPort: UpdatePromptPort = Object.freeze({ subscribe: subscribeServiceWorkerStatus, activate: activateWaitingServiceWorker });
@@ -73,11 +73,8 @@ function useScreenTitleAndFocus(pathname: string, onTitle: (title: string) => vo
 }
 
 const SCROLL_PLACES_KEY = 'kairos.scroll-places.v1';
-/**
- * D229: another tab saved. The shell raises it once per message from the other tab; every screen that reads again when
- * you come back to the app also reads again on it.
- */
-export const JOURNAL_CHANGED_EVENT = 'kairos:journal-changed';
+/** D229: another tab saved (the event's owner is `data/database/transactions.ts`); app screens import it from here. */
+export { JOURNAL_CHANGED_EVENT };
 /** Places kept across a reload (sessionStorage, this tab only); the newest are kept. */
 const SCROLL_PLACES_KEPT = 50;
 /** How long a returning page keeps reaching for its place while its data arrives. */

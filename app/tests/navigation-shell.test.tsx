@@ -52,10 +52,10 @@ describe('P8.1 navigation shell', () => {
 
 /** Every route in the table, with the tab it belongs to and where "up" goes (D218): a new route must be added here. */
 const ROUTE_HOMES: Readonly<Record<string, readonly [tab: string | null, parent: string | null]>> = {
-  '/': ['/', null], '/journal': ['/journal', null], '/journal/log': ['/journal', '/journal'], '/analysis': ['/analysis', null], '/library': ['/library', null], '/more': ['/more', null],
+  '/': ['/', null], '/journal': ['/journal', null], '/journal/log': ['/journal', '/journal'], '/journal/trades/:id': ['/journal', '/journal'], '/analysis': ['/analysis', null], '/library': ['/library', null], '/more': ['/more', null],
   '/library/words': ['/library', '/library'], '/library/calculators': ['/library', '/library'], '/library/lessons': ['/library', '/library'],
   '/library/lessons/:lessonId': ['/library', '/library/lessons'],
-  '/practice': ['/more', '/more'], '/practice/replay': ['/more', '/practice'], '/practice/coach': ['/more', '/practice'], '/practice/patterns': ['/more', '/practice'],
+  '/practice': ['/more', '/more'], '/practice/replay': ['/more', '/practice'], '/practice/coach': ['/more', '/practice'], '/practice/patterns': ['/more', '/practice'], '/practice/trades/:id': ['/more', '/practice'],
   '/goals': ['/more', '/more'], '/strategies': ['/more', '/more'], '/coach': ['/analysis', '/analysis?view=discipline'], '/patterns': ['/analysis', '/analysis?view=patterns'],
   '/news-calendar': ['/more', '/more'], '/currency': ['/more', '/more'], '/settings': ['/more', '/more'], '/profile': ['/more', '/more'],
   '/setup': ['/more', '/more'], '/backup': ['/more', '/more'],
@@ -68,7 +68,7 @@ describe('T-053a where am I', () => {
     const paths = children.map(route => (route.index ? '/' : `/${route.path}`));
     expect(paths.slice().sort()).toEqual(Object.keys(ROUTE_HOMES).sort());
     for (const path of paths) {
-      const address = path.replace(':lessonId', 'first').replace('*', 'no-such-page');
+      const address = path.replace(':lessonId', 'first').replace(':id', 'first').replace('*', 'no-such-page');
       const [tab, parent] = ROUTE_HOMES[path]!;
       expect(navigationTabOf(address)?.to ?? null, path).toBe(tab);
       expect(pageParentOf(address)?.to ?? null, path).toBe(parent);

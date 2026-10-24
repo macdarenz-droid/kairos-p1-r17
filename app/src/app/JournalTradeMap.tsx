@@ -1,7 +1,7 @@
 import type { JournalHistoryEntry } from '../application/journal';
 import { projectJournalTradeVisualizer } from '../application/trade-visualizer';
 import { JournalTradeMapGraphic } from './JournalTradeMapGraphic';
-import { reviewTimestamp } from './TradeReviewDetails';
+import { reviewTimestamp } from '../features/journal/TradeDetails';
 
 interface JournalTradeMapProps {
   readonly entry: JournalHistoryEntry;

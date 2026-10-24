@@ -54,6 +54,7 @@ export type { DatabaseDeviceHandleRecord, DatabaseEconomicEventRecord, DatabaseE
 
 export type { DatabaseIntegrityCheck, DatabaseIntegrityCheckId, DatabaseIntegrityCheckTier, DatabaseIntegrityReport } from './integrity';
 export {
+  JOURNAL_CHANGED_EVENT,
   KAIROS_JOURNAL_CHANNEL,
   classifyKairosWriteFailure,
   listenForKairosJournalChanges,

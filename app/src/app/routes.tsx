@@ -45,6 +45,11 @@ export const appRoutes = [
         const [{ LogTradeScreen }] = await Promise.all([import('../features/journal/LogTradeScreen'), import('./journalRoute.css')]);
         return { Component: LogTradeScreen };
       } },
+      // D260: a trade's own page wears the Journal's look for its controls and Analysis's for its details.
+      { path: 'journal/trades/:id', lazy: async () => {
+        const [{ TradePageScreen }] = await Promise.all([import('../features/journal/TradePageScreen'), import('./journalRoute.css'), import('./tradeReview.css')]);
+        return { Component: function JournalTradePageRoute() { return <TradePageScreen scope="real" />; } };
+      } },
       { path: 'analysis', lazy: async () => {
         const [{ AnalysisRoute }, { createEcbReferenceRatesPort }] = await Promise.all([import('./AnalysisRoute'), import('../services/exchange-rates/ecbReferenceRates')]);
         const rates = createEcbReferenceRatesPort();
@@ -61,6 +66,10 @@ export const appRoutes = [
         const rates = createEcbReferenceRatesPort();
         return { Component: function PracticeWithRatesRoute() { return <PracticeRoute rates={rates} />; } };
       } },
+      { path: 'practice/trades/:id', lazy: async () => {
+        const [{ TradePageScreen }] = await Promise.all([import('../features/journal/TradePageScreen'), import('./journalRoute.css'), import('./tradeReview.css')]);
+        return { Component: function PracticeTradePageRoute() { return <TradePageScreen scope="practice" />; } };
+      } },
       { path: 'practice/replay', lazy: async () => {
         const { ReplayScreen } = await import('../features/practice/ReplayScreen');
         const market = createTradePictureCandleBrowserDeps();
@@ -68,7 +77,7 @@ export const appRoutes = [
       } },
       { path: 'practice/coach', lazy: async () => {
         const { CoachScreen } = await import('../features/discipline/CoachScreen');
-        return { Component: function PracticeCoachRoute() { return <CoachScreen db={kairosDatabase} scope="practice" renderTradeLink={id => <ReviewTradeLink id={id} />} />; } };
+        return { Component: function PracticeCoachRoute() { return <CoachScreen db={kairosDatabase} scope="practice" renderTradeLink={id => <ReviewTradeLink id={id} scope="practice" />} />; } };
       } },
       { path: 'practice/patterns', lazy: async () => {
         const { PatternsScreen } = await import('../features/patterns/PatternsScreen');

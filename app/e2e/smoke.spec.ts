@@ -87,6 +87,15 @@ test('(c) log a closed trade, find it in Your Trades and open it in Analysis', a
   await page.getByRole('button', { name: /BTCUSDT, long, Profit/ }).dispatchEvent('click');
   await page.getByRole('link', { name: 'View trade' }).or(page.getByRole('button', { name: 'View trade' })).first().click();
 
+  // U15 (D260): the trade's own page, then the same trade on the market chart.
+  await expect(page).toHaveURL(/\/journal\/trades\//);
+  await expect(page.getByRole('heading', { level: 1, name: 'BTCUSDT · Long' })).toBeFocused();
+  await expect(page.getByText('Recorded result')).toBeVisible();
+  await expect(page.getByText('150 USDT').first()).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  const tradePageAxe = await new AxeBuilder({ page }).include('main').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(tradePageAxe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+  await page.getByRole('link', { name: 'See it on the market chart' }).click();
   await expect(page).toHaveURL(/\/analysis\?trade=/);
   await expect(page.getByText('Recorded result')).toBeVisible();
   await expect(page.getByText('150 USDT').first()).toBeVisible();
@@ -463,6 +472,8 @@ test('(l) Forex: a EUR/USD trade in units, its picture asking only the Kairos se
   await dialog.getByRole('button', { name: 'Close' }).click();
 
   await card.getByRole('link', { name: 'View trade' }).click();
+  await expect(page).toHaveURL(/\/(journal|practice)\/trades\//);
+  await page.getByRole('link', { name: 'See it on the market chart' }).click();
   await expect(page).toHaveURL(/\/analysis\?trade=/);
   await expect(page.getByRole('heading', { name: 'Your trade' })).toBeVisible();
   // The pair's own chart, not ready on a server without the token.
@@ -518,6 +529,8 @@ test('(m) Stocks: an AAPL trade in shares, its picture without crypto candles, A
   await dialog.getByRole('button', { name: 'Close' }).click();
 
   await card.getByRole('link', { name: 'View trade' }).click();
+  await expect(page).toHaveURL(/\/(journal|practice)\/trades\//);
+  await page.getByRole('link', { name: 'See it on the market chart' }).click();
   await expect(page).toHaveURL(/\/analysis\?trade=/);
   await expect(page.getByRole('heading', { name: 'Your trade' })).toBeVisible();
   await expect(page.getByText(/The market chart has crypto and forex markets for now\. Your stock trade is drawn in its picture above/)).toBeVisible();
@@ -1705,6 +1718,8 @@ test('(ac) Forex candles: a EUR/USD trade and a practice gold trade drawn with O
 
   // View trade: the Analysis chart draws the pair from OANDA with the trade's entries and exits, read again every 30 seconds.
   await card.getByRole('link', { name: 'View trade' }).click();
+  await expect(page).toHaveURL(/\/(journal|practice)\/trades\//);
+  await page.getByRole('link', { name: 'See it on the market chart' }).click();
   await expect(page).toHaveURL(/\/analysis\?trade=/);
   const chart = page.getByRole('region', { name: 'Market chart' });
   await expect(chart.getByText('OANDA · EUR/USD · mid prices')).toBeVisible();

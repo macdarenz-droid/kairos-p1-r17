@@ -11,7 +11,7 @@ import { kairosDatabase, type KairosDatabase } from '../data/database';
 import type { TradeId } from '../domain/trades';
 import { Button, PageHeader, Segmented, Sheet } from '../design-system/primitives';
 import { Icon } from '../design-system/icons/Icon';
-import { TradeReviewDetails, reviewTimestamp } from './TradeReviewDetails';
+import { TradeDetails, reviewTimestamp } from '../features/journal/TradeDetails';
 import './tradeReview.css';
 import { AnalysisHistoryWorkspace } from './AnalysisHistoryWorkspace';
 import { AnalysisHandoffContext, parseAnalysisHandoff } from './analysisHandoff';
@@ -207,8 +207,8 @@ export function AnalysisRoute({ load = loadTradeReview, db = kairosDatabase, now
     <nav className="kairos-review__navigation" aria-label="Trade review navigation">{selectedId !== null ? <Link to="/analysis?view=chart">Choose another trade</Link> : null}<Link to="/journal">Back to Journal</Link></nav>
     {loading ? <p role="status" className="kairos-review__card">Loading your saved trade…</p> : current?.error ? <div role="alert" className="kairos-review__card"><p>Could not load this view. Your saved trades have not changed.</p><button type="button" onClick={refresh}>Try again</button></div> : result?.kind === 'missing' ? <div className="kairos-review__card"><h2>Trade not found</h2><p>This trade is not available on this device. Choose another saved trade to continue.</p></div> : result?.kind === 'selection' ? <section className="kairos-review__card" aria-label="Choose a saved trade">
       <h2>Choose a saved trade</h2>
-      {result.entries.length === 0 ? <><p>No saved trades yet.</p><Link to="/journal">Log your first trade</Link></> : <><p className="kairos-review__note">Review the latest {DEFAULT_JOURNAL_HISTORY_LIMIT} updated trades. You can also open a trade from Journal or Your Trades.</p><label className="kairos-review__picker"><span>Saved trade</span><select value="" onChange={event => { if (event.target.value) setParams({ trade: event.target.value }); }}><option value="">Select a trade</option>{result.entries.map(({ trade }) => <option key={trade.id} value={trade.id}>{trade.symbol} · {trade.side} · {trade.status} · {reviewTimestamp(trade.openedAt ?? trade.updatedAt)}</option>)}</select></label></>}
-    </section> : result?.kind === 'trade' ? <TradeReviewDetails entry={result.entry} addContractSize={addContractSize} focusResult={focusReviewResult} onResultFocused={reviewResultFocused} /> : null}
+      {result.entries.length === 0 ? <><p>No saved trades yet.</p><Link to="/journal">Log your first trade</Link></> : <><p className="kairos-review__note">Your latest {DEFAULT_JOURNAL_HISTORY_LIMIT} trades, newest first. You can also open a trade from the Journal or Your Trades.</p><label className="kairos-review__picker"><span>Saved trade</span><select value="" onChange={event => { if (event.target.value) setParams({ trade: event.target.value }); }}><option value="">Select a trade</option>{result.entries.map(({ trade }) => <option key={trade.id} value={trade.id}>{trade.symbol} · {trade.side} · {trade.status} · {reviewTimestamp(trade.openedAt ?? trade.updatedAt)}</option>)}</select></label></>}
+    </section> : result?.kind === 'trade' ? <TradeDetails entry={result.entry} addContractSize={addContractSize} focusResult={focusReviewResult} onResultFocused={reviewResultFocused} /> : null}
     </>}
   </section>;
 }

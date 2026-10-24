@@ -22,6 +22,20 @@ export function describeTradePlanVsExecution(result: TradePlanVsExecution): read
   return Object.freeze(lines);
 }
 
+/**
+ * U15 (D260): the trade page's "Plan and what happened": a sentence for every verdict the owner could give, kept or not
+ * (the stop first, then the size). A verdict it could not give ('unknown') says nothing.
+ */
+export function describePlanAndWhatHappened(result: TradePlanVsExecution): readonly string[] {
+  const lines: string[] = [];
+  if (result.stop.verdict === 'passed') lines.push(stopSentence(result.stop.stop, result.stop.averageExit));
+  if (result.stop.verdict === 'kept') lines.push(`Your stop was ${result.stop.stop}, and you closed at ${result.stop.averageExit} on average, without reaching it.`);
+  if (result.size.verdict === 'bigger') lines.push(sizeSentence(result.size.planned, result.size.traded));
+  if (result.size.verdict === 'as-planned') lines.push(`You traded the size you planned: ${result.size.traded}.`);
+  if (result.size.verdict === 'smaller') lines.push(`You planned a size of ${result.size.planned} and traded ${result.size.traded}, less than planned.`);
+  return Object.freeze(lines);
+}
+
 export interface CoachNoteWords {
   /** A short label for the kind of note. */
   readonly topic: string;
