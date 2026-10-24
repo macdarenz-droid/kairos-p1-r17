@@ -75,6 +75,8 @@ test('(c) log a closed trade, find it in Your Trades and open it in Analysis', a
   await page.getByLabel('Exit 2 quantity').fill('0.1');
   await page.getByLabel('Exit 2 date and time').fill('2026-09-20T10:00');
   await page.getByRole('button', { name: 'Save trade' }).click();
+  // The saved message takes the focus the busy Save button gave up, never the page.
+  await expect(page.locator('.kairos-journal__feedback--success')).toBeFocused();
   const outcome = page.locator('[data-outcome="profit"]').first();
   await expect(outcome).toContainText('Profit');
   await expect(outcome).toContainText('150 USDT');
