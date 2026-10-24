@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router';
 import { loadHomeCurrency, saveHomeCurrency, type HomeCurrencyPreference } from '../../application/currency/homeCurrency';
 import { suggestHomeCurrency } from '../../application/currency/homeCurrencySuggestion';
 import { loadDisciplineLists, saveDisciplineLists } from '../../application/discipline';
-import { loadGoalsPreference, saveGoalsPreference, type GoalsPreference } from '../../application/goals';
+import { EMPTY_GOALS_PREFERENCE, goalsPreferenceInputOf, loadGoalsPreference, saveGoalsPreference, type GoalsPreference } from '../../application/goals';
 import { finishSetup, skipSetup } from '../../application/setup/setupState';
 import { loadTradedMarkets, saveTradedMarkets, TRADED_MARKET_TYPES } from '../../application/setup/tradedMarkets';
 import { loadVisualPnlTimeZone, saveVisualPnlTimeZone } from '../../application/visual-pnl';
@@ -247,7 +247,8 @@ export function SetupScreen({ db, deviceTimeZone, languages, now = wallClock }: 
       save: async () => {
         const typed = goals.tradesPerMonthTarget.trim() !== '' || goals.maxTradesPerDay.trim() !== '' || goals.monthlyResultTargetAmount.trim() !== '';
         if (!typed) return true;
-        const input = { ...goals, monthlyResultTargetCurrency: goals.monthlyResultTargetAmount.trim() === '' ? '' : goals.monthlyResultTargetCurrency };
+        // U13 (D246): goals this step does not show (loss limits, habits) are kept as saved.
+        const input = { ...goalsPreferenceInputOf(saved?.goals ?? EMPTY_GOALS_PREFERENCE), ...goals, monthlyResultTargetCurrency: goals.monthlyResultTargetAmount.trim() === '' ? '' : goals.monthlyResultTargetCurrency };
         const result = await saveGoalsPreference(db, input, { now });
         if (!result.ok) {
           setProblem(result.reason === 'monthly-result-target-currency-invalid' ? 'Type the result target\'s currency, such as USD or USDT.'

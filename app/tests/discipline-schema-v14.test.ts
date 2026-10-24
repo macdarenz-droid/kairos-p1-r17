@@ -76,6 +76,20 @@ describe('T-057a backup format 12', () => {
     expect(await target.tradeDiscipline.toArray()).toEqual([noted]);
   });
 
+  it('T-058c: a format 12 backup whose note names a loss limit restores', async () => {
+    const source = await current('loss-source');
+    const withLoss: TradeDisciplineRecord = { ...record, beforeSave: { notes: ['trade-limit', 'loss-limit'], reason: null, at } };
+    await source.trades.put(trade);
+    await source.tradeDiscipline.put(withLoss);
+    const exported = await exportKairosBackup(source, new Date(at));
+    if (!exported.ok) throw new Error('export failed');
+    const target = await current('loss-target');
+    const prepared = await prepareBackupRestore(target, exported.file.contents);
+    if (!prepared.ok) throw new Error('prepare failed');
+    expect((await commitBackupRestore(target, prepared.restore)).ok).toBe(true);
+    expect(await target.tradeDiscipline.toArray()).toEqual([withLoss]);
+  });
+
   it('refuses a format 12 backup with a note that breaks its rule', () => {
     const envelope = createKairosBackupEnvelope({ metadata: [], trades: [trade], tradeDiscipline: [{ ...noted, beforeSave: { notes: ['no-stop', 'no-stop'], reason: null, at } }] });
     expect(() => parseKairosBackup(JSON.stringify(envelope))).toThrow(expect.objectContaining({ code: 'INVALID_PAYLOAD' }));

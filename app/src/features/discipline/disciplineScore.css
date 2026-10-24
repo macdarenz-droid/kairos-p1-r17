@@ -151,3 +151,7 @@
 .kairos-discipline-part__strategies { display: grid; gap: var(--kairos-space-2); margin: 0; padding: 0; list-style: none; }
 .kairos-discipline-part__strategies li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--kairos-space-2); padding: var(--kairos-space-3) var(--kairos-space-4); border: 1px solid var(--kairos-border-subtle); border-radius: var(--kairos-radius-md); background: var(--kairos-surface-card); }
 .kairos-discipline-part__strategy-name { font-weight: var(--kairos-font-weight-semibold); overflow-wrap: anywhere; }
+.kairos-home-discipline__goal { display:flex; align-items:center; gap:var(--kairos-space-2); min-width:0; overflow-wrap:anywhere; }
+.kairos-home-discipline__goal .kairos-progress-ring { width:1.75rem; height:1.75rem; }
+.kairos-home-discipline__goal .kairos-progress-bar { flex:0 0 2.5rem; }
+.kairos-home-discipline__goal p { margin:0; }

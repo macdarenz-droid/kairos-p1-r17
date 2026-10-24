@@ -104,6 +104,24 @@ describe('T-057c "Before you save" in the form', () => {
     expect(box()).toBeNull();
   });
 
+  it('T-058c: names a loss limit reached today, and keeps it with the reason in the same write', async () => {
+    const db = await database();
+    await writeVisualPnlTimeZonePreference(createKairosRepositories(db).metadata, 'UTC', now.toISOString());
+    expect((await saveGoalsPreference(db, { lossLimitPerDay: '100', lossLimitCurrency: 'USDT' })).ok).toBe(true);
+    const at = new Date(now.getTime() - 60 * 60_000).toISOString();
+    expect((await saveManualTrade(db, { symbol: 'ETHUSDT', marketType: 'crypto', side: 'long', status: 'closed', grossPnlCurrency: 'USDT', openedAt: at, closedAt: at,
+      executions: [{ type: 'entry', price: '200', quantity: '1', executedAt: at }, { type: 'exit', price: '80', quantity: '1', executedAt: at }] })).ok).toBe(true);
+    mount(db);
+    planned();
+    await waitFor(() => expect(within(box()!).getAllByRole('listitem').map(item => item.textContent)).toEqual(['You have lost 120 USDT today. Your most for a day is 100 USDT.']));
+    fireEvent.change(screen.getByLabelText(/Why save anyway\?/), { target: { value: 'Small size, clear plan.' } });
+    save();
+    await screen.findByRole('status');
+    const records = await db.tradeDiscipline.toArray();
+    expect(records).toHaveLength(1);
+    expect(records[0]!.beforeSave).toMatchObject({ notes: ['loss-limit'], reason: 'Small size, clear plan.' });
+  });
+
   it('Save stays one tap, and keeps what the box named with the reason in the same write', async () => {
     const db = await database();
     const { container } = mount(db);

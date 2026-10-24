@@ -72,6 +72,7 @@ export function DisciplineOverview({ db, now, refreshRevision }: { readonly db: 
       <h2 id={scoreTitleId}>Your discipline this month</h2>
       <p>Your score counts the trades you closed this month, so it needs your time zone first. <PartLink to="/settings">Open Settings</PartLink></p>
     </section> : <DisciplineScorePanel state={scorePanelState(score)} periodLabel="this month" title="Your discipline this month" level={2} />}
+    <p><PartLink to="/goals">See your goals and score month by month</PartLink></p>
     <GoalsProgressCard db={db} now={now} />
     <CoachCard db={db} scope="real" now={now} refreshRevision={refreshRevision} disciplineRevision={0} level={2} />
     <StrategiesBlock state={strategies} />

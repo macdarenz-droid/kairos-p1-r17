@@ -7,7 +7,7 @@ import type { KairosDatabase } from '../../data/database';
 import { createKairosRepositories } from '../../data/repositories';
 import { readHomeCurrency } from '../currency/homeCurrency';
 import { disciplineListsPreferenceMetadataKey } from '../discipline/disciplineListsPreference';
-import { readGoalsPreference } from '../goals/goalsPreference';
+import { hasNoGoals, readGoalsPreference } from '../goals/goalsPreference';
 import { JOURNAL_HISTORY_SOURCES } from '../journal/historyQuery';
 import { readVisualPnlTimeZonePreference } from '../visual-pnl/timeZonePreference';
 import { readSetupState } from './setupState';
@@ -45,7 +45,7 @@ export async function loadGettingStarted(db: KairosDatabase): Promise<GettingSta
   const lists = await metadata.get(disciplineListsPreferenceMetadataKey);
   const goals = await readGoalsPreference(metadata);
   const trades = await repositories.trades.scopedBySource(JOURNAL_HISTORY_SOURCES.real).listRecentByUpdatedAt(1);
-  const goalSet = goals.tradesPerMonthTarget !== null || goals.maxTradesPerDay !== null || goals.monthlyResultTarget !== null;
+  const goalSet = !hasNoGoals(goals);
   const steps: GettingStartedStep[] = [
     { key: 'time-zone', label: 'Your time zone', done: timeZone !== null, setupStep: 1 },
     { key: 'home-currency', label: 'Your home currency', done: currency !== null, setupStep: 2 },

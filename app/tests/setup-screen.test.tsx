@@ -5,7 +5,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { loadHomeCurrency } from '../src/application/currency/homeCurrency';
 import { loadDisciplineLists } from '../src/application/discipline';
-import { loadGoalsPreference } from '../src/application/goals';
+import { loadGoalsPreference, saveGoalsPreference } from '../src/application/goals';
 import { loadSetupState } from '../src/application/setup/setupState';
 import { loadTradedMarkets } from '../src/application/setup/tradedMarkets';
 import { loadVisualPnlTimeZone } from '../src/application/visual-pnl';
@@ -88,7 +88,17 @@ describe('T-053d the setup screen', () => {
     await mount(db, '/setup?step=5');
     await next();
     await stepHeading("You're set");
-    expect(await loadGoalsPreference(db)).toEqual({ tradesPerMonthTarget: null, maxTradesPerDay: null, monthlyResultTarget: null });
+    expect(await loadGoalsPreference(db)).toEqual({ tradesPerMonthTarget: null, maxTradesPerDay: null, monthlyResultTarget: null, lossLimits: null, reviewEveryTrade: false, tickEveryStep: false });
+  });
+
+  it('T-058a: a loss limit or habit set on the Goals page survives the setup\'s goal step', async () => {
+    const db = await database();
+    expect((await saveGoalsPreference(db, { lossLimitPerDay: '100', lossLimitCurrency: 'USDT', reviewEveryTrade: true }, { now })).ok).toBe(true);
+    await mount(db, '/setup?step=5');
+    fireEvent.change(screen.getByLabelText('Most trades in a day'), { target: { value: '3' } });
+    await next();
+    await stepHeading("You're set");
+    expect(await loadGoalsPreference(db)).toMatchObject({ maxTradesPerDay: 3, lossLimits: { currency: 'USDT', perDay: '100', perWeek: null }, reviewEveryTrade: true });
   });
 
   it('"Skip for now" saves that it was skipped and opens Home', async () => {
