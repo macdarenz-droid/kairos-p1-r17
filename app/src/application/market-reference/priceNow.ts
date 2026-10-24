@@ -7,7 +7,7 @@
 import type { DecimalString, MarketType } from '../../domain/trades';
 import type { LiveMarketUniverseInstrumentMetadataAcquisitionPort } from '../../services/market-data/LiveMarketUniverseInstrumentMetadataAcquisitionPort';
 import type { MarketCandleHistoryPort, MarketCandleHistoryResult } from '../../services/market-data/MarketCandleHistoryPort';
-import type { MarketDataUnavailable, MarketDataUnavailableWhy } from '../../services/market-data/marketDataTypes';
+import type { MarketDataInstrument, MarketDataUnavailableWhy } from '../../services/market-data/marketDataTypes';
 import { parseForexPair } from '../markets/forexPair';
 import { describeMarketDataUnavailable, type MarketSourceWords } from '../online/onlineWords';
 import { FOREX_CANDLE_VENUE, FUTURES_CANDLE_VENUE, tradePictureCandleSource } from '../trade-visualizer/tradePictureCandles';
@@ -39,9 +39,13 @@ const MINUTE_MS = 60_000;
 /** A few minutes back, so a quiet market's last minute is still found. */
 const LOOK_BACK_MINUTES = 5;
 
-/** Whether the form offers "Price now" for this market: crypto, futures and the other Binance markets, and forex pairs (not stocks, D233). */
+/**
+ * Whether the form offers market prices for this market: crypto and futures (Binance) and forex pairs (OANDA). Not
+ * stocks (D233), and not options or other markets, whose prices are not the market's own price.
+ */
 export function hasPriceNow(marketType: MarketType | '', symbol: string): boolean {
-  return marketType !== '' && symbol.trim() !== '' && tradePictureCandleSource(marketType, symbol) !== null;
+  if (marketType !== 'crypto' && marketType !== 'futures' && marketType !== 'forex') return false;
+  return symbol.trim() !== '' && tradePictureCandleSource(marketType, symbol) !== null;
 }
 
 function fromCandles(
@@ -57,30 +61,46 @@ function fromCandles(
   return Object.freeze({ ok: true as const, price: last.close, at: last.openTime, source, market, midPrice: source === 'oanda' });
 }
 
+/** A typed market as the candle source names it, or why it has none: the shared first step of "Price now" and the minute check (D256, D257). */
+export type FormMarketSource =
+  | Readonly<{ ok: true; instrument: MarketDataInstrument; pair: Readonly<{ base: string; quote: string }> | null; source: 'binance' | 'oanda'; market: string; words: MarketSourceWords }>
+  | Extract<PriceNowResult, { ok: false }>;
+
+export async function resolveFormMarket(
+  deps: PriceNowDeps, ask: Readonly<{ marketType: MarketType; symbol: string }>, signal: Readonly<{ signal: AbortSignal }> | undefined,
+): Promise<FormMarketSource> {
+  const binance: MarketSourceWords = { provider: 'binance' };
+  if (tradePictureCandleSource(ask.marketType, ask.symbol) === 'forex') {
+    const parsed = parseForexPair(ask.symbol);
+    if (!parsed.ok) return Object.freeze({ ok: false as const, why: 'unknown-market' as const, retryAfterSeconds: null, note: null, source: binance });
+    const pair = parsed.pair;
+    return Object.freeze({ ok: true as const, instrument: { venue: FOREX_CANDLE_VENUE, symbol: pair.symbol }, pair: null, source: 'oanda' as const, market: pair.label, words: { provider: 'oanda' as const, pair: pair.label } });
+  }
+  const listed = await deps.metadata.acquireInstrumentMetadata(signal);
+  if (!listed.ok) {
+    const failure = listed as { readonly reason: string; readonly why?: MarketDataUnavailableWhy; readonly retryAfterSeconds?: number | null };
+    const why = failure.reason === 'unavailable' && failure.why !== undefined ? failure.why : 'source-down';
+    return Object.freeze({ ok: false as const, why, retryAfterSeconds: failure.retryAfterSeconds ?? null, note: null, source: binance });
+  }
+  const match = matchCryptoMarket(ask.symbol, ask.marketType, listed.facts);
+  if (!match.ok) return Object.freeze({ ok: false as const, why: 'not-listed' as const, retryAfterSeconds: null, note: match.note, source: binance });
+  const venue = match.candles === 'usdm-futures' ? FUTURES_CANDLE_VENUE : deps.venue;
+  return Object.freeze({ ok: true as const, instrument: { venue, symbol: match.symbol }, pair: { base: match.base, quote: match.quote }, source: 'binance' as const, market: match.symbol, words: binance });
+}
+
 /** The price now for a typed market, or why there is none. Never called for a market with no source (hasPriceNow). */
 export async function readPriceNow(
   deps: PriceNowDeps, ask: Readonly<{ marketType: MarketType; symbol: string }>, options: Readonly<{ nowMs: number; signal?: AbortSignal }>,
 ): Promise<PriceNowResult> {
-  const binance: MarketSourceWords = { provider: 'binance' };
   const window = { interval: '1m', limit: LOOK_BACK_MINUTES + 1, startTimeMs: (Math.floor(options.nowMs / MINUTE_MS) - LOOK_BACK_MINUTES) * MINUTE_MS, endTimeMs: options.nowMs };
   const signal = options.signal === undefined ? undefined : { signal: options.signal };
   try {
-    if (tradePictureCandleSource(ask.marketType, ask.symbol) === 'forex') {
-      const parsed = parseForexPair(ask.symbol);
-      if (!parsed.ok) return Object.freeze({ ok: false as const, why: 'unknown-market' as const, retryAfterSeconds: null, note: null, source: binance });
-      const pair = parsed.pair;
-      const words: MarketSourceWords = { provider: 'oanda', pair: pair.label };
-      return fromCandles(await deps.history.acquireHistory({ instrument: { venue: FOREX_CANDLE_VENUE, symbol: pair.symbol }, ...window }, signal), 'oanda', pair.label, words, null);
-    }
-    const listed = await deps.metadata.acquireInstrumentMetadata(signal);
-    if (!listed.ok) return fromCandles(listed as MarketDataUnavailable, 'binance', ask.symbol, binance, null);
-    const match = matchCryptoMarket(ask.symbol, ask.marketType, listed.facts);
-    if (!match.ok) return Object.freeze({ ok: false as const, why: 'not-listed' as const, retryAfterSeconds: null, note: match.note, source: binance });
-    const venue = match.candles === 'usdm-futures' ? FUTURES_CANDLE_VENUE : deps.venue;
-    const result = await deps.history.acquireHistory({ instrument: { venue, symbol: match.symbol }, ...window, pair: { base: match.base, quote: match.quote } }, signal);
-    return fromCandles(result, 'binance', match.symbol, binance, null);
+    const market = await resolveFormMarket(deps, ask, signal);
+    if (!market.ok) return market;
+    const request = market.pair === null ? { instrument: market.instrument, ...window } : { instrument: market.instrument, ...window, pair: market.pair };
+    return fromCandles(await deps.history.acquireHistory(request, signal), market.source, market.market, market.words, null);
   } catch {
-    return Object.freeze({ ok: false as const, why: 'source-down' as const, retryAfterSeconds: null, note: null, source: binance });
+    return Object.freeze({ ok: false as const, why: 'source-down' as const, retryAfterSeconds: null, note: null, source: { provider: 'binance' as const } });
   }
 }
 

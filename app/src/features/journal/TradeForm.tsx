@@ -33,6 +33,7 @@ import { TradeTagsField } from './TradeTagsField';
 import { BeforeYouTradeField } from './BeforeYouTradeField';
 import { BeforeYouSaveBox } from './BeforeYouSaveBox';
 import { CONTRACT_SIZE_HINT } from './AddContractSizeControl';
+import { MarketMinuteLink } from './MarketMinute';
 import { PriceNowInput } from './PriceNowInput';
 import { SymbolSearchField } from './SymbolSearchField';
 import { TradeFormMarketContext, useTradeFormMarketList } from './tradeFormMarket';
@@ -510,10 +511,10 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
 
             {isQuick ? <>
               <Field label="Entry price" id={`${idPrefix}-entry-price`} required invalid={quickInvalid('entryPrice')}>
-                {control => <PriceNowInput input={{ ...control, name: 'entryPrice' }} value={quick.entryPrice} onValueChange={text => updateQuick('entryPrice', text)} marketType={draft.marketType} symbol={draft.symbol} fills="the entry price" />}
+                {control => <PriceNowInput input={{ ...control, name: 'entryPrice' }} value={quick.entryPrice} onValueChange={text => updateQuick('entryPrice', text)} marketType={draft.marketType} symbol={draft.symbol} fills="the entry price" pairedTime={draft.openedAt} />}
               </Field>
               <Field label="Exit price" id={`${idPrefix}-exit-price`} required invalid={quickInvalid('exitPrice')}>
-                {control => <PriceNowInput input={{ ...control, name: 'exitPrice' }} value={quick.exitPrice} onValueChange={text => updateQuick('exitPrice', text)} marketType={draft.marketType} symbol={draft.symbol} fills="the exit price" />}
+                {control => <PriceNowInput input={{ ...control, name: 'exitPrice' }} value={quick.exitPrice} onValueChange={text => updateQuick('exitPrice', text)} marketType={draft.marketType} symbol={draft.symbol} fills="the exit price" pairedTime={draft.closedAt} />}
               </Field>
               {stopField(draft.plan.plannedStopPrice.trim() === '' ? QUICK_NO_STOP_HINT : undefined)}
               {targetField}
@@ -545,7 +546,7 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
 
             {showOpenedAt ? (
               <Field label="Opened" id={`${idPrefix}-opened-at`} required invalid={fieldHasError(feedback, 'trade') || quickInvalid('openedAt')}>
-                {control => <div className="kairos-trade-form__time">
+                {control => <><div className="kairos-trade-form__time">
                   <input
                     {...control}
                     name="openedAt"
@@ -554,13 +555,14 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
                     onChange={(event) => update('openedAt', event.target.value)}
                   />
                   {isQuick ? <Button variant="ghost" size="sm" aria-label="Set opened time to now" onClick={() => update('openedAt', localDateTimeValue(now()))}>Now</Button> : null}
-                </div>}
+                </div>
+                <MarketMinuteLink marketType={draft.marketType} symbol={draft.symbol} localTime={draft.openedAt} id={`${idPrefix}-opened-at`} of="opened" /></>}
               </Field>
             ) : null}
 
             {showClosedAt ? (
               <Field label="Closed" id={`${idPrefix}-closed-at`} required invalid={fieldHasError(feedback, 'trade') || quickInvalid('closedAt')}>
-                {control => <div className="kairos-trade-form__time">
+                {control => <><div className="kairos-trade-form__time">
                   <input
                     {...control}
                     name="closedAt"
@@ -569,7 +571,8 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
                     onChange={(event) => update('closedAt', event.target.value)}
                   />
                   {isQuick ? <Button variant="ghost" size="sm" aria-label="Set closed time to now" onClick={() => update('closedAt', localDateTimeValue(now()))}>Now</Button> : null}
-                </div>}
+                </div>
+                <MarketMinuteLink marketType={draft.marketType} symbol={draft.symbol} localTime={draft.closedAt} id={`${idPrefix}-closed-at`} of="closed" /></>}
               </Field>
             ) : null}
           </div>

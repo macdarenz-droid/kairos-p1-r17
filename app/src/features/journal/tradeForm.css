@@ -34,3 +34,7 @@
 .kairos-price-now__row > input { flex: 1 1 auto; min-width: 0; }
 .kairos-price-now__row > button { flex: none; }
 .kairos-price-now__source, .kairos-price-now__failed { color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-xs); }
+/* U14 (D257): the minute under a time, and "Typo?" under a price. */
+.kairos-market-minute { display: grid; gap: var(--kairos-space-1); justify-items: start; min-width: 0; grid-column: 1 / -1; }
+.kairos-market-minute__line { color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-xs); overflow-wrap: anywhere; }
+.kairos-price-now__typo { color: var(--kairos-state-warning, var(--kairos-text-primary)); font-size: var(--kairos-font-size-xs); overflow-wrap: anywhere; }

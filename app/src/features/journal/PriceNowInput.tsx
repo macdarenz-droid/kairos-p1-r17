@@ -2,6 +2,7 @@ import { useContext, useEffect, useRef, useState } from 'react';
 import { describePriceNowFailure, describePriceNowSource, hasPriceNow } from '../../application/market-reference/priceNow';
 import type { MarketType } from '../../domain/trades';
 import { Button, PriceInput } from '../../design-system/primitives';
+import { useTypoCheck } from './MarketMinute';
 import { TradeFormMarketContext } from './tradeFormMarket';
 import './tradeForm.css';
 
@@ -20,6 +21,8 @@ interface Props {
   readonly symbol: string;
   /** What the button fills, for its name: "the entry price", "entry 1". */
   readonly fills: string;
+  /** The `datetime-local` time this price was at, for "Typo?" (D257); empty when there is none yet. */
+  readonly pairedTime?: string;
 }
 
 /**
@@ -27,7 +30,7 @@ interface Props {
  * came from; it never fills by itself. Typing clears the source line. Without a market provider, or for a market with
  * no source (stocks), it is the plain price field.
  */
-export function PriceNowInput({ input, value, onValueChange, marketType, symbol, fills }: Props) {
+export function PriceNowInput({ input, value, onValueChange, marketType, symbol, fills, pairedTime = '' }: Props) {
   const market = useContext(TradeFormMarketContext);
   const read = market?.priceNow;
   const offered = read !== undefined && hasPriceNow(marketType, symbol);
@@ -61,10 +64,12 @@ export function PriceNowInput({ input, value, onValueChange, marketType, symbol,
     setState({ kind: 'failed', message: words.message, retry: words.retry });
   }
 
+  const typo = useTypoCheck({ marketType, symbol, price: value, localTime: pairedTime });
+  const typoId = `${input.id}-typo`;
   const statusId = `${input.id}-price-now`;
   const line = state.kind === 'filled' && state.price === value ? state.line : null;
   const shows = line !== null || state.kind === 'failed';
-  const describedBy = [input['aria-describedby'], shows ? statusId : null].filter(Boolean).join(' ') || undefined;
+  const describedBy = [input['aria-describedby'], shows ? statusId : null, typo !== null ? typoId : null].filter(Boolean).join(' ') || undefined;
   return <div className="kairos-price-now">
     <div className="kairos-price-now__row">
       <PriceInput {...input} aria-describedby={describedBy} value={value} onValueChange={onValueChange} />
@@ -74,5 +79,6 @@ export function PriceNowInput({ input, value, onValueChange, marketType, symbol,
     {offered && line !== null ? <small id={statusId} className="kairos-price-now__source">{line}</small> : null}
     {offered && state.kind === 'failed' ? <small id={statusId} className="kairos-price-now__failed">{state.message}
       {state.retry ? <> <Button ref={retryRef} variant="ghost" size="sm" onClick={() => { void ask(true); }}>Try again</Button></> : null}</small> : null}
+    <div aria-live="polite">{typo !== null ? <small id={typoId} className="kairos-price-now__typo">{typo}</small> : null}</div>
   </div>;
 }

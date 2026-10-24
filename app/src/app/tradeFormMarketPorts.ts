@@ -1,3 +1,4 @@
+import { readMarketMinute } from '../application/market-reference/minuteCheck';
 import { readPriceNow } from '../application/market-reference/priceNow';
 import { searchableCryptoMarkets } from '../application/market-reference/symbolSearch';
 import type { TradeFormMarket } from '../features/journal/tradeFormMarket';
@@ -6,7 +7,7 @@ import { createTradePictureCandleBrowserDeps } from './tradePictureCandleBrowser
 
 let browserMarket: TradeFormMarket | null = null;
 
-/** Composition root for the trade form's market parts (U14): the build's market list, searchable spot markets only, coin names, and the price now. */
+/** Composition root for the trade form's market parts (U14): the build's market list, searchable spot markets only, coin names, the price now and the minute check. */
 export function browserTradeFormMarket(): TradeFormMarket {
   if (browserMarket) return browserMarket;
   const ports = appMarketDataPorts();
@@ -18,6 +19,7 @@ export function browserTradeFormMarket(): TradeFormMarket {
     },
     // The same candles and market list as the trade picture (D256).
     priceNow: (ask, signal) => readPriceNow(createTradePictureCandleBrowserDeps(), ask, { nowMs: Date.now(), signal }),
+    minute: (ask, signal) => readMarketMinute(createTradePictureCandleBrowserDeps(), ask, { nowMs: Date.now(), signal }),
   });
   return browserMarket;
 }

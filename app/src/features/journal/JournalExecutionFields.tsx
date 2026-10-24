@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef } from 'react';
 import type { ManualExecutionRow, ManualFeeRow } from '../../application/trades/manualTradeExecutionDraft';
 import type { MarketType } from '../../domain/trades';
 import { Button, PriceInput, useToast } from '../../design-system/primitives';
+import { MarketMinuteLink } from './MarketMinute';
 import { PriceNowInput } from './PriceNowInput';
 import './journalExecutionFields.css';
 
@@ -84,7 +85,7 @@ export function JournalExecutionFields({ executions, fees, onExecutionsChange, o
         <div className="kairos-executions__grid">
           <div className="kairos-field"><label htmlFor={`${row.key}-price`}><span>Price</span></label>
             <PriceNowInput input={{ id: `${row.key}-price`, 'aria-label': `${title} price`, 'aria-invalid': errorField === `executions.${index}.price` || undefined }}
-              value={row.price} onValueChange={text => updateExecution(row.key, 'price', text)} marketType={marketType} symbol={symbol} fills={title.toLowerCase()} />
+              value={row.price} onValueChange={text => updateExecution(row.key, 'price', text)} marketType={marketType} symbol={symbol} fills={title.toLowerCase()} pairedTime={row.executedAt} />
           </div>
           <label className="kairos-field" htmlFor={`${row.key}-quantity`}><span>Quantity</span>
             <PriceInput id={`${row.key}-quantity`} aria-label={`${title} quantity`} value={row.quantity} onValueChange={text => updateExecution(row.key, 'quantity', text)} aria-invalid={errorField === `executions.${index}.quantity` || undefined}/>
@@ -92,6 +93,7 @@ export function JournalExecutionFields({ executions, fees, onExecutionsChange, o
           <label className="kairos-field kairos-field--wide" htmlFor={`${row.key}-time`}><span>Date &amp; time</span>
             <input id={`${row.key}-time`} aria-label={`${title} date and time`} type="datetime-local" value={row.executedAt} onChange={e => updateExecution(row.key, 'executedAt', e.target.value)} aria-invalid={errorField === `executions.${index}.executedAt` || undefined}/>
           </label>
+          <div className="kairos-field--wide"><MarketMinuteLink marketType={marketType} symbol={symbol} localTime={row.executedAt} id={`${row.key}-time`} of={title.toLowerCase()} /></div>
         </div>
         <Button variant="ghost" size="sm" className="kairos-executions__remove" aria-label={`Remove ${title.toLowerCase()}`} onClick={() => removeExecution(row, index, title)}>Remove</Button>
       </fieldset>;

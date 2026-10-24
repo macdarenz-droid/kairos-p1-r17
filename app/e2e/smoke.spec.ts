@@ -2039,8 +2039,9 @@ test('(ag) Faster logging: a symbol you search, its currency filled in, and a st
   // T-059c: the latest 1-minute candle, a minute before now, closes at 2,512.34.
   await page.route(url => url.hostname === 'api.qa.invalid' && url.pathname === '/market/candles', route => {
     const url = new URL(route.request().url());
+    // A one-candle read is the minute check (T-059d): the candle of that minute. Otherwise the latest minute.
     const end = Number(url.searchParams.get('end'));
-    const openMs = Math.floor(end / 60_000) * 60_000 - 60_000;
+    const openMs = url.searchParams.get('limit') === '1' ? Number(url.searchParams.get('start')) : Math.floor(end / 60_000) * 60_000 - 60_000;
     const minute = { openTime: new Date(openMs).toISOString(), closeTime: new Date(openMs + 59_999).toISOString(), open: '2510', high: '2513', low: '2509.5', close: '2512.34', volume: '3' };
     return route.fulfill({ headers: cors, contentType: 'application/json', body: JSON.stringify({ apiVersion: 1, ok: true, data: { source: { provider: 'binance', market: 'spot', symbol: url.searchParams.get('symbol') }, backup: null, interval: '1m', fetchedAt: new Date().toISOString(), candles: [minute], next: null } }) });
   });
@@ -2073,6 +2074,10 @@ test('(ag) Faster logging: a symbol you search, its currency filled in, and a st
   await page.getByLabel(/^Quantity/).fill('1');
   await page.getByRole('button', { name: 'Set opened time to now' }).click();
   await page.getByRole('button', { name: 'Set closed time to now' }).click();
+  // T-059d: 100 never traded in that minute (2509.5 to 2513): a soft "Typo?" that never blocks the save.
+  await expect(page.getByText(/^ETHUSDT did not trade at 100 at \d\d:\d\d \(it traded between 2509\.5 and 2513\)\. Typo\?$/)).toBeVisible();
+  await page.getByRole('button', { name: 'See the market price at that minute, opened' }).click();
+  await expect(page.getByText(/^At \d\d:\d\d ETHUSDT traded between 2509\.5 and 2513 \(Binance, 1-minute candle\)\.$/)).toBeVisible();
   await axeOk('.kairos-trade-form');
   await page.getByRole('button', { name: 'Save trade' }).click();
   await expect(page.getByText('Trade saved to your journal.')).toBeVisible();

@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+import type { MarketMinute } from '../../application/market-reference/minuteCheck';
 import type { PriceNowResult } from '../../application/market-reference/priceNow';
 import type { MarketType } from '../../domain/trades';
 import type { LiveMarketUniverseInstrumentMetadataFact } from '../../services/market-data/liveMarketUniverseInstrumentMetadataFact';
@@ -14,6 +15,8 @@ export interface TradeFormMarket {
   readonly marketList: (signal: AbortSignal) => Promise<TradeFormMarketListResult>;
   /** The latest price for a typed market (D256); without it the form offers no "Price now". */
   readonly priceNow?: (ask: Readonly<{ marketType: MarketType; symbol: string }>, signal: AbortSignal) => Promise<PriceNowResult>;
+  /** The 1-minute candle that holds a time (D257); without it the form offers no minute check and no "Typo?". */
+  readonly minute?: (ask: Readonly<{ marketType: MarketType; symbol: string; at: string }>, signal: AbortSignal) => Promise<MarketMinute>;
 }
 
 export const TradeFormMarketContext = createContext<TradeFormMarket | null>(null);
