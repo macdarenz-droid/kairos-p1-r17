@@ -10,10 +10,17 @@ import { UnavailableNotice } from '../design-system/primitives';
 import approvedGlassUrl from '../assets/kairos-glass-approved.webp';
 import './homeDashboardGlassBubbleMap.css';
 
-let materialPromise: Promise<HTMLCanvasElement> | null = null;
-function glassMaterial(): Promise<HTMLCanvasElement> {
+/** The size the glass art is drawn at once; every bubble scales the same image (D273). */
+const GLASS_SIZE = 512;
+let glassUrl: string | null = null;
+let materialPromise: Promise<string> | null = null;
+/**
+ * T-061a (D273): the approved glass art with its black matte removed, drawn once per page at 512×512 and shared by every
+ * bubble as one image address, not a canvas per bubble.
+ */
+function glassMaterial(): Promise<string> {
   if (materialPromise) return materialPromise;
-  materialPromise = new Promise<HTMLCanvasElement>((resolve, reject) => {
+  materialPromise = new Promise<string>((resolve, reject) => {
     const image = new Image();
     image.onload = () => {
       try {
@@ -26,7 +33,17 @@ function glassMaterial(): Promise<HTMLCanvasElement> {
         const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
         removeGlassBlackMatte(pixels.data);
         context.putImageData(pixels, 0, 0);
-        resolve(canvas);
+        const art = document.createElement('canvas');
+        art.width = GLASS_SIZE;
+        art.height = GLASS_SIZE;
+        const artContext = art.getContext('2d');
+        if (!artContext) throw new Error('Glass canvas unavailable');
+        artContext.drawImage(canvas, 0, 0, GLASS_SIZE, GLASS_SIZE);
+        art.toBlob(blob => {
+          if (blob === null) { reject(new Error('Glass image unavailable')); return; }
+          glassUrl = URL.createObjectURL(blob);
+          resolve(glassUrl);
+        }, 'image/png');
       } catch (error) { reject(error); }
     };
     image.onerror = () => reject(new Error('Glass image unavailable'));
@@ -49,20 +66,15 @@ export function glassFieldBottom(element: HTMLElement): number {
 }
 
 export function GlassDecoration() {
-  const ref = useRef<HTMLCanvasElement>(null);
-  const [ready, setReady] = useState(false);
+  const [url, setUrl] = useState(glassUrl);
   useEffect(() => {
+    if (url !== null) return;
     let active = true;
-    void glassMaterial().then(material => {
-      if (!active || !ref.current) return;
-      const context = ref.current.getContext('2d');
-      if (!context) return;
-      context.drawImage(material, 0, 0, 512, 512);
-      setReady(true);
-    }).catch(() => { /* The plain theme surface and market labels remain usable. */ });
+    void glassMaterial().then(next => { if (active) setUrl(next); })
+      .catch(() => { /* The plain theme surface and market labels remain usable. */ });
     return () => { active = false; };
-  }, []);
-  return <canvas ref={ref} width={512} height={512} className="kairos-glass-art" data-glass-ready={ready} aria-hidden="true" />;
+  }, [url]);
+  return url === null ? null : <img src={url} alt="" className="kairos-glass-art" data-glass-ready="true" aria-hidden="true" />;
 }
 
 export function GlassIcon({ symbol }: { readonly symbol: string }) {

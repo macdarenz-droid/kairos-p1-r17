@@ -65,7 +65,6 @@ export function HomeRoute({ db = kairosDatabase, now = wallClock }: { readonly d
         <HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTextEvidenceRuntime
           key={attempt}
           configuration={configuration}
-          visual
           onRetry={() => setAttempt(current => current + 1)}
         />
       </section>:<HomeDashboardYourTrades glance={<HomeDisciplineCard db={db} now={now} />}/>}

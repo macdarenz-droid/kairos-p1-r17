@@ -2,7 +2,6 @@ import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DecimalString } from '../src/domain/trades';
 import type { HomeDashboardLiveCryptoBubbleRuntimeProductConfiguration } from '../src/app/homeDashboardLiveCryptoBubbleRuntimeOptionsComposition';
-import { useHomeDashboardLiveCryptoBubbleConfiguredBrowserPixelRadiusViewModel } from '../src/app/useHomeDashboardLiveCryptoBubbleConfiguredBrowserPixelRadiusViewModel';
 import { useHomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleViewModel } from '../src/app/useHomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleViewModel';
 import { useHomeDashboardLiveCryptoBubblePresentationObservedRuntime, type HomeDashboardLiveCryptoBubbleReactRuntimeBindingOptions } from '../src/app/useHomeDashboardLiveCryptoBubblePresentationObservedRuntime';
 import type { HomeDashboardLiveCryptoBubblePresentationStateObservation } from '../src/application/dashboard/homeDashboardLiveCryptoBubblePresentationStateObservationBridge';
@@ -15,44 +14,40 @@ vi.mock('../src/app/binanceHomeDashboardLiveCryptoBubblePresentationObservedRunt
 describe('configured Bubble runtime lifecycle stability', () => {
   beforeEach(() => { mocks.startRuntime.mockReset(); });
 
-  for (const kind of ['pixel', 'normalized'] as const) {
-    it(`${kind}: preserves one runtime across state updates and equivalent configuration wrappers`, async () => {
-      const close = vi.fn();
-      let resolve!: (value: unknown) => void;
-      mocks.startRuntime.mockReturnValue(new Promise((done) => { resolve = done; }));
-      const configuration: HomeDashboardLiveCryptoBubbleRuntimeProductConfiguration = {
-        excludedStablecoinBaseAssets: new Set(['USDC']),
-        neutralMaxAbsoluteMovementPercent: '0.25' as DecimalString,
-      };
-      const policy = { minimumRadiusCssPixels: 10, maximumRadiusCssPixels: 50 };
-      const { result, rerender, unmount } = renderHook(({ config }) => kind === 'pixel'
-        ? useHomeDashboardLiveCryptoBubbleConfiguredBrowserPixelRadiusViewModel(config, policy)
-        : useHomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleViewModel(config),
-      { initialProps: { config: configuration } });
-      expect(mocks.startRuntime).toHaveBeenCalledTimes(1);
-      const sink = mocks.startRuntime.mock.calls[0]![2].observationSink;
-      const observation: HomeDashboardLiveCryptoBubblePresentationStateObservation = {
-        metricObservation: {} as never,
-        presentationStateProjection: { ok: true, metricObservation: {} as never, entries: [] },
-      };
-      act(() => sink.onObservation(observation));
-      expect(result.current.runtimeState.latestObservation).toBe(observation);
-      const error = new Error('temporary acquisition error');
-      act(() => sink.onError(error));
-      expect(result.current.runtimeState.lastError).toBe(error);
-      expect(result.current.runtimeState.latestObservation).toBe(observation);
-      expect(mocks.startRuntime).toHaveBeenCalledTimes(1);
-      rerender({ config: { ...configuration } });
-      expect(mocks.startRuntime).toHaveBeenCalledTimes(1);
-      await act(async () => resolve({ ok: true, runtime: { instruments: [], close } }));
-      expect(result.current.runtimeState.status).toBe('running');
-      expect(result.current.runtimeState.lastError).toBe(error);
-      expect(mocks.startRuntime).toHaveBeenCalledTimes(1);
-      expect(close).not.toHaveBeenCalled();
-      unmount();
-      expect(close).toHaveBeenCalledTimes(1);
-    });
-  }
+  // T-061a (D273): the pixel-radius hook went with the test-only screens; Home uses the radius-scale one.
+  it('preserves one runtime across state updates and equivalent configuration wrappers', async () => {
+    const close = vi.fn();
+    let resolve!: (value: unknown) => void;
+    mocks.startRuntime.mockReturnValue(new Promise((done) => { resolve = done; }));
+    const configuration: HomeDashboardLiveCryptoBubbleRuntimeProductConfiguration = {
+      excludedStablecoinBaseAssets: new Set(['USDC']),
+      neutralMaxAbsoluteMovementPercent: '0.25' as DecimalString,
+    };
+    const { result, rerender, unmount } = renderHook(({ config }) => useHomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleViewModel(config),
+    { initialProps: { config: configuration } });
+    expect(mocks.startRuntime).toHaveBeenCalledTimes(1);
+    const sink = mocks.startRuntime.mock.calls[0]![2].observationSink;
+    const observation: HomeDashboardLiveCryptoBubblePresentationStateObservation = {
+      metricObservation: {} as never,
+      presentationStateProjection: { ok: true, metricObservation: {} as never, entries: [] },
+    };
+    act(() => sink.onObservation(observation));
+    expect(result.current.runtimeState.latestObservation).toBe(observation);
+    const error = new Error('temporary acquisition error');
+    act(() => sink.onError(error));
+    expect(result.current.runtimeState.lastError).toBe(error);
+    expect(result.current.runtimeState.latestObservation).toBe(observation);
+    expect(mocks.startRuntime).toHaveBeenCalledTimes(1);
+    rerender({ config: { ...configuration } });
+    expect(mocks.startRuntime).toHaveBeenCalledTimes(1);
+    await act(async () => resolve({ ok: true, runtime: { instruments: [], close } }));
+    expect(result.current.runtimeState.status).toBe('running');
+    expect(result.current.runtimeState.lastError).toBe(error);
+    expect(mocks.startRuntime).toHaveBeenCalledTimes(1);
+    expect(close).not.toHaveBeenCalled();
+    unmount();
+    expect(close).toHaveBeenCalledTimes(1);
+  });
 
   for (const field of ['exclusions', 'topN', 'signal', 'document', 'timer', 'threshold', 'observedClock', 'evaluationClock'] as const) {
     it(`restarts and closes the old runtime when ${field} changes`, async () => {

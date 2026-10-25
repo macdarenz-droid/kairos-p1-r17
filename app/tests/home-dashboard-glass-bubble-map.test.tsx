@@ -1,11 +1,12 @@
-import { act, render, screen, cleanup } from '@testing-library/react';
+import { act, render, screen, cleanup, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { HomeDashboardGlassBubbleMap } from '../src/app/HomeDashboardGlassBubbleMap';
 import { layoutGlassCircles } from '../src/app/homeDashboardGlassLayout';
 import { removeGlassBlackMatte } from '../src/app/homeDashboardGlassMaterial';
 import { glassTestModel } from './fixtures/homeDashboardGlassModel';
+import { stubGlassImage } from './fixtures/glassImageStub';
 
-afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe('approved glass material', () => {
   it('removes black without a black rectangle and reconstructs source RGB on black', () => {
@@ -65,12 +66,20 @@ describe('glass map truth and controls', () => {
 
 
 describe('market refresh identity continuity', () => {
-  it('retains each instrument canvas and hover timing across a changed ranking while showing new facts immediately', () => {
+  it('retains each instrument art and hover timing across a changed ranking while showing new facts immediately', async () => {
     vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(366);
+    // T-061a (D273): the art is the one shared glass image; a fresh module so the image loads in this test.
+    stubGlassImage();
+    vi.resetModules();
+    const { HomeDashboardGlassBubbleMap } = await import('../src/app/HomeDashboardGlassBubbleMap');
     const first = glassTestModel(3);
     const { container, rerender } = render(<HomeDashboardGlassBubbleMap model={first} />);
     const find = (symbol: string) => [...container.querySelectorAll<HTMLElement>('.kairos-glass-bubble')].find(n => n.querySelector('strong')?.textContent === symbol)!;
-    const original = find('BTC'), canvas = original.querySelector('canvas');
+    const original = find('BTC');
+    await waitFor(() => expect(original.querySelector('.kairos-glass-art')).not.toBeNull());
+    const art = original.querySelector('.kairos-glass-art');
+    expect(art).toHaveAttribute('src', 'blob:kairos-glass');
+    expect(container.querySelectorAll('.kairos-glass-art[src="blob:kairos-glass"]')).toHaveLength(3);
     const duration = original.style.getPropertyValue('--glass-duration'), delay = original.style.getPropertyValue('--glass-delay');
     const next = glassTestModel(3);
     if (!next.radiusScaleProjection?.ok) throw Error('fixture');
@@ -80,7 +89,7 @@ describe('market refresh identity continuity', () => {
     const snapshot = JSON.stringify(next);
     rerender(<HomeDashboardGlassBubbleMap model={next} />);
     expect(find('BTC')).toBe(original);
-    expect(find('BTC').querySelector('canvas')).toBe(canvas);
+    expect(find('BTC').querySelector('.kairos-glass-art')).toBe(art);
     expect(find('BTC').style.getPropertyValue('--glass-duration')).toBe(duration);
     expect(find('BTC').style.getPropertyValue('--glass-delay')).toBe(delay);
     expect(find('BTC')).toHaveTextContent('+4.3%');
@@ -90,7 +99,7 @@ describe('market refresh identity continuity', () => {
     rerender(<HomeDashboardGlassBubbleMap model={first} />);
     expect(container.querySelector('section')).toHaveAttribute('data-motion', 'running');
     expect(parseFloat(find('BTC').style.width)).toBeLessThan(grownWidth);
-    expect(find('BTC').querySelector('canvas')).toBe(canvas);
+    expect(find('BTC').querySelector('.kairos-glass-art')).toBe(art);
   });
 });
 
