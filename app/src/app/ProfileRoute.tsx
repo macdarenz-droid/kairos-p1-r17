@@ -7,7 +7,10 @@ import { describeStorageUse, estimateStorageUse, inspectStorageDurability, reque
 import { ActivationReceiptRepository, type StoredActivationReceiptLoadResult } from '../services/activation';
 import { buildInfo } from '../shared/config/buildInfo';
 import { OnlineServicesCheck } from '../features/settings/OnlineServicesCheck';
+import { YourDevicesCard, type YourDevicesPort } from '../features/activation/YourDevicesCard';
+import { describeActivatedSince } from '../features/activation/activationWords';
 import type { KairosApiHealthPort } from '../application/online/onlineWords';
+import { loadVisualPnlTimeZone } from '../application/visual-pnl/timeZonePreference';
 import './profileRoute.css';
 
 interface ProfileRouteProps {
@@ -16,6 +19,8 @@ interface ProfileRouteProps {
   readonly durability?: StorageDurabilityPorts;
   /** The Kairos server check (U1), built by the composition root; tests that do not need it leave it out. */
   readonly onlineServices?: KairosApiHealthPort;
+  /** T-062f (D283): "Your devices", built in routes.tsx; without it (tests of this card alone, a build that can't check codes) there is no card. */
+  readonly devices?: YourDevicesPort;
 }
 
 export interface StorageDurabilityPorts {
@@ -30,8 +35,7 @@ export interface StorageDurabilityPorts {
 const releasedDurability: StorageDurabilityPorts = Object.freeze({ inspect: inspectStorageDurability, request: requestPersistentStorage, subscribe: subscribeStorageDurabilityStatus, estimate: estimateStorageUse });
 type PersistState = Readonly<{ kind: 'idle' }> | Readonly<{ kind: 'requesting' }> | Readonly<{ kind: 'declined' }>;
 
-type ActivationState = Readonly<{ kind: 'loading' }> | Readonly<{ kind: 'error' }> | Readonly<{ kind: 'ready'; stored: StoredActivationReceiptLoadResult }>;
-const moment = (iso: string): string => `${iso.slice(0, 10)} ${iso.slice(11, 19)} UTC`;
+type ActivationState = Readonly<{ kind: 'loading' }> | Readonly<{ kind: 'error' }> | Readonly<{ kind: 'ready'; stored: StoredActivationReceiptLoadResult; timeZone: string | null }>;
 const durabilityText = (status: StorageDurabilityStatus): string => {
   switch (status.state) {
     case 'persistent': return 'This browser has promised to keep Kairos data on this device unless you clear it yourself.';
@@ -46,17 +50,18 @@ function ProfileLink({ to, children }: { readonly to: string; readonly children:
   return useInRouterContext() ? <Link to={to}>{children}</Link> : <a href={to}>{children}</a>;
 }
 
+/** D283: whether this device is activated, in plain words: never the receipt or its id (jargon, and nothing a trader uses). */
 function Activation({ state }: { readonly state: ActivationState }) {
-  if (state.kind === 'loading') return <p data-profile-activation="loading">Reading this device's activation…</p>;
-  if (state.kind === 'error') return <p role="alert" data-profile-activation="error">The activation receipt could not be read.</p>;
+  if (state.kind === 'loading') return <p data-profile-activation="loading">Checking this device…</p>;
+  if (state.kind === 'error') return <p role="alert" data-profile-activation="error">Kairos couldn't read this device's invite right now.</p>;
   const { stored } = state;
-  if (stored.status === 'missing') return <p data-profile-activation="missing">No activation receipt is stored on this device.</p>;
-  if (stored.status === 'corrupt') return <p role="alert" data-profile-activation="corrupt">The stored activation receipt is unreadable.</p>;
-  return <p data-profile-activation="stored">Activated · activation <code>{stored.receipt.activationId}</code> · issued {moment(stored.receipt.issuedAt)} · stored on this device {moment(stored.storedAt)}</p>;
+  if (stored.status === 'missing') return <p data-profile-activation="missing">This device isn't activated.</p>;
+  if (stored.status === 'corrupt') return <p role="alert" data-profile-activation="corrupt">Kairos can't read this device's invite. It will ask for your code the next time it opens.</p>;
+  return <p data-profile-activation="stored">{describeActivatedSince(stored.receipt.issuedAt, state.timeZone)}</p>;
 }
 
 /** Profile: this device (activation, whether the browser keeps the data, the build) and online services. Backups have their own page (T-054a). */
-export function ProfileRoute({ db = kairosDatabase, durability = releasedDurability, onlineServices }: ProfileRouteProps) {
+export function ProfileRoute({ db = kairosDatabase, durability = releasedDurability, onlineServices, devices }: ProfileRouteProps) {
   const metadata = useMemo(() => createKairosRepositories(db).metadata, [db]);
   const receipts = useMemo(() => new ActivationReceiptRepository(metadata), [metadata]);
   const [storage, setStorage] = useState<StorageDurabilityStatus>({ state: 'unknown', persistent: false });
@@ -66,12 +71,13 @@ export function ProfileRoute({ db = kairosDatabase, durability = releasedDurabil
 
   const loadActivation = useCallback(async (ignore: () => boolean) => {
     try {
-      const stored = await receipts.load();
-      if (!ignore()) setActivation({ kind: 'ready', stored });
+      // The dates show in the saved time zone, else the phone's (a zone that can't be read counts as none).
+      const [stored, timeZone] = await Promise.all([receipts.load(), loadVisualPnlTimeZone(db).catch(() => null)]);
+      if (!ignore()) setActivation({ kind: 'ready', stored, timeZone });
     } catch {
       if (!ignore()) setActivation({ kind: 'error' });
     }
-  }, [receipts]);
+  }, [receipts, db]);
 
   useEffect(() => {
     let ignored = false;
@@ -113,6 +119,9 @@ export function ProfileRoute({ db = kairosDatabase, durability = releasedDurabil
       <p className="kairos-profile__note">Kairos {buildInfo.appVersion} · build {buildInfo.buildId}. Everything you record stays on this device unless you back it up.</p>
       {onlineServices ? <OnlineServicesCheck port={onlineServices} /> : null}
     </article>
+
+    {/* After the time zone is read, so its dates show once, in the right zone. */}
+    {devices && activation.kind !== 'loading' ? <YourDevicesCard className="kairos-profile-card" port={devices} timeZone={activation.kind === 'ready' ? activation.timeZone : null} /> : null}
 
   </section>;
 }

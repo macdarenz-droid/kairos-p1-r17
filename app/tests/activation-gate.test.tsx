@@ -310,3 +310,81 @@ describe('T-062e the invite screen: logo, plain words, "Lost access?" and a copy
     expect(await axeViolations(container)).toEqual([]);
   });
 });
+
+describe('T-062f the daily check on the gate (D278)', () => {
+  const REMOVED_NOTE = 'This device was removed from your invite code. Kairos will ask for your code the next time it opens. Your journal stays on this device.';
+  const app = <main tabIndex={-1}><h2>Journal core</h2></main>;
+
+  it('once active, runs the check in the background, again when back online or back on screen', async () => {
+    const checkThisDevice = vi.fn(async () => 'active' as const);
+    render(<ActivationGate controller={controller({ bootstrap: vi.fn(async () => snapshot('active-offline')), checkThisDevice })} appVersion="0.1" buildId="test">{app}</ActivationGate>);
+
+    expect(await screen.findByRole('heading', { name: 'Journal core' })).toBeInTheDocument();
+    await waitFor(() => expect(checkThisDevice).toHaveBeenCalledTimes(1));
+    expect(checkThisDevice).toHaveBeenCalledWith({ now: expect.any(Date), online: navigator.onLine, visible: document.visibilityState === 'visible' });
+    act(() => { window.dispatchEvent(new Event('online')); });
+    act(() => { document.dispatchEvent(new Event('visibilitychange')); });
+    const visible = document.visibilityState === 'visible';
+    await waitFor(() => expect(checkThisDevice).toHaveBeenCalledTimes(visible ? 3 : 2));
+    // Nothing to say while the device is still in use.
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+  });
+
+  it('never checks before the gate opens', async () => {
+    const checkThisDevice = vi.fn(async () => 'active' as const);
+    render(<ActivationGate controller={controller({ checkThisDevice })} appVersion="0.1" buildId="test">{app}</ActivationGate>);
+    await screen.findByRole('heading', { name: 'Welcome to Kairos' });
+    expect(checkThisDevice).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['removed', REMOVED_NOTE],
+    ['revoked', 'This invite code no longer works. Kairos will ask for an invite code the next time it opens. Your journal stays on this device.'],
+  ] as const)('when the check ends the session (%s), the app carries on with a note, and Close hands focus to the page', async (outcome, words) => {
+    const checkThisDevice = vi.fn(async () => outcome);
+    render(<ActivationGate controller={controller({ bootstrap: vi.fn(async () => snapshot('active-offline')), checkThisDevice })} appVersion="0.1" buildId="test">{app}</ActivationGate>);
+
+    expect(await screen.findByText(words)).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(words);
+    expect(screen.getByRole('heading', { name: 'Journal core' })).toBeInTheDocument();
+    expect(await axeViolations(document.body)).toEqual([]);
+
+    const close = screen.getByRole('button', { name: 'Close' });
+    close.focus();
+    fireEvent.click(close);
+    expect(screen.queryByText(words)).not.toBeInTheDocument();
+    expect(screen.getByRole('main')).toHaveFocus();
+    expect(screen.getByRole('heading', { name: 'Journal core' })).toBeInTheDocument();
+  });
+
+  it('a start with no receipt after the device was removed: D278\'s words, and the copy says the journal is here once', async () => {
+    const db = await database();
+    await oneTrade(db);
+    const ended: ActivationSnapshot = { status: 'activation-required', receipt: null, message: null, reason: 'device-removed' };
+    const gate = controller({ bootstrap: vi.fn(async () => ended), activate: vi.fn(async () => refused({ ok: false, reason: 'invalid-code' })) });
+    const { container } = render(<ActivationGate controller={gate} appVersion="0.1" buildId="test" journal={journalOf(db)}>{app}</ActivationGate>);
+
+    expect(await screen.findByText('This device was removed from your invite code. Your journal is still on this device.')).toHaveClass('kairos-activation__feedback');
+    expect(await screen.findByText('No backup yet.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Download a copy of my data' })).toBeInTheDocument();
+    expect(container.textContent!.split('Your journal is still on this device.')).toHaveLength(2);
+    expect(screen.queryByRole('heading', { name: 'Journal core' })).not.toBeInTheDocument();
+    expect(await axeViolations(container)).toEqual([]);
+
+    // Another try brings its own words; the copy then says the journal is here itself.
+    await submitCode();
+    expect(await screen.findByText("Kairos doesn't know this code. Check it and try again.")).toBeInTheDocument();
+    expect(await screen.findByText('Your journal is still on this device. No backup yet.')).toBeInTheDocument();
+  });
+
+  it('a start with no receipt after the code was stopped says the code no longer works', async () => {
+    const db = await database();
+    await oneTrade(db);
+    const ended: ActivationSnapshot = { status: 'activation-required', receipt: null, message: null, reason: 'code-revoked' };
+    render(<ActivationGate controller={controller({ bootstrap: vi.fn(async () => ended) })} appVersion="0.1" buildId="test" journal={journalOf(db)}>{app}</ActivationGate>);
+
+    expect(await screen.findByText('This invite code no longer works.')).toBeInTheDocument();
+    expect(await screen.findByText('Your journal is still on this device. No backup yet.')).toBeInTheDocument();
+    expect(screen.queryByText(/revoked/i)).not.toBeInTheDocument();
+  });
+});

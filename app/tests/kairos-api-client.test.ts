@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ActivationReceipt } from '../src/services/activation/activationTypes';
+import { kairosDeviceToken } from '../src/services/activation/deviceToken';
 import {
   createKairosApiClient,
   createKairosApiHealthPort,
   decodeKairosApiHealth,
-  kairosDeviceToken,
   parseKairosApiBaseUrl,
   storedReceiptReader,
 } from '../src/services/kairos-api/kairosApi';

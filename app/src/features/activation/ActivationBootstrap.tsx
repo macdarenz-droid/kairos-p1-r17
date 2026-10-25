@@ -9,6 +9,7 @@ import {
   RemoteActivationAdapter,
   describeThisDevice,
   parseActivationDeploymentConfig,
+  type ActivationCheckStore,
 } from '../../services/activation';
 import { ActivationGate, ActivationLogo, type ActivationJournalPort } from './ActivationGate';
 
@@ -16,6 +17,11 @@ export interface ActivationBootstrapProps extends PropsWithChildren {
   readonly databaseStartup: Promise<DatabaseLifecycleStatus>;
   /** This device's journal, so the invite screen can offer a copy (D281); built in main.tsx. */
   readonly journal: ActivationJournalPort;
+  /**
+   * D278, D285: where the daily check keeps its record (application/activation/activationCheck.ts), built in main.tsx.
+   * Without it this device is never checked (tests of the screens alone).
+   */
+  readonly deviceCheck?: ActivationCheckStore;
 }
 
 type RuntimeState =
@@ -30,19 +36,22 @@ function readRuntimeConfig() {
   });
 }
 
-function buildController(config: { readonly endpoint: string; readonly publicKeySpkiBase64: string }): ActivationCoordinator {
+function buildController(config: { readonly endpoint: string; readonly publicKeySpkiBase64: string }, deviceCheck: ActivationCheckStore | undefined): ActivationCoordinator {
+  const adapter = new RemoteActivationAdapter({ endpoint: config.endpoint });
   return new ActivationCoordinator({
-    adapter: new RemoteActivationAdapter({ endpoint: config.endpoint }),
+    adapter,
     repository: new ActivationReceiptRepository(kairosRepositories.metadata),
     verifier: new EcdsaActivationReceiptVerifier({
       publicKeySpkiBase64: config.publicKeySpkiBase64,
     }),
     // D275: a coarse name from the Worker's fixed list, so the trader can tell their devices apart.
     deviceLabel: describeThisDevice({ userAgent: navigator.userAgent, maxTouchPoints: navigator.maxTouchPoints ?? 0 }),
+    // D278: the same Worker answers /devices/check, next to /activate.
+    ...(deviceCheck === undefined ? {} : { devices: adapter, checks: deviceCheck }),
   });
 }
 
-export function ActivationBootstrap({ databaseStartup, journal, children }: ActivationBootstrapProps) {
+export function ActivationBootstrap({ databaseStartup, journal, deviceCheck, children }: ActivationBootstrapProps) {
   const [runtime, setRuntime] = useState<RuntimeState>({ state: 'preparing' });
 
   useEffect(() => {
@@ -67,7 +76,7 @@ export function ActivationBootstrap({ databaseStartup, journal, children }: Acti
       }
 
       try {
-        setRuntime({ state: 'ready', controller: buildController(configResult.config) });
+        setRuntime({ state: 'ready', controller: buildController(configResult.config, deviceCheck) });
       } catch {
         setRuntime({
           state: 'unavailable',
@@ -86,7 +95,7 @@ export function ActivationBootstrap({ databaseStartup, journal, children }: Acti
     return () => {
       active = false;
     };
-  }, [databaseStartup]);
+  }, [databaseStartup, deviceCheck]);
 
   if (runtime.state === 'preparing') {
     return (

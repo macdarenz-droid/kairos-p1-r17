@@ -155,8 +155,51 @@
   margin: 0;
 }
 
+/*
+ * D278: the note when the daily check ends this device's invite during a session. Without it the host is an empty
+ * status line with no box; with it, a card above the bottom bar (as the update prompt), above "+ Log trade" when that
+ * shows, and beside the side menu on wide screens.
+ */
+.kairos-activation-ended p {
+  margin: 0;
+}
+
+.kairos-activation-ended[data-shown] {
+  position: fixed;
+  z-index: 25;
+  right: var(--kairos-space-4);
+  bottom: calc(var(--kairos-layout-navigation-height) + env(safe-area-inset-bottom, 0px) + var(--kairos-space-3));
+  left: var(--kairos-space-4);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--kairos-space-3);
+  padding: var(--kairos-space-3) var(--kairos-space-4);
+  border: 1px solid var(--kairos-border-default);
+  border-radius: var(--kairos-radius-lg);
+  background: var(--kairos-surface-raised);
+  color: var(--kairos-text-primary);
+  font-family: var(--kairos-font-sans);
+  font-size: var(--kairos-font-size-sm);
+  line-height: var(--kairos-line-height-relaxed);
+}
+
+.kairos-activation-ended[data-shown] p {
+  flex: 1 1 16rem;
+}
+
+:root:has(.kairos-log-trade) .kairos-activation-ended[data-shown] {
+  bottom: calc(var(--kairos-log-trade-bottom) + var(--kairos-control-lg) + var(--kairos-space-2));
+}
+
 @media (min-width: 48rem) {
   .kairos-activation__card {
     width: 28rem;
+  }
+
+  .kairos-activation-ended[data-shown] {
+    right: var(--kairos-space-6);
+    bottom: var(--kairos-space-6);
+    left: calc(13rem + var(--kairos-space-6));
   }
 }

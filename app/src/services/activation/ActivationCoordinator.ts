@@ -1,4 +1,4 @@
-import type { ActivationAdapter } from './ActivationAdapter';
+import type { ActivationAdapter, ActivationDevicesAdapter } from './ActivationAdapter';
 import type { ActivationReceiptRepository } from './ActivationReceiptRepository';
 import type { ActivationReceiptVerifier } from './ActivationReceiptVerifier';
 import { loadVerifiedPersistedActivation } from './activationPersistence';
@@ -8,10 +8,30 @@ import {
   reduceActivationState,
 } from './activationState';
 import type {
+  ActivationCheckOutcome,
+  ActivationCheckRecord,
+  ActivationEnded,
   ActivationRequest,
   ActivationSnapshot,
   ActivationValidationResult,
 } from './activationTypes';
+import { kairosDeviceToken } from './deviceToken';
+
+/**
+ * D285: the daily check's record on this device (`device.activation.check.v1`). The application layer keeps it
+ * (`application/activation/activationCheck.ts`), so each write is one atomic metadata write; the coordinator decides
+ * when to ask and what an answer means.
+ */
+export interface ActivationCheckStore {
+  /** The record, or null when there is none or it is damaged (read as never checked). Throws when it can't be read. */
+  load(): Promise<ActivationCheckRecord | null>;
+  /** The server knows this device and it is in use: the time of the answer, and no `ended`. */
+  saveActive(checkedAt: string): Promise<void>;
+  /** One atomic metadata write: this device's receipt is deleted and why is saved (D278). */
+  endThisDevice(ended: ActivationEnded, checkedAt: string): Promise<void>;
+  /** A new activation: `ended` goes, and the time of the last answer stays. */
+  clearEnded(): Promise<void>;
+}
 
 export interface ActivationCoordinatorDependencies {
   readonly adapter: ActivationAdapter;
@@ -21,7 +41,30 @@ export interface ActivationCoordinatorDependencies {
   readonly deviceLabel?: string;
   /** A new request id: 8 to 64 letters, digits and dashes (the Worker's rule). Tests pass their own. */
   readonly newRequestId?: () => string;
+  /** D278: the Worker's /devices/check. Without it (or `checks`), this device is never checked. */
+  readonly devices?: Pick<ActivationDevicesAdapter, 'checkDevice'>;
+  /** D285: where the daily check keeps its record. */
+  readonly checks?: ActivationCheckStore;
 }
+
+/** What the daily check needs to know about this moment: the time, and whether the device is online and Kairos is on screen. */
+export interface ActivationCheckInput {
+  readonly now: Date;
+  readonly online: boolean;
+  readonly visible: boolean;
+}
+
+/** D278: at most one check a day. */
+const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+/** Due when never answered, a day or more ago, or (a clock moved back) in the future. */
+function isCheckDue(record: ActivationCheckRecord | null, now: Date): boolean {
+  if (record === null) return true;
+  const elapsed = now.getTime() - Date.parse(record.checkedAt);
+  return elapsed >= CHECK_INTERVAL_MS || elapsed < 0;
+}
+
+const isActiveStatus = (status: ActivationSnapshot['status']): boolean => status === 'active-online' || status === 'active-offline';
 
 /** 128 random bits as 32 hex digits. getRandomValues works in every browser Kairos runs in, secure page or not. */
 function randomRequestId(): string {
@@ -46,6 +89,9 @@ export class ActivationCoordinator {
    * dropped once the code has worked.
    */
   private pendingRequest: { readonly codeKey: string; readonly requestId: string } | null = null;
+  private checkInFlight = false;
+  /** D278: this session's invite ended; it carries on, and nothing is asked again until the next start. */
+  private endedThisSession = false;
 
   constructor(private readonly dependencies: ActivationCoordinatorDependencies) {}
 
@@ -78,7 +124,7 @@ export class ActivationCoordinator {
           };
           break;
         case 'missing':
-          this.snapshot = initialActivationSnapshot;
+          this.snapshot = await this.startWithoutReceipt();
           break;
         case 'corrupt':
         case 'rejected':
@@ -138,6 +184,9 @@ export class ActivationCoordinator {
 
       // Saved on this device: the next code starts a new request.
       this.pendingRequest = null;
+      // D278: typing a code again brings everything back. The receipt is saved first: while it is stored, Kairos opens
+      // whatever `ended` says, so a failed clear changes nothing now, and the next check's answer replaces it.
+      await this.dependencies.checks?.clearEnded().catch(() => undefined);
       const verifiedSuccess: ActivationValidationResult = {
         ok: true,
         receipt: proofResult.receipt,
@@ -160,6 +209,59 @@ export class ActivationCoordinator {
     }
     const { deviceLabel } = this.dependencies;
     return { ...request, requestId: this.pendingRequest.requestId, ...(deviceLabel === undefined ? {} : { deviceLabel }) };
+  }
+
+  /**
+   * D278: once a day, when online and on screen, asks the activation Worker whether this device is still in use. It never
+   * delays opening and is never needed to open. On `removed` or `revoked`, this device's receipt is deleted and the
+   * reason saved in one atomic metadata write: this session carries on, and the next start shows the invite screen. A
+   * failed or unreadable answer, or a device the server doesn't know, changes nothing and saves nothing, so the server's
+   * own mistake never locks anyone out.
+   */
+  async checkThisDevice({ now, online, visible }: ActivationCheckInput): Promise<ActivationCheckOutcome> {
+    const { devices, checks } = this.dependencies;
+    const receipt = this.snapshot.receipt;
+    if (!online || !visible || devices === undefined || checks === undefined || !Number.isFinite(now.getTime())) return 'skipped';
+    if (this.checkInFlight || this.endedThisSession || !isActiveStatus(this.snapshot.status) || receipt === null) return 'skipped';
+    const token = kairosDeviceToken(receipt);
+    if (token === null) return 'skipped';
+
+    this.checkInFlight = true;
+    try {
+      let record: ActivationCheckRecord | null;
+      try {
+        record = await checks.load();
+      } catch {
+        return 'skipped';
+      }
+      if (!isCheckDue(record, now)) return 'not-due';
+
+      const answer = await devices.checkDevice(token).catch(() => null);
+      if (answer === null || !answer.ok) return 'unchanged';
+      const checkedAt = now.toISOString();
+      if (answer.status === 'active') {
+        // Not saved: the next start asks again, which is all a lost save costs.
+        await checks.saveActive(checkedAt).catch(() => undefined);
+        return 'active';
+      }
+      try {
+        await checks.endThisDevice(answer.status, checkedAt);
+      } catch {
+        return 'unchanged';
+      }
+      this.endedThisSession = true;
+      return answer.status;
+    } finally {
+      this.checkInFlight = false;
+    }
+  }
+
+  /** No receipt on this device: the invite screen, with D278's words when the daily check ended this device's invite. */
+  private async startWithoutReceipt(): Promise<ActivationSnapshot> {
+    const record = await this.dependencies.checks?.load().catch(() => null);
+    if (record?.ended === 'removed') return { status: 'activation-required', receipt: null, message: null, reason: 'device-removed' };
+    if (record?.ended === 'revoked') return { status: 'activation-required', receipt: null, message: null, reason: 'code-revoked' };
+    return initialActivationSnapshot;
   }
 
   async clearActivation(): Promise<ActivationSnapshot> {

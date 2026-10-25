@@ -1,10 +1,18 @@
 import { type FormEvent, type PropsWithChildren, useEffect, useId, useState } from 'react';
 import { describeDataCopy, type RunBackupResult } from '../../application/backup';
 import { Button } from '../../design-system/primitives';
-import type { ActivationRequest, ActivationSnapshot } from '../../services/activation';
+import type {
+  ActivationCheckInput,
+  ActivationCheckOutcome,
+  ActivationEnded,
+  ActivationRequest,
+  ActivationSnapshot,
+} from '../../services/activation';
 import {
   describeActivationProblem,
   describeJournalOnThisDevice,
+  describeLastBackup,
+  describeSessionEnded,
   hasJournal,
   lostAccessSteps,
   type JournalOnThisDevice,
@@ -17,6 +25,8 @@ export interface ActivationGateController {
     request: ActivationRequest,
     options?: { readonly signal?: AbortSignal },
   ): Promise<ActivationSnapshot>;
+  /** D278: the daily check (ActivationCoordinator.checkThisDevice). A controller without it never checks. */
+  checkThisDevice?(input: ActivationCheckInput): Promise<ActivationCheckOutcome>;
 }
 
 /** This device's journal, for the invite screen (D281). main.tsx builds it, so the gate never opens the database itself. */
@@ -49,8 +59,10 @@ type Copy = Readonly<{ kind: 'idle' }> | Readonly<{ kind: 'busy' }> | Readonly<{
 /**
  * D281: never lock a journal away. When this device holds a journal (trades, or a backup made here), the gate says so
  * and offers a copy as a download, with the crash screen's words. Nothing shows while it reads, or if it can't read.
+ * D278: while the gate says "This device was removed from your invite code. Your journal is still on this device.", the
+ * block says only when the journal was last backed up, so that sentence shows once.
  */
-function JournalCopy({ journal }: { readonly journal: ActivationJournalPort }) {
+function JournalCopy({ journal, journalSaidAbove }: { readonly journal: ActivationJournalPort; readonly journalSaidAbove: boolean }) {
   const [summary, setSummary] = useState<JournalOnThisDevice | null>(null);
   const [copy, setCopy] = useState<Copy>({ kind: 'idle' });
   // A copy is also a backup: reading again moves "Last backup" to now.
@@ -79,7 +91,7 @@ function JournalCopy({ journal }: { readonly journal: ActivationJournalPort }) {
 
   return (
     <div className="kairos-activation__journal">
-      <p>{describeJournalOnThisDevice(summary)}</p>
+      <p>{journalSaidAbove ? describeLastBackup(summary) : describeJournalOnThisDevice(summary)}</p>
       {/* aria-disabled, not disabled, so the button keeps focus while the copy is made. */}
       <Button variant="secondary" onClick={() => { void downloadCopy(); }} aria-disabled={copy.kind === 'busy' || undefined}>
         {copy.kind === 'busy' ? 'Making a copy…' : 'Download a copy of my data'}
@@ -87,6 +99,54 @@ function JournalCopy({ journal }: { readonly journal: ActivationJournalPort }) {
       {copy.kind === 'done' ? <p role="status" className={copy.failed ? 'kairos-activation__problem' : undefined}>{copy.message}</p> : null}
     </div>
   );
+}
+
+/**
+ * D278: when the daily check ends this device's invite, the open session carries on with this note; the next start
+ * shows the invite screen. The status line is there from the first render, so the note is heard when it comes. "Close"
+ * hides it and hands focus to the page's main landmark, never to the page itself.
+ */
+function SessionEndedNote({ ended }: { readonly ended: ActivationEnded | null }) {
+  const [closed, setClosed] = useState(false);
+  const shown = ended !== null && !closed;
+  function close(): void {
+    document.querySelector<HTMLElement>('main[tabindex]')?.focus({ preventScroll: true });
+    setClosed(true);
+  }
+  return (
+    <div className="kairos-activation-ended" data-shown={shown ? '' : undefined}>
+      <p role="status">{shown ? describeSessionEnded(ended) : null}</p>
+      {shown ? <Button variant="secondary" size="sm" onClick={close}>Close</Button> : null}
+    </div>
+  );
+}
+
+/**
+ * D278: once active, the daily check runs in the background: now, when the device comes back online, and when Kairos
+ * comes back on screen. The coordinator asks at most once a day and never while offline or hidden. Its answer is kept
+ * even when React runs this effect twice (StrictMode): the second run finds the first still asking.
+ */
+function useDailyCheck(controller: ActivationGateController, active: boolean): ActivationEnded | null {
+  const [ended, setEnded] = useState<ActivationEnded | null>(null);
+  useEffect(() => {
+    const check = controller.checkThisDevice?.bind(controller);
+    if (!active || check === undefined) return;
+    const run = () => {
+      check({ now: new Date(), online: navigator.onLine, visible: document.visibilityState === 'visible' }).then(
+        (outcome) => { if (outcome === 'removed' || outcome === 'revoked') setEnded(outcome); },
+        () => undefined,
+      );
+    };
+    const whenVisible = () => { if (document.visibilityState === 'visible') run(); };
+    run();
+    window.addEventListener('online', run);
+    document.addEventListener('visibilitychange', whenVisible);
+    return () => {
+      window.removeEventListener('online', run);
+      document.removeEventListener('visibilitychange', whenVisible);
+    };
+  }, [controller, active]);
+  return ended;
 }
 
 /** "Lost access? Here's what to do" (D281): four steps behind a button; it opens by itself when all devices are used. */
@@ -119,6 +179,7 @@ export function ActivationGate({
   const [localError, setLocalError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const endedNow = useDailyCheck(controller, isActive(snapshot));
 
   useEffect(() => {
     let active = true;
@@ -138,7 +199,9 @@ export function ActivationGate({
     };
   }, [controller]);
 
-  if (isActive(snapshot)) return <>{children}</>;
+  if (isActive(snapshot)) {
+    return <>{children}{controller.checkThisDevice === undefined ? null : <SessionEndedNote ended={endedNow} />}</>;
+  }
 
   const busy = checking || snapshot?.status === 'validating';
   // The last answer's words give way while a new try is checked; the next answer brings its own.
@@ -223,7 +286,7 @@ export function ActivationGate({
             </form>
 
             <LostAccess open={helpOpen} onToggle={() => setHelpOpen((open) => !open)} deviceLimit={snapshot.deviceLimit} />
-            {journal ? <JournalCopy journal={journal} /> : null}
+            {journal ? <JournalCopy journal={journal} journalSaidAbove={localError === null && !busy && snapshot.reason === 'device-removed'} /> : null}
           </>
         )}
       </section>

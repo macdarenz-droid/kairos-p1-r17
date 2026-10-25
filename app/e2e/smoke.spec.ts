@@ -711,7 +711,8 @@ test('(o) Online services: Profile checks the Kairos server only on a tap', asyn
   await page.getByRole('button', { name: 'Check online services' }).click();
   await expect(page.locator('[data-online-services="unavailable"]')).toContainText('Unavailable · Online services: Kairos could not reach its server. Check your connection, then try again.');
   serverOnline = true;
-  await page.getByRole('button', { name: 'Try again' }).click();
+  // T-062f: Profile's "Your devices" card has its own "Try again" here (this test answers no activation route).
+  await page.locator('[data-online-services]').getByRole('button', { name: 'Try again' }).click();
   await expect(page.getByText('Online services are working. This device is recognised.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Check again' })).toBeFocused();
   expect(requests.map(request => request.url)).toEqual(['https://api.qa.invalid/health', 'https://api.qa.invalid/health']);
@@ -2542,4 +2543,96 @@ test('(ak) the invite screen: a code used on all its devices says so, opens "Los
   expect(sent[0]).toMatchObject({ inviteCode: '7q4m-x2pb-9hrt-k3vd', deviceLabel: 'Windows · Chrome' });
   expect(String(sent[0]!.requestId)).toMatch(/^[A-Za-z0-9-]{8,64}$/);
   expect(sent[1]!.requestId).toBe(sent[0]!.requestId);
+});
+
+test('(al) Your devices: Profile removes another device; a device removed elsewhere goes back to the invite screen with its journal', async ({ page }) => {
+  // T-062f (D283, D278): the fake activation server also answers /v1/devices, /v1/devices/remove and /v1/devices/check.
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  const key = createPrivateKey(readFileSync('e2e/.qa/qa-key.pem'));
+  const activationId = 'qa-devices', issuedAt = new Date().toISOString();
+  const verifierPayload = JSON.stringify({ proofVersion: 1, purpose: 'kairos-activation', receiptVersion: 1, activationId, issuedAt });
+  const verifierSignature = sign('sha256', Buffer.from(verifierPayload), { key, dsaEncoding: 'ieee-p1363' }).toString('base64url');
+  let devices = [
+    { id: 1, label: 'Windows · Chrome', since: issuedAt, lastSeenOn: issuedAt.slice(0, 10), thisDevice: true },
+    { id: 2, label: 'Android · Chrome', since: '2026-10-03T09:00:00.000Z', lastSeenOn: '2026-10-20', thisDevice: false },
+  ];
+  let checkAnswers: 'no connection' | 'removed' = 'no connection';
+  const asked: { path: string; body: Record<string, unknown> }[] = [];
+  await page.route(url => url.protocol === 'https:', async route => {
+    const url = new URL(route.request().url());
+    if (url.hostname !== 'activation.qa.invalid') return route.abort();
+    const body = JSON.parse(route.request().postData() ?? '{}') as Record<string, unknown>;
+    asked.push({ path: url.pathname, body });
+    const answer = (data: unknown) => route.fulfill({ contentType: 'application/json', body: JSON.stringify(data) });
+    switch (url.pathname) {
+      case '/v1/activate': return answer({ ok: true, receipt: { receiptVersion: 1, activationId, issuedAt, verifierPayload, verifierSignature } });
+      case '/v1/devices': return answer({ ok: true, used: devices.length, limit: 3, devices });
+      case '/v1/devices/remove':
+        devices = devices.filter(device => device.id !== body.deviceId);
+        return answer({ ok: true });
+      case '/v1/devices/check': return checkAnswers === 'removed' ? answer({ ok: true, status: 'removed' }) : route.abort('internetdisconnected');
+      default: return route.abort();
+    }
+  });
+  await page.goto('/');
+  await enterInviteCode(page);
+  // The check right after activation found no connection: nothing changes, and the app stays open.
+  await expect.poll(() => asked.filter(call => call.path === '/v1/devices/check').length).toBeGreaterThan(0);
+
+  await page.goto('/profile');
+  await expect(page.getByText(/^This device is activated \(since \d{1,2} [A-Z][a-z]{2,3} \d{4}\)\.$/)).toBeVisible();
+  const card = page.getByRole('article', { name: 'Your devices' });
+  await expect(card.getByText('This code is used on 2 of 3 devices.')).toBeVisible();
+  const rows = card.getByRole('listitem');
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(0)).toContainText('Windows · Chrome');
+  await expect(rows.nth(0)).toContainText('last used today');
+  await expect(rows.nth(0).getByText('This device')).toBeVisible();
+  await expect(rows.nth(0).getByRole('button')).toHaveCount(0);
+  // The year shows only when it isn't this year's (the test runs on the real clock).
+  await expect(rows.nth(1)).toContainText(/Android · Chromesince 3 Oct(?: 2026)? · last used 20 Oct(?: 2026)?/);
+  const cardAxe = await new AxeBuilder({ page }).include('.kairos-your-devices').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(cardAxe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+
+  await rows.nth(1).getByRole('button', { name: 'Remove' }).click();
+  const dialog = page.getByRole('alertdialog', { name: 'Remove Android · Chrome?' });
+  await expect(dialog).toContainText('It goes back to the invite screen the next time it opens online. Its journal stays on it.');
+  await dialog.getByRole('button', { name: 'Remove' }).click();
+  await expect(card.getByText('This code is used on 1 of 3 devices.')).toBeFocused();
+  await expect(rows).toHaveCount(1);
+  const removal = asked.find(call => call.path === '/v1/devices/remove')!;
+  expect(removal.body).toEqual({ token: expect.stringMatching(/^v1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/), deviceId: 2 });
+
+  // A trade on this device, so there is a journal to copy.
+  await page.goto('/journal');
+  await page.getByLabel(/^Symbol/).fill('KEEPME');
+  await page.getByLabel(/^Market/).selectOption('crypto');
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Status/).selectOption('cancelled');
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.locator('.kairos-journal__feedback--success')).toBeVisible();
+
+  // Elsewhere, this device was removed. The next start opens as usual, hears it, and carries on with a note.
+  checkAnswers = 'removed';
+  await page.reload();
+  const note = page.getByRole('status').filter({ hasText: 'This device was removed from your invite code. Kairos will ask for your code the next time it opens. Your journal stays on this device.' });
+  await expect(note).toBeVisible();
+  await expect(page.locator('.kairos-shell')).toBeVisible();
+  const noteAxe = await new AxeBuilder({ page }).include('.kairos-activation-ended').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(noteAxe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+
+  // The start after: the invite screen, D278's words, and a copy of the journal still on this device.
+  await page.reload();
+  await expect(page.getByRole('heading', { level: 1, name: 'Welcome to Kairos' })).toBeVisible();
+  await expect(page.getByText('This device was removed from your invite code. Your journal is still on this device.')).toBeVisible();
+  await expect(page.getByText('No backup yet.')).toBeVisible();
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download a copy of my data' }).click()]);
+  const saved = JSON.parse(readFileSync((await download.path())!, 'utf8')) as { payload: { trades: Array<{ symbol: string }> } };
+  expect(saved.payload.trades.map(trade => trade.symbol)).toEqual(['KEEPME']);
+  const gateAxe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(gateAxe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  expect(errors).toEqual([]);
 });

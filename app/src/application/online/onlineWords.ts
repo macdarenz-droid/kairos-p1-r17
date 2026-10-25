@@ -90,7 +90,7 @@ export function describeOnlineServices(result: KairosApiResult<KairosApiHealth>)
   if (!result.ok) return Object.freeze({ kind: 'unavailable' as const, words: describeUnavailable(result, 'Online services') });
   const device = {
     recognised: 'This device is recognised.',
-    'not-sent': 'This device did not send its activation.',
+    'not-sent': "This device isn't activated.",
     'not-recognised': 'The server did not recognise this device.',
     'not-checked': 'The server cannot check devices yet.',
   }[result.value.device];

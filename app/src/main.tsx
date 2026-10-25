@@ -6,6 +6,7 @@ import { router } from './app/router';
 import { describeThrownValue, diagnostics } from './diagnostics/DiagnosticsService';
 import { applyInitialTheme, ThemeProvider } from './design-system/themes';
 import { kairosDatabase, openKairosDatabase } from './data/database';
+import { createActivationCheckStore } from './application/activation/activationCheck';
 import { loadBackupReminder } from './application/backup';
 import { loadTradedMarkets } from './application/setup/tradedMarkets';
 import { loadVisualPnlTimeZone } from './application/visual-pnl/timeZonePreference';
@@ -50,6 +51,9 @@ const journal: ActivationJournalPort = {
   downloadCopy: downloadJournalCopy,
 };
 
+// D278, D285: the daily check keeps its record on this device; its writes are the application layer's.
+const deviceCheck = createActivationCheckStore(kairosDatabase);
+
 const root = document.getElementById('root');
 if (!root) throw new Error('Kairos root element was not found.');
 
@@ -77,5 +81,5 @@ createRoot(root, {
     });
   },
 }).render(
-  <StrictMode><ThemeProvider><AppErrorBoundary><ActivationBootstrap databaseStartup={databaseStartup} journal={journal}><RouterProvider router={router} /></ActivationBootstrap></AppErrorBoundary></ThemeProvider></StrictMode>,
+  <StrictMode><ThemeProvider><AppErrorBoundary><ActivationBootstrap databaseStartup={databaseStartup} journal={journal} deviceCheck={deviceCheck}><RouterProvider router={router} /></ActivationBootstrap></AppErrorBoundary></ThemeProvider></StrictMode>,
 );
