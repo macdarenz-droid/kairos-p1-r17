@@ -1,3 +1,5 @@
+import type { ActivationReceipt } from '../../domain/activation/activationReceipt';
+
 export type ActivationStatus =
   | 'activation-required'
   | 'validating'
@@ -20,13 +22,8 @@ export interface ActivationRequest {
   deviceLabel?: string;
 }
 
-export interface ActivationReceipt {
-  receiptVersion: 1;
-  activationId: string;
-  issuedAt: string;
-  verifierPayload: string;
-  verifierSignature: string;
-}
+// The receipt and its identity are the stored contract's (domain/activation/activationReceipt.ts).
+export type { ActivationIdentity, ActivationReceipt } from '../../domain/activation/activationReceipt';
 
 /** Why a try did not open Kairos (D281). The words for each are the gate's (features/activation/activationWords.ts). */
 export type ActivationRefusalReason =
@@ -68,7 +65,7 @@ export type ActivationEnded = Exclude<ActivationDeviceStatus, 'active'>;
 /** One device of this device's invite code, as /devices lists it (D277). Other devices are named by their row number only. */
 export interface ActivationDevice {
   readonly id: number;
-  /** A name from the Worker's fixed list (describeThisDevice.ts), never free text. */
+  /** A name from the Worker's fixed list (describeThisDevice.ts); one this build doesn't know reads "Other device". */
   readonly label: string;
   /** When it was activated (UTC ISO). */
   readonly since: string;
@@ -125,11 +122,14 @@ export interface ActivationCheckRecord {
 export type ActivationCheckOutcome =
   /** Not asked: offline, hidden, not active, nothing to ask with, or a check is already running. */
   | 'skipped'
-  /** Not asked: the last answer came less than 24 hours ago. */
+  /** Not asked: the last answer came less than 24 hours ago, or this session's last try changed nothing less than an hour ago. */
   | 'not-due'
   /** The server knows this device and it is in use; the time was saved. */
   | 'active'
   /** This device's invite ended: its receipt is gone and the reason is saved. The open session carries on. */
   | ActivationEnded
-  /** A failed or unreadable answer, a device the server doesn't know, or a save that failed: nothing changed. */
+  /**
+   * A failed or unreadable answer, a device the server doesn't know, an answer about a receipt another tab has since
+   * replaced, or a save that failed: nothing changed.
+   */
   | 'unchanged';

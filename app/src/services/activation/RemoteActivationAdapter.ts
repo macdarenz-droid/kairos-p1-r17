@@ -11,7 +11,7 @@ import type {
   ActivationRequest,
   ActivationValidationResult,
 } from './activationTypes';
-import { DEVICE_LABELS } from './describeThisDevice';
+import { DEVICE_LABELS, OTHER_DEVICE } from './describeThisDevice';
 
 export interface RemoteActivationAdapterOptions {
   readonly endpoint: string;
@@ -158,6 +158,12 @@ const REMOVE_REFUSALS: ReadonlySet<string> = new Set([...LIST_REFUSALS, 'device-
 const CHECK_REFUSALS: ReadonlySet<string> = new Set(['device-not-recognised']);
 const DEVICE_STATUSES: ReadonlySet<string> = new Set<ActivationDeviceStatus>(['active', 'removed', 'revoked']);
 const KNOWN_LABELS: ReadonlySet<string> = new Set(DEVICE_LABELS);
+/**
+ * A device name as plausible text: 1 to 128 characters with no control character (the Worker itself accepts only names
+ * on its fixed list, isDeviceLabel in deviceLabels.mjs). A name off this build's copy of the list (one the Worker added
+ * later) shows as "Other device", so an older build keeps the list and Remove; it never shows text Kairos doesn't know.
+ */
+const LABEL_TEXT = /^[^\p{Cc}]{1,128}$/u;
 
 /** What a device route answered: its HTTP status and JSON body, or nothing (no connection, a time-out, a refused redirect). */
 type DeviceAnswer = Readonly<{ reached: true; status: number; json: boolean; payload: unknown }> | Readonly<{ reached: false }>;
@@ -192,9 +198,9 @@ function parseDevice(value: unknown): ActivationDevice | null {
   if (!isRecord(value)) return null;
   const { id, label, since, lastSeenOn, thisDevice } = value;
   if (typeof id !== 'number' || !Number.isSafeInteger(id) || id <= 0) return null;
-  if (typeof label !== 'string' || !KNOWN_LABELS.has(label)) return null;
+  if (typeof label !== 'string' || !LABEL_TEXT.test(label)) return null;
   if (!isIsoTimestamp(since) || (lastSeenOn !== null && !isDay(lastSeenOn)) || typeof thisDevice !== 'boolean') return null;
-  return Object.freeze({ id, label, since, lastSeenOn, thisDevice });
+  return Object.freeze({ id, label: KNOWN_LABELS.has(label) ? label : OTHER_DEVICE, since, lastSeenOn, thisDevice });
 }
 
 /**

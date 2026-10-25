@@ -1,4 +1,4 @@
-import { type FormEvent, type PropsWithChildren, useEffect, useId, useState } from 'react';
+import { type CSSProperties, type FormEvent, type PropsWithChildren, useEffect, useId, useState } from 'react';
 import { describeDataCopy, type RunBackupResult } from '../../application/backup';
 import { Button } from '../../design-system/primitives';
 import type {
@@ -101,6 +101,40 @@ function JournalCopy({ journal, journalSaidAbove }: { readonly journal: Activati
   );
 }
 
+/** The shell's "A new version is ready." prompt (features/shell/UpdatePrompt.tsx), fixed at the note's spot. */
+const UPDATE_PROMPT = '.kairos-update-prompt';
+
+/**
+ * The height of the element `selector` finds, followed while `watching` (it comes, goes and grows with its text); 0
+ * when there is none. jsdom and old browsers without ResizeObserver still follow it coming and going.
+ */
+function useHeightOf(selector: string, watching: boolean): number {
+  const [height, setHeight] = useState(0);
+  useEffect(() => {
+    if (!watching) return;
+    let observed: Element | null = null;
+    const sizes = typeof ResizeObserver === 'function' ? new ResizeObserver(() => measure()) : null;
+    function measure(): void {
+      const found = document.querySelector(selector);
+      if (found !== observed) {
+        if (observed !== null) sizes?.unobserve(observed);
+        if (found !== null) sizes?.observe(found);
+        observed = found;
+      }
+      setHeight(found === null ? 0 : Math.ceil(found.getBoundingClientRect().height));
+    }
+    const changes = new MutationObserver(measure);
+    changes.observe(document.body, { childList: true, subtree: true });
+    measure();
+    return () => {
+      changes.disconnect();
+      sizes?.disconnect();
+      setHeight(0);
+    };
+  }, [selector, watching]);
+  return height;
+}
+
 /**
  * D278: when the daily check ends this device's invite, the open session carries on with this note; the next start
  * shows the invite screen. The status line is there from the first render, so the note is heard when it comes. "Close"
@@ -109,12 +143,15 @@ function JournalCopy({ journal, journalSaidAbove }: { readonly journal: Activati
 function SessionEndedNote({ ended }: { readonly ended: ActivationEnded | null }) {
   const [closed, setClosed] = useState(false);
   const shown = ended !== null && !closed;
+  const rise = useHeightOf(UPDATE_PROMPT, shown);
   function close(): void {
     document.querySelector<HTMLElement>('main[tabindex]')?.focus({ preventScroll: true });
     setClosed(true);
   }
+  // Stacked above the update prompt when both show (they share the spot above the bottom bar), so neither hides the other.
+  const style = shown && rise > 0 ? ({ '--kairos-activation-ended-rise': `calc(${rise}px + var(--kairos-space-2))` } as CSSProperties) : undefined;
   return (
-    <div className="kairos-activation-ended" data-shown={shown ? '' : undefined}>
+    <div className="kairos-activation-ended" data-shown={shown ? '' : undefined} style={style}>
       <p role="status">{shown ? describeSessionEnded(ended) : null}</p>
       {shown ? <Button variant="secondary" size="sm" onClick={close}>Close</Button> : null}
     </div>

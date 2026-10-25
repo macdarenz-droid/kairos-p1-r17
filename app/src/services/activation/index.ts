@@ -43,6 +43,7 @@ export type {
   ActivationDeviceRemoveResult,
   ActivationDeviceStatus,
   ActivationEnded,
+  ActivationIdentity,
   ActivationReceipt,
   ActivationRefusalReason,
   ActivationRequest,

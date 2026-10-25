@@ -158,7 +158,8 @@
 /*
  * D278: the note when the daily check ends this device's invite during a session. Without it the host is an empty
  * status line with no box; with it, a card above the bottom bar (as the update prompt), above "+ Log trade" when that
- * shows, and beside the side menu on wide screens.
+ * shows, and beside the side menu on wide screens. When the update prompt shows too, the note rises above it by the
+ * prompt's height (`--kairos-activation-ended-rise`, measured in ActivationGate.tsx), so both stay in view.
  */
 .kairos-activation-ended p {
   margin: 0;
@@ -168,7 +169,7 @@
   position: fixed;
   z-index: 25;
   right: var(--kairos-space-4);
-  bottom: calc(var(--kairos-layout-navigation-height) + env(safe-area-inset-bottom, 0px) + var(--kairos-space-3));
+  bottom: calc(var(--kairos-layout-navigation-height) + env(safe-area-inset-bottom, 0px) + var(--kairos-space-3) + var(--kairos-activation-ended-rise, 0px));
   left: var(--kairos-space-4);
   display: flex;
   flex-wrap: wrap;
@@ -189,7 +190,7 @@
 }
 
 :root:has(.kairos-log-trade) .kairos-activation-ended[data-shown] {
-  bottom: calc(var(--kairos-log-trade-bottom) + var(--kairos-control-lg) + var(--kairos-space-2));
+  bottom: calc(var(--kairos-log-trade-bottom) + var(--kairos-control-lg) + var(--kairos-space-2) + var(--kairos-activation-ended-rise, 0px));
 }
 
 @media (min-width: 48rem) {
@@ -199,7 +200,7 @@
 
   .kairos-activation-ended[data-shown] {
     right: var(--kairos-space-6);
-    bottom: var(--kairos-space-6);
+    bottom: calc(var(--kairos-space-6) + var(--kairos-activation-ended-rise, 0px));
     left: calc(13rem + var(--kairos-space-6));
   }
 }

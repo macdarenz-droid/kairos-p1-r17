@@ -11,6 +11,7 @@ import type {
   ActivationCheckOutcome,
   ActivationCheckRecord,
   ActivationEnded,
+  ActivationIdentity,
   ActivationRequest,
   ActivationSnapshot,
   ActivationValidationResult,
@@ -25,10 +26,16 @@ import { kairosDeviceToken } from './deviceToken';
 export interface ActivationCheckStore {
   /** The record, or null when there is none or it is damaged (read as never checked). Throws when it can't be read. */
   load(): Promise<ActivationCheckRecord | null>;
-  /** The server knows this device and it is in use: the time of the answer, and no `ended`. */
-  saveActive(checkedAt: string): Promise<void>;
-  /** One atomic metadata write: this device's receipt is deleted and why is saved (D278). */
-  endThisDevice(ended: ActivationEnded, checkedAt: string): Promise<void>;
+  /**
+   * The server knows the `checked` receipt and it is in use: the time of the answer, and no `ended`. Saved only while
+   * that same receipt is stored; false (nothing saved) when another one is, or none.
+   */
+  saveActive(checkedAt: string, checked: ActivationIdentity): Promise<boolean>;
+  /**
+   * One atomic metadata write (D278): the `checked` receipt is deleted and why is saved; with no receipt stored, only
+   * why. False, and nothing saved, when another receipt is stored: an old tab never ends a newer activation.
+   */
+  endThisDevice(ended: ActivationEnded, checkedAt: string, checked: ActivationIdentity): Promise<boolean>;
   /** A new activation: `ended` goes, and the time of the last answer stays. */
   clearEnded(): Promise<void>;
 }
@@ -56,6 +63,12 @@ export interface ActivationCheckInput {
 
 /** D278: at most one check a day. */
 const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
+/**
+ * After a try that changed nothing (no answer, one Kairos can't read, a device the server doesn't know, or nothing
+ * saved), this session waits an hour before asking again, however often the device comes back online or on screen.
+ * Kept in memory only: the next start may ask at once.
+ */
+const RETRY_PAUSE_MS = 60 * 60 * 1000;
 
 /** Due when never answered, a day or more ago, or (a clock moved back) in the future. */
 function isCheckDue(record: ActivationCheckRecord | null, now: Date): boolean {
@@ -90,6 +103,8 @@ export class ActivationCoordinator {
    */
   private pendingRequest: { readonly codeKey: string; readonly requestId: string } | null = null;
   private checkInFlight = false;
+  /** When this session's last try changed nothing (epoch ms), for the retry pause. */
+  private lastFailedTryAt: number | null = null;
   /** D278: this session's invite ended; it carries on, and nothing is asked again until the next start. */
   private endedThisSession = false;
 
@@ -225,6 +240,8 @@ export class ActivationCoordinator {
     if (this.checkInFlight || this.endedThisSession || !isActiveStatus(this.snapshot.status) || receipt === null) return 'skipped';
     const token = kairosDeviceToken(receipt);
     if (token === null) return 'skipped';
+    const sinceFailedTry = this.lastFailedTryAt === null ? null : now.getTime() - this.lastFailedTryAt;
+    if (sinceFailedTry !== null && sinceFailedTry >= 0 && sinceFailedTry < RETRY_PAUSE_MS) return 'not-due';
 
     this.checkInFlight = true;
     try {
@@ -237,23 +254,30 @@ export class ActivationCoordinator {
       if (!isCheckDue(record, now)) return 'not-due';
 
       const answer = await devices.checkDevice(token).catch(() => null);
-      if (answer === null || !answer.ok) return 'unchanged';
+      if (answer === null || !answer.ok) return this.changedNothing(now);
       const checkedAt = now.toISOString();
+      // The answer is about the receipt this session holds, which another tab may have replaced since (fix r1).
+      const checked: ActivationIdentity = { activationId: receipt.activationId, issuedAt: receipt.issuedAt };
       if (answer.status === 'active') {
-        // Not saved: the next start asks again, which is all a lost save costs.
-        await checks.saveActive(checkedAt).catch(() => undefined);
-        return 'active';
+        // Not saved (another receipt is stored, or storage failed): the next try or start asks again.
+        return await checks.saveActive(checkedAt, checked).catch(() => false) ? this.answered('active') : this.changedNothing(now);
       }
-      try {
-        await checks.endThisDevice(answer.status, checkedAt);
-      } catch {
-        return 'unchanged';
-      }
+      if (!(await checks.endThisDevice(answer.status, checkedAt, checked).catch(() => false))) return this.changedNothing(now);
       this.endedThisSession = true;
-      return answer.status;
+      return this.answered(answer.status);
     } finally {
       this.checkInFlight = false;
     }
+  }
+
+  private changedNothing(now: Date): ActivationCheckOutcome {
+    this.lastFailedTryAt = now.getTime();
+    return 'unchanged';
+  }
+
+  private answered(outcome: ActivationCheckOutcome): ActivationCheckOutcome {
+    this.lastFailedTryAt = null;
+    return outcome;
   }
 
   /** No receipt on this device: the invite screen, with D278's words when the daily check ended this device's invite. */

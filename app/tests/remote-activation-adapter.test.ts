@@ -161,7 +161,10 @@ describe('RemoteActivationAdapter device routes', () => {
     ['a count that is not the list\'s length', { ...LIST, used: 3 }],
     ['more devices than the limit', { ...LIST, used: 2, limit: 1 }],
     ['a limit outside 1 to 10', { ...LIST, limit: 11 }],
-    ['a name off the fixed list', { ...LIST, devices: [thisPhone, { ...laptop, label: 'Bob\'s laptop' }] }],
+    ['a name that is not text', { ...LIST, devices: [thisPhone, { ...laptop, label: 7 }] }],
+    ['an empty name', { ...LIST, devices: [thisPhone, { ...laptop, label: '' }] }],
+    ['a name longer than the Worker keeps', { ...LIST, devices: [thisPhone, { ...laptop, label: 'x'.repeat(129) }] }],
+    ['a name with a control character', { ...LIST, devices: [thisPhone, { ...laptop, label: 'Windows\u0000Edge' }] }],
     ['a device twice', { ...LIST, devices: [thisPhone, { ...laptop, id: 1 }] }],
     ['no "this device"', { ...LIST, devices: [{ ...thisPhone, thisDevice: false }, laptop] }],
     ['two "this device"', { ...LIST, devices: [thisPhone, { ...laptop, thisDevice: true }] }],
@@ -172,6 +175,16 @@ describe('RemoteActivationAdapter device routes', () => {
     ['no count', { ok: true, limit: 3, devices: [thisPhone, laptop] }],
   ])('never shows a list with %s', async (_case, body) => {
     await expect(answering(jsonResponse(body)).adapter.listDevices(TOKEN)).resolves.toEqual({ ok: false, reason: 'service-error' });
+  });
+
+  // Fix r1: a name the Worker added after this build keeps the list (and Remove) working on older builds.
+  it('shows a name off this build\'s copy of the list as "Other device", never as its text', async () => {
+    const lab = { ...laptop, label: 'Vision · Safari' };
+    await expect(answering(jsonResponse({ ...LIST, devices: [thisPhone, lab] })).adapter.listDevices(TOKEN))
+      .resolves.toEqual({ ok: true, list: { used: 2, limit: 3, devices: [thisPhone, { ...lab, label: 'Other device' }] } });
+    const longest = { ...laptop, label: 'y'.repeat(128) };
+    await expect(answering(jsonResponse({ ...LIST, devices: [thisPhone, longest] })).adapter.listDevices(TOKEN))
+      .resolves.toMatchObject({ ok: true, list: { devices: [thisPhone, { id: 4, label: 'Other device' }] } });
   });
 
   it('reads each refusal only with its own HTTP status, and anything else as an answer it can\'t read', async () => {

@@ -357,6 +357,24 @@ describe('T-062f the daily check on the gate (D278)', () => {
     expect(screen.getByRole('heading', { name: 'Journal core' })).toBeInTheDocument();
   });
 
+  // Fix r1: the note and the shell's "A new version is ready." prompt share the spot above the bottom bar.
+  it('the note rises above the update prompt by the prompt\'s height while both show', async () => {
+    const checkThisDevice = vi.fn(async () => 'removed' as const);
+    const { container } = render(<ActivationGate controller={controller({ bootstrap: vi.fn(async () => snapshot('active-offline')), checkThisDevice })} appVersion="0.1" buildId="test">{app}</ActivationGate>);
+    await screen.findByText(REMOVED_NOTE);
+    const note = container.querySelector<HTMLElement>('.kairos-activation-ended')!;
+    const rise = () => note.style.getPropertyValue('--kairos-activation-ended-rise');
+    expect(rise()).toBe('');
+
+    const prompt = document.createElement('div');
+    prompt.className = 'kairos-update-prompt';
+    vi.spyOn(prompt, 'getBoundingClientRect').mockReturnValue({ height: 57.4 } as DOMRect);
+    act(() => { document.body.append(prompt); });
+    await waitFor(() => expect(rise()).toBe('calc(58px + var(--kairos-space-2))'));
+    act(() => { prompt.remove(); });
+    await waitFor(() => expect(rise()).toBe(''));
+  });
+
   it('a start with no receipt after the device was removed: D278\'s words, and the copy says the journal is here once', async () => {
     const db = await database();
     await oneTrade(db);
