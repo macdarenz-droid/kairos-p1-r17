@@ -299,9 +299,10 @@ const marketCoinNamesRoute: KairosApiRoute = {
 
 /**
  * T-061f (D272): at most 10 coins a request (the app asks Home's 30 markets in three), each logo at most 32 KB. The cap
- * keeps a miss inside the Free plan's 10 ms of CPU (README, O10): reading the list (about 2 ms, only when the shared
- * copy is missing) and one answer of at most 10 × 44 KB of JSON (about 3 ms; measured in Node, cold); the base64 is the
- * runtime's own (`toBase64`).
+ * keeps a miss inside the Free plan's 10 ms of CPU (README, O10). Measured cold in Node 22 (review r1): reading the
+ * list, only when the shared copy is missing, 1.6–3.8 ms for CoinGecko's 250 rows (188 KB; 4.6–7.8 ms before the
+ * logo address was checked by one pattern); one answer of at most 10 × 44 KB of JSON, about 2.3–3 ms; the base64 is the
+ * runtime's own (`toBase64`). So about 4–7 ms at worst; the Worker's own CPU is UNVERIFIED until a deploy.
  */
 export const MAX_COIN_LOGOS = 10;
 export const COIN_LOGO_MAX_BYTES = 32_768;

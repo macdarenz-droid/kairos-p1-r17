@@ -258,11 +258,12 @@ image: 'data:image/png;base64,…' }] }`, A→Z, only coins asked; a coin with n
 - Kept 30 days in Workers Cache (and the browser); never in memory or KV (the question varies, and a memory copy's
   JSON text would cost CPU). When a logo could not be read just then (down, busy, too slow), the answer is kept only an
   hour, so a later visit gets it.
-- CPU: the Free plan stops a request at 10 ms (above, O10). A miss does the list's check (only the coins asked; about
-  2 ms when the shared copy is missing and the list is read), up to 10 logo reads (I/O, not CPU), base64 by the
-  runtime's own `Uint8Array.prototype.toBase64` (a script fallback only where it is missing), and one JSON answer of at
-  most about 440 KB (about 3 ms in Node, cold). Measured in Node only: the Worker's real CPU is UNVERIFIED until a
-  deploy (O1/O2). Subrequests: at most 11 a request (the list and 10 logos).
+- CPU: the Free plan stops a request at 10 ms (above, O10). A miss: reading the list only when the shared copy is
+  missing (1.6–3.8 ms for 250 rows, 188 KB, cold in Node 22; each logo address is checked by one anchored pattern, not
+  parsed as a URL); from the shared copy only the coins asked are checked; up to 10 logo reads (I/O, not CPU); base64
+  by the runtime's own `Uint8Array.prototype.toBase64` (a script fallback only where it is missing); one JSON answer of
+  at most about 440 KB (2.3–3 ms). About 4–7 ms at worst. Measured in Node only: the Worker's real CPU is UNVERIFIED
+  until a deploy (O1/O2). Subrequests: at most 11 a request (the list and 10 logos).
 - Budget: the app asks only for coins it keeps no logo for (30 days on the phone), each request one place in Home's
   shared budget of 9 a minute (`application/online/requestBudget.ts`; the count is in `application/markets/marketMoves.ts`).
 

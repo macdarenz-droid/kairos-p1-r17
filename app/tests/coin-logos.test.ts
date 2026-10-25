@@ -3,7 +3,8 @@ import { chooseMarketDataPorts, createHomeMarket } from '../src/app/marketDataPo
 import { createRequestBudget, HOME_SHARED_READS_PER_MINUTE } from '../src/application/online/requestBudget';
 import type { MarketCandleHistoryPort } from '../src/services/market-data/MarketCandleHistoryPort';
 import {
-  browserCoinLogoCache, COIN_LOGO_KEEP_MS, COIN_LOGO_NONE_KEEP_MS, COIN_LOGOS_CACHE_NAME, COIN_LOGOS_FAILURE_KEEP_MS, createCoinLogoKeeper, type CoinLogoAsk,
+  browserCoinLogoCache, COIN_LOGO_ENTRY_PREFIX, COIN_LOGO_KEEP_MS, COIN_LOGO_MARKS_ENTRY, COIN_LOGO_NONE_KEEP_MS, COIN_LOGOS_CACHE_NAME, COIN_LOGOS_FAILURE_KEEP_MS,
+  COIN_LOGOS_NOT_SET_UP_KEEP_MS, createCoinLogoKeeper, type CoinLogoAsk,
 } from '../src/application/markets/coinLogos';
 import { parseCoinLogoAddress, type CoinLogoAddress } from '../src/domain/market/coinLogo';
 import { createKairosApiClient } from '../src/services/kairos-api/kairosApi';
@@ -32,25 +33,43 @@ const logosAnswer = (logos: readonly { symbol: string; image: unknown }[]) => ok
 const client = (fetchImpl: typeof fetch) => createKairosCoinLogos(createKairosApiClient({ baseUrl: BASE, fetchImpl }), { isOnline: () => true });
 const hostsAsked = (fetchImpl: ReturnType<typeof vi.fn<typeof fetch>>) => fetchImpl.mock.calls.map(([url]) => new URL(String(url)).host);
 
-/** Cache Storage as a browser has it, by cache name; `refuse` makes every call fail, as a full or blocked store does. */
+/**
+ * Cache Storage as a browser has it, by cache name, with each entry's text and headers; `refuse` makes those calls fail,
+ * as a full or blocked store does. `read` lists the entries whose text was read, `written` those written.
+ */
 function fakeCaches(refuse: 'open' | 'put' | 'match' | null = null) {
-  const stores = new Map<string, Map<string, string>>();
+  type Entry = { text: string; headers: [string, string][] };
+  const stores = new Map<string, Map<string, Entry>>();
+  const read: string[] = [];
+  const written: string[] = [];
   const storage = {
-    stores,
+    stores, read, written,
     async open(name: string) {
       if (refuse === 'open') throw new DOMException('refused', 'SecurityError');
-      const entries = stores.get(name) ?? new Map<string, string>();
+      const entries = stores.get(name) ?? new Map<string, Entry>();
       stores.set(name, entries);
       const key = (request: RequestInfo | URL) => new URL(String(request instanceof Request ? request.url : request), 'https://kairos.test').pathname;
       return {
         async match(request: RequestInfo | URL) {
           if (refuse === 'match') throw new DOMException('refused', 'UnknownError');
-          const text = entries.get(key(request));
-          return text === undefined ? undefined : new Response(text, { headers: { 'content-type': 'application/json' } });
+          const path = key(request);
+          const entry = entries.get(path);
+          if (entry === undefined) return undefined;
+          const response = new Response(entry.text, { headers: entry.headers });
+          const text = response.text.bind(response);
+          return Object.assign(response, { text: () => { read.push(path); return text(); } });
         },
         async put(request: RequestInfo | URL, response: Response) {
           if (refuse === 'put') throw new DOMException('full', 'QuotaExceededError');
-          entries.set(key(request), await response.text());
+          written.push(key(request));
+          entries.set(key(request), { text: await response.text(), headers: [...response.headers.entries()] });
+        },
+        async delete(request: RequestInfo | URL) {
+          return entries.delete(key(request));
+        },
+        async keys() {
+          if (refuse === 'match') throw new DOMException('refused', 'UnknownError');
+          return [...entries.keys()].map(path => new Request(`https://kairos.test${path}`));
         },
       };
     },
@@ -146,7 +165,7 @@ describe('T-061f the logos kept on this device (D272)', () => {
     expect(vi.mocked(expired).mock.calls.map(([coins]) => coins)).toEqual([['BTC', 'ETH']]);
   });
 
-  it('asks only for the coins it has no logo for, 10 a request and 30 a call, the caller\'s first coins first; one the server has none for is asked again after a day', async () => {
+  it('asks only for the coins it has no logo for, 10 a request and 30 a call, the caller\'s first coins first; one the server has none for is asked again after 7 days', async () => {
     fakeCaches();
     await visit(answered({ BTC: BTC_LOGO })).logos(['BTC']);
     const ask = answered(ALL);
@@ -163,8 +182,9 @@ describe('T-061f the logos kept on this device (D272)', () => {
     await keeper.logos(coins);
     expect(ask).toHaveBeenCalledTimes(4);
 
-    // DOGE had no logo: the next visit does not ask within a day, and asks again after it.
+    // DOGE had no logo: the next visit does not ask within 7 days (review r1: a day cost the news its place daily), and asks after.
     const nextVisit = answered(ALL);
+    await visit(nextVisit, NOW + 6 * DAY).logos(['BTC', 'DOGE']);
     await visit(nextVisit, NOW + COIN_LOGO_NONE_KEEP_MS - 1).logos(['BTC', 'DOGE']);
     expect(nextVisit).not.toHaveBeenCalled();
     const dayLater = answered({ ...ALL, DOGE: BTC_LOGO });
@@ -235,24 +255,73 @@ describe('T-061f the logos kept on this device (D272)', () => {
     expect(await createCoinLogoKeeper({ ask, budget: null, openCache: null, now: () => NOW }).logos(['ETH'])).toEqual(new Map([['ETH', ETH_LOGO]]));
   });
 
-  it('reads a bad kept copy as missing, and kept() never asks', async () => {
+  it('reads a bad kept entry as missing, and kept() never asks', async () => {
     const storage = fakeCaches();
     await visit(answered(ALL)).logos(['BTC', 'ETH']);
-    const [cacheName, entries] = [...storage.stores.entries()][0]!;
-    expect(cacheName).toBe(COIN_LOGOS_CACHE_NAME);
-    const [key, text] = [...entries.entries()][0]!;
-    const copy = JSON.parse(text) as { logos: Record<string, { storedAt: unknown; image: unknown }> };
-    copy.logos.BTC = { storedAt: NOW, image: `data:image/svg+xml;base64,${base64(SVG)}` };
-    copy.logos.ETH = { storedAt: 'yesterday', image: ETH_LOGO };
-    entries.set(key, JSON.stringify(copy));
+    const entries = storage.stores.get(COIN_LOGOS_CACHE_NAME)!;
+    entries.get(`${COIN_LOGO_ENTRY_PREFIX}BTC`)!.text = `data:image/svg+xml;base64,${base64(SVG)}`;
+    entries.get(`${COIN_LOGO_ENTRY_PREFIX}ETH`)!.headers = [['x-kairos-kept-at', 'yesterday']];
     const ask = answered(ALL);
     const keeper = visit(ask);
     expect(await keeper.kept(['BTC', 'ETH'])).toEqual(new Map());
     expect(ask).not.toHaveBeenCalled();
     expect(await keeper.logos(['BTC', 'ETH'])).toEqual(new Map([['BTC', BTC_LOGO], ['ETH', ETH_LOGO]]));
     expect(vi.mocked(ask).mock.calls.map(([coins]) => coins)).toEqual([['BTC', 'ETH']]);
-    entries.set(key, 'not json');
-    expect(await visit(answered(ALL)).kept(['BTC'])).toEqual(new Map());
+    entries.set(COIN_LOGO_MARKS_ENTRY, { text: 'not json', headers: [] });
+    entries.delete(`${COIN_LOGO_ENTRY_PREFIX}BTC`);
+    const after = answered(ALL);
+    expect(await visit(after).logos(['BTC', 'ETH'])).toEqual(new Map([['BTC', BTC_LOGO], ['ETH', ETH_LOGO]]));
+    expect(vi.mocked(after).mock.calls.map(([coins]) => coins)).toEqual([['BTC']]);
+  });
+
+  it('review r1: one entry per coin, read only for the coins shown; a request writes only its own coins; old entries go once a visit', async () => {
+    const storage = fakeCaches();
+    await visit(answered(ALL)).logos(['BTC', 'ETH', 'SOL', 'DOGE']);
+    const entries = storage.stores.get(COIN_LOGOS_CACHE_NAME)!;
+    expect([...entries.keys()].sort()).toEqual([COIN_LOGO_MARKS_ENTRY, ...['BTC', 'ETH', 'SOL'].map(coin => `${COIN_LOGO_ENTRY_PREFIX}${coin}`)].sort());
+    expect(entries.get(`${COIN_LOGO_ENTRY_PREFIX}BTC`)!.text).toBe(BTC_LOGO);
+    // Another visit shows BTC only: only BTC's logo is read.
+    storage.read.length = 0;
+    expect(await visit(answered(ALL)).kept(['BTC'])).toEqual(new Map([['BTC', BTC_LOGO]]));
+    expect(storage.read).toEqual([`${COIN_LOGO_ENTRY_PREFIX}BTC`]);
+    // A new coin: one request for it; only its mark is written, no logo rewritten.
+    storage.written.length = 0;
+    const ask = answered(ALL);
+    await visit(ask, NOW + 1_000).logos(['BTC', 'ETH', 'XRP']);
+    expect(vi.mocked(ask).mock.calls.map(([coins]) => coins)).toEqual([['XRP']]);
+    expect(storage.written).toEqual([COIN_LOGO_MARKS_ENTRY]);
+    // An entry of an older shape, and a logo past 30 days, are deleted by the next visit that asks.
+    entries.set('/kairos-coin-logos/kept', { text: '{"logos":{}}', headers: [] });
+    await visit(answered(ALL), NOW + COIN_LOGO_KEEP_MS + 1).logos(['BTC']);
+    expect(entries.has('/kairos-coin-logos/kept')).toBe(false);
+    expect(entries.has(`${COIN_LOGO_ENTRY_PREFIX}ETH`)).toBe(false);
+    expect(entries.has(`${COIN_LOGO_ENTRY_PREFIX}SOL`)).toBe(false);
+    // BTC was asked again and kept anew.
+    expect(entries.get(`${COIN_LOGO_ENTRY_PREFIX}BTC`)!.headers).toContainEqual(['x-kairos-kept-at', String(NOW + COIN_LOGO_KEEP_MS + 1)]);
+  });
+
+  it('review r1: keeps "not set up" on the device for a day, so the next load asks nothing and leaves Home\'s budget free; a good answer clears it', async () => {
+    fakeCaches();
+    const notSetUp: CoinLogoAsk = vi.fn<CoinLogoAsk>(async () => ({ ok: false, reason: 'unavailable', why: 'not-set-up', retryAfterSeconds: null }));
+    const settleAll = async () => { for (let i = 0; i < 20; i += 1) await Promise.resolve(); };
+    await createCoinLogoKeeper({ ask: notSetUp, budget: createRequestBudget(HOME_SHARED_READS_PER_MINUTE), openCache: browserCoinLogoCache(), now: () => NOW }).logos(['BTC', 'ETH']);
+    expect(notSetUp).toHaveBeenCalledTimes(1);
+    // The next page load, the same day: no request, and the news's 9 fit at once.
+    const budget = createRequestBudget(HOME_SHARED_READS_PER_MINUTE);
+    const nextLoad = vi.fn<CoinLogoAsk>(async () => ({ ok: false, reason: 'unavailable', why: 'not-set-up', retryAfterSeconds: null }));
+    await createCoinLogoKeeper({ ask: nextLoad, budget, openCache: browserCoinLogoCache(), now: () => NOW + COIN_LOGOS_NOT_SET_UP_KEEP_MS - 1 }).logos(['BTC', 'ETH', 'SOL']);
+    expect(nextLoad).not.toHaveBeenCalled();
+    let newsFits = false;
+    void budget.take(HOME_SHARED_READS_PER_MINUTE).then(ok => { newsFits = ok; });
+    await settleAll();
+    expect(newsFits).toBe(true);
+    // A day later it asks again; the owner has set up the key now, so the mark is cleared and a new coin is asked at once.
+    const dayLater = answered(ALL);
+    await visit(dayLater, NOW + COIN_LOGOS_NOT_SET_UP_KEEP_MS).logos(['BTC']);
+    expect(dayLater).toHaveBeenCalledTimes(1);
+    const after = answered(ALL);
+    await visit(after, NOW + COIN_LOGOS_NOT_SET_UP_KEEP_MS + 60_000).logos(['BTC', 'SOL']);
+    expect(vi.mocked(after).mock.calls.map(([coins]) => coins)).toEqual([['SOL']]);
   });
 });
 

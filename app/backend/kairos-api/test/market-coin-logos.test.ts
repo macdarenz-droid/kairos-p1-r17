@@ -3,7 +3,7 @@ import { env as workerEnv } from 'cloudflare:workers';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { clearMemoryCache } from '../src/cache';
 import type { KairosApiEnv } from '../src/env';
-import { base64OfBytes, coinLogoDataAddress, decodeCoinGeckoMarkets } from '../src/market/coinGecko';
+import { base64OfBytes, coinGeckoImageAddress, coinLogoDataAddress, decodeCoinGeckoMarkets } from '../src/market/coinGecko';
 import { handleKairosApiRequest } from '../src/router';
 import { KAIROS_API_ROUTES } from '../src/routes';
 import { createUpstreamBytesFetch, UpstreamHostRefused } from '../src/upstream';
@@ -143,6 +143,34 @@ describe('T-061f the upstream byte reader', () => {
     expect(await read(logo(1, 'bitcoin.png'), { accept: 'image/png, image/jpeg, image/webp', maxBytes: 8 })).toMatchObject({ ok: false, failure: 'too-large' });
     const moved = createUpstreamBytesFetch(['coin-images.coingecko.com'], vi.fn<typeof fetch>(async () => new Response(null, { status: 301, headers: { location: 'https://example.com/' } })));
     expect(await moved(logo(1, 'bitcoin.png'), { accept: 'image/png, image/jpeg, image/webp', maxBytes: 100 })).toEqual({ ok: false, failure: 'redirect', status: 301 });
+  });
+});
+
+describe('T-061f review r1: the logo address is checked as sent, by one pattern', () => {
+  it('takes the address exactly as CoinGecko wrote it, and refuses what a URL parser would quietly mend or let through', () => {
+    const good = 'https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png?1696501400';
+    expect(coinGeckoImageAddress(good)).toBe(good);
+    expect(coinGeckoImageAddress('https://coin-images.coingecko.com/coins/images/1/large/Bitcoin_Logo.PNG')).toBe('https://coin-images.coingecko.com/coins/images/1/large/Bitcoin_Logo.PNG');
+    for (const bad of [
+      'https://coin-images.coingecko.com/coins/images/1/large\\bitcoin.png',
+      'https://coin-images.coingecko.com/coins/images/1/large/bit\tcoin.png',
+      `${good}\n`,
+      ' https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png',
+      'https://coin-images.coingecko.com/coins/images/1/large/bit%2Fcoin.png',
+      'https://coin-images.coingecko.com/coins/images/1/large/bit%63oin.png',
+      'https://coin-images.coingecko.com/coins/images/1/large/a@b.png',
+      'https://coin-images.coingecko.com/coins/images/1/large/a:b.png',
+      'https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png/more.png',
+      'https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png?a#b',
+      'https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png?a/b',
+      'https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png?',
+      'https://COIN-IMAGES.coingecko.com/coins/images/1/large/bitcoin.png',
+      'HTTPS://coin-images.coingecko.com/coins/images/1/large/bitcoin.png',
+      'https://coin-images.coingecko.com./coins/images/1/large/bitcoin.png',
+      'https://coin-images.coingecko.com/coins/images/1/large/bitcoin.svg',
+      `https://coin-images.coingecko.com/coins/images/1/large/${'a'.repeat(121)}.png`,
+      'https://coin-images.coingecko.com/coins/images/12345678901/large/bitcoin.png',
+    ]) expect(coinGeckoImageAddress(bad), bad).toBeNull();
   });
 });
 

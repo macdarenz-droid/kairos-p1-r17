@@ -42,21 +42,21 @@ export interface CoinGeckoCoin {
 
 /** The only host a logo is read from (D272). */
 export const COINGECKO_IMAGE_HOST = 'coin-images.coingecko.com';
-const IMAGE_PATH = /^\/coins\/images\/[0-9]{1,10}\/large\/[A-Za-z0-9._-]{1,120}\.(?:png|jpg|jpeg|webp)$/i;
-/** CoinGecko adds a version number (`?1696501400`); nothing else rides along. */
-const IMAGE_QUERY = /^(?:\?[A-Za-z0-9._~=&-]{1,100})?$/;
+/**
+ * The one shape a logo address may have, checked on the text as CoinGecko sent it (no URL parsing: cheaper, review
+ * r1). The literal start fixes the scheme and host (no user, port or other host can follow it); the name and the
+ * version query (`?1696501400`) allow only letters, digits and `. _ - ~ = &`, so no `%`, `@`, `\`, `#`, `:`, `/`,
+ * space or control character; nothing may follow. The upstream fetcher checks the host again before any read.
+ */
+const IMAGE_ADDRESS = /^https:\/\/coin-images\.coingecko\.com\/coins\/images\/[0-9]{1,10}\/large\/[A-Za-z0-9._-]{1,120}\.(?:png|jpg|jpeg|webp|PNG|JPG|JPEG|WEBP)(?:\?[A-Za-z0-9._~=&-]{1,100})?$/;
 const IMAGE_ADDRESS_MAX = 300;
 
 /**
  * A logo address CoinGecko sent, when it is https://coin-images.coingecko.com/coins/images/<digits>/large/<name>.png
- * (or .jpg, .jpeg, .webp), with no user, port or fragment; null for anything else.
+ * (or .jpg, .jpeg, .webp), with at most a version query; null for anything else.
  */
 export function coinGeckoImageAddress(value: unknown): string | null {
-  if (typeof value !== 'string' || value.length > IMAGE_ADDRESS_MAX || !value.startsWith(`https://${COINGECKO_IMAGE_HOST}/`)) return null;
-  let url: URL;
-  try { url = new URL(value); } catch { return null; }
-  if (url.protocol !== 'https:' || url.hostname !== COINGECKO_IMAGE_HOST || url.username !== '' || url.password !== '' || url.port !== '' || url.hash !== '') return null;
-  return IMAGE_PATH.test(url.pathname) && IMAGE_QUERY.test(url.search) ? url.href : null;
+  return typeof value === 'string' && value.length <= IMAGE_ADDRESS_MAX && IMAGE_ADDRESS.test(value) ? value : null;
 }
 
 const SYMBOL = /^[A-Z0-9]{1,20}$/;
@@ -86,8 +86,13 @@ export function decodeCoinGeckoMarkets(text: string): readonly CoinGeckoCoin[] |
     seen.set(symbol, (seen.get(symbol) ?? 0) + 1);
     const name = typeof row.name === 'string' ? row.name.trim() : '';
     const image = coinGeckoImageAddress(row.image);
-    if (!isName(name) && image === null) continue;
-    coins.push({ symbol, ...(isName(name) ? { name } : {}), ...(image === null ? {} : { image }) });
+    const named = isName(name);
+    if (!named && image === null) continue;
+    // Built field by field (no object spread per row: the list is 250 rows, read on a cache miss).
+    const coin: { symbol: string; name?: string; image?: string } = { symbol };
+    if (named) coin.name = name;
+    if (image !== null) coin.image = image;
+    coins.push(coin);
   }
   return Object.freeze(coins
     .filter((coin) => seen.get(coin.symbol) === 1)

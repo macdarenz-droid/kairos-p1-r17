@@ -29,10 +29,12 @@
  *   move comes with the live prices);
  * - the sheet open (the map's reads stop under it): its line once a minute, the 1-hour moves once a minute (older than
  *   30 s at each refresh), the 7-day moves once every 5 minutes: 2 or 3 a minute; the map's moves while fresh are used;
- * - T-061f (D272): the coin logos, only for coins this device keeps no logo for (application/markets/coinLogos.ts): up
- *   to 3 requests of 10 coins on a visit with none kept (the first, or a month later), one for a coin that joins the
- *   map later, none on most visits (logos are kept 30 days). Asked once the map has prices, they usually go before the
- *   news (10 s after Today's first read), which then waits until all its 9 fit: at most a minute later, that visit only.
+ * - T-061f (D272): the coin logos, only for coins this device has nothing kept for (application/markets/coinLogos.ts):
+ *   up to 3 requests of 10 coins on a load with none kept (the first; then a coin's logo after 30 days, a coin with no
+ *   logo after 7 days), one for a coin that joins the map later. Without the CoinGecko key (O6) the "not set up"
+ *   answer is kept a day, so one load a day asks. Most loads send none. Asked once the map has prices, a logo request
+ *   usually goes before the news (10 s after Today's first read); on such a load only, the news then waits until all
+ *   its 9 fit, at most a minute after that request, and a Home left sooner leaves the news to its next visit.
  * A busy or rate-limited answer waits the time the source asked (60 s for the server's limit) before the cadence asks
  * again; only the trader's "Try again" asks sooner, and it goes through the same budget. Without the Kairos server
  * (no VITE_KAIROS_API_URL) the market reads go straight to Binance: no Kairos limit, so no budget (null).
