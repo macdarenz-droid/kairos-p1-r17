@@ -775,7 +775,9 @@ test('(q) Market data through the Kairos server: sources on the pictures, the re
   const minute = 60_000;
   const intervalMs: Record<string, number> = { '1m': minute, '3m': 3 * minute, '5m': 5 * minute, '15m': 15 * minute, '30m': 30 * minute, '1h': 60 * minute, '2h': 120 * minute, '4h': 240 * minute, '6h': 360 * minute, '8h': 480 * minute, '12h': 720 * minute, '1d': 1_440 * minute };
   const candleCalls: string[] = [];
-  let busyOnce = true;
+  // ETH's source says it is busy until the test lets it answer: the Journal's row may ask first (U15), and its failed
+  // read is never kept, so the trade's page asks again and must hear the same reason.
+  let ethBusy = true;
   let offline = false; // page.route still answers while the context is offline, so the handler drops requests itself
   // The QA build asks the Kairos server (VITE_KAIROS_API_URL); every answer uses the server's exact shapes.
   await page.route(url => url.hostname === 'api.qa.invalid' && url.pathname.startsWith('/market/'), async route => {
@@ -799,8 +801,7 @@ test('(q) Market data through the Kairos server: sources on the pictures, the re
     if (url.pathname !== '/market/candles') return route.abort();
     const market = url.searchParams.get('market'), symbol = url.searchParams.get('symbol') ?? '', interval = url.searchParams.get('interval') ?? '';
     candleCalls.push(`${market} ${symbol}`);
-    if (symbol === 'ETHUSDT' && busyOnce) {
-      busyOnce = false;
+    if (symbol === 'ETHUSDT' && ethBusy) {
       return route.fulfill({ status: 503, headers: { ...cors, 'Retry-After': '60' }, contentType: 'application/json', body: JSON.stringify({ apiVersion: 1, ok: false, error: 'unavailable', reason: 'source-busy', retryAfter: 60 }) });
     }
     const step = intervalMs[interval];
@@ -866,6 +867,7 @@ test('(q) Market data through the Kairos server: sources on the pictures, the re
   await quickLog('ETH/USDT');
   picture = await openPicture('ETH/USDT');
   await expect(picture.locator('.kairos-unavailable')).toContainText('too many requests');
+  ethBusy = false;
   await picture.getByRole('button', { name: 'Try again' }).click();
   await expect(picture.locator('.kairos-trade-picture__source')).toHaveText('Candles: Binance Spot · ETH/USDT');
   await closePicture();
