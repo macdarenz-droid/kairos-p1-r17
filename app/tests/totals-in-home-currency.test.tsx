@@ -227,6 +227,16 @@ describe('T-045h Goals, Home, Patterns and practice money', () => {
     expect(screen.queryByRole('link', { name: 'See your rates' })).toBeNull();
   });
 
+  it("review r2: leaves the note off Home's loss limit in another currency", async () => {
+    const db = await database();
+    await twoTradesInEuro(db);
+    await writeGoalsPreference(createKairosRepositories(db).metadata, { monthlyResultTargetAmount: '100', monthlyResultTargetCurrency: 'EUR', lossLimitPerWeek: '200', lossLimitCurrency: 'USD' }, NOW);
+    render(<HomeDisciplineCard db={db} now={now} />);
+    expect(await screen.findByText(/^Lost this week:/)).toBeInTheDocument();
+    expect(screen.queryByText(/^Totals in/)).toBeNull();
+    expect(screen.queryByRole('link', { name: 'See your rates' })).toBeNull();
+  });
+
   it('adds the note to Patterns', async () => {
     const db = await database();
     await twoTradesInEuro(db);

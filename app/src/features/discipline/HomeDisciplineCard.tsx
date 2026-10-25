@@ -50,7 +50,8 @@ function GoalsLines({ result }: { readonly result: GoalsProgressQueryResult }) {
   if (ticked !== null && tickEveryStep.kind === 'progress') lines.push({ text: ticked, draw: <ProgressRing fill={tickEveryStep.fill} tone={tickEveryStep.reached ? 'reached' : 'progress'} /> });
   // D267: Home's month result is on "Today"; the result goal (D116's own rule) stays on the Goals page.
   if (lines.length === 0) return <p>{monthlyResult.kind === 'unset' ? 'No goals set yet.' : 'Your result goal is on the Goals page.'}</p>;
-  const homeWords = moneyLine ? describeTotalsInHomeCurrency(result.inHomeCurrency) : null;
+  // The note speaks of the home currency: only beside a loss limit set in it.
+  const homeWords = moneyLine && result.preference.lossLimits?.currency === result.inHomeCurrency?.homeCurrency ? describeTotalsInHomeCurrency(result.inHomeCurrency) : null;
   return <>{lines.map(line => <div className="kairos-home-discipline__goal" key={line.text}>{line.draw}<p>{line.text}</p></div>)}{homeWords ? <p>{homeWords.text} <CardLink to="/currency">{homeWords.link}</CardLink></p> : null}</>;
 }
 

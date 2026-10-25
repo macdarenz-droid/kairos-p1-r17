@@ -207,6 +207,9 @@ export function TodayCard({ db, now, load = loadOnDemand }: TodayCardProps) {
         refocusRetry.current = active !== null && active !== heading.current && (box()?.contains(active) ?? false) && active.closest('.kairos-error-state') === null;
         setState(current => ({ answer: current.answer, failed: true }));
       } else {
+        // A read that works takes the failure box away: focus on "Try again" (or on its box while busy) goes to the heading.
+        const active = document.activeElement;
+        if (active !== null && (box()?.contains(active) ?? false) && active.closest('.kairos-error-state') !== null) retried.current = true;
         setState({ answer, failed: false });
       }
       setBusy(false);

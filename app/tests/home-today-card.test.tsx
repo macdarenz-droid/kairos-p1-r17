@@ -242,6 +242,20 @@ describe('T-061b the "Today" card', () => {
     await waitFor(() => expect(document.activeElement).toBe(within(today).getByRole('heading', { level: 2, name: 'Today' })));
   });
 
+  it('review r2: a read in the background that works while "Try again" has focus puts focus on the heading', async () => {
+    const db = await database();
+    await save(db, closed('2026-10-25T08:00:00.000Z', '130'));
+    const load = vi.fn(loadHomeToday).mockRejectedValueOnce(new Error('storage'));
+    card(db, { load });
+    const today = await region();
+    const retry = await within(today).findByRole('button', { name: 'Try again' });
+    await settled(today);
+    retry.focus();
+    act(() => { window.dispatchEvent(new Event(JOURNAL_CHANGED_EVENT)); });
+    await waitFor(() => expect(line(today, 'Today:')).toHaveTextContent('+30 USDT · 1 trade'));
+    await waitFor(() => expect(document.activeElement).toBe(within(today).getByRole('heading', { level: 2, name: 'Today' })));
+  });
+
   it('review r1: a month counted in the home currency says so, with "See your rates"', async () => {
     const db = await database();
     await save(db, closed('2026-10-20T10:00:00.000Z', '102', { currency: 'EUR', symbol: 'BTCEUR' }));
