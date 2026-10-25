@@ -22,11 +22,15 @@ export function newCode(): string {
   return `T62A-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
 }
 
-/** Stores a code the way the owner does today: only the SHA-256 of its text. */
-export async function addCode(code: string, row: { status?: 'unused' | 'revoked'; expiresAt?: string | null } = {}): Promise<void> {
-  await env.DB.prepare('INSERT INTO activation_codes (code_hash, status, created_at, expires_at) VALUES (?, ?, ?, ?)')
-    .bind(await sha256Hex(code), row.status ?? 'unused', '2026-10-01T00:00:00.000Z', row.expiresAt ?? null)
-    .run();
+/** Stores a code the way the owner does today: only the SHA-256 of its text. A device limit is stored only when given. */
+export async function addCode(code: string, row: { status?: 'unused' | 'revoked'; expiresAt?: string | null; deviceLimit?: number } = {}): Promise<void> {
+  const hash = await sha256Hex(code);
+  const statement = row.deviceLimit === undefined
+    ? env.DB.prepare('INSERT INTO activation_codes (code_hash, status, created_at, expires_at) VALUES (?, ?, ?, ?)')
+      .bind(hash, row.status ?? 'unused', '2026-10-01T00:00:00.000Z', row.expiresAt ?? null)
+    : env.DB.prepare('INSERT INTO activation_codes (code_hash, status, created_at, expires_at, device_limit) VALUES (?, ?, ?, ?, ?)')
+      .bind(hash, row.status ?? 'unused', '2026-10-01T00:00:00.000Z', row.expiresAt ?? null, row.deviceLimit);
+  await statement.run();
 }
 
 export interface CodeRow {
@@ -143,4 +147,67 @@ export async function expectReceiptTheAppAccepts(value: unknown): Promise<Receip
   expect(await verifies(receipt.verifierPayload, signature)).toBe(true);
   expect(await verifies(receipt.verifierPayload.replace('kairos-activation', 'kairos-activatioN'), signature)).toBe(false);
   return receipt;
+}
+
+/** Waits for the next minute when less than 5 s are left in this one: the limiter counts in one-minute windows on the clock. */
+export async function startOfAFreshMinute(): Promise<void> {
+  const left = 60_000 - (Date.now() % 60_000);
+  if (left < 5_000) await new Promise((resolve) => setTimeout(resolve, left + 250));
+}
+
+/** The token the app sends for this device (kairosDeviceToken, app/src/services/kairos-api/kairosApi.ts). */
+export function deviceToken(receipt: Pick<Receipt, 'verifierPayload' | 'verifierSignature'>): string {
+  let binary = '';
+  for (const byte of new TextEncoder().encode(receipt.verifierPayload)) binary += String.fromCharCode(byte);
+  return `v1.${btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')}.${receipt.verifierSignature}`;
+}
+
+/** A device route the way the app calls it: POST JSON from the app's origin. */
+export function callDevices(path: '/devices' | '/devices/remove' | '/devices/check', body: Record<string, unknown>, options: Call = {}): Promise<Response> {
+  return send({ path, body: JSON.stringify(body), ...options });
+}
+
+/** One device's activation; the receipt when it worked. */
+export async function activateDevice(code: string, extra: Record<string, unknown> = {}): Promise<Receipt> {
+  const response = await send({ body: activationBody(code, extra) });
+  const body = await response.json<{ ok: boolean; receipt?: Receipt; reason?: string }>();
+  if (response.status !== 200 || body.receipt === undefined) throw new Error(`activation refused: ${response.status} ${body.reason ?? ''}`);
+  return body.receipt;
+}
+
+export interface DeviceRow {
+  readonly id: number;
+  readonly activation_id: string;
+  readonly request_id: string | null;
+  readonly device_label: string;
+  readonly activated_at: string;
+  readonly last_seen_on: string | null;
+  readonly removed_at: string | null;
+  readonly removed_by: string | null;
+}
+
+/** Every device row of a code, the removed ones included, oldest first. */
+export async function deviceRows(code: string): Promise<DeviceRow[]> {
+  const rows = await env.DB.prepare(`
+      SELECT d.id, d.activation_id, d.request_id, d.device_label, d.activated_at, d.last_seen_on, d.removed_at, d.removed_by
+      FROM activation_devices d JOIN activation_codes c ON c.id = d.code_id
+      WHERE c.code_hash = ? ORDER BY d.id`)
+    .bind(await sha256Hex(code))
+    .all<DeviceRow>();
+  return rows.results;
+}
+
+/** A receipt signed with this run's key for any payload: how a device that D1 doesn't know, or a forged payload, looks. */
+export async function signedToken(payload: Record<string, unknown>, privateKeyBase64 = env.KAIROS_ACTIVATION_PRIVATE_KEY ?? ''): Promise<string> {
+  const key = await crypto.subtle.importKey('pkcs8', Uint8Array.from(atob(privateKeyBase64), (char) => char.charCodeAt(0)), { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+  const verifierPayload = JSON.stringify(payload);
+  const signature = new Uint8Array(await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key, new TextEncoder().encode(verifierPayload)));
+  let binary = '';
+  for (const byte of signature) binary += String.fromCharCode(byte);
+  return deviceToken({ verifierPayload, verifierSignature: btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '') });
+}
+
+/** Today's UTC day, as the Worker writes last_seen_on. */
+export function todayUtc(): string {
+  return new Date().toISOString().slice(0, 10);
 }

@@ -1,5 +1,6 @@
+import { env } from 'cloudflare:workers';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import { activate, activationBody, addCode, APP, applyMigrations, codeRow, expectReceiptTheAppAccepts, newCode, send, sendWith, sha256Hex, UNUSED, type Receipt } from './support';
+import { activate, activationBody, addCode, APP, applyMigrations, codeRow, expectReceiptTheAppAccepts, newCode, send, sendWith, sha256Hex, startOfAFreshMinute, UNUSED, type Receipt } from './support';
 
 beforeAll(applyMigrations);
 
@@ -34,14 +35,14 @@ describe('POST /activate on D1', () => {
     expect(await codeRow(code)).toMatchObject({ status: 'used', app_version: '1.2.4', build_id: 'build-b' });
   });
 
-  it('refuses the same code again with already-used (403)', async () => {
+  it('refuses the same code again with already-used (403) once all its devices are used', async () => {
     const code = newCode();
-    await addCode(code);
+    await addCode(code, { deviceLimit: 1 });
     const first = await answer(await activate(code));
     const again = await activate(code);
     expect(again.status).toBe(403);
     expect(again.headers.get('access-control-allow-origin')).toBe(APP);
-    expect(await answer(again)).toEqual({ ok: false, reason: 'already-used' });
+    expect(await answer(again)).toEqual({ ok: false, reason: 'already-used', deviceLimit: 1 });
     expect((await codeRow(code))?.activation_id).toBe((first as { receipt: Receipt }).receipt.activationId);
   });
 
@@ -110,7 +111,8 @@ describe('POST /activate on D1', () => {
     expect(await codeRow(code)).toEqual(UNUSED);
   });
 
-  it('lets 10 tries a minute from one address through, then answers 429 rate-limited; another address still gets in', async () => {
+  it('lets 10 tries a minute from one address through, then answers 429 rate-limited; another address still gets in', { timeout: 20_000 }, async () => {
+    await startOfAFreshMinute();
     const address = '198.51.100.62';
     for (let attempt = 0; attempt < 10; attempt += 1) {
       expect((await send({ address, contentType: 'text/plain', body: 'x' })).status).toBe(415);
@@ -133,6 +135,40 @@ describe('POST /activate on D1', () => {
       [{ key: `activation:${await sha256Hex('203.0.113.9')}` }],
       [{ key: `activation:${await sha256Hex('unidentified-client')}` }],
     ]);
+  });
+
+  it('matches a new code typed with spaces, dashes, lower case, O for 0 and I or L for 1 (D280)', async () => {
+    // Crockford's 32 (no I, L, O or U), stored as the SHA-256 of the 16 characters without dashes.
+    const alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+    const random = crypto.getRandomValues(new Uint8Array(12));
+    for (const typed of [
+      (compact: string) => ` ${compact.slice(0, 4)}-${compact.slice(4, 8)}-${compact.slice(8, 12)}-${compact.slice(12)}\t`.toLowerCase(),
+      (compact: string) => compact.replace(/0/g, 'O').replace(/1/g, 'I').split('').join(' '),
+      (compact: string) => compact.replace(/0/g, 'o').replace(/1/g, 'l').replace(/(.{4})(?!$)/g, '$1 - '),
+    ]) {
+      const compact = `01${[...random].map((byte) => alphabet[byte % 32]).join('')}10`;
+      random[0] += 1;
+      await env.DB.prepare('INSERT INTO activation_codes (code_hash, status, created_at) VALUES (?, ?, ?)').bind(await sha256Hex(compact), 'unused', '2026-10-25T00:00:00.000Z').run();
+      const response = await activate(typed(compact));
+      expect(response.status, typed(compact)).toBe(200);
+      await expectReceiptTheAppAccepts((await answer(response) as { receipt: unknown }).receipt);
+      expect((await activate(compact)).status).toBe(200);
+    }
+  });
+
+  it('still matches an old hand-made code exactly as today: trimmed and in upper case', async () => {
+    for (const code of ['KAIROS-ANA-2026', 'T62B-0L1O-OLD', 'ABCD-EFGH-JKMN-PQRS']) {
+      await addCode(code);
+      expect((await activate(` ${code.toLowerCase()} `)).status, code).toBe(200);
+      expect(await codeRow(code)).toMatchObject({ status: 'used' });
+    }
+    // An old code was stored as typed, so only its exact text matches it.
+    const exact = 'OLD-CODE-0001';
+    await addCode(exact);
+    for (const typed of ['OLDCODE0001', 'OLD CODE 0001', '0LD-C0DE-OOO1']) {
+      expect(await answer(await activate(typed)), typed).toEqual({ ok: false, reason: 'invalid-code' });
+    }
+    expect(await codeRow(exact)).toEqual(UNUSED);
   });
 
   it("answers the app's preflight with 204 and another website's with 403", async () => {

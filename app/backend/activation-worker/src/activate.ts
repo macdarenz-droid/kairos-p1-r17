@@ -1,34 +1,52 @@
 /**
- * POST /activate: one invite code becomes one signed receipt. D1 decides: one conditional UPDATE moves the code from
- * unused to used. The receipt is signed before that UPDATE, so a signing failure never uses a code up. A code is stored
- * and looked up only as the SHA-256 of its trimmed, upper-case text. Nothing here logs a code, a hash or an address.
+ * POST /activate: one invite code becomes one signed receipt, for up to `device_limit` devices (D274, D275).
+ * A code is looked up by the SHA-256 of its compact form and of its exact text (inviteCode.mjs). The receipt is signed
+ * first; then one D1 batch takes a place for the device (devices.ts takePlace), so a signing failure never uses a place.
+ * A retry with the same requestId gets its device back, signed again, instead of a new place. Old app builds send no
+ * requestId or deviceLabel and keep working; the answer keeps its shape. Nothing here logs a code, a hash or an address.
  */
+import { deviceForRequest, devicesInUse, isDeviceLabel, OTHER_DEVICE, takePlace } from './devices';
 import type { ActivationEnv } from './env';
-import { json, type Caller } from './http';
+import { hasJsonContentType, isRecord, json, readJson, type ActivationReason, type Caller } from './http';
+import { inviteCodeHashes, sha256Hex } from './inviteCode.mjs';
 import { createSignedReceipt } from './receipt';
 
-const encoder = new TextEncoder();
-
-/** The body every app build posts (RemoteActivationAdapter.ts). */
+/** The body an app build posts (RemoteActivationAdapter.ts); requestId and deviceLabel come from new builds only. */
 interface ActivationRequest {
   readonly inviteCode: string;
   readonly appVersion: string;
   readonly buildId: string;
+  readonly requestId: string | null;
+  readonly deviceLabel: string;
 }
 
-type Rejection = 'invalid-code' | 'already-used' | 'expired-code' | 'service-error';
+const REQUEST_ID = /^[A-Za-z0-9-]{8,64}$/;
+/** Printable ASCII, as every app build's version and build id are. */
+const BUILD_TEXT = /^[\x20-\x7E]{1,128}$/;
+/** A typed code: up to 128 characters and no control characters, so a hand-made code keeps any letters it has. */
+const CODE_TEXT = /^[^\p{Cc}]{1,128}$/u;
 
-async function sha256Hex(value: string): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', encoder.encode(value));
-  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+type Parsed = Readonly<{ ok: true; request: ActivationRequest }> | Readonly<{ ok: false; reason: 'invalid-code' | 'invalid-request' }>;
+
+function trimmedMatch(value: unknown, pattern: RegExp): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return pattern.test(trimmed) ? trimmed : null;
 }
 
-function isActivationRequest(body: unknown): body is ActivationRequest {
-  if (body === null || typeof body !== 'object') return false;
-  const record = body as Record<string, unknown>;
-  return typeof record.inviteCode === 'string' && record.inviteCode.trim().length > 0
-    && typeof record.appVersion === 'string' && record.appVersion.trim().length > 0
-    && typeof record.buildId === 'string' && record.buildId.trim().length > 0;
+/** Today's fields keep today's 400 `invalid-code`; the new optional fields answer `invalid-request`. */
+function readRequest(body: unknown): Parsed {
+  if (!isRecord(body)) return { ok: false, reason: 'invalid-code' };
+  const inviteCode = trimmedMatch(body.inviteCode, CODE_TEXT);
+  const appVersion = trimmedMatch(body.appVersion, BUILD_TEXT);
+  const buildId = trimmedMatch(body.buildId, BUILD_TEXT);
+  if (inviteCode === null || appVersion === null || buildId === null) return { ok: false, reason: 'invalid-code' };
+  // Missing means none; anything else, null included, must match.
+  const requestId = body.requestId;
+  if (requestId !== undefined && (typeof requestId !== 'string' || !REQUEST_ID.test(requestId))) return { ok: false, reason: 'invalid-request' };
+  const deviceLabel = body.deviceLabel === undefined ? OTHER_DEVICE : body.deviceLabel;
+  if (!isDeviceLabel(deviceLabel)) return { ok: false, reason: 'invalid-request' };
+  return { ok: true, request: { inviteCode, appVersion, buildId, requestId: requestId ?? null, deviceLabel } };
 }
 
 async function activationRateLimitKey(request: Request): Promise<string> {
@@ -40,54 +58,76 @@ async function activationRateLimitKey(request: Request): Promise<string> {
   return `activation:${await sha256Hex(actor)}`;
 }
 
-/** Why the UPDATE changed no row. A revoked code reads the same as an unknown one. */
-async function classifyRejection(db: D1Database, codeHash: string, now: string): Promise<Rejection> {
-  const row = await db.prepare('SELECT status, expires_at FROM activation_codes WHERE code_hash = ? LIMIT 1')
-    .bind(codeHash)
-    .first<{ status: string; expires_at: string | null }>();
-  if (row === null) return 'invalid-code';
-  if (row.status === 'used') return 'already-used';
-  if (row.status === 'revoked') return 'invalid-code';
-  if (typeof row.expires_at === 'string' && row.expires_at.length > 0 && row.expires_at <= now) return 'expired-code';
-  // Unused and not expired, yet the UPDATE changed nothing: no reason can be told, so none is guessed.
-  return 'service-error';
+interface CodeRow {
+  readonly id: number;
+  readonly status: string;
+  readonly expires_at: string | null;
+  readonly revoked_at: string | null;
+  readonly device_limit: number;
+}
+
+/** The code a person typed, by either hash. Should both match different codes, the exact text wins: it is what was typed. */
+async function findCode(db: D1Database, typed: string): Promise<CodeRow | null> {
+  const { compact, exact } = await inviteCodeHashes(typed);
+  return db.prepare(`
+      SELECT id, status, expires_at, revoked_at, device_limit FROM activation_codes
+      WHERE code_hash IN (?, ?) ORDER BY code_hash = ? DESC LIMIT 1`)
+    .bind(exact, compact ?? exact, exact)
+    .first<CodeRow>();
+}
+
+/** A revoked code reads the same as an unknown one (D280). An unused code was revoked by status, a used one by revoked_at. */
+function isRevoked(code: CodeRow): boolean {
+  return code.status === 'revoked' || code.revoked_at !== null;
+}
+
+function hasExpired(code: CodeRow, now: string): boolean {
+  return code.status === 'unused' && typeof code.expires_at === 'string' && code.expires_at.length > 0 && code.expires_at <= now;
+}
+
+/** Why no place was taken, read again after the batch. */
+async function whyNoPlace(db: D1Database, codeId: number, now: string): Promise<{ reason: ActivationReason; deviceLimit?: number }> {
+  const code = await db.prepare('SELECT id, status, expires_at, revoked_at, device_limit FROM activation_codes WHERE id = ?').bind(codeId).first<CodeRow>();
+  if (code === null || isRevoked(code)) return { reason: 'invalid-code' };
+  if (hasExpired(code, now)) return { reason: 'expired-code' };
+  if (await devicesInUse(db, code.id) >= code.device_limit) return { reason: 'already-used', deviceLimit: code.device_limit };
+  // A place was free, yet none was taken: no reason can be told, so none is guessed.
+  return { reason: 'service-error' };
 }
 
 /** After the origin, path and method checks (index.ts). Throws only on a bug or a D1 failure; the entry answers 500. */
 export async function handleActivate(request: Request, env: ActivationEnv, caller: Caller): Promise<Response> {
-  // Abuse protection only. D1 stays the authority for one-time use; the limiter is never used for counting.
+  // Abuse protection only. D1 stays the authority for places; the limiter is never used for counting.
   const limited = await env.ACTIVATION_RATE_LIMITER.limit({ key: await activationRateLimitKey(request) });
   if (!limited.success) return json(caller, { ok: false, reason: 'rate-limited' }, 429);
+  if (!hasJsonContentType(request)) return json(caller, { ok: false, reason: 'service-error' }, 415);
+  const parsed = readRequest(await readJson(request));
+  if (!parsed.ok) return json(caller, { ok: false, reason: parsed.reason }, 400);
+  const body = parsed.request;
 
-  const contentType = request.headers.get('content-type') ?? '';
-  if (!contentType.toLowerCase().includes('application/json')) return json(caller, { ok: false, reason: 'service-error' }, 415);
-
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return json(caller, { ok: false, reason: 'invalid-code' }, 400);
+  const code = await findCode(env.DB, body.inviteCode);
+  if (code === null || isRevoked(code)) return json(caller, { ok: false, reason: 'invalid-code' }, 403);
+  const signAgain = async (device: { activationId: string; activatedAt: string }) =>
+    json(caller, { ok: true, receipt: await createSignedReceipt(env.KAIROS_ACTIVATION_PRIVATE_KEY, device.activationId, device.activatedAt) });
+  if (body.requestId !== null) {
+    const known = await deviceForRequest(env.DB, code.id, body.requestId);
+    if (known !== null) return signAgain(known);
   }
-  if (!isActivationRequest(body)) return json(caller, { ok: false, reason: 'invalid-code' }, 400);
 
-  const codeHash = await sha256Hex(body.inviteCode.trim().toUpperCase());
   const activationId = crypto.randomUUID();
   const issuedAt = new Date().toISOString();
-
-  // Sign before using the code up. If signing fails, the code stays unused and the app gets no receipt.
+  // Sign before taking a place. If signing fails, no place is used and the app gets no receipt.
   const receipt = await createSignedReceipt(env.KAIROS_ACTIVATION_PRIVATE_KEY, activationId, issuedAt);
+  const placed = await takePlace(env.DB, {
+    codeId: code.id, activationId, issuedAt, requestId: body.requestId, deviceLabel: body.deviceLabel, appVersion: body.appVersion, buildId: body.buildId,
+  });
+  if (placed) return json(caller, { ok: true, receipt });
 
-  const result = await env.DB.prepare(`
-      UPDATE activation_codes
-      SET status = 'used', used_at = ?, activation_id = ?, app_version = ?, build_id = ?
-      WHERE code_hash = ? AND status = 'unused' AND (expires_at IS NULL OR expires_at > ?)
-    `)
-    .bind(issuedAt, activationId, body.appVersion.trim(), body.buildId.trim(), codeHash, issuedAt)
-    .run();
-
-  if (result.meta.changes !== 1) {
-    const reason = await classifyRejection(env.DB, codeHash, issuedAt);
-    return json(caller, { ok: false, reason }, reason === 'service-error' ? 503 : 403);
+  // The same request at the same moment took the place first: answer with that device.
+  if (body.requestId !== null) {
+    const known = await deviceForRequest(env.DB, code.id, body.requestId);
+    if (known !== null) return signAgain(known);
   }
-  return json(caller, { ok: true, receipt });
+  const refusal = await whyNoPlace(env.DB, code.id, issuedAt);
+  return json(caller, { ok: false, ...refusal }, refusal.reason === 'service-error' ? 503 : 403);
 }
