@@ -19,6 +19,8 @@ import { createKairosDatabase, JOURNAL_CHANGED_EVENT, openKairosDatabase, type K
 import { createKairosRepositories } from '../src/data/repositories';
 import type { DecimalString, TradeId } from '../src/domain/trades';
 import { axeViolations } from './fixtures/axe';
+import { createCoinLogoKeeper, type CoinLogoAsk } from '../src/application/markets/coinLogos';
+import type { CoinLogoAddress } from '../src/domain/market/coinLogo';
 
 // Sunday 25 October 2026, noon UTC.
 const NOW = '2026-10-25T12:00:00.000Z';
@@ -316,6 +318,29 @@ describe('T-061d Your Trades: the closed trades of a period, each a link to its 
     resolve(answer([row('late')]));
     await act(async () => { await new Promise(done => setTimeout(done, 30)); });
     expect(screen.queryByRole('link', { name: /^BTCUSDT long/ })).toBeNull();
+  });
+
+  it('T-061f (D272): a trade\'s coin shows its logo when this device keeps one, else its drawn mark or two letters, and asks nothing', async () => {
+    const elsewhere = vi.fn<typeof fetch>(async () => new Response(null, { status: 404 }));
+    vi.stubGlobal('fetch', elsewhere);
+    const BTC_LOGO = `data:image/png;base64,${btoa(String.fromCharCode(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13))}` as CoinLogoAddress;
+    // Live Market got BTC's logo earlier in the visit.
+    const ask = vi.fn<CoinLogoAsk>(async () => ({ ok: true as const, logos: new Map([['BTC', BTC_LOGO]]) }));
+    const logos = createCoinLogoKeeper({ ask, budget: null, openCache: null });
+    await logos.logos(['BTC']);
+    ask.mockClear();
+    const load = vi.fn<Load>().mockResolvedValue(answer([row('a', '40'), row('b', '-20', { symbol: 'ETHUSDT' }), row('c', '5', { symbol: 'PEPEUSDT' })]));
+    inApp(<HomeDashboardYourTrades load={load} logos={logos} />);
+    const btc = await screen.findByRole('link', { name: 'BTCUSDT long, closed 12 Oct, result after fees +40 USDT' });
+    await waitFor(() => expect(btc.querySelector('.kairos-glass-icon img')).toHaveAttribute('src', BTC_LOGO));
+    expect(btc.querySelector('.kairos-glass-icon img')).toHaveAttribute('alt', '');
+    const eth = screen.getByRole('link', { name: /^ETHUSDT long/ }), pepe = screen.getByRole('link', { name: /^PEPEUSDT long/ });
+    expect(eth.querySelector('.kairos-glass-icon svg')).not.toBeNull();
+    expect(pepe.querySelector('.kairos-glass-icon')).toHaveTextContent('PE');
+    expect(pepe.querySelector('.kairos-glass-icon img')).toBeNull();
+    // Only kept logos: Your Trades sends no request of its own.
+    expect(ask).not.toHaveBeenCalled();
+    expect(elsewhere).not.toHaveBeenCalled();
   });
 
   it('passes axe at 390 px with bubbles, notes and the period switch', async () => {

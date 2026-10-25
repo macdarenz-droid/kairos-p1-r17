@@ -11,7 +11,9 @@ import { describeMarketDataUnavailable, describeUpdatedAgo } from '../applicatio
 import { decimalAbs, decimalCompare, decimalScaleToSteps } from '../domain/calculations/decimalKernel';
 import type { DecimalString } from '../domain/trades';
 import { Button, Segmented, UnavailableNotice } from '../design-system/primitives';
+import { CoinIcon, marketCoin } from '../features/home/CoinIcon';
 import { useNowEvery } from '../features/home/MarketSheet';
+import type { CoinLogoAddress } from '../domain/market/coinLogo';
 import approvedGlassUrl from '../assets/kairos-glass-approved.webp';
 import './homeDashboardGlassBubbleMap.css';
 
@@ -85,18 +87,6 @@ export function GlassDecoration() {
   return url === null ? null : <img src={url} alt="" className="kairos-glass-art" data-glass-ready="true" aria-hidden="true" />;
 }
 
-export function GlassIcon({ symbol }: { readonly symbol: string }) {
-  const content = symbol === 'BTC' ? <g fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round"><path d="M15 11h13c14 0 14 13 0 13H15m0 0h15c14 0 14 14 0 14H15M18 10v29M23 5v5m8-5v5M23 39v5m8-5v5" /></g>
-    : symbol === 'ETH' ? <><path fill="currentColor" opacity=".8" d="M24 2 9 25l15 9 15-9Z"/><path fill="currentColor" d="m9 29 15 17 15-17-15 9Z"/></>
-    : symbol === 'SOL' ? <path fill="currentColor" d="m12 7 30 0-8 8H4Zm-8 13h30l8 8H12Zm8 13h30l-8 8H4Z"/>
-    : symbol === 'BNB' ? <g fill="currentColor"><path d="m24 2 10 10-5 5-5-5-5 5-5-5ZM2 24l9-9 9 9-9 9Zm26 0 9-9 9 9-9 9ZM14 36l5-5 5 5 5-5 5 5-10 10Z"/><path d="m18 24 6-6 6 6-6 6Z"/></g>
-    : symbol === 'XRP' ? <g fill="none" stroke="currentColor" strokeWidth="4"><path d="m5 8 12 12q7 7 14 0L43 8M5 40l12-12q7-7 14 0l12 12"/></g>
-    : symbol === 'LINK' ? <path fill="none" stroke="currentColor" strokeWidth="5" d="m24 4 17 10v20L24 44 7 34V14Z"/>
-    : symbol === 'SUI' ? <g fill="none" stroke="currentColor" strokeWidth="3"><path d="M24 3C19 13 8 23 8 32a16 16 0 0 0 32 0C40 23 29 13 24 3Z"/><path d="M18 21c-6 17 22 5 15 21"/></g>
-    : symbol === 'ADA' ? <g fill="currentColor">{Array.from({length:12},(_,i)=><circle key={i} cx={24+Math.cos(i*Math.PI/6)*(i%2?18:12)} cy={24+Math.sin(i*Math.PI/6)*(i%2?18:12)} r={i%2?1.8:2.5}/>)}<circle cx="24" cy="24" r="3"/></g> : null;
-  return content ? <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">{content}</svg> : <>{symbol.slice(0,2)}</>;
-}
-
 // Identity and decorative phase belong to the instrument, never its current rank.
 /** A market bubble's key (its `data-glass-key`): the instrument, never its rank. */
 export function instrumentIdentity(venue: string, symbol: string): string {
@@ -136,6 +126,8 @@ export interface HomeDashboardGlassBubbleMapProps {
   readonly moves?: GlassMapMoves;
   /** D255: coin names by coin (BTC → Bitcoin), when Kairos is sure of them. */
   readonly names?: ReadonlyMap<string, string> | null;
+  /** T-061f (D272): coin logos by coin, when this device keeps them; else the drawn marks and letters. */
+  readonly logos?: ReadonlyMap<string, CoinLogoAddress> | null;
   /** T-061e: a bubble's tap, click or Enter opens its details; the key is the bubble's `data-glass-key`. */
   readonly onOpen?: (key: string) => void;
   /** The map's section, for a host that gives the focus back to a bubble. */
@@ -145,7 +137,6 @@ export interface HomeDashboardGlassBubbleMapProps {
 const SIZE_STEPS = 1_000;
 const PERIOD_OPTIONS = MARKET_MOVE_PERIODS.map(value => Object.freeze({ value, label: MARKET_MOVE_PERIOD_WORDS[value] }));
 const MOVE_NAME: Readonly<Record<MarketMovePeriod, string>> = Object.freeze({ '1h': '1-hour', '24h': '24-hour', '7d': '7-day' });
-const DRAWN_ICONS = ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'LINK', 'SUI', 'ADA'];
 const AGO_TICK_MS = 5_000;
 
 /** For drawing only: each move's size in steps of the biggest |move| shown (exact, through the kernel); null when unknown. */
@@ -196,8 +187,9 @@ function readOnline(): boolean {
  * states; only the constrained visual text is formatted here.
  * T-061e (D271): each bubble is a button that opens its details; the switch chooses the move that sizes and labels the
  * bubbles (the moves come from their owner, application/markets/marketMoves.ts); "Prices updated … ago" sits under the field.
+ * T-061f (D272): each coin shows its real logo when this device keeps one (features/home/CoinIcon.tsx).
  */
-export function HomeDashboardGlassBubbleMap({ model, onRetry, moves, names = null, onOpen, sectionRef }: HomeDashboardGlassBubbleMapProps) {
+export function HomeDashboardGlassBubbleMap({ model, onRetry, moves, names = null, logos = null, onOpen, sectionRef }: HomeDashboardGlassBubbleMapProps) {
   const container = useRef<HTMLDivElement>(null);
   const toolbar = useRef<HTMLDivElement>(null);
   const updated = useRef<HTMLParagraphElement>(null);
@@ -325,7 +317,7 @@ export function HomeDashboardGlassBubbleMap({ model, onRetry, moves, names = nul
           const percent = shown === null ? (expired ? null : metric.movementPercent24h) : moveOf(metric);
           const value = formatHomeDashboardLiveCryptoBubbleMovement(percent, percent === null);
           const semantic = shown === null ? p.movementSemantic : shown.values.get(symbol)?.semantic ?? null;
-          const base = symbol.endsWith('USDT') ? symbol.slice(0, -4) : symbol;
+          const base = marketCoin(symbol);
           const observedAt = Date.parse(metric.fact?.observedAt ?? '');
           const ago = p.freshnessState === 'fresh' ? null : describeUpdatedAgo(Number.isFinite(observedAt) ? now - observedAt : metric.ageMs ?? Number.NaN);
           const timing = hoverTiming(key);
@@ -343,7 +335,7 @@ export function HomeDashboardGlassBubbleMap({ model, onRetry, moves, names = nul
             <span className="kairos-glass-smoke" aria-hidden="true" />
             <GlassDecoration />
             <span className="kairos-glass-label" aria-hidden="true">
-              <span className="kairos-glass-icon" data-fallback={!DRAWN_ICONS.includes(base)}><GlassIcon symbol={base} /></span>
+              <CoinIcon coin={base} logo={logos?.get(base) ?? null} className="kairos-glass-icon" />
               <strong>{base}</strong><span className="kairos-glass-movement">{value}</span>
               {ago === null ? null : <small className="kairos-glass-ago">{ago}</small>}
             </span>

@@ -12,13 +12,15 @@
  * |                       |      | spot market after); a return within 60 s reuses the answer (TodayCard, review r1)            |
  * | market list           | 1    | the first visit only (kept on the device 6 h)                                               |
  * | coin names            | 1    | once a visit: an answer is kept a day, a failure for the visit or its wait (marketApi.ts)    |
- * | shared reads          | 9    | the news refresh (9 at once, at most once in 30 min) and these market reads (1 each), all    |
- * |                       |      | through one budget of HOME_SHARED_READS_PER_MINUTE (application/online/requestBudget.ts)     |
+ * | shared reads          | 9    | the news refresh (9 at once, at most once in 30 min), these market reads (1 each) and, T-061f, |
+ * |                       |      | the coin logos (1 each, up to 3 on a visit with none kept), all through one budget of        |
+ * |                       |      | HOME_SHARED_READS_PER_MINUTE (application/online/requestBudget.ts)                          |
  * | total                 | 29   |                                                                                            |
  * Minute by minute:
  * | minute                                   | live prices | price now | list + names | shared                         | total |
  * |------------------------------------------|-------------|-----------|--------------|--------------------------------|-------|
- * | 1st (news due), with a return to Home    | 12          | 6 (3)     | 2            | 9: the news; these reads wait  | ≤ 29  |
+ * | 1st (news due), with a return to Home    | 12          | 6 (3)     | 2            | 9: the news; or the logos (≤ 3) | ≤ 29  |
+ * |                                          |             |           |              | and the news once all 9 fit     |       |
  * | 2nd to 30th, with or without a return    | 12          | 6 (3)     | 0            | ≤ 9 (2–3 in use, see below)    | ≤ 27  |
  * | 31st (news due again)                    | 12          | 6 (3)     | 0 (1 + 1 after 6 h / a day) | 9                | ≤ 29  |
  * (3): with spot trades. A read past the budget waits its turn; it is never refused or repeated, and a big ask (the
@@ -26,7 +28,11 @@
  * - "1 hour" chosen and seen: one read every 30 s (2 a minute); "7 days": one every 5 minutes; "24 hours": none (that
  *   move comes with the live prices);
  * - the sheet open (the map's reads stop under it): its line once a minute, the 1-hour moves once a minute (older than
- *   30 s at each refresh), the 7-day moves once every 5 minutes: 2 or 3 a minute; the map's moves while fresh are used.
+ *   30 s at each refresh), the 7-day moves once every 5 minutes: 2 or 3 a minute; the map's moves while fresh are used;
+ * - T-061f (D272): the coin logos, only for coins this device keeps no logo for (application/markets/coinLogos.ts): up
+ *   to 3 requests of 10 coins on a visit with none kept (the first, or a month later), one for a coin that joins the
+ *   map later, none on most visits (logos are kept 30 days). Asked once the map has prices, they usually go before the
+ *   news (10 s after Today's first read), which then waits until all its 9 fit: at most a minute later, that visit only.
  * A busy or rate-limited answer waits the time the source asked (60 s for the server's limit) before the cadence asks
  * again; only the trader's "Try again" asks sooner, and it goes through the same budget. Without the Kairos server
  * (no VITE_KAIROS_API_URL) the market reads go straight to Binance: no Kairos limit, so no budget (null).

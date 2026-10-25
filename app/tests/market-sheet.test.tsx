@@ -66,7 +66,7 @@ describe('the market sheet (T-061e, D271)', () => {
     expect(moveLine(sheet, '24 hours')).toHaveTextContent('▲ 2.3%');
     expect(moveLine(sheet, '7 days')).toHaveTextContent('▼ 5.1%');
     expect(moveLine(sheet, '7 days')).toHaveTextContent('down 5.1%');
-    expect(within(sheet).getByText('Coin names: CoinGecko')).toBeInTheDocument();
+    expect(within(sheet).getByText('Coin logos and names: CoinGecko')).toBeInTheDocument();
     // The ago words keep time while the sheet is open.
     await act(async () => { vi.advanceTimersByTime(30_000); });
     expect(within(sheet).getByText('Updated 1 min ago')).toBeInTheDocument();
@@ -180,6 +180,27 @@ describe('the market sheet (T-061e, D271)', () => {
     expect(reader.state()['1h'].pending).toBe(false);
     expect(moveLine(sheet, '1 hour')).toHaveTextContent('not available');
     expect(moveLine(sheet, '1 hour')).not.toHaveTextContent('loading');
+  });
+
+  it('T-061f (D272): shows the coin\'s logo when Kairos has one, else its drawn mark or two letters, crediting CoinGecko only for its logo or name', async () => {
+    const LOGO = `data:image/png;base64,${btoa(String.fromCharCode(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13))}` as MarketSheetCoin['logo'];
+    const { reader } = setUp();
+    const show = (coin: MarketSheetCoin) => render(<MarketSheet coin={coin} period="24h" reader={reader} symbols={() => SYMBOLS} chartHref="/analysis" onClose={() => undefined} returnFocusTo={() => null} />);
+    show({ ...BTC, name: null, logo: LOGO });
+    let sheet = screen.getByRole('dialog', { name: 'BTC' });
+    expect(sheet.querySelector('.kairos-market-sheet__icon img')).toHaveAttribute('src', LOGO);
+    expect(sheet.querySelector('.kairos-market-sheet__icon img')).toHaveAttribute('alt', '');
+    expect(within(sheet).getByText('Coin logos and names: CoinGecko')).toBeInTheDocument();
+    cleanup();
+    show({ ...BTC, name: null, logo: null });
+    sheet = screen.getByRole('dialog', { name: 'BTC' });
+    expect(sheet.querySelector('.kairos-market-sheet__icon svg')).not.toBeNull();
+    expect(within(sheet).queryByText(/CoinGecko/)).toBeNull();
+    cleanup();
+    show({ ...BTC, instrument: { venue: 'binance-spot', symbol: 'PEPEUSDT' }, base: 'PEPE', name: null, logo: null });
+    sheet = screen.getByRole('dialog', { name: 'PEPE' });
+    expect(sheet.querySelector('.kairos-market-sheet__icon')).toHaveTextContent('PE');
+    await settle();
   });
 
   it('passes axe at 390 px', async () => {

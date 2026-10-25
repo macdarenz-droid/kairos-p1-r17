@@ -10,7 +10,7 @@
 import { cacheKey, keep } from './cache';
 import type { KairosApiEnv } from './env';
 import type { KairosApiRoute } from './router';
-import { createUpstreamFetch } from './upstream';
+import { createUpstreamBytesFetch, createUpstreamFetch } from './upstream';
 
 export const PREFETCH_STEP_MS = 20 * 60_000;
 
@@ -49,7 +49,10 @@ export async function handleKairosApiScheduled(scheduledTime: number, env: Kairo
   const now = options.now?.() ?? new Date();
   const query = new URLSearchParams();
   try {
-    const answer = await route.handle({ query, env, device: { kind: 'not-sent' }, upstream: createUpstreamFetch(route.upstreamHosts, options.fetchImpl), now });
+    const answer = await route.handle({
+      query, env, device: { kind: 'not-sent' }, now, waitUntil: (promise) => ctx.waitUntil(promise),
+      upstream: createUpstreamFetch(route.upstreamHosts, options.fetchImpl), upstreamBytes: createUpstreamBytesFetch(route.upstreamHosts, options.fetchImpl),
+    });
     if (!answer.ok) return failed();
     keep(cacheKey(route.id, route.cache, query), { storedAt: now.toISOString(), data: answer.data }, route.cache, kv, now.getTime(), (promise) => ctx.waitUntil(promise));
     return 'kept';

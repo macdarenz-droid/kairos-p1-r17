@@ -13,3 +13,8 @@
 .kairos-market-sheet__line[data-direction='up'] { color: var(--kairos-trade-profit); }
 .kairos-market-sheet__line[data-direction='down'] { color: var(--kairos-trade-loss); }
 .kairos-market-sheet__open { justify-self: start; text-decoration: none; }
+.kairos-market-sheet__coin { display: flex; align-items: center; gap: var(--kairos-space-3); min-width: 0; }
+.kairos-market-sheet__coin > div { min-width: 0; }
+/* T-061f (D272): the coin's mark in a round well: its logo or drawn mark at 1.75rem, or its two letters. */
+.kairos-market-sheet__icon { flex: none; display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border-radius: var(--kairos-radius-full); background: var(--kairos-surface-raised); color: var(--kairos-accent-primary); font-size: 1.75rem; }
+.kairos-market-sheet__icon[data-coin-icon='letters'] { font-family: var(--kairos-font-mono); font-size: var(--kairos-font-size-md); font-weight: var(--kairos-font-weight-semibold); }

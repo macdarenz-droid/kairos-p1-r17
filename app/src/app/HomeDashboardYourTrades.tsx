@@ -6,7 +6,11 @@ import { projectYourTradeBubbleSizes } from '../application/dashboard/homeDashbo
 import { signedText } from '../application/performance/tradeRisk';
 import { describeVisualPnlCompactAmount, startVisualPnlTimeZoneFromDevice, writeVisualPnlPeriodChoice } from '../application/visual-pnl';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
-import { GlassDecoration, GlassIcon, glassFieldBottom } from './HomeDashboardGlassBubbleMap';
+import { GlassDecoration, glassFieldBottom } from './HomeDashboardGlassBubbleMap';
+import { appHomeMarket } from './marketDataPorts';
+import type { CoinLogoKeeper } from '../application/markets/coinLogos';
+import type { CoinLogoAddress } from '../domain/market/coinLogo';
+import { CoinIcon, marketCoin } from '../features/home/CoinIcon';
 import { layoutGlassViewportCircles } from './homeDashboardGlassViewportLayout';
 import { useHomeDashboardGlassMotion } from './useHomeDashboardGlassMotion';
 import { Button, EmptyState, ErrorState, Segmented, Skeleton } from '../design-system/primitives';
@@ -26,6 +30,8 @@ export interface HomeDashboardYourTradesProps {
   readonly glance?: ReactNode;
   /** Tests inject a loader. */
   readonly load?: typeof loadHomeYourTrades;
+  /** T-061f (D272): the coin logos this device keeps (Home's own unless given; null: none). */
+  readonly logos?: CoinLogoKeeper | null;
 }
 
 const wallClock = (): string => new Date().toISOString();
@@ -37,13 +43,28 @@ const NONE_CLOSED: Readonly<Record<PeriodKind, string>> = Object.freeze({
   week: 'No trades closed this week.', month: 'No trades closed this month.', 'three-months': 'No trades closed in the last 3 months.', year: 'No trades closed this year.', all: 'No trades closed yet.',
 });
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
-const DRAWN_ICONS = ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'LINK', 'SUI', 'ADA'];
 const choiceOf = (kind: PeriodKind): HomeYourTradesChoice => kind === 'all' ? Object.freeze({ kind }) : Object.freeze({ kind, at: null });
 const tradesWord = (count: number): string => `${count} ${count === 1 ? 'trade' : 'trades'}`;
 
 /** SPA navigation inside the app, a plain link outside a router (Home renders outside one in some tests). */
 function RouteLink({ to, children, ...attributes }: { readonly to: string; readonly children: ReactNode } & Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'>) {
   return useInRouterContext() ? <Link to={to} {...attributes}>{children}</Link> : <a href={to} {...attributes}>{children}</a>;
+}
+
+/**
+ * T-061f (D272): the logos kept on this device for these trades' coins. Never a request: the Live Market asks for
+ * logos (one request a visit), Your Trades shows what is kept.
+ */
+function useKeptLogos(keeper: CoinLogoKeeper | null, coins: readonly string[]): ReadonlyMap<string, CoinLogoAddress> | null {
+  const [logos, setLogos] = useState<ReadonlyMap<string, CoinLogoAddress> | null>(null);
+  const key = [...new Set(coins)].sort().join(',');
+  useEffect(() => {
+    if (keeper === null || key === '') return;
+    let active = true;
+    keeper.kept(key.split(',')).then(found => { if (active) setLogos(found); }, () => undefined);
+    return () => { active = false; };
+  }, [keeper, key]);
+  return logos;
 }
 
 /** "20 Sep"; another year than today's adds it: "31 Dec 2025". */
@@ -83,9 +104,10 @@ type Ready = Extract<HomeYourTradesResult, { kind: 'ready' }>;
  * U16 (D270): Home's "Your Trades": one glass bubble per real trade closed in the chosen period, sized by its result
  * after fees (`projectYourTradeBubbleSizes`), each a link to the trade's page. The numbers come from their owners; this
  * view only shows them. It reads again when the period changes, when another tab saves and when you come back to the
- * app; with no saved time zone it saves this device's first (D199).
+ * app; with no saved time zone it saves this device's first (D199). T-061f (D272): a coin's real logo when this device
+ * keeps one.
  */
-export function HomeDashboardYourTrades({ db = kairosDatabase, now = wallClock, choice: chosen, onChoiceChange, glance, load = loadHomeYourTrades }: HomeDashboardYourTradesProps) {
+export function HomeDashboardYourTrades({ db = kairosDatabase, now = wallClock, choice: chosen, onChoiceChange, glance, load = loadHomeYourTrades, logos: givenLogos }: HomeDashboardYourTradesProps) {
   const [ownChoice, setOwnChoice] = useState<HomeYourTradesChoice>(MONTH);
   const choice = chosen ?? ownChoice;
   const changeChoice = onChoiceChange ?? setOwnChoice;
@@ -181,6 +203,7 @@ export function HomeDashboardYourTrades({ db = kairosDatabase, now = wallClock, 
   useHomeDashboardGlassMotion(field, layout.circles, bounds.width, layout.height, hidden || ready === null);
   const positions = new Map(layout.circles.map(circle => [circle.key, circle]));
   const byId = new Map(trades.map(trade => [trade.id as string, trade]));
+  const logos = useKeptLogos(givenLogos === undefined ? appHomeMarket().logos ?? null : givenLogos, sizes.bubbles.map(size => marketCoin(byId.get(size.key)?.symbol ?? '')).filter(coin => coin !== ''));
 
   const seeAllTime = () => {
     changeChoice(choiceOf('all'));
@@ -201,14 +224,14 @@ export function HomeDashboardYourTrades({ db = kairosDatabase, now = wallClock, 
   else if (ready !== null) content = sizes.bubbles.map((size, index) => {
     const trade = byId.get(size.key), circle = positions.get(size.key);
     if (trade === undefined || circle === undefined) return null;
-    const base = trade.symbol.endsWith('USDT') ? trade.symbol.slice(0, -4) : trade.symbol;
+    const base = marketCoin(trade.symbol);
     const movement = trade.outcome === 'profit' ? 'positive' : trade.outcome === 'loss' ? 'negative' : 'neutral';
     const style = { left: circle.x - circle.radius, top: circle.y - circle.radius, width: circle.radius * 2, height: circle.radius * 2, '--glass-label-size': `${Math.min(17, Math.max(11, circle.radius * .23))}px`, '--glass-icon-size': `${Math.min(34, Math.max(14, circle.radius * .45))}px`, '--glass-duration': '12s', '--glass-delay': `${-index * .8}s` } as CSSProperties;
     // A native link drag would cancel the bubble's own drag (homeDashboardGlassDrag), which blocks the click that ends it.
     return <RouteLink key={trade.id} to={tradePageHref(trade.id)} aria-label={bubbleName(trade, ready.todayKey)} className="kairos-glass-bubble kairos-your-trades__bubble" style={style} draggable={false}
       data-glass-key={trade.id} data-movement={movement} data-compared={size.basis === 'no-result' ? undefined : String(size.basis === 'compared')} data-identity={base === 'BTC' || base === 'ETH' ? base : undefined}>
       <span className="kairos-glass-core" aria-hidden="true" /><span className="kairos-glass-smoke" aria-hidden="true" /><GlassDecoration />
-      <span className="kairos-glass-label" aria-hidden="true"><span className="kairos-glass-icon" data-fallback={!DRAWN_ICONS.includes(base)}><GlassIcon symbol={base} /></span><strong>{trade.symbol}</strong><span className="kairos-glass-movement">{bubbleAmount(trade)}</span></span>
+      <span className="kairos-glass-label" aria-hidden="true"><CoinIcon coin={base} logo={logos?.get(base) ?? null} className="kairos-glass-icon" /><strong>{trade.symbol}</strong><span className="kairos-glass-movement">{bubbleAmount(trade)}</span></span>
     </RouteLink>;
   });
 

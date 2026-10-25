@@ -1,10 +1,11 @@
 /**
- * U2 (P16.A1): the app's market data from the Kairos server (/market/symbols, /market/tickers, /market/candles, and
- * T-061e's /market/moves).
+ * U2 (P16.A1): the app's market data from the Kairos server (/market/symbols, /market/tickers, /market/candles,
+ * T-061e's /market/moves, U14's /market/coin-names and T-061f's /market/coin-logos).
  * Transport and strict decoding only, over the one server client (kairosApi.ts): the server-backed market ports, the
  * device copy of the market list, and what a server failure means (`why`). The words are onlineWords.ts's.
  */
 import { decimalCompare } from '../../domain/calculations/decimalKernel';
+import { COIN_SYMBOL, parseCoinLogoAddress, type CoinLogoAddress } from '../../domain/market/coinLogo';
 import { parseDecimalString, parsePositiveDecimalString, type DecimalString } from '../../domain/trades';
 import type { LiveMarketSummaryBaselineAcquisitionPort, LiveMarketSummaryBaselineAcquisitionResult } from '../market-data/LiveMarketSummaryBaselineAcquisitionPort';
 import type { LiveMarketUniverseInstrumentMetadataAcquisitionPort, LiveMarketUniverseInstrumentMetadataAcquisitionResult } from '../market-data/LiveMarketUniverseInstrumentMetadataAcquisitionPort';
@@ -440,7 +441,6 @@ export interface ServerCoinName {
   readonly name: string;
 }
 
-const COIN_SYMBOL = /^[A-Z0-9]{1,20}$/;
 // Control characters are never part of a name.
 const CONTROL = /[\u0000-\u001f\u007f-\u009f]/;
 
@@ -528,6 +528,52 @@ export function createKairosCoinNames(client: KairosApiClient, options: Readonly
         signal.addEventListener('abort', stop, { once: true });
         void shared.then((result) => { signal.removeEventListener('abort', stop); resolve(result); });
       });
+    },
+  });
+}
+
+/** T-061f (D272): the most coins one /market/coin-logos request may name (the server's limit, which keeps its CPU low). */
+export const COIN_LOGOS_MAX_COINS = 10;
+
+/**
+ * The /market/coin-logos data for the coins asked (A→Z): each logo for a coin asked, once, A→Z, and a checked data
+ * address (parseCoinLogoAddress); a coin the server has no logo for is simply not there. Null for any fault: one bad
+ * logo makes the whole answer unreadable.
+ */
+export function decodeCoinLogos(data: unknown, requested: readonly string[]): ReadonlyMap<string, CoinLogoAddress> | null {
+  if (!isRecord(data) || data.source !== 'coingecko' || !isCanonicalIso(data.fetchedAt) || !Array.isArray(data.logos) || data.logos.length > requested.length) return null;
+  const asked = new Set(requested);
+  const logos = new Map<string, CoinLogoAddress>();
+  let previous = '';
+  for (const item of data.logos as unknown[]) {
+    if (!isRecord(item) || typeof item.symbol !== 'string' || !asked.has(item.symbol) || !(previous < item.symbol)) return null;
+    const image = parseCoinLogoAddress(item.image);
+    if (image === null) return null;
+    logos.set(item.symbol, image);
+    previous = item.symbol;
+  }
+  return logos;
+}
+
+export type CoinLogosResult = Readonly<{ ok: true; logos: ReadonlyMap<string, CoinLogoAddress> }> | MarketDataUnavailable;
+
+export interface KairosCoinLogos {
+  /**
+   * The logos the Kairos server has for these coins, in one request: only coins of A–Z and 0–9, each once, the first
+   * 10 of them, asked A→Z (one order, one cache key for every device). No coin to ask: an empty answer, no request.
+   */
+  coinLogos(coins: readonly string[], options?: Readonly<{ signal?: AbortSignal }>): Promise<CoinLogosResult>;
+}
+
+/** T-061f (D272): the coin logos from the Kairos server; transport and checks only (application/markets/coinLogos.ts keeps them). */
+export function createKairosCoinLogos(client: KairosApiClient, options: Readonly<{ isOnline?: () => boolean }> = {}): KairosCoinLogos {
+  const isOnline = options.isOnline ?? (() => globalThis.navigator?.onLine !== false);
+  return Object.freeze({
+    async coinLogos(coins: readonly string[], callerOptions?: Readonly<{ signal?: AbortSignal }>): Promise<CoinLogosResult> {
+      const asked = [...new Set(coins.filter(coin => COIN_SYMBOL.test(coin)))].slice(0, COIN_LOGOS_MAX_COINS).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+      if (asked.length === 0) return Object.freeze({ ok: true as const, logos: new Map<string, CoinLogoAddress>() });
+      const result = await client.request('/market/coin-logos', { symbols: asked.join(',') }, data => decodeCoinLogos(data, asked), callerOptions?.signal === undefined ? undefined : { signal: callerOptions.signal });
+      return result.ok ? Object.freeze({ ok: true as const, logos: result.value }) : marketDataUnavailableOf(result, isOnline);
     },
   });
 }

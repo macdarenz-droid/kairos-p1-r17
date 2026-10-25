@@ -2,7 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { createPrivateKey, sign } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { openKairos } from './qaSession';
+import { FIXED_BTC_LOGO, openKairos } from './qaSession';
 
 const ACTIVATION_URL = 'https://activation.qa.invalid/v1/activate';
 
@@ -2442,5 +2442,47 @@ test('(ai) Home opens with "Today": a trade closed today and an open trade with 
   await today.getByRole('link', { name: 'ETHUSDT · Long · in at 2500 · stop 2400 · target 2800' }).click();
   await expect(page).toHaveURL(/\/journal\/trades\//);
   await expect(page.getByRole('heading', { level: 1, name: 'ETHUSDT · Long' })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('(aj) Home: a real coin logo from the Kairos server, kept on the phone, and nothing from another host', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  const hosts = new Set<string>();
+  const logosAsked: string[] = [];
+  page.on('request', request => {
+    const url = new URL(request.url());
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
+    hosts.add(url.host);
+    if (url.pathname === '/market/coin-logos') logosAsked.push(url.searchParams.get('symbols') ?? '');
+  });
+  // Still bubbles under reduced motion, so a real tap lands on one.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openKairos(page, { fixedClock: '2026-09-20T04:00:00.000Z', server: 'fixed-market' });
+  const btc = page.locator('.kairos-glass-bubble[data-identity="BTC"]');
+  const logo = btc.locator('.kairos-glass-icon img');
+  await expect(logo).toBeVisible({ timeout: 15_000 });
+  await expect(logo).toHaveAttribute('src', FIXED_BTC_LOGO);
+  await expect(logo).toHaveAttribute('alt', '');
+  // The browser drew it: a real 32 × 32 PNG.
+  expect(await logo.evaluate(image => (image as HTMLImageElement).complete ? (image as HTMLImageElement).naturalWidth : 0)).toBe(32);
+  await expect(page.locator('.kairos-glass-bubble[data-identity="ETH"] .kairos-glass-icon svg')).toBeVisible();
+  expect(logosAsked).toEqual(['BTC,ETH']);
+  // Its sheet shows it too, with CoinGecko's credit.
+  await btc.tap();
+  const sheet = page.getByRole('dialog', { name: 'BTC' });
+  await expect(sheet.locator('.kairos-market-sheet__icon img')).toHaveAttribute('src', FIXED_BTC_LOGO);
+  await expect(sheet.getByText('Coin logos and names: CoinGecko')).toBeVisible();
+  const sheetAxe = await new AxeBuilder({ page }).include('.kairos-sheet__panel').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(sheetAxe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+  await page.keyboard.press('Escape');
+  await expect(sheet).toHaveCount(0);
+  // Kept on the phone (Cache Storage, 30 days): the next visit shows it without asking again.
+  await page.reload();
+  await expect(logo).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('.kairos-glass-bubble[data-identity="ETH"]')).toBeVisible();
+  expect(logosAsked).toEqual(['BTC,ETH']);
+  // Nothing was asked of any host but the app, the Kairos server and the activation service: never CoinGecko.
+  expect([...hosts].filter(host => !['localhost:4317', 'api.qa.invalid', 'activation.qa.invalid'].includes(host))).toEqual([]);
   expect(errors).toEqual([]);
 });

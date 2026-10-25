@@ -5,9 +5,11 @@ import {
   type MarketMoveLineResult, type MarketMovePeriod, type MarketMovesReader, type MarketMovesWindow,
 } from '../../application/markets/marketMoves';
 import { describeMarketDataUnavailable, describeUpdatedAgo } from '../../application/online/onlineWords';
+import type { CoinLogoAddress } from '../../domain/market/coinLogo';
 import type { DecimalString } from '../../domain/trades';
 import { Sheet, UnavailableNotice } from '../../design-system/primitives';
 import type { MarketDataInstrument, MarketDataUnavailable } from '../../services/market-data/marketDataTypes';
+import { CoinIcon } from './CoinIcon';
 import './marketSheet.css';
 
 /** One market as the map shows it: its live price and 24-hour move come from the map's prices, read every 5 s. */
@@ -18,6 +20,8 @@ export interface MarketSheetCoin {
   readonly quote: string | null;
   /** D255: the coin's name (Bitcoin) when Kairos is sure of it. */
   readonly name: string | null;
+  /** T-061f (D272): the coin's logo when this device keeps one; else its drawn mark or letters. */
+  readonly logo?: CoinLogoAddress | null;
   /** The last price as the source wrote it, and when the source read it. */
   readonly price: DecimalString | null;
   readonly observedAt: string | null;
@@ -65,7 +69,8 @@ export function useNowEvery(intervalMs: number, active = true): number {
  * T-061e (D271): a market's details from Home's bubble map, in the design system's Sheet: its name, the price now and
  * how old it is, the moves over 1 hour, 24 hours and 7 days, a small line of the price over the map's period, and
  * "Open chart". The numbers come from their owners (application/markets/marketMoves.ts, the map's prices); the sheet
- * only shows them. Closing gives the focus back to the bubble that opened it.
+ * only shows them. Closing gives the focus back to the bubble that opened it. T-061f (D272): the coin's mark (its real
+ * logo when kept) beside the price, and CoinGecko's credit when its logo or name shows.
  */
 export function MarketSheet({ coin, period, reader, symbols, chartHref, onClose, returnFocusTo }: MarketSheetProps) {
   const open = coin !== null;
@@ -195,9 +200,12 @@ function MarketSheetBody({ coin, period, reader, symbols, chartHref }: Omit<Mark
 
   const linkClass = 'kairos-button kairos-button--secondary kairos-button--md kairos-market-sheet__open';
   return <div className="kairos-market-sheet">
-    <div>
-      <p className="kairos-market-sheet__price">{coin.price === null ? 'Price not available' : `Price ${coin.price}${coin.quote === null ? '' : ` ${coin.quote}`}`}</p>
-      {ago === null ? null : <p className="kairos-market-sheet__ago">{`Updated ${ago}`}</p>}
+    <div className="kairos-market-sheet__coin">
+      <CoinIcon coin={coin.base} logo={coin.logo ?? null} className="kairos-market-sheet__icon" />
+      <div>
+        <p className="kairos-market-sheet__price">{coin.price === null ? 'Price not available' : `Price ${coin.price}${coin.quote === null ? '' : ` ${coin.quote}`}`}</p>
+        {ago === null ? null : <p className="kairos-market-sheet__ago">{`Updated ${ago}`}</p>}
+      </div>
     </div>
     <ul className="kairos-market-sheet__moves" aria-label="Moves">
       <MoveItem period="1h" percent={hour.percent} state={hour.state} />
@@ -209,6 +217,6 @@ function MarketSheetBody({ coin, period, reader, symbols, chartHref }: Omit<Mark
       <UnavailableNotice message={words.message} retryLabel={words.retryLabel} onRetry={retry} busy={busy} retryWhenOnline={words.retryWhenOnline} />
     </div>}
     {inRouter ? <Link ref={chart} to={chartHref} className={linkClass}>Open chart</Link> : <a ref={chart} href={chartHref} className={linkClass}>Open chart</a>}
-    {coin.name === null ? null : <p className="kairos-market-sheet__credit">Coin names: CoinGecko</p>}
+    {coin.name === null && (coin.logo ?? null) === null ? null : <p className="kairos-market-sheet__credit">Coin logos and names: CoinGecko</p>}
   </div>;
 }

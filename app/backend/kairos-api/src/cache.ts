@@ -68,6 +68,8 @@ export async function readCached(key: string, policy: RouteCachePolicy, kv: KvSt
 
 /** Keeps an ok answer; the KV write runs after the response through waitUntil and never fails the request. */
 export function keep(key: string, stored: Stored, policy: RouteCachePolicy, kv: KvStore | undefined, now: number, waitUntil: (promise: Promise<unknown>) => void): void {
+  // Kept only at the edge (or nowhere): no text to make (T-061f: a big answer's JSON is real CPU).
+  if (policy.memorySeconds <= 0 && (policy.kvSeconds === null || kv === undefined)) { forget(key); return; }
   const text = JSON.stringify(stored);
   remember(key, stored, text.length, policy, now);
   if (policy.kvSeconds !== null && kv !== undefined) {

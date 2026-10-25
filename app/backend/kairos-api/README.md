@@ -33,7 +33,8 @@ says otherwise), `x-content-type-options: nosniff`, `vary: Origin`.
 
 Routes today: `GET /health` (says whether the device key, cache and limits are set up, and whether it recognised the
 device; never a value); the news routes (`/news/calendar/<source>`, `/news/headlines/<source>`, below); `GET /market/symbols`,
-`GET /market/tickers?symbols=…`, `GET /market/moves?symbols=…&window=…` and `GET /market/candles?…` (market data, below).
+`GET /market/tickers?symbols=…`, `GET /market/moves?symbols=…&window=…` and `GET /market/candles?…` (market data, below);
+`GET /market/coin-names` and `GET /market/coin-logos?symbols=…` (CoinGecko, with the owner's key, below).
 
 ## CORS and `KAIROS_APP_ORIGINS`
 
@@ -238,6 +239,32 @@ fetchedAt, names: [{ symbol, name }] }`, symbols A→Z.
   not used: CoinGecko limits them by IP, and Workers share IPs.
 - Kept a day in Workers Cache and KV, an hour in memory.
 - CoinGecko's answers: 401/403 `source-refused`; 429 `source-busy`; anything else `source-unavailable`.
+- Each read of the list also becomes the copy `/market/coin-logos` uses (below), so names and logos read CoinGecko's
+  list once a day between them.
+
+### Coin logos (T-061f, D272)
+
+`GET /market/coin-logos?symbols=BTC,ETH` answers Home's coin logos: `{ source: 'coingecko', fetchedAt, logos: [{ symbol,
+image: 'data:image/png;base64,…' }] }`, A→Z, only coins asked; a coin with no sure logo is left out.
+- `symbols`: 1 to 10 coins (A–Z and 0–9, 1–20 each), strictly ascending (anything else is 400); the app asks Home's 30
+  markets in at most three requests. Without the key the answer is `not-set-up` (503) and CoinGecko is never asked.
+- The list: the same `/coins/markets` read as the names, one copy for both routes (an hour in memory, a day in KV,
+  key `coingecko-coins:v1:`). A coin's logo address is kept only when its symbol is not shared and the address is
+  `https://coin-images.coingecko.com/coins/images/<digits>/large/<name>.png|jpg|jpeg|webp` (an optional version query,
+  no user, port or fragment). The symbols only pick rows of that list: no request value becomes an address.
+- Each logo is read from `coin-images.coingecko.com` only (the route's hosts), as bytes (`upstream.ts`'s byte reader:
+  no redirect, no key, no caller header, 8 s), at most 32 KB, and kept only when its first bytes are PNG, JPEG or WebP;
+  its data address takes that type. An SVG, a GIF, an HTML page, a redirect or a bigger file is left out.
+- Kept 30 days in Workers Cache (and the browser); never in memory or KV (the question varies, and a memory copy's
+  JSON text would cost CPU). When a logo could not be read just then (down, busy, too slow), the answer is kept only an
+  hour, so a later visit gets it.
+- CPU: the Free plan stops a request at 10 ms (above, O10). A miss does the list's check (only the coins asked; about
+  2 ms when the shared copy is missing and the list is read), up to 10 logo reads (I/O, not CPU), base64 by the
+  runtime's own `Uint8Array.prototype.toBase64` (a script fallback only where it is missing), and one JSON answer of at
+  most about 440 KB (about 3 ms in Node, cold). Measured in Node only: the Worker's real CPU is UNVERIFIED until a
+  deploy (O1/O2). Subrequests: at most 11 a request (the list and 10 logos).
+- Budget: the app asks only for coins it keeps no logo for (30 days on the phone), each request one place in Home's
+  shared budget of 9 a minute (`application/online/requestBudget.ts`; the count is in `application/markets/marketMoves.ts`).
 
 ## Scheduled reads (P34)
 
@@ -318,11 +345,11 @@ with `npm ci --ignore-scripts`.
   4. Please confirm that OANDA's terms let your journal app show its candles (UNVERIFIED).
   5. Check: a forex trade's picture shows candles with "Candles: OANDA · EUR/USD · mid prices" (after U10's app tasks).
 
-- **O6 · Coin names (U14)** (optional, never blocking): with a CoinGecko key, the symbol search also finds coins by name.
+- **O6 · Coin names and logos (U14, T-061f)** (optional, never blocking): with a CoinGecko key, the symbol search also finds coins by name, and Home's bubbles show real coin logos.
   1. On CoinGecko's site, create an API key (a free demo key or a paid one; the menu names are UNVERIFIED).
   2. Cloudflare dashboard → Workers & Pages → `kairos-api` → Settings → Variables and Secrets → Add → type Secret, name `COIN_DATA_API_KEY`, value: the key → Deploy. For a paid key, also say so: a coder sets `COIN_DATA_PLAN` to `"pro"` in `wrangler.jsonc`.
-  3. Please check that CoinGecko's plan allows this app's use, and what credit it asks for (UNVERIFIED). Kairos shows "Coin names: CoinGecko" under the list.
-  4. Check: typing "bitcoin" in the trade form's Symbol shows "BTCUSDT · Bitcoin".
+  3. Please check that CoinGecko's plan allows this app's use, showing its coin logos included, and what credit it asks for (UNVERIFIED). Kairos shows "Coin names: CoinGecko" under the symbol list, and "Coin logos and names: CoinGecko" in Home's market sheet.
+  4. Check: typing "bitcoin" in the trade form's Symbol shows "BTCUSDT · Bitcoin"; Home's BTC bubble shows Bitcoin's logo.
 
 Setting a provider key later: in `app/backend/kairos-api`, `npm ci`, then `npx wrangler secret put <NAME>` and paste the key
 when asked (or the dashboard, type Secret).

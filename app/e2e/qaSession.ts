@@ -58,12 +58,21 @@ function fixedMoves(url: URL): string | null {
   ] });
 }
 
+/** T-061f: a 32 × 32 PNG (an orange disc), BTC's logo as the Kairos server sends it: a data address, never a web address. */
+export const FIXED_BTC_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAhklEQVR42u2XQQ5AEQxEneNf22Etv73QSWl1JG1iR+dRtC3lNWv1+6URIuoKMzpFZgahFTYFQcKrI0dzj8S18d+GsBCXfFwTV0PMFp2KS/7g7q3EV365ADxir7oL3ruHp5AACUAHcP0Z5k9IkYzC0zFFQUJRkoUXpRRlOUVjQtOaUTSnntYBe6AymewLZucAAAAASUVORK5CYII=';
+
+/** T-061f: `/market/coin-logos` for the two fixed markets: a logo for BTC only (ETH keeps its drawn mark). */
+function fixedLogos(url: URL): string | null {
+  if (url.pathname !== '/market/coin-logos' || url.searchParams.get('symbols') !== 'BTC,ETH') return null;
+  return serverAnswer({ source: 'coingecko', fetchedAt: MARKET_FETCHED_AT, logos: [{ symbol: 'BTC', image: FIXED_BTC_LOGO }] });
+}
+
 /**
  * Opens the QA build signed in: the theme choice (if given) is stored before the app starts, the activation request
  * gets a fixed signed receipt, and every other https request is aborted (no network in design checks).
  * `fixedClock` freezes the page's clock before the first load; `server: 'fixed-market'` answers the market list, the
- * two 24-hour prices, their 1-hour and 7-day moves and their candles with fixed values (anything else still aborted),
- * so screenshots never change with the time.
+ * two 24-hour prices, their 1-hour and 7-day moves, their candles and BTC's logo with fixed values (anything else still
+ * aborted), so screenshots never change with the time.
  */
 /** T-053d: a fresh install opens the setup (D222); `setup: 'show'` leaves it open, otherwise "Skip for now" is tapped. */
 export async function openKairos(page: Page, options: Readonly<{ theme?: string; fixedClock?: string; server?: 'offline' | 'fixed-market'; setup?: 'skip' | 'show' }> = {}): Promise<void> {
@@ -79,7 +88,7 @@ export async function openKairos(page: Page, options: Readonly<{ theme?: string;
   await page.route(url => url.protocol === 'https:', async route => {
     const url = new URL(route.request().url());
     if (fixedMarket && url.hostname === SERVER_HOST) {
-      const body = FIXED_MARKET[url.pathname + decodeURIComponent(url.search)] ?? fixedMinuteCandles(url) ?? fixedMoves(url);
+      const body = FIXED_MARKET[url.pathname + decodeURIComponent(url.search)] ?? fixedMinuteCandles(url) ?? fixedMoves(url) ?? fixedLogos(url);
       if (body === undefined || body === null) return route.abort();
       return route.fulfill({ headers: { 'access-control-allow-origin': '*' }, contentType: 'application/json', body });
     }

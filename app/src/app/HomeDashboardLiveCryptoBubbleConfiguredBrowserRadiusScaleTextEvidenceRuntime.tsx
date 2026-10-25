@@ -6,7 +6,10 @@ import { appHomeMarket, type HomeMarket } from './marketDataPorts';
 import { useHomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleViewModel } from './useHomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleViewModel';
 import { classifyHomeDashboardLiveCryptoBubbleMovement } from '../application/dashboard/homeDashboardLiveCryptoBubblePresentationStateProjection';
 import type { MarketMovePeriod, MarketMovesCadence, MarketMovesWindow } from '../application/markets/marketMoves';
+import type { CoinLogoKeeper } from '../application/markets/coinLogos';
 import { describeMarketDataUnavailable } from '../application/online/onlineWords';
+import type { CoinLogoAddress } from '../domain/market/coinLogo';
+import { marketCoin } from '../features/home/CoinIcon';
 import { MarketSheet, type MarketSheetCoin } from '../features/home/MarketSheet';
 
 export interface HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTextEvidenceRuntimeProps {
@@ -34,6 +37,36 @@ function useCoinNames(source: HomeMarket['coinNames'], wanted: boolean): Readonl
   return names;
 }
 
+/**
+ * T-061f (D272): the coins' logos, never waited for. Asked once the map has markets (no request while there are no
+ * prices); the keeper asks the server only for coins it keeps no logo for, in Home's shared request budget. A coin that
+ * joins the map later is asked then; a request on its way is not stopped for it, only when Home closes.
+ */
+function useCoinLogos(keeper: CoinLogoKeeper | undefined, coins: readonly string[], wanted: boolean): ReadonlyMap<string, CoinLogoAddress> | null {
+  const [logos, setLogos] = useState<ReadonlyMap<string, CoinLogoAddress> | null>(null);
+  // The map's order (its biggest markets first), each coin once: a new set of coins asks again, a new order does not.
+  const unique = [...new Set(coins)];
+  const key = [...unique].sort().join(',');
+  const ordered = useRef(unique);
+  ordered.current = unique;
+  const closing = useRef<AbortController | null>(null);
+  const latest = useRef(0);
+  useEffect(() => {
+    const controller = new AbortController();
+    closing.current = controller;
+    return () => controller.abort();
+  }, [keeper]);
+  useEffect(() => {
+    const signal = closing.current?.signal;
+    if (keeper === undefined || signal === undefined || !wanted || key === '') return;
+    const mine = ++latest.current;
+    keeper.logos(ordered.current, { signal }).then(found => {
+      if (!signal.aborted && mine === latest.current) setLogos(found);
+    }, () => undefined);
+  }, [keeper, key, wanted]);
+  return logos;
+}
+
 function usePageShown(): boolean {
   const [shown, setShown] = useState(() => typeof document === 'undefined' || !document.hidden);
   useEffect(() => {
@@ -51,6 +84,7 @@ function usePageShown(): boolean {
  * T-061e (D271): it also holds what sizes the bubbles ("1 hour", "24 hours", "7 days") and the open market sheet. The
  * 1-hour and 7-day moves are read by their owner's cadence (application/markets/marketMoves.ts) only while chosen and
  * seen: the page shown and no sheet over the map. A failed read goes back to 24 hours and says so, with "Try again".
+ * T-061f (D272): it also asks for the coins' real logos (application/markets/coinLogos.ts) for the map and the sheet.
  */
 export function HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTextEvidenceRuntime({
   configuration,
@@ -78,6 +112,7 @@ export function HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTextEvi
   symbols.current = presented.map(entry => entry.metricInput.instrument.symbol);
   const hasMarkets = presented.length > 0;
   const names = useCoinNames(market.coinNames, hasMarkets);
+  const logos = useCoinLogos(market.logos, symbols.current.map(marketCoin), hasMarkets);
 
   const cadence = useRef<MarketMovesCadence | null>(null);
   useEffect(() => {
@@ -134,10 +169,10 @@ export function HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTextEvi
     else {
       const metric = entry.metricInput;
       const symbol = metric.instrument.symbol;
-      const base = symbol.endsWith('USDT') ? symbol.slice(0, -4) : symbol;
+      const base = marketCoin(symbol);
       const expired = entry.freshnessState === 'expired' || entry.freshnessState === 'missing';
       coin = Object.freeze({
-        instrument: metric.instrument, base, quote: symbol.endsWith('USDT') ? 'USDT' : null, name: names?.get(base) ?? null,
+        instrument: metric.instrument, base, quote: symbol.endsWith('USDT') ? 'USDT' : null, name: names?.get(base) ?? null, logo: logos?.get(base) ?? null,
         price: metric.fact?.lastPrice ?? null, observedAt: metric.fact?.observedAt ?? null, move24h: expired ? null : metric.movementPercent24h,
       });
     }
@@ -151,7 +186,7 @@ export function HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTextEvi
   };
 
   return <>
-    <HomeDashboardGlassBubbleMap model={model} onRetry={onRetry} moves={mapMoves} names={names} sectionRef={section}
+    <HomeDashboardGlassBubbleMap model={model} onRetry={onRetry} moves={mapMoves} names={names} logos={logos} sectionRef={section}
       onOpen={key => { tapped.current = key; setSheet({ key, period: chosen }); }} />
     <MarketSheet coin={coin} period={sheet?.period ?? chosen} reader={reader} symbols={() => symbols.current}
       chartHref={coin === null ? '/analysis' : analysisHandoffHref({ venue: coin.instrument.venue, instrument: coin.instrument.symbol }, null)}

@@ -7,6 +7,9 @@ import { layoutGlassCircles } from '../src/app/homeDashboardGlassLayout';
 import { removeGlassBlackMatte } from '../src/app/homeDashboardGlassMaterial';
 import { createHomeDashboardLiveCryptoBubbleDefaultRuntimeProductConfiguration } from '../src/app/homeDashboardLiveCryptoBubbleRuntimeProductPolicy';
 import { createMarketMovesReader } from '../src/application/markets/marketMoves';
+import { createHomeMarket } from '../src/app/marketDataPorts';
+import { createKairosApiClient } from '../src/services/kairos-api/kairosApi';
+import { createKairosCoinLogos } from '../src/services/kairos-api/marketApi';
 import type { DecimalString } from '../src/domain/trades';
 import type { MarketCandleHistoryPort } from '../src/services/market-data/MarketCandleHistoryPort';
 import type { MarketMovesPort, MarketMovesResult } from '../src/services/market-data/MarketMovesPort';
@@ -336,5 +339,51 @@ describe('T-061e (D271): tap a market bubble; size by 1 hour, 24 hours or 7 days
     cleanup();
     render(<HomeDashboardGlassBubbleMap model={glassTestModel(0)} />);
     expect(screen.getByText('No markets to show right now.')).toBeInTheDocument();
+  });
+});
+
+
+describe('T-061f (D272): real coin logos on the market bubbles', () => {
+  // A PNG's first bytes, as the Kairos server sends a logo: a data address, never a web address.
+  const BTC_LOGO = `data:image/png;base64,${btoa(String.fromCharCode(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52))}`;
+  const history: MarketCandleHistoryPort = { acquireHistory: async request => ({ ok: true, snapshot: { source: 'market-reference', timeZone: 'UTC', request, observedAt: new Date().toISOString(), candles: [] } }) };
+
+  it('shows a coin\'s logo when the Kairos server has one, else its drawn mark or two letters, in the bubble and its sheet; nothing asks another host', async () => {
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(366);
+    const elsewhere = vi.fn<typeof fetch>(async () => new Response(null, { status: 404 }));
+    vi.stubGlobal('fetch', elsewhere);
+    // Nine markets: the eight Kairos draws, and TEST8 it does not.
+    const model = glassTestModel(9);
+    if (!model.radiusScaleProjection?.ok) throw Error('fixture');
+    for (const entry of model.radiusScaleProjection.entries) Object.assign(entry.areaWeightEntry.presentationEntry.metricInput, { fact: { lastPrice: '64210.5', observedAt: new Date().toISOString() } });
+    liveModel.current = model;
+    const server = vi.fn<typeof fetch>(async () => new Response(JSON.stringify({ apiVersion: 1, ok: true, data: { source: 'coingecko', fetchedAt: new Date().toISOString(), logos: [{ symbol: 'BTC', image: BTC_LOGO }] } }), { headers: { 'content-type': 'application/json' } }));
+    const market = createHomeMarket({
+      route: 'server', moves: { acquireMoves: vi.fn() }, history,
+      coinNames: { coinNames: async () => ({ ok: true as const, names: new Map([['BTC', 'Bitcoin']]) }) },
+      coinLogos: createKairosCoinLogos(createKairosApiClient({ baseUrl: 'https://api.kairos.test', fetchImpl: server })),
+    }, null);
+    const { container } = render(<HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTextEvidenceRuntime configuration={createHomeDashboardLiveCryptoBubbleDefaultRuntimeProductConfiguration()} market={market} />);
+    const btc = await screen.findByRole('button', { name: /^BTC, Bitcoin, / });
+    await waitFor(() => expect(btc.querySelector('.kairos-glass-icon img')).not.toBeNull());
+    const logo = btc.querySelector('.kairos-glass-icon img')!;
+    expect(logo).toHaveAttribute('src', BTC_LOGO);
+    expect(logo).toHaveAttribute('alt', '');
+    // The bubble's name is unchanged: the logo is decoration.
+    expect(btc).toHaveAccessibleName('BTC, Bitcoin, up 2.1% in 24 hours. Show details');
+    const icon = (symbol: string) => screen.getByRole('button', { name: new RegExp(`^${symbol}, `) }).querySelector('.kairos-glass-icon')!;
+    expect(icon('ETH').querySelector('svg')).not.toBeNull();
+    expect(icon('ETH').querySelector('img')).toBeNull();
+    expect(icon('TEST8')).toHaveTextContent('TE');
+    expect(icon('TEST8').querySelector('img, svg')).toBeNull();
+    // One request for the nine coins, to the Kairos server; nothing else asked anywhere.
+    expect(server.mock.calls.map(([url]) => String(url))).toEqual(['https://api.kairos.test/market/coin-logos?symbols=ADA%2CBNB%2CBTC%2CETH%2CLINK%2CSOL%2CSUI%2CTEST8%2CXRP']);
+    expect(elsewhere).not.toHaveBeenCalled();
+    for (const image of container.querySelectorAll('img')) expect(image.getAttribute('src')).toMatch(/^(?:data:image\/(?:png|jpeg|webp);base64,|blob:)/);
+    // Its sheet shows the logo too, and credits CoinGecko.
+    fireEvent.click(btc, { detail: 1 });
+    const sheet = await screen.findByRole('dialog', { name: 'BTC · Bitcoin' });
+    expect(sheet.querySelector(`img[src="${BTC_LOGO}"][alt=""]`)).not.toBeNull();
+    expect(within(sheet).getByText('Coin logos and names: CoinGecko')).toBeInTheDocument();
   });
 });
