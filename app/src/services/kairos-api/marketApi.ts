@@ -473,6 +473,12 @@ export function createKairosCoinNames(client: KairosApiClient, options: Readonly
   const isOnline = options.isOnline ?? (() => globalThis.navigator?.onLine !== false);
   let session: { readonly names: ReadonlyMap<string, string>; readonly storedAt: number } | null = null;
   let inFlight: Promise<CoinNamesResult> | null = null;
+  /**
+   * T-061e review r1: an answer that was not new names ("not set up" without the owner's key, a failure, or the device
+   * copy used after one) is kept for this visit, or until the wait the server asked for: Home asks on every visit, and
+   * each ask counts against the server's limit. A failure while offline reached no server and is not kept.
+   */
+  let kept: { readonly result: CoinNamesResult; readonly until: number } | null = null;
   const ageOk = (storedAt: number, limit: number) => { const age = now() - storedAt; return age >= 0 && age <= limit; };
   const readCopy = async (): Promise<{ readonly storedAt: number; readonly names: readonly ServerCoinName[] } | null> => {
     const text = (await options.store?.read()) ?? null;
@@ -493,11 +499,14 @@ export function createKairosCoinNames(client: KairosApiClient, options: Readonly
     }
     const failure = result.ok ? unavailable('unreadable') : marketDataUnavailableOf(result, isOnline);
     const copy = await readCopy();
-    return copy !== null && ageOk(copy.storedAt, COIN_NAMES_KEEP_MS) ? { ok: true, names: coinNamesMap(copy.names) } : failure;
+    const answer: CoinNamesResult = copy !== null && ageOk(copy.storedAt, COIN_NAMES_KEEP_MS) ? { ok: true, names: coinNamesMap(copy.names) } : failure;
+    if (failure.why !== 'offline') kept = { result: answer, until: failure.retryAfterSeconds === null ? Number.POSITIVE_INFINITY : now() + failure.retryAfterSeconds * 1000 };
+    return answer;
   };
   return Object.freeze({
     async coinNames(callerOptions?: Readonly<{ signal?: AbortSignal }>): Promise<CoinNamesResult> {
       if (session !== null && ageOk(session.storedAt, COIN_NAMES_FRESH_MS)) return { ok: true, names: session.names };
+      if (kept !== null && now() < kept.until) return kept.result;
       if (inFlight === null) {
         const copy = await readCopy();
         if (copy !== null && ageOk(copy.storedAt, COIN_NAMES_FRESH_MS)) {

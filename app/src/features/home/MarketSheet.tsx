@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Link, useInRouterContext } from 'react-router';
 import {
-  describeMarketMove, MARKET_MOVE_PERIOD_WORDS, MARKET_SHEET_REFRESH_MS, projectMarketMoveLine,
+  describeMarketMove, isMarketMovesReadingFresh, MARKET_MOVE_PERIOD_WORDS, MARKET_SHEET_REFRESH_MS, projectMarketMoveLine,
   type MarketMoveLineResult, type MarketMovePeriod, type MarketMovesReader, type MarketMovesWindow,
 } from '../../application/markets/marketMoves';
 import { describeMarketDataUnavailable, describeUpdatedAgo } from '../../application/online/onlineWords';
@@ -169,8 +169,8 @@ function MarketSheetBody({ coin, period, reader, symbols, chartHref }: Omit<Mark
   const moveState = (window: MarketMovesWindow) => {
     const { reading, failure } = moves[window];
     if (failure !== null) return { state: 'failed' as const, percent: null };
-    // No reading and no failure yet: the sheet's first read is on its way.
-    if (reading === null) return { state: 'loading' as const, percent: null };
+    // No reading yet, or one too old to say the move now (or without this market): the sheet's read is on its way.
+    if (reading === null || !isMarketMovesReadingFresh(reading, now, [coin.instrument.symbol])) return { state: 'loading' as const, percent: null };
     return { state: 'shown' as const, percent: reading.moves.get(coin.instrument.symbol) ?? null };
   };
   const hour = moveState('1h'), week = moveState('7d');

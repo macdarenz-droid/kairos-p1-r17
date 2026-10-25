@@ -272,6 +272,33 @@ describe('T-059b coin names: the session, the device copy and the server', () =>
     expect(decodeCoinNames({ source: 'coingecko', fetchedAt: FETCHED_AT, names: NAMES })).toEqual(NAMES);
   });
 
+  it('T-061e review r1: keeps "not set up" or a failure for the visit, or until the wait the server asked for, so Home asks once', async () => {
+    let clock = NOW;
+    const keeping = (fetchImpl: typeof fetch, online = true) => createKairosCoinNames(createKairosApiClient({ baseUrl: BASE, fetchImpl }), { store: null, now: () => clock, isOnline: () => online });
+    const notSetUp = vi.fn<typeof fetch>(async () => failAnswer('not-set-up', 503));
+    const withoutKey = keeping(notSetUp);
+    expect(await withoutKey.coinNames()).toMatchObject({ ok: false, why: 'not-set-up' });
+    clock += 2 * HOUR;
+    expect(await withoutKey.coinNames()).toMatchObject({ ok: false, why: 'not-set-up' });
+    expect(notSetUp).toHaveBeenCalledTimes(1);
+    // A rate-limited answer is kept until its wait has passed, then asked again.
+    const limited = vi.fn<typeof fetch>(async () => failAnswer('rate-limited', 429, 60));
+    const busy = keeping(limited);
+    expect(await busy.coinNames()).toMatchObject({ ok: false, why: 'busy', retryAfterSeconds: 60 });
+    clock += 59_000;
+    await busy.coinNames();
+    expect(limited).toHaveBeenCalledTimes(1);
+    clock += 1_000;
+    await busy.coinNames();
+    expect(limited).toHaveBeenCalledTimes(2);
+    // Offline reached no server: asked again when it is.
+    const offline = vi.fn<typeof fetch>(async () => { throw new TypeError('Failed to fetch'); });
+    const lost = keeping(offline, false);
+    expect(await lost.coinNames()).toMatchObject({ ok: false, why: 'offline' });
+    await lost.coinNames();
+    expect(offline).toHaveBeenCalledTimes(2);
+  });
+
   it('a caller\'s abort ends only its own wait', async () => {
     let release: (response: Response) => void = () => undefined;
     const fetchImpl = vi.fn<typeof fetch>(() => new Promise<Response>(resolve => { release = resolve; }));

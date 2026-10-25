@@ -1,23 +1,35 @@
 /**
- * T-061e (D271): the one owner of a market's move over 1 hour and 7 days, of when Home reads those moves, and of the
- * request budget Home's extra market reads share (the moves and the market sheet's line).
+ * T-061e (D271): the one owner of a market's move over 1 hour and 7 days, and of when Home reads those moves and the
+ * market sheet's line.
  *
- * Request budget. The Kairos server allows 30 requests a minute for a device that is not activated (120 when it is),
- * counted before its cache. Home, minute by minute, at most:
- * | minute                     | live prices (5 s) | price now (1 min) | news (30 min) | market list + coin names | these extra reads | total |
- * |----------------------------|-------------------|-------------------|---------------|--------------------------|-------------------|-------|
- * | 1st                        | 12                | 3                 | 9 (at 10 s)   | 2                        | ≤ 4               | ≤ 30  |
- * | 2nd to 30th                | 12                | 3                 | 0             | 0                        | ≤ 4               | ≤ 19  |
- * | 31st (news due again)      | 12                | 3                 | 9             | 0 (1 + 1 after 6 h, 1 d) | ≤ 4               | ≤ 28  |
- * "These extra reads" all go through one gate: at most HOME_MARKET_EXTRA_READS_PER_MINUTE (4) in any 60 seconds; a
- * read past it waits its turn, it is never refused or repeated. In normal use they need less:
+ * Request budget (review r1, recounted from the code). The Kairos server allows 30 requests a minute for a device that
+ * is not activated (120 when it is), counted before its cache. Home at most, in any 60 seconds, through the server:
+ * | part                  | most | why                                                                                        |
+ * |-----------------------|------|--------------------------------------------------------------------------------------------|
+ * | live prices           | 12   | one read every 5 s; a return to Home reads at once, but within 5 s of the last read the     |
+ * |                       |      | browser answers from its copy (the server's answer is fresh 5 s), so reads stay 5 s apart   |
+ * | price now (Today)     | 6    | at most 3 markets, once a minute; a futures trade with no futures candles reads twice (its |
+ * |                       |      | spot market after); a return within 60 s reuses the answer (TodayCard, review r1)            |
+ * | market list           | 1    | the first visit only (kept on the device 6 h)                                               |
+ * | coin names            | 1    | once a visit: an answer is kept a day, a failure for the visit or its wait (marketApi.ts)    |
+ * | shared reads          | 9    | the news refresh (9 at once, at most once in 30 min) and these market reads (1 each), all    |
+ * |                       |      | through one budget of HOME_SHARED_READS_PER_MINUTE (application/online/requestBudget.ts)     |
+ * | total                 | 29   |                                                                                            |
+ * Minute by minute:
+ * | minute                                   | live prices | price now | list + names | shared                         | total |
+ * |------------------------------------------|-------------|-----------|--------------|--------------------------------|-------|
+ * | 1st (news due), with a return to Home    | 12          | 6 (3)     | 2            | 9: the news; these reads wait  | ≤ 29  |
+ * | 2nd to 30th, with or without a return    | 12          | 6 (3)     | 0            | ≤ 9 (2–3 in use, see below)    | ≤ 27  |
+ * | 31st (news due again)                    | 12          | 6 (3)     | 0 (1 + 1 after 6 h / a day) | 9                | ≤ 29  |
+ * (3): with spot trades. A read past the budget waits its turn; it is never refused or repeated, and a big ask (the
+ * news) is never passed by small ones. In normal use these market reads need less:
  * - "1 hour" chosen and seen: one read every 30 s (2 a minute); "7 days": one every 5 minutes; "24 hours": none (that
  *   move comes with the live prices);
  * - the sheet open (the map's reads stop under it): its line once a minute, the 1-hour moves once a minute (older than
  *   30 s at each refresh), the 7-day moves once every 5 minutes: 2 or 3 a minute; the map's moves while fresh are used.
  * A busy or rate-limited answer waits the time the source asked (60 s for the server's limit) before the cadence asks
- * again; only the trader's "Try again" asks sooner, and it goes through the same gate. Without the Kairos server
- * (no VITE_KAIROS_API_URL) the reads go straight to Binance: no Kairos limit, so no gate (perMinute null).
+ * again; only the trader's "Try again" asks sooner, and it goes through the same budget. Without the Kairos server
+ * (no VITE_KAIROS_API_URL) the market reads go straight to Binance: no Kairos limit, so no budget (null).
  */
 import { calculatePercentage } from '../../domain/calculations/percentageCalculator';
 import { decimalAbs, decimalCompare, decimalRound, decimalScaleToSteps, decimalSubtract } from '../../domain/calculations/decimalKernel';
@@ -25,6 +37,7 @@ import type { DecimalString } from '../../domain/trades';
 import type { MarketCandleHistoryPort, MarketCandleHistoryResult } from '../../services/market-data/MarketCandleHistoryPort';
 import type { MarketMovesPort, MarketMovesWindow } from '../../services/market-data/MarketMovesPort';
 import type { MarketDataInstrument, MarketDataUnavailable } from '../../services/market-data/marketDataTypes';
+import type { RequestBudget } from '../online/requestBudget';
 
 export type { MarketMovesWindow } from '../../services/market-data/MarketMovesPort';
 
@@ -37,9 +50,6 @@ export const MARKET_MOVE_PERIOD_WORDS: Readonly<Record<MarketMovePeriod, string>
 export const MARKET_MOVES_REFRESH_MS: Readonly<Record<MarketMovesWindow, number>> = Object.freeze({ '1h': 30_000, '7d': 300_000 });
 /** The open sheet reads its line (and its coin's moves, when not fresh) again this often. */
 export const MARKET_SHEET_REFRESH_MS = 60_000;
-/** The gate for Home's extra market reads through the Kairos server (the budget above). */
-export const HOME_MARKET_EXTRA_READS_PER_MINUTE = 4;
-const BUDGET_WINDOW_MS = 60_000;
 
 /** The sheet's line: the closes of the period, from one candle page (1m × 60, 15m × 96, 1h × 168). */
 export const MARKET_MOVE_LINE_CANDLES: Readonly<Record<MarketMovePeriod, Readonly<{ interval: string; limit: number }>>> = Object.freeze({
@@ -101,6 +111,16 @@ export interface MarketMovesReading {
   readonly moves: ReadonlyMap<string, DecimalString | null>;
 }
 
+/**
+ * Whether a reading still says the move now: younger than its window's refresh time, and (when markets are named)
+ * holding each of them. A market new to the map is not in an older reading.
+ */
+export function isMarketMovesReadingFresh(reading: MarketMovesReading | null, nowMs: number, symbols: readonly string[] = []): boolean {
+  // A reading newer than the clock asked (a screen's clock ticks every few seconds) is as fresh as it gets.
+  if (reading === null) return false;
+  return nowMs - reading.readAtMs < MARKET_MOVES_REFRESH_MS[reading.window] && symbols.every(symbol => reading.moves.has(symbol));
+}
+
 export interface MarketMovesFailure {
   readonly unavailable: MarketDataUnavailable;
   readonly atMs: number;
@@ -142,8 +162,8 @@ export interface MarketMovesReader {
 export interface MarketMovesReaderOptions {
   readonly moves: MarketMovesPort;
   readonly history: MarketCandleHistoryPort;
-  /** Reads allowed in any 60 seconds (the Kairos server's budget); null: no gate (straight to Binance). */
-  readonly perMinute: number | null;
+  /** Home's shared request budget on the Kairos server (the count above); null: none (straight to Binance). */
+  readonly budget: RequestBudget | null;
   readonly now?: () => number;
 }
 
@@ -160,56 +180,13 @@ function lineFailure(result: Exclude<MarketCandleHistoryResult, { ok: true }>, o
   return unavailable(online ? 'source-down' : 'offline');
 }
 
-/**
- * The gate: a read takes a slot when fewer than `perMinute` reads started in the last 60 seconds, else waits in line
- * for the oldest slot to free. An abandoned wait leaves the line and sends nothing.
- */
-function createReadGate(perMinute: number | null, now: () => number) {
-  const starts: number[] = [];
-  const line: { readonly resolve: (granted: boolean) => void; readonly leave: () => void }[] = [];
-  let timer: ReturnType<typeof setTimeout> | null = null;
-  const pump = () => {
-    if (timer !== null) { clearTimeout(timer); timer = null; }
-    if (perMinute === null) return;
-    const at = now();
-    while (starts.length > 0 && at - starts[0]! >= BUDGET_WINDOW_MS) starts.shift();
-    while (line.length > 0 && starts.length < perMinute) {
-      const next = line.shift()!;
-      starts.push(at);
-      next.leave();
-      next.resolve(true);
-    }
-    if (line.length > 0) timer = setTimeout(pump, Math.max(0, starts[0]! + BUDGET_WINDOW_MS - at));
-  };
-  return {
-    take(signal?: AbortSignal): Promise<boolean> {
-      if (signal?.aborted) return Promise.resolve(false);
-      if (perMinute === null) return Promise.resolve(true);
-      return new Promise<boolean>((resolve) => {
-        const onAbort = () => {
-          const index = line.indexOf(entry);
-          if (index >= 0) line.splice(index, 1);
-          resolve(false);
-          pump();
-        };
-        const entry = { resolve, leave: () => signal?.removeEventListener('abort', onAbort) };
-        signal?.addEventListener('abort', onAbort, { once: true });
-        line.push(entry);
-        pump();
-      });
-    },
-    /** A slot taken by a read abandoned before it was sent (a screen closed at once) is free again. */
-    refund(): void {
-      if (perMinute === null || starts.length === 0) return;
-      starts.pop();
-      pump();
-    },
-  };
-}
-
-export function createMarketMovesReader({ moves: port, history, perMinute, now = () => Date.now() }: MarketMovesReaderOptions): MarketMovesReader {
+export function createMarketMovesReader({ moves: port, history, budget, now = () => Date.now() }: MarketMovesReaderOptions): MarketMovesReader {
   const isOnline = () => globalThis.navigator?.onLine !== false;
-  const gate = createReadGate(perMinute, now);
+  /** One request through Home's budget (none without the server); a read abandoned before it left gives it back. */
+  const gate = {
+    take: (signal: AbortSignal | undefined): Promise<boolean> => (budget === null ? Promise.resolve(!(signal?.aborted ?? false)) : budget.take(1, signal)),
+    refund: (): void => budget?.refund(1),
+  };
   const listeners = new Set<() => void>();
   let state: MarketMovesState = Object.freeze({ '1h': EMPTY, '7d': EMPTY });
   /** The read on its way for each window: shared by every caller, stopped only when all of them have left. */
@@ -221,10 +198,7 @@ export function createMarketMovesReader({ moves: port, history, perMinute, now =
     state = Object.freeze({ ...state, [window]: Object.freeze({ ...state[window], ...next }) });
     for (const listener of [...listeners]) listener();
   };
-  const fresh = (window: MarketMovesWindow) => {
-    const reading = state[window].reading;
-    return reading !== null && now() - reading.readAtMs < MARKET_MOVES_REFRESH_MS[window];
-  };
+  const fresh = (window: MarketMovesWindow, symbols: readonly string[]) => isMarketMovesReadingFresh(state[window].reading, now(), symbols);
   const waitingUntil = (window: MarketMovesWindow) => state[window].failure?.busyUntilMs ?? 0;
 
   function start(window: MarketMovesWindow, symbols: readonly string[]) {
@@ -249,7 +223,8 @@ export function createMarketMovesReader({ moves: port, history, perMinute, now =
         if (!controller.signal.aborted) set(window, { failure: Object.freeze({ unavailable: unavailable(isOnline() ? 'source-down' : 'offline'), atMs: now(), busyUntilMs: 0 }) });
       } finally {
         if (running.get(window) === entry) running.delete(window);
-        set(window, { pending: false });
+        // A read dropped by every caller may end after a newer one started: that one is still on its way.
+        set(window, { pending: running.has(window) });
       }
     })();
     running.set(window, entry);
@@ -283,7 +258,7 @@ export function createMarketMovesReader({ moves: port, history, perMinute, now =
     },
     async ensure(window, symbols, options = {}) {
       if (options.signal?.aborted || symbols.length === 0) return;
-      if (!options.byTrader && (fresh(window) || waitingUntil(window) > now())) return;
+      if (!options.byTrader && (fresh(window, symbols) || waitingUntil(window) > now())) return;
       await join(window, symbols, options.signal);
     },
     async readLine(instrument, period, options = {}) {
@@ -325,12 +300,14 @@ export function createMarketMovesReader({ moves: port, history, perMinute, now =
         if (closed || timer !== null) return;
         const at = now();
         const reading = state[window].reading;
-        let due = afterRead ? at + MARKET_MOVES_REFRESH_MS[window] : reading !== null && fresh(window) ? reading.readAtMs + MARKET_MOVES_REFRESH_MS[window] : at;
+        // Chosen or shown again: a reading that is old or lacks a market now on the map is read at once (through the
+        // budget); between reads, a market new to the map waits for the next one (the map draws it "not available").
+        let due = afterRead ? at + MARKET_MOVES_REFRESH_MS[window] : reading !== null && fresh(window, symbols()) ? reading.readAtMs + MARKET_MOVES_REFRESH_MS[window] : at;
         due = Math.max(due, waitingUntil(window));
         const read = () => {
           timer = null;
           // Another read (the sheet's, "Try again") made it fresh meanwhile: wait for it to age instead.
-          if (fresh(window)) { plan(window, false); return; }
+          if (fresh(window, symbols())) { plan(window, false); return; }
           const mine = new AbortController();
           controller = mine;
           void join(window, symbols(), mine.signal).then(() => {

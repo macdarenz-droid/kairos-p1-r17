@@ -8,6 +8,7 @@ import { saveHomeCurrency } from '../src/application/currency/homeCurrency';
 import { loadHomeToday } from '../src/application/dashboard/homeToday';
 import { NEWS_COVERAGE_KEY, type NewsApiPort } from '../src/application/economic-calendar/fetchedNews';
 import type { PriceNowResult } from '../src/application/market-reference/priceNow';
+import { createRequestBudget, HOME_SHARED_READS_PER_MINUTE } from '../src/application/online/requestBudget';
 import { skipSetup } from '../src/application/setup/setupState';
 import { saveManualTrade, type SaveManualTradeInput } from '../src/application/trades';
 import { loadVisualPnlTimeZone, writeVisualPnlTimeZonePreference } from '../src/application/visual-pnl';
@@ -802,5 +803,79 @@ describe('T-061c review r1', () => {
     await act(async () => { vi.advanceTimersByTime(60_000); });
     expect(priceNow).toHaveBeenCalledTimes(2);
     await waitFor(() => expect(priceLine(tradeItem(today, 'BTCUSDT'))).toHaveTextContent(/^Price now 64000 USDT/));
+  });
+});
+
+describe('T-061e review r1: Home within the server\'s limit', () => {
+  it('Home opened again within a minute shows the last price now without asking again; after a minute it asks', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(Date.parse(NOW));
+    const db = await database();
+    for (const [index, symbol] of ['BTCUSDT', 'ETHUSDT', 'XRPUSDT'].entries()) await save(db, open(symbol, `2026-10-2${4 - index}T08:00:00.000Z`));
+    const { value, priceNow } = market(ask => price({ BTCUSDT: '64000', ETHUSDT: '2450', XRPUSDT: '2.5' }[ask.symbol] ?? '1'));
+    const first = cardWithMarket(db, value);
+    let today = await region();
+    await waitFor(() => expect(priceLine(tradeItem(today, 'XRPUSDT'))).toBeInTheDocument());
+    expect(priceNow).toHaveBeenCalledTimes(3);
+    // Left (a trade's page) and back 50 s later: the same prices, no new read.
+    first.unmount();
+    vi.setSystemTime(Date.parse(NOW) + 50_000);
+    cardWithMarket(db, value);
+    today = await region();
+    await waitFor(() => expect(priceLine(tradeItem(today, 'BTCUSDT'))).toHaveTextContent(/^Price now 64000 USDT \(market, not saved\)/));
+    expect(priceLine(tradeItem(today, 'XRPUSDT'))).toHaveTextContent(/^Price now 2\.5 USDT/);
+    expect(priceNow).toHaveBeenCalledTimes(3);
+    cleanup();
+    // A minute after the reads: asked again.
+    vi.setSystemTime(Date.parse(NOW) + 61_000);
+    cardWithMarket(db, value);
+    today = await region();
+    await waitFor(() => expect(priceNow).toHaveBeenCalledTimes(6));
+  });
+
+  it('a price read still on its way when Home is left is the one shown when Home opens again', async () => {
+    const db = await database();
+    await save(db, open('BTCUSDT', '2026-10-24T08:00:00.000Z'));
+    let answer: (result: PriceNowResult) => void = () => undefined;
+    const priceNow = vi.fn((_ask: Ask, _signal: AbortSignal) => new Promise<PriceNowResult>(resolve => { answer = resolve; }));
+    const value: TradeFormMarket = { marketList: async () => ({ ok: false as const }), priceNow };
+    const first = cardWithMarket(db, value);
+    await within(await region()).findByText('Open trades');
+    await waitFor(() => expect(priceNow).toHaveBeenCalledTimes(1));
+    first.unmount();
+    cardWithMarket(db, value);
+    const today = await region();
+    await within(today).findByText('Open trades');
+    await tick();
+    expect(priceNow).toHaveBeenCalledTimes(1);
+    expect(priceNow.mock.calls[0]![1].aborted).toBe(false);
+    act(() => { answer(price('64000')); });
+    await waitFor(() => expect(priceLine(tradeItem(today, 'BTCUSDT'))).toHaveTextContent(/^Price now 64000 USDT/));
+  });
+
+  it('the background news refresh waits in Home\'s request budget until all its requests fit, after recent market reads', async () => {
+    // Real time still runs (the testing library waits with setTimeout); the waits are moved on by hand.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'], shouldAdvanceTime: true });
+    const budget = createRequestBudget(HOME_SHARED_READS_PER_MINUTE);
+    // One market read (the 1-hour moves) just went out.
+    expect(await budget.take(1)).toBe(true);
+    const db = await newsDatabase(null);
+    const { news, calendar } = newsPort(true);
+    card(db, { news, budget });
+    const today = await region();
+    await within(today).findByText('No big news in the next 14 days.');
+    await settle();
+    await act(async () => { vi.advanceTimersByTime(10_000); });
+    expect(calendar).not.toHaveBeenCalled();
+    await act(async () => { vi.advanceTimersByTime(50_000); });
+    expect(calendar).toHaveBeenCalledTimes(9);
+    await waitFor(() => expect(newsLine(today)).toHaveTextContent('Next big news: US inflation (CPI)'));
+    // The whole budget is the news's for a minute: a market read now waits.
+    let granted = false;
+    void budget.take(1).then(ok => { granted = ok; });
+    await act(async () => { vi.advanceTimersByTime(30_000); });
+    expect(granted).toBe(false);
+    await act(async () => { vi.advanceTimersByTime(30_000); });
+    expect(granted).toBe(true);
   });
 });

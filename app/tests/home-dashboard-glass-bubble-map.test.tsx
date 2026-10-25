@@ -156,16 +156,16 @@ describe('T-061e (D271): tap a market bubble; size by 1 hour, 24 hours or 7 days
   const history: MarketCandleHistoryPort = { acquireHistory: async request => ({ ok: true, snapshot: { source: 'market-reference', timeZone: 'UTC', request, observedAt: new Date().toISOString(), candles: [] } }) };
   const settle = async () => { await act(async () => { for (let i = 0; i < 20; i += 1) await Promise.resolve(); }); };
 
-  function liveMarket(acquireMoves: MarketMovesPort['acquireMoves'] = async ({ window }) => moves(window)) {
+  function liveMarket(acquireMoves: MarketMovesPort['acquireMoves'] = async ({ window }) => moves(window), candles: MarketCandleHistoryPort = history) {
     vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(366);
     const model = glassTestModel(3);
     if (!model.radiusScaleProjection?.ok) throw Error('fixture');
     for (const entry of model.radiusScaleProjection.entries) Object.assign(entry.areaWeightEntry.presentationEntry.metricInput, { fact: { lastPrice: '64210.5', observedAt: new Date(Date.now() - 40_000).toISOString() } });
     liveModel.current = model;
     const port = { acquireMoves: vi.fn(acquireMoves) };
-    const reader = createMarketMovesReader({ moves: port, history, perMinute: null });
+    const reader = createMarketMovesReader({ moves: port, history: candles, budget: null });
     const coinNames = { coinNames: vi.fn(async () => ({ ok: true as const, names: new Map([['BTC', 'Bitcoin']]) })) };
-    const view = render(<HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTextEvidenceRuntime configuration={createHomeDashboardLiveCryptoBubbleDefaultRuntimeProductConfiguration()} market={{ reader, coinNames }} />);
+    const view = render(<HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTextEvidenceRuntime configuration={createHomeDashboardLiveCryptoBubbleDefaultRuntimeProductConfiguration()} market={{ reader, coinNames, budget: null }} />);
     return { ...view, port: port.acquireMoves };
   }
   const bubble = (symbol: string) => screen.getByRole('button', { name: new RegExp(`^${symbol}, `) });
@@ -279,5 +279,62 @@ describe('T-061e (D271): tap a market bubble; size by 1 hour, 24 hours or 7 days
     expect(bubble('BTC')).toHaveAccessibleName('BTC, Bitcoin, down 20% in 7 days. Show details');
     // "Try again" went away with the answer: the switch holds the focus, never the page.
     expect(document.activeElement).toBe(within(periods()).getByRole('button', { name: '7 days' }));
+  });
+  it('review r1: a read that fails while a sheet is open neither changes the sheet nor asks again; the map goes back to 24 hours when it closes', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date'] });
+    let hourFails = false;
+    const lines: string[] = [];
+    const recording: MarketCandleHistoryPort = { acquireHistory: async request => { lines.push(`${request.interval}×${request.limit}`); return history.acquireHistory(request); } };
+    const DOWN: MarketMovesResult = { ok: false, reason: 'unavailable', why: 'source-down', retryAfterSeconds: null };
+    const { port } = liveMarket(async ({ window }) => (window === '1h' && hourFails ? DOWN : moves(window)), recording);
+    await settle();
+    fireEvent.click(within(periods()).getByRole('button', { name: '1 hour' }));
+    await settle();
+    fireEvent.click(bubble('BTC'), { detail: 0 });
+    await settle();
+    const sheet = screen.getByRole('dialog', { name: 'BTC · Bitcoin' });
+    expect(lines).toEqual(['1m×60']);
+    expect(port.mock.calls.map(([request]) => request.window)).toEqual(['1h', '7d']);
+    // The sheet's minute: its 1-hour read fails.
+    hourFails = true;
+    await act(async () => { vi.advanceTimersByTime(60_000); });
+    await settle();
+    await act(async () => { vi.advanceTimersByTime(10_000); });
+    await settle();
+    expect(port.mock.calls.map(([request]) => request.window)).toEqual(['1h', '7d', '1h']);
+    expect(lines).toEqual(['1m×60', '1m×60']);
+    expect(within(sheet).getByText(/1-hour move: the price source didn't answer/)).toBeInTheDocument();
+    expect(within(periods()).getByRole('button', { name: '1 hour' })).toHaveAttribute('aria-pressed', 'true');
+    // Closed: the map goes back to 24 hours and says so, with no read on the way out.
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Close' }));
+    await settle();
+    expect(within(periods()).getByRole('button', { name: '24 hours' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText('1-hour moves are unavailable right now.')).toBeInTheDocument();
+    expect(port).toHaveBeenCalledTimes(3);
+  });
+
+  it('review r1: a market the 1-hour reading does not hold yet (new to the map) has a bubble at the smallest size that says "not available"', async () => {
+    liveMarket(async ({ window }) => {
+      const answer = moves(window);
+      return answer.ok ? { ...answer, moves: answer.moves.filter(move => move.symbol !== 'SOLUSDT') } : answer;
+    });
+    await screen.findByRole('button', { name: /^BTC, Bitcoin, / });
+    fireEvent.click(within(periods()).getByRole('button', { name: '1 hour' }));
+    await settle();
+    const sol = screen.getByRole('button', { name: 'SOL, 1-hour move not available. Show details' });
+    expect(sol).toHaveTextContent('Unavailable');
+    expect(sol).toHaveAttribute('data-movement', 'neutral');
+    expect(width('SOL')).toBeLessThan(width('BTC'));
+    expect(width('BTC')).toBeLessThan(width('ETH'));
+  });
+
+  it('review r1: plain words when prices could not update, or when there is nothing to show', () => {
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(366);
+    const model = glassTestModel();
+    render(<HomeDashboardGlassBubbleMap model={{ ...model, runtimeState: { ...model.runtimeState, lastError: new Error('network') } }} />);
+    expect(screen.getByText("Prices couldn't update. Showing the last prices with how old each is.")).toBeInTheDocument();
+    cleanup();
+    render(<HomeDashboardGlassBubbleMap model={glassTestModel(0)} />);
+    expect(screen.getByText('No markets to show right now.')).toBeInTheDocument();
   });
 });

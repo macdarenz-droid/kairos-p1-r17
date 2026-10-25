@@ -66,7 +66,9 @@ export function HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTextEvi
   /** The window whose read failed: the map is back on 24 hours and says so. */
   const [failed, setFailed] = useState<MarketMovesWindow | null>(null);
   const chosenAt = useRef(0);
-  const [openKey, setOpenKey] = useState<string | null>(null);
+  /** The open sheet: its market and the period its line draws, fixed when it opens (a later fall-back never changes it). */
+  const [sheet, setSheet] = useState<Readonly<{ key: string; period: MarketMovePeriod }> | null>(null);
+  const openKey = sheet?.key ?? null;
   /** The bubble that opened the sheet: it takes the focus back when the sheet closes. */
   const tapped = useRef<string | null>(null);
   const section = useRef<HTMLElement>(null);
@@ -83,19 +85,19 @@ export function HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTextEvi
     cadence.current = current;
     return () => { current.close(); cadence.current = null; };
   }, [reader]);
-  useEffect(() => {
-    cadence.current?.update({ period: chosen, visible: pageShown && openKey === null && hasMarkets });
-  }, [reader, chosen, pageShown, openKey, hasMarkets]);
-
   // A read of the chosen window that failed since it was chosen (or a source that asked to wait, with no read on its
-  // way such as "Try again") sends the map back to 24 hours.
+  // way such as "Try again") sends the map back to 24 hours. While a sheet is open the map waits until it closes (the
+  // sheet keeps the period it opened with); meanwhile the map's own reads stay stopped.
+  const fallingBack = chosen !== '24h' && moves[chosen].failure !== null && !moves[chosen].pending
+    && (moves[chosen].failure!.atMs >= chosenAt.current || moves[chosen].failure!.busyUntilMs > Date.now());
   useEffect(() => {
-    if (chosen === '24h' || moves[chosen].pending) return;
-    const failure = moves[chosen].failure;
-    if (failure === null || (failure.atMs < chosenAt.current && failure.busyUntilMs <= Date.now())) return;
+    cadence.current?.update({ period: chosen, visible: pageShown && openKey === null && hasMarkets && !fallingBack });
+  }, [reader, chosen, pageShown, openKey, hasMarkets, fallingBack]);
+  useEffect(() => {
+    if (!fallingBack || openKey !== null) return;
     setFailed(chosen);
     setChosen('24h');
-  }, [chosen, moves]);
+  }, [fallingBack, openKey, chosen]);
 
   const choose = (period: MarketMovePeriod) => { chosenAt.current = Date.now(); setFailed(null); setChosen(period); };
   const reading = chosen === '24h' ? null : moves[chosen].reading;
@@ -150,9 +152,9 @@ export function HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTextEvi
 
   return <>
     <HomeDashboardGlassBubbleMap model={model} onRetry={onRetry} moves={mapMoves} names={names} sectionRef={section}
-      onOpen={key => { tapped.current = key; setOpenKey(key); }} />
-    <MarketSheet coin={coin} period={chosen} reader={reader} symbols={() => symbols.current}
+      onOpen={key => { tapped.current = key; setSheet({ key, period: chosen }); }} />
+    <MarketSheet coin={coin} period={sheet?.period ?? chosen} reader={reader} symbols={() => symbols.current}
       chartHref={coin === null ? '/analysis' : analysisHandoffHref({ venue: coin.instrument.venue, instrument: coin.instrument.symbol }, null)}
-      onClose={() => setOpenKey(null)} returnFocusTo={returnFocusTo} />
+      onClose={() => setSheet(null)} returnFocusTo={returnFocusTo} />
   </>;
 }

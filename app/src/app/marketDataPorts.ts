@@ -3,7 +3,8 @@
  * the app asks the Kairos server (services/kairos-api/marketApi.ts); without one it keeps today's direct Binance path,
  * wrapped only so every failure says why (`why`). Application code sees port types only (D31).
  */
-import { createMarketMovesReader, HOME_MARKET_EXTRA_READS_PER_MINUTE, type MarketMovesReader } from '../application/markets/marketMoves';
+import { createMarketMovesReader, type MarketMovesReader } from '../application/markets/marketMoves';
+import { createRequestBudget, HOME_SHARED_READS_PER_MINUTE, type RequestBudget } from '../application/online/requestBudget';
 import { kairosRepositories } from '../data/repositories';
 import { ActivationReceiptRepository } from '../services/activation';
 import type { ActivationReceipt } from '../services/activation/activationTypes';
@@ -116,21 +117,25 @@ export function appMarketDataPorts(): AppMarketDataPorts {
 export interface HomeMarket {
   readonly reader: MarketMovesReader;
   readonly coinNames: KairosCoinNames;
+  /** Home's shared request budget on the Kairos server (the news refresh and these reads); null without the server. */
+  readonly budget: RequestBudget | null;
 }
 
 let homeMarket: HomeMarket | null = null;
 
 /**
- * T-061e (D271): Home's market reads, made once for the whole visit, so a reading's freshness and the request budget
- * (application/markets/marketMoves.ts) outlive Home being left and opened again. Through the Kairos server the extra
- * reads share its budget; straight to Binance there is no Kairos limit.
+ * T-061e (D271): Home's market reads and its shared request budget, made once for the whole visit, so a reading's
+ * freshness and the budget (application/markets/marketMoves.ts has the count) outlive Home being left and opened again.
+ * The budget exists only with the Kairos server (its limit); Home's news refresh shares it (HomeRoute → TodayCard).
  */
 export function appHomeMarket(): HomeMarket {
   if (homeMarket !== null) return homeMarket;
   const ports = appMarketDataPorts();
+  const budget = ports.route === 'server' ? createRequestBudget(HOME_SHARED_READS_PER_MINUTE) : null;
   homeMarket = Object.freeze({
-    reader: createMarketMovesReader({ moves: ports.moves, history: ports.history, perMinute: ports.route === 'server' ? HOME_MARKET_EXTRA_READS_PER_MINUTE : null }),
+    reader: createMarketMovesReader({ moves: ports.moves, history: ports.history, budget }),
     coinNames: ports.coinNames,
+    budget,
   });
   return homeMarket;
 }

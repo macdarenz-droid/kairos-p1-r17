@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  createMarketMovesReader, describeMarketMove, HOME_MARKET_EXTRA_READS_PER_MINUTE, MARKET_MOVES_REFRESH_MS, projectMarketMove, projectMarketMoveLine,
+  createMarketMovesReader, describeMarketMove, isMarketMovesReadingFresh, MARKET_MOVES_REFRESH_MS, projectMarketMove, projectMarketMoveLine,
 } from '../src/application/markets/marketMoves';
+import { createRequestBudget, HOME_SHARED_READS_PER_MINUTE } from '../src/application/online/requestBudget';
 import type { DecimalString } from '../src/domain/trades';
 import { createKairosApiClient } from '../src/services/kairos-api/kairosApi';
 import { createKairosMarketDataPorts } from '../src/services/kairos-api/marketApi';
@@ -56,7 +57,7 @@ describe('the moves cadence: only while chosen and visible', () => {
   it('reads "1 hour" at once and then once every 30 seconds, all markets in one request in one order', async () => {
     vi.useFakeTimers({ now: Date.parse('2026-10-25T02:00:00Z') });
     const port = movesPort();
-    const reader = createMarketMovesReader({ moves: port, history: neverAsked, perMinute: null });
+    const reader = createMarketMovesReader({ moves: port, history: neverAsked, budget: null });
     const cadence = reader.cadence(() => SYMBOLS);
     cadence.update({ period: '1h', visible: true });
     await settle();
@@ -77,7 +78,7 @@ describe('the moves cadence: only while chosen and visible', () => {
   it('reads nothing on "24 hours" (the move comes with the prices) or while hidden, and reads at once when shown again if stale', async () => {
     vi.useFakeTimers({ now: Date.parse('2026-10-25T02:00:00Z') });
     const port = movesPort();
-    const reader = createMarketMovesReader({ moves: port, history: neverAsked, perMinute: null });
+    const reader = createMarketMovesReader({ moves: port, history: neverAsked, budget: null });
     const cadence = reader.cadence(() => SYMBOLS);
     cadence.update({ period: '24h', visible: true });
     await vi.advanceTimersByTimeAsync(10 * 60_000);
@@ -102,7 +103,7 @@ describe('the moves cadence: only while chosen and visible', () => {
   it('reads "7 days" once every 5 minutes, and switching back and forth never reads a fresh window again', async () => {
     vi.useFakeTimers({ now: Date.parse('2026-10-25T02:00:00Z') });
     const port = movesPort();
-    const reader = createMarketMovesReader({ moves: port, history: neverAsked, perMinute: null });
+    const reader = createMarketMovesReader({ moves: port, history: neverAsked, budget: null });
     const cadence = reader.cadence(() => SYMBOLS);
     cadence.update({ period: '7d', visible: true });
     await settle();
@@ -118,7 +119,7 @@ describe('the moves cadence: only while chosen and visible', () => {
   it('after a busy or rate-limited answer waits the time asked, so it never retries in a burst; "Try again" asks once', async () => {
     vi.useFakeTimers({ now: Date.parse('2026-10-25T02:00:00Z') });
     const port = movesPort(BUSY);
-    const reader = createMarketMovesReader({ moves: port, history: neverAsked, perMinute: null });
+    const reader = createMarketMovesReader({ moves: port, history: neverAsked, budget: null });
     const cadence = reader.cadence(() => SYMBOLS);
     cadence.update({ period: '1h', visible: true });
     await settle();
@@ -138,12 +139,12 @@ describe('the moves cadence: only while chosen and visible', () => {
 });
 
 describe('the request budget (the Kairos server allows 30 a minute without a device)', () => {
-  it(`sends at most ${HOME_MARKET_EXTRA_READS_PER_MINUTE} extra reads in any 60 seconds, the rest wait their turn, and an abandoned wait sends nothing`, async () => {
+  it('a budget of 4 sends at most 4 reads in any 60 seconds, the rest wait their turn, and an abandoned wait sends nothing', async () => {
     vi.useFakeTimers({ now: Date.parse('2026-10-25T02:00:00Z') });
     const port = movesPort();
     const candles: MarketCandleHistoryResult = { ok: true, snapshot: { source: 'market-reference', timeZone: 'UTC', request: { instrument: { venue: 'binance-spot', symbol: 'BTCUSDT' }, interval: '15m', limit: 96 }, observedAt: '2026-10-25T02:00:00.000Z', candles: [] } };
     const history = { acquireHistory: vi.fn<MarketCandleHistoryPort['acquireHistory']>(async () => candles) };
-    const reader = createMarketMovesReader({ moves: port, history, perMinute: HOME_MARKET_EXTRA_READS_PER_MINUTE });
+    const reader = createMarketMovesReader({ moves: port, history, budget: createRequestBudget(4) });
     const btc = { venue: 'binance-spot', symbol: 'BTCUSDT' };
     const asked = () => port.acquireMoves.mock.calls.length + history.acquireHistory.mock.calls.length;
     void reader.readLine(btc, '24h');
@@ -171,7 +172,7 @@ describe('the request budget, a read abandoned before it is sent', () => {
     const candles: MarketCandleHistoryResult = { ok: true, snapshot: { source: 'market-reference', timeZone: 'UTC', request: { instrument: { venue: 'binance-spot', symbol: 'BTCUSDT' }, interval: '1m', limit: 60 }, observedAt: '2026-10-25T02:00:00.000Z', candles: [] } };
     const history = { acquireHistory: vi.fn<MarketCandleHistoryPort['acquireHistory']>(async () => candles) };
     const port = movesPort();
-    const reader = createMarketMovesReader({ moves: port, history, perMinute: 2 });
+    const reader = createMarketMovesReader({ moves: port, history, budget: createRequestBudget(2) });
     const btc = { venue: 'binance-spot', symbol: 'BTCUSDT' };
     const closedAtOnce = new AbortController();
     const line = reader.readLine(btc, '1h', { signal: closedAtOnce.signal });
@@ -185,6 +186,64 @@ describe('the request budget, a read abandoned before it is sent', () => {
     await settle();
     expect(history.acquireHistory).toHaveBeenCalledTimes(1);
     expect(port.acquireMoves).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('T-061e review r1: one budget for Home\'s news refresh and market reads', () => {
+  it('the news\'s 9 requests go out together; market reads wait behind them, and the news waits for recent market reads', async () => {
+    vi.useFakeTimers({ now: Date.parse('2026-10-25T02:00:00Z') });
+    const budget = createRequestBudget(HOME_SHARED_READS_PER_MINUTE);
+    const port = movesPort();
+    const reader = createMarketMovesReader({ moves: port, history: neverAsked, budget });
+    expect(HOME_SHARED_READS_PER_MINUTE).toBe(9);
+    // A market read now, then the news (9 at once) waits a minute for it to leave the window...
+    await reader.ensure('1h', SYMBOLS);
+    expect(port.acquireMoves).toHaveBeenCalledTimes(1);
+    let news = false;
+    void budget.take(9).then(granted => { news = granted; });
+    // ...and a market read asked after the news waits behind it, never passing it.
+    void reader.ensure('7d', SYMBOLS);
+    await vi.advanceTimersByTimeAsync(59_999);
+    expect(news).toBe(false);
+    expect(port.acquireMoves).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(news).toBe(true);
+    expect(port.acquireMoves).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(port.acquireMoves).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('T-061e review r1: the reader\'s state', () => {
+  it('a reading is fresh only while it holds every market asked for: a market new to the map is read', async () => {
+    vi.useFakeTimers({ now: Date.parse('2026-10-25T02:00:00Z') });
+    const port = movesPort();
+    const reader = createMarketMovesReader({ moves: port, history: neverAsked, budget: null });
+    await reader.ensure('1h', SYMBOLS);
+    await reader.ensure('1h', ['BTCUSDT']);
+    expect(port.acquireMoves).toHaveBeenCalledTimes(1);
+    expect(isMarketMovesReadingFresh(reader.state()['1h'].reading, Date.now(), ['BTCUSDT', 'SOLUSDT'])).toBe(false);
+    await reader.ensure('1h', ['BTCUSDT', 'SOLUSDT']);
+    expect(port.acquireMoves).toHaveBeenCalledTimes(2);
+    expect(port.acquireMoves.mock.calls[1]![0].symbols).toEqual(['BTCUSDT', 'SOLUSDT']);
+    // Old is not fresh either.
+    expect(isMarketMovesReadingFresh(reader.state()['1h'].reading, Date.now() + MARKET_MOVES_REFRESH_MS['1h'])).toBe(false);
+  });
+
+  it('stays "pending" while a newer read is on its way after an older one was dropped', async () => {
+    const port = { acquireMoves: vi.fn<MarketMovesPort['acquireMoves']>((_request, options) => new Promise<MarketMovesResult>(resolve => {
+      options?.signal?.addEventListener('abort', () => resolve({ ok: false, reason: 'unavailable', why: 'source-down', retryAfterSeconds: null }), { once: true });
+    })) };
+    const reader = createMarketMovesReader({ moves: port, history: neverAsked, budget: null });
+    const left = new AbortController();
+    void reader.ensure('1h', SYMBOLS, { signal: left.signal });
+    await settle();
+    expect(port.acquireMoves).toHaveBeenCalledTimes(1);
+    left.abort();
+    void reader.ensure('1h', SYMBOLS);
+    await settle();
+    expect(port.acquireMoves).toHaveBeenCalledTimes(2);
+    expect(reader.state()['1h'].pending).toBe(true);
   });
 });
 

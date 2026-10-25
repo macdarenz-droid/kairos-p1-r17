@@ -9,11 +9,13 @@ import type { NextBigNews } from '../../application/economic-calendar/nextBigNew
 import { journalListHref } from '../../application/journal/journalFilters';
 import { describePriceNowFailure, type PriceNowResult } from '../../application/market-reference/priceNow';
 import { describeUpdatedAgo } from '../../application/online/onlineWords';
+import type { RequestBudget } from '../../application/online/requestBudget';
 import { describePeriodMoneyUnavailable } from '../../application/performance/periodWords';
 import { describeTimesRisked } from '../../application/performance/tradeRisk';
 import { projectOpenTradeNow } from '../../application/trades/openTradeNow';
 import { projectVisualPnlDayKey, startVisualPnlTimeZoneFromDevice, type VisualPnlAggregationSummary, type VisualPnlMonthDayResult, type VisualPnlMonthGridDay, type VisualPnlMonthGridProjection } from '../../application/visual-pnl';
 import { JOURNAL_CHANGED_EVENT, type KairosDatabase } from '../../data/database';
+import { NEWS_CALENDAR_SOURCE_IDS } from '../../domain/economic-calendar/newsSources';
 import { Icon, type IconName } from '../../design-system/icons/Icon';
 import { Button, Card, ErrorState, ResultText, Skeleton } from '../../design-system/primitives';
 import { tradePageHref } from '../journal/tradeAddress';
@@ -32,6 +34,11 @@ export interface TodayCardProps {
   readonly load?: typeof loadHomeToday;
   /** The Kairos server's news routes (D269), as the News page gets them; without them the saved news still shows. */
   readonly news?: NewsApiPort;
+  /**
+   * T-061e review r1: Home's shared request budget on the Kairos server; the background news refresh (one request per
+   * official calendar) waits in it, so it never shares a minute with more of Home's market reads than the server allows.
+   */
+  readonly budget?: RequestBudget | null;
 }
 
 /** The last answer (null before the first) and whether the last read failed; a failed read always shows (D267). */
@@ -51,6 +58,14 @@ const SOURCE_DOWN: PriceNowResult = Object.freeze({ ok: false as const, why: 'so
  * minutes (the News page's own rule), however often Home opens.
  */
 const lastHomeNewsRefresh = new WeakMap<NewsApiPort, string>();
+/**
+ * T-061e review r1: each market's last price-now read by the price port (the app has one): when it was asked, its
+ * answer once it came, and the read itself. A read outlives the Home that asked; a market that shows again within a
+ * minute (Home left and opened again) takes that read instead of asking again, so each market is asked at most once
+ * a minute however often Home opens.
+ */
+type PriceRead = { readonly askedAtMs: number; answer: PriceNowResult | null; readonly result: Promise<PriceNowResult>; readonly controller: AbortController };
+const recentPricesNow = new WeakMap<object, Map<string, PriceRead>>();
 const OUTCOME_WORDS = Object.freeze({ profit: 'Profit', loss: 'Loss', breakeven: 'Break-even' } as const);
 const DAY_WORDS: Readonly<Record<VisualPnlMonthDayResult, string>> = Object.freeze({ profit: 'won', loss: 'lost', breakeven: 'broke even', unavailable: 'result not available', 'no-trades': 'no trades' });
 const DAY_ICONS: Readonly<Partial<Record<VisualPnlMonthDayResult, IconName>>> = Object.freeze({ profit: 'result-up', loss: 'result-down', breakeven: 'result-flat', unavailable: 'result-unknown' });
@@ -135,7 +150,8 @@ const priceKey = ({ marketType, symbol }: PriceAsk): string => `${marketType}:${
 /**
  * U16 (D268): the price now of the shown open trades' markets, one read per market however many shown trades share it.
  * Each market is read when it first shows, every minute while the page shows and the device is online, and when the
- * device is back online; a minute missed while the page was hidden is read when it shows again. After a source says
+ * device is back online; a minute missed while the page was hidden is read when it shows again. A market shown again
+ * within a minute of its last read (Home opened again) takes that read (review r1: the server's limit). After a source says
  * it is busy, nothing is asked of that market until the wait it asked for has passed, except by "Try again". When an
  * answer takes away the "Try again" that had focus, the trade's link takes it (focus never falls to the page).
  */
@@ -148,48 +164,75 @@ function usePricesNow(asks: readonly PriceAsk[], read: PriceNow | undefined, lis
   /** The markets read so far in this mount of the reader. */
   const shown = useRef<ReadonlySet<string>>(new Set());
   /** Set by the reading effect: read one market ("Try again" does not wait for a busy source), or let one go. */
-  const reader = useRef<Readonly<{ read: (key: string, byTrader: boolean) => void; stop: (key: string) => void }> | null>(null);
+  const reader = useRef<Readonly<{ read: (key: string, byTrader: boolean, firstShow?: boolean) => void; stop: (key: string) => void }> | null>(null);
   /** The open trade whose price line had focus when an answer came: its link takes focus if the answer took it away. */
   const refocus = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (read === undefined) return;
-    const running = new Map<string, AbortController>();
+    let alive = true;
+    /** The read each shown market waits for in this mount (a newer one replaces it). */
+    const waiting = new Map<string, PriceRead>();
     const busyUntil = new Map<string, number>();
+    let reads = recentPricesNow.get(read);
+    if (reads === undefined) { reads = new Map(); recentPricesNow.set(read, reads); }
+    const kept = reads;
     let missed = false;
-    const readMarket = (key: string, byTrader: boolean) => {
+    const show = (key: string, entry: PriceRead, answer: PriceNowResult) => {
+      if (!alive || waiting.get(key) !== entry) return;
+      if (!answer.ok && answer.retryAfterSeconds !== null) busyUntil.set(key, entry.askedAtMs + answer.retryAfterSeconds * 1000);
+      else busyUntil.delete(key);
+      const active = document.activeElement;
+      if (active !== null && active.closest('.kairos-today__price') !== null && (list.current?.contains(active) ?? false)) refocus.current = active.closest('li');
+      setPrices(current => new Map(current).set(key, { answer, reading: false }));
+    };
+    const readMarket = (key: string, byTrader: boolean, firstShow = false) => {
       const ask = asked.current.get(key);
       if (ask === undefined || (!byTrader && (busyUntil.get(key) ?? 0) > Date.now())) return;
-      running.get(key)?.abort();
-      const mine = new AbortController();
-      running.set(key, mine);
+      const last = kept.get(key);
+      // Shown again within a minute of its last read: that read, no new one (an offline answer only while still offline).
+      const reuse = firstShow && !byTrader && last !== undefined && Date.now() - last.askedAtMs < MINUTE
+        && (last.answer === null || last.answer.ok || last.answer.why !== 'offline' || navigator.onLine === false);
+      let entry: PriceRead;
+      if (reuse) entry = last;
+      else {
+        // A newer read ("Try again", the minute) replaces one still on its way.
+        if (last !== undefined && last.answer === null) last.controller.abort();
+        const controller = new AbortController();
+        const result = read(ask, controller.signal).catch(() => SOURCE_DOWN);
+        const fresh: PriceRead = { askedAtMs: Date.now(), answer: null, result, controller };
+        void result.then(answer => { fresh.answer = answer; });
+        kept.set(key, fresh);
+        entry = fresh;
+      }
+      waiting.set(key, entry);
+      const answered = entry.answer;
+      if (answered !== null) { show(key, entry, answered); return; }
       setPrices(current => new Map(current).set(key, { answer: current.get(key)?.answer ?? null, reading: true }));
-      const settle = (answer: PriceNowResult) => {
-        if (mine.signal.aborted) return;
-        running.delete(key);
-        if (!answer.ok && answer.retryAfterSeconds !== null) busyUntil.set(key, Date.now() + answer.retryAfterSeconds * 1000);
-        else busyUntil.delete(key);
-        const active = document.activeElement;
-        if (active !== null && active.closest('.kairos-today__price') !== null && (list.current?.contains(active) ?? false)) refocus.current = active.closest('li');
-        setPrices(current => new Map(current).set(key, { answer, reading: false }));
-      };
-      read(ask, mine.signal).then(settle, () => settle(SOURCE_DOWN));
+      void entry.result.then(answer => show(key, entry, answer));
     };
     const readAll = () => { for (const key of asked.current.keys()) readMarket(key, false); };
     const whenShown = () => { if (document.hidden) missed = true; else readAll(); };
     const visible = () => { if (!document.hidden && missed) { missed = false; readAll(); } };
     reader.current = Object.freeze({
-      read: (key: string, byTrader: boolean) => { if (!byTrader && document.hidden) missed = true; else readMarket(key, byTrader); },
-      stop: (key: string) => { running.get(key)?.abort(); running.delete(key); busyUntil.delete(key); },
+      read: (key: string, byTrader: boolean, firstShow?: boolean) => { if (!byTrader && document.hidden) missed = true; else readMarket(key, byTrader, firstShow); },
+      stop: (key: string) => {
+        // A market no longer shown is let go: its read on its way stops and is not kept.
+        const entry = waiting.get(key);
+        waiting.delete(key);
+        busyUntil.delete(key);
+        if (entry !== undefined && entry.answer === null) { entry.controller.abort(); if (kept.get(key) === entry) kept.delete(key); }
+      },
     });
     const timer = setInterval(() => { if (navigator.onLine !== false) whenShown(); }, MINUTE);
     document.addEventListener('visibilitychange', visible);
     window.addEventListener('online', whenShown);
     return () => {
+      // Reads on their way finish and are kept for a quick return; this mount just stops listening.
+      alive = false;
       clearInterval(timer);
       document.removeEventListener('visibilitychange', visible);
       window.removeEventListener('online', whenShown);
-      for (const controller of running.values()) controller.abort();
       reader.current = null;
       shown.current = new Set();
       setPrices(new Map());
@@ -206,7 +249,7 @@ function usePricesNow(asks: readonly PriceAsk[], read: PriceNow | undefined, lis
       current.stop(key);
       setPrices(prices => { const next = new Map(prices); next.delete(key); return next; });
     }
-    for (const key of now) if (!shown.current.has(key)) current.read(key, false);
+    for (const key of now) if (!shown.current.has(key)) current.read(key, false, true);
     shown.current = now;
   }, [read, keysText]);
 
@@ -326,7 +369,7 @@ function TodayBody({ today, priceNow }: { readonly today: HomeTodayProjection; r
  * when a new day starts (checked each minute) and after fresh official schedules came in the background, never while the
  * page is hidden; any read that fails says so, with "Try again", in place of the last numbers and news.
  */
-export function TodayCard({ db, now, load = loadOnDemand, news }: TodayCardProps) {
+export function TodayCard({ db, now, load = loadOnDemand, news, budget = null }: TodayCardProps) {
   const titleId = useId();
   const heading = useRef<HTMLHeadingElement>(null);
   /** The card itself (the heading's section). */
@@ -440,8 +483,13 @@ export function TodayCard({ db, now, load = loadOnDemand, news }: TodayCardProps
       const at = nowRef.current();
       if (!isNewsRefreshDue(lastHomeNewsRefresh.get(news) ?? null, at)) return;
       lastHomeNewsRefresh.set(news, at);
-      void refreshNewsCalendar(db, news, { now: at, signal: controller.signal }).then(outcome => {
-        if (!controller.signal.aborted && outcome.ok) readAgain.current('other');
+      // All the calendars at once, when they fit in Home's request budget (they wait for recent market reads to age).
+      const room = budget === null ? Promise.resolve(true) : budget.take(NEWS_CALENDAR_SOURCE_IDS.length, controller.signal);
+      void room.then(granted => {
+        if (!granted || controller.signal.aborted) return;
+        void refreshNewsCalendar(db, news, { now: budget === null ? at : nowRef.current(), signal: controller.signal }).then(outcome => {
+          if (!controller.signal.aborted && outcome.ok) readAgain.current('other');
+        });
       });
     };
     const timer = setTimeout(() => {
@@ -460,7 +508,7 @@ export function TodayCard({ db, now, load = loadOnDemand, news }: TodayCardProps
       if (waiting !== null) document.removeEventListener('visibilitychange', waiting);
       controller.abort();
     };
-  }, [db, news, newsDue]);
+  }, [db, news, newsDue, budget]);
 
   useEffect(() => {
     if (busy) return;

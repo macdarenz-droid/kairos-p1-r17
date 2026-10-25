@@ -257,9 +257,11 @@ export function HomeDashboardGlassBubbleMap({ model, onRetry, moves, names = nul
   const moveOf = (metric: { readonly instrument: { readonly symbol: string }; readonly movementPercent24h: DecimalString | null }): DecimalString | null =>
     shown === null ? metric.movementPercent24h : shown.values.get(metric.instrument.symbol)?.percent ?? null;
   const steps = projection?.ok ? moveSteps(projection.entries.map(entry => moveOf(entry.radiusScaleEntry.areaWeightEntry.presentationEntry.metricInput))) : [];
+  // A 1-hour or 7-day move that is not known (a market new to the map since the last read) is drawn at the smallest
+  // size and says "not available"; a market with no 24-hour move has no bubble, as before.
   const entries = projection?.ok ? projection.entries.map((entry, index) => ({
-    ...entry, radiusCssPixels: entry.radiusCssPixels === null || steps[index] === null
-      ? null : glassMovementWeight(steps[index]!, SIZE_STEPS),
+    ...entry, radiusCssPixels: entry.radiusCssPixels === null || (steps[index] === null && shown === null)
+      ? null : glassMovementWeight(steps[index] ?? 0, SIZE_STEPS),
   })) : [];
   const items = entries.flatMap(entry => {
     const presentation = entry.radiusScaleEntry.areaWeightEntry.presentationEntry;
@@ -306,10 +308,10 @@ export function HomeDashboardGlassBubbleMap({ model, onRetry, moves, names = nul
       {moves?.unavailable ? <p className="kairos-glass-moves-unavailable" role="status">{`${MOVE_NAME[moves.unavailable.window]} moves are unavailable right now.`}
         {moves.unavailable.retry ? <> <Button variant="ghost" size="sm" aria-disabled={moves.unavailable.busy || undefined} aria-busy={moves.unavailable.busy || undefined}
           onClick={() => { if (!moves.unavailable?.busy) retryMoves(); }}>Try again</Button></> : null}</p> : null}
-      {model.runtimeState.lastError !== null ? <p role="status">Market update failed. Showing the last available observations with their freshness labels.</p> : null}
+      {model.runtimeState.lastError !== null ? <p role="status">Prices couldn't update. Showing the last prices with how old each is.</p> : null}
       {unavailable !== null ? <div className="kairos-glass-unavailable"><UnavailableNotice message={unavailable.message} retryLabel={unavailable.retryLabel} onRetry={onRetry} retryWhenOnline={unavailable.retryWhenOnline} /></div>
         : loadState === 'loading' ? <p role="status">Loading live prices…</p>
-        : source === null ? null : !source.ok ? <p role="status">Bubble data unavailable.</p> : source.entries.length === 0 ? <p role="status">No eligible markets available.</p> : null}
+        : source === null ? null : !source.ok ? <p role="status">Bubble data unavailable.</p> : source.entries.length === 0 ? <p role="status">No markets to show right now.</p> : null}
       <div ref={container} className="kairos-glass-field" style={{ height: layout.height }}>
         {renderedEntries.map(entry => {
           const p = entry.radiusScaleEntry.areaWeightEntry.presentationEntry;

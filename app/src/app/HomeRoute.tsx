@@ -10,6 +10,7 @@ import { HomeDashboardSwipePager } from './HomeDashboardSwipePager';
 import './homeDashboardYourTrades.css';
 import { HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTextEvidenceRuntime } from './HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTextEvidenceRuntime';
 import { createHomeDashboardLiveCryptoBubbleDefaultRuntimeProductConfiguration } from './homeDashboardLiveCryptoBubbleRuntimeProductPolicy';
+import { appHomeMarket } from './marketDataPorts';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
 import type { NewsApiPort } from '../application/economic-calendar/fetchedNews';
 import { HomeDisciplineCard } from '../features/discipline/HomeDisciplineCard';
@@ -64,7 +65,8 @@ export function HomeRoute({ db = kairosDatabase, now = wallClock, news }: { read
       <PageHeader title="Home" titleId="kairos-route-home" intro="How you're doing today, and the markets now." />
       {openSetup && inRouter ? <Navigate to="/setup" replace /> : null}
       {/* D267: Home answers "how am I doing?" first, above the reminders and the dashboard view. */}
-      <TodayCard db={db} now={now} news={news} />
+      {/* T-061e review r1: the news refresh shares Home's request budget with the market reads. */}
+      <TodayCard db={db} now={now} news={news} budget={appHomeMarket().budget} />
       <BackupReminderCard db={db} now={now} />
       {/* D224: after "Hide", focus goes to the next thing on the page: the install card, or the dashboard control. */}
       <GettingStartedCard db={db} now={now} onHidden={() => { const next = install.current?.querySelector<HTMLElement>('button'); if (next) next.focus(); else focusControl(); }} />

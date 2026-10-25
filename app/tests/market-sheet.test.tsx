@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createMarketMovesReader, type MarketMovePeriod } from '../src/application/markets/marketMoves';
+import { createRequestBudget } from '../src/application/online/requestBudget';
 import type { DecimalString } from '../src/domain/trades';
 import { MarketSheet, type MarketSheetCoin } from '../src/features/home/MarketSheet';
 import type { MarketCandle, MarketCandleHistoryPort, MarketCandleHistoryResult } from '../src/services/market-data/MarketCandleHistoryPort';
@@ -26,10 +27,10 @@ const page = (interval: string, limit: number): MarketCandleHistoryResult => ({ 
   candles: closes.map((close, index): MarketCandle => ({ openTime: new Date(NOW - (4 - index) * 900_000).toISOString(), closeTime: new Date(NOW - (3 - index) * 900_000 - 1).toISOString(), open: d(close), high: d(close), low: d(close), close: d(close) })),
 } });
 
-function setUp(answers: Partial<Record<'1h' | '7d', MarketMovesResult>> = {}) {
+function setUp(answers: Partial<Record<'1h' | '7d', MarketMovesResult>> = {}, budget: ReturnType<typeof createRequestBudget> | null = null) {
   const movesPort = { acquireMoves: vi.fn<MarketMovesPort['acquireMoves']>(async ({ window }) => answers[window] ?? moves(window)) };
   const history = { acquireHistory: vi.fn<MarketCandleHistoryPort['acquireHistory']>(async request => page(request.interval, request.limit)) };
-  const reader = createMarketMovesReader({ moves: movesPort, history, perMinute: null });
+  const reader = createMarketMovesReader({ moves: movesPort, history, budget });
   return { movesPort, history, reader };
 }
 
@@ -138,6 +139,25 @@ describe('the market sheet (T-061e, D271)', () => {
     await settle();
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'BTC, Bitcoin. Show details' }));
+  });
+
+  it('review r1: never shows an old move as now: a 1-hour move read 20 minutes ago shows as loading until the new read comes', async () => {
+    vi.useFakeTimers({ now: NOW - 20 * 60_000, toFake: ['Date', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
+    const budget = createRequestBudget(2);
+    const { reader, movesPort } = setUp({}, budget);
+    // Read 20 minutes ago: BTC up 0.4% then.
+    await reader.ensure('1h', SYMBOLS);
+    vi.setSystemTime(NOW);
+    // The budget is full for now: the sheet's new 1-hour read waits its turn.
+    expect(await budget.take(2)).toBe(true);
+    const sheet = await openSheet(reader);
+    expect(moveLine(sheet, '1 hour')).toHaveTextContent('loading');
+    expect(moveLine(sheet, '1 hour')).not.toHaveTextContent('0.4%');
+    expect(movesPort.acquireMoves).toHaveBeenCalledTimes(1);
+    await act(async () => { vi.advanceTimersByTime(60_000); });
+    await settle();
+    expect(movesPort.acquireMoves.mock.calls.map(([request]) => request.window)).toEqual(['1h', '1h']);
+    expect(moveLine(sheet, '1 hour')).toHaveTextContent('▲ 0.4%');
   });
 
   it('passes axe at 390 px', async () => {
