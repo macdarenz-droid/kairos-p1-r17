@@ -11,7 +11,8 @@ import { saveManualTrade, type SaveManualTradeInput } from '../src/application/t
 import { loadVisualPnlTimeZone, writeVisualPnlTimeZonePreference } from '../src/application/visual-pnl';
 import { createKairosDatabase, JOURNAL_CHANGED_EVENT, openKairosDatabase, type KairosDatabase } from '../src/data/database';
 import { createKairosRepositories } from '../src/data/repositories';
-import type { TradeId } from '../src/domain/trades';
+import { exchangeRateId } from '../src/domain/calculations/currencyConversion';
+import type { DecimalString, TradeId } from '../src/domain/trades';
 import { TodayCard } from '../src/features/home/TodayCard';
 import { axeViolations } from './fixtures/axe';
 
@@ -65,6 +66,9 @@ function card(db: KairosDatabase, props: Partial<Parameters<typeof TodayCard>[0]
   return render(<MemoryRouter><TodayCard db={db} now={now} {...props} /></MemoryRouter>);
 }
 const region = () => screen.findByRole('region', { name: 'Today' });
+/** The card's read has settled (no read running). */
+const settled = (box: HTMLElement) => waitFor(() => expect(box).not.toHaveAttribute('aria-busy'));
+const tick = () => act(async () => { await new Promise(resolve => setTimeout(resolve, 30)); });
 const line = (box: HTMLElement, start: string) => within(box).getByText((_, element) => element?.tagName === 'P' && (element.textContent ?? '').startsWith(start));
 
 describe('T-061b the "Today" card', () => {
@@ -205,8 +209,10 @@ describe('T-061b the "Today" card', () => {
     const calls = load.mock.calls.length;
     act(() => { window.dispatchEvent(new Event('focus')); });
     await waitFor(() => expect(load.mock.calls.length).toBe(calls + 1));
+    await settled(today);
     act(() => { document.dispatchEvent(new Event('visibilitychange')); });
     await waitFor(() => expect(load.mock.calls.length).toBe(calls + 2));
+    await settled(today);
 
     // The same day reads nothing; the next one reads again.
     await act(async () => { vi.advanceTimersByTime(60_000); });
@@ -215,6 +221,104 @@ describe('T-061b the "Today" card', () => {
     await act(async () => { vi.advanceTimersByTime(60_000); });
     expect(await within(today).findByText('No trades closed today yet.')).toBeInTheDocument();
     expect(load.mock.calls.at(-1)?.[1]).toEqual({ now: clock });
+  });
+
+  it('review r1: a read again that fails shows the alert with "Try again" instead of the old numbers, and focus stays in the card', async () => {
+    const db = await database();
+    await save(db, closed('2026-10-25T08:00:00.000Z', '130'));
+    const load = vi.fn(loadHomeToday).mockImplementationOnce(loadHomeToday).mockRejectedValueOnce(new Error('storage'));
+    card(db, { load });
+    const today = await region();
+    await waitFor(() => expect(line(today, 'Today:')).toHaveTextContent('+30 USDT · 1 trade'));
+    await settled(today);
+    within(today).getByRole('link', { name: 'See your results' }).focus();
+    act(() => { window.dispatchEvent(new Event(JOURNAL_CHANGED_EVENT)); });
+    expect(await within(today).findByRole('alert')).toHaveTextContent(FAILED);
+    expect(within(today).queryByText(/^Today:/)).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(within(today).getByRole('button', { name: 'Try again' })));
+    fireEvent.click(within(today).getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(line(today, 'Today:')).toHaveTextContent('+30 USDT · 1 trade'));
+    expect(within(today).queryByRole('alert')).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(within(today).getByRole('heading', { level: 2, name: 'Today' })));
+  });
+
+  it('review r1: a month counted in the home currency says so, with "See your rates"', async () => {
+    const db = await database();
+    await save(db, closed('2026-10-20T10:00:00.000Z', '102', { currency: 'EUR', symbol: 'BTCEUR' }));
+    await save(db, closed('2026-10-20T11:00:00.000Z', '110', { currency: 'USD', symbol: 'AAPL', marketType: 'stock' }));
+    expect((await saveHomeCurrency(db, { currency: 'EUR', usdStablecoins: [] }, { now })).ok).toBe(true);
+    await db.exchangeRates.put({ id: exchangeRateId('ecb', 'EUR', 'USD', '2026-10-20'), source: 'ecb', from: 'EUR', to: 'USD', day: '2026-10-20', rateDay: '2026-10-20', rate: '1.25' as DecimalString, savedAt: NOW });
+    card(db);
+    const today = await region();
+    await waitFor(() => expect(line(today, 'This month:')).toHaveTextContent(/^This month: Profit\s*\+10 EUR · 2 trades$/));
+    expect(within(today).getByText('Totals in EUR. 1 trade in another currency was converted to EUR.', { exact: false })).toBeInTheDocument();
+    expect(within(today).getByRole('link', { name: 'See your rates' })).toHaveAttribute('href', '/currency');
+  });
+
+  it('review r1: reads nothing while the page is hidden, once on return, and one more for changes during a read', async () => {
+    const db = await database();
+    const load = vi.fn(loadHomeToday);
+    card(db, { load });
+    const today = await region();
+    await within(today).findByText('Your day shows here once you log a trade.');
+    await settled(today);
+    const calls = load.mock.calls.length;
+
+    const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(true);
+    act(() => { window.dispatchEvent(new Event(JOURNAL_CHANGED_EVENT)); window.dispatchEvent(new Event('focus')); });
+    await tick();
+    expect(load.mock.calls.length).toBe(calls);
+
+    // Coming back fires "visibilitychange" and then "focus": one read.
+    let finish: () => void = () => undefined;
+    const slow: typeof loadHomeToday = async (...args) => { await new Promise<void>(resolve => { finish = resolve; }); return loadHomeToday(...args); };
+    load.mockImplementationOnce(slow);
+    hidden.mockReturnValue(false);
+    act(() => { document.dispatchEvent(new Event('visibilitychange')); });
+    await waitFor(() => expect(load.mock.calls.length).toBe(calls + 1));
+    act(() => { window.dispatchEvent(new Event('focus')); });
+    await act(async () => { finish(); });
+    await settled(today);
+    await tick();
+    expect(load.mock.calls.length).toBe(calls + 1);
+
+    // Three changes while a read runs: one more read after it, not three.
+    load.mockImplementationOnce(slow);
+    act(() => { window.dispatchEvent(new Event(JOURNAL_CHANGED_EVENT)); });
+    await waitFor(() => expect(load.mock.calls.length).toBe(calls + 2));
+    act(() => { for (let n = 0; n < 3; n += 1) window.dispatchEvent(new Event(JOURNAL_CHANGED_EVENT)); });
+    await tick();
+    expect(load.mock.calls.length).toBe(calls + 2);
+    await act(async () => { finish(); });
+    await waitFor(() => expect(load.mock.calls.length).toBe(calls + 3));
+    await settled(today);
+    await tick();
+    expect(load.mock.calls.length).toBe(calls + 3);
+  });
+
+  it('review r1: a day with a trade with no result or no currency says "Not available", never 0', async () => {
+    const db = await database();
+    await save(db, closed('2026-10-25T08:00:00.000Z', '110', { exitQuantity: '0.5' }));
+    await save(db, { ...closed('2026-10-25T09:00:00.000Z', '120'), grossPnlCurrency: null });
+    card(db);
+    const today = await region();
+    await waitFor(() => expect(line(today, 'Today:')).toHaveTextContent(/^Today: Not available · 2 trades$/));
+  });
+
+  it('review r1: an older read that answers after a newer one is ignored', async () => {
+    const db = await database();
+    await save(db, closed('2026-10-25T08:00:00.000Z', '130'));
+    let finishOld: () => void = () => undefined;
+    const old = vi.fn<typeof loadHomeToday>(async () => { await new Promise<void>(resolve => { finishOld = resolve; }); return { kind: 'time-zone-unconfigured' } as const; });
+    const view = card(db, { load: old });
+    const today = await region();
+    await waitFor(() => expect(old).toHaveBeenCalled());
+    view.rerender(<MemoryRouter><TodayCard db={db} now={now} load={loadHomeToday} /></MemoryRouter>);
+    await waitFor(() => expect(line(today, 'Today:')).toHaveTextContent('+30 USDT · 1 trade'));
+    await act(async () => { finishOld(); });
+    await tick();
+    expect(line(today, 'Today:')).toHaveTextContent('+30 USDT · 1 trade');
+    expect(within(today).queryByText('Kairos needs your time zone to show today.')).toBeNull();
   });
 
   it('passes axe at 390 px', async () => {

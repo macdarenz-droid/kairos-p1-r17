@@ -217,6 +217,16 @@ describe('T-045h Goals, Home, Patterns and practice money', () => {
     expect(screen.getByRole('link', { name: 'See your rates' })).toHaveAttribute('href', '/currency');
   });
 
+  it("review r1: leaves the note off Home's goal lines when none of them is money", async () => {
+    const db = await database();
+    await twoTradesInEuro(db);
+    await writeGoalsPreference(createKairosRepositories(db).metadata, { tradesPerMonthTarget: '20', monthlyResultTargetAmount: '100', monthlyResultTargetCurrency: 'EUR' }, NOW);
+    render(<HomeDisciplineCard db={db} now={now} />);
+    expect(await screen.findByText('Closed trades: 2 of 20')).toBeInTheDocument();
+    expect(screen.queryByText(CONVERTED_NOTE, { exact: false })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'See your rates' })).toBeNull();
+  });
+
   it('adds the note to Patterns', async () => {
     const db = await database();
     await twoTradesInEuro(db);

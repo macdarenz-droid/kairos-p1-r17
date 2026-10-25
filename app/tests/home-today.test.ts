@@ -85,6 +85,17 @@ describe('T-061b the "Today" read', () => {
     expect(today.month.total).toMatchObject({ available: true, total: '10', tradeCount: 1 });
   });
 
+  it('review r1: a day with a trade with no result or no currency has no total, never 0', async () => {
+    const db = await database();
+    const partly: SaveManualTradeInput = { ...closed('2026-10-25T08:00:00.000Z', '110'), executions: [{ type: 'entry', price: '100', quantity: '1', executedAt: '2026-10-25T07:00:00.000Z' }, { type: 'exit', price: '110', quantity: '0.5', executedAt: '2026-10-25T08:00:00.000Z' }] };
+    await save(db, partly);
+    expect(ready(await load(db)).today).toEqual({ available: false, currency: null, total: null, outcome: null, tradeCount: 1, reason: 'unavailable-trade-outcome' });
+
+    const noCurrency = await database();
+    await save(noCurrency, { ...closed('2026-10-25T09:00:00.000Z', '120'), grossPnlCurrency: null });
+    expect(ready(await load(noCurrency)).today).toEqual({ available: false, currency: null, total: null, outcome: null, tradeCount: 1, reason: 'missing-currency-evidence' });
+  });
+
   it('counts the month in the home currency', async () => {
     const db = await database();
     await save(db, closed('2026-10-20T10:00:00.000Z', '102', { currency: 'EUR', symbol: 'BTCEUR' }));
