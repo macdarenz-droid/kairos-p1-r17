@@ -24,7 +24,7 @@ Relay `docs/architecture/ARCHITECTURE.md` has the layers, owners and target fold
 - `npm run typecheck`
 - `npx vitest run --reporter=dot --silent=true <test files>`
 - `npm test -- --reporter=dot --silent=true` (full suite, about 3 min)
-- `npm run build 2>&1 | tail -20`
+- `npm run build:qa 2>&1 | tail -20` (`npm run build` is the release build; it stops without the activation settings.)
 - `npm run dev`
 
 When a test fails, re-run only the failing file without `--reporter=dot --silent=true`.

@@ -12,3 +12,6 @@ P1_GATE_EVIDENCE.json
 e2e/.qa/
 test-results/
 playwright-report/
+
+# Local settings (a copy of .env.example), never committed
+.env*.local

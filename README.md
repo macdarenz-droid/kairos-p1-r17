@@ -14,7 +14,8 @@ cd app
 npm ci
 npm run dev        # dev server
 npm test           # full test suite
-npm run build      # production build into app/dist
+npm run build      # release build into app/dist; stops without the activation settings
+npm run build:qa   # test build with a throwaway activation key (what CI checks)
 ```
 
 Node 22.16.0 (`app/.nvmrc`).
@@ -97,6 +98,6 @@ Settings for building from `app/` (the owner sets them once, when the first rele
 | `NODE_VERSION` | `22.16.0` |
 | `SKIP_DEPENDENCY_INSTALL` | `true` |
 
-Keep the `VITE_KAIROS_ACTIVATION_ENDPOINT` and `VITE_KAIROS_ACTIVATION_PUBLIC_KEY_SPKI` variables if they are set. Without them the built app shows only the activation screen.
+Set `VITE_KAIROS_ACTIVATION_ENDPOINT` (`https://kairos-activation.<subdomain>.workers.dev/activate`) and `VITE_KAIROS_ACTIVATION_PUBLIC_KEY_SPKI` (the public half of the activation Worker's signing key) for Production, and for Preview if you use preview builds. The build stops with a plain message when either is missing, the address is not https, or the key is not a P-256 public key, so such a release never reaches traders.
 
 Add `VITE_KAIROS_API_URL` with the Kairos server's address (`https://kairos-api.<subdomain>.workers.dev`, shown in the summary of CI's "deploy kairos-api (main)" job) once the server is deployed; see `app/backend/kairos-api/README.md`. Without it, online features say they are not set up in this version of Kairos.
