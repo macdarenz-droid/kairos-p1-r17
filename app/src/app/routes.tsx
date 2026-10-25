@@ -50,6 +50,11 @@ export const appRoutes = [
         const [{ TradePageScreen }] = await Promise.all([import('../features/journal/TradePageScreen'), import('./journalRoute.css'), import('./tradeReview.css')]);
         return { Component: function JournalTradePageRoute() { return <TradePageScreen scope="real" />; } };
       } },
+      // D263: editing a trade is its form, so it wears the Journal's look.
+      { path: 'journal/trades/:id/edit', lazy: async () => {
+        const [{ TradeEditScreen }] = await Promise.all([import('../features/journal/TradeEditScreen'), import('./journalRoute.css')]);
+        return { Component: function JournalTradeEditRoute() { return <TradeEditScreen scope="real" />; } };
+      } },
       { path: 'analysis', lazy: async () => {
         const [{ AnalysisRoute }, { createEcbReferenceRatesPort }] = await Promise.all([import('./AnalysisRoute'), import('../services/exchange-rates/ecbReferenceRates')]);
         const rates = createEcbReferenceRatesPort();
@@ -69,6 +74,10 @@ export const appRoutes = [
       { path: 'practice/trades/:id', lazy: async () => {
         const [{ TradePageScreen }] = await Promise.all([import('../features/journal/TradePageScreen'), import('./journalRoute.css'), import('./tradeReview.css')]);
         return { Component: function PracticeTradePageRoute() { return <TradePageScreen scope="practice" />; } };
+      } },
+      { path: 'practice/trades/:id/edit', lazy: async () => {
+        const [{ TradeEditScreen }] = await Promise.all([import('../features/journal/TradeEditScreen'), import('./journalRoute.css')]);
+        return { Component: function PracticeTradeEditRoute() { return <TradeEditScreen scope="practice" />; } };
       } },
       { path: 'practice/replay', lazy: async () => {
         const { ReplayScreen } = await import('../features/practice/ReplayScreen');

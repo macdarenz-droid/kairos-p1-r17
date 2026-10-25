@@ -1869,6 +1869,41 @@ test('(ad) New trade fields: a futures trade with how much one point is worth, t
   // And the Journal's row for it shows the result the page now has.
   await backToList(page);
   await expect(page.locator('.kairos-history-card').filter({ hasText: 'NQZ6' }).locator('.kairos-history-card__outcome')).toContainText('+200 USD');
+
+  // T-060d (D263–D265): Edit changes a saved trade's symbol and adds a stop; its page then says how the plan changed,
+  // and the list shows the new symbol. A note saves on the page, and Duplicate opens the log page with the copy.
+  const axe = async (selector: string) => (await new AxeBuilder({ page }).include(selector).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze())
+    .violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`);
+  await openTradePage(page, page.locator('.kairos-history-card').filter({ hasText: 'ESZ6' }), 'ESZ6 · Long');
+  await page.getByRole('button', { name: 'More for this trade' }).click();
+  const menu = page.getByRole('dialog', { name: 'More for this trade' });
+  expect(await axe('.kairos-sheet__panel')).toEqual([]);
+  await menu.getByRole('link', { name: 'Edit trade' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Edit your ESZ6 trade' })).toBeFocused();
+  await expect(page.getByLabel(/^Each point is worth/)).toHaveValue('50');
+  await page.getByLabel(/^Symbol/).fill('ESH7');
+  await page.getByLabel(/^Planned stop/).fill('4990');
+  expect(await axe('.kairos-trade-edit')).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.getByRole('button', { name: 'Save changes' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'ESH7 · Long' })).toBeFocused();
+  await expect(page.getByText('Changes saved.')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Plan changes' })).toContainText('Stop added: 4990');
+  const notes = page.getByRole('region', { name: 'Notes' });
+  await notes.getByLabel('Your note about this trade').fill('Held through the open.');
+  await notes.getByRole('button', { name: 'Save note' }).click();
+  await expect(page.getByText('Note saved.')).toBeVisible();
+  await expect(notes.getByLabel('Your note about this trade')).toHaveValue('Held through the open.');
+  expect(await axe('.kairos-trade-page')).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.getByRole('button', { name: 'More for this trade' }).click();
+  await menu.getByRole('button', { name: 'Duplicate trade' }).click();
+  await expect(page).toHaveURL(/\/journal\/log$/);
+  await expect(page.getByText(/^Copied from your ESH7 trade of /)).toBeFocused();
+  await expect(page.getByLabel(/^Symbol/)).toHaveValue('ESH7');
+  await page.goto('/journal');
+  await expect(page.locator('.kairos-history-card').filter({ hasText: 'ESH7' })).toHaveCount(1);
+  await expect(page.locator('.kairos-history-card').filter({ hasText: 'ESZ6' })).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 

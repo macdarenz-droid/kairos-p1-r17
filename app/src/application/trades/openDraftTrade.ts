@@ -1,7 +1,7 @@
 import type { KairosDatabase } from '../../data/database/KairosDatabase';
 import { runKairosAtomicWrite } from '../../data/database/transactions';
 import { createTradeDomainId, type TradeSource } from '../../domain/trades';
-import { tradeRevision, type SavedTradeSnapshot } from './tradeRevision';
+import { plansToCompare, tradeRevision, type SavedTradeSnapshot } from './tradeRevision';
 import { prepareManualTrade, type ManualTradeExecutionInput, type ManualTradeFeeInput, type SaveManualTradeDependencies, type SaveManualTradeResult } from './saveManualTrade';
 
 export type DraftTradeSnapshot = SavedTradeSnapshot;
@@ -64,14 +64,14 @@ export async function openDraftTrade(
     return { ok: false, type: 'update-conflict', reason: 'identity-conflict' };
   }
   try {
-    return await runKairosAtomicWrite(db, ['trades', 'tradeExecutions', 'tradeFees'], async ({ repositories: r }): Promise<OpenDraftTradeResult> => {
+    return await runKairosAtomicWrite(db, ['trades', 'tradePlans', 'tradeExecutions', 'tradeFees'], async ({ repositories: r }): Promise<OpenDraftTradeResult> => {
       const current = await r.trades.get(trade.id);
       if (!current || !allowedSources.includes(current.source) || current.status !== 'draft') {
         return { ok: false, type: 'update-conflict', reason: 'trade-not-draft-manual' };
       }
       const currentExecutions = await r.tradeExecutions.listByTradeId(trade.id);
       const currentFees = await r.tradeFees.listByTradeId(trade.id);
-      if (tradeRevision({ trade: current, executions: currentExecutions, fees: currentFees }) !== tradeRevision(input.expected)) {
+      if (tradeRevision({ trade: current, executions: currentExecutions, fees: currentFees, ...await plansToCompare(input.expected, () => r.tradePlans.listByTradeId(trade.id)) }) !== tradeRevision(input.expected)) {
         return { ok: false, type: 'update-conflict', reason: 'trade-changed' };
       }
       for (const e of executions) if (await r.tradeExecutions.get(e.id)) return { ok: false, type: 'update-conflict', reason: 'identity-conflict' };

@@ -5,6 +5,7 @@ import { practicePlanDraft, readPracticePlanStart } from '../application/practic
 import { readVisualPnlPeriodChoice, writeVisualPnlPeriodChoice } from '../application/visual-pnl';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
 import type { TradeStatus } from '../domain/trades';
+import { TradeCopyArrival } from '../features/journal/TradeCopy';
 import { TradeForm } from '../features/journal/TradeForm';
 import { useJournalHistoryPages } from '../features/journal/useJournalHistoryPages';
 import { CoachCard } from '../features/discipline/CoachCard';
@@ -12,6 +13,7 @@ import { PracticeMoneyCard } from '../features/practice/PracticeMoneyCard';
 import { ResultsDashboard } from '../features/results/ResultsDashboard';
 import { JournalHistoryList } from './JournalHistoryList';
 import { ReviewTradeLink } from './ReviewTradeLink';
+import { SCROLL_CLAIMED_EVENT } from './AppShell';
 import { useArrivedNotice } from '../features/journal/tradeAddress';
 import './journalRoute.css';
 import './practiceRoute.css';
@@ -56,7 +58,10 @@ export function PracticeRoute({ db = kairosDatabase, now, rates = null }: Practi
       <p className="kairos-practice__patterns-link">See what repeats in your practice trades: <Link to="/practice/patterns">Your practice patterns</Link>.</p>
       {planStart ? <p className="kairos-practice__plan-note">From the calculator: {planStart.side === 'long' ? 'buy' : 'sell'} up to {planStart.quantity}, entry {planStart.entryPrice}, stop {planStart.stopPrice}. It is filled in under Trade plan. Add the symbol, the market and the rest, then save.</p> : null}
 
-      <TradeForm db={db} kind="practice" initialDraft={planStart ? practicePlanDraft(planStart) : undefined} onSaved={async () => { if (planStart) { const kept = new URLSearchParams(searchParams); for (const key of PLAN_KEYS) kept.delete(key); setSearchParams(kept, { replace: true }); } setListNotice(''); await pages.refresh(); changed(); }} />
+      {/* D264: a trade's Duplicate lands here with its copy; the form is further down, so it stays in view. */}
+      <TradeCopyArrival db={db} scope="practice" firstFieldId="kairos-practice-symbol" onFocused={() => window.dispatchEvent(new Event(SCROLL_CLAIMED_EVENT))}>
+        {copied => <TradeForm db={db} kind="practice" allDetails={copied !== undefined} initialDraft={copied ?? (planStart ? practicePlanDraft(planStart) : undefined)} onSaved={async () => { if (planStart) { const kept = new URLSearchParams(searchParams); for (const key of PLAN_KEYS) kept.delete(key); setSearchParams(kept, { replace: true }); } setListNotice(''); await pages.refresh(); changed(); }} />}
+      </TradeCopyArrival>
 
       <ResultsDashboard db={db} scope="practice" now={clock}
         choice={readVisualPnlPeriodChoice(searchParams)} onChoiceChange={choice => setSearchParams(writeVisualPnlPeriodChoice(choice, searchParams))}

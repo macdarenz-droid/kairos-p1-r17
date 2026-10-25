@@ -7,6 +7,7 @@ import { kairosDatabase, type KairosDatabase } from '../../data/database';
 import type { MarketType, TradeId } from '../../domain/trades';
 import { Button, PageHeader, UnavailableNotice, useToast } from '../../design-system/primitives';
 import { LOG_TRADE_FOCUS_STATE } from '../setup/GettingStartedCard';
+import { TradeCopyArrival } from './TradeCopy';
 import { TradeForm } from './TradeForm';
 import { TradePicture } from './TradePicture';
 import './logTradeScreen.css';
@@ -24,7 +25,7 @@ type Saved =
  * U14 (D258): "Log a trade", a page of its own at `/journal/log`. The form takes the full width and keeps what you type
  * (shared with the Journal page's form). After a save the page shows the new trade's picture, with "Log another trade"
  * and "See it in your journal". Symbol takes focus only when "+ Log trade" opened the page; otherwise the shell moves
- * focus to the heading (D179).
+ * focus to the heading (D179). U15 (D264): a trade's Duplicate opens it with the copy.
  */
 export function LogTradeScreen({ db = kairosDatabase, now = wallClock }: { readonly db?: KairosDatabase; readonly now?: () => string }) {
   const location = useLocation();
@@ -76,7 +77,9 @@ export function LogTradeScreen({ db = kairosDatabase, now = wallClock }: { reado
 
   return <section className="kairos-route kairos-journal kairos-log-trade-page" aria-labelledby={TITLE}>
     <PageHeader title="Log a trade" titleId={TITLE} />
-    {saved === null ? <TradeForm key={formRound} db={db} kind="journal" defaultMarket={firstMarket} onSaved={onSaved} />
+    {saved === null ? <TradeCopyArrival key={formRound} db={db} scope="journal" firstFieldId="kairos-trade-symbol">
+      {copied => <TradeForm db={db} kind="journal" defaultMarket={firstMarket} onSaved={onSaved} initialDraft={copied} allDetails={copied !== undefined} />}
+    </TradeCopyArrival>
       : <section className="kairos-log-trade-page__saved" aria-labelledby={SAVED_TITLE}>
         <h2 id={SAVED_TITLE} ref={savedHeading} tabIndex={-1}>Trade saved to your journal.</h2>
         {saved.kind === 'shown' ? <TradePicture entry={saved.entry} variant="full" />

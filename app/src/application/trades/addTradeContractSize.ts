@@ -2,7 +2,7 @@ import type { KairosDatabase } from '../../data/database/KairosDatabase';
 import { runKairosAtomicWrite } from '../../data/database/transactions';
 import { resolveContractSize } from '../../domain/calculations/contractSize';
 import { parsePositiveDecimalString, validateTradeRecord, type DecimalString, type TradeId, type TradeRecord } from '../../domain/trades';
-import { tradeRevision, type SavedTradeSnapshot } from './tradeRevision';
+import { plansToCompare, tradeRevision, type SavedTradeSnapshot } from './tradeRevision';
 
 export interface AddTradeContractSizeInput {
   /** The trade as shown when the trader typed the value: a stale one is refused. */
@@ -39,12 +39,12 @@ export async function addTradeContractSize(
   const parsed = parsePositiveDecimalString(input.contractSize);
   if (!parsed.ok) return { ok: false, type: 'validation-error', field: 'contractSize', reason: parsed.reason };
   try {
-    return await runKairosAtomicWrite(db, ['trades', 'tradeExecutions', 'tradeFees'], async ({ repositories: r }): Promise<AddTradeContractSizeResult> => {
+    return await runKairosAtomicWrite(db, ['trades', 'tradePlans', 'tradeExecutions', 'tradeFees'], async ({ repositories: r }): Promise<AddTradeContractSizeResult> => {
       const current = await r.trades.get(trade.id);
       if (!current) return { ok: false, type: 'update-conflict', reason: 'trade-not-found' };
       if (current.contractSize != null) return { ok: false, type: 'update-conflict', reason: 'contract-size-recorded' };
       const [executions, fees] = await Promise.all([r.tradeExecutions.listByTradeId(trade.id), r.tradeFees.listByTradeId(trade.id)]);
-      if (tradeRevision({ trade: current, executions, fees }) !== tradeRevision(input.expected)) return { ok: false, type: 'update-conflict', reason: 'trade-changed' };
+      if (tradeRevision({ trade: current, executions, fees, ...await plansToCompare(input.expected, () => r.tradePlans.listByTradeId(trade.id)) }) !== tradeRevision(input.expected)) return { ok: false, type: 'update-conflict', reason: 'trade-changed' };
       const next = { ...current, contractSize: parsed.value, updatedAt: now() };
       const checked = validateTradeRecord(next);
       if (!checked.ok) return { ok: false, type: 'validation-error', field: 'contractSize', reason: checked.reason };

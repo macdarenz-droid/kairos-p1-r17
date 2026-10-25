@@ -13,6 +13,7 @@ import { deleteTradeRecord } from '../src/application/trades';
 import type { TradeId } from '../src/domain/trades';
 import { TradePageScreen } from '../src/features/journal/TradePageScreen';
 import { axeViolations } from './fixtures/axe';
+import { openTradeMenu } from './fixtures/tradePage';
 
 // Review r1: a read of the trade can be made to fail.
 const reads = vi.hoisted(() => ({ failNext: 0 }));
@@ -101,10 +102,11 @@ describe('T-060b a page for each trade', () => {
     expect(discipline.queryByRole('button', { name: /^Before you trade/ })).toBeNull();
     expect(screen.getByRole('link', { name: 'See it on the market chart' })).toHaveAttribute('href', `/analysis?trade=${encodeURIComponent(id)}`);
     const changes = part('Change this trade');
-    expect(changes.getByRole('button', { name: 'Delete trade' })).toBeInTheDocument();
     expect(changes.queryByRole('button', { name: 'Update trade' })).toBeNull();
     expect(changes.queryByRole('button', { name: "I'm in" })).toBeNull();
     expect(await axeViolations(document.body)).toEqual([]);
+    // D264: Delete lives in the "…" sheet.
+    expect(openTradeMenu().getByRole('button', { name: 'Delete trade' })).toBeInTheDocument();
   });
 
   it('offers what fits an open and a planned trade', async () => {
@@ -191,7 +193,7 @@ describe('T-060b a page for each trade', () => {
     const id = await saved(db, closed);
     const router = app(db, `/journal/trades/${id}`, ['/journal']);
     await screen.findByRole('heading', { level: 1, name: 'BTCUSDT · Long' });
-    fireEvent.click(part('Change this trade').getByRole('button', { name: 'Delete trade' }));
+    fireEvent.click(openTradeMenu().getByRole('button', { name: 'Delete trade' }));
     fireEvent.click(within(screen.getByRole('alertdialog', { name: 'Delete BTCUSDT for good?' })).getByRole('button', { name: 'Delete for good' }));
     await screen.findByRole('heading', { name: 'Trade history' });
     expect(router.state.location.pathname).toBe('/journal');
@@ -212,7 +214,7 @@ describe('T-060b a page for each trade', () => {
     const id = await saved(db, closed);
     app(db, `/journal/trades/${id}`);
     await screen.findByRole('heading', { level: 1, name: 'BTCUSDT · Long' });
-    part('Change this trade').getByRole('button', { name: 'Delete trade' }).focus();
+    screen.getByRole('button', { name: 'More for this trade' }).focus();
     expect(await deleteTradeRecord(db, id)).toMatchObject({ ok: true });
     await act(async () => { window.dispatchEvent(new Event(JOURNAL_CHANGED_EVENT)); });
     const heading = await screen.findByRole('heading', { level: 1, name: "This trade isn't in your journal." });

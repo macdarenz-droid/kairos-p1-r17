@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { JournalRoute } from '../../src/app/JournalRoute';
@@ -31,3 +31,9 @@ export const tradePageHeading = (name: string | RegExp) => screen.findByRole('he
 
 /** One part of the trade's page by its name: "Change this trade", "Before and after the trade", "Recorded result", … */
 export const tradePagePart = (name: string) => within(screen.getByRole('region', { name }));
+
+/** U15 (D264): opens the trade page's "…" sheet, which holds Edit, Duplicate and Delete, and returns it. */
+export function openTradeMenu() {
+  fireEvent.click(screen.getByRole('button', { name: 'More for this trade' }));
+  return within(screen.getByRole('dialog', { name: 'More for this trade' }));
+}

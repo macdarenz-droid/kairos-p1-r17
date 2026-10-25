@@ -19,7 +19,7 @@ import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '.
 import type { ChartDrawing } from '../src/features/chart';
 import type { DecimalString } from '../src/domain/trades/tradeTypes';
 import { axeViolations } from './fixtures/axe';
-import { renderTradePage, tradePageHeading } from './fixtures/tradePage';
+import { openTradeMenu, renderTradePage, tradePageHeading } from './fixtures/tradePage';
 
 const names: string[] = [];
 async function database(): Promise<KairosDatabase> { const name = `kairos-journal-list-kit-${crypto.randomUUID()}`; names.push(name); const db = createKairosDatabase(name); await openKairosDatabase(db); return db; }
@@ -88,12 +88,16 @@ describe('T-049h the trade list on the kit', () => {
   });
 });
 
-/** Saves a closed trade and opens its own page (U15): a trade's "Delete trade" lives there, not on the Journal's row. */
+/**
+ * Saves a closed trade, opens its own page (U15) and its "…" sheet (D264): a trade's "Delete trade" lives there, not on
+ * the Journal's row.
+ */
 async function tradePageOf(db: KairosDatabase, symbol: string) {
   const saved = await saveManualTrade(db, closed(symbol));
   if (!saved.ok) throw new Error('fixture');
   const view = renderTradePage(db, saved.tradeId);
   await tradePageHeading(`${symbol} · Long`);
+  openTradeMenu();
   return view;
 }
 

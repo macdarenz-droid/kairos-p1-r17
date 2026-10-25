@@ -6,10 +6,15 @@ import { describePlanAndWhatHappened } from '../../application/coach/coachWords'
 import { describeNewsNearTrade } from '../../application/economic-calendar/calendarWords';
 import { getJournalHistoryEntry, JOURNAL_HISTORY_SOURCES, type JournalHistoryEntry, type JournalHistoryScope } from '../../application/journal';
 import { addTradeContractSize, updateTradeExecution } from '../../application/trades';
+import { canEditSavedTrade, REPLAY_TRADE_CANNOT_CHANGE } from '../../application/trades/editSavedTrade';
+import { describePlanHistory } from '../../application/trades/planHistory';
 import { projectTradePlanVsExecution } from '../../application/trades/planVsExecution';
+import { saveTradeNote } from '../../application/trades/saveTradeNote';
+import { tradeRevision } from '../../application/trades/tradeRevision';
+import { loadVisualPnlTimeZone } from '../../application/visual-pnl';
 import { JOURNAL_CHANGED_EVENT, kairosDatabase, type KairosDatabase } from '../../data/database';
 import { tradeJournalAt, type TradeRecord, type TradeSource } from '../../domain/trades';
-import { Button, Card, ErrorState, PageHeader } from '../../design-system/primitives';
+import { Button, Card, ErrorState, PageHeader, Sheet } from '../../design-system/primitives';
 import { TradeChecklistControl } from '../discipline/TradeChecklistControl';
 import { TradeReviewControl } from '../discipline/TradeReviewControl';
 import { TradeStrategyControl } from '../discipline/TradeStrategyControl';
@@ -20,7 +25,9 @@ import { JournalDraftTradeActivation } from './JournalDraftTradeActivation';
 import { JournalOpenTradeUpdate } from './JournalOpenTradeUpdate';
 import { JournalTradeDeleteControl } from './JournalTradeDeleteControl';
 import { reviewTimestamp, TradeEntriesAndExits, TradeFees, TradeOverview, TradePlan, TradeResult } from './TradeDetails';
-import { tradeDeletedState, tradeReviewHref } from './tradeAddress';
+import { arrivedNoticeState, fromTradePageState, tradeEditHref, tradeReviewHref, useArrivedNotice } from './tradeAddress';
+import { tradeCopyState } from './TradeCopy';
+import { TradeNotesCard } from './TradeNotes';
 import { TradePicture } from './TradePicture';
 import './tradePageScreen.css';
 
@@ -74,14 +81,16 @@ function TradePage({ db, scope, id }: { readonly db: KairosDatabase; readonly sc
   const [read, setRead] = useState<Read>({ kind: 'reading', id });
   const current = read;
   const request = useRef(0);
-  const load = useCallback(async (): Promise<void> => {
+  /** Reads the trade again; resolves with what it read (null: not this list's, undefined: the read failed or a newer one won). */
+  const load = useCallback(async (): Promise<JournalHistoryEntry | null | undefined> => {
     const n = ++request.current;
     const found = await getJournalHistoryEntry(db, id).then(entry => entry, () => undefined);
-    if (n !== request.current) return;
+    if (n !== request.current) return undefined;
     // A read again that fails keeps the trade on screen (with any form being typed); the next read tries again.
     setRead(previous => found === undefined ? (previous.kind === 'shown' ? previous : { kind: 'failed', id })
       : found !== null && (JOURNAL_HISTORY_SOURCES[scope] as readonly TradeSource[]).includes(found.trade.source) ? { kind: 'shown', id, entry: found }
       : { kind: 'missing', id });
+    return found !== null && found !== undefined && (JOURNAL_HISTORY_SOURCES[scope] as readonly TradeSource[]).includes(found.trade.source) ? found : found === undefined ? undefined : null;
   }, [db, id, scope]);
   useEffect(() => { void load(); }, [load]);
   useEffect(() => {
@@ -97,9 +106,15 @@ function TradePage({ db, scope, id }: { readonly db: KairosDatabase; readonly sc
   const entry = current.kind === 'shown' ? current.entry : null;
   const discipline = useTradeDisciplineCards(db, entry ? [entry.trade.id] : []);
   const news = useNewsNearTrades(db, entry ? [entry.trade] : []);
+  // The plan's changes are said in the trader's time zone (the device's until one is saved).
+  const [timeZone, setTimeZone] = useState<string | null>(null);
+  useEffect(() => { let active = true; loadVisualPnlTimeZone(db).then(zone => { if (active) setTimeZone(zone); }, () => undefined); return () => { active = false; }; }, [db]);
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  // A notice after a change here takes focus when the change's own control went away (its form closed).
-  const [notice, setNotice] = useState<Notice | null>(null);
+  // A notice after a change here takes focus when the change's own control went away (its form closed). Edit sends
+  // "Changes saved." with you; the shell then moves focus to the heading (D179).
+  const arrived = useArrivedNotice();
+  const [notice, setNotice] = useState<Notice | null>(arrived ?? null);
   const [changes, setChanges] = useState(0);
   const noticeRef = useRef<HTMLParagraphElement>(null);
   const reviewNowRef = useRef<HTMLButtonElement>(null);
@@ -157,11 +172,24 @@ function TradePage({ db, scope, id }: { readonly db: KairosDatabase; readonly sc
     ? ready ? <TradeReviewControl symbol={trade.symbol} tradeId={trade.id} scope={scope} reviewItems={ready.lists.review} mistakeItems={ready.lists.mistakes} record={record} save={input => saveTradeDiscipline(db, input)} onSaved={remember}
       openRequested={reviewRequested} onOpenRequestHandled={() => setReviewRequested(false)} onRequestedSheetClosed={() => setNotice(null)} /> : failedLabel('After the trade')
     : null;
+  const allowed = page.allowed.includes(trade.source);
+  const changeControls = allowed && (trade.status === 'open' || trade.status === 'draft' || entry.executions.length > 0 || entry.fees.length > 0);
+  const planChanges = describePlanHistory(entry.plans, timeZone);
   const strategy = ready ? <TradeStrategyControl symbol={trade.symbol} tradeId={trade.id} scope={scope} strategies={ready.strategies} record={record}
     check={checkSavedTradeStrategy(trade, entry.plans, record)} save={input => saveTradeDiscipline(db, input)} onSaved={remember} /> : null;
 
   return <section className="kairos-route kairos-journal kairos-trade-page" aria-labelledby={TITLE}>
-    <PageHeader eyebrow={scope === 'practice' ? 'Practice trade' : 'Your trade'} title={`${trade.symbol} · ${sideWord(trade.side)}`} titleId={TITLE} intro={describeWhen(trade)} />
+    <PageHeader eyebrow={scope === 'practice' ? 'Practice trade' : 'Your trade'} title={`${trade.symbol} · ${sideWord(trade.side)}`} titleId={TITLE} intro={describeWhen(trade)}
+      action={<Button variant="secondary" size="sm" aria-label="More for this trade" aria-haspopup="dialog" onClick={() => setMenuOpen(true)}>…</Button>} />
+    {/* D264: Edit, Duplicate and Delete. Delete asks first, over this sheet. */}
+    <Sheet open={menuOpen} title="More for this trade" onClose={() => setMenuOpen(false)}>
+      <div className="kairos-trade-page__menu">
+        {canEditSavedTrade(trade.source, scope) ? <Link className="kairos-button kairos-button--secondary kairos-button--md" to={tradeEditHref(trade.id, scope)} state={fromTradePageState}>Edit trade</Link> : null}
+        <Button variant="secondary" onClick={() => navigate(scope === 'practice' ? '/practice' : '/journal/log', { state: tradeCopyState(entry) })}>Duplicate trade</Button>
+        <JournalTradeDeleteControl entry={entry} db={db}
+          onDeleted={async deleted => { navigate(page.list, { replace: true, state: arrivedNoticeState(deleted) }); }} />
+      </div>
+    </Sheet>
     {typeof notice === 'string' ? <p ref={noticeRef} tabIndex={-1} className="kairos-trade-page__notice" role="status">{notice}</p> : null}
     {prompt ? <div className="kairos-trade-page__notice">
       <p ref={noticeRef} tabIndex={-1} role="status">Trade closed. How did it go?</p>
@@ -180,6 +208,10 @@ function TradePage({ db, scope, id }: { readonly db: KairosDatabase; readonly sc
       </section> : null}
       <TradeOverview trade={trade} heading="details" />
       <TradePlan plans={entry.plans} />
+      {planChanges.length > 0 ? <section className="kairos-review__card" aria-label="Plan changes">
+        <h2>Plan changes</h2>
+        <ul className="kairos-trade-page__plan-changes">{planChanges.map((line, index) => <li key={index}>{line.text} on <time dateTime={line.at}>{line.when}</time></li>)}</ul>
+      </section> : null}
       <TradeEntriesAndExits executions={entry.executions} />
       <TradeFees executions={entry.executions} fees={entry.fees} />
     </div>
@@ -189,20 +221,22 @@ function TradePage({ db, scope, id }: { readonly db: KairosDatabase; readonly sc
       {checklist}{review}{strategy}
     </Card> : null}
 
+    <TradeNotesCard entry={entry} onLoadNewVersion={load} onSaved={next => changed(next)}
+      save={(note, basis) => saveTradeNote(db, { tradeId: trade.id, expectedRevision: tradeRevision(basis), note, scope })} />
+
     {newsLines.length > 0 ? <Card as="section" className="kairos-trade-page__part" aria-labelledby="kairos-trade-page-news">
       <h2 id="kairos-trade-page-news">Big news near this trade</h2>
       {newsLines.map((line, index) => <p key={index}>{line}</p>)}
     </Card> : null}
 
-    <Card as="section" className="kairos-trade-page__part kairos-trade-page__actions" aria-labelledby="kairos-trade-page-actions">
+    {changeControls || trade.source === 'replay' ? <Card as="section" className="kairos-trade-page__part kairos-trade-page__actions" aria-labelledby="kairos-trade-page-actions">
       <h2 id="kairos-trade-page-actions">Change this trade</h2>
+      {trade.source === 'replay' ? <p>{REPLAY_TRADE_CANNOT_CHANGE}</p> : null}
       <JournalOpenTradeUpdate entry={entry} db={db} allowedSources={page.allowed}
         onCommitted={closed => changed(closed ? { kind: 'closed' } : 'Trade updated. Your saved details are on this page.')} />
-      {page.allowed.includes(trade.source) ? <EntriesAndExitsEditor entry={entry} save={input => updateTradeExecution(db, { ...input, allowedSources: page.allowed })}
+      {allowed ? <EntriesAndExitsEditor entry={entry} save={input => updateTradeExecution(db, { ...input, allowedSources: page.allowed })}
         onSaved={() => changed('Trade updated. Your saved details are on this page.')} /> : null}
       <JournalDraftTradeActivation entry={entry} db={db} allowedSources={page.allowed} onOpened={next => changed(next)} />
-      <JournalTradeDeleteControl entry={entry} db={db}
-        onDeleted={async deleted => { navigate(page.list, { replace: true, state: tradeDeletedState(deleted) }); }} />
-    </Card>
+    </Card> : null}
   </section>;
 }

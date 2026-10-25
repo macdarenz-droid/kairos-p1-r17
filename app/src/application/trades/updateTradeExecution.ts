@@ -2,7 +2,7 @@ import type { KairosDatabase } from '../../data/database/KairosDatabase';
 import { runKairosAtomicWrite } from '../../data/database/transactions';
 import { parsePositiveDecimalString, type TradeExecutionId, type TradeExecutionRecord, type TradeFeeId, type TradeFeeRecord, type TradeId, type TradeSource } from '../../domain/trades';
 import { isIsoLikeTimestamp } from './saveManualTrade';
-import { tradeRevision, type SavedTradeSnapshot } from './tradeRevision';
+import { plansToCompare, tradeRevision, type SavedTradeSnapshot } from './tradeRevision';
 
 export interface TradeExecutionCorrection { readonly id: TradeExecutionId; readonly price: string; readonly quantity: string; readonly executedAt: string }
 export interface TradeFeeCorrection { readonly id: TradeFeeId; readonly amount: string; readonly currency: string }
@@ -71,12 +71,12 @@ export async function updateTradeExecution(
   const now = dependencies.now ?? (() => new Date().toISOString());
   const tradeId = expected.trade.id;
   try {
-    return await runKairosAtomicWrite(db, ['trades', 'tradeExecutions', 'tradeFees'], async ({ repositories: r }): Promise<UpdateTradeExecutionResult> => {
+    return await runKairosAtomicWrite(db, ['trades', 'tradePlans', 'tradeExecutions', 'tradeFees'], async ({ repositories: r }): Promise<UpdateTradeExecutionResult> => {
       const current = await r.trades.get(tradeId);
       if (!current || !allowedSources.includes(current.source)) return conflict('trade-not-editable');
       const currentExecutions = await r.tradeExecutions.listByTradeId(tradeId);
       const currentFees = await r.tradeFees.listByTradeId(tradeId);
-      if (tradeRevision({ trade: current, executions: currentExecutions, fees: currentFees }) !== tradeRevision(expected)) return conflict('trade-changed');
+      if (tradeRevision({ trade: current, executions: currentExecutions, fees: currentFees, ...await plansToCompare(expected, () => r.tradePlans.listByTradeId(tradeId)) }) !== tradeRevision(expected)) return conflict('trade-changed');
       if (savedExecution && executionValues) await r.tradeExecutions.put({ ...savedExecution, ...executionValues });
       if (savedFee && feeValues) await r.tradeFees.put({ ...savedFee, ...feeValues });
       await r.trades.put({ ...current, updatedAt: now() });

@@ -7,7 +7,7 @@ import { savePracticeTrade } from '../src/application/practice';
 import { saveManualTrade } from '../src/application/trades';
 import { createKairosDatabase, openKairosDatabase } from '../src/data/database';
 import { createKairosRepositories } from '../src/data/repositories';
-import { renderTradePage, tradePageHeading, tradePagePart } from './fixtures/tradePage';
+import { openTradeMenu, renderTradePage, tradePageHeading } from './fixtures/tradePage';
 
 const names: string[] = [];
 async function database() { const name = `kairos-trade-delete-${names.length}-${crypto.randomUUID()}`; names.push(name); const db = createKairosDatabase(name); await openKairosDatabase(db); return db; }
@@ -28,7 +28,7 @@ describe('P30.2 trade delete control', () => {
     await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(2));
     fireEvent.click(within(card('ETHUSDT')).getByRole('link'));
     await tradePageHeading('ETHUSDT · Long');
-    fireEvent.click(tradePagePart('Change this trade').getByRole('button', { name: 'Delete trade' }));
+    fireEvent.click(openTradeMenu().getByRole('button', { name: 'Delete trade' }));
     const confirm = screen.getByRole('alertdialog', { name: 'Delete ETHUSDT for good?' });
     expect(confirm).toHaveAccessibleDescription('Its 2 entries and exits and 1 fee go with it. A backup taken before this keeps it.');
     fireEvent.click(within(confirm).getByRole('button', { name: 'Delete for good' }));
@@ -47,7 +47,7 @@ describe('P30.2 trade delete control', () => {
     await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(1));
     fireEvent.click(within(card('BTCUSDT')).getByRole('link'));
     await tradePageHeading('BTCUSDT · Long');
-    fireEvent.click(screen.getByRole('button', { name: 'Delete trade' }));
+    fireEvent.click(openTradeMenu().getByRole('button', { name: 'Delete trade' }));
     fireEvent.click(screen.getByRole('button', { name: 'Keep trade' }));
     expect(screen.queryByRole('alertdialog', { name: 'Delete BTCUSDT for good?' })).toBeNull();
     expect(await db.trades.count()).toBe(1);
@@ -71,7 +71,7 @@ describe('P30.2 trade delete control', () => {
     await waitFor(() => expect(screen.getByRole('region', { name: 'Practice' }).getAttribute('data-practice-count')).toBe('1'));
     fireEvent.click(within(card('SOLUSDT')).getByRole('link'));
     await tradePageHeading('SOLUSDT · Long');
-    fireEvent.click(screen.getByRole('button', { name: 'Delete trade' }));
+    fireEvent.click(openTradeMenu().getByRole('button', { name: 'Delete trade' }));
     fireEvent.click(screen.getByRole('button', { name: 'Delete for good' }));
     await waitFor(() => expect(screen.getByRole('region', { name: 'Practice' }).getAttribute('data-practice-count')).toBe('0'));
     expect(screen.getByRole('status').textContent).toBe('SOLUSDT deleted, with its 2 entries and exits and 1 fee.');
