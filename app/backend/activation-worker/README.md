@@ -243,7 +243,9 @@ Cloudflare login. There is no web page for it, and CI never runs it.
 
 ### Commands
 
-Run them in `app/backend/activation-worker`. They work on the live database `kairos-activation-db`.
+Run them in `app/backend/activation-worker`. They work on the live database `kairos-activation-db`. Keep the `--`
+after `npm run codes`: without it npm takes `--local` for itself and says nothing, so the command runs on the live
+database. Revoke and free show the code and name the database before they ask you to type `yes`.
 
 - `npm run codes -- make 5 --label "Friends"`, with `--devices 3` and `--days 30` when wanted
   - Makes 1 to 100 new codes and prints them once, with their ids. Write them down then: Kairos keeps only a
@@ -268,8 +270,8 @@ send each person their own code privately.
 
 ### Trying it without touching the live database
 
-Add `--local` to any command. It works on a local copy in `.wrangler/state` (not in git). Make that copy once with
-`npx wrangler d1 migrations apply kairos-activation-db --local`.
+Add `--local` to any command, after the `--`: `npm run codes -- list --local`. It works on a local copy in
+`.wrangler/state` (not in git). Make that copy once with `npx wrangler d1 migrations apply kairos-activation-db --local`.
 
 ### How it works
 
@@ -288,5 +290,8 @@ Add `--local` to any command. It works on a local copy in `.wrangler/state` (not
   confirms they were saved. If it can't confirm, they are not shown: run `list`, revoke any code with that label made
   just then, and make new ones.
 - The count "used on 2 of 3" is D1's count of the code's devices not removed, the same count `/devices` answers.
-- If wrangler asks for `CLOUDFLARE_API_TOKEN`, you are not signed in: run `npx wrangler login`. If your login has more
-  than one Cloudflare account, wrangler asks for `CLOUDFLARE_ACCOUNT_ID` (UNVERIFIED: not tried with a real login).
+- If wrangler asks for `CLOUDFLARE_API_TOKEN`, you are not signed in: run `npx wrangler login`.
+- If your login has more than one Cloudflare account, the tool can't choose one for you (it runs wrangler without
+  questions). Run `npx wrangler d1 list` once in this folder and pick the account that has `kairos-activation-db`:
+  wrangler remembers it in `node_modules/.cache/wrangler/wrangler-account.json` (read in wrangler 4.141.0's code; not
+  tried with a real login). Or set `CLOUDFLARE_ACCOUNT_ID`.

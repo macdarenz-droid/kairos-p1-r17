@@ -1,7 +1,8 @@
 import { env } from 'cloudflare:workers';
 import { beforeAll, describe, expect, it } from 'vitest';
 import {
-  CodeToolError, firstUseBy, formatList, formatMade, makeCodes, readCodes, readCommand, readMade, readWranglerJson, sqlFree, sqlList, sqlMake, sqlRevoke,
+  CodeToolError, firstUseBy, formatList, formatMade, freeQuestion, makeCodes, nextStep, readCodes, readCommand, readMade, readWranglerJson, revokeQuestion,
+  sqlFree, sqlList, sqlMake, sqlRevoke,
 } from '../scripts/codeAdmin.mjs';
 import { INVITE_CODE_ALPHABET } from '../src/inviteCode.mjs';
 import {
@@ -249,6 +250,35 @@ describe("the owner's code tool (D279, scripts/codeAdmin.mjs)", () => {
       ['revoke', '1', '2'], ['free', '3'], ['free', '3', '--device', '0'], ['free', '3', '--device', 'x'], ['delete', '1'], ['make', '2', '--label', 'A', '--yes'],
     ];
     for (const args of refused) expect(() => readCommand(args), args.join(' ')).toThrow(CodeToolError);
+  });
+
+  it('names the database in each question before a change, as npm can drop --local without a word (review r1)', () => {
+    // `npm run codes revoke 5 --local`, without the --, reaches the tool as ["revoke", "5"]: the live database.
+    expect(readCommand(['revoke', '5'])).toEqual({ kind: 'revoke', where: 'remote', id: 5 });
+    for (const question of [revokeQuestion(5, 2, 'remote'), revokeQuestion(5, 0, 'remote'), freeQuestion(5, 1, 'remote')]) {
+      expect(question).toMatch(/live database kairos-activation-db/);
+      expect(question).not.toMatch(/local copy/);
+    }
+    for (const question of [revokeQuestion(5, 2, 'local'), revokeQuestion(5, 0, 'local'), freeQuestion(5, 1, 'local')]) {
+      expect(question).toMatch(/local copy of kairos-activation-db/);
+      expect(question).not.toMatch(/live database/);
+    }
+  });
+
+  it("gives the next step that fits wrangler's error: several accounts, not signed in, no local copy, no migration 0002 (review r1)", () => {
+    // wrangler 4.141.0's own words.
+    const severalAccounts = 'More than one account available but unable to select one in non-interactive mode.\nPlease set the appropriate `account_id` in your wrangler.jsonc file or assign it to the `CLOUDFLARE_ACCOUNT_ID` environment variable.';
+    const notSignedIn = "In a non-interactive environment, it's necessary to set a CLOUDFLARE_API_TOKEN environment variable for wrangler to work.";
+    const noTable = 'no such table: activation_devices: SQLITE_ERROR';
+    for (const where of ['remote', 'local'] as const) {
+      expect(nextStep(severalAccounts, where)).toMatch(/more than one Cloudflare account.*CLOUDFLARE_ACCOUNT_ID/);
+      expect(nextStep(severalAccounts, where)).not.toMatch(/Not signed in/);
+      expect(nextStep(notSignedIn, where)).toMatch(/npx wrangler login/);
+      expect(nextStep('UNIQUE constraint failed: activation_codes.code_hash', where)).toBeNull();
+    }
+    expect(nextStep(noTable, 'local')).toMatch(/npx wrangler d1 migrations apply kairos-activation-db --local/);
+    expect(nextStep(noTable, 'remote')).toMatch(/migration 0002/);
+    expect(nextStep(noTable, 'remote')).not.toMatch(/--local/);
   });
 
   it("reads wrangler's JSON answer: each statement's rows, or its error with no fingerprint in it", () => {

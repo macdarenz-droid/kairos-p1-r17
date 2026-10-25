@@ -19,8 +19,8 @@ import { dirname, join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import {
-  CodeToolError, firstUseBy, formatList, formatMade, makeCodes, readCodes, readCommand, readMade, readWranglerJson, sqlFree, sqlList,
-  sqlMake, sqlRevoke, USAGE,
+  CodeToolError, firstUseBy, formatList, formatMade, freeQuestion, makeCodes, nextStep, placeText, readCodes, readCommand, readMade,
+  readWranglerJson, revokeQuestion, sqlFree, sqlList, sqlMake, sqlRevoke, USAGE,
 } from './codeAdmin.mjs';
 
 const DATABASE = 'kairos-activation-db';
@@ -97,13 +97,6 @@ function typedYes(question) {
   });
 }
 
-/** @param {'remote' | 'local'} where */
-function placeText(where) {
-  return where === 'local'
-    ? `the local copy of ${DATABASE} (.wrangler/state, for trying the tool)`
-    : `the live database ${DATABASE}`;
-}
-
 /** @param {import('./codeAdmin.mjs').MakeCommand} command */
 async function make(command) {
   const now = new Date();
@@ -140,6 +133,8 @@ async function showCode(id, where) {
   const rows = (await runSql(sqlList({ id }), where))[0];
   const [code] = readCodes(rows);
   if (code === undefined) throw new CodeToolError(`There is no code ${id} in ${placeText(where)}. Nothing changed. Run list to see the ids.`);
+  say(`Code ${id} in ${placeText(where)}:`);
+  say();
   say(formatList(rows, { summary: false }));
   say();
   return code;
@@ -152,8 +147,7 @@ async function revoke(command) {
     say(`Code ${command.id} is revoked already. Nothing changed.`);
     return;
   }
-  const devices = code.inUse === 0 ? '' : ` Its ${code.inUse === 1 ? 'device goes' : `${code.inUse} devices go`} back to the invite screen at the next daily check, and keep their journals.`;
-  say(`Revoke code ${command.id}? No new device can use it after this.${devices} This can't be undone.`);
+  say(revokeQuestion(command.id, code.inUse, command.where));
   if (!(await typedYes('Type yes to revoke it: '))) {
     say('Nothing changed.');
     return;
@@ -173,7 +167,7 @@ async function free(command) {
     say(`Device ${command.device} is removed from code ${command.id} already. Nothing changed.`);
     return;
   }
-  say(`Free device ${command.device} on code ${command.id}? Its place becomes free for another device. That device goes back to the invite screen at its next daily check, and keeps its journal.`);
+  say(freeQuestion(command.id, command.device, command.where));
   if (!(await typedYes('Type yes to free it: '))) {
     say('Nothing changed.');
     return;
@@ -186,10 +180,17 @@ async function free(command) {
   say(formatList(rows, { summary: false }));
 }
 
+/** The database of the command being run, for the next-step words after an error; null until the command line is read. */
+let where = /** @type {import('./codeAdmin.mjs').Where | null} */ (null);
+
 async function main() {
   const command = readCommand(process.argv.slice(2));
-  if (command.kind === 'help') say(USAGE);
-  else if (command.kind === 'make') await make(command);
+  if (command.kind === 'help') {
+    say(USAGE);
+    return;
+  }
+  where = command.where;
+  if (command.kind === 'make') await make(command);
   else if (command.kind === 'list') await list(command);
   else if (command.kind === 'revoke') await revoke(command);
   else await free(command);
@@ -198,12 +199,8 @@ async function main() {
 main().catch((error) => {
   if (error instanceof CodeToolError) {
     process.stderr.write(`${error.message}\n`);
-    if (/CLOUDFLARE_API_TOKEN|non-interactive|logged in|Authentication/i.test(error.message)) {
-      process.stderr.write('Not signed in? Run npx wrangler login in app/backend/activation-worker, then try again.\n');
-    }
-    if (/no such table|no such column|has no column/i.test(error.message)) {
-      process.stderr.write("This database doesn't have migration 0002 yet. CI adds it once owner step O8 is done (README).\n");
-    }
+    const next = nextStep(error.message, where);
+    if (next !== null) process.stderr.write(`${next}\n`);
   } else {
     // A bug in the tool: say so plainly, without a stack trace.
     process.stderr.write(`The code tool stopped unexpectedly: ${lastLines(error instanceof Error ? error.message : String(error))}\n`);

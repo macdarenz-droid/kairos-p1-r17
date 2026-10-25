@@ -475,6 +475,62 @@ export function formatList(rows, { now = new Date(), summary = true } = {}) {
  * @typedef {MakeCommand | ListCommand | RevokeCommand | FreeCommand | { kind: 'help' }} Command
  */
 
+/**
+ * The database a command works on, in words. The code shown and each question before a change name it: npm 10.9.4 takes
+ * `--local` for itself when the `--` after `npm run codes` is left out, and passes the tool no trace of it, so the command
+ * would run on the live database.
+ * @param {Where} where
+ * @returns {string}
+ */
+export function placeText(where) {
+  return where === 'local'
+    ? 'the local copy of kairos-activation-db (.wrangler/state, for trying the tool)'
+    : 'the live database kairos-activation-db';
+}
+
+/**
+ * @param {number} id
+ * @param {number} inUse the code's devices not removed
+ * @param {Where} where
+ * @returns {string}
+ */
+export function revokeQuestion(id, inUse, where) {
+  const devices = inUse === 0 ? '' : ` Its ${inUse === 1 ? 'device goes' : `${inUse} devices go`} back to the invite screen at the next daily check, and keep their journals.`;
+  return `Revoke code ${id} in ${placeText(where)}? No new device can use it after this.${devices} This can't be undone.`;
+}
+
+/**
+ * @param {number} id
+ * @param {number} device
+ * @param {Where} where
+ * @returns {string}
+ */
+export function freeQuestion(id, device, where) {
+  return `Free device ${device} on code ${id} in ${placeText(where)}? Its place becomes free for another device. That device goes back to the invite screen at its next daily check, and keeps its journal.`;
+}
+
+/**
+ * What to do next after an error, from wrangler 4.141.0's own words, or null when there is nothing more to say.
+ * @param {string} message the error the tool printed
+ * @param {Where | null} where null when the command line itself was refused
+ * @returns {string | null}
+ */
+export function nextStep(message, where) {
+  // Checked first: this refusal also says "non-interactive mode", the words of the not-signed-in case below.
+  if (/More than one account/i.test(message)) {
+    return 'Your login has more than one Cloudflare account. Run npx wrangler d1 list once in app/backend/activation-worker and pick the account that has kairos-activation-db (wrangler remembers it), or set CLOUDFLARE_ACCOUNT_ID.';
+  }
+  if (/CLOUDFLARE_API_TOKEN|non-interactive|logged in|Authentication/i.test(message)) {
+    return 'Not signed in? Run npx wrangler login in app/backend/activation-worker, then try again.';
+  }
+  if (/no such table|no such column|has no column/i.test(message)) {
+    return where === 'local'
+      ? 'Make the local copy first: npx wrangler d1 migrations apply kairos-activation-db --local'
+      : "This database doesn't have migration 0002 yet. CI adds it once owner step O8 is done (README).";
+  }
+  return null;
+}
+
 export const USAGE = [
   "Kairos invite codes (the owner's tool). Run in app/backend/activation-worker after `npx wrangler login`:",
   '',
@@ -489,6 +545,7 @@ export const USAGE = [
   '      Removes device <n> (the number list shows) from code <id>, so its place is free for another device.',
   '',
   'Each command works on the live database. Add --local to try it on a local copy (.wrangler/state) instead.',
+  'Keep the -- after npm run codes: without it npm takes --local for itself, and the command runs on the live database.',
 ].join('\n');
 
 /** The options each command takes, besides --local and --remote. */
