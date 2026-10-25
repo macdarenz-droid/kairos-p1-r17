@@ -26,6 +26,11 @@ async function routeNetwork(page: Page): Promise<void> {
 async function activate(page: Page, setup: 'skip' | 'show' = 'skip'): Promise<void> {
   await routeNetwork(page);
   await page.goto('/');
+  await enterInviteCode(page, setup);
+}
+
+/** Types the invite code on the open invite screen, then leaves the setup open or skips it. */
+async function enterInviteCode(page: Page, setup: 'skip' | 'show' = 'skip'): Promise<void> {
   await page.getByLabel('Invite code').fill('QA-INVITE-001');
   await page.locator('button[type="submit"]').click();
   await expect(page.locator('.kairos-shell')).toBeVisible();
@@ -46,7 +51,27 @@ async function backToList(page: Page): Promise<void> {
 }
 
 test('(a) an invite code opens the app shell', async ({ page }) => {
-  await activate(page);
+  // T-062e (D282, D281): the invite screen shows the Kairos logo, and "Lost access?" opens its steps.
+  await routeNetwork(page);
+  await page.goto('/');
+  await expect(page.getByRole('heading', { level: 1, name: 'Welcome to Kairos' })).toBeVisible();
+  const logo = page.locator('.kairos-activation__logo');
+  await expect(logo).toHaveAttribute('src', '/icons/kairos-icon-192.png');
+  await expect(logo).toHaveAttribute('alt', '');
+  await expect.poll(() => logo.evaluate(image => (image as HTMLImageElement).complete ? (image as HTMLImageElement).naturalWidth : 0)).toBe(192);
+  await expect(page.getByText('Kairos is invite-only for now. Your code comes from the person who invited you.')).toBeVisible();
+  const lostAccess = page.getByRole('button', { name: "Lost access? Here's what to do" });
+  await expect(lostAccess).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.getByText('Type your invite code again. One code works on up to 3 devices.')).toBeHidden();
+  await lostAccess.click();
+  await expect(lostAccess).toHaveAttribute('aria-expanded', 'true');
+  await expect(lostAccess).toBeFocused();
+  await expect(page.getByText('Type your invite code again. One code works on up to 3 devices.')).toBeVisible();
+  await expect(page.getByRole('list').getByRole('listitem')).toHaveCount(4);
+  const gateAxe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(gateAxe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await enterInviteCode(page);
 });
 
 test('(b) every route renders inside the phone width without page errors', async ({ page }) => {
@@ -2485,4 +2510,36 @@ test('(aj) Home: a real coin logo from the Kairos server, kept on the phone, and
   // Nothing was asked of any host but the app, the Kairos server and the activation service: never CoinGecko.
   expect([...hosts].filter(host => !['localhost:4317', 'api.qa.invalid', 'activation.qa.invalid'].includes(host))).toEqual([]);
   expect(errors).toEqual([]);
+});
+
+test('(ak) the invite screen: a code used on all its devices says so, opens "Lost access?", and a retry is the same request', async ({ page }) => {
+  // T-062e (D281, D275): the fake activation server answers every try with "already used on 3 devices".
+  const sent: Record<string, unknown>[] = [];
+  await page.route(url => url.protocol === 'https:', async route => {
+    if (route.request().url() !== ACTIVATION_URL) return route.abort();
+    sent.push(JSON.parse(route.request().postData() ?? '{}') as Record<string, unknown>);
+    return route.fulfill({ status: 403, contentType: 'application/json', body: JSON.stringify({ ok: false, reason: 'already-used', deviceLimit: 3 }) });
+  });
+  await page.goto('/');
+  await page.getByLabel('Invite code').fill('7q4m-x2pb-9hrt-k3vd');
+  const submit = page.getByRole('button', { name: 'Activate Kairos' });
+  await submit.click();
+
+  await expect(page.getByRole('alert')).toHaveText('This code is already used on 3 devices.');
+  const lostAccess = page.getByRole('button', { name: "Lost access? Here's what to do" });
+  await expect(lostAccess).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.getByText(/^All 3 in use\? On a device you still use: More › Profile › Your devices › Remove\./)).toBeVisible();
+  // The gate stays closed, and focus stays on the button (never the page).
+  await expect(page.locator('.kairos-shell')).toHaveCount(0);
+  await expect(submit).toBeFocused();
+  const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(axe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+
+  // Trying again sends the same request id, and the name of this device from the fixed list (this browser says Windows and Chrome).
+  await submit.click();
+  await expect.poll(() => sent.length).toBe(2);
+  expect(sent[0]).toMatchObject({ inviteCode: '7q4m-x2pb-9hrt-k3vd', deviceLabel: 'Windows · Chrome' });
+  expect(String(sent[0]!.requestId)).toMatch(/^[A-Za-z0-9-]{8,64}$/);
+  expect(sent[1]!.requestId).toBe(sent[0]!.requestId);
 });

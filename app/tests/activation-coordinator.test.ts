@@ -7,6 +7,8 @@ import {
   type ActivationAdapter,
   type ActivationReceipt,
   type ActivationReceiptVerifier,
+  type ActivationRequest,
+  type ActivationValidationResult,
 } from '../src/services/activation';
 import { createKairosDatabase, openKairosDatabase } from '../src/data/database';
 import { createKairosRepositories } from '../src/data/repositories';
@@ -199,6 +201,99 @@ describe('P7.5 activation coordinator', () => {
 
     resolveRemote({ ok: true, receipt });
     await expect(first).resolves.toMatchObject({ status: 'active-online' });
+    db.close();
+  });
+});
+
+/** An adapter that notes every request it gets and answers from a list, in order. */
+function recordingAdapter(answers: ActivationValidationResult[]): ActivationAdapter & { readonly requests: ActivationRequest[] } {
+  const requests: ActivationRequest[] = [];
+  return {
+    requests,
+    async validateInvite(sent) {
+      requests.push({ ...sent });
+      return answers.shift() ?? { ok: false, reason: 'service-error' };
+    },
+  };
+}
+
+/** The Worker's rule for a request id (backend/activation-worker/src/activate.ts). */
+const REQUEST_ID = /^[A-Za-z0-9-]{8,64}$/;
+
+describe('T-062e one request, one place (D275)', () => {
+  it('sends this device\'s name, and the same request id again after a failed try of the same code', async () => {
+    const db = createKairosDatabase(testDatabaseName('same-request'));
+    await openKairosDatabase(db);
+    const adapter = recordingAdapter([
+      { ok: false, reason: 'network-unavailable' },
+      { ok: false, reason: 'service-error' },
+      { ok: true, receipt },
+    ]);
+    const coordinator = new ActivationCoordinator({ repository: repositoryFor(db), verifier: approvingVerifier(), adapter, deviceLabel: 'Android · Chrome' });
+
+    await expect(coordinator.activate({ ...request(), inviteCode: '7Q4M-X2PB-9HRT-K3VD' })).resolves.toMatchObject({ status: 'network-unavailable' });
+    // The same code typed again, in lower case and without dashes: still the same request.
+    await expect(coordinator.activate({ ...request(), inviteCode: '7q4m x2pb 9hrt k3vd' })).resolves.toMatchObject({ status: 'error' });
+    await expect(coordinator.activate({ ...request(), inviteCode: '7Q4M-X2PB-9HRT-K3VD' })).resolves.toMatchObject({ status: 'active-online' });
+
+    const [first, second, third] = adapter.requests;
+    expect(first!.requestId).toMatch(REQUEST_ID);
+    expect(second!.requestId).toBe(first!.requestId);
+    expect(third!.requestId).toBe(first!.requestId);
+    expect(adapter.requests.map((sent) => sent.deviceLabel)).toEqual(['Android · Chrome', 'Android · Chrome', 'Android · Chrome']);
+    expect(adapter.requests.map((sent) => sent.inviteCode)).toEqual(['7Q4M-X2PB-9HRT-K3VD', '7q4m x2pb 9hrt k3vd', '7Q4M-X2PB-9HRT-K3VD']);
+    db.close();
+  });
+
+  it('makes a new request id for another code', async () => {
+    const db = createKairosDatabase(testDatabaseName('other-code'));
+    await openKairosDatabase(db);
+    const adapter = recordingAdapter([{ ok: false, reason: 'invalid-code' }, { ok: false, reason: 'network-unavailable' }, { ok: false, reason: 'network-unavailable' }]);
+    const coordinator = new ActivationCoordinator({ repository: repositoryFor(db), verifier: approvingVerifier(), adapter });
+
+    await coordinator.activate({ ...request(), inviteCode: 'FIRST-CODE' });
+    await coordinator.activate({ ...request(), inviteCode: 'SECOND-CODE' });
+    await coordinator.activate({ ...request(), inviteCode: 'SECOND-CODE' });
+
+    const [first, second, third] = adapter.requests.map((sent) => sent.requestId);
+    expect(first).toMatch(REQUEST_ID);
+    expect(second).toMatch(REQUEST_ID);
+    expect(second).not.toBe(first);
+    expect(third).toBe(second);
+    db.close();
+  });
+
+  it('makes a new request id after the code has worked', async () => {
+    const db = createKairosDatabase(testDatabaseName('after-success'));
+    await openKairosDatabase(db);
+    const adapter = recordingAdapter([{ ok: true, receipt }, { ok: true, receipt }]);
+    const coordinator = new ActivationCoordinator({ repository: repositoryFor(db), verifier: approvingVerifier(), adapter });
+
+    await expect(coordinator.activate(request())).resolves.toMatchObject({ status: 'active-online' });
+    await coordinator.clearActivation();
+    await expect(coordinator.activate(request())).resolves.toMatchObject({ status: 'active-online' });
+
+    const [first, second] = adapter.requests.map((sent) => sent.requestId);
+    expect(first).toMatch(REQUEST_ID);
+    expect(second).toMatch(REQUEST_ID);
+    expect(second).not.toBe(first);
+    db.close();
+  });
+
+  it('keeps the request id when the answer came but could not be saved, so a retry gets the same device back', async () => {
+    const db = createKairosDatabase(testDatabaseName('save-retry'));
+    await openKairosDatabase(db);
+    const repository = repositoryFor(db);
+    const save = vi.spyOn(repository, 'saveServerIssuedReceipt').mockRejectedValueOnce(new Error('write failed'));
+    const adapter = recordingAdapter([{ ok: true, receipt }, { ok: true, receipt }]);
+    const coordinator = new ActivationCoordinator({ repository, verifier: approvingVerifier(), adapter });
+
+    await expect(coordinator.activate(request())).resolves.toMatchObject({ status: 'error' });
+    await expect(coordinator.activate(request())).resolves.toMatchObject({ status: 'active-online' });
+
+    expect(save).toHaveBeenCalledTimes(2);
+    expect(adapter.requests[0]!.requestId).toMatch(REQUEST_ID);
+    expect(adapter.requests[1]!.requestId).toBe(adapter.requests[0]!.requestId);
     db.close();
   });
 });

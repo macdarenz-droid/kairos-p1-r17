@@ -16,10 +16,28 @@ export interface ActivationCoordinatorDependencies {
   readonly adapter: ActivationAdapter;
   readonly repository: ActivationReceiptRepository;
   readonly verifier: ActivationReceiptVerifier;
+  /** This device's name from the Worker's fixed list (describeThisDevice, D275); without it the server reads "Other device". */
+  readonly deviceLabel?: string;
+  /** A new request id: 8 to 64 letters, digits and dashes (the Worker's rule). Tests pass their own. */
+  readonly newRequestId?: () => string;
 }
 
-const REACTIVATE_MESSAGE = 'Activation needs to be completed again.';
-const VERIFY_UNAVAILABLE_MESSAGE = 'Activation verification is temporarily unavailable.';
+/** 128 random bits as 32 hex digits. getRandomValues works in every browser Kairos runs in, secure page or not. */
+function randomRequestId(): string {
+  return Array.from(globalThis.crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Which tries count as "the same code" for keeping a request id: case, spaces and dashes are ignored, so a retyped code
+ * keeps its id. Only the Worker decides which code was typed (D280); it looks a request id up within that code only.
+ */
+function sameCodeKey(inviteCode: string): string {
+  return inviteCode.replace(/[\s-]+/g, '').toUpperCase();
+}
+
+// Notes for this device's own checks; refusals from the server carry a `reason` instead (D281).
+const REACTIVATE_MESSAGE = 'Type your invite code again to open Kairos on this device.';
+const VERIFY_UNAVAILABLE_MESSAGE = "Kairos couldn't check this device's invite right now. Close Kairos and open it again.";
 const SAVE_FAILED_MESSAGE = 'Activation could not be saved on this device.';
 
 /**
@@ -29,6 +47,11 @@ const SAVE_FAILED_MESSAGE = 'Activation could not be saved on this device.';
 export class ActivationCoordinator {
   private snapshot: ActivationSnapshot = initialActivationSnapshot;
   private validationInFlight = false;
+  /**
+   * D275: the request id for the code being tried. Kept through retries of the same code, so an answer lost on a slow
+   * network never costs a second place; replaced for another code, and dropped once the code has worked.
+   */
+  private pendingRequest: { readonly codeKey: string; readonly requestId: string } | null = null;
 
   constructor(private readonly dependencies: ActivationCoordinatorDependencies) {}
 
@@ -76,7 +99,7 @@ export class ActivationCoordinator {
       this.snapshot = {
         status: 'error',
         receipt: null,
-        message: 'Activation state could not be loaded.',
+        message: "Kairos couldn't read this device's invite. Close Kairos and open it again.",
       };
     }
 
@@ -93,7 +116,7 @@ export class ActivationCoordinator {
     this.snapshot = reduceActivationState(this.snapshot, { type: 'START_VALIDATION' });
 
     try {
-      const remoteResult = await this.dependencies.adapter.validateInvite(request, options);
+      const remoteResult = await this.dependencies.adapter.validateInvite(this.withDevice(request), options);
       if (!remoteResult.ok) {
         this.snapshot = reduceActivationState(this.snapshot, {
           type: 'VALIDATION_FINISHED',
@@ -119,6 +142,8 @@ export class ActivationCoordinator {
         return this.getSnapshot();
       }
 
+      // Saved on this device: the next code starts a new request.
+      this.pendingRequest = null;
       const verifiedSuccess: ActivationValidationResult = {
         ok: true,
         receipt: proofResult.receipt,
@@ -131,6 +156,16 @@ export class ActivationCoordinator {
     } finally {
       this.validationInFlight = false;
     }
+  }
+
+  /** The request as posted: the code's request id (D275) and this device's name. */
+  private withDevice(request: ActivationRequest): ActivationRequest {
+    const codeKey = sameCodeKey(request.inviteCode);
+    if (this.pendingRequest?.codeKey !== codeKey) {
+      this.pendingRequest = { codeKey, requestId: (this.dependencies.newRequestId ?? randomRequestId)() };
+    }
+    const { deviceLabel } = this.dependencies;
+    return { ...request, requestId: this.pendingRequest.requestId, ...(deviceLabel === undefined ? {} : { deviceLabel }) };
   }
 
   async clearActivation(): Promise<ActivationSnapshot> {
@@ -151,9 +186,11 @@ function proofFailureSnapshot(
     };
   }
 
+  // A receipt that fails its check is an answer Kairos can't read: the server's problem, in the server's words (D281).
   return {
     status: 'error',
     receipt: null,
-    message: 'Activation service returned an invalid proof.',
+    message: null,
+    reason: 'service-error',
   };
 }

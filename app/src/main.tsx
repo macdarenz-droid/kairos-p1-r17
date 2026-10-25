@@ -1,13 +1,15 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router/dom';
-import { AppErrorBoundary } from './app/ErrorBoundary';
+import { AppErrorBoundary, downloadJournalCopy } from './app/ErrorBoundary';
 import { router } from './app/router';
 import { describeThrownValue, diagnostics } from './diagnostics/DiagnosticsService';
 import { applyInitialTheme, ThemeProvider } from './design-system/themes';
 import { kairosDatabase, openKairosDatabase } from './data/database';
+import { loadBackupReminder } from './application/backup';
 import { loadTradedMarkets } from './application/setup/tradedMarkets';
-import { ActivationBootstrap } from './features/activation';
+import { loadVisualPnlTimeZone } from './application/visual-pnl/timeZonePreference';
+import { ActivationBootstrap, type ActivationJournalPort } from './features/activation';
 import { registerKairosServiceWorker } from './pwa/serviceWorkerRegistration';
 import { startInstallPrompt } from './pwa/installPrompt';
 import { inspectStorageDurability } from './pwa/storageDurability';
@@ -39,6 +41,15 @@ const databaseStartup = openKairosDatabase().then(async (status) => {
   return status;
 });
 
+// D281: the invite screen says when this device's journal was last backed up and offers a copy, as the crash screen does.
+const journal: ActivationJournalPort = {
+  load: async () => {
+    const [reminder, timeZone] = await Promise.all([loadBackupReminder(kairosDatabase), loadVisualPnlTimeZone(kairosDatabase)]);
+    return { lastBackupAt: reminder.lastBackupAt, tradesSince: reminder.tradesSince, timeZone };
+  },
+  downloadCopy: downloadJournalCopy,
+};
+
 const root = document.getElementById('root');
 if (!root) throw new Error('Kairos root element was not found.');
 
@@ -66,5 +77,5 @@ createRoot(root, {
     });
   },
 }).render(
-  <StrictMode><ThemeProvider><AppErrorBoundary><ActivationBootstrap databaseStartup={databaseStartup}><RouterProvider router={router} /></ActivationBootstrap></AppErrorBoundary></ThemeProvider></StrictMode>,
+  <StrictMode><ThemeProvider><AppErrorBoundary><ActivationBootstrap databaseStartup={databaseStartup} journal={journal}><RouterProvider router={router} /></ActivationBootstrap></AppErrorBoundary></ThemeProvider></StrictMode>,
 );

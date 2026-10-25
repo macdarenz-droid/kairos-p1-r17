@@ -191,4 +191,20 @@ describe('T-053d the setup screen', () => {
     const heading = await stepHeading('Your time zone');
     await waitFor(() => expect(heading).toHaveFocus());
   });
+
+  it('T-062e (D281): step 1 sends someone moving from another device to Backup and restore first', async () => {
+    const db = await database();
+    const router = createMemoryRouter([
+      { path: '/setup', element: <SetupScreen db={db} deviceTimeZone="Asia/Manila" languages={['en-PH']} now={now} /> },
+      { path: '/backup', element: <p>Backup page</p> },
+    ], { initialEntries: ['/setup'] });
+    render(<RouterProvider router={router} />);
+    await stepHeading('Your time zone');
+    expect(screen.getByText(/^Moving from another device\?/)).toHaveTextContent('Moving from another device? Bring your journal back first: Backup and restore.');
+    const link = screen.getByRole('link', { name: 'Backup and restore' });
+    expect(link).toHaveAttribute('href', '/backup');
+    await act(async () => { fireEvent.click(link); });
+    expect(await screen.findByText('Backup page')).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/backup');
+  });
 });

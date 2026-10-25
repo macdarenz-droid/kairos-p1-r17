@@ -1,5 +1,5 @@
 import { Component, useLayoutEffect, useRef, useState, type ErrorInfo, type ReactNode } from 'react';
-import { createBrowserBackupDownloadPorts, describeBackupFailure, runBackup, type RunBackupResult } from '../application/backup';
+import { createBrowserBackupDownloadPorts, describeDataCopy, runBackup, type RunBackupResult } from '../application/backup';
 import { kairosDatabase } from '../data/database';
 import { describeThrownValue, diagnostics } from '../diagnostics/DiagnosticsService';
 import { describeCrash } from '../diagnostics/crashDetails';
@@ -16,21 +16,18 @@ export interface CrashScreenPorts {
   readonly reload: () => void;
 }
 
+/** "Download a copy of my data" in the browser: the journal as a backup file, handed over as a download only (D230). */
+export function downloadJournalCopy(): Promise<RunBackupResult> {
+  return runBackup(kairosDatabase, createBackupDelivery({ downloads: createBrowserBackupDownloadPorts(window) }));
+}
+
 const browserCrashPorts = (): CrashScreenPorts => ({
-  downloadCopy: () => runBackup(kairosDatabase, createBackupDelivery({ downloads: createBrowserBackupDownloadPorts(window) })),
+  downloadCopy: downloadJournalCopy,
   clipboard: browserClipboard(),
   reload: () => window.location.reload(),
 });
 
 type Copy = Readonly<{ kind: 'idle' }> | Readonly<{ kind: 'busy' }> | Readonly<{ kind: 'done'; message: string; failed: boolean }>;
-
-/** The words after "Download a copy of my data". */
-function describeCopy(result: RunBackupResult): Readonly<{ message: string; failed: boolean }> {
-  if (result.ok) return { message: `Downloaded ${result.file.fileName}.`, failed: false };
-  // The file was handed over; only noting when failed.
-  if (result.reason === 'record-failed') return { message: describeBackupFailure(result) ?? '', failed: false };
-  return { message: 'Kairos could not make a copy. Nothing was changed.', failed: true };
-}
 
 /**
  * T-054e (D230): never a dead end. Inside the theme and outside the router (so no router links): Reload, a copy of the
@@ -45,7 +42,7 @@ function CrashScreen({ error, componentStack, ports }: { readonly error: unknown
     if (copy.kind === 'busy') return;
     setCopy({ kind: 'busy' });
     const result = await ports.downloadCopy().catch((): RunBackupResult => ({ ok: false, reason: 'delivery-failed' }));
-    setCopy({ kind: 'done', ...describeCopy(result) });
+    setCopy({ kind: 'done', ...describeDataCopy(result) });
   }
 
   return <main className="kairos-crash">

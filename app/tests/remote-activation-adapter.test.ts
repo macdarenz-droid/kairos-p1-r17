@@ -20,7 +20,7 @@ describe('RemoteActivationAdapter', () => {
       .toThrow('Activation endpoint must use HTTPS.');
   });
 
-  it('posts only the activation request contract and accepts a valid server receipt', async () => {
+  it('posts only the activation request contract (with D275\'s request id and device name) and accepts a valid server receipt', async () => {
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse({
       ok: true,
       receipt: {
@@ -36,7 +36,7 @@ describe('RemoteActivationAdapter', () => {
       fetchImpl,
     });
 
-    await expect(adapter.validateInvite(request)).resolves.toEqual({
+    await expect(adapter.validateInvite({ ...request, requestId: '0123456789abcdef0123456789abcdef', deviceLabel: 'iPhone · Safari' })).resolves.toEqual({
       ok: true,
       receipt: {
         receiptVersion: 1,
@@ -54,7 +54,13 @@ describe('RemoteActivationAdapter', () => {
       credentials: 'omit',
       redirect: 'error',
     });
-    expect(JSON.parse(String(init?.body))).toEqual(request);
+    expect(JSON.parse(String(init?.body))).toEqual({
+      inviteCode: 'one-time-user-input',
+      appVersion: '0.1.0',
+      buildId: 'test-build',
+      requestId: '0123456789abcdef0123456789abcdef',
+      deviceLabel: 'iPhone · Safari',
+    });
   });
 
   it.each([
@@ -67,6 +73,21 @@ describe('RemoteActivationAdapter', () => {
       fetchImpl: vi.fn<typeof fetch>().mockResolvedValue(jsonResponse({ ok: false, reason: serverReason }, 400)),
     });
     await expect(adapter.validateInvite(request)).resolves.toEqual({ ok: false, reason: expected });
+  });
+
+  it('reads how many devices a used-up code allows, and leaves out a number it cannot read', async () => {
+    const answer = (body: unknown) => new RemoteActivationAdapter({
+      endpoint: 'https://activation.example.test/v1/activate',
+      fetchImpl: vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(body, 403)),
+    }).validateInvite(request);
+    await expect(answer({ ok: false, reason: 'already-used', deviceLimit: 3 })).resolves.toStrictEqual({ ok: false, reason: 'already-used', deviceLimit: 3 });
+    await expect(answer({ ok: false, reason: 'already-used', deviceLimit: 1 })).resolves.toStrictEqual({ ok: false, reason: 'already-used', deviceLimit: 1 });
+    await expect(answer({ ok: false, reason: 'already-used', deviceLimit: 10 })).resolves.toStrictEqual({ ok: false, reason: 'already-used', deviceLimit: 10 });
+    for (const deviceLimit of [0, 11, 2.5, -3, '3', null, Number.NaN, Number.POSITIVE_INFINITY]) {
+      await expect(answer({ ok: false, reason: 'already-used', deviceLimit })).resolves.toStrictEqual({ ok: false, reason: 'already-used' });
+    }
+    // A number beside another reason means nothing.
+    await expect(answer({ ok: false, reason: 'invalid-code', deviceLimit: 3 })).resolves.toStrictEqual({ ok: false, reason: 'invalid-code' });
   });
 
   it('maps HTTP 429 to rate-limited and server failures to service-error', async () => {

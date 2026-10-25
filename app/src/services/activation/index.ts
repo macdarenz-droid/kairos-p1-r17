@@ -31,9 +31,19 @@ export {
 } from './activationState';
 export type {
   ActivationReceipt,
+  ActivationRefusalReason,
   ActivationRequest,
   ActivationSnapshot,
   ActivationStatus,
   ActivationValidationResult,
 } from './activationTypes';
+export {
+  DEVICE_BROWSERS,
+  DEVICE_LABELS,
+  DEVICE_PLATFORMS,
+  describeThisDevice,
+  OTHER_DEVICE,
+  type DeviceLabel,
+  type DeviceSignals,
+} from './describeThisDevice';
 export * from './activationDeployment';

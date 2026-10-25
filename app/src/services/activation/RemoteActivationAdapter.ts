@@ -19,6 +19,9 @@ const SERVER_REJECTION_REASONS = new Set([
   'already-used',
   'rate-limited',
 ] as const);
+/** A code allows 1 to 10 devices (D274); any other value is not a number Kairos can show. */
+const MIN_DEVICE_LIMIT = 1;
+const MAX_DEVICE_LIMIT = 10;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -63,7 +66,16 @@ function parseServerResult(value: unknown): ActivationValidationResult | null {
   if (typeof value.reason !== 'string' || !SERVER_REJECTION_REASONS.has(value.reason as never)) {
     return null;
   }
-  return { ok: false, reason: value.reason as 'invalid-code' | 'expired-code' | 'already-used' | 'rate-limited' };
+  if (value.reason === 'already-used') {
+    // D275: "all devices used" names the code's limit. A limit Kairos can't read is left out, never guessed.
+    const deviceLimit = readDeviceLimit(value.deviceLimit);
+    return deviceLimit === null ? { ok: false, reason: 'already-used' } : { ok: false, reason: 'already-used', deviceLimit };
+  }
+  return { ok: false, reason: value.reason as 'invalid-code' | 'expired-code' | 'rate-limited' };
+}
+
+function readDeviceLimit(value: unknown): number | null {
+  return typeof value === 'number' && Number.isInteger(value) && value >= MIN_DEVICE_LIMIT && value <= MAX_DEVICE_LIMIT ? value : null;
 }
 
 function assertHttpsEndpoint(endpoint: string): string {
@@ -139,6 +151,9 @@ export class RemoteActivationAdapter implements ActivationAdapter {
           inviteCode: request.inviteCode,
           appVersion: request.appVersion,
           buildId: request.buildId,
+          // D275: sent when given; the Worker reads none as an old build.
+          ...(request.requestId === undefined ? {} : { requestId: request.requestId }),
+          ...(request.deviceLabel === undefined ? {} : { deviceLabel: request.deviceLabel }),
         }),
         cache: 'no-store',
         credentials: 'omit',

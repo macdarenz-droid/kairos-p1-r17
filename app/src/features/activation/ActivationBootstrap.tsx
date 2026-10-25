@@ -7,12 +7,15 @@ import {
   ActivationReceiptRepository,
   EcdsaActivationReceiptVerifier,
   RemoteActivationAdapter,
+  describeThisDevice,
   parseActivationDeploymentConfig,
 } from '../../services/activation';
-import { ActivationGate } from './ActivationGate';
+import { ActivationGate, ActivationLogo, type ActivationJournalPort } from './ActivationGate';
 
 export interface ActivationBootstrapProps extends PropsWithChildren {
   readonly databaseStartup: Promise<DatabaseLifecycleStatus>;
+  /** This device's journal, so the invite screen can offer a copy (D281); built in main.tsx. */
+  readonly journal: ActivationJournalPort;
 }
 
 type RuntimeState =
@@ -34,10 +37,12 @@ function buildController(config: { readonly endpoint: string; readonly publicKey
     verifier: new EcdsaActivationReceiptVerifier({
       publicKeySpkiBase64: config.publicKeySpkiBase64,
     }),
+    // D275: a coarse name from the Worker's fixed list, so the trader can tell their devices apart.
+    deviceLabel: describeThisDevice({ userAgent: navigator.userAgent, maxTouchPoints: navigator.maxTouchPoints ?? 0 }),
   });
 }
 
-export function ActivationBootstrap({ databaseStartup, children }: ActivationBootstrapProps) {
+export function ActivationBootstrap({ databaseStartup, journal, children }: ActivationBootstrapProps) {
   const [runtime, setRuntime] = useState<RuntimeState>({ state: 'preparing' });
 
   useEffect(() => {
@@ -47,7 +52,7 @@ export function ActivationBootstrap({ databaseStartup, children }: ActivationBoo
       if (databaseStatus.state !== 'ready') {
         setRuntime({
           state: 'unavailable',
-          message: 'Kairos could not open secure device storage. Your journal has not been opened.',
+          message: "Kairos couldn't open its storage on this device. Your journal wasn't opened.",
         });
         return;
       }
@@ -56,7 +61,7 @@ export function ActivationBootstrap({ databaseStartup, children }: ActivationBoo
       if (!configResult.ok) {
         setRuntime({
           state: 'unavailable',
-          message: 'Activation is not configured for this build yet.',
+          message: "This version of Kairos isn't set up to check invite codes yet.",
         });
         return;
       }
@@ -66,14 +71,14 @@ export function ActivationBootstrap({ databaseStartup, children }: ActivationBoo
       } catch {
         setRuntime({
           state: 'unavailable',
-          message: 'Activation configuration could not be loaded.',
+          message: "This version of Kairos can't check invite codes.",
         });
       }
     }).catch(() => {
       if (active) {
         setRuntime({
           state: 'unavailable',
-          message: 'Kairos could not prepare device storage. Your journal has not been opened.',
+          message: "Kairos couldn't open its storage on this device. Your journal wasn't opened.",
         });
       }
     });
@@ -87,6 +92,7 @@ export function ActivationBootstrap({ databaseStartup, children }: ActivationBoo
     return (
       <main className="kairos-activation">
         <section className="kairos-activation__card">
+          <ActivationLogo />
           <p className="kairos-activation__status" role="status" aria-live="polite">
             Preparing Kairos…
           </p>
@@ -99,7 +105,7 @@ export function ActivationBootstrap({ databaseStartup, children }: ActivationBoo
     return (
       <main className="kairos-activation">
         <section className="kairos-activation__card" aria-labelledby="kairos-activation-unavailable-title">
-          <p className="kairos-activation__eyebrow">Kairos Trading Journal</p>
+          <ActivationLogo />
           <h1 id="kairos-activation-unavailable-title">Kairos can’t open yet</h1>
           <p className="kairos-activation__feedback" role="alert">{runtime.message}</p>
         </section>
@@ -112,6 +118,7 @@ export function ActivationBootstrap({ databaseStartup, children }: ActivationBoo
       controller={runtime.controller}
       appVersion={buildInfo.appVersion}
       buildId={buildInfo.buildId}
+      journal={journal}
     >
       {children}
     </ActivationGate>
