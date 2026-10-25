@@ -5,7 +5,8 @@
  *
  * - A new code is 16 characters from Crockford's 32 (digits and letters without I, L, O and U), shown in four groups of
  *   four: `7Q4M-X2PB-9HRT-K3VD` (80 bits). D1 stores only the SHA-256 of its 16 characters (the compact form).
- * - Typing is forgiving: case, spaces and dashes don't matter, O reads as 0, and I and L read as 1.
+ * - Typing is forgiving: case, spaces and dashes don't matter, O reads as 0, and I and L read as 1. A pasted code may
+ *   carry invisible characters or full-width letters and digits; they read as the plain ones.
  * - A code made by hand before these rules is stored as the SHA-256 of its text trimmed and in upper case (the exact
  *   form), and still matches that way. The Worker looks a typed code up by both.
  */
@@ -18,8 +19,11 @@ export const INVITE_CODE_LENGTH = 16;
 
 const GROUP_LENGTH = 4;
 const COMPACT_CODE = /^[0-9A-HJKMNP-TV-Z]{16}$/;
-/** Spaces, and the dashes a phone keyboard may type: hyphen, the Unicode dashes (U+2010 to U+2015) and minus. */
-const IGNORED = /[\s\-‐-―−]/g;
+/**
+ * Spaces; the dashes a phone keyboard may type (hyphen, the Unicode dashes U+2010 to U+2015, minus); and invisible format
+ * characters (Unicode Cf: zero-width space, soft hyphen, word joiner, byte-order mark), which pasting can carry along.
+ */
+const IGNORED = /[\s\-\u2010-\u2015\u2212\p{Cf}]/gu;
 const encoder = new TextEncoder();
 
 /**
@@ -56,7 +60,8 @@ export function formatInviteCode(compact) {
  */
 export function compactInviteCode(typed) {
   if (typeof typed !== 'string') return null;
-  const compact = typed.toUpperCase().replace(IGNORED, '').replace(/O/g, '0').replace(/[IL]/g, '1');
+  // NFKC first: full-width and other compatibility forms of letters and digits become the plain ones.
+  const compact = typed.normalize('NFKC').toUpperCase().replace(IGNORED, '').replace(/O/g, '0').replace(/[IL]/g, '1');
   return COMPACT_CODE.test(compact) ? compact : null;
 }
 

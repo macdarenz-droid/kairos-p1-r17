@@ -9,18 +9,6 @@ import type { ActivationEnv } from './env';
 import { hasJsonContentType, isRecord, json, readJson, type Caller, type DeviceStatus, type DeviceView, type Readiness } from './http';
 import { readDeviceToken, type DeviceProof } from './receipt';
 
-/** The name stored when an app build sends none, and for the devices that used a code before migration 0002. */
-export const OTHER_DEVICE = 'Other device';
-
-/** The coarse names the app may send (D275): a platform and a browser from these lists, or "Other device". No free text. */
-const PLATFORMS = ['iPhone', 'iPad', 'Android', 'Mac', 'Windows', 'Linux', 'Chromebook'] as const;
-const BROWSERS = ['Safari', 'Chrome', 'Edge', 'Firefox', 'Samsung Internet', 'Opera', 'Other browser'] as const;
-const DEVICE_LABELS: ReadonlySet<string> = new Set([...PLATFORMS.flatMap((platform) => BROWSERS.map((browser) => `${platform} · ${browser}`)), OTHER_DEVICE]);
-
-export function isDeviceLabel(value: unknown): value is string {
-  return typeof value === 'string' && DEVICE_LABELS.has(value);
-}
-
 /** The UTC day of an ISO time, as last_seen_on keeps it (a day, not a time). */
 export function dayOf(isoTime: string): string {
   return isoTime.slice(0, 10);
@@ -32,12 +20,23 @@ export interface PlacedDevice {
   readonly activatedAt: string;
 }
 
-/** The device in use that a retry with the same request id is asking for (D275), or null. */
-export async function deviceForRequest(db: D1Database, codeId: number, requestId: string): Promise<PlacedDevice | null> {
+/**
+ * How long a request id gets its device back (D275): long enough for a retry after a lost answer or a slow network, short
+ * enough that replaying one request can't share one place between phones for good.
+ */
+const REQUEST_REPLAY_HOURS = 24;
+
+/** The first activation time that still counts as a retry, for a request made at `now` (ISO). */
+function replaySince(now: string): string {
+  return new Date(Date.parse(now) - REQUEST_REPLAY_HOURS * 3_600_000).toISOString();
+}
+
+/** The device in use, activated in the last 24 hours, that a retry with the same request id is asking for, or null. */
+export async function deviceForRequest(db: D1Database, codeId: number, requestId: string, now: string): Promise<PlacedDevice | null> {
   return db.prepare(`
       SELECT activation_id AS activationId, activated_at AS activatedAt FROM activation_devices
-      WHERE code_id = ? AND request_id = ? AND removed_at IS NULL LIMIT 1`)
-    .bind(codeId, requestId)
+      WHERE code_id = ? AND request_id = ? AND removed_at IS NULL AND activated_at > ? LIMIT 1`)
+    .bind(codeId, requestId, replaySince(now))
     .first<PlacedDevice>();
 }
 
@@ -57,9 +56,15 @@ export interface NewPlace {
  * use, the code is not revoked, and an unused code has not expired (the date limits only the first use). The UPDATE marks
  * a code's first use, and only when that INSERT added this device. D1 runs the batch as one transaction.
  * A clash with a device in use that has the same request id adds nothing (ON CONFLICT DO NOTHING); the caller reads it.
+ * A request id older than 24 hours no longer gets its device back, so the batch first lets go of it: the request then
+ * takes a new place like any new device (or is refused when none is free).
  */
 export async function takePlace(db: D1Database, place: NewPlace): Promise<boolean> {
-  const [inserted] = await db.batch([
+  const [, inserted] = await db.batch([
+    db.prepare(`
+        UPDATE activation_devices SET request_id = NULL
+        WHERE code_id = ? AND request_id = ? AND removed_at IS NULL AND activated_at <= ?`)
+      .bind(place.codeId, place.requestId, replaySince(place.issuedAt)),
     db.prepare(`
         INSERT INTO activation_devices (activation_id, code_id, request_id, device_label, activated_at, app_version, build_id, last_seen_on)
         SELECT ?, c.id, ?, ?, ?, ?, ?, ?
@@ -198,8 +203,10 @@ export async function handleDeviceRoute(route: DeviceRoute, request: Request, en
   if (me === null) return json(caller, { ok: false, reason: 'device-not-recognised' }, 401);
 
   if (route === 'check') return checkDevice(env.DB, me, caller);
-  if (route === 'remove' && deviceId === me.id) return json(caller, { ok: false, reason: 'cannot-remove-this-device' }, 400);
+  // A removed device, or one of a revoked code, hears that first, whatever it asked.
   const status = statusOf(me);
   if (status !== 'active') return json(caller, { ok: false, reason: status === 'revoked' ? 'code-revoked' : 'device-removed' }, 403);
-  return route === 'list' ? listDevices(env.DB, me, caller) : removeDevice(env.DB, me, deviceId as number, proof, caller);
+  if (route === 'list') return listDevices(env.DB, me, caller);
+  if (deviceId === me.id) return json(caller, { ok: false, reason: 'cannot-remove-this-device' }, 400);
+  return removeDevice(env.DB, me, deviceId as number, proof, caller);
 }

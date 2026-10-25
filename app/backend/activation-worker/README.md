@@ -54,7 +54,8 @@ runs it as it is.
 
 - A new code is 16 characters from Crockford's 32 (digits and letters without I, L, O and U), shown in four groups:
   `7Q4M-X2PB-9HRT-K3VD`. D1 stores the SHA-256 of its 16 characters without dashes.
-- Typing is forgiving: case, spaces and dashes don't matter, O reads as 0, and I and L read as 1.
+- Typing is forgiving: case, spaces and dashes don't matter, O reads as 0, and I and L read as 1. Invisible characters
+  and full-width letters and digits in a pasted code read as the plain ones (NFKC).
 - A code made by hand before this is stored as the SHA-256 of its text trimmed and in upper case, and still matches
   exactly that way.
 - `/activate` looks a typed code up by both fingerprints. If both find a code, the exact text wins.
@@ -68,11 +69,12 @@ it is in use; a removed device frees its place.
 - An expiry date limits only a code's first use. After that, its other places work until the code is revoked.
 - A revoked code takes no new device, and its devices learn it at their next check.
 - Retries don't use extra places. The app sends a `requestId` and keeps it for that code until it succeeds. The same
-  `requestId` on a device of the same code that is still in use gets that device's receipt again (the same
-  `activationId` and `issuedAt`, signed again), not a new place. Old app builds send none and still work.
+  `requestId` on a device of the same code that is still in use, within 24 hours, gets that device's receipt again
+  (the same `activationId` and `issuedAt`, signed again), not a new place. After that, the same `requestId` takes a new
+  place like any new device, or gets `already-used` when none is free. Old app builds send none and still work.
 - A new device is one conditional `INSERT … SELECT` in `activation_devices` (only while fewer than `device_limit` devices
   are in use), sent in one D1 batch with the code's first-use `UPDATE`. D1 runs a batch as one transaction, one at a
-  time, so two phones at the same moment can't make 4. The tests check this with two requests at once.
+  time, so two phones at the same moment can't make 4. The tests check this with six requests at once on a slow D1.
 - The count "used on 2 of 3" is made only here (`src/devices.ts`); the app only shows it.
 
 ## `/activate`
@@ -83,7 +85,8 @@ from new builds:
 - `requestId`: 8 to 64 letters, digits or dashes.
 - `deviceLabel`: a coarse name from a fixed list, never free text: `<platform> · <browser>`, where platform is one of
   iPhone, iPad, Android, Mac, Windows, Linux, Chromebook and browser one of Safari, Chrome, Edge, Firefox,
-  Samsung Internet, Opera, Other browser; or `Other device`. Missing means `Other device`.
+  Samsung Internet, Opera, Other browser; or `Other device`. Missing means `Other device`. The list is
+  `src/deviceLabels.mjs`.
 
 The answer is `{ ok: true, receipt }` or `{ ok: false, reason }`, JSON with `cache-control: no-store` and
 `vary: Origin`. Old builds read it unchanged; `deviceLimit` is an extra field they ignore.
@@ -195,10 +198,23 @@ Otherwise it leaves a notice ("owner step O8") and CI stays green. There is no p
 4. `wrangler deploy --message "main <sha>"`
 5. `deploy/backfill-devices.sql` again: a code the old Worker used between steps 3 and 4 gets its device too. It adds a
    device only once, so it is safe on every deploy.
-6. The live `/health` must say `"signingKey":"ready"` and `"database":"ready"`, or the job fails with what to fix.
+6. The live `/health`: CI asks again every 5 seconds, for up to about 60 seconds, until the new version answers. Then it
+   must say `"signingKey":"ready"` and `"database":"ready"`. The job fails with what to fix, and tells "the new Worker
+   did not answer" apart from "the key is missing".
 
-The CI token needs D1 permission for steps 2, 3 and 5 (O8). The secret `KAIROS_ACTIVATION_PRIVATE_KEY` is set on the
-Worker once, by the owner, and should stay through a deploy (UNVERIFIED); if it doesn't, step 6 fails loudly.
+The CI token needs D1 permission for steps 2, 3 and 5 (O8).
+
+The signing key is set on the Worker once, by the owner, and never by CI. `wrangler.jsonc` lists it under
+`secrets.required`. Read in wrangler 4.141.0's code, that makes step 4 ask Cloudflare to carry the key over from the
+Worker's current version. If the Worker has no such key, the deploy stops before the new version goes live. If no
+Worker named `kairos-activation` exists yet (a wrong name), wrangler stops before uploading, instead of making a new
+Worker without a key. Whether Cloudflare carries the key over as wrangler asks is UNVERIFIED until the first deploy;
+step 6 checks it.
+
+If the key is ever lost, put back the SAME key: the private half of the Pages setting
+`VITE_KAIROS_ACTIVATION_PUBLIC_KEY_SPKI` (and of kairos-api's `KAIROS_ACTIVATION_PUBLIC_KEY_SPKI`), with
+`npx wrangler secret put KAIROS_ACTIVATION_PRIVATE_KEY` in this folder. Never make a new key: a new key breaks the receipt
+on every trader's device.
 
 ### Owner step O8
 

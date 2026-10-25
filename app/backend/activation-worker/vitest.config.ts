@@ -21,13 +21,17 @@ export default defineConfig(async () => {
   const migrations = await readD1Migrations('migrations');
   const deploy = await readD1Migrations('deploy');
   const pair = (await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify'])) as CryptoKeyPair;
+  const privateKey = await exportBase64('pkcs8', pair.privateKey);
+  // wrangler.jsonc requires this secret, and wrangler looks for it in this process's environment (else it warns that it
+  // is missing). Only this test run's throwaway key is ever put there.
+  (globalThis as unknown as { process: { env: Record<string, string> } }).process.env.KAIROS_ACTIVATION_PRIVATE_KEY = privateKey;
   return {
     plugins: [
       cloudflareTest({
         wrangler: { configPath: './wrangler.jsonc' },
         miniflare: {
           bindings: {
-            KAIROS_ACTIVATION_PRIVATE_KEY: await exportBase64('pkcs8', pair.privateKey),
+            KAIROS_ACTIVATION_PRIVATE_KEY: privateKey,
             TEST_ACTIVATION_PUBLIC_KEY_SPKI: await exportBase64('spki', pair.publicKey),
             TEST_MIGRATIONS: migrations,
             TEST_DEPLOY_SQL: { mark: deploySql(deploy, 'mark-hand-made-table.sql'), backfill: deploySql(deploy, 'backfill-devices.sql') },

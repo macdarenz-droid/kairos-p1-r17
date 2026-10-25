@@ -9,6 +9,9 @@
   // invocation log, which records details of each request, stays off (README "Logs").
   "observability": { "enabled": true, "head_sampling_rate": 1, "logs": { "invocation_logs": false } },
   "vars": { "KAIROS_APP_ORIGINS": "https://kairos-p1-r17.pages.dev" },
+  // A deploy keeps the signing key from the Worker's current version; if the Worker has none, wrangler stops the deploy
+  // before the new version goes live, and it never makes a new Worker without it (README "Deploy").
+  "secrets": { "required": ["KAIROS_ACTIVATION_PRIVATE_KEY"] },
   // Found by name: the database id is not in git (wrangler looks the database up by database_name).
   "d1_databases": [{ "binding": "DB", "database_name": "kairos-activation-db", "migrations_dir": "migrations" }],
   "ratelimits": [

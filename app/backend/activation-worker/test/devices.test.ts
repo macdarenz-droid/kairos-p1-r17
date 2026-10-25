@@ -2,7 +2,7 @@ import { env } from 'cloudflare:workers';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   activate, activateDevice, activationBody, addCode, APP, applyMigrations, callDevices, codeRow, deviceRows, deviceToken,
-  expectReceiptTheAppAccepts, newCode, send, sendWith, sha256Hex, signedToken, startOfAFreshMinute, todayUtc, type Receipt,
+  expectReceiptTheAppAccepts, newCode, send, sendWith, sha256Hex, signedToken, slowDatabase, startOfAFreshMinute, todayUtc, type Receipt,
 } from './support';
 
 beforeAll(applyMigrations);
@@ -92,6 +92,31 @@ describe('one invite code, three devices (D274, D275)', () => {
     expect((await activateDevice(other, { requestId: retry })).activationId).not.toBe(first.activationId);
   });
 
+  it('gives a device back for its requestId only within 24 hours; later the same requestId is a new device (D275)', async () => {
+    const code = newCode();
+    await addCode(code);
+    const retry = requestId();
+    const first = await activateDevice(code, { requestId: retry });
+    const hoursAgo = (hours: number) => new Date(Date.now() - hours * 3_600_000).toISOString();
+    // 23 hours later the retry still gets its own device back.
+    await env.DB.prepare('UPDATE activation_devices SET activated_at = ? WHERE activation_id = ?').bind(hoursAgo(23), first.activationId).run();
+    expect((await activateDevice(code, { requestId: retry })).activationId).toBe(first.activationId);
+    // 25 hours later it can't: a replayed request takes a new place while one is free, as any new device does.
+    await env.DB.prepare('UPDATE activation_devices SET activated_at = ? WHERE activation_id = ?').bind(hoursAgo(25), first.activationId).run();
+    const later = await activateDevice(code, { requestId: retry });
+    expect(later.activationId).not.toBe(first.activationId);
+    expect((await activateDevice(code, { requestId: retry })).activationId).toBe(later.activationId);
+    expect((await deviceRows(code)).map((row) => [row.activation_id, row.request_id, row.removed_at])).toEqual([
+      [first.activationId, null, null],
+      [later.activationId, retry, null],
+    ]);
+    // With no place free, the old requestId is refused like any new device.
+    await activateDevice(code, { requestId: requestId() });
+    await env.DB.prepare('UPDATE activation_devices SET activated_at = ? WHERE activation_id = ?').bind(hoursAgo(25), later.activationId).run();
+    expect(await answer(await activate(code, { body: activationBody(code, { requestId: retry }) }))).toEqual({ ok: false, reason: 'already-used', deviceLimit: 3 });
+    expect(await deviceRows(code)).toHaveLength(3);
+  });
+
   it('uses a new place for an old app build that sends no requestId', async () => {
     const code = newCode();
     await addCode(code);
@@ -101,15 +126,14 @@ describe('one invite code, three devices (D274, D275)', () => {
     expect((await deviceRows(code)).map((row) => [row.request_id, row.device_label])).toEqual([[null, 'Other device'], [null, 'Other device']]);
   });
 
-  it('lets exactly one of two devices in at once when one place is left', async () => {
+  it('lets exactly one of six devices in at once when one place is left, with D1 answering after a delay', async () => {
     const { code } = await codeWithDevices(2);
-    const [one, two] = await Promise.all([
-      activate(code, { body: activationBody(code, { requestId: requestId() }) }),
-      activate(code, { body: activationBody(code, { requestId: requestId() }) }),
-    ]);
-    expect([one.status, two.status].sort()).toEqual([200, 403]);
-    const refused = one.status === 403 ? one : two;
-    expect(await answer(refused)).toEqual({ ok: false, reason: 'already-used', deviceLimit: 3 });
+    const db = slowDatabase(env.DB);
+    const responses = await Promise.all(Array.from({ length: 6 }, () => sendWith({ DB: db }, { body: activationBody(code, { requestId: requestId() }) })));
+    expect(responses.map((response) => response.status).sort()).toEqual([200, 403, 403, 403, 403, 403]);
+    for (const refused of responses.filter((response) => response.status === 403)) {
+      expect(await answer(refused)).toEqual({ ok: false, reason: 'already-used', deviceLimit: 3 });
+    }
     expect(await deviceRows(code)).toHaveLength(3);
   });
 
@@ -217,6 +241,10 @@ describe('the device list (D277, D283)', () => {
     const removeBack = await callDevices('/devices/remove', { token: deviceToken(other), deviceId: await idOf(code, me) });
     expect(removeBack.status).toBe(403);
     expect(await check(me)).toEqual({ ok: true, status: 'active' });
+    // Even when it names itself: it is told it was removed, not that it can't remove itself.
+    const removeItself = await callDevices('/devices/remove', { token: deviceToken(other), deviceId: await idOf(code, other) });
+    expect(removeItself.status).toBe(403);
+    expect(await answer(removeItself)).toEqual({ ok: false, reason: 'device-removed' });
   });
 
   it('refuses a deviceId that is not a whole number above 0, and a wrong body', async () => {
@@ -261,6 +289,9 @@ describe('the daily check (D278)', () => {
     const fromRevoked = await callDevices('/devices', { token: deviceToken(me) });
     expect(fromRevoked.status).toBe(403);
     expect(await answer(fromRevoked)).toEqual({ ok: false, reason: 'code-revoked' });
+    const removeItself = await callDevices('/devices/remove', { token: deviceToken(me), deviceId: await idOf(code, me) });
+    expect(removeItself.status).toBe(403);
+    expect(await answer(removeItself)).toEqual({ ok: false, reason: 'code-revoked' });
   });
 
   it('writes last_seen_on once a day, and only for a device still in use', async () => {

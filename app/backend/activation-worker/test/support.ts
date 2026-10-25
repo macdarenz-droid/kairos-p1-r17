@@ -211,3 +211,28 @@ export async function signedToken(payload: Record<string, unknown>, privateKeyBa
 export function todayUtc(): string {
   return new Date().toISOString().slice(0, 10);
 }
+
+/**
+ * The same D1, answering each call `ms` later, as the real one does over the network. Each statement runs at once and
+ * its answer waits, so several requests in flight read before any of them writes.
+ */
+export function slowDatabase(db: D1Database, ms = 15): D1Database {
+  const later = <T>(value: T) => new Promise<T>((resolve) => setTimeout(() => resolve(value), ms));
+  const real = new WeakMap<object, D1PreparedStatement>();
+  const wrap = (statement: D1PreparedStatement): D1PreparedStatement => {
+    const slow = {
+      bind: (...values: unknown[]) => wrap(statement.bind(...values)),
+      first: async (column?: string) => later(await (column === undefined ? statement.first() : statement.first(column))),
+      all: async () => later(await statement.all()),
+      run: async () => later(await statement.run()),
+      raw: async (options?: { columnNames?: boolean }) => later(await statement.raw(options as { columnNames: true })),
+    } as unknown as D1PreparedStatement;
+    real.set(slow, statement);
+    return slow;
+  };
+  return {
+    prepare: (query: string) => wrap(db.prepare(query)),
+    batch: async (statements: D1PreparedStatement[]) => later(await db.batch(statements.map((statement) => real.get(statement) ?? statement))),
+    exec: async (query: string) => later(await db.exec(query)),
+  } as unknown as D1Database;
+}

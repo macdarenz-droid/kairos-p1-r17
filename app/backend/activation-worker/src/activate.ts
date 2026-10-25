@@ -2,10 +2,11 @@
  * POST /activate: one invite code becomes one signed receipt, for up to `device_limit` devices (D274, D275).
  * A code is looked up by the SHA-256 of its compact form and of its exact text (inviteCode.mjs). The receipt is signed
  * first; then one D1 batch takes a place for the device (devices.ts takePlace), so a signing failure never uses a place.
- * A retry with the same requestId gets its device back, signed again, instead of a new place. Old app builds send no
+ * A retry with the same requestId within 24 hours gets its device back, signed again, instead of a new place. Old app builds send no
  * requestId or deviceLabel and keep working; the answer keeps its shape. Nothing here logs a code, a hash or an address.
  */
-import { deviceForRequest, devicesInUse, isDeviceLabel, OTHER_DEVICE, takePlace } from './devices';
+import { isDeviceLabel, OTHER_DEVICE } from './deviceLabels.mjs';
+import { deviceForRequest, devicesInUse, takePlace } from './devices';
 import type { ActivationEnv } from './env';
 import { hasJsonContentType, isRecord, json, readJson, type ActivationReason, type Caller } from './http';
 import { inviteCodeHashes, sha256Hex } from './inviteCode.mjs';
@@ -109,13 +110,13 @@ export async function handleActivate(request: Request, env: ActivationEnv, calle
   if (code === null || isRevoked(code)) return json(caller, { ok: false, reason: 'invalid-code' }, 403);
   const signAgain = async (device: { activationId: string; activatedAt: string }) =>
     json(caller, { ok: true, receipt: await createSignedReceipt(env.KAIROS_ACTIVATION_PRIVATE_KEY, device.activationId, device.activatedAt) });
+  const issuedAt = new Date().toISOString();
   if (body.requestId !== null) {
-    const known = await deviceForRequest(env.DB, code.id, body.requestId);
+    const known = await deviceForRequest(env.DB, code.id, body.requestId, issuedAt);
     if (known !== null) return signAgain(known);
   }
 
   const activationId = crypto.randomUUID();
-  const issuedAt = new Date().toISOString();
   // Sign before taking a place. If signing fails, no place is used and the app gets no receipt.
   const receipt = await createSignedReceipt(env.KAIROS_ACTIVATION_PRIVATE_KEY, activationId, issuedAt);
   const placed = await takePlace(env.DB, {
@@ -125,7 +126,7 @@ export async function handleActivate(request: Request, env: ActivationEnv, calle
 
   // The same request at the same moment took the place first: answer with that device.
   if (body.requestId !== null) {
-    const known = await deviceForRequest(env.DB, code.id, body.requestId);
+    const known = await deviceForRequest(env.DB, code.id, body.requestId, issuedAt);
     if (known !== null) return signAgain(known);
   }
   const refusal = await whyNoPlace(env.DB, code.id, issuedAt);

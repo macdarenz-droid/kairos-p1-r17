@@ -25,6 +25,14 @@ describe('the invite code rules (D280, src/inviteCode.mjs)', () => {
     expect(formatInviteCode('7Q4MX2PB9HRTK3VD')).toBe('7Q4M-X2PB-9HRT-K3VD');
   });
 
+  it('reads a pasted code with invisible characters, or with full-width letters and digits, the same way', () => {
+    // Zero-width space, soft hyphen, word joiner and a byte-order mark (format characters, Unicode Cf).
+    expect(compactInviteCode('\u200b7Q4M\u00ad-X2PB\u2060-9HRT-K3VD\ufeff')).toBe('7Q4MX2PB9HRTK3VD');
+    // Full-width forms, as some keyboards and documents type them.
+    expect(compactInviteCode('\uff17\uff31\uff14\uff2d\uff0d\uff38\uff12\uff30\uff22\u3000\uff19\uff28\uff32\uff34-\uff2b\uff13\uff36\uff24')).toBe('7Q4MX2PB9HRTK3VD');
+    expect(compactInviteCode('\uff4f\uff49\uff4c\uff11-0000-1111-0000')).toBe('0111000011110000');
+  });
+
   it('has no compact form for text that is not a new-style code', () => {
     for (const typed of ['', 'KAIROS-ANA-2026', '7Q4M-X2PB-9HRT-K3V', '7Q4M-X2PB-9HRT-K3VDX', '7Q4M-X2PB-9HRT-K3VU', '7Q4M_X2PB_9HRT_K3VD', '7Q4M-X2PB-9HRT-K3VÉ']) {
       expect(compactInviteCode(typed), typed).toBeNull();

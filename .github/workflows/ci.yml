@@ -315,14 +315,24 @@ jobs:
         run: |
           url=$(grep -oE 'https://kairos-activation\.[a-z0-9-]+\.workers\.dev' "$RUNNER_TEMP/activation-deploy.log" | head -n 1 || true)
           if [ -z "$url" ]; then echo "::error::The deploy log names no kairos-activation workers.dev address."; exit 1; fi
-          curl -sS --retry 5 --retry-delay 5 --retry-all-errors -o "$RUNNER_TEMP/activation-health.json" "$url/health" || true
-          cat "$RUNNER_TEMP/activation-health.json" 2>/dev/null || true
-          echo
-          if ! grep -q '"signingKey":"ready"' "$RUNNER_TEMP/activation-health.json" 2>/dev/null; then
-            echo "::error::The live activation Worker has no usable signing key. Set the Worker secret again: npx wrangler secret put KAIROS_ACTIVATION_PRIVATE_KEY (in app/backend/activation-worker)."
+          health="$RUNNER_TEMP/activation-health.json"
+          # Up to about 60 s, until the new version answers. The old one answers /health with 404 and no "signingKey".
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            rm -f "$health"
+            if curl -sS --max-time 10 -o "$health" "$url/health" && grep -q '"signingKey"' "$health"; then break; fi
+            if [ "$attempt" -lt 12 ]; then sleep 5; fi
+          done
+          if ! grep -q '"signingKey"' "$health" 2>/dev/null; then
+            echo "::error::The new activation Worker did not answer /health at $url within about 60 seconds. Its deploy may not have reached Cloudflare yet: run the workflow again on main. Nothing about the signing key is known yet."
             exit 1
           fi
-          if ! grep -q '"database":"ready"' "$RUNNER_TEMP/activation-health.json" 2>/dev/null; then
+          cat "$health"
+          echo
+          if ! grep -q '"signingKey":"ready"' "$health"; then
+            echo "::error::The live activation Worker has no usable signing key. Put back the SAME key: the private half of the Pages setting VITE_KAIROS_ACTIVATION_PUBLIC_KEY_SPKI (and of kairos-api's KAIROS_ACTIVATION_PUBLIC_KEY_SPKI), with npx wrangler secret put KAIROS_ACTIVATION_PRIVATE_KEY in app/backend/activation-worker. Never make a new key: a new key breaks the receipt on every trader's device."
+            exit 1
+          fi
+          if ! grep -q '"database":"ready"' "$health"; then
             echo "::error::The live activation Worker's devices table is not ready. Read the steps \"Record the hand-made 0001 table\" and \"Apply D1 migrations\" above."
             exit 1
           fi
