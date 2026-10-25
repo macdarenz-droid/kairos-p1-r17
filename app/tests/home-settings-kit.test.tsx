@@ -38,7 +38,8 @@ describe('T-049f Home on the kit', () => {
     const db = await database();
     render(<MemoryRouter><HomeRoute db={db} /></MemoryRouter>);
     expect(screen.getByRole('heading', { level: 1, name: 'Home' })).toBeInTheDocument();
-    expect(screen.getByText('Your markets and your trades at a glance.')).toBeInTheDocument();
+    // T-061b (D267): the header is shown again, with the new intro.
+    expect(screen.getByText("How you're doing today, and the markets now.")).toBeInTheDocument();
     const view = screen.getByRole('group', { name: 'Dashboard view' });
     const options = within(view).getAllByRole('button');
     expect(options.map(option => option.textContent)).toEqual(['Live Market', 'Your Trades']);

@@ -32,7 +32,6 @@
 .kairos-glass-label > strong { font-size: var(--glass-label-size); font-weight: var(--kairos-font-weight-semibold); font-family: var(--kairos-font-mono); letter-spacing: .02em; }
 .kairos-glass-movement { font-size: max(10px, calc(var(--glass-label-size) * .95)); }
 .kairos-route[data-kairos-home-dashboard] { max-width: 72rem; }
-.kairos-route[data-kairos-home-dashboard] > header { position: absolute; width: calc(var(--kairos-space-1) / 4); height: calc(var(--kairos-space-1) / 4); overflow: hidden; clip-path: inset(50%); }
 .kairos-route[data-kairos-home-dashboard] h2 { margin: 0 0 var(--kairos-space-1); font-size: var(--kairos-font-size-md); }
 .kairos-shell__content:has([data-kairos-home-dashboard]) { padding: calc(var(--kairos-space-2) * 1.25) var(--kairos-space-2) 0; }
 /* D225: Home's bubbles end at "+ Log trade" (the field measures to this room), so none sits under the button. */

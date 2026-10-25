@@ -2,6 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { createPrivateKey, sign } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { openKairos } from './qaSession';
 
 const ACTIVATION_URL = 'https://activation.qa.invalid/v1/activate';
 
@@ -2303,5 +2304,73 @@ test('(ah) Search and filters in the address: your BTC losses in March, with wha
   await expect(rows).toHaveCount(2);
   await expect(page.getByRole('group', { name: 'Filters in use' }).getByText('Mistake: Moved my stop')).toBeVisible();
   await expect(page.getByText('2 trades · won 0 · lost 2 · result after fees -6 USDT')).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('(ai) Home opens with "Today": a trade closed today and an open trade with its plan, on a fixed clock', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  // 15 October 2026 at 12:00 in Manila (the phone's zone), whatever day the test runs on.
+  await openKairos(page, { fixedClock: '2026-10-15T04:00:00.000Z' });
+  const today = page.getByRole('region', { name: 'Today' });
+  await expect(today.getByText('Your day shows here once you log a trade.')).toBeVisible();
+  // D267: the header is shown again, above "Today".
+  const header = page.getByRole('heading', { level: 1, name: 'Home' });
+  expect((await header.boundingBox())?.height ?? 0).toBeGreaterThan(16);
+  await expect(page.getByText("How you're doing today, and the markets now.")).toBeVisible();
+
+  // A trade closed today: +150 USDT.
+  await page.goto('/journal');
+  await page.getByLabel(/^Symbol/).fill('BTCUSDT');
+  await page.getByLabel(/^Market/).selectOption('crypto');
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Status/).selectOption('closed');
+  await page.locator('#kairos-trade-opened-at').fill('2026-10-15T09:00');
+  await page.locator('#kairos-trade-closed-at').fill('2026-10-15T10:00');
+  await page.getByLabel('Currency code').fill('USDT');
+  await page.getByRole('button', { name: 'Add entry' }).click();
+  await page.getByLabel('Entry 1 price').fill('60000');
+  await page.getByLabel('Entry 1 quantity').fill('0.1');
+  await page.getByLabel('Entry 1 date and time').fill('2026-10-15T09:00');
+  await page.getByRole('button', { name: 'Add exit' }).click();
+  await page.getByLabel('Exit 2 price').fill('61500');
+  await page.getByLabel('Exit 2 quantity').fill('0.1');
+  await page.getByLabel('Exit 2 date and time').fill('2026-10-15T10:00');
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+
+  // An open trade from yesterday, with its stop and target.
+  await page.goto('/journal');
+  await page.getByLabel(/^Symbol/).fill('ETHUSDT');
+  await page.getByLabel(/^Market/).selectOption('crypto');
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Status/).selectOption('open');
+  await page.locator('#kairos-trade-opened-at').fill('2026-10-14T09:00');
+  await page.getByLabel('Currency code').fill('USDT');
+  await page.getByRole('button', { name: 'Add entry' }).click();
+  await page.getByLabel('Entry 1 price').fill('2500');
+  await page.getByLabel('Entry 1 quantity').fill('1');
+  await page.getByLabel('Entry 1 date and time').fill('2026-10-14T09:00');
+  await page.getByText('Trade plan · Optional').click();
+  await page.getByLabel('Planned stop').fill('2400');
+  await page.getByLabel('Planned target').fill('2800');
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+
+  await page.goto('/');
+  await expect(today.getByRole('heading', { level: 3, name: 'Open trades' })).toBeVisible();
+  await expect(today.locator('p').filter({ hasText: /^Today:/ })).toHaveText(/^Today: Profit\s*\+150 USDT · 1 trade$/);
+  await expect(today.locator('p').filter({ hasText: /^This month:/ })).toHaveText(/^This month: Profit\s*\+150 USDT · 1 trade$/);
+  await expect(today.getByText('15 October, today: won')).toHaveCount(1);
+  await expect(today.locator('[data-day-key="2026-10-15"]')).toHaveAttribute('data-day-result', 'profit');
+  await expect(today.getByText('Your coach: You reviewed 0 of your 1 closed trade this month.')).toBeVisible();
+  const axe = await new AxeBuilder({ page }).include('.kairos-today').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(axe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+
+  // The open trade is one link to its own page.
+  await today.getByRole('link', { name: 'ETHUSDT · Long · in at 2500 · stop 2400 · target 2800' }).click();
+  await expect(page).toHaveURL(/\/journal\/trades\//);
+  await expect(page.getByRole('heading', { level: 1, name: 'ETHUSDT · Long' })).toBeVisible();
   expect(errors).toEqual([]);
 });

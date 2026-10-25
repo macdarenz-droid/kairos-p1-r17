@@ -36,8 +36,6 @@ function GoalsLines({ result }: { readonly result: GoalsProgressQueryResult }) {
   const lines: { readonly text: string; readonly draw: ReactNode }[] = [];
   if (tradesPerMonth.kind === 'progress') lines.push({ text: `Closed trades: ${tradesPerMonth.current} of ${tradesPerMonth.target}${tradesPerMonth.reached ? ' · target reached' : ''}`, draw: <ProgressRing fill={tradesPerMonth.fill} tone={tradesPerMonth.reached ? 'reached' : 'progress'} /> });
   if (maxTradesPerDay.kind === 'limit') lines.push({ text: `Trades opened today: ${maxTradesPerDay.today} of ${maxTradesPerDay.limit} allowed${maxTradesPerDay.exceeded ? ' · over your limit' : ''}`, draw: <ProgressBar fill={maxTradesPerDay.fill} tone={maxTradesPerDay.exceeded ? 'over' : 'inside'} /> });
-  if (monthlyResult.kind === 'progress') lines.push({ text: `Result this month: ${monthlyResult.current} of ${monthlyResult.target} ${monthlyResult.currency}${monthlyResult.reached ? ' · target reached' : ''}`, draw: <ProgressRing fill={monthlyResult.fill} tone={monthlyResult.reached ? 'reached' : 'progress'} /> });
-  if (monthlyResult.kind === 'unavailable') lines.push({ text: 'Result this month: not available yet', draw: <ProgressRing fill={0} tone="unknown" /> });
   for (const [loss, period] of [[dailyLoss, 'today'], [weeklyLoss, 'this week']] as const) {
     const text = describeLossShort(loss, period);
     if (text !== null && loss.kind !== 'unset') lines.push({ text, draw: loss.kind === 'unknown' ? <ProgressBar fill={0} tone="unknown" /> : <ProgressBar fill={loss.fill} tone={loss.state === 'over' ? 'over' : 'inside'} /> });
@@ -46,7 +44,8 @@ function GoalsLines({ result }: { readonly result: GoalsProgressQueryResult }) {
   if (reviewed !== null && reviewEveryTrade.kind === 'progress') lines.push({ text: reviewed, draw: <ProgressRing fill={reviewEveryTrade.fill} tone={reviewEveryTrade.reached ? 'reached' : 'progress'} /> });
   const ticked = describeTickShort(tickEveryStep);
   if (ticked !== null && tickEveryStep.kind === 'progress') lines.push({ text: ticked, draw: <ProgressRing fill={tickEveryStep.fill} tone={tickEveryStep.reached ? 'reached' : 'progress'} /> });
-  if (lines.length === 0) return <p>No goals set yet.</p>;
+  // D267: Home's month result is on "Today"; the result goal (D116's own rule) stays on the Goals page.
+  if (lines.length === 0) return <p>{monthlyResult.kind === 'unset' ? 'No goals set yet.' : 'Your result goal is on the Goals page.'}</p>;
   const homeWords = describeTotalsInHomeCurrency(result.inHomeCurrency);
   return <>{lines.map(line => <div className="kairos-home-discipline__goal" key={line.text}>{line.draw}<p>{line.text}</p></div>)}{homeWords ? <p>{homeWords.text} <CardLink to="/currency">{homeWords.link}</CardLink></p> : null}</>;
 }

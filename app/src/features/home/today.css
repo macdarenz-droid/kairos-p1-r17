@@ -1,0 +1,31 @@
+/* U16 (D267): Home's "Today" card. The day colours are the results calendar's (results.css); tokens only. */
+.kairos-today { margin-block: var(--kairos-space-4); min-width: 0; }
+.kairos-card.kairos-today h2, .kairos-card.kairos-today h3, .kairos-card.kairos-today p { margin: 0; }
+.kairos-today h2:focus { outline: none; }
+.kairos-today h2:focus-visible { outline: 2px solid var(--kairos-state-focus); outline-offset: 2px; }
+.kairos-today h3 { font-size: var(--kairos-font-size-sm); font-weight: var(--kairos-font-weight-semibold); color: var(--kairos-text-primary); }
+.kairos-today p { color: var(--kairos-text-secondary); overflow-wrap: anywhere; }
+.kairos-today__results { display: grid; gap: var(--kairos-space-1); }
+.kairos-card.kairos-today .kairos-today__line { color: var(--kairos-text-primary); font-variant-numeric: tabular-nums; }
+.kairos-today__label { color: var(--kairos-text-secondary); }
+.kairos-today .kairos-result__amount { font-family: var(--kairos-font-mono); }
+.kairos-card.kairos-today .kairos-today__fix { font-size: var(--kairos-font-size-sm); }
+.kairos-today .kairos-pnl-streak { margin: 0; padding: var(--kairos-space-2) var(--kairos-space-3); border-inline-start: 3px solid var(--kairos-border-strong); }
+.kairos-today .kairos-pnl-streak--profit { border-inline-start-color: var(--kairos-trade-profit); }
+.kairos-today .kairos-pnl-streak--loss { border-inline-start-color: var(--kairos-trade-loss); }
+.kairos-today__calendar { display: grid; gap: var(--kairos-space-2); }
+.kairos-today-calendar { width: 100%; max-width: 22rem; table-layout: fixed; border-collapse: separate; border-spacing: 3px; }
+.kairos-today-calendar caption { text-align: start; padding-block-end: var(--kairos-space-1); color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-sm); }
+.kairos-today-calendar th { color: var(--kairos-text-muted); font-size: var(--kairos-font-size-xs); font-weight: var(--kairos-font-weight-medium); }
+.kairos-today-calendar td { position: relative; height: 2.25rem; padding: 0; border: 1px solid transparent; border-radius: var(--kairos-radius-sm); text-align: center; vertical-align: middle; font-variant-numeric: tabular-nums; }
+.kairos-today-calendar__number { display: block; color: var(--kairos-text-muted); font-size: var(--kairos-font-size-xs); line-height: 1.2; }
+.kairos-today-calendar td[data-day-result]:not([data-day-result='no-trades']) .kairos-today-calendar__number { color: var(--kairos-text-primary); }
+.kairos-today-calendar td[data-day-today] .kairos-today-calendar__number { font-weight: var(--kairos-font-weight-bold); color: var(--kairos-text-primary); }
+.kairos-today-calendar__icon { display: block; margin-inline: auto; width: .75rem; height: .75rem; }
+.kairos-today-calendar td[data-day-result='profit'] .kairos-today-calendar__icon { color: var(--kairos-trade-profit); }
+.kairos-today-calendar td[data-day-result='loss'] .kairos-today-calendar__icon { color: var(--kairos-trade-loss); }
+.kairos-today-calendar td:is([data-day-result='breakeven'], [data-day-result='unavailable']) .kairos-today-calendar__icon { color: var(--kairos-trade-flat); }
+.kairos-today__open { display: grid; gap: var(--kairos-space-2); }
+.kairos-today__trades { display: grid; gap: var(--kairos-space-1); margin: 0; padding: 0; list-style: none; }
+.kairos-today__trades a { display: inline-flex; align-items: center; min-height: var(--kairos-control-sm); font-family: var(--kairos-font-mono); font-size: var(--kairos-font-size-sm); overflow-wrap: anywhere; }
+.kairos-today__coach { display: grid; gap: var(--kairos-space-1); }

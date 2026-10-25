@@ -208,9 +208,11 @@ describe('T-045h Goals, Home, Patterns and practice money', () => {
   it('adds the note to Home\'s goal lines', async () => {
     const db = await database();
     await twoTradesInEuro(db);
-    await goal(db, 'EUR');
+    // T-061b (D267): Home's goal lines no longer show the month's result ("Today" does); the note is checked on a loss limit in EUR.
+    await writeGoalsPreference(createKairosRepositories(db).metadata, { monthlyResultTargetAmount: '100', monthlyResultTargetCurrency: 'EUR', lossLimitPerWeek: '200', lossLimitCurrency: 'EUR' }, NOW);
     render(<HomeDisciplineCard db={db} now={now} />);
-    expect(await screen.findByText('Result this month: 80.04 of 100 EUR')).toBeInTheDocument();
+    expect(await screen.findByText('Lost this week: 0 of 200 EUR')).toBeInTheDocument();
+    expect(screen.queryByText(/^Result this month/)).toBeNull();
     expect(screen.getByText(CONVERTED_NOTE, { exact: false })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'See your rates' })).toHaveAttribute('href', '/currency');
   });

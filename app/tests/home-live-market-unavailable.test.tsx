@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { deriveHomeLiveMarketLoadState, HomeDashboardGlassBubbleMap, HOME_LIVE_MARKET_START_TIMEOUT_MS } from '../src/app/HomeDashboardGlassBubbleMap';
@@ -34,6 +34,8 @@ function marketFetch(): typeof fetch {
   }) as unknown as typeof fetch;
 }
 const renderHome = () => render(<MemoryRouter><HomeRoute /></MemoryRouter>);
+/** T-061b: Home's "Today" card has its own loading line and alert (here it has no journal to read), so Home's checks look inside Live Market. */
+const market = () => within(screen.getByRole('region', { name: 'Crypto prices now' }));
 
 beforeEach(() => {
   resetBinanceSpotExchangeInfoCache();
@@ -52,33 +54,33 @@ describe('T-006 Home live market says when it cannot load', () => {
     const failing = vi.fn(async () => { throw new Error('offline'); });
     globalThis.fetch = failing as unknown as typeof fetch;
     const { container } = renderHome();
-    const alert = await screen.findByRole('alert');
+    const alert = await market().findByRole('alert');
     expect(alert).toHaveTextContent('Unavailable · Live prices');
     const calls = failing.mock.calls.length;
 
     const working = marketFetch();
     globalThis.fetch = working;
-    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    fireEvent.click(market().getByRole('button', { name: 'Try again' }));
     await waitFor(() => expect(working).toHaveBeenCalled());
     expect(failing.mock.calls.length).toBe(calls);
     await waitFor(() => expect(container.querySelectorAll('.kairos-glass-bubble').length).toBeGreaterThan(0));
-    expect(screen.queryByRole('alert')).toBeNull();
+    expect(market().queryByRole('alert')).toBeNull();
   });
 
   it('shows the alert at once when the device is offline', async () => {
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
     globalThis.fetch = vi.fn(() => new Promise(() => undefined)) as unknown as typeof fetch;
     renderHome();
-    expect(screen.getByRole('alert')).toHaveTextContent('Unavailable · Live prices');
+    expect(market().getByRole('alert')).toHaveTextContent('Unavailable · Live prices');
   });
 
   it('shows "Loading live prices…" while starting, then the alert after 10 seconds without data', async () => {
     vi.useFakeTimers();
     globalThis.fetch = vi.fn(() => new Promise(() => undefined)) as unknown as typeof fetch;
     renderHome();
-    expect(screen.getByRole('status')).toHaveTextContent('Loading live prices…');
+    expect(market().getByRole('status')).toHaveTextContent('Loading live prices…');
     await act(async () => { vi.advanceTimersByTime(HOME_LIVE_MARKET_START_TIMEOUT_MS); });
-    expect(screen.getByRole('alert')).toHaveTextContent('Unavailable · Live prices');
+    expect(market().getByRole('alert')).toHaveTextContent('Unavailable · Live prices');
   });
 
   const failedWith = (why: MarketDataUnavailable['why']) => {
@@ -125,7 +127,7 @@ describe('T-006 Home live market says when it cannot load', () => {
     globalThis.fetch = fetchSpy as unknown as typeof fetch;
     const metadata = serverRoute(async () => ({ ok: false, reason: 'unavailable', why: 'region', retryAfterSeconds: null }));
     renderHome();
-    expect(await screen.findByRole('alert')).toHaveTextContent("Unavailable · Live prices: Binance isn't available in your region");
+    expect(await market().findByRole('alert')).toHaveTextContent("Unavailable · Live prices: Binance isn't available in your region");
     expect(metadata).toHaveBeenCalled();
     expect(fetchSpy).not.toHaveBeenCalled();
   });
@@ -135,7 +137,7 @@ describe('T-006 Home live market says when it cannot load', () => {
     globalThis.fetch = vi.fn(async () => { throw new Error('no direct request expected'); }) as unknown as typeof fetch;
     const metadata = serverRoute(async () => { throw new Error('network'); });
     renderHome();
-    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent("Unavailable · Live prices: you're offline."));
+    await waitFor(() => expect(market().getByRole('alert')).toHaveTextContent("Unavailable · Live prices: you're offline."));
     await waitFor(() => expect(metadata).toHaveBeenCalled());
     const before = metadata.mock.calls.length;
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
