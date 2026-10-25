@@ -143,7 +143,8 @@ function usePricesNow(asks: readonly PriceAsk[], read: PriceNow | undefined, lis
   const [prices, setPrices] = useState<ReadonlyMap<string, MarketPrice>>(() => new Map());
   const asked = useRef<ReadonlyMap<string, PriceAsk>>(new Map());
   asked.current = new Map(asks.map(ask => [priceKey(ask), ask]));
-  const keysText = [...asked.current.keys()].join('|');
+  // One text for the markets shown (symbols are free text, so no separator character is safe).
+  const keysText = JSON.stringify([...asked.current.keys()]);
   /** The markets read so far in this mount of the reader. */
   const shown = useRef<ReadonlySet<string>>(new Set());
   /** Set by the reading effect: read one market ("Try again" does not wait for a busy source), or let one go. */
@@ -199,7 +200,7 @@ function usePricesNow(asks: readonly PriceAsk[], read: PriceNow | undefined, lis
   useEffect(() => {
     const current = reader.current;
     if (current === null) return;
-    const now = new Set(keysText === '' ? [] : keysText.split('|'));
+    const now = new Set(JSON.parse(keysText) as string[]);
     for (const key of shown.current) {
       if (now.has(key)) continue;
       current.stop(key);

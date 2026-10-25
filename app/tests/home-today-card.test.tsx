@@ -773,6 +773,16 @@ describe('T-061c review r1', () => {
     expect(priceNow.mock.calls.map(([ask]) => ask.symbol)).toEqual(['BTCUSDT', 'ETHUSDT', 'BTCUSDT', 'ETHUSDT']);
   });
 
+  it('review r2: reads the price of a market whose symbol has any character in it', async () => {
+    const db = await database();
+    await save(db, open('BTC|USDT', '2026-10-24T08:00:00.000Z', { stop: '62000' }));
+    const { value, priceNow } = market(() => price('64000'));
+    cardWithMarket(db, value);
+    const today = await region();
+    await waitFor(() => expect(within(today).getByText(/^Price now 64000 USDT/)).toBeInTheDocument());
+    expect(priceNow.mock.calls.map(([ask]) => ask.symbol)).toEqual(['BTC|USDT']);
+  });
+
   it('asks nothing more of a busy source until the wait it asked for has passed', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] });
     vi.setSystemTime(Date.parse(NOW));
