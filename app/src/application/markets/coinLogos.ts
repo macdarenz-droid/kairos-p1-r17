@@ -176,13 +176,14 @@ export function createCoinLogoKeeper({ ask, budget, openCache, now = () => Date.
     if (store === null) return;
     try {
       const at = now();
-      for (const request of await store.keys()) {
+      // Every kept entry is checked at once, not one after another: the answer waits for this.
+      await Promise.all((await store.keys()).map(async request => {
         const path = new URL(request.url).pathname;
-        if (path === COIN_LOGO_MARKS_ENTRY) continue;
+        if (path === COIN_LOGO_MARKS_ENTRY) return;
         const coin = path.startsWith(COIN_LOGO_ENTRY_PREFIX) ? path.slice(COIN_LOGO_ENTRY_PREFIX.length) : null;
         const response = coin !== null && COIN_SYMBOL.test(coin) ? await store.match(path) : undefined;
         if (response === undefined || !fresh(at, keptAt(response), COIN_LOGO_KEEP_MS)) await store.delete(request);
-      }
+      }));
     } catch { /* Tidying up can wait for the next visit. */ }
   };
 

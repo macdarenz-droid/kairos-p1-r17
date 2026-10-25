@@ -300,6 +300,29 @@ describe('T-061f the logos kept on this device (D272)', () => {
     expect(entries.get(`${COIN_LOGO_ENTRY_PREFIX}BTC`)!.headers).toContainEqual(['x-kairos-kept-at', String(NOW + COIN_LOGO_KEEP_MS + 1)]);
   });
 
+  it('review r2: tidying up checks the kept logos together, not one after another', async () => {
+    const storage = fakeCaches();
+    await visit(answered(ALL)).logos(['BTC', 'ETH', 'SOL', 'DOGE']);
+    // Each read of a kept entry takes a moment; count how many are on their way at once.
+    const open = storage.open.bind(storage);
+    let pending = 0;
+    let most = 0;
+    storage.open = async (name: string) => {
+      const store = await open(name);
+      const match = store.match.bind(store);
+      return Object.assign(store, {
+        async match(request: RequestInfo | URL) {
+          pending += 1;
+          most = Math.max(most, pending);
+          await new Promise(resolve => setTimeout(resolve, 5));
+          try { return await match(request); } finally { pending -= 1; }
+        },
+      });
+    };
+    await visit(answered(ALL), NOW + 1_000).logos(['BTC']);
+    expect(most).toBeGreaterThanOrEqual(3);
+  });
+
   it('review r1: keeps "not set up" on the device for a day, so the next load asks nothing and leaves Home\'s budget free; a good answer clears it', async () => {
     fakeCaches();
     const notSetUp: CoinLogoAsk = vi.fn<CoinLogoAsk>(async () => ({ ok: false, reason: 'unavailable', why: 'not-set-up', retryAfterSeconds: null }));
