@@ -85,7 +85,7 @@ describe('P7.6 activation presentation gate', () => {
     render(<ActivationGate controller={gate} appVersion="0.1" buildId="test"><h2>Journal core</h2></ActivationGate>);
 
     expect(screen.queryByRole('heading', { name: 'Journal core' })).not.toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent('Checking activation');
+    expect(screen.getByRole('status')).toHaveTextContent('Checking this device…');
 
     resolveBootstrap(snapshot('active-offline'));
     expect(await screen.findByRole('heading', { name: 'Journal core' })).toBeInTheDocument();
@@ -109,15 +109,16 @@ describe('P7.6 activation presentation gate', () => {
     expect(await screen.findByRole('heading', { name: 'Journal core' })).toBeInTheDocument();
   });
 
-  // T-062e (D281): words for each reason, instead of one sentence for all.
+  // T-062e (D281): words for each reason, instead of one sentence for all. A refusal or a server problem is announced as
+  // an alert; no internet is a calm status (nothing is wrong with the code).
   it.each([
-    [{ ok: false, reason: 'invalid-code' }, "Kairos doesn't know this code. Check it and try again."],
-    [{ ok: false, reason: 'expired-code' }, 'This code has expired. Ask the person who gave it to you for a new one.'],
-    [{ ok: false, reason: 'already-used', deviceLimit: 3 }, 'This code is already used on 3 devices.'],
-    [{ ok: false, reason: 'rate-limited' }, 'Too many tries. Wait a minute, then try again.'],
-    [{ ok: false, reason: 'network-unavailable' }, 'Kairos needs the internet to check your code the first time.'],
-    [{ ok: false, reason: 'service-error' }, "Kairos couldn't check your code right now. Try again in a few minutes."],
-  ] as const)('keeps the gate closed and says what went wrong in plain words: %o', async (result, words) => {
+    [{ ok: false, reason: 'invalid-code' }, "Kairos doesn't know this code. Check it and try again.", 'alert'],
+    [{ ok: false, reason: 'expired-code' }, 'This code has expired. Ask the person who gave it to you for a new one.', 'alert'],
+    [{ ok: false, reason: 'already-used', deviceLimit: 3 }, 'This code is already used on 3 devices.', 'alert'],
+    [{ ok: false, reason: 'rate-limited' }, 'Too many tries. Wait a minute, then try again.', 'alert'],
+    [{ ok: false, reason: 'network-unavailable' }, 'Kairos needs the internet to check your code the first time.', 'status'],
+    [{ ok: false, reason: 'service-error' }, "Kairos couldn't check your code right now. Try again in a few minutes.", 'alert'],
+  ] as const)('keeps the gate closed and says what went wrong in plain words: %o', async (result, words, role) => {
     const gate = controller({ activate: vi.fn(async () => refused(result)) });
 
     render(<ActivationGate controller={gate} appVersion="0.1" buildId="test"><h2>Journal core</h2></ActivationGate>);
@@ -125,6 +126,7 @@ describe('P7.6 activation presentation gate', () => {
     await submitCode();
 
     expect(await screen.findByText(words)).toHaveClass('kairos-activation__feedback');
+    expect(screen.getByRole(role)).toHaveTextContent(words);
     expect(screen.getByLabelText('Invite code')).toHaveAccessibleDescription(expect.stringContaining(words));
     expect(screen.queryByText('This invite could not be activated.')).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Journal core' })).not.toBeInTheDocument();
@@ -210,6 +212,20 @@ describe('T-062e the invite screen: logo, plain words, "Lost access?" and a copy
 
     expect(await screen.findByRole('alert')).toHaveTextContent('This code is already used on all its devices.');
     expect(screen.getByText('Type your invite code again. One code works on up to 3 devices.')).toBeVisible();
+  });
+
+  it('gives a code for one device its own words: no "up to 1 device", no "All 1 in use?"', async () => {
+    const gate = controller({ activate: vi.fn(async () => refused({ ok: false, reason: 'already-used', deviceLimit: 1 })) });
+    render(<ActivationGate controller={gate} appVersion="0.1" buildId="test"><h2>Journal core</h2></ActivationGate>);
+    await screen.findByRole('heading', { name: 'Welcome to Kairos' });
+    await submitCode();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('This code is already used on 1 device.');
+    expect(screen.getByRole('button', { name: LOST_ACCESS })).toHaveAttribute('aria-expanded', 'true');
+    const steps = within(screen.getByRole('list')).getAllByRole('listitem').map((step) => step.textContent);
+    expect(steps[0]).toBe('Type your invite code again. This code works on one device only.');
+    expect(steps[2]).toBe('Already in use on another device? Ask the person who gave you the code to free it.');
+    expect(steps.join(' ')).not.toMatch(/up to 1 device|All 1 in use/);
   });
 
   it('keeps focus on the button and says "Checking code…" while the code is checked', async () => {

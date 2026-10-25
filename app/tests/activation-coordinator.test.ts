@@ -159,7 +159,7 @@ describe('P7.5 activation coordinator', () => {
     expect(snapshot).toEqual({
       status: 'error',
       receipt: null,
-      message: 'Activation could not be saved on this device.',
+      message: "Your code worked, but Kairos couldn't save that on this device. Try again.",
     });
     db.close();
   });
@@ -254,6 +254,42 @@ describe('T-062e one request, one place (D275)', () => {
     await coordinator.activate({ ...request(), inviteCode: 'FIRST-CODE' });
     await coordinator.activate({ ...request(), inviteCode: 'SECOND-CODE' });
     await coordinator.activate({ ...request(), inviteCode: 'SECOND-CODE' });
+
+    const [first, second, third] = adapter.requests.map((sent) => sent.requestId);
+    expect(first).toMatch(REQUEST_ID);
+    expect(second).toMatch(REQUEST_ID);
+    expect(second).not.toBe(first);
+    expect(third).toBe(second);
+    db.close();
+  });
+
+  it('keeps the request id when the code is retyped as the Worker reads it the same (O for 0, a non-breaking hyphen)', async () => {
+    const db = createKairosDatabase(testDatabaseName('o-for-0'));
+    await openKairosDatabase(db);
+    const adapter = recordingAdapter([{ ok: false, reason: 'network-unavailable' }, { ok: false, reason: 'network-unavailable' }, { ok: false, reason: 'network-unavailable' }]);
+    const coordinator = new ActivationCoordinator({ repository: repositoryFor(db), verifier: approvingVerifier(), adapter });
+
+    await coordinator.activate({ ...request(), inviteCode: '7Q40-X2PB-9HRT-K3VD' });
+    await coordinator.activate({ ...request(), inviteCode: '7q4o-x2pb-9hrt-k3vd' });
+    await coordinator.activate({ ...request(), inviteCode: '7Q40\u2011X2PB\u20119HRT\u2011K3VD' });
+
+    const [first, second, third] = adapter.requests.map((sent) => sent.requestId);
+    expect(first).toMatch(REQUEST_ID);
+    expect(second).toBe(first);
+    expect(third).toBe(first);
+    db.close();
+  });
+
+  it('makes different request ids for hand-made codes the Worker reads as two codes (AB-CD and ABCD)', async () => {
+    const db = createKairosDatabase(testDatabaseName('hand-made'));
+    await openKairosDatabase(db);
+    const adapter = recordingAdapter([{ ok: false, reason: 'invalid-code' }, { ok: false, reason: 'invalid-code' }, { ok: false, reason: 'invalid-code' }]);
+    const coordinator = new ActivationCoordinator({ repository: repositoryFor(db), verifier: approvingVerifier(), adapter });
+
+    await coordinator.activate({ ...request(), inviteCode: 'QA-INVITE-001' });
+    await coordinator.activate({ ...request(), inviteCode: 'QAINVITE001' });
+    // The same hand-made code in lower case is the same code (its exact form is upper case).
+    await coordinator.activate({ ...request(), inviteCode: 'qainvite001' });
 
     const [first, second, third] = adapter.requests.map((sent) => sent.requestId);
     expect(first).toMatch(REQUEST_ID);

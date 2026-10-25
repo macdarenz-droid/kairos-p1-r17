@@ -178,7 +178,7 @@ export function ActivationGate({
 
         {snapshot === null ? (
           <p className="kairos-activation__status" role="status" aria-live="polite">
-            Checking activation…
+            Checking this device…
           </p>
         ) : (
           <>

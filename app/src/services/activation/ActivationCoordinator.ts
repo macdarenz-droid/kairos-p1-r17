@@ -2,6 +2,7 @@ import type { ActivationAdapter } from './ActivationAdapter';
 import type { ActivationReceiptRepository } from './ActivationReceiptRepository';
 import type { ActivationReceiptVerifier } from './ActivationReceiptVerifier';
 import { loadVerifiedPersistedActivation } from './activationPersistence';
+import { inviteCodeKey } from './inviteCode';
 import {
   initialActivationSnapshot,
   reduceActivationState,
@@ -27,18 +28,10 @@ function randomRequestId(): string {
   return Array.from(globalThis.crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
-/**
- * Which tries count as "the same code" for keeping a request id: case, spaces and dashes are ignored, so a retyped code
- * keeps its id. Only the Worker decides which code was typed (D280); it looks a request id up within that code only.
- */
-function sameCodeKey(inviteCode: string): string {
-  return inviteCode.replace(/[\s-]+/g, '').toUpperCase();
-}
-
 // Notes for this device's own checks; refusals from the server carry a `reason` instead (D281).
 const REACTIVATE_MESSAGE = 'Type your invite code again to open Kairos on this device.';
 const VERIFY_UNAVAILABLE_MESSAGE = "Kairos couldn't check this device's invite right now. Close Kairos and open it again.";
-const SAVE_FAILED_MESSAGE = 'Activation could not be saved on this device.';
+const SAVE_FAILED_MESSAGE = "Your code worked, but Kairos couldn't save that on this device. Try again.";
 
 /**
  * Application-layer owner for activation startup and first-activation sequencing.
@@ -48,8 +41,9 @@ export class ActivationCoordinator {
   private snapshot: ActivationSnapshot = initialActivationSnapshot;
   private validationInFlight = false;
   /**
-   * D275: the request id for the code being tried. Kept through retries of the same code, so an answer lost on a slow
-   * network never costs a second place; replaced for another code, and dropped once the code has worked.
+   * D275: the request id for the code being tried. Kept through retries of the same code (the same code to the Worker,
+   * inviteCode.ts), so an answer lost on a slow network never costs a second place; replaced for another code, and
+   * dropped once the code has worked.
    */
   private pendingRequest: { readonly codeKey: string; readonly requestId: string } | null = null;
 
@@ -160,7 +154,7 @@ export class ActivationCoordinator {
 
   /** The request as posted: the code's request id (D275) and this device's name. */
   private withDevice(request: ActivationRequest): ActivationRequest {
-    const codeKey = sameCodeKey(request.inviteCode);
+    const codeKey = inviteCodeKey(request.inviteCode);
     if (this.pendingRequest?.codeKey !== codeKey) {
       this.pendingRequest = { codeKey, requestId: (this.dependencies.newRequestId ?? randomRequestId)() };
     }

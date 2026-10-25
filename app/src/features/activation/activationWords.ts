@@ -28,14 +28,20 @@ export function describeActivationProblem(snapshot: Pick<ActivationSnapshot, 're
 
 /**
  * "Lost access? Here's what to do" (D281). The number is the code's own limit when the server named it, else the usual 3.
- * More › Profile › Your devices arrives with T-062f.
+ * A code for one device gets its own words: its one place can't be freed from that same device (a device never removes
+ * itself, D277), so only the person who gave the code can free it. More › Profile › Your devices arrives with T-062f.
  */
 export function lostAccessSteps(deviceLimit: number | undefined): readonly string[] {
   const limit = deviceLimit ?? USUAL_DEVICE_LIMIT;
+  const oneDevice = limit === 1;
   return [
-    `Type your invite code again. One code works on up to ${devices(limit)}.`,
+    oneDevice
+      ? 'Type your invite code again. This code works on one device only.'
+      : `Type your invite code again. One code works on up to ${devices(limit)}.`,
     'Kairos opens with an empty journal. To bring yours back: More › Backup and restore › Replace everything with a backup, then choose your latest backup file.',
-    `All ${limit} in use? On a device you still use: More › Profile › Your devices › Remove. No device left? Ask the person who gave you the code to free one.`,
+    oneDevice
+      ? 'Already in use on another device? Ask the person who gave you the code to free it.'
+      : `All ${limit} in use? On a device you still use: More › Profile › Your devices › Remove. No device left? Ask the person who gave you the code to free one.`,
     "Your journal lives only on your devices and in your backup files. The Kairos server never has a copy. Add Kairos to your Home Screen and keep a backup, so this doesn't happen again.",
   ];
 }
