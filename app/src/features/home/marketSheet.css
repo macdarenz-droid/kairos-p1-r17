@@ -1,0 +1,15 @@
+/* T-061e (D271): a market's details from Home's bubble map, inside the design system's Sheet; tokens only. */
+.kairos-market-sheet { display: grid; gap: var(--kairos-space-3); min-width: 0; }
+.kairos-market-sheet p { margin: 0; }
+.kairos-market-sheet__price { color: var(--kairos-text-primary); font-family: var(--kairos-font-mono); font-size: var(--kairos-font-size-lg); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.kairos-market-sheet__ago, .kairos-market-sheet__note, .kairos-market-sheet__credit { color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-sm); }
+.kairos-market-sheet__moves { display: flex; flex-wrap: wrap; gap: var(--kairos-space-1) var(--kairos-space-4); margin: 0; padding: 0; list-style: none; font-variant-numeric: tabular-nums; }
+.kairos-market-sheet__period { color: var(--kairos-text-secondary); }
+.kairos-market-sheet__value { color: var(--kairos-text-primary); font-weight: var(--kairos-font-weight-semibold); }
+.kairos-market-sheet__moves li[data-direction='up'] .kairos-market-sheet__value { color: var(--kairos-trade-profit); }
+.kairos-market-sheet__moves li[data-direction='down'] .kairos-market-sheet__value { color: var(--kairos-trade-loss); }
+.kairos-market-sheet__moves li[data-direction='unknown'] .kairos-market-sheet__value { color: var(--kairos-text-muted); font-weight: inherit; }
+.kairos-market-sheet__line { display: block; width: 100%; height: 6rem; color: var(--kairos-trade-flat); }
+.kairos-market-sheet__line[data-direction='up'] { color: var(--kairos-trade-profit); }
+.kairos-market-sheet__line[data-direction='down'] { color: var(--kairos-trade-loss); }
+.kairos-market-sheet__open { justify-self: start; text-decoration: none; }

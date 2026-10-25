@@ -793,6 +793,7 @@ test('(q) Market data through the Kairos server: sources on the pictures, the re
   const minute = 60_000;
   const intervalMs: Record<string, number> = { '1m': minute, '3m': 3 * minute, '5m': 5 * minute, '15m': 15 * minute, '30m': 30 * minute, '1h': 60 * minute, '2h': 120 * minute, '4h': 240 * minute, '6h': 360 * minute, '8h': 480 * minute, '12h': 720 * minute, '1d': 1_440 * minute };
   const candleCalls: string[] = [];
+  const movesAsked: string[] = [];
   // ETH's source says it is busy until the test lets it answer: the Journal's row may ask first (U15), and its failed
   // read is never kept, so the trade's page asks again and must hear the same reason.
   let ethBusy = true;
@@ -815,6 +816,16 @@ test('(q) Market data through the Kairos server: sources on the pictures, the re
         volume: '1000', quoteVolume: index === 0 ? '61000000' : '2450000', openTime: new Date(now - 86_400_000).toISOString(), closeTime: new Date(now).toISOString(),
       }));
       return route.fulfill({ headers: cors, contentType: 'application/json', body: serverAnswer({ source: 'binance-spot', fetchedAt, tickers }) });
+    }
+    // T-061e (D271): the 1-hour and 7-day moves, one request for every market on the map.
+    if (url.pathname === '/market/moves') {
+      const window = url.searchParams.get('window') ?? '';
+      movesAsked.push(`${window} ${url.searchParams.get('symbols')}`);
+      const openTime = new Date(Date.now() - (window === '1h' ? 3_600_000 : 604_800_000)).toISOString();
+      const moves = (url.searchParams.get('symbols') ?? '').split(',').map(symbol => ({
+        symbol, openPrice: symbol === 'BTCUSDT' ? (window === '1h' ? '60500' : '64000') : '2400', lastPrice: symbol === 'BTCUSDT' ? '61000' : '2450', openTime, closeTime: fetchedAt,
+      }));
+      return route.fulfill({ headers: cors, contentType: 'application/json', body: serverAnswer({ source: 'binance-spot', window, fetchedAt, moves }) });
     }
     if (url.pathname !== '/market/candles') return route.abort();
     const market = url.searchParams.get('market'), symbol = url.searchParams.get('symbol') ?? '', interval = url.searchParams.get('interval') ?? '';
@@ -903,10 +914,42 @@ test('(q) Market data through the Kairos server: sources on the pictures, the re
   await closePicture();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 
+  // Still bubbles under reduced motion, so a real tap lands on one (they float otherwise).
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
   await expect(page.locator('.kairos-glass-bubble[data-identity="BTC"]')).toBeVisible({ timeout: 15_000 });
   await expect(page.locator('.kairos-glass-bubble[data-identity="ETH"]')).toBeVisible();
   await expect(page.getByText('Unavailable · Live prices', { exact: false })).toHaveCount(0);
+
+  // T-061e (D271): "24 hours" asks for nothing more; "1 hour" sizes and names the bubbles by that move, in one request.
+  expect(movesAsked).toEqual([]);
+  const periods = page.getByRole('group', { name: 'Size by the move in' });
+  await expect(periods.getByRole('button', { name: '24 hours' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByText(/^Prices updated (just now|\d+ s ago)$/)).toBeVisible();
+  await periods.getByRole('button', { name: '1 hour' }).click();
+  const btc = page.getByRole('button', { name: 'BTC, up 0.8% in 1 hour. Show details' });
+  await expect(btc).toBeVisible();
+  expect(movesAsked).toEqual(['1h BTCUSDT,ETHUSDT']);
+  // A tap on BTC opens its sheet: the price, the three moves, the line of the last hour and "Open chart".
+  await btc.tap();
+  const sheet = page.getByRole('dialog', { name: 'BTC' });
+  await expect(sheet.getByText('Price 61000 USDT')).toBeVisible();
+  await expect(sheet.locator('li').filter({ hasText: '1 hour' })).toContainText('▲ 0.8%');
+  await expect(sheet.locator('li').filter({ hasText: '24 hours' })).toContainText('▲ 1.7%');
+  await expect(sheet.locator('li').filter({ hasText: '7 days' })).toContainText('▼ 4.7%');
+  await expect(sheet.getByRole('img', { name: /^Price over the last hour, from \d+ to \d+$/ })).toBeVisible();
+  const sheetAxe = await new AxeBuilder({ page }).include('.kairos-sheet__panel').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(sheetAxe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  // Escape closes it and the focus is back on the bubble that opened it.
+  await page.keyboard.press('Escape');
+  await expect(sheet).toHaveCount(0);
+  await expect(btc).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(sheet).toBeVisible();
+  await sheet.getByRole('link', { name: 'Open chart' }).click();
+  await expect(page).toHaveURL(/\/analysis\?market=binance-spot%3ABTCUSDT$/);
+  await expect(page.getByRole('group', { name: /^BTCUSDT .*candlestick chart$/ })).toBeVisible({ timeout: 15_000 });
   expect(errors).toEqual([]);
 });
 

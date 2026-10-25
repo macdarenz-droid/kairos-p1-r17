@@ -32,8 +32,8 @@ says otherwise), `x-content-type-options: nosniff`, `vary: Origin`.
 | `source-refused` | 451 | null | the source refused the server's place (451 or 403) and no backup answered |
 
 Routes today: `GET /health` (says whether the device key, cache and limits are set up, and whether it recognised the
-device; never a value); the news routes (`/news/calendar/<source>`, `/news/headlines/<source>`, below); `GET /market/symbols`
-and `GET /market/tickers?symbols=…` (market data, below).
+device; never a value); the news routes (`/news/calendar/<source>`, `/news/headlines/<source>`, below); `GET /market/symbols`,
+`GET /market/tickers?symbols=…`, `GET /market/moves?symbols=…&window=…` and `GET /market/candles?…` (market data, below).
 
 ## CORS and `KAIROS_APP_ORIGINS`
 
@@ -156,6 +156,7 @@ decimal text and times as ISO 8601 UTC (`src/market/marketRoutes.ts`, `binance.t
 |---|---|---|---|
 | `/market/symbols` | none (any query is 400) | Binance Spot `GET /api/v3/exchangeInfo?permissions=SPOT&symbolStatus=TRADING&showPermissionSets=false` | 1 h in Workers Cache and memory, 6 h in KV |
 | `/market/tickers` | `symbols`: 1 to 100 Binance Spot symbols, comma-separated, strictly ascending | Binance Spot `GET /api/v3/ticker/24hr?symbols=[…]&type=MINI` | 5 s in Workers Cache and memory, never KV |
+| `/market/moves` | `symbols` as `/market/tickers`; `window`: `1h` or `7d` | Binance Spot `GET /api/v3/ticker?symbols=[…]&windowSize=1h\|7d&type=MINI` (the rolling window: weight 4 a symbol, capped at 200) | `1h` 30 s, `7d` 5 min, in Workers Cache and memory, never KV |
 | `/market/candles` | `market` (`binance-spot` or `binance-usdm`), `symbol`, `interval`, `limit` (1–1000); optional `start`, `end` (epoch ms, open times, inclusive); optional `base` and `quote` together, spelling `symbol` | Binance Spot `GET /api/v3/klines` on `data-api.binance.vision`, USDⓈ-M `GET /fapi/v1/klines` on `fapi.binance.com`; backup OKX `GET /api/v5/market/history-candles` on `www.okx.com` | a settled page 7 days in Workers Cache (and the browser), 1 h in memory; any other page 10 s; never KV |
 
 - `/market/symbols`: `{ source: 'binance-spot', fetchedAt, markets: [{ symbol, base, quote, tickSize, stepSize }], leftOut }`,
@@ -164,6 +165,9 @@ decimal text and times as ISO 8601 UTC (`src/market/marketRoutes.ts`, `binance.t
 - `/market/tickers`: `{ source: 'binance-spot', fetchedAt, tickers: [{ symbol, lastPrice, openPrice, highPrice, lowPrice, volume, quoteVolume, openTime, closeTime }] }`,
   in the requested order, each requested symbol exactly once (anything else is `source-unavailable`). One order for the
   list means one cache key for every device.
+- `/market/moves` (T-061e, D271): `{ source: 'binance-spot', window, fetchedAt, moves: [{ symbol, openPrice, lastPrice, openTime, closeTime }] }`,
+  in the requested order, each requested symbol exactly once, decoded like the tickers. Home's "1 hour" and "7 days"
+  bubbles read it for its 30 markets in one request (the app works out each move, `application/markets/marketMoves.ts`).
 - `/market/candles`: `{ source: { provider, market, symbol }, backup, interval, fetchedAt, candles: [{ openTime, closeTime, open, high, low, close, volume }], next }`;
   `provider` is `binance` or `okx`, `market` is `spot`, `usdm-futures` or `perpetual-swap`, `backup` is `null` when Binance answered. Rows that are not whole, in order,
   inside the window and within `limit` make the answer `source-unavailable`. 1-second candles are spot only.

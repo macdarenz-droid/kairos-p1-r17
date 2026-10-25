@@ -65,6 +65,41 @@ const marketTickersRoute: KairosApiRoute = {
 };
 
 /**
+ * T-061e (D271): the 1-hour and 7-day moves of up to 100 markets, from Binance's rolling-window ticker: 30 seconds for
+ * the 1-hour window (Home reads it every 30 s while chosen), 5 minutes for the 7-day one (read every 5 minutes); never KV.
+ * One version: the 7-day answer carries its own policy (router.ts keeps and labels it with that).
+ */
+export const MARKET_MOVES_CACHE: RouteCachePolicy = Object.freeze({ version: 1, edgeSeconds: 30, memorySeconds: 30, kvSeconds: null });
+export const MARKET_MOVES_WEEK_CACHE: RouteCachePolicy = Object.freeze({ version: 1, edgeSeconds: 300, memorySeconds: 300, kvSeconds: null });
+
+const marketMovesRoute: KairosApiRoute = {
+  id: 'market-moves',
+  path: '/market/moves',
+  access: 'public',
+  rateLimited: true,
+  // The same list as /market/tickers; Binance's rolling window takes 100 symbols a request (weight 4 each, capped at 200).
+  query: { symbols: marketTickersRoute.query.symbols, window: { pattern: /^(?:1h|7d)$/, required: true } },
+  maxQueryLength: 4_096,
+  upstreamHosts: [BINANCE_SPOT_HOST],
+  cache: MARKET_MOVES_CACHE,
+  async handle({ query, upstream, now }) {
+    const list = (query.get('symbols') ?? '').split(',');
+    const windowSize = query.get('window') === '7d' ? '7d' : '1h';
+    // Strictly ascending (so no repeats): one order means one cache key for every device.
+    if (list.length > MAX_TICKER_SYMBOLS || list.some((symbol, index) => index > 0 && !(list[index - 1] < symbol))) return { ok: false, reason: 'bad-request' };
+    const url = `https://${BINANCE_SPOT_HOST}/api/v3/ticker?symbols=${encodeURIComponent(JSON.stringify(list))}&windowSize=${windowSize}&type=MINI`;
+    const result = await upstream(url, { accept: 'application/json', readErrorBody: true });
+    if (!result.ok) return failureAnswer(binanceFailure(result));
+    // The rolling-window MINI rows have the 24-hour rows' shape; only what a move needs is answered.
+    const tickers = decodeBinanceTickers(result.text, list);
+    if (tickers === null) return { ok: false, reason: 'source-unavailable' };
+    const moves = tickers.map(({ symbol, openPrice, lastPrice, openTime, closeTime }) => ({ symbol, openPrice, lastPrice, openTime, closeTime }));
+    const data = { source: 'binance-spot', window: windowSize, fetchedAt: now.toISOString(), moves };
+    return windowSize === '7d' ? { ok: true, data, cache: MARKET_MOVES_WEEK_CACHE } : { ok: true, data };
+  },
+};
+
+/**
  * A candles page that may still move: 10 seconds in Workers Cache and memory, never in KV. Version 2 since U10: a
  * candle's volume may be null (D232), so no page cached in the old shape is read again.
  */
@@ -222,4 +257,4 @@ const marketCoinNamesRoute: KairosApiRoute = {
   },
 };
 
-export const MARKET_ROUTES: readonly KairosApiRoute[] = Object.freeze([marketSymbolsRoute, marketTickersRoute, marketCandlesRoute, marketCoinNamesRoute]);
+export const MARKET_ROUTES: readonly KairosApiRoute[] = Object.freeze([marketSymbolsRoute, marketTickersRoute, marketMovesRoute, marketCandlesRoute, marketCoinNamesRoute]);

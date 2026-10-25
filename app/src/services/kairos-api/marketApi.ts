@@ -1,5 +1,6 @@
 /**
- * U2 (P16.A1): the app's market data from the Kairos server (/market/symbols, /market/tickers, /market/candles).
+ * U2 (P16.A1): the app's market data from the Kairos server (/market/symbols, /market/tickers, /market/candles, and
+ * T-061e's /market/moves).
  * Transport and strict decoding only, over the one server client (kairosApi.ts): the server-backed market ports, the
  * device copy of the market list, and what a server failure means (`why`). The words are onlineWords.ts's.
  */
@@ -11,6 +12,7 @@ import type { LiveMarketUniverseInstrumentMetadataFact } from '../market-data/li
 import { validateLiveMarketSummaryBaselineSuccess } from '../market-data/liveMarketSummaryBaselineAcquisitionSemantics';
 import { validateLiveMarketSummaryFact } from '../market-data/liveMarketSummaryFactSemantics';
 import type { MarketCandle, MarketCandleHistoryPort, MarketCandleHistoryRequest, MarketCandleOrigin } from '../market-data/MarketCandleHistoryPort';
+import type { MarketMove, MarketMovesPort, MarketMovesResult, MarketMovesWindow } from '../market-data/MarketMovesPort';
 import { BINANCE_USDM_VENUE, OANDA_FOREX_VENUE, type LiveMarketSummaryFact, type MarketDataUnavailable, type MarketDataUnavailableWhy } from '../market-data/marketDataTypes';
 import type { KairosApiClient, KairosApiFailure, KairosApiQuery } from './kairosApi';
 
@@ -107,6 +109,24 @@ export function decodeMarketTickers(data: unknown, requested: readonly string[])
     facts.push(Object.freeze(validated.fact));
   }
   return Object.freeze(facts);
+}
+
+/**
+ * T-061e (D271): the /market/moves data for this window as moves in the requested order, with the server's read time;
+ * null for any fault (the batch is unreadable).
+ */
+export function decodeMarketMoves(data: unknown, requested: readonly string[], window: MarketMovesWindow): Readonly<{ fetchedAt: string; moves: readonly MarketMove[] }> | null {
+  if (!isRecord(data) || data.source !== 'binance-spot' || data.window !== window || !isCanonicalIso(data.fetchedAt) || !Array.isArray(data.moves)) return null;
+  const rows = data.moves as unknown[];
+  if (rows.length !== requested.length) return null;
+  const moves: MarketMove[] = [];
+  for (const [index, item] of rows.entries()) {
+    if (!isRecord(item) || item.symbol !== requested[index] || !isCanonicalIso(item.openTime) || !isCanonicalIso(item.closeTime) || Date.parse(item.openTime) > Date.parse(item.closeTime)) return null;
+    const open = nonNegative(item.openPrice), last = nonNegative(item.lastPrice);
+    if (open === null || last === null) return null;
+    moves.push(Object.freeze({ symbol: requested[index]!, open, last }));
+  }
+  return Object.freeze({ fetchedAt: data.fetchedAt, moves: Object.freeze(moves) });
 }
 
 const PROVIDERS = ['binance', 'okx'] as const;
@@ -247,6 +267,8 @@ export interface KairosMarketDataPorts {
   readonly history: MarketCandleHistoryPort;
   readonly metadata: LiveMarketUniverseInstrumentMetadataAcquisitionPort;
   readonly baseline: LiveMarketSummaryBaselineAcquisitionPort;
+  /** T-061e (D271): the 1-hour and 7-day moves. */
+  readonly moves: MarketMovesPort;
 }
 
 export interface KairosMarketDataPortOptions {
@@ -387,7 +409,27 @@ export function createKairosMarketDataPorts(client: KairosApiClient, options: Ka
     },
   };
 
-  return Object.freeze({ history, metadata, baseline });
+  const moves: MarketMovesPort = {
+    async acquireMoves({ symbols, window }, callerOptions): Promise<MarketMovesResult> {
+      const signal = callerOptions?.signal;
+      const bySymbol = new Map<string, MarketMove>();
+      let observedAt: string | null = null;
+      // One ascending order means one cache key for every device (the server refuses any other order).
+      const ascending = [...new Set(symbols)].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+      for (const batch of tickerBatches(ascending)) {
+        if (signal?.aborted) return unavailable(isOnline() ? 'source-down' : 'offline');
+        const result = await client.request('/market/moves', { symbols: batch.join(','), window }, (data) => decodeMarketMoves(data, batch, window), signal === undefined ? undefined : { signal });
+        if (!result.ok) return failed(result);
+        for (const move of result.value.moves) bySymbol.set(move.symbol, move);
+        // The oldest read of the batches: freshness is never made better than it is.
+        if (observedAt === null || Date.parse(result.value.fetchedAt) < Date.parse(observedAt)) observedAt = result.value.fetchedAt;
+      }
+      if (observedAt === null) return unavailable('unreadable');
+      return Object.freeze({ ok: true as const, observedAt, moves: Object.freeze(symbols.map(symbol => bySymbol.get(symbol) as MarketMove)) });
+    },
+  };
+
+  return Object.freeze({ history, metadata, baseline, moves });
 }
 
 /** U14 (D255): a coin's name by its symbol (BTC → Bitcoin), as the server checked it. */

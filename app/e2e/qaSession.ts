@@ -21,28 +21,49 @@ const FIXED_MARKET: Readonly<Record<string, string>> = {
 
 /** T-061c: the price of each fixed market's 1-minute candles (the "Price now" of an open trade), the same every minute. */
 const FIXED_MINUTE_PRICES: Readonly<Record<string, string>> = { BTCUSDT: '61000', ETHUSDT: '2450' };
+/** T-061e: the candle sizes the market sheet's line asks for (1 hour, 24 hours, 7 days). */
+const FIXED_INTERVAL_MS: Readonly<Record<string, number>> = { '1m': 60_000, '15m': 900_000, '1h': 3_600_000 };
 
-/** `/market/candles` for 1-minute candles of a fixed market, every minute of the asked window at its fixed price; null otherwise. */
+/**
+ * `/market/candles` for a fixed market at its fixed price: 1-minute candles for every minute of the asked window, or
+ * (T-061e, the sheet's line) the newest page of 1-minute, 15-minute or 1-hour candles up to the fixed market time; null otherwise.
+ */
 function fixedMinuteCandles(url: URL): string | null {
   const query = url.searchParams;
   const symbol = query.get('symbol') ?? '';
   const price = FIXED_MINUTE_PRICES[symbol];
-  const start = Number(query.get('start')), end = Number(query.get('end')), limit = Number(query.get('limit'));
-  if (url.pathname !== '/market/candles' || query.get('interval') !== '1m' || query.get('market') !== 'binance-spot' || price === undefined) return null;
-  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || !Number.isSafeInteger(limit)) return null;
+  const interval = query.get('interval') ?? '';
+  const step = FIXED_INTERVAL_MS[interval];
+  const limit = Number(query.get('limit'));
+  if (url.pathname !== '/market/candles' || step === undefined || query.get('market') !== 'binance-spot' || price === undefined || !Number.isSafeInteger(limit)) return null;
+  const newest = !query.has('start') && !query.has('end');
+  const start = newest ? Date.parse(MARKET_FETCHED_AT) - (limit - 1) * step : Number(query.get('start'));
+  const end = newest ? Date.parse(MARKET_FETCHED_AT) : Number(query.get('end'));
+  if ((!newest && interval !== '1m') || !Number.isSafeInteger(start) || !Number.isSafeInteger(end)) return null;
   const candles: unknown[] = [];
-  for (let openMs = start; openMs <= end && candles.length < limit; openMs += 60_000) {
-    candles.push({ openTime: new Date(openMs).toISOString(), closeTime: new Date(openMs + 59_999).toISOString(), open: price, high: price, low: price, close: price, volume: '1' });
+  for (let openMs = start; openMs <= end && candles.length < limit; openMs += step) {
+    candles.push({ openTime: new Date(openMs).toISOString(), closeTime: new Date(openMs + step - 1).toISOString(), open: price, high: price, low: price, close: price, volume: '1' });
   }
-  return serverAnswer({ source: { provider: 'binance', market: 'spot', symbol }, backup: null, interval: '1m', fetchedAt: MARKET_FETCHED_AT, candles, next: null });
+  return serverAnswer({ source: { provider: 'binance', market: 'spot', symbol }, backup: null, interval, fetchedAt: MARKET_FETCHED_AT, candles, next: null });
+}
+
+/** T-061e: `/market/moves` for the two fixed markets: BTC up 1.67% in the window, ETH down 2%, whatever the window. */
+function fixedMoves(url: URL): string | null {
+  const window = url.searchParams.get('window');
+  if (url.pathname !== '/market/moves' || url.searchParams.get('symbols') !== 'BTCUSDT,ETHUSDT' || (window !== '1h' && window !== '7d')) return null;
+  const openTime = new Date(Date.parse(MARKET_FETCHED_AT) - (window === '1h' ? 3_600_000 : 604_800_000)).toISOString();
+  return serverAnswer({ source: 'binance-spot', window, fetchedAt: MARKET_FETCHED_AT, moves: [
+    { symbol: 'BTCUSDT', openPrice: '60000', lastPrice: '61000', openTime, closeTime: MARKET_FETCHED_AT },
+    { symbol: 'ETHUSDT', openPrice: '2500', lastPrice: '2450', openTime, closeTime: MARKET_FETCHED_AT },
+  ] });
 }
 
 /**
  * Opens the QA build signed in: the theme choice (if given) is stored before the app starts, the activation request
  * gets a fixed signed receipt, and every other https request is aborted (no network in design checks).
  * `fixedClock` freezes the page's clock before the first load; `server: 'fixed-market'` answers the market list, the
- * two 24-hour prices and their 1-minute candles with fixed values (anything else still aborted), so screenshots never
- * change with the time.
+ * two 24-hour prices, their 1-hour and 7-day moves and their candles with fixed values (anything else still aborted),
+ * so screenshots never change with the time.
  */
 /** T-053d: a fresh install opens the setup (D222); `setup: 'show'` leaves it open, otherwise "Skip for now" is tapped. */
 export async function openKairos(page: Page, options: Readonly<{ theme?: string; fixedClock?: string; server?: 'offline' | 'fixed-market'; setup?: 'skip' | 'show' }> = {}): Promise<void> {
@@ -58,7 +79,7 @@ export async function openKairos(page: Page, options: Readonly<{ theme?: string;
   await page.route(url => url.protocol === 'https:', async route => {
     const url = new URL(route.request().url());
     if (fixedMarket && url.hostname === SERVER_HOST) {
-      const body = FIXED_MARKET[url.pathname + decodeURIComponent(url.search)] ?? fixedMinuteCandles(url);
+      const body = FIXED_MARKET[url.pathname + decodeURIComponent(url.search)] ?? fixedMinuteCandles(url) ?? fixedMoves(url);
       if (body === undefined || body === null) return route.abort();
       return route.fulfill({ headers: { 'access-control-allow-origin': '*' }, contentType: 'application/json', body });
     }

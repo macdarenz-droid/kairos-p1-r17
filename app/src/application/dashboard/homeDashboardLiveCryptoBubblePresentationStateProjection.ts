@@ -52,7 +52,8 @@ export type HomeDashboardLiveCryptoBubblePresentationStateProjectionResult =
       readonly entryIndex: number;
     };
 
-function classifyMovement(
+/** A move's colour: neutral up to the configured size, else its sign. T-061e: the 1-hour and 7-day moves use it too. */
+export function classifyHomeDashboardLiveCryptoBubbleMovement(
   movementPercent24h: DecimalString,
   neutralMaxAbsoluteMovementPercent: DecimalString,
 ): HomeDashboardLiveCryptoBubbleMovementSemantic | null {
@@ -126,7 +127,7 @@ export function projectHomeDashboardLiveCryptoBubblePresentationState(
       return { ok: false, reason: 'metric-entry-inconsistent', metricObservation, entryIndex };
     }
 
-    const movementSemantic = classifyMovement(
+    const movementSemantic = classifyHomeDashboardLiveCryptoBubbleMovement(
       metricInput.movementPercent24h,
       threshold.value,
     );
