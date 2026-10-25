@@ -7,7 +7,9 @@ import { BackupReminderCard } from '../features/backup/BackupReminderCard';
 import { askToKeepDataOnce } from '../application/setup/deviceKeeping';
 import { JournalHistoryList } from './JournalHistoryList';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
-import type { MarketType as TradeMarket, TradeStatus } from '../domain/trades';
+import type { MarketType as TradeMarket } from '../domain/trades';
+import { hasJournalFilters, NO_JOURNAL_FILTERS, readJournalFilters, writeJournalFilters, type JournalFilters } from '../application/journal';
+import { JournalFilterBar, useJournalTimeZone } from '../features/journal/JournalFilterBar';
 import './journalRoute.css';
 import { TradeForm } from '../features/journal/TradeForm';
 import { Card, PageHeader, useToast } from '../design-system/primitives';
@@ -21,6 +23,9 @@ interface JournalRouteProps {
   readonly arrivedNotice?: string;
   /** The current instant as a canonical UTC ISO string, for the coach card; tests inject a fixed one. */
   readonly now?: () => string;
+  /** U15 (D262): the list's filters, which the address holds; without them (outside a router) the page keeps its own. */
+  readonly filters?: JournalFilters;
+  readonly onFiltersChange?: (next: JournalFilters) => void;
 }
 
 /** A stable default clock, as in GoalsRoute. */
@@ -40,15 +45,22 @@ export function JournalRoute(props: JournalRouteProps) {
 }
 
 function JournalAddress(props: JournalRouteProps) {
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const arrivedNotice = useArrivedNotice();
-  return params.get('log') === '1' ? <Navigate to={LOG_TRADE_ADDRESS} replace /> : <JournalPage {...props} arrivedNotice={arrivedNotice} />;
+  // D262: a change of filters replaces the address's entry: no Back step per change.
+  const onFiltersChange = (next: JournalFilters) => setParams(current => writeJournalFilters(next, current), { replace: true });
+  return params.get('log') === '1' ? <Navigate to={LOG_TRADE_ADDRESS} replace />
+    : <JournalPage {...props} arrivedNotice={arrivedNotice} filters={readJournalFilters(params, 'real')} onFiltersChange={onFiltersChange} />;
 }
 
-function JournalPage({ db = kairosDatabase, now, arrivedNotice }: JournalRouteProps) {
+function JournalPage(props: JournalRouteProps) {
+  const { db = kairosDatabase, now, arrivedNotice } = props;
   // What a trade's page said when it sent you here (a delete); a new save here replaces it.
   const [listNotice, setListNotice] = useState(arrivedNotice ?? '');
-  const [historyStatus, setHistoryStatus] = useState<TradeStatus | ''>('');
+  const [ownFilters, setOwnFilters] = useState<JournalFilters>(NO_JOURNAL_FILTERS);
+  const filters = props.filters ?? ownFilters;
+  const changeFilters = props.onFiltersChange ?? setOwnFilters;
+  const timeZone = useJournalTimeZone(db);
   const [journalRevision, setJournalRevision] = useState(0);
   // D223: the trade form starts on the first market the trader trades (none saved: blank, as before).
   const [firstMarket, setFirstMarket] = useState<TradeMarket | null>(null);
@@ -57,7 +69,7 @@ function JournalPage({ db = kairosDatabase, now, arrivedNotice }: JournalRoutePr
     loadTradedMarkets(db).then(markets => { if (!ignore) setFirstMarket(markets?.[0] ?? null); }, () => undefined);
     return () => { ignore = true; };
   }, [db]);
-  const pages = useJournalHistoryPages(db, 'real', historyStatus);
+  const pages = useJournalHistoryPages(db, 'real', filters, timeZone);
   // D229: another tab saved; the list (and the coach card) read again.
   const { refresh: refreshPages } = pages;
   useEffect(() => {
@@ -101,8 +113,11 @@ function JournalPage({ db = kairosDatabase, now, arrivedNotice }: JournalRoutePr
         olderFailed={pages.olderFailed}
         onShowOlder={pages.showOlder}
         onRetry={pages.refresh}
-        statusFilter={historyStatus}
-        onStatusFilterChange={setHistoryStatus}
+        statusFilter={filters.status ?? ''}
+        onStatusFilterChange={status => changeFilters({ ...filters, status: status === '' ? null : status })}
+        filterBar={<JournalFilterBar db={db} scope="real" filters={filters} onChange={changeFilters} timeZone={timeZone} refreshRevision={journalRevision} />}
+        filtered={hasJournalFilters({ ...filters, status: null })}
+        onClearFilters={() => changeFilters(NO_JOURNAL_FILTERS)}
         focusOnArrival={arrivedNotice !== undefined}
       />
     </section>

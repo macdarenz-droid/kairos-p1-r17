@@ -1,5 +1,6 @@
 /**
  * P26: the plan a practice trade starts from when it comes from the calculator. The one place that writes and reads the `/practice` address. It carries only the direction and the plan, never an entry or an exit; the numbers are the position-size owner's, exactly as it holds them.
+ * U15: the direction's key is `direction`, because `side` is the list's Long or Short filter (D262).
  */
 
 import { decimalCompare } from '../../domain/calculations/decimalKernel';
@@ -11,7 +12,7 @@ export const PRACTICE_PLAN_VALUE_MAX_LENGTH = 30;
 
 /** The Practice address that opens the form with this plan. */
 export function practicePlanHref(plan: PracticePlanStart): string {
-  return `/practice?${new URLSearchParams({ side: plan.side, entry: plan.entryPrice, stop: plan.stopPrice, quantity: plan.quantity })}`;
+  return `/practice?${new URLSearchParams({ direction: plan.side, entry: plan.entryPrice, stop: plan.stopPrice, quantity: plan.quantity })}`;
 }
 
 function positive(value: string | null): DecimalString | null {
@@ -22,7 +23,7 @@ function positive(value: string | null): DecimalString | null {
 
 /** The plan in the address, or null when any rule fails. The address is data, never code; other keys are ignored. */
 export function readPracticePlanStart(params: URLSearchParams): PracticePlanStart | null {
-  const side = params.get('side');
+  const side = params.get('direction');
   if (side !== 'long' && side !== 'short') return null;
   const entryPrice = positive(params.get('entry'));
   const stopPrice = positive(params.get('stop'));

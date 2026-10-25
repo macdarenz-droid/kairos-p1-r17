@@ -17,7 +17,7 @@ async function database(): Promise<KairosDatabase> {
   const name = `kairos-practice-plan-${crypto.randomUUID()}`; names.push(name);
   const db = createKairosDatabase(name); await openKairosDatabase(db); return db;
 }
-const LONG = 'side=long&entry=100&stop=95&quantity=2';
+const LONG = 'direction=long&entry=100&stop=95&quantity=2';
 const long = { side: 'long', entryPrice: '100' as DecimalString, stopPrice: '95' as DecimalString, quantity: '2' as DecimalString } as const;
 const input = (label: RegExp) => screen.getByLabelText(label, { selector: 'input, select' }) as HTMLInputElement;
 
@@ -26,7 +26,7 @@ describe('P26.4 the calculator → Practice address', () => {
     const plan = readPracticePlanStart(new URLSearchParams(LONG));
     expect(plan).toEqual(long);
     expect(Object.isFrozen(plan)).toBe(true);
-    expect(readPracticePlanStart(new URLSearchParams('side=short&entry=100&stop=105&quantity=2'))).toEqual({ side: 'short', entryPrice: '100', stopPrice: '105', quantity: '2' });
+    expect(readPracticePlanStart(new URLSearchParams('direction=short&entry=100&stop=105&quantity=2'))).toEqual({ side: 'short', entryPrice: '100', stopPrice: '105', quantity: '2' });
     const href = practicePlanHref(long);
     expect(href).toBe(`/practice?${LONG}`);
     expect(readPracticePlanStart(new URLSearchParams(href.split('?')[1]))).toEqual(long);
@@ -34,9 +34,9 @@ describe('P26.4 the calculator → Practice address', () => {
 
   it('refuses anything that is not a sound plan', () => {
     for (const search of [
-      'entry=100&stop=95&quantity=2', 'side=up&entry=100&stop=95&quantity=2', 'side=long&entry=abc&stop=95&quantity=2',
-      'side=long&entry=100&stop=-1&quantity=2', 'side=long&entry=100&stop=95&quantity=0', 'side=long&entry=100&stop=100&quantity=2',
-      'side=long&entry=100&stop=105&quantity=2', 'side=short&entry=100&stop=95&quantity=2', `side=long&entry=1${'0'.repeat(30)}&stop=95&quantity=2`,
+      'entry=100&stop=95&quantity=2', 'direction=up&entry=100&stop=95&quantity=2', 'direction=long&entry=abc&stop=95&quantity=2',
+      'direction=long&entry=100&stop=-1&quantity=2', 'direction=long&entry=100&stop=95&quantity=0', 'direction=long&entry=100&stop=100&quantity=2',
+      'direction=long&entry=100&stop=105&quantity=2', 'direction=short&entry=100&stop=95&quantity=2', `direction=long&entry=1${'0'.repeat(30)}&stop=95&quantity=2`,
     ]) expect(readPracticePlanStart(new URLSearchParams(search))).toBeNull();
   });
 
@@ -58,7 +58,7 @@ describe('P26.4 the calculator link', () => {
     fill('1000', '1', '100', '95');
     expect(within(calculator()).getByRole('link', { name: 'Try it as a practice trade' }).getAttribute('href')).toBe(`/practice?${LONG}`);
     fill('100', '1', '100', '97');
-    expect(within(calculator()).getByRole('link', { name: 'Try it as a practice trade' }).getAttribute('href')).toBe('/practice?side=long&entry=100&stop=97&quantity=0.33333333');
+    expect(within(calculator()).getByRole('link', { name: 'Try it as a practice trade' }).getAttribute('href')).toBe('/practice?direction=long&entry=100&stop=97&quantity=0.33333333');
   });
 });
 
@@ -90,7 +90,7 @@ describe('P26.4 the Practice page with a plan', () => {
 
   it('ignores a bad address and links to the calculators', async () => {
     const db = await database();
-    render(<MemoryRouter initialEntries={['/practice?side=long&entry=100&stop=105&quantity=2']}><PracticeRoute db={db} /></MemoryRouter>);
+    render(<MemoryRouter initialEntries={['/practice?direction=long&entry=100&stop=105&quantity=2']}><PracticeRoute db={db} /></MemoryRouter>);
     expect(screen.queryByText(/^From the calculator:/)).toBeNull();
     expect(input(/^Planned stop/).value).toBe('');
     expect(input(/^Direction/).value).toBe('');

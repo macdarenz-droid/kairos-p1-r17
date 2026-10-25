@@ -3,6 +3,8 @@
  */
 
 import { describeStrategyRuleResult } from '../discipline/strategyWords';
+import type { JournalHistoryScope } from '../journal/historyQuery';
+import { journalListHref } from '../journal/journalFilters';
 import type { TradePlanVsExecution } from '../trades/planVsExecution';
 import type { CoachNote } from './coachNotes';
 
@@ -93,6 +95,18 @@ export function describeCoachNote(note: CoachNote): CoachNoteWords {
         step: 'In your trade history, tap "After the trade" on each trade that is not reviewed yet, while you still remember it.',
       });
   }
+}
+
+/**
+ * U15 (D262): a repeated mistake's link to every trade marked with it, in the Journal's list (Practice's for the practice
+ * coach). The list is not limited to this month, so the words say "all". Other notes have no list to open.
+ */
+export function describeCoachNoteListLink(note: CoachNote, scope: JournalHistoryScope): Readonly<{ to: string; text: string }> | null {
+  if (note.kind !== 'mistake-repeated') return null;
+  return Object.freeze({
+    to: journalListHref(scope, { mistake: note.itemId }),
+    text: `See all your ${scope === 'practice' ? 'practice trades' : 'trades'} marked "${note.label}"`,
+  });
 }
 
 /** The facts for one trade a note names, in the same words as the card line. */

@@ -30,6 +30,11 @@ interface JournalHistoryListProps {
    * on arrival, so the notice is read out: a live region that is already there when it appears is not announced.
    */
   readonly focusOnArrival?: boolean;
+  /** U15 (D262): the search, filters and totals above the list. */
+  readonly filterBar?: ReactNode;
+  /** A filter other than the status is set: an empty list says no trade matches, with "Clear filters". */
+  readonly filtered?: boolean;
+  readonly onClearFilters?: () => void;
 }
 
 const STATUS_FILTERS = [
@@ -89,7 +94,7 @@ function RowLink({ to, label, children }: { readonly to: string; readonly label:
  * U15 (D261): the Journal's and Practice's list, one short row per trade, newest first (D259). A row is one link to the
  * trade's page (D260), where everything that changes a trade lives: one tab stop per trade.
  */
-export function JournalHistoryList({ entries, isLoading, errorMessage, statusFilter, onStatusFilterChange, onRetry, scope = 'real', notice, hasOlder = false, isLoadingOlder = false, olderFailed = false, onShowOlder, focusOnArrival = false }: JournalHistoryListProps) {
+export function JournalHistoryList({ entries, isLoading, errorMessage, statusFilter, onStatusFilterChange, onRetry, scope = 'real', notice, hasOlder = false, isLoadingOlder = false, olderFailed = false, onShowOlder, focusOnArrival = false, filterBar, filtered = false, onClearFilters }: JournalHistoryListProps) {
   const section = useRef<HTMLElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const noticeRef = useRef<HTMLParagraphElement>(null);
@@ -135,6 +140,7 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
         <span className="kairos-history__count">{entries.length} shown</span>
       </div>
 
+      {filterBar}
       <div className="kairos-history__controls">
         <Field label="Show trades" id="kairos-history-status-filter" className="kairos-history__filter">
           {control => <Select {...control} name="historyStatusFilter" value={statusFilter} options={STATUS_FILTERS}
@@ -146,10 +152,14 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
       {notice ? <p ref={noticeRef} tabIndex={-1} className="kairos-history__state" role="status">{notice}</p> : null}
       {isLoading ? <Skeleton label="Loading trade history…" live={false} /> : null}
       {!isLoading && !errorMessage && entries.length === 0 ? (
-        statusFilter === ''
+        filtered && onClearFilters
+          // Its "Clear filters" goes once the list fills: focus moves to the list's heading, never the page.
+          ? <EmptyState icon="journal" headingLevel={3} title="No trades match these filters."
+            action={<Button variant="secondary" size="sm" onClick={() => { onClearFilters(); heading.current?.focus(); }}>Clear filters</Button>} />
+          : statusFilter === ''
           ? <EmptyState icon="journal" headingLevel={3} title="No saved trades yet" message="Your first saved trade will appear here." />
           : <EmptyState icon="journal" headingLevel={3} title={`No ${statusLabel(statusFilter).toLowerCase()} trades found.`}
-            action={<Button variant="secondary" size="sm" onClick={() => onStatusFilterChange('')}>Show all trades</Button>} />
+            action={<Button variant="secondary" size="sm" onClick={() => { onStatusFilterChange(''); heading.current?.focus(); }}>Show all trades</Button>} />
       ) : null}
 
       {!isLoading && !errorMessage && entries.length > 0 ? (

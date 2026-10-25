@@ -204,7 +204,7 @@ test('(g) Practice: pretend money, a plan from the calculator, and a practice tr
   await calculator.getByLabel('Stop price').fill('95');
   await calculator.getByRole('link', { name: 'Try it as a practice trade' }).click();
 
-  await expect(page).toHaveURL(/\/practice\?side=long&entry=100&stop=95&quantity=2$/);
+  await expect(page).toHaveURL(/\/practice\?direction=long&entry=100&stop=95&quantity=2$/);
   await expect(page.getByLabel(/^Direction/)).toHaveValue('long');
   await expect(page.getByLabel('Planned stop')).toHaveValue('95');
   await expect(page.getByLabel('Planned quantity')).toHaveValue('2');
@@ -2214,5 +2214,84 @@ test('(ag) Faster logging: a symbol you search, its currency filled in, and a st
   await page.getByRole('button', { name: 'Log another trade' }).click();
   await expect(symbol).toHaveValue('');
   await expect(page.getByText('Kairos kept the trade you were typing.')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test('(ah) Search and filters in the address: your BTC losses in March, with what they add up to', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  await activate(page);
+  await page.goto('/journal');
+  const quickLog = async (symbol: string, exit: string, opened: string, closed: string) => {
+    await page.getByRole('button', { name: 'Quick log' }).click();
+    await page.getByLabel(/^Market/).selectOption('crypto');
+    await page.getByLabel(/^Symbol/).fill(symbol);
+    await page.getByLabel(/^Direction/).selectOption('long');
+    await page.getByLabel(/^Entry price/).fill('100');
+    await page.getByLabel(/^Exit price/).fill(exit);
+    await page.getByLabel(/^Quantity/).fill('1');
+    await page.locator('input[name="openedAt"]').fill(opened);
+    await page.locator('input[name="closedAt"]').fill(closed);
+    await page.getByLabel('Currency code').fill('USDT');
+    await page.getByRole('button', { name: 'Save trade' }).click();
+    await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+  };
+  await quickLog('BTCUSDT', '96', '2026-03-10T09:00', '2026-03-10T10:00');
+  await quickLog('BTC/USDT', '95', '2026-03-20T09:00', '2026-03-20T10:00');
+  await quickLog('BTCUSDT', '110', '2026-03-12T09:00', '2026-03-12T10:00');
+  await quickLog('BTCUSDT', '90', '2026-04-02T09:00', '2026-04-02T10:00');
+  await quickLog('ETHUSDT', '80', '2026-03-15T09:00', '2026-03-15T10:00');
+
+  // D262: the address alone opens the list it describes, as a link or a bookmark would.
+  await page.goto('/journal?q=btc&result=lost&from=2026-03-01&to=2026-03-31');
+  const rows = page.locator('.kairos-history-card');
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(0).getByRole('link')).toHaveAccessibleName(/^BTC\/USDT long, closed, opened (20 Mar|Mar 20),? 2026, loss -5 USDT/);
+  await expect(rows.nth(1).getByRole('link')).toHaveAccessibleName(/^BTCUSDT long, closed, opened (10 Mar|Mar 10),? 2026, loss -4 USDT/);
+  const chips = page.getByRole('group', { name: 'Filters in use' });
+  await expect(chips.getByRole('button', { name: /^Remove / })).toHaveCount(4);
+  await expect(page.getByText('2 trades · won 0 · lost 2 · result after fees -9 USDT')).toBeVisible();
+  await expect(page.getByLabel('Search symbols')).toHaveValue('btc');
+  const axe = await new AxeBuilder({ page }).include('.kairos-history').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(axe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+
+  // Removing "Lost" shows the March win too, and replaces the address (no Back step per change).
+  await chips.getByRole('button', { name: 'Remove Lost' }).click();
+  await expect(page).toHaveURL(/\/journal\?q=btc&from=2026-03-01&to=2026-03-31$/);
+  await expect(rows).toHaveCount(3);
+  await expect(page.getByText('3 trades · won 1 · lost 2 · result after fees +1 USDT')).toBeVisible();
+  await page.getByRole('button', { name: 'Clear filters' }).first().click();
+  await expect(page).toHaveURL(/\/journal$/);
+  await expect(rows).toHaveCount(5);
+
+  // D262: the coach's repeated mistake opens the list of those trades. Two trades made now, each reviewed with the same mistake.
+  for (const symbol of ['SOLUSDT', 'XRPUSDT']) {
+    await page.getByRole('button', { name: 'Quick log' }).click();
+    await page.getByLabel(/^Market/).selectOption('crypto');
+    await page.getByLabel(/^Symbol/).fill(symbol);
+    await page.getByLabel(/^Direction/).selectOption('long');
+    await page.getByLabel(/^Entry price/).fill('100');
+    await page.getByLabel(/^Exit price/).fill('97');
+    await page.getByLabel(/^Quantity/).fill('1');
+    await page.getByRole('button', { name: 'Set opened time to now' }).click();
+    await page.getByRole('button', { name: 'Set closed time to now' }).click();
+    await page.getByLabel('Currency code').fill('USDT');
+    await page.getByRole('button', { name: 'Save trade' }).click();
+    await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+    await openTradePage(page, rows.filter({ hasText: symbol }), `${symbol} · Long`);
+    await page.getByRole('button', { name: /^After the trade/ }).click();
+    const review = page.getByRole('dialog', { name: `After the trade: ${symbol}` });
+    await review.getByLabel('Moved my stop').check();
+    await review.getByRole('button', { name: 'Save review' }).click();
+    await expect(review).toHaveCount(0);
+    await backToList(page);
+  }
+  await page.goto('/coach');
+  await page.getByRole('link', { name: 'See all your trades marked "Moved my stop"' }).click();
+  await expect(page).toHaveURL(/\/journal\?mistake=moved-stop$/);
+  await expect(rows).toHaveCount(2);
+  await expect(page.getByRole('group', { name: 'Filters in use' }).getByText('Mistake: Moved my stop')).toBeVisible();
+  await expect(page.getByText('2 trades · won 0 · lost 2 · result after fees -6 USDT')).toBeVisible();
   expect(errors).toEqual([]);
 });

@@ -4,7 +4,8 @@ import type { EcbReferenceRatesPort } from '../application/currency/ecbRates';
 import { practicePlanDraft, readPracticePlanStart } from '../application/practice/practicePlanStart';
 import { readVisualPnlPeriodChoice, writeVisualPnlPeriodChoice } from '../application/visual-pnl';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
-import type { TradeStatus } from '../domain/trades';
+import { hasJournalFilters, NO_JOURNAL_FILTERS, readJournalFilters, writeJournalFilters, type JournalFilters } from '../application/journal';
+import { JournalFilterBar, useJournalTimeZone } from '../features/journal/JournalFilterBar';
 import { TradeCopyArrival } from '../features/journal/TradeCopy';
 import { TradeForm } from '../features/journal/TradeForm';
 import { useJournalHistoryPages } from '../features/journal/useJournalHistoryPages';
@@ -30,17 +31,20 @@ interface PracticeRouteProps {
 /** A stable default clock, as in GoalsRoute. */
 const wallClock = (): string => new Date().toISOString();
 /** The calculator plan's keys (practicePlanStart.ts); saving its trade removes only these, so the chosen period stays. */
-const PLAN_KEYS = ['side', 'entry', 'stop', 'quantity'] as const;
+const PLAN_KEYS = ['direction', 'entry', 'stop', 'quantity'] as const;
 
 /** Practice: paper trades, saved with the Journal's form and listed and pictured with the practice scope; nothing here reaches the Journal's real results, goals, discipline score or Home. */
 export function PracticeRoute({ db = kairosDatabase, now, rates = null }: PracticeRouteProps) {
   const clock = now ?? wallClock;
-  const [historyStatus, setHistoryStatus] = useState<TradeStatus | ''>('');
   const arrivedNotice = useArrivedNotice();
   // What a trade's page said when it sent you here (a delete); a new save here replaces it.
   const [listNotice, setListNotice] = useState(arrivedNotice ?? '');
-  const pages = useJournalHistoryPages(db, 'practice', historyStatus);
   const [searchParams, setSearchParams] = useSearchParams();
+  // D262: the list's filters live in the address; a change replaces its entry (no Back step per change).
+  const filters = readJournalFilters(searchParams, 'practice');
+  const changeFilters = (next: JournalFilters) => setSearchParams(current => writeJournalFilters(next, current), { replace: true });
+  const timeZone = useJournalTimeZone(db);
+  const pages = useJournalHistoryPages(db, 'practice', filters, timeZone);
   const planStart = readPracticePlanStart(searchParams);
   const [practiceRevision, setPracticeRevision] = useState(0);
   const changed = () => setPracticeRevision(value => value + 1);
@@ -68,7 +72,9 @@ export function PracticeRoute({ db = kairosDatabase, now, rates = null }: Practi
         renderTradeLink={id => <ReviewTradeLink id={id} scope="practice" />} refreshRevision={practiceRevision} glow={false} live={false} rates={rates} />
       <CoachCard db={db} scope="practice" now={clock} refreshRevision={practiceRevision} disciplineRevision={0} />
 
-      <JournalHistoryList scope="practice" notice={listNotice} entries={pages.entries} isLoading={pages.isLoading} errorMessage={pages.failed ? 'Kairos could not load your practice trades. Your stored trades were not changed.' : null} hasOlder={pages.hasOlder} isLoadingOlder={pages.isLoadingOlder} olderFailed={pages.olderFailed} onShowOlder={pages.showOlder} onRetry={pages.refresh} statusFilter={historyStatus} onStatusFilterChange={setHistoryStatus} focusOnArrival={arrivedNotice !== undefined} />
+      <JournalHistoryList scope="practice" notice={listNotice} entries={pages.entries} isLoading={pages.isLoading} errorMessage={pages.failed ? 'Kairos could not load your practice trades. Your stored trades were not changed.' : null} hasOlder={pages.hasOlder} isLoadingOlder={pages.isLoadingOlder} olderFailed={pages.olderFailed} onShowOlder={pages.showOlder} onRetry={pages.refresh} statusFilter={filters.status ?? ''} onStatusFilterChange={status => changeFilters({ ...filters, status: status === '' ? null : status })} focusOnArrival={arrivedNotice !== undefined}
+        filterBar={<JournalFilterBar db={db} scope="practice" filters={filters} onChange={changeFilters} timeZone={timeZone} refreshRevision={practiceRevision} />}
+        filtered={hasJournalFilters({ ...filters, status: null })} onClearFilters={() => changeFilters(NO_JOURNAL_FILTERS)} />
     </section>
   );
 }

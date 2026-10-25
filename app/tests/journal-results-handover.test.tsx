@@ -68,12 +68,12 @@ describe('T-051e the Journal hands its results to Analysis', () => {
 describe('T-051e Practice shows the same dashboard for practice trades', () => {
   it('keeps a calculator plan when the period changes, and keeps the period when the plan is saved', async () => {
     const db = await database();
-    const router = createMemoryRouter([{ path: '/practice', element: <PracticeRoute db={db} now={now} /> }], { initialEntries: ['/practice?side=long&entry=100&stop=90&quantity=1'] });
+    const router = createMemoryRouter([{ path: '/practice', element: <PracticeRoute db={db} now={now} /> }], { initialEntries: ['/practice?direction=long&entry=100&stop=90&quantity=1'] });
     render(<RouterProvider router={router} />);
     const results = await screen.findByRole('region', { name: 'Your practice results' });
     const period = await within(results).findByRole('combobox', { name: 'Period' });
     fireEvent.change(period, { target: { value: 'year' } });
-    await waitFor(() => expect(router.state.location.search).toBe('?side=long&entry=100&stop=90&quantity=1&period=year'));
+    await waitFor(() => expect(router.state.location.search).toBe('?direction=long&entry=100&stop=90&quantity=1&period=year'));
     await screen.findByText(/^From the calculator:/);
 
     fireEvent.change(input(/^Symbol/), { target: { value: 'ETHUSDT' } });
