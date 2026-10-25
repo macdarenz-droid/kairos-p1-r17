@@ -84,7 +84,9 @@ export function TradeResult({ entry, addContractSize, focusResult = false, onRes
     </dl>
     {executions.length === 0 ? <p className="kairos-review__note">No entries or exits are recorded. Planned prices alone do not make a result.</p> : null}
     {entry.metricsError ? <p className="kairos-review__note">Some results are not available for this trade.</p> : null}
-    {fees.length > 0 && metrics?.grossPnl != null && metrics.netPnl == null ? <p className="kairos-review__note">Result after fees needs a recorded price currency and fees in that same currency, or in pounds (GBP) for prices in pence (GBX). Kairos does not convert a trade's fees with exchange rates.</p> : null}
+    {fees.length > 0 && metrics?.grossPnl != null && metrics.netPnl == null ? <p className="kairos-review__note">{trade.grossPnlCurrency
+      ? 'Result after fees needs fees in the same currency as your recorded prices, or in pounds (GBP) for prices in pence (GBX). Kairos does not convert a trade\'s fees with exchange rates.'
+      : 'The price currency is not recorded, so fees cannot be taken off yet.'}</p> : null}
   </section>;
 }
 

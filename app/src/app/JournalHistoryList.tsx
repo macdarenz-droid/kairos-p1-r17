@@ -1,7 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { Link, useInRouterContext } from 'react-router';
 import type { JournalHistoryEntry, JournalHistoryScope } from '../application/journal';
-import { describeTimesRisked, projectTradeTimesRisked } from '../application/performance/tradeRisk';
+import { describeTimesRisked, projectTradeTimesRisked, signedText } from '../application/performance/tradeRisk';
 import { Button, EmptyState, ErrorState, Field, ResultText, Select, Skeleton } from '../design-system/primitives';
 import { tradeJournalAt, type TradeStatus } from '../domain/trades';
 import { TradePicture } from '../features/journal/TradePicture';
@@ -58,17 +58,21 @@ function timesRisked(entry: JournalHistoryEntry): string | null {
 }
 
 /**
- * The row's one name (D261): "BTCUSDT long, closed, opened 24 Oct 2026, profit +10 USDT, +2× what you risked". A
- * planned or open trade has no result yet, so it says only what it is.
+ * The row's one name (D261), which holds every word the row shows: "BTCUSDT long, closed, opened 24 Oct 2026, profit
+ * +10 USDT, +2× what you risked"; "SOLUSDT short, planned 1 Oct 2026"; "…, from replay, …". A trade that isn't closed
+ * has no result yet, so it says only what it is.
  */
 function rowName(entry: JournalHistoryEntry, times: string | null): string {
   const { trade, visualPnl } = entry;
-  const when = `${trade.openedAt ? 'opened' : 'planned'} ${journalDate(tradeJournalAt(trade))}`;
-  const parts = [`${trade.symbol} ${trade.side}`, statusLabel(trade.status).toLowerCase(), when];
+  const date = journalDate(tradeJournalAt(trade));
+  const parts = [`${trade.symbol} ${trade.side}`];
+  if (trade.source === 'replay') parts.push('from replay');
+  if (trade.status === 'draft') parts.push(`planned ${date}`);
+  else parts.push(statusLabel(trade.status).toLowerCase(), `${trade.openedAt ? 'opened' : 'planned'} ${date}`);
   if (trade.status === 'closed') {
     parts.push(visualPnl.amount === null || visualPnl.outcome === 'unavailable'
       ? 'result not available'
-      : `${visualPnl.label.toLowerCase()} ${visualPnl.outcome === 'profit' && !visualPnl.amount.startsWith('+') ? '+' : ''}${visualPnl.amount}${visualPnl.currency ? ` ${visualPnl.currency}` : ''}`);
+      : `${visualPnl.label.toLowerCase()} ${signedText(visualPnl.amount)}${visualPnl.currency ? ` ${visualPnl.currency}` : ''}`);
     if (times !== null) parts.push(times);
   }
   return parts.join(', ');
@@ -168,7 +172,7 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
                     <time dateTime={journalAt}>{journalDate(journalAt)}</time>
                   </span>
                   {trade.status === 'closed' ? <span className="kairos-history-card__result">
-                    <ResultText outcome={visualPnl.outcome} label={visualPnl.label} amount={visualPnl.amount} currency={visualPnl.currency} showLabel={false}
+                    <ResultText outcome={visualPnl.outcome} label={visualPnl.label} amount={visualPnl.amount} currency={visualPnl.currency} showLabel={visualPnl.outcome === 'unavailable'}
                       className={`kairos-history-card__outcome kairos-history-card__outcome--${visualPnl.outcome}`} />
                     {times !== null ? <span className="kairos-history-card__times">{times}</span> : null}
                   </span> : null}

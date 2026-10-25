@@ -10,9 +10,10 @@ import { TradePageScreen } from '../../src/features/journal/TradePageScreen';
 
 /**
  * U15 (T-060c): a trade's controls live on its own page. This opens that page for one saved trade, with the Journal and
- * Practice lists behind it (a delete goes back to its list). `wrap` adds providers around the router.
+ * Practice lists behind it (a delete goes back to its list). A null id starts on the list. `wrap` adds providers around
+ * the router.
  */
-export function renderTradePage(db: KairosDatabase, tradeId: string, options: { readonly scope?: JournalHistoryScope; readonly now?: () => string; readonly wrap?: (node: ReactNode) => ReactNode } = {}) {
+export function renderTradePage(db: KairosDatabase, tradeId: string | null, options: { readonly scope?: JournalHistoryScope; readonly now?: () => string; readonly wrap?: (node: ReactNode) => ReactNode } = {}) {
   const scope = options.scope ?? 'real';
   const router = createMemoryRouter([
     { path: '/journal', element: <JournalRoute db={db} now={options.now} /> },
@@ -20,7 +21,7 @@ export function renderTradePage(db: KairosDatabase, tradeId: string, options: { 
     { path: '/journal/trades/:id', element: <TradePageScreen db={db} scope="real" /> },
     { path: '/practice/trades/:id', element: <TradePageScreen db={db} scope="practice" /> },
     { path: '/analysis', element: <h1>Analysis</h1> },
-  ], { initialEntries: [tradePageHref(tradeId, scope)] });
+  ], { initialEntries: [tradeId === null ? (scope === 'practice' ? '/practice' : '/journal') : tradePageHref(tradeId, scope)] });
   const view = render(<>{(options.wrap ?? (node => node))(<RouterProvider router={router} />)}</>);
   return { ...view, router };
 }

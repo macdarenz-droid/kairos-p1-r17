@@ -77,9 +77,11 @@ describe('T-046n the trade page says when big news was near it', () => {
     cleanup();
 
     // An open trade has no news read at all.
+    where.mockClear();
     renderTradePage(db, sol);
     await tradePageHeading('SOLUSDT · Long');
     await newsSettled();
+    expect(where).not.toHaveBeenCalled();
     expect(screen.queryByText(HEADING)).toBeNull();
     expect(screen.queryByText(/no news/i)).toBeNull();
   });

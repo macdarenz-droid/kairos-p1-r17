@@ -64,14 +64,16 @@
 .kairos-history__list { list-style:none; margin:0; padding:0; display:grid; gap:var(--kairos-space-3); }
 .kairos-history-card { padding:0; border:1px solid var(--kairos-border-subtle); border-radius:var(--kairos-radius-lg); background:var(--kairos-surface-raised); }
 /* U15 (D261): a row is one link to the trade's page: its small picture, the trade and the date, then its result. */
-.kairos-history-card__link { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:var(--kairos-space-3); min-block-size:var(--kairos-control-lg); padding:var(--kairos-space-3); border-radius:inherit; color:var(--kairos-text-primary); text-decoration:none; }
+.kairos-history-card__link { display:grid; grid-template-columns:auto minmax(0,1fr) minmax(0,auto); align-items:center; gap:var(--kairos-space-3); min-block-size:var(--kairos-control-lg); padding:var(--kairos-space-3); border-radius:inherit; color:var(--kairos-text-primary); text-decoration:none; }
 .kairos-history-card__link:hover { background:var(--kairos-accent-soft); }
 .kairos-history-card__main { display:grid; gap:var(--kairos-space-1); min-width:0; }
 .kairos-history-card__topline { display:flex; flex-wrap:wrap; align-items:baseline; gap:var(--kairos-space-2); }
 .kairos-history-card__topline strong { font-size:var(--kairos-font-size-md); overflow-wrap:anywhere; }
 .kairos-history-card__topline span { color:var(--kairos-text-secondary); font-size:var(--kairos-font-size-sm); }
 .kairos-history-card__main time { color:var(--kairos-text-muted); font-size:var(--kairos-font-size-sm); }
-.kairos-history-card__result { display:grid; justify-items:end; gap:var(--kairos-space-1); text-align:right; }
+.kairos-history-card__result { display:grid; justify-items:end; gap:var(--kairos-space-1); min-width:0; text-align:right; overflow-wrap:anywhere; }
+/* On a phone the result goes under the trade, so a long amount never squeezes the symbol or runs off the screen. */
+@media (max-width: 420px) { .kairos-history-card__link { grid-template-columns:auto minmax(0,1fr); } .kairos-history-card__result { grid-column:2; justify-items:start; text-align:left; } }
 .kairos-history-card__outcome { display:inline-flex; align-items:center; gap:var(--kairos-space-1); font-size:var(--kairos-font-size-sm); font-weight:var(--kairos-font-weight-semibold); }
 .kairos-history-card__outcome--profit { color:var(--kairos-trade-profit); }
 .kairos-history-card__outcome--loss { color:var(--kairos-trade-loss); }
@@ -133,5 +135,3 @@
   from { opacity: 0.55; }
   to { opacity: 1; }
 }
-
-/* U11 (D239): a trade's tags on its card, at most 3, then how many more. */

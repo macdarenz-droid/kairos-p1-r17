@@ -51,16 +51,21 @@ describe('T-027d trade picture on the rows and the trade page', () => {
     expect(closed.textContent).toBe(picture.querySelector('[data-info="closed"] dd')!.textContent);
   });
 
-  it('Journal shows a picture for a closed trade; without candles it says they need a connection', async () => {
+  it('T-060c review r1: a Journal row draws a small, decorative picture of the trade: its candles are asked once, and it holds no words of its own', async () => {
     const db = await database();
     await seedClosedTrade(db);
     const loader = vi.fn(offline);
     const { container } = render(<TradePictureCandleLoaderContext.Provider value={loader}><MemoryRouter><JournalRoute db={db} /></MemoryRouter></TradePictureCandleLoaderContext.Provider>);
     await waitFor(() => expect(container.querySelector('li.kairos-history-card')).not.toBeNull());
-    const open = container.querySelector<HTMLElement>('li.kairos-history-card')!;
-    await waitFor(() => expect(within(open).getByText('No candles for this time.')).toBeInTheDocument());
-    expect(loader).toHaveBeenCalledTimes(1);
-    expect(within(open).getByText('Risk')).toBeInTheDocument();
+    const row = container.querySelector<HTMLElement>('li.kairos-history-card')!;
+    const picture = row.querySelector<HTMLElement>('.kairos-trade-picture-row')!;
+    expect(picture).toHaveAttribute('aria-hidden', 'true');
+    expect(within(picture).getByText('Risk')).toBeInTheDocument();
+    // No words inside the row's link but its own: the picture's notes stay out.
+    expect(picture.querySelectorAll('p, [tabindex], button, a')).toHaveLength(0);
+    await waitFor(() => expect(loader).toHaveBeenCalledTimes(1));
+    // Without candles the row says nothing: the words are on the trade's page.
+    expect(within(picture).queryByText('No candles for this time.')).toBeNull();
     expect(screen.queryByText('Visual guide · Not to scale')).toBeNull();
   });
 

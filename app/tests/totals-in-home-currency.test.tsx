@@ -243,7 +243,7 @@ describe('T-045h what a trade keeps', () => {
     const db = await database();
     await saveAll(db, [trade('MSFT', 'stock', 'USD', '1', '400', '410', closedAt, [{ amount: '1', currency: 'AUD' }])]);
     renderTradePage(db, (await db.trades.toArray())[0]!.id);
-    expect(await screen.findByText("Result after fees needs a recorded price currency and fees in that same currency, or in pounds (GBP) for prices in pence (GBX). Kairos does not convert a trade's fees with exchange rates.")).toBeInTheDocument();
+    expect(await screen.findByText("Result after fees needs fees in the same currency as your recorded prices, or in pounds (GBP) for prices in pence (GBX). Kairos does not convert a trade's fees with exchange rates.")).toBeInTheDocument();
   });
 
   it('says the stock and forex notes never change a trade\'s prices', () => {

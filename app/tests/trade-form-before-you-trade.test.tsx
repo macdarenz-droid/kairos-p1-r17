@@ -135,8 +135,7 @@ describe('T-057b "Before you trade" in the form', () => {
     const db = await database();
     localStorage.setItem(TRADE_FORM_MODE_STORAGE_KEY, 'full');
     // T-060c: the Journal's rows hold no controls; the checklist button is on the trade's page. Start on the Journal.
-    const { router } = renderTradePage(db, 'not-saved-yet');
-    await act(async () => { await router.navigate('/journal'); });
+    renderTradePage(db, null);
     planned();
     fireEvent.click(await within(await checklist()).findByRole('checkbox', { name: steps[0]!.label }));
     let sawNotDone = false;

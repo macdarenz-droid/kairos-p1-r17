@@ -14,6 +14,7 @@ import { loadTradeReview } from '../src/application/journal/loadTradeReview';
 import { saveManualTrade } from '../src/application/trades';
 import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
 import { TradeShareControls } from '../src/features/journal/TradeShareControls';
+import { renderTradePage, tradePageHeading } from './fixtures/tradePage';
 import type { TradePictureSavePorts } from '../src/features/journal/tradePictureImage';
 
 function dec(value: string): DecimalString { const parsed = parseDecimalString(value); if (!parsed.ok) throw new Error(value); return parsed.value; }
@@ -187,13 +188,12 @@ describe('T-052c the card names the strategy you chose, in the Journal and in An
     return { db, id: saved.tradeId };
   }
 
-  it('in the Journal\'s picture', async () => {
+  it('in the picture on the trade\'s page (T-060c: the Journal\'s rows have no picture dialog)', async () => {
     browserStandIns();
-    const { db } = await seeded();
-    render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
-    fireEvent.click(await screen.findByRole('button', { name: 'Open the BTCUSDT trade picture' }, { timeout: 4000 }));
-    const dialog = await screen.findByRole('dialog');
-    expect(await within(dialog).findByRole('img', { name: /, strategy Breakout$/ }, { timeout: 4000 })).toBeInTheDocument();
+    const { db, id } = await seeded();
+    renderTradePage(db, id);
+    const picture = within(await screen.findByRole('region', { name: 'Your trade' }, { timeout: 4000 }));
+    expect(await picture.findByRole('img', { name: /, strategy Breakout$/ }, { timeout: 4000 })).toBeInTheDocument();
   });
 
   it('in Analysis "Your trade"', async () => {
