@@ -30,7 +30,7 @@ function decodeBase64(value: string): Uint8Array | null {
   try { return Uint8Array.from(atob(compact), (char) => char.charCodeAt(0)); } catch { return null; }
 }
 
-/** The app's parseProofPayload rules (EcdsaActivationReceiptVerifier.ts:33-58), plus a tighter activationId (the Worker issues crypto.randomUUID(), worker.js:259). */
+/** The app's parseProofPayload rules (EcdsaActivationReceiptVerifier.ts:33-58), plus a tighter activationId (the activation Worker issues crypto.randomUUID(), activation-worker/src/activate.ts handleActivate). */
 function activationIdOf(payloadText: string): string | null {
   let parsed: unknown;
   try { parsed = JSON.parse(payloadText); } catch { return null; }

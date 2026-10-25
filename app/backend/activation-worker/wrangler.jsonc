@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "kairos-activation",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-31",
+  "workers_dev": true,
+  "preview_urls": false,
+  "vars": { "KAIROS_APP_ORIGINS": "https://kairos-p1-r17.pages.dev" },
+  // Found by name: the database id is not in git (wrangler looks the database up by database_name).
+  "d1_databases": [{ "binding": "DB", "database_name": "kairos-activation-db", "migrations_dir": "migrations" }],
+  "ratelimits": [
+    { "name": "ACTIVATION_RATE_LIMITER", "namespace_id": "7001", "simple": { "limit": 10, "period": 60 } }
+  ]
+}
