@@ -59,4 +59,19 @@ describe('one shared glass image', () => {
     await waitFor(() => expect(again.container.querySelectorAll('.kairos-glass-art[data-glass-ready="true"]')).toHaveLength(12));
     expect(glass.images).toBe(2);
   });
+
+  it('an image address that cannot be made leaves the bubbles usable, and a later map tries again', async () => {
+    glass.createObjectURL.mockImplementationOnce(() => { throw new Error('No object URLs here'); });
+    const HomeDashboardGlassBubbleMap = await loadMap();
+    const { container, unmount } = render(<HomeDashboardGlassBubbleMap model={glassTestModel(12)} />);
+    await waitFor(() => expect(glass.createObjectURL).toHaveBeenCalledTimes(1));
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(container.querySelectorAll('.kairos-glass-bubble')).toHaveLength(12);
+    expect(container.querySelectorAll('.kairos-glass-art')).toHaveLength(0);
+
+    unmount();
+    const again = render(<HomeDashboardGlassBubbleMap model={glassTestModel(12)} />);
+    await waitFor(() => expect(again.container.querySelectorAll('.kairos-glass-art[data-glass-ready="true"]')).toHaveLength(12));
+    expect(glass.images).toBe(2);
+  });
 });

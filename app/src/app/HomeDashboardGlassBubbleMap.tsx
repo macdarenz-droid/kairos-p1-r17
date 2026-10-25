@@ -39,10 +39,13 @@ function glassMaterial(): Promise<string> {
         const artContext = art.getContext('2d');
         if (!artContext) throw new Error('Glass canvas unavailable');
         artContext.drawImage(canvas, 0, 0, GLASS_SIZE, GLASS_SIZE);
+        // The blob comes later, outside this try: its own failure must settle the promise too, so a later bubble retries.
         art.toBlob(blob => {
-          if (blob === null) { reject(new Error('Glass image unavailable')); return; }
-          glassUrl = URL.createObjectURL(blob);
-          resolve(glassUrl);
+          try {
+            if (blob === null) throw new Error('Glass image unavailable');
+            glassUrl = URL.createObjectURL(blob);
+            resolve(glassUrl);
+          } catch (error) { reject(error); }
         }, 'image/png');
       } catch (error) { reject(error); }
     };

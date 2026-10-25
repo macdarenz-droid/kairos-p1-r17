@@ -2,7 +2,8 @@ import { vi } from 'vitest';
 
 /**
  * jsdom loads no images and draws no canvas: this makes the glass art load (or fail) and counts what the page made.
- * Undo it with `vi.restoreAllMocks()` and `vi.unstubAllGlobals()`.
+ * `vi.restoreAllMocks()` and `vi.unstubAllGlobals()` undo it, except a `URL.createObjectURL` it had to add (harmless:
+ * each test file has its own globals).
  */
 export function stubGlassImage() {
   // jsdom may lack URL.createObjectURL; a spy needs the property to exist.
@@ -23,6 +24,9 @@ export function stubGlassImage() {
   };
   vi.stubGlobal('Image', FakeImage);
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation((() => context) as never);
-  vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation(function toBlob(callback: BlobCallback) { callback(new Blob(['glass'], { type: 'image/png' })); });
+  vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation(function toBlob(callback: BlobCallback) {
+    // As in a browser, the blob arrives later, not inside the call.
+    queueMicrotask(() => callback(new Blob(['glass'], { type: 'image/png' })));
+  });
   return state;
 }
