@@ -2,6 +2,8 @@
  * P30: the plain words of the patterns. Every number is shown exactly as its owner gives it; nothing is worked out here except which sentence to use. The words describe past trades and never predict or advise.
  */
 
+import type { JournalHistoryScope } from '../journal/historyQuery';
+import { journalListHref } from '../journal/journalFilters';
 import { VISUAL_PNL_HOUR_BLOCK_NAMES, VISUAL_PNL_WEEKDAY_NAMES } from '../visual-pnl';
 import { PATTERN_LEAST_TRADES, type PatternTradesSummary, type TradePattern, type TradePatternGroup, type TradePatternKind } from './tradePatterns';
 
@@ -42,6 +44,25 @@ export function describePatternGroupLabel(_kind: TradePatternKind, group: TradeP
   const hours = /^hours:(\d)$/.exec(key);
   if (hours) return HOUR_BLOCKS[Number.parseInt(hours[1]!, 10)] ?? key;
   return key;
+}
+
+const STRATEGY_KEY_PREFIX = 'strategy:';
+
+/**
+ * U15 (D262): a group's link to the matching trades in the Journal's list (Practice's for practice patterns): Long or Short
+ * by side, a strategy group by its strategy's id (from its key). The list is not limited to these 90 days, so the words say
+ * "all". A group the list cannot filter by (the plan, after a win or a loss, a day, an hour, no strategy) has no link.
+ */
+export function describePatternGroupListLink(kind: TradePatternKind, group: TradePatternGroup, scope: JournalHistoryScope): Readonly<{ to: string; text: string }> | null {
+  const which = scope === 'practice' ? 'practice trades' : 'trades';
+  if (kind === 'direction' && (group.key === 'long' || group.key === 'short')) {
+    return Object.freeze({ to: journalListHref(scope, { side: group.key }), text: `See all your ${group.key} ${which}` });
+  }
+  if (kind === 'strategy' && group.key.startsWith(STRATEGY_KEY_PREFIX) && group.key.length > STRATEGY_KEY_PREFIX.length) {
+    const strategyId = group.key.slice(STRATEGY_KEY_PREFIX.length);
+    return Object.freeze({ to: journalListHref(scope, { strategy: strategyId }), text: `See all your ${which} with the strategy "${describePatternGroupLabel(kind, group)}"` });
+  }
+  return null;
 }
 
 const WHY_NOT_SHOWN: Readonly<Record<string, string>> = Object.freeze({

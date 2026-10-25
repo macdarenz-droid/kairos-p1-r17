@@ -3,7 +3,7 @@ import type { ManualTradeExecutionInput, ManualTradeFeeInput, SaveManualTradeInp
 export interface ManualExecutionRow extends ManualTradeExecutionInput { readonly key: string; }
 export interface ManualFeeRow extends ManualTradeFeeInput { readonly key: string; }
 
-type PreparedExecutionDetails =
+export type PreparedExecutionDetails =
   | { readonly ok: true; readonly input: SaveManualTradeInput }
   | { readonly ok: false; readonly type: 'execution-draft-invalid'; readonly field: string; readonly message: string };
 

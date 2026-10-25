@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto';
 import '@testing-library/jest-dom/vitest';
 import Dexie from 'dexie';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { JournalRoute } from '../src/app/JournalRoute';
@@ -13,6 +14,7 @@ import { TradePicture } from '../src/features/journal/TradePicture';
 import { TradePictureCard } from '../src/features/journal/TradePictureCard';
 import { createLimitedQueue, TradePictureCandleLoaderContext, type TradePictureCandleLoader } from '../src/features/journal/tradePictureCandleQueue';
 import { saveTradePictureImage, serializeTradePictureSvg, tradePictureFileName, type TradePictureSavePorts } from '../src/features/journal/tradePictureImage';
+import { renderTradePage, tradePageHeading } from './fixtures/tradePage';
 
 const names: string[] = [];
 async function database(): Promise<KairosDatabase> {
@@ -32,25 +34,59 @@ async function seedClosedTrade(db: KairosDatabase) {
     executions: [{ type: 'entry', price: '60000', quantity: '0.1', executedAt: opened }, { type: 'exit', price: '61500', quantity: '0.1', executedAt: closed }],
   });
   if (!saved.ok) throw new Error('fixture');
+  return saved.tradeId;
 }
 const offline: TradePictureCandleLoader = async () => ({ ok: false, why: 'no-candles', retryAfterSeconds: null, note: null });
 
-describe('T-027d trade picture on the cards', () => {
-  it('the picture\'s Closed time equals the card header (T-039d)', async () => {
+describe('T-027d trade picture on the rows and the trade page', () => {
+  const withCandles = (loader: TradePictureCandleLoader) => (node: ReactNode) => <TradePictureCandleLoaderContext.Provider value={loader}>{node}</TradePictureCandleLoaderContext.Provider>;
+
+  it('the picture\'s Closed time equals the trade page\'s Closed time (T-039d)', async () => {
     const db = await database();
-    await seedClosedTrade(db);
-    const { container } = render(<TradePictureCandleLoaderContext.Provider value={offline}><MemoryRouter><JournalRoute db={db} /></MemoryRouter></TradePictureCandleLoaderContext.Provider>);
-    fireEvent.click(await screen.findByRole('button', { name: 'Open the BTCUSDT trade picture' }));
-    const dialog = screen.getByRole('dialog', { name: 'BTCUSDT trade' });
-    const header = container.querySelector('.kairos-history-card > time')!;
-    expect(header.textContent).toBe(dialog.querySelector('[data-info="closed"] dd')!.textContent);
+    const id = await seedClosedTrade(db);
+    renderTradePage(db, id, { wrap: withCandles(offline) });
+    await tradePageHeading('BTCUSDT · Long');
+    const closed = within(screen.getByRole('region', { name: 'Trade overview' })).getByText('Closed').closest('div')!.querySelector('dd')!;
+    const picture = screen.getByRole('region', { name: 'Your trade' });
+    expect(closed.textContent).toBe(picture.querySelector('[data-info="closed"] dd')!.textContent);
   });
 
-  it('Journal shows a picture for a closed trade; without candles it says they need a connection, and it opens full size', async () => {
+  it('T-060c review r1: a Journal row draws a small, decorative picture of the trade: its candles are asked once, and it holds no words of its own', async () => {
     const db = await database();
     await seedClosedTrade(db);
     const loader = vi.fn(offline);
-    render(<TradePictureCandleLoaderContext.Provider value={loader}><MemoryRouter><JournalRoute db={db} /></MemoryRouter></TradePictureCandleLoaderContext.Provider>);
+    const { container } = render(<TradePictureCandleLoaderContext.Provider value={loader}><MemoryRouter><JournalRoute db={db} /></MemoryRouter></TradePictureCandleLoaderContext.Provider>);
+    await waitFor(() => expect(container.querySelector('li.kairos-history-card')).not.toBeNull());
+    const row = container.querySelector<HTMLElement>('li.kairos-history-card')!;
+    const picture = row.querySelector<HTMLElement>('.kairos-trade-picture-row')!;
+    expect(picture).toHaveAttribute('aria-hidden', 'true');
+    expect(within(picture).getByText('Risk')).toBeInTheDocument();
+    // No words inside the row's link but its own: the picture's notes stay out.
+    expect(picture.querySelectorAll('p, [tabindex], button, a')).toHaveLength(0);
+    await waitFor(() => expect(loader).toHaveBeenCalledTimes(1));
+    // Without candles the row says nothing: the words are on the trade's page.
+    expect(within(picture).queryByText('No candles for this time.')).toBeNull();
+    expect(screen.queryByText('Visual guide · Not to scale')).toBeNull();
+  });
+
+  it('the trade page shows the full picture at once, with its result and the share button', async () => {
+    const db = await database();
+    const id = await seedClosedTrade(db);
+    renderTradePage(db, id, { wrap: withCandles(offline) });
+    await tradePageHeading('BTCUSDT · Long');
+    const picture = screen.getByRole('region', { name: 'Your trade' });
+    await waitFor(() => expect(within(picture).getByText('No candles for this time.')).toBeInTheDocument());
+    expect(within(picture).getByText('Result after fees')).toBeInTheDocument();
+    expect(within(picture).getByRole('button', { name: 'Share or download image' })).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('the thumbnail shows a picture for a closed trade and opens it full size', async () => {
+    const db = await database();
+    await seedClosedTrade(db);
+    const [entry] = await listJournalHistory(db);
+    const loader = vi.fn(offline);
+    render(<TradePictureCandleLoaderContext.Provider value={loader}><TradePicture entry={entry} variant="thumbnail" /></TradePictureCandleLoaderContext.Provider>);
     const open = await screen.findByRole('button', { name: 'Open the BTCUSDT trade picture' });
     await waitFor(() => expect(within(open).getByText('No candles for this time.')).toBeInTheDocument());
     expect(loader).toHaveBeenCalledTimes(1);

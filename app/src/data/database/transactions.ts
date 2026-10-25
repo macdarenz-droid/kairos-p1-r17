@@ -111,6 +111,12 @@ function reportWriteFailure(kind: KairosWriteFailureKind): void {
  */
 export const KAIROS_JOURNAL_CHANNEL = 'kairos-journal';
 
+/**
+ * D229: the window event the shell raises once per message from another tab; every screen that reads again when you
+ * come back to the app also reads again on it (here so feature screens can hear it without importing the shell).
+ */
+export const JOURNAL_CHANGED_EVENT = 'kairos:journal-changed';
+
 let journalChannel: BroadcastChannel | null = null;
 const changeListeners = new Set<() => void>();
 

@@ -1,7 +1,7 @@
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { Link, useInRouterContext } from 'react-router';
 import type { CoachNotesQueryResult } from '../../application/coach/loadCoachNotes';
-import { describeCoachNote } from '../../application/coach/coachWords';
+import { describeCoachNote, describeCoachNoteListLink } from '../../application/coach/coachWords';
 import type { JournalHistoryScope } from '../../application/journal';
 import type { KairosDatabase } from '../../data/database';
 import { Card } from '../../design-system/primitives';
@@ -44,6 +44,8 @@ export function CoachCard({ db, scope, now, refreshRevision, disciplineRevision,
   const result = state.kind === 'ready' ? state.result : null;
   const notes = result?.kind === 'ready' ? result.notes : null;
   const first = notes && notes.length > 0 ? describeCoachNote(notes[0]!) : null;
+  // A repeated mistake opens the list of the trades marked with it (D262).
+  const list = notes && notes.length > 0 ? describeCoachNoteListLink(notes[0]!, scope) : null;
   return <Card as="section" className="kairos-coach-card" aria-labelledby={titleId}>
     <div className="kairos-coach-card__heading">
       {level === 2 ? <h2 id={titleId}>{scope === 'practice' ? 'Your practice coach' : 'Your coach'}</h2> : <h3 id={titleId}>{scope === 'practice' ? 'Your practice coach' : 'Your coach'}</h3>}
@@ -60,6 +62,7 @@ export function CoachCard({ db, scope, now, refreshRevision, disciplineRevision,
       <p className="kairos-coach-card__count">{notes.length === 1 ? '1 note' : `${notes.length} notes`}</p>
       <p className="kairos-coach-card__title">{first.title}</p>
       <p>{first.step}</p>
+      {list ? <p><CoachLink to={list.to}>{list.text}</CoachLink></p> : null}
       <p><CoachLink to={page}>See all your coach notes</CoachLink></p>
     </> : null}
   </Card>;

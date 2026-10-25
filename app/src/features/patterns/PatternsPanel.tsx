@@ -3,8 +3,8 @@ import { Link, useInRouterContext } from 'react-router';
 import { describeTotalsInHomeCurrency } from '../../application/currency/currencyWords';
 import type { JournalHistoryScope } from '../../application/journal';
 import { loadTradePatterns, TRADE_PATTERN_PERIOD_DAYS, type TradePatternsQueryResult } from '../../application/patterns/loadTradePatterns';
-import { describePatternGroupLabel, describePatternLeftOut, describePatternSummary, describeTradePattern } from '../../application/patterns/patternWords';
-import { PATTERN_BAR_STEPS, PATTERN_LEAST_TRADES, type PatternTradesSummary, type TradePattern } from '../../application/patterns/tradePatterns';
+import { describePatternGroupLabel, describePatternGroupListLink, describePatternLeftOut, describePatternSummary, describeTradePattern } from '../../application/patterns/patternWords';
+import { PATTERN_BAR_STEPS, PATTERN_LEAST_TRADES, type PatternTradesSummary, type TradePattern, type TradePatternGroup, type TradePatternKind } from '../../application/patterns/tradePatterns';
 import type { KairosDatabase } from '../../data/database';
 import { Card, ErrorState, Skeleton } from '../../design-system/primitives';
 import './patterns.css';
@@ -53,7 +53,13 @@ function PatternBar({ summary, steps }: { readonly summary: PatternTradesSummary
   </span>;
 }
 
-function PatternCard({ pattern, level }: { readonly pattern: TradePattern; readonly level: 2 | 3 }) {
+/** A group's link to the matching trades in the list (Long, Short or a strategy); none for a group the list cannot filter by. */
+function GroupListLink({ kind, group, scope }: { readonly kind: TradePatternKind; readonly group: TradePatternGroup; readonly scope: JournalHistoryScope }) {
+  const list = describePatternGroupListLink(kind, group, scope);
+  return list ? <p><PatternsLink to={list.to}>{list.text}</PatternsLink></p> : null;
+}
+
+function PatternCard({ pattern, level, scope }: { readonly pattern: TradePattern; readonly level: 2 | 3; readonly scope: JournalHistoryScope }) {
   const words = describeTradePattern(pattern.kind);
   const titleId = useId();
   const left = describePatternLeftOut(pattern);
@@ -66,6 +72,7 @@ function PatternCard({ pattern, level }: { readonly pattern: TradePattern; reado
         <p className="kairos-pattern__label">{describePatternGroupLabel(pattern.kind, group)}</p>
         <PatternBar summary={group.summary} steps={group.barSteps} />
         {describePatternSummary(group.summary).map((line, index) => <p key={index}>{line}</p>)}
+        <GroupListLink kind={pattern.kind} group={group} scope={scope} />
       </li>)}
     </ul> : null}
     {left ? <p className="kairos-pattern__left-out">{left}</p> : null}
@@ -91,7 +98,8 @@ export function PatternsPanel({ db, scope, now = wallClock, level = 2, headingId
     return () => { ignore = true; };
   }, [db, scope, now, attempt, refreshRevision]);
   // "Try again" unmounts its own error box while loading, so focus would fall to the page (WCAG 2.4.3). When it had focus,
-  // focus goes to the first link or button of what loaded (the new "Try again" when it failed again), else the heading above.
+  // focus goes to the first link or button of what loaded above the pattern cards (the new "Try again" when it failed again),
+  // else the heading above: the cards' group links (D262) sit far down the page, so focus never jumps there.
   // Holds the screen the tap was made on: React may run the effect for that screen after the tap, so only a newer one moves focus.
   const retryHadFocus = useRef<typeof state | null>(null);
   const loaded = useRef<HTMLDivElement>(null);
@@ -99,7 +107,8 @@ export function PatternsPanel({ db, scope, now = wallClock, level = 2, headingId
     const tapped = retryHadFocus.current;
     if (state.kind === 'loading' || tapped === null || state === tapped) return;
     retryHadFocus.current = null;
-    (loaded.current?.querySelector<HTMLElement>('a[href], button:not([disabled])') ?? document.getElementById(headingId))?.focus();
+    const first = Array.from(loaded.current?.querySelectorAll<HTMLElement>('a[href], button:not([disabled])') ?? []).find(item => item.closest('.kairos-patterns__cards') === null);
+    (first ?? document.getElementById(headingId))?.focus();
   }, [state]);
   const retry = () => { retryHadFocus.current = document.activeElement?.closest('.kairos-error-state') != null ? state : null; setAttempt(current => current + 1); };
 
@@ -124,7 +133,7 @@ export function PatternsPanel({ db, scope, now = wallClock, level = 2, headingId
         <PatternBar summary={projection.overall} steps={PATTERN_BAR_STEPS} />
         {describePatternSummary(projection.overall).map((line, index) => <p key={index}>{line}</p>)}
       </Card>
-      {projection.patterns.map(pattern => <PatternCard key={pattern.kind} pattern={pattern} level={level} />)}
+      {projection.patterns.map(pattern => <PatternCard key={pattern.kind} pattern={pattern} level={level} scope={scope} />)}
     </div> : null}
     {result?.kind === 'ready' ? <p className="kairos-patterns__zone">Time zone: {result.timeZone}</p> : null}
     </div>

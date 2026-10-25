@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import type { JournalHistoryEntry } from '../application/journal';
-import { deleteTradeRecord } from '../application/trades';
-import type { KairosDatabase } from '../data/database';
-import { ConfirmDialog } from '../design-system/primitives';
+import type { JournalHistoryEntry } from '../../application/journal';
+import { deleteTradeRecord } from '../../application/trades';
+import type { KairosDatabase } from '../../data/database';
+import { ConfirmDialog } from '../../design-system/primitives';
 import './journalTradeDelete.css';
 
 interface Props {

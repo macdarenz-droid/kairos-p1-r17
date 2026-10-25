@@ -7,7 +7,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { AnalysisHistoryWorkspace } from '../src/app/AnalysisHistoryWorkspace';
 import type { AnalysisLiveCandleCanvasProps } from '../src/app/AnalysisLiveCandleCanvas';
 import type { AnalysisSavedTradeOverlayLiveCandleCanvasProps } from '../src/app/AnalysisSavedTradeOverlayLiveCandleCanvas';
-import { TradeReviewDetails } from '../src/app/TradeReviewDetails';
+import { TradeDetails } from '../src/features/journal/TradeDetails';
 import { getJournalHistoryEntry, type JournalHistoryEntry } from '../src/application/journal';
 import { saveManualTrade } from '../src/application/trades';
 import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
@@ -61,7 +61,7 @@ describe('T-043d crypto only for now, in plain words', () => {
     });
     if (!saved.ok) throw new Error('fixture');
     const entry = (await getJournalHistoryEntry(db, saved.tradeId))!;
-    const { container, rerender } = render(<TradeReviewDetails entry={entry} />);
+    const { container, rerender } = render(<TradeDetails entry={entry} />);
     const result = within(screen.getByRole('region', { name: 'Recorded result' }));
     for (const text of ['Result before fees', 'Result after fees', '50 USD']) expect(result.getByText(text)).toBeInTheDocument();
     expect(result.getAllByText('49.3 USD')).toHaveLength(2);
@@ -69,9 +69,9 @@ describe('T-043d crypto only for now, in plain words', () => {
     expect(within(screen.getByRole('region', { name: 'Trade overview' })).getByText('Forex')).toBeInTheDocument();
     expect(container.textContent).not.toMatch(/\b(fills?|executions?|executed)\b|P&L/i);
 
-    rerender(<TradeReviewDetails entry={{ ...entry, fees: [{ ...entry.fees[0]!, executionId: entry.executions[1]!.id }] }} />);
+    rerender(<TradeDetails entry={{ ...entry, fees: [{ ...entry.fees[0]!, executionId: entry.executions[1]!.id }] }} />);
     expect(screen.getByText('For exit 2')).toBeInTheDocument();
-    rerender(<TradeReviewDetails entry={{ ...entry, fees: [{ ...entry.fees[0]!, executionId: 'missing' as (typeof entry.executions)[0]['id'] }] }} />);
+    rerender(<TradeDetails entry={{ ...entry, fees: [{ ...entry.fees[0]!, executionId: 'missing' as (typeof entry.executions)[0]['id'] }] }} />);
     expect(screen.getByText('Its entry or exit is not available')).toBeInTheDocument();
   });
 

@@ -43,8 +43,8 @@ afterEach(async () => {
 
 describe('P5.3 migration harness', () => {
   it('keeps immutable history and appends the current v7 schema', () => {
-    expect(KAIROS_DB_SCHEMA_VERSION).toBe(14);
-    expect(KAIROS_DATABASE_MIGRATIONS).toHaveLength(14);
+    expect(KAIROS_DB_SCHEMA_VERSION).toBe(15);
+    expect(KAIROS_DATABASE_MIGRATIONS).toHaveLength(15);
     expect(KAIROS_DATABASE_MIGRATIONS[0]).toEqual({ version: 1, stores: KAIROS_V1_STORES });
     expect(KAIROS_DATABASE_MIGRATIONS[1]?.version).toBe(2);
     expect(KAIROS_DATABASE_MIGRATIONS[2]).toEqual({ version: 3, stores: KAIROS_V3_STORES });
@@ -81,8 +81,8 @@ describe('P5.3 migration harness', () => {
     const db = createKairosDatabase(makeDatabaseName('production-schema'));
     const status = await openKairosDatabase(db);
 
-    expect(status).toEqual({ state: 'ready', schemaVersion: 14 });
-    expect(db.verno).toBe(14);
+    expect(status).toEqual({ state: 'ready', schemaVersion: 15 });
+    expect(db.verno).toBe(15);
     expect(db.tables.map((table) => table.name)).toEqual(['metadata', 'trades', 'tradePlans', 'tradeExecutions', 'tradeFees', 'savedAnalyses', 'savedTimeAssistedSnapshots', 'tradeDiscipline', 'exchangeRates', 'economicEvents', 'deviceHandles']);
     expect(db.trades.schema.indexes.map((index) => index.name)).toContain('[status+updatedAt]');
     expect(db.trades.schema.indexes.map((index) => index.name)).toContain('[status+closedAt]');

@@ -3,7 +3,7 @@ import Dexie from 'dexie';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { clearBackupFolder, commitBackupRestore, exportKairosBackup, loadBackupFolder, prepareBackupRestore, saveBackupFolder } from '../src/application/backup';
 import { parseKairosBackup } from '../src/data/backup';
-import { KAIROS_DATABASE_MIGRATIONS, KAIROS_V12_STORES, createKairosDatabase, inspectKairosDatabaseIntegrity, openKairosDatabase, registerKairosMigrations, type KairosDatabase } from '../src/data/database';
+import { KAIROS_DATABASE_MIGRATIONS, KAIROS_V12_STORES, createKairosDatabase, inspectKairosDatabaseIntegrity, openKairosDatabase, registerKairosMigrations, type KairosDatabase, tradeWithoutJournalOrder } from '../src/data/database';
 import type { TradeId, TradeRecord } from '../src/domain/trades';
 
 const names: string[] = [];
@@ -28,8 +28,8 @@ describe('T-054b schema v12: a device-only store for the backup folder', () => {
     await old.table('metadata').put({ key: 'preferences.goals.v1', value: '{"version":1}', updatedAt: '2026-10-20T08:00:00.000Z' });
     old.close();
     const db = createKairosDatabase(name); opened.push(db);
-    expect(await openKairosDatabase(db)).toEqual({ state: 'ready', schemaVersion: 14 });
-    expect(await db.trades.toArray()).toEqual([trade]);
+    expect(await openKairosDatabase(db)).toEqual({ state: 'ready', schemaVersion: 15 });
+    expect((await db.trades.toArray()).map(tradeWithoutJournalOrder)).toEqual([trade]);
     expect(await db.metadata.count()).toBe(1);
     expect(await db.deviceHandles.count()).toBe(0);
     expect(KAIROS_DATABASE_MIGRATIONS[11]).toEqual({ version: 12, stores: KAIROS_V12_STORES });
@@ -54,7 +54,7 @@ describe('T-054b schema v12: a device-only store for the backup folder', () => {
     const exported = await exportKairosBackup(db, new Date(now()));
     if (!exported.ok) throw new Error('export failed');
     const parsed = parseKairosBackup(exported.file.contents);
-    expect(parsed).toMatchObject({ formatVersion: 12, databaseSchemaVersion: 14 });
+    expect(parsed).toMatchObject({ formatVersion: 13, databaseSchemaVersion: 15 });
     expect(Object.keys(parsed.payload)).not.toContain('deviceHandles');
     expect(exported.file.contents).not.toContain('Kairos backups');
     // Another journal's backup replaces everything here, but not this device's folder.

@@ -1,5 +1,5 @@
 import type { KairosDatabase } from '../database/KairosDatabase';
-import { KAIROS_DB_SCHEMA_VERSION } from '../database/schema';
+import { KAIROS_DB_SCHEMA_VERSION, tradeWithoutJournalOrder } from '../database/schema';
 import { assertKairosCoreIntegrity, isSavedAnalysisRecordShape, isSavedTimeAssistedSnapshotRecordShape } from '../database/integrity';
 import { isTradeDisciplineRecordShape } from '../../domain/discipline';
 import { isExchangeRateRecordShape } from '../../domain/calculations/currencyConversion';
@@ -85,7 +85,8 @@ export async function createKairosDatabaseSnapshotWithReport(
       return {
         payload: {
           metadata: sortByKey(metadata.filter((record) => !isKairosDeviceScopedMetadataKey(record.key))),
-          trades: sortById(trades),
+          // The Journal's order is derived (D259): a backup holds only what the trader entered; restore stamps it again.
+          trades: sortById(trades.map(tradeWithoutJournalOrder)),
           tradePlans: sortById(tradePlans),
           tradeExecutions: sortById(tradeExecutions),
           tradeFees: sortById(tradeFees),

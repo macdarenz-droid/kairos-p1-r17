@@ -60,12 +60,15 @@ export function PracticeMoneyCard({ db, refreshRevision }: { readonly db: Kairos
     return () => { ignore = true; };
   }, [db, refreshRevision, localRevision]);
 
-  // Focus moves after the render that shows its target.
+  // Focus moves after the render that shows its target. An earlier render's effect can run first (React runs it before a
+  // tap's render), so the request waits while its target isn't on screen yet.
   useEffect(() => {
     const target = focusNext.current;
     if (target === null) return;
+    const element = (target === 'heading' ? heading : target === 'amount' ? amountInput : currencyInput).current;
+    if (element === null) return;
     focusNext.current = null;
-    (target === 'heading' ? heading : target === 'amount' ? amountInput : currencyInput).current?.focus();
+    element.focus();
   });
 
   const notSet = typeof view === 'object' && view.kind === 'not-set';

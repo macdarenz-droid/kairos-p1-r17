@@ -1,12 +1,10 @@
 import 'fake-indexeddb/auto';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter } from 'react-router';
-import { JournalRoute } from '../src/app/JournalRoute';
-import { PracticeRoute } from '../src/app/PracticeRoute';
 import { savePracticeTrade } from '../src/application/practice';
 import { saveManualTrade, type SaveManualTradeInput } from '../src/application/trades';
 import { createKairosDatabase, type KairosDatabase } from '../src/data/database';
+import { renderTradePage, tradePageHeading, tradePagePart } from './fixtures/tradePage';
 
 let db: KairosDatabase;
 const openedAt = '2026-09-12T04:00:00.000Z';
@@ -22,27 +20,26 @@ const closedTrade = (exitAt = '2026-09-12T05:00:00.000Z'): SaveManualTradeInput 
 async function start(input: SaveManualTradeInput = closedTrade(), practice = false) {
   db = createKairosDatabase('edit-entries-' + crypto.randomUUID()); await db.open();
   expect((practice ? await savePracticeTrade(db, input) : await saveManualTrade(db, input)).ok).toBe(true);
-  render(<MemoryRouter>{practice ? <PracticeRoute db={db} /> : <JournalRoute db={db} />}</MemoryRouter>);
-  const toggle = await screen.findByRole('button', { name: 'Your entries and exits' });
-  const card = within(toggle.closest('li')!);
-  fireEvent.click(toggle);
+  renderTradePage(db, (await db.trades.toArray())[0].id, { scope: practice ? 'practice' : 'real' });
+  await tradePageHeading('BTCUSDT · Long');
+  const card = tradePagePart('Change this trade');
+  fireEvent.click(await card.findByRole('button', { name: 'Your entries and exits' }));
   return card;
 }
 const storedExit = async () => (await db.tradeExecutions.toArray()).find(row => row.type === 'exit')!;
 const editForm = (card: ReturnType<typeof within>, name: string) => within(card.getByRole('form', { name }));
 
 describe('editing saved entries, exits and fees', () => {
-  it('corrects an exit price and the card result follows', async () => {
+  it('corrects an exit price and the result on the page follows', async () => {
     const card = await start(); const before = await storedExit();
     fireEvent.click(card.getByRole('button', { name: 'Edit exit 2' }));
     const form = editForm(card, 'Edit exit 2');
     expect(form.getByLabelText('Price')).toHaveFocus();
     fireEvent.change(form.getByLabelText('Price'), { target: { value: '130' } });
     fireEvent.click(form.getByRole('button', { name: 'Save change' }));
-    expect(await screen.findByText('Trade updated. Your saved details are below.')).toBeInTheDocument();
+    expect(await screen.findByText('Trade updated. Your saved details are on this page.')).toBeInTheDocument();
     expect(await storedExit()).toEqual({ ...before, price: '130' });
-    const refreshed = (await screen.findByRole('button', { name: 'Your entries and exits' })).closest('li')!;
-    await waitFor(() => expect(refreshed.textContent).toContain('59.5 USDT'));
+    await waitFor(() => expect(screen.getByRole('region', { name: 'Recorded result' }).textContent).toContain('59.5 USDT'));
   });
 
   it('keeps an invalid quantity and writes nothing', async () => {
@@ -75,9 +72,9 @@ describe('editing saved entries, exits and fees', () => {
     await waitFor(async () => expect((await storedExit()).price).toBe('125'));
     expect((await storedExit()).executedAt).toBe(exitAt);
 
-    await screen.findByText('Trade updated. Your saved details are below.');
-    const toggle = await screen.findByRole('button', { name: 'Your entries and exits' });
-    const again = within(toggle.closest('li')!);
+    await screen.findByText('Trade updated. Your saved details are on this page.');
+    const again = tradePagePart('Change this trade');
+    const toggle = await again.findByRole('button', { name: 'Your entries and exits' });
     if (toggle.getAttribute('aria-expanded') !== 'true') fireEvent.click(toggle);
     fireEvent.click(again.getByRole('button', { name: 'Edit exit 2' }));
     fireEvent.change(editForm(again, 'Edit exit 2').getByLabelText('Date & time'), { target: { value: '2026-09-12T15:00' } });
@@ -98,7 +95,7 @@ describe('editing saved entries, exits and fees', () => {
     fireEvent.click(card.getByRole('button', { name: 'Edit entry 1' }));
     fireEvent.change(editForm(card, 'Edit entry 1').getByLabelText('Price'), { target: { value: '101' } });
     fireEvent.click(card.getByRole('button', { name: 'Save change' }));
-    expect(await screen.findByText('Practice trade updated. Your saved details are below.')).toBeInTheDocument();
+    expect(await screen.findByText('Trade updated. Your saved details are on this page.')).toBeInTheDocument();
     expect((await db.tradeExecutions.toArray()).find(row => row.type === 'entry')!.price).toBe('101');
   });
 
@@ -120,8 +117,8 @@ describe('editing saved entries, exits and fees', () => {
   it('shows nothing for a trade with no entries, exits or fees', async () => {
     db = createKairosDatabase('edit-entries-' + crypto.randomUUID()); await db.open();
     expect((await saveManualTrade(db, { symbol: 'ETHUSDT', marketType: 'crypto', side: 'long', status: 'draft' })).ok).toBe(true);
-    render(<MemoryRouter><JournalRoute db={db} /></MemoryRouter>);
-    await screen.findByText('ETHUSDT');
+    renderTradePage(db, (await db.trades.toArray())[0].id);
+    await tradePageHeading('ETHUSDT · Long');
     expect(screen.queryByRole('button', { name: 'Your entries and exits' })).toBeNull();
   });
 });

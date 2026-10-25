@@ -8,6 +8,7 @@ import {
   openKairosDatabase,
   registerKairosMigrations,
   type KairosDatabase,
+  tradeWithoutJournalOrder,
 } from '../src/data/database';
 import {
   createKairosBackupEnvelope,
@@ -60,8 +61,8 @@ describe('schema v7: the close-time index', () => {
     old.close();
 
     const { db, status } = await openCurrent(name);
-    expect(status).toEqual({ state: 'ready', schemaVersion: 14 });
-    expect(await db.trades.orderBy('id').toArray()).toEqual([...trades].sort((l, r) => l.id.localeCompare(r.id)));
+    expect(status).toEqual({ state: 'ready', schemaVersion: 15 });
+    expect((await db.trades.orderBy('id').toArray()).map(tradeWithoutJournalOrder)).toEqual([...trades].sort((l, r) => l.id.localeCompare(r.id)));
     expect(await db.tradePlans.toArray()).toEqual([plan]);
     expect(await db.tradeExecutions.toArray()).toEqual([execution]);
     expect(await db.tradeFees.toArray()).toEqual([fee]);
@@ -72,7 +73,7 @@ describe('schema v7: the close-time index', () => {
     db.close();
 
     const again = await openCurrent(name);
-    expect(again.status).toEqual({ state: 'ready', schemaVersion: 14 });
+    expect(again.status).toEqual({ state: 'ready', schemaVersion: 15 });
     expect(await again.db.trades.count()).toBe(4);
   });
 
@@ -99,7 +100,7 @@ describe('backup format V5 across schema v6 and v7', () => {
     const { db } = await openCurrent(newName('restore-v6'));
     const envelope = { ...createKairosBackupEnvelope({ metadata: [{ key: 'journal.note', value: 'kept', updatedAt: at }], trades: [trade('closed-a', 'closed', 'manual', at)], exportedAt: new Date(at) }), formatVersion: 5, databaseSchemaVersion: 6 };
     const text = JSON.stringify(envelope);
-    expect(parseKairosBackup(text)).toMatchObject({ formatVersion: 12, databaseSchemaVersion: 14 });
+    expect(parseKairosBackup(text)).toMatchObject({ formatVersion: 13, databaseSchemaVersion: 15 });
     const prepared = await prepareKairosRestore(db, text);
     const result = await replaceKairosDatabaseFromPreparedRestore(db, prepared);
     expect(result.integrity.ok).toBe(true);
@@ -110,7 +111,7 @@ describe('backup format V5 across schema v6 and v7', () => {
     const { db } = await openCurrent(newName('snapshot'));
     await db.trades.put(trade('closed-a', 'closed', 'manual', at));
     const snapshot = await createKairosDatabaseSnapshot(db);
-    expect(snapshot.databaseSchemaVersion).toBe(14);
+    expect(snapshot.databaseSchemaVersion).toBe(15);
     expect(parseKairosBackup(serializeKairosBackup(snapshot))).toEqual(snapshot);
   });
 

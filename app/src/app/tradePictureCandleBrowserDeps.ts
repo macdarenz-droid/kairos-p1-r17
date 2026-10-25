@@ -1,5 +1,5 @@
 import type { TradePictureCandleDeps } from '../application/trade-visualizer';
-import { createLimitedQueue, TRADE_PICTURE_MAX_PARALLEL_LOADS, type TradePictureCandleLoader } from '../features/journal/tradePictureCandleQueue';
+import { createTradePictureCandleLoader, type TradePictureCandleLoader } from '../features/journal/tradePictureCandleQueue';
 import { loadTradePictureCandles } from '../application/trade-visualizer';
 import { appMarketDataPorts } from './marketDataPorts';
 import { BINANCE_SPOT_VENUE } from '../services/market-data/providers/binance/binanceSpotTradeStream';
@@ -15,11 +15,10 @@ export function createTradePictureCandleBrowserDeps(): TradePictureCandleDeps {
 
 let browserLoader: TradePictureCandleLoader | null = null;
 
-/** The app's candle loader for trade pictures: real candles, at most three loads at once for the whole page. */
+/** The app's candle loader for trade pictures: real candles, at most three loads at once, closed trades' kept in memory. */
 export function browserTradePictureCandleLoader(): TradePictureCandleLoader {
   if (browserLoader) return browserLoader;
-  const queue = createLimitedQueue(TRADE_PICTURE_MAX_PARALLEL_LOADS);
   const deps = createTradePictureCandleBrowserDeps();
-  browserLoader = (trade, executions) => queue(() => loadTradePictureCandles(trade, executions, deps));
+  browserLoader = createTradePictureCandleLoader((trade, executions) => loadTradePictureCandles(trade, executions, deps));
   return browserLoader;
 }

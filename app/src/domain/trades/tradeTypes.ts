@@ -29,6 +29,8 @@ export interface TradeRecord {
   readonly tags?: readonly string[];
   /** U11: the leverage used; 10 means 10×. Absent: not recorded. */
   readonly leverage?: DecimalString | null;
+  /** U15 (D265): the trader's own note on the trade, plain text of at most 2,000 characters. Absent: none. */
+  readonly note?: string | null;
   readonly openedAt: string | null;
   readonly closedAt: string | null;
   readonly createdAt: string;

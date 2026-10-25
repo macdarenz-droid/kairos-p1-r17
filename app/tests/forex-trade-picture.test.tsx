@@ -15,6 +15,7 @@ import {
   type TradeId, type TradePlanId, type TradeRecord, type TradeSide,
 } from '../src/domain/trades';
 import { TradePicture } from '../src/features/journal/TradePicture';
+import { renderTradePage, tradePageHeading } from './fixtures/tradePage';
 import { TradePictureCard } from '../src/features/journal/TradePictureCard';
 import { TradePictureCandleLoaderContext, type TradePictureCandleLoader } from '../src/features/journal/tradePictureCandleQueue';
 
@@ -154,7 +155,7 @@ describe('T-043c the forex trade picture', () => {
     expect(screen.getByText('Forex candles need a six-letter pair, such as EURUSD or XAUUSD.')).toBeTruthy();
   });
 
-  it('asks for forex candles too, in the Journal and in Analysis', async () => {
+  it('asks for forex candles too, on the trade\'s page (T-060c: a Journal row reads none) and in Analysis', async () => {
     const db = await database();
     const fx = await saveManualTrade(db, {
       symbol: 'EURUSD', marketType: 'forex', side: 'long', status: 'closed', openedAt: opened, closedAt: closed, grossPnlCurrency: 'USD',
@@ -166,15 +167,16 @@ describe('T-043c the forex trade picture', () => {
       executions: [{ type: 'entry', price: '60000', quantity: '0.1', executedAt: opened }, { type: 'exit', price: '61500', quantity: '0.1', executedAt: closed }],
     });
     expect(fx.ok && btc.ok).toBe(true);
+    if (!fx.ok || !btc.ok) throw new Error('fixture');
     const offline: TradePictureCandleLoader = async () => ({ ok: false, why: 'no-candles', retryAfterSeconds: null, note: null });
     const loader = vi.fn(offline);
-    render(<TradePictureCandleLoaderContext.Provider value={loader}><MemoryRouter><JournalRoute db={db} /></MemoryRouter></TradePictureCandleLoaderContext.Provider>);
-    const forex = await screen.findByRole('button', { name: 'Open the EURUSD trade picture' });
-    await waitFor(() => expect(within(forex).getByText('No candles for this time.')).toBeInTheDocument());
-    const crypto = screen.getByRole('button', { name: 'Open the BTCUSDT trade picture' });
-    await waitFor(() => expect(within(crypto).getByText('No candles for this time.')).toBeInTheDocument());
+    for (const [id, symbol] of [[fx.tradeId, 'EURUSD'], [btc.tradeId, 'BTCUSDT']] as const) {
+      renderTradePage(db, id, { wrap: node => <TradePictureCandleLoaderContext.Provider value={loader}>{node}</TradePictureCandleLoaderContext.Provider> });
+      await tradePageHeading(`${symbol} · Long`);
+      await waitFor(() => expect(within(screen.getByRole('region', { name: 'Your trade' })).getByText('No candles for this time.')).toBeInTheDocument());
+      cleanup();
+    }
     expect(loader.mock.calls.map(([record]) => record.symbol).sort()).toEqual(['BTCUSDT', 'EURUSD']);
-    cleanup();
 
     const entry = (await listJournalHistory(db)).find(item => item.trade.symbol === 'EURUSD')!;
     const analysisLoader = vi.fn(offline);

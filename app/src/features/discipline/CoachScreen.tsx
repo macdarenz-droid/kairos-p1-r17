@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Link, useInRouterContext } from 'react-router';
 import type { CoachNote } from '../../application/coach/coachNotes';
-import { describeCoachNote, describeCoachTradeFacts } from '../../application/coach/coachWords';
+import { describeCoachNote, describeCoachNoteListLink, describeCoachTradeFacts } from '../../application/coach/coachWords';
 import { loadCoachNotes, type CoachNotesQueryResult } from '../../application/coach/loadCoachNotes';
 import { projectStrategyRuleBars, STRATEGY_RULE_BAR_STEPS } from '../../application/discipline/strategyCheck';
 import type { JournalHistoryScope } from '../../application/journal';
@@ -52,8 +52,9 @@ function SizeBars({ planned, traded }: { readonly planned: string; readonly trad
   </span>;
 }
 
-function CoachNoteCard({ note, renderTradeLink }: { readonly note: CoachNote; readonly renderTradeLink: (tradeId: string) => ReactNode }) {
+function CoachNoteCard({ note, scope, renderTradeLink }: { readonly note: CoachNote; readonly scope: JournalHistoryScope; readonly renderTradeLink: (tradeId: string) => ReactNode }) {
   const words = describeCoachNote(note);
+  const list = describeCoachNoteListLink(note, scope);
   const titleId = useId();
   return <Card as="article" className="kairos-coach-note" aria-labelledby={titleId} data-note={note.kind}>
     <p className="kairos-coach-note__topic">{words.topic}</p>
@@ -68,6 +69,7 @@ function CoachNoteCard({ note, renderTradeLink }: { readonly note: CoachNote; re
         {renderTradeLink(trade.tradeId)}
       </li>)}
     </ul> : null}
+    {list ? <p><CoachLink to={list.to}>{list.text}</CoachLink></p> : null}
   </Card>;
 }
 
@@ -112,7 +114,7 @@ export function CoachScreen({ db, scope, renderTradeLink, now = wallClock }: Coa
     {result?.kind === 'ready' && result.notes.length > 0 ? <>
       <p className="kairos-coach__count">{result.notes.length === 1 ? '1 note this month' : `${result.notes.length} notes this month`}</p>
       <div className="kairos-coach__notes">
-        {result.notes.map(note => <CoachNoteCard key={note.key} note={note} renderTradeLink={renderTradeLink} />)}
+        {result.notes.map(note => <CoachNoteCard key={note.key} note={note} scope={scope} renderTradeLink={renderTradeLink} />)}
       </div>
     </> : null}
     {result?.kind === 'ready' ? <p className="kairos-coach__zone">Time zone: {result.timeZone}</p> : null}

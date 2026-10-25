@@ -15,7 +15,9 @@ import {
   type ManualTradeValidationField,
   type PrepareManualTradeSubmissionResult,
 } from '../../application/trades';
-import { prepareManualTradeExecutionDetails, type ManualExecutionRow, type ManualFeeRow } from '../../application/trades/manualTradeExecutionDraft';
+import type { EditSavedTradeResult } from '../../application/trades/editSavedTrade';
+import { prepareManualTradeExecutionDetails, type ManualExecutionRow, type ManualFeeRow, type PreparedExecutionDetails } from '../../application/trades/manualTradeExecutionDraft';
+import type { EditableTradeDraft } from '../../application/trades/savedTradeDraft';
 import { PRICE_CURRENCY_INPUT_ERROR } from '../../application/trades/priceCurrencyInput';
 import { checkTypedCryptoSymbol, type SymbolSearchRow } from '../../application/market-reference/symbolSearch';
 import { createEmptyQuickTradeLogDraft, quickTradeLogFieldFor, quickTradeLogRows, type QuickTradeLogDraft, type QuickTradeLogField } from '../../application/trades/quickTradeLog';
@@ -30,6 +32,7 @@ import { ForexTradeNote, forexQuantityHint } from './ForexTradeNote';
 import { StockTradeNote, STOCK_QUANTITY_HINT, STOCK_TICKER_MESSAGES } from './StockTradeNote';
 import { JournalPriceCurrencyField } from './JournalPriceCurrencyField';
 import { TradeStrategyField } from './TradeStrategyField';
+import { NOTE_TOO_LONG, TradeNoteField } from './TradeNotes';
 import { TradeTagsField } from './TradeTagsField';
 import { BeforeYouTradeField } from './BeforeYouTradeField';
 import { BeforeYouSaveBox } from './BeforeYouSaveBox';
@@ -43,6 +46,24 @@ import './tradeForm.css';
 
 export type TradeFormKind = 'journal' | 'practice';
 
+/** What the form types, as Edit saves it. */
+export interface TradeFormTyped {
+  readonly draft: ManualTradeDraft;
+  readonly executions: readonly ManualExecutionRow[];
+  readonly fees: readonly ManualFeeRow[];
+  readonly note: string;
+}
+
+/** U15 (D263): the form edits a saved trade instead of logging a new one. */
+export interface TradeFormEditing {
+  /** The saved trade, filled in. */
+  readonly saved: EditableTradeDraft;
+  readonly save: (typed: TradeFormTyped) => Promise<EditSavedTradeResult>;
+  readonly onCancel: () => void;
+  /** "Load the new version", after another tab saved the trade first. */
+  readonly onLoadNewVersion: () => void;
+}
+
 interface TradeFormProps {
   readonly db: KairosDatabase;
   readonly kind: TradeFormKind;
@@ -54,6 +75,16 @@ interface TradeFormProps {
   readonly initialDraft?: ManualTradeDraft;
   /** The market the form starts on while none is chosen: the first one the trader trades (D223); null keeps it blank. */
   readonly defaultMarket?: ManualTradeDraft['marketType'] | null;
+  /**
+   * U15 (D263): edit this saved trade. The form then shows All details only, filled in, with its note; it keeps nothing
+   * on the device, and leaves the trade's checklist, review and strategy as they are (the trade's page changes them).
+   */
+  readonly editing?: TradeFormEditing;
+  /**
+   * U15 (D264): open in All details, without changing the remembered choice: Duplicate's copy holds where you traded
+   * and leverage, which Quick log leaves out.
+   */
+  readonly allDetails?: boolean;
 }
 
 type TradeFormMode = 'quick' | 'full';
@@ -97,6 +128,7 @@ const NEW_FIELD_MESSAGES: Readonly<Partial<Record<ManualTradeValidationField, st
   'discipline.checklist': 'Your checklist changed in another tab. Reload the page and tick it again.',
   'discipline.strategy': 'That strategy changed in another tab. Choose it again, or choose none.',
   'discipline.beforeSave': 'Review the trade details and try again.',
+  note: NOTE_TOO_LONG,
 };
 
 const pad = (value: number): string => String(value).padStart(2, '0');
@@ -109,7 +141,7 @@ function localDateTimeValue(date: Date): string {
 const wallClock = (): Date => new Date();
 
 type Feedback =
-  | { readonly kind: 'error'; readonly field?: string; readonly message: string }
+  | { readonly kind: 'error'; readonly field?: string; readonly message: string; readonly stale?: boolean }
   | { readonly kind: 'success'; readonly message: string }
   | null;
 
@@ -199,6 +231,23 @@ function requiredSelectionMessage(field: ManualTradeDraftRequiredField): string 
   return 'Choose a trade status.';
 }
 
+type PreparationFailure = Exclude<PrepareManualTradeSubmissionResult, { ok: true }> | Exclude<PreparedExecutionDetails, { ok: true }>;
+
+/** What the form says when the typed trade can't be prepared: a missing choice, a forex pair, a ticker, an entry's time. */
+function preparationMessage(failure: PreparationFailure): string {
+  if (failure.type === 'execution-draft-invalid') return failure.message;
+  if (failure.type === 'forex-pair' || failure.type === 'forex-price-currency') return forexMessage(failure);
+  if (failure.type === 'stock-ticker') return STOCK_TICKER_MESSAGES[failure.reason];
+  return requiredSelectionMessage(failure.field);
+}
+
+const EDIT_STORAGE_ERROR = 'Kairos could not save your changes. Your form has been kept so you can try again.';
+const EDIT_CONFLICTS: Readonly<Record<Extract<EditSavedTradeResult, { type: 'update-conflict' }>['reason'], string>> = {
+  'trade-changed': "This trade changed in another tab. Your changes aren't saved.",
+  'trade-missing': "This trade isn't in your journal any more. Your changes aren't saved.",
+  'trade-not-editable': "This trade can't be changed here. Your changes aren't saved.",
+};
+
 function validationMessage(text: TradeFormText, field: ManualTradeValidationField, reason: string): string {
   const newField = NEW_FIELD_MESSAGES[field];
   if (newField) return newField;
@@ -230,17 +279,19 @@ function fieldHasError(feedback: Feedback, field: string): boolean {
 }
 
 /** The one trade form for Journal (real trades) and Practice (paper trades); only the save command and wording differ. */
-export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, defaultMarket = null }: TradeFormProps) {
+export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, defaultMarket = null, editing, allDetails = false }: TradeFormProps) {
   const text = TRADE_FORM_TEXT[kind];
   const { idPrefix, planIdPrefix } = text;
-  const [draft, setDraft] = useState<ManualTradeDraft>(() => initialDraft ?? createEmptyManualTradeDraft());
+  const opening = editing?.saved.draft ?? initialDraft;
+  const [draft, setDraft] = useState<ManualTradeDraft>(() => opening ?? createEmptyManualTradeDraft());
   // The trader's first market arrives after the form shows; it fills the market only while none is chosen.
   useEffect(() => {
     if (defaultMarket !== null) setDraft(current => (current.marketType === '' ? { ...current, marketType: defaultMarket } : current));
   }, [defaultMarket]);
-  const [planShown, setPlanShown] = useState(() => initialDraft !== undefined && Object.values(initialDraft.plan).some(value => typeof value === 'string' && value.trim() !== ''));
-  const [executions, setExecutions] = useState<readonly ManualExecutionRow[]>([]);
-  const [fees, setFees] = useState<readonly ManualFeeRow[]>([]);
+  const [planShown, setPlanShown] = useState(() => opening !== undefined && Object.values(opening.plan).some(value => typeof value === 'string' && value.trim() !== ''));
+  const [executions, setExecutions] = useState<readonly ManualExecutionRow[]>(() => editing?.saved.executions ?? []);
+  const [fees, setFees] = useState<readonly ManualFeeRow[]>(() => editing?.saved.fees ?? []);
+  const [note, setNote] = useState(() => editing?.saved.note ?? '');
   // Bumped when a save empties the form: the entry and fee rows mount fresh, which closes any Undo for the saved rows.
   const [formGeneration, setFormGeneration] = useState(0);
   const feedbackRef = useRef<HTMLDivElement>(null);
@@ -258,7 +309,8 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
   const [saveAnywayReason, setSaveAnywayReason] = useState('');
   const [sizesRead, setSizesRead] = useState<SizesRead>({ symbol: '', sizes: null, failed: false });
   const [retrying, setRetrying] = useState(false);
-  const [mode, setMode] = useState<TradeFormMode>(readTradeFormMode);
+  // Edit and a copy show every field: All details.
+  const [mode, setMode] = useState<TradeFormMode>(() => (editing || allDetails ? 'full' : readTradeFormMode()));
   const [quick, setQuick] = useState<QuickTradeLogDraft>(createEmptyQuickTradeLogDraft);
   const isQuick = mode === 'quick';
 
@@ -271,8 +323,9 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
   const coinNames = marketList.phase === 'ready' ? marketList.names : null;
   const typedCrypto = draft.marketType === 'crypto' && markets !== null ? checkTypedCryptoSymbol(draft.symbol, markets) : null;
   const [currencyFilledBy, setCurrencyFilledBy] = useState<string | null>(null);
-  // Once the trader edits the currency (even to blank it), it is theirs: Kairos never fills it again in this form.
-  const [currencyTyped, setCurrencyTyped] = useState(false);
+  // Once the trader edits the currency (even to blank it), it is theirs: Kairos never fills it again in this form. A
+  // saved trade's currency is the trader's from the start: Edit never fills or clears it on its own.
+  const [currencyTyped, setCurrencyTyped] = useState(editing !== undefined);
   const listedSymbol = typedCrypto?.kind === 'listed' ? typedCrypto.symbol : null;
   const listedQuote = typedCrypto?.kind === 'listed' ? typedCrypto.quote : null;
   const judged = typedCrypto !== null || draft.marketType !== 'crypto';
@@ -309,7 +362,8 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
     setFormGeneration(current => current + 1);
   }
   const keptDraft = useKeptTradeFormDraft(db, kind, { mode, draft: typed }, {
-    read: initialDraft === undefined,
+    read: initialDraft === undefined && editing === undefined,
+    keep: editing === undefined,
     onFound: kept => { fillIn(kept); setKeptShown(true); },
   });
   /** Empties every field, as after a save, without the saved message. */
@@ -359,7 +413,8 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
   }, [feedback]);
 
   const showOpenedAt = isQuick || draft.status === 'open' || draft.status === 'closed';
-  const checklistMode = isQuick || draft.status === 'closed' || draft.status === 'cancelled' ? 'after' : draft.status === 'draft' || draft.status === 'open' ? 'checklist' : null;
+  // Edit leaves the trade's checklist, review and strategy as they are: it asks for none of them.
+  const checklistMode = editing ? null : isQuick || draft.status === 'closed' || draft.status === 'cancelled' ? 'after' : draft.status === 'draft' || draft.status === 'open' ? 'checklist' : null;
   const showClosedAt = isQuick || draft.status === 'closed';
   // Read only while the box can show (a draft or open trade in All details): when it starts to, and after each save.
   const asksBeforeSave = checklistMode === 'checklist';
@@ -446,10 +501,23 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
     return quickField ? QUICK_MESSAGES[quickField] : null;
   }
 
+  /** U15 (D263): Edit saves through its own command, which prepares the trade by the same rules as a new one. */
+  async function submitEdit(edit: TradeFormEditing): Promise<void> {
+    setIsSaving(true);
+    const result = await edit.save({ draft, executions, fees, note }).catch((): EditSavedTradeResult => ({ ok: false, type: 'storage-error', reason: 'trade-save-failed' }));
+    setIsSaving(false);
+    if (result.ok) { await onSaved(result.tradeId); return; }
+    if (result.type === 'update-conflict') { setFeedback({ kind: 'error', message: EDIT_CONFLICTS[result.reason], stale: result.reason === 'trade-changed' }); return; }
+    if (result.type === 'storage-error') { setFeedback({ kind: 'error', message: EDIT_STORAGE_ERROR }); return; }
+    if (result.type === 'validation-error') { setFeedback({ kind: 'error', field: result.field, message: validationMessage(text, result.field, result.reason) }); return; }
+    setFeedback({ kind: 'error', field: result.field, message: preparationMessage(result) });
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     if (isSaving) return;
     setFeedback(null);
+    if (editing) { await submitEdit(editing); return; }
 
     // Quick log saves only what it shows: "Where you traded" and "Leverage" live in All details, like its entries and fees.
     const base = prepareManualTradeSubmission(isQuick ? { ...draft, status: 'closed', exchange: '', leverage: '' } : draft);
@@ -460,10 +528,7 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
       setFeedback({
         kind: 'error',
         field: prepared.field,
-        message: quickMessage(prepared.field) ?? (prepared.type === 'execution-draft-invalid' ? prepared.message
-          : prepared.type === 'forex-pair' || prepared.type === 'forex-price-currency' ? forexMessage(prepared)
-          : prepared.type === 'stock-ticker' ? STOCK_TICKER_MESSAGES[prepared.reason]
-          : requiredSelectionMessage(prepared.field)),
+        message: quickMessage(prepared.field) ?? preparationMessage(prepared),
       });
       return;
     }
@@ -517,14 +582,15 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
           tabIndex={-1}
         >
           {feedback.message}
+          {feedback.kind === 'error' && feedback.stale && editing ? <> <Button variant="secondary" size="sm" onClick={editing.onLoadNewVersion}>Load the new version</Button></> : null}
         </div>
       ) : null}
 
       {keptShown ? <p className="kairos-trade-form__kept">Kairos kept the trade you were typing. <Button variant="ghost" size="sm" onClick={startOver}>Start over</Button></p> : null}
 
       <form className="kairos-trade-form" onSubmit={handleSubmit} noValidate>
-        <Segmented label="How to log this trade" value={mode} onChange={chooseMode}
-          options={[{ value: 'quick', label: 'Quick log' }, { value: 'full', label: 'All details' }]} />
+        {editing ? null : <Segmented label="How to log this trade" value={mode} onChange={chooseMode}
+          options={[{ value: 'quick', label: 'Quick log' }, { value: 'full', label: 'All details' }]} />}
         {isQuick ? <p className="kairos-trade-form__section-copy">Quick log saves a closed trade with one entry and one exit of the same quantity, and no fees. For partial exits or fees, choose All details.</p> : null}
         <fieldset className="kairos-trade-form__section" disabled={isSaving}>
           <legend>{text.legend}</legend>
@@ -655,6 +721,7 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
         </>}
 
         <TradeTagsField id={`${idPrefix}-tags`} value={draft.tags ?? ''} onChange={value => update('tags', value)} error={fieldError('tags')} disabled={isSaving} />
+        {editing ? <TradeNoteField id={`${idPrefix}-note`} label="Notes" value={note} onChange={value => { setNote(value); setFeedback(null); }} error={fieldError('note')} disabled={isSaving} /> : null}
 
         <details className="kairos-trade-form__optional" open={(feedback?.kind === 'error' && feedback.field?.startsWith('plan.')) || planShown || undefined}>
           <summary>Trade plan · Optional</summary>
@@ -677,16 +744,17 @@ export function TradeForm({ db, kind, onSaved, now = wallClock, initialDraft, de
 
         </details>
 
-        <TradeStrategyField db={db} idPrefix={idPrefix} value={strategyId} onChange={value => { setStrategyId(value); setStrategyAnswers([]); setFeedback(null); }} draft={draft} status={isQuick ? 'closed' : draft.status} disabled={isSaving}
+        {editing ? null : <><TradeStrategyField db={db} idPrefix={idPrefix} value={strategyId} onChange={value => { setStrategyId(value); setStrategyAnswers([]); setFeedback(null); }} draft={draft} status={isQuick ? 'closed' : draft.status} disabled={isSaving}
           answers={strategyAnswers} onAnswersChange={answers => { setStrategyAnswers(answers); setFeedback(null); }} checklist={checklistMode === 'checklist' ? checklistAnswers : null} onBrokenRulesChange={setBrokenRules} />
 
-        <BeforeYouTradeField db={db} idPrefix={idPrefix} mode={checklistMode} answers={checklistAnswers} onAnswersChange={answers => { setChecklistAnswers(answers); setFeedback(null); }} disabled={isSaving} />
+        <BeforeYouTradeField db={db} idPrefix={idPrefix} mode={checklistMode} answers={checklistAnswers} onAnswersChange={answers => { setChecklistAnswers(answers); setFeedback(null); }} disabled={isSaving} /></>}
 
         {checklistMode === 'checklist' ? <BeforeYouSaveBox idPrefix={idPrefix} notes={beforeSaveNotes} readsFailed={beforeSaveRead.failed || sizesForSymbol?.failed === true} retrying={retrying}
           onRetry={retryBeforeSaveReads} reason={saveAnywayReason} onReasonChange={value => { setSaveAnywayReason(value); setFeedback(null); }} disabled={isSaving} afterRef={submitRef} /> : null}
 
         <div className="kairos-trade-form__actions">
-          <Button ref={submitRef} type="submit" busy={isSaving} emphasis="main" aria-describedby={strategyId ? `${idPrefix}-strategy-note` : undefined}>{isSaving ? 'Saving…' : text.submit}</Button>
+          <Button ref={submitRef} type="submit" busy={isSaving} emphasis="main" aria-describedby={strategyId ? `${idPrefix}-strategy-note` : undefined}>{isSaving ? 'Saving…' : editing ? 'Save changes' : text.submit}</Button>
+          {editing ? <Button variant="secondary" onClick={editing.onCancel} disabled={isSaving}>Cancel</Button> : null}
         </div>
       </form>
     </>

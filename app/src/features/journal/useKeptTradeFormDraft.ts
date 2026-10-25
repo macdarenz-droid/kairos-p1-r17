@@ -16,11 +16,12 @@ const persisted = (kept: Kept): string => (isTradeFormDraftEmpty(kept.draft) ? '
  * U14 (D258): keeps the trade form's typing on this device. It reads the kept trade once when the form opens and hands
  * it to `onFound` only while nothing is typed yet; from then on it writes what is typed at most once a second, and at
  * once when the form goes away or the page is hidden. It writes only what differs from what it read or last wrote, so
- * opening a form, or a plan handed to it, writes nothing. `clear` forgets it (a save, "Start over").
+ * opening a form, or a plan handed to it, writes nothing. `clear` forgets it (a save, "Start over"). With `keep` false
+ * (U15, D263: editing a saved trade) it neither reads nor writes.
  */
 export function useKeptTradeFormDraft(
   db: KairosDatabase, scope: TradeFormDraftScope, current: Readonly<{ mode: TradeFormDraftMode; draft: TradeFormDraft }>,
-  options: Readonly<{ read: boolean; onFound: (kept: KeptTradeFormDraft) => void }>,
+  options: Readonly<{ read: boolean; onFound: (kept: KeptTradeFormDraft) => void; keep?: boolean }>,
 ): Readonly<{ clear: () => Promise<void> }> {
   const latest = useRef(current);
   latest.current = current;
@@ -50,14 +51,14 @@ export function useKeptTradeFormDraft(
   const pending = useRef(false);
   const flush = useCallback(() => {
     if (timer.current !== null) { window.clearTimeout(timer.current); timer.current = null; }
-    if (!pending.current) return;
+    if (!pending.current || options.keep === false) return;
     if (!readyNow.current && isTradeFormDraftEmpty(latest.current.draft)) return;
     pending.current = false;
     const next = persisted(latest.current);
     if (next === written.current) return;
     written.current = next;
     void keepTradeFormDraft(db, scope, latest.current);
-  }, [db, scope]);
+  }, [db, scope, options.keep]);
   useEffect(() => {
     pending.current = true;
     if (ready && timer.current === null) timer.current = window.setTimeout(flush, KEEP_TRADE_DRAFT_EVERY_MS);

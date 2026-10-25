@@ -6,7 +6,7 @@ import type { ExchangeRateRecord } from '../../domain/calculations/currencyConve
 import type { EconomicEventRecord } from '../../domain/economic-calendar/economicEvent';
 
 export const KAIROS_DATABASE_NAME = 'kairos';
-export const KAIROS_DB_SCHEMA_VERSION = 14 as const;
+export const KAIROS_DB_SCHEMA_VERSION = 15 as const;
 
 /** Immutable released V1 contract. Never edit. */
 export const KAIROS_V1_STORES = Object.freeze({
@@ -81,6 +81,15 @@ export const KAIROS_V13_STORES = Object.freeze({
 /** V14 (U12, D243) changes no store or index: a discipline record may now carry what "Before you save" named (optional field, nothing to convert). */
 export const KAIROS_V14_STORES = Object.freeze({});
 
+/**
+ * V15 (U15, D259, D265) restates the trades store with `[journalAt+id]`: the Journal's order, when the trade happened
+ * (`tradeJournalAt`), stamped on every trade by the database (`KairosDatabase`) and never in a backup.
+ * `[status+journalAt+id]` is the same order for one status. A trade may also carry a note.
+ */
+export const KAIROS_V15_STORES = Object.freeze({
+  trades: '&id,status,symbol,updatedAt,[status+updatedAt],[status+closedAt],*tags,[journalAt+id],[status+journalAt+id]',
+});
+
 /** Current complete store authority used by transactions/integrity only. */
 export const KAIROS_CURRENT_STORES = Object.freeze({
   ...KAIROS_V2_STORES,
@@ -96,6 +105,7 @@ export const KAIROS_CURRENT_STORES = Object.freeze({
   ...KAIROS_V12_STORES,
   ...KAIROS_V13_STORES,
   ...KAIROS_V14_STORES,
+  ...KAIROS_V15_STORES,
 });
 
 export interface DatabaseMetadataRecord {
@@ -104,7 +114,14 @@ export interface DatabaseMetadataRecord {
   readonly updatedAt: string;
 }
 
-export type DatabaseTradeRecord = TradeRecord;
+/** A stored trade: the trade, plus `journalAt` (D259), which the database stamps on every write (schema v15). */
+export type DatabaseTradeRecord = TradeRecord & { readonly journalAt?: string };
+
+/** A stored trade as the trader entered it: without the derived Journal order, for backups and their checks (D259). */
+export function tradeWithoutJournalOrder(record: DatabaseTradeRecord): TradeRecord {
+  const { journalAt: _order, ...trade } = record;
+  return trade;
+}
 export type DatabaseTradePlanRecord = TradePlanRecord;
 export type DatabaseTradeExecutionRecord = TradeExecutionRecord;
 export type DatabaseTradeFeeRecord = TradeFeeRecord;

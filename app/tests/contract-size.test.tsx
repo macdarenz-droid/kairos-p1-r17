@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto';
 import '@testing-library/jest-dom/vitest';
 import Dexie from 'dexie';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, describe, expect, it } from 'vitest';
 import { AnalysisRoute } from '../src/app/AnalysisRoute';
@@ -23,6 +24,7 @@ import type { StrategyId, StrategyRuleId, TradeDisciplineRecord } from '../src/d
 import type { DecimalString, TradeId } from '../src/domain/trades';
 import { describeTradePicture } from '../src/features/journal/TradePictureCard';
 import { TradePictureCandleLoaderContext, type TradePictureCandleLoader } from '../src/features/journal/tradePictureCandleQueue';
+import { renderTradePage, tradePageHeading } from './fixtures/tradePage';
 
 const names: string[] = [];
 const opened: Dexie[] = [];
@@ -183,16 +185,29 @@ describe('T-056b results with the contract size', () => {
 describe('T-056b the words where the result would be', () => {
   const offline: TradePictureCandleLoader = async () => ({ ok: false, why: 'no-candles', retryAfterSeconds: null, note: null });
 
-  it('the Journal card says what to add, for the result and for a closed part', async () => {
+  it('the trade page says what to add, for the result and for a closed part; the Journal row keeps a result it has', async () => {
     const partly = es({ symbol: 'NQZ6', executions: [{ type: 'entry', price: '5000', quantity: '2', executedAt: at }, { type: 'exit', price: '5010', quantity: '1', executedAt: end }] });
-    const { db } = await database([es(), null], [partly, null], [es({ symbol: 'YMZ6' }), '5']);
+    const { db, ids } = await database([es(), null], [partly, null], [es({ symbol: 'YMZ6' }), '5']);
+    const wrap = (node: ReactNode) => <TradePictureCandleLoaderContext.Provider value={offline}>{node}</TradePictureCandleLoaderContext.Provider>;
+    const recordedResult = async (id: TradeId, symbol: string) => {
+      renderTradePage(db, id, { wrap });
+      await tradePageHeading(`${symbol} · Long`);
+      return screen.getByRole('region', { name: 'Recorded result' });
+    };
+    const esz = await recordedResult(ids[0]!, 'ESZ6');
+    expect(within(esz).getByText(WORDS)).toBeInTheDocument();
+    cleanup();
+    const nqz = await recordedResult(ids[1]!, 'NQZ6');
+    expect(within(nqz).queryByText(WORDS)).toBeNull();
+    expect(nqz.querySelector('.kairos-review__closed-part')).toHaveTextContent('Closed part: add how much one point is worth to see its result.');
+    cleanup();
+    const ymz = await recordedResult(ids[2]!, 'YMZ6');
+    expect(within(ymz).queryByText(WORDS)).toBeNull();
+    cleanup();
+
     const { container } = render(<TradePictureCandleLoaderContext.Provider value={offline}><MemoryRouter><JournalRoute db={db} /></MemoryRouter></TradePictureCandleLoaderContext.Provider>);
     await waitFor(() => expect(container.querySelectorAll('.kairos-history-card')).toHaveLength(3));
     const card = (symbol: string) => [...container.querySelectorAll<HTMLElement>('.kairos-history-card')].find(item => item.querySelector('strong')?.textContent === symbol)!;
-    expect(within(card('ESZ6')).getByText(WORDS)).toBeInTheDocument();
-    expect(within(card('NQZ6')).queryByText(WORDS)).toBeNull();
-    expect(card('NQZ6').querySelector('.kairos-history-card__closed-part')).toHaveTextContent('Closed part: add how much one point is worth to see its result.');
-    expect(within(card('YMZ6')).queryByText(WORDS)).toBeNull();
     expect(card('YMZ6').querySelector('.kairos-history-card__outcome')).toHaveTextContent('+50 USD');
   });
 

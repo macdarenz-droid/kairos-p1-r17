@@ -2,7 +2,7 @@ import '@testing-library/jest-dom/vitest';
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { JournalTradeMap } from '../src/app/JournalTradeMap';
-import { reviewTimestamp } from '../src/app/TradeReviewDetails';
+import { reviewTimestamp } from '../src/features/journal/TradeDetails';
 import type { JournalHistoryEntry } from '../src/application/journal';
 import { createTradeDomainId, parseDecimalString, type TradeExecutionId, type TradeId } from '../src/domain/trades';
 

@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 import { createMemoryRouter, type RouteObject } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { AppShell } from '../src/app/AppShell';
+import { AppShell, SCROLL_CLAIMED_EVENT } from '../src/app/AppShell';
 import { appRoutes } from '../src/app/routes';
 import { useToast } from '../src/design-system/primitives';
 import { ThemeProvider } from '../src/design-system/themes';
@@ -153,6 +153,35 @@ describe('T-053a the page opens at the top or at your place', () => {
     await screen.findByRole('heading', { name: 'Start' });
     expect(scrollTo).toHaveBeenLastCalledWith(0, 500);
     expect(window.scrollY).toBe(500);
+  });
+
+  it('U15 review r1: a page that brings part of itself into view as it opens stops the shell reaching for its old place', async () => {
+    function ClaimsItsView() {
+      const notice = useRef<HTMLParagraphElement>(null);
+      useEffect(() => { notice.current?.focus(); window.dispatchEvent(new Event(SCROLL_CLAIMED_EVENT)); }, []);
+      return <><h1>List</h1><p ref={notice} tabIndex={-1} role="status">Trade deleted.</p></>;
+    }
+    // Frames run only when the test steps them.
+    const frames = new Map<number, FrameRequestCallback>();
+    let next = 0;
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { next += 1; frames.set(next, callback); return next; });
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => { frames.delete(id); });
+    const step = () => { const due = [...frames.values()]; frames.clear(); for (const callback of due) callback(performance.now()); };
+    const scrollTo = stubScroll();
+    const router = renderPath('/', [{ element: <AppShell />, children: [{ path: '/', element: <h1>Start</h1> }, { path: '/journal', element: <ClaimsItsView /> }] }]);
+    await screen.findByRole('heading', { name: 'Start' });
+    await act(async () => { await router.navigate('/journal'); });
+    scrolled(500);
+    await act(async () => { await router.navigate('/'); });
+    await act(async () => { await router.navigate('/journal'); });
+    expect(screen.getByText('Trade deleted.')).toHaveFocus();
+    // The notice was brought into view (here: the page at 100); the shell's place (500) no longer pulls it back.
+    scrolled(100);
+    scrollTo.mockClear();
+    step(); step();
+    expect(scrollTo).not.toHaveBeenCalled();
+    expect(window.scrollY).toBe(100);
+    vi.unstubAllGlobals();
   });
 
   it('keeps each tab\'s place, and the place when only the address\'s query changes', async () => {

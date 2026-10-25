@@ -1,13 +1,13 @@
 import 'fake-indexeddb/auto';
 import { afterEach, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, screen, within } from '@testing-library/react';
 import { createKairosDatabase, type KairosDatabase } from '../src/data/database';
 import { createKairosDatabaseSnapshot, parseKairosBackup, prepareKairosRestore, replaceKairosDatabaseFromPreparedRestore, serializeKairosBackup } from '../src/data/backup';
 import { saveManualTrade, type SaveManualTradeInput } from '../src/application/trades';
 import { updateOpenManualTrade } from '../src/application/trades/updateOpenManualTrade';
 import { listJournalHistory, listJournalVisualPnlDailySummary } from '../src/application/journal';
 import { loadHomeYourTrades } from '../src/application/dashboard/homeDashboardYourTradesQuery';
-import { JournalRoute } from '../src/app/JournalRoute';
+import { renderTradePage } from './fixtures/tradePage';
 
 let db: KairosDatabase;
 const openedAt = '2026-09-12T04:00:00.000Z', closedAt = '2026-09-12T05:00:00.000Z';
@@ -36,13 +36,16 @@ it.each([undefined, null, '', '   '])('keeps unknown currency %s unknown without
 });
 it('does not subtract mismatched or mixed-currency fees or infer a conversion', async () => {
   expect((await start({ grossPnlCurrency: 'USD' })).metrics).toMatchObject({ grossPnl: '40', netPnl: null });
-  await saveManualTrade(db, { ...input, grossPnlCurrency: 'USDT', fees: [{ amount: '1', currency: 'USD' }, { amount: '1', currency: 'USDT' }] });
-  expect((await listJournalHistory(db))[0].metricsError).toBe('mixed-fee-currency');
+  const mixed = await saveManualTrade(db, { ...input, grossPnlCurrency: 'USDT', fees: [{ amount: '1', currency: 'USD' }, { amount: '1', currency: 'USDT' }] });
+  if (!mixed.ok) throw new Error('save');
+  // Both trades opened at the same moment (D259 ties them by id): read this one by its id.
+  expect((await listJournalHistory(db)).find(entry => entry.trade.id === mixed.tradeId)?.metricsError).toBe('mixed-fee-currency');
 });
 it('labels zero-fee results with known currency and preserves legacy unitless results', async () => {
   expect((await start({ grossPnlCurrency: 'AUD', fees: [] })).metrics).toMatchObject({ netPnl: '40', netPnlCurrency: 'AUD' });
-  await saveManualTrade(db, { ...input, fees: [] });
-  expect((await listJournalHistory(db))[0].metrics).toMatchObject({ netPnl: '40', netPnlCurrency: null });
+  const legacy = await saveManualTrade(db, { ...input, fees: [] });
+  if (!legacy.ok) throw new Error('save');
+  expect((await listJournalHistory(db)).find(entry => entry.trade.id === legacy.tradeId)?.metrics).toMatchObject({ netPnl: '40', netPnlCurrency: null });
 });
 it('adds currency once to an existing open trade without new fills, rejects a same-millisecond stale update and preserves all facts', async () => {
   const expected = await start({ status: 'open', closedAt: null, executions: [entry] });
@@ -82,7 +85,7 @@ it('roundtrips currency through full backup/restore; legacy absence survives; re
   }
 });
 it('allows UI currency-only updates with discard protection and then shows saved currency read-only', async () => {
-  const expected = await start({ status: 'open', closedAt: null, executions: [entry] }); render(<JournalRoute db={db}/>);
+  const expected = await start({ status: 'open', closedAt: null, executions: [entry] }); renderTradePage(db, expected.trade.id);
   fireEvent.click(await screen.findByRole('button', { name: 'Update trade' }));
   let ui = within(screen.getByRole('region', { name: 'Update BTCUSDT' }));
   fireEvent.change(ui.getByLabelText('Currency code'), { target: { value: 'USDT' } });
@@ -91,7 +94,7 @@ it('allows UI currency-only updates with discard protection and then shows saved
   expect(await db.trades.get(expected.trade.id)).toEqual(expected.trade);
   fireEvent.click(ui.getByRole('button', { name: 'Keep editing' }));
   fireEvent.click(ui.getByRole('button', { name: 'Save update' }));
-  await screen.findByText('Trade updated. Your saved details are below.');
+  await screen.findByText('Trade updated. Your saved details are on this page.');
   fireEvent.click(screen.getByRole('button', { name: 'Update trade' }));
   ui = within(screen.getByRole('region', { name: 'Update BTCUSDT' }));
   expect(ui.getByLabelText('Currency code')).toHaveValue('USDT');

@@ -31,7 +31,10 @@ function candleCardProps(state: CandleState): { candleSource: string | null; can
   }
 }
 
-/** Loads the trade's candles once the picture is on screen (at once where the browser cannot tell); `reload` asks again. */
+/**
+ * Loads the trade's candles once the picture is on screen (at once where the browser cannot tell); `reload` asks again.
+ * A picture that goes away drops its load if it is still waiting for its turn.
+ */
 function useTradePictureCandles(entry: JournalHistoryEntry, target: React.RefObject<Element | null>, eager: boolean): { readonly state: CandleState; readonly reload: () => void } {
   const contextLoader = useContext(TradePictureCandleLoaderContext);
   const [visible, setVisible] = useState(eager);
@@ -54,24 +57,27 @@ function useTradePictureCandles(entry: JournalHistoryEntry, target: React.RefObj
     if (!hasSource) { setState({ kind: 'done', result: NO_CANDLE_SOURCE }); return; }
     if (!visible) return;
     let active = true;
+    const gone = new AbortController();
     const retry = retryRequested.current;
     retryRequested.current = false;
     setState(current => (retry && current.kind === 'done' ? { ...current, retrying: true } : { kind: 'waiting' }));
     const load = contextLoader ?? (async () => NO_CANDLES);
-    void load(entry.trade, entry.executions).catch(() => SOURCE_DOWN).then(result => { if (active) setState({ kind: 'done', result }); });
-    return () => { active = false; };
+    void load(entry.trade, entry.executions, { signal: gone.signal }).catch(() => SOURCE_DOWN).then(result => { if (active) setState({ kind: 'done', result }); });
+    return () => { active = false; gone.abort(); };
   }, [hasSource, visible, contextLoader, entry.trade, entry.executions, revision]);
   return { state, reload };
 }
 
 /**
- * The trade picture for one saved trade. `thumbnail` (Journal, Practice) is a
- * small card that opens the full picture in a dialog; `full` (Analysis) shows
- * it at once under "Your trade". Candles load only while the picture is on screen.
+ * The trade picture for one saved trade. `thumbnail` is a small card that opens
+ * the full picture in a dialog; `row` (the Journal's and Practice's rows, D261)
+ * is the small drawing alone, decorative inside the row's link (no words, no "Try again"); `full` (the
+ * trade's page, Analysis) shows it at once under "Your trade". Candles load only
+ * while the picture is on screen.
  */
 export function TradePicture({ entry, variant, savePorts, strategyName = null }: {
   readonly entry: JournalHistoryEntry;
-  readonly variant: 'thumbnail' | 'full';
+  readonly variant: 'thumbnail' | 'row' | 'full';
   readonly savePorts?: TradePictureSavePorts;
   /** The strategy the trader chose for this trade, for the share card (P28). */
   readonly strategyName?: string | null;
@@ -98,6 +104,11 @@ export function TradePicture({ entry, variant, savePorts, strategyName = null }:
       <div className="kairos-trade-picture-panel__actions"><TradeShareControls model={model} svg={svg} strategyName={strategyName} ports={savePorts} /></div>
     </section>;
   }
+
+  // The row's link names the trade; its picture is only seen.
+  if (variant === 'row') return <div className="kairos-trade-picture-row" ref={container} aria-hidden="true">
+    <TradePictureCard model={model} candlesLoading={loading} compact notes={false} />
+  </div>;
 
   return <div className="kairos-trade-picture-thumb" ref={container}>
     <button type="button" className="kairos-trade-picture-thumb__open" aria-label={`Open the ${model.symbol} trade picture`} onClick={() => setOpen(true)}>

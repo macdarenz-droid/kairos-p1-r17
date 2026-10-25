@@ -31,7 +31,7 @@ describe('P31.1 draft trade activation command', () => {
     const plans = await db.tradePlans.toArray();
     const result = await openDraftTrade(db, { expected: before, openedAt, grossPnlCurrency: 'usdt', executions: [entry], fees: [{ amount: '0.2', currency: 'usdt' }] }, { now, createId });
     expect(result).toEqual({ ok: true, tradeId: saved.tradeId, persisted: { plans: 0, executions: 1, fees: 1 } });
-    expect(await db.trades.get(saved.tradeId)).toEqual({ ...before.trade, status: 'open', openedAt, closedAt: null, grossPnlCurrency: 'USDT', updatedAt: now() });
+    expect(await db.trades.get(saved.tradeId)).toEqual({ ...before.trade, status: 'open', openedAt, closedAt: null, grossPnlCurrency: 'USDT', updatedAt: now(), journalAt: openedAt });
     expect(await db.tradePlans.toArray()).toEqual(plans);
     expect((await db.tradeExecutions.toArray()).map(e => [e.tradeId, e.type, e.price])).toEqual([[saved.tradeId, 'entry', '101']]);
     expect((await db.tradeFees.toArray()).map(f => [f.tradeId, f.amount, f.currency])).toEqual([[saved.tradeId, '0.2', 'USDT']]);

@@ -13,6 +13,7 @@ import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '.
 import { createKairosRepositories } from '../src/data/repositories';
 import type { TradeId } from '../src/domain/trades';
 import { CoachCard } from '../src/features/discipline/CoachCard';
+import { renderTradePage, tradePageHeading, tradePagePart } from './fixtures/tradePage';
 
 beforeAll(async () => { await import('../src/application/coach/loadCoachNotes'); }, 30_000);
 const names: string[] = [];
@@ -33,8 +34,11 @@ describe('T-041e the coach card under "Your discipline"', () => {
   it('shows the first note in the Journal, after "Your discipline", and follows a saved review', async () => {
     const db = await database();
     await withZone(db);
-    expect((await saveManualTrade(db, tradeA())).ok).toBe(true);
-    render(<MemoryRouter><JournalRoute db={db} now={now} /></MemoryRouter>);
+    const saved = await saveManualTrade(db, tradeA());
+    if (!saved.ok) throw new Error('fixture');
+    // T-060c: the review is made on the trade's own page; the Journal is where the coach shows. Start on the Journal.
+    const { router } = renderTradePage(db, saved.tradeId, { now });
+    await act(async () => { await router.navigate('/journal'); });
     await waitFor(() => expect(within(region()).getByText('3 notes')).toBeTruthy());
     expect(within(region()).getByText('1 trade this month closed beyond its stop.')).toBeTruthy();
     expect(within(region()).getByText(/^Decide your stop before you enter, /)).toBeTruthy();
@@ -42,9 +46,11 @@ describe('T-041e the coach card under "Your discipline"', () => {
     expect(screen.queryByRole('region', { name: 'Your discipline' })).toBeNull();
     for (const role of ['listitem', 'status', 'alert']) expect(within(region()).queryAllByRole(role)).toHaveLength(0);
 
-    const card = await waitFor(() => screen.getAllByRole('listitem').find(item => within(item).queryByText('BTCUSDT') !== null)!);
-    fireEvent.click(await within(card).findByRole('button', { name: 'After the trade: not reviewed yet' }));
+    fireEvent.click(await screen.findByRole('link', { name: /^BTCUSDT long, closed/ }));
+    await tradePageHeading('BTCUSDT · Long');
+    fireEvent.click(await waitFor(() => tradePagePart('Before and after the trade').getByRole('button', { name: 'After the trade: not reviewed yet' })));
     await act(async () => { fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Save review' })); });
+    await act(async () => { await router.navigate(-1); });
     await waitFor(() => expect(within(region()).getByText('2 notes')).toBeTruthy());
   });
 

@@ -1,0 +1,11 @@
+/* U15 (D262): the list's search, "Filters", the chips of the filters in use, and what the matching trades add up to. */
+.kairos-filter-bar { display: grid; gap: var(--kairos-space-3); min-width: 0; }
+.kairos-filter-bar__row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--kairos-space-3); }
+.kairos-filter-bar__search { flex: 1 1 12rem; min-width: 0; }
+.kairos-filter-bar__search input { width: 100%; }
+.kairos-filter-bar__chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--kairos-space-2); }
+.kairos-filter-bar__chip-group { display: flex; flex-wrap: wrap; gap: var(--kairos-space-2); }
+.kairos-filter-bar__chip { display: inline-flex; align-items: center; gap: var(--kairos-space-1); padding: 0 0 0 var(--kairos-space-3); border: 1px solid var(--kairos-border-subtle); border-radius: 999px; overflow-wrap: anywhere; }
+.kairos-filter-bar__totals { margin: 0; color: var(--kairos-text-secondary); overflow-wrap: anywhere; }
+.kairos-filter-bar__sheet { display: grid; gap: var(--kairos-space-3); }
+.kairos-filter-bar__sheet input[type="date"] { width: 100%; }

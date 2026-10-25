@@ -11,6 +11,7 @@ import { saveManualTrade } from '../src/application/trades';
 import { ToastProvider } from '../src/design-system/primitives';
 import { TradeForm } from '../src/features/journal/TradeForm';
 import { axeViolations } from './fixtures/axe';
+import { renderTradePage } from './fixtures/tradePage';
 
 const names: string[] = [];
 async function database(): Promise<KairosDatabase> { const name = `kairos-trade-form-kit-${crypto.randomUUID()}`; names.push(name); const db = createKairosDatabase(name); await openKairosDatabase(db); return db; }
@@ -158,10 +159,11 @@ describe('T-049g fix r1', () => {
     expect(screen.queryByLabelText('Entry 1 price')).toBeNull();
   });
 
-  it('on the draft card, a row removed before Cancel does not come back on reopen', async () => {
+  it('on the draft trade\'s page, a row removed before Cancel does not come back on reopen', async () => {
     const db = await database();
-    await saveManualTrade(db, { symbol: 'BTCUSDT', marketType: 'crypto', side: 'long', status: 'draft', plan: { plannedEntryPrice: '100', plannedQuantity: '2' } });
-    render(<MemoryRouter><ToastProvider><JournalRoute db={db} /></ToastProvider></MemoryRouter>);
+    const saved = await saveManualTrade(db, { symbol: 'BTCUSDT', marketType: 'crypto', side: 'long', status: 'draft', plan: { plannedEntryPrice: '100', plannedQuantity: '2' } });
+    if (!saved.ok) throw new Error('fixture');
+    renderTradePage(db, saved.tradeId, { wrap: node => <ToastProvider>{node}</ToastProvider> });
     fireEvent.click(await screen.findByRole('button', { name: "I'm in" }));
     const panel = screen.getByRole('region', { name: 'Open BTCUSDT' });
     fireEvent.click(within(panel).getByRole('button', { name: 'Add entry' }));

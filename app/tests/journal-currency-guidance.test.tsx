@@ -9,6 +9,7 @@ import { isPriceCurrencyInput, PRICE_CURRENCY_INPUT_ERROR } from '../src/applica
 import { listJournalHistory } from '../src/application/journal';
 import { JournalRoute } from '../src/app/JournalRoute';
 import { JournalClosedTradeGuidance } from '../src/features/journal/JournalClosedTradeGuidance';
+import { renderTradePage, tradePageHeading, tradePagePart } from './fixtures/tradePage';
 
 let db: KairosDatabase;
 const openedAt = '2026-09-12T04:00:00.000Z', closedAt = '2026-09-12T05:00:00.000Z';
@@ -72,7 +73,8 @@ it('shows the missing-fill explanation before saving; error focuses and describe
 });
 it('uses both saved and newly added rows for closing guidance, and keeps an invalid update editable', async () => {
   await saveManualTrade(db, { ...input, status: 'open', closedAt: null, executions: [{ type: 'entry', price: '1', quantity: '2', executedAt: openedAt }] });
-  render(<JournalRoute db={db}/>); fireEvent.click(await screen.findByRole('button', { name: 'Update trade' }));
+  renderTradePage(db, (await db.trades.toArray())[0].id); await tradePageHeading('XRPUSD · Long');
+  fireEvent.click(tradePagePart('Change this trade').getByRole('button', { name: 'Update trade' }));
   const ui = within(screen.getByRole('region', { name: 'Update XRPUSD' }));
   fireEvent.change(ui.getByLabelText('Trade status'), { target: { value: 'closed' } });
   expect(ui.getByRole('note')).toHaveTextContent('No actual exit');

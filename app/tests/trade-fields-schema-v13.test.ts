@@ -6,6 +6,7 @@ import { tradeRevision } from '../src/application/trades/tradeRevision';
 import { createKairosBackupEnvelope, KAIROS_BACKUP_FORMAT_NAME, parseKairosBackup } from '../src/data/backup';
 import {
   KAIROS_DATABASE_MIGRATIONS, KAIROS_V13_STORES, createKairosDatabase, inspectKairosDatabaseIntegrity, openKairosDatabase, registerKairosMigrations, type KairosDatabase,
+  tradeWithoutJournalOrder,
 } from '../src/data/database';
 import { exchangeRateId, type ExchangeRateRecord } from '../src/domain/calculations/currencyConversion';
 import type { TradeDisciplineId, TradeDisciplineRecord } from '../src/domain/discipline';
@@ -73,8 +74,8 @@ describe('T-056a schema v13', () => {
     await v12.table('metadata').put({ key: 'preferences.goals.v1', value: '{"version":1}', updatedAt: at });
     v12.close();
     const db = createKairosDatabase(name); opened.push(db);
-    expect(await openKairosDatabase(db)).toEqual({ state: 'ready', schemaVersion: 14 });
-    expect(await db.trades.toArray()).toEqual([old]);
+    expect(await openKairosDatabase(db)).toEqual({ state: 'ready', schemaVersion: 15 });
+    expect((await db.trades.toArray()).map(tradeWithoutJournalOrder)).toEqual([old]);
     expect(KAIROS_DATABASE_MIGRATIONS[12]).toEqual({ version: 13, stores: KAIROS_V13_STORES });
     await db.trades.put(full);
     await db.tradePlans.put(plan);
@@ -95,13 +96,13 @@ describe('T-056a backup format 11', () => {
     await source.trades.put(old);
     const exported = await exportKairosBackup(source, new Date(at));
     if (!exported.ok) throw new Error('export failed');
-    expect(parseKairosBackup(exported.file.contents)).toMatchObject({ formatVersion: 12, databaseSchemaVersion: 14, recordCounts: { trades: 2, tradePlans: 1 } });
+    expect(parseKairosBackup(exported.file.contents)).toMatchObject({ formatVersion: 13, databaseSchemaVersion: 15, recordCounts: { trades: 2, tradePlans: 1 } });
     const target = await current('target');
     const prepared = await prepareBackupRestore(target, exported.file.contents);
     if (!prepared.ok) throw new Error('prepare failed');
     expect((await commitBackupRestore(target, prepared.restore)).ok).toBe(true);
-    expect(await target.trades.get(full.id)).toEqual(full);
-    expect(await target.trades.get(old.id)).toEqual(old);
+    expect(tradeWithoutJournalOrder((await target.trades.get(full.id))!)).toEqual(full);
+    expect(tradeWithoutJournalOrder((await target.trades.get(old.id))!)).toEqual(old);
     expect(Object.keys((await target.trades.get(old.id))!)).not.toContain('contractSize');
     expect(await target.tradePlans.get(plan.id)).toEqual(plan);
   });
@@ -148,7 +149,7 @@ describe('T-056a backup format 11', () => {
       recordCounts: { metadata: 0, trades: 1, tradePlans: 0, tradeExecutions: 0, tradeFees: 0, savedAnalyses: 0, savedTimeAssistedSnapshots: 0, tradeDiscipline: 1, exchangeRates: 1, economicEvents: 1, total: 4 },
       payload: { metadata: [], trades: [old], tradePlans: [], tradeExecutions: [], tradeFees: [], savedAnalyses: [], savedTimeAssistedSnapshots: [], tradeDiscipline: [discipline], exchangeRates: [rate], economicEvents: [news] },
     });
-    expect(parseKairosBackup(format10)).toMatchObject({ formatVersion: 12, databaseSchemaVersion: 14, recordCounts: { trades: 1, tradeDiscipline: 1, exchangeRates: 1, economicEvents: 1, total: 4 } });
+    expect(parseKairosBackup(format10)).toMatchObject({ formatVersion: 13, databaseSchemaVersion: 15, recordCounts: { trades: 1, tradeDiscipline: 1, exchangeRates: 1, economicEvents: 1, total: 4 } });
     const db = await current('format10');
     const prepared = await prepareBackupRestore(db, format10);
     if (!prepared.ok) throw new Error('prepare failed');

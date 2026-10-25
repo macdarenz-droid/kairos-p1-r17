@@ -15,7 +15,7 @@ import { createBackupDelivery } from '../features/backup/backupDelivery';
 import { createBrowserBackupDownloadPorts, runBackup } from '../application/backup';
 import { readDeviceTimeZone } from '../features/settings/DeviceTimeZoneButton';
 import { startVisualPnlTimeZoneFromDevice } from '../application/visual-pnl';
-import { kairosDatabase, listenForKairosJournalChanges, openKairosDatabase, subscribeDatabaseLifecycle, subscribeKairosWriteFailures, type KairosDatabase } from '../data/database';
+import { JOURNAL_CHANGED_EVENT, kairosDatabase, listenForKairosJournalChanges, openKairosDatabase, subscribeDatabaseLifecycle, subscribeKairosWriteFailures, type KairosDatabase } from '../data/database';
 import { activateWaitingServiceWorker, subscribeServiceWorkerStatus } from '../pwa/serviceWorkerRegistration';
 
 const updatePromptPort: UpdatePromptPort = Object.freeze({ subscribe: subscribeServiceWorkerStatus, activate: activateWaitingServiceWorker });
@@ -74,10 +74,12 @@ function useScreenTitleAndFocus(pathname: string, onTitle: (title: string) => vo
 
 const SCROLL_PLACES_KEY = 'kairos.scroll-places.v1';
 /**
- * D229: another tab saved. The shell raises it once per message from the other tab; every screen that reads again when
- * you come back to the app also reads again on it.
+ * A page that brings part of itself into view as it opens says so (the Journal's or Practice's list after a trade's
+ * page deleted a trade, D264), and the shell stops reaching for the page's place.
  */
-export const JOURNAL_CHANGED_EVENT = 'kairos:journal-changed';
+export const SCROLL_CLAIMED_EVENT = 'kairos:scroll-claimed';
+/** D229: another tab saved (the event's owner is `data/database/transactions.ts`); app screens import it from here. */
+export { JOURNAL_CHANGED_EVENT };
 /** Places kept across a reload (sessionStorage, this tab only); the newest are kept. */
 const SCROLL_PLACES_KEPT = 50;
 /** How long a returning page keeps reaching for its place while its data arrives. */
@@ -148,6 +150,7 @@ function useScrollPlaces(location: Location): void {
     const stop = () => {
       cancelAnimationFrame(frame);
       for (const name of stopEvents) window.removeEventListener(name, stop);
+      window.removeEventListener(SCROLL_CLAIMED_EVENT, stop);
     };
     // Kept for the whole second, not only until first reached: what loads above the place can still move it.
     const reach = () => {
@@ -156,6 +159,7 @@ function useScrollPlaces(location: Location): void {
       frame = requestAnimationFrame(reach);
     };
     for (const name of stopEvents) window.addEventListener(name, stop, { passive: true });
+    window.addEventListener(SCROLL_CLAIMED_EVENT, stop);
     frame = requestAnimationFrame(reach);
     return stop;
   }, [location.key, location.pathname]);

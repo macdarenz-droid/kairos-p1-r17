@@ -79,6 +79,8 @@ export type ManualTradeValidationField =
   | 'exchange'
   | 'tags'
   | 'leverage'
+  /** U15 (D265): the trade's note (Edit and the trade page's Notes). */
+  | 'note'
   | 'discipline.checklist'
   | 'discipline.strategy'
   | 'discipline.beforeSave'
@@ -156,12 +158,13 @@ function requiredPositiveDecimal(
 }
 
 /** Which form field a trade record's refusal points at. */
-const TRADE_FIELD_OF: Readonly<Partial<Record<string, ManualTradeValidationField>>> = Object.freeze({
+export const TRADE_FIELD_OF: Readonly<Partial<Record<string, ManualTradeValidationField>>> = Object.freeze({
   'symbol-required': 'symbol',
   'invalid-contract-size': 'contractSize',
   'invalid-exchange': 'exchange',
   'invalid-tags': 'tags',
   'invalid-leverage': 'leverage',
+  'invalid-note': 'note',
 });
 
 export function isIsoLikeTimestamp(value: string): boolean {

@@ -28,6 +28,8 @@ export function parsePositiveDecimalString(value: string): DomainValidationResul
 export const TRADE_EXCHANGE_MAX_LENGTH = 40;
 /** U11: "Why I'm taking it", at most this many characters. */
 export const TRADE_PLAN_REASON_MAX_LENGTH = 500;
+/** U15 (D265): a trade's note, at most this many characters. */
+export const TRADE_NOTE_MAX_LENGTH = 2000;
 /** U11: the most leverage Kairos accepts, as a whole number (1000 means 1000×). */
 export const TRADE_LEVERAGE_MAX = 1000;
 
@@ -54,7 +56,7 @@ function isPositiveDecimalAtMost(value: unknown, max: number): boolean {
  * positive decimal, where it was traded is a one-line name of at most 40 characters, the tags are in their one written
  * form (never an empty list: no tags is an absent key), and the leverage is a positive decimal of at most 1000.
  */
-export function validateTradeFields(trade: Pick<TradeRecord, 'contractSize' | 'exchange' | 'tags' | 'leverage'>): DomainValidationResult<true> {
+export function validateTradeFields(trade: Pick<TradeRecord, 'contractSize' | 'exchange' | 'tags' | 'leverage' | 'note'>): DomainValidationResult<true> {
   if (trade.contractSize != null && !(typeof trade.contractSize === 'string' && parsePositiveDecimalString(trade.contractSize).ok && trade.contractSize === trade.contractSize.trim())) {
     return { ok: false, reason: 'invalid-contract-size' };
   }
@@ -63,6 +65,7 @@ export function validateTradeFields(trade: Pick<TradeRecord, 'contractSize' | 'e
   }
   if (trade.tags !== undefined && !(areNormalTradeTags(trade.tags) && trade.tags.length > 0)) return { ok: false, reason: 'invalid-tags' };
   if (trade.leverage != null && !isPositiveDecimalAtMost(trade.leverage, TRADE_LEVERAGE_MAX)) return { ok: false, reason: 'invalid-leverage' };
+  if (trade.note != null && !isTrimmedText(trade.note, TRADE_NOTE_MAX_LENGTH)) return { ok: false, reason: 'invalid-note' };
   return { ok: true, value: true };
 }
 

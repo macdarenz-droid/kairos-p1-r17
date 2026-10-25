@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   listJournalHistoryPage,
+  writeJournalFilters,
+  type JournalFilters,
   type JournalHistoryCursor,
   type JournalHistoryEntry,
   type JournalHistoryScope,
 } from '../../application/journal';
 import type { KairosDatabase } from '../../data/database';
-import type { TradeStatus } from '../../domain/trades';
 
 export interface JournalHistoryPages {
   readonly entries: readonly JournalHistoryEntry[];
@@ -20,15 +21,20 @@ export interface JournalHistoryPages {
   readonly refresh: () => Promise<void>;
 }
 
-function pageOptions(scope: JournalHistoryScope, status: TradeStatus | '', before: JournalHistoryCursor | null) {
-  return status === '' ? { scope, before } : { scope, status, before };
-}
-
 /**
- * Paging state for the Journal and Practice lists. Every request takes a
- * sequence number; a slower old answer never replaces a newer one.
+ * Paging state for the Journal and Practice lists, of the trades matching the filters (U15, D262). Every request takes a
+ * sequence number; a slower old answer never replaces a newer one. `timeZone` is the trader's, for the From and To
+ * days: while it is still being read (undefined), a list filtered by days waits for it.
  */
-export function useJournalHistoryPages(db: KairosDatabase, scope: JournalHistoryScope, status: TradeStatus | ''): JournalHistoryPages {
+export function useJournalHistoryPages(db: KairosDatabase, scope: JournalHistoryScope, filters: JournalFilters, timeZone: string | undefined): JournalHistoryPages {
+  // The same filters read again from the address are the same list: only a changed value reads again.
+  const filterKey = writeJournalFilters(filters).toString();
+  const sameFilters = useMemo(() => filters, [filterKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Only the From and To days use the time zone: a list without them never reads again when the zone arrives.
+  const byDays = filters.from !== null || filters.to !== null;
+  const waitsForZone = byDays && timeZone === undefined;
+  const zone = byDays ? timeZone ?? 'UTC' : 'UTC';
+  const pageOptions = useCallback((before: JournalHistoryCursor | null) => ({ scope, filters: sameFilters, timeZone: zone, before }), [scope, sameFilters, zone]);
   const [entries, setEntries] = useState<readonly JournalHistoryEntry[]>([]);
   const [cursor, setCursor] = useState<JournalHistoryCursor | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -39,6 +45,7 @@ export function useJournalHistoryPages(db: KairosDatabase, scope: JournalHistory
   const shownCount = useRef(0);
 
   const load = useCallback(async (atLeast: number): Promise<void> => {
+    if (waitsForZone) return;
     const request = ++sequence.current;
     setIsLoading(true);
     setIsLoadingOlder(false);
@@ -48,7 +55,7 @@ export function useJournalHistoryPages(db: KairosDatabase, scope: JournalHistory
       const loaded: JournalHistoryEntry[] = [];
       let next: JournalHistoryCursor | null = null;
       do {
-        const page = await listJournalHistoryPage(db, pageOptions(scope, status, next));
+        const page = await listJournalHistoryPage(db, pageOptions(next));
         if (request !== sequence.current) return;
         loaded.push(...page.entries);
         next = page.nextCursor;
@@ -61,7 +68,7 @@ export function useJournalHistoryPages(db: KairosDatabase, scope: JournalHistory
     } finally {
       if (request === sequence.current) setIsLoading(false);
     }
-  }, [db, scope, status]);
+  }, [db, pageOptions, waitsForZone]);
 
   useEffect(() => { void load(0); return () => { sequence.current += 1; }; }, [load]);
 
@@ -70,7 +77,7 @@ export function useJournalHistoryPages(db: KairosDatabase, scope: JournalHistory
     const request = ++sequence.current;
     setIsLoadingOlder(true);
     setOlderFailed(false);
-    void listJournalHistoryPage(db, pageOptions(scope, status, cursor)).then(page => {
+    void listJournalHistoryPage(db, pageOptions(cursor)).then(page => {
       if (request !== sequence.current) return;
       setEntries(current => { const merged = [...current, ...page.entries]; shownCount.current = merged.length; return merged; });
       setCursor(page.nextCursor);
@@ -80,7 +87,7 @@ export function useJournalHistoryPages(db: KairosDatabase, scope: JournalHistory
       setOlderFailed(true);
       setIsLoadingOlder(false);
     });
-  }, [db, scope, status, cursor]);
+  }, [db, pageOptions, cursor]);
 
   const refresh = useCallback(() => load(shownCount.current), [load]);
 

@@ -3,6 +3,8 @@
  */
 
 import { describeStrategyRuleResult } from '../discipline/strategyWords';
+import type { JournalHistoryScope } from '../journal/historyQuery';
+import { journalListHref } from '../journal/journalFilters';
 import type { TradePlanVsExecution } from '../trades/planVsExecution';
 import type { CoachNote } from './coachNotes';
 
@@ -19,6 +21,20 @@ export function describeTradePlanVsExecution(result: TradePlanVsExecution): read
   const lines: string[] = [];
   if (result.stop.verdict === 'passed') lines.push(stopSentence(result.stop.stop, result.stop.averageExit));
   if (result.size.verdict === 'bigger') lines.push(sizeSentence(result.size.planned, result.size.traded));
+  return Object.freeze(lines);
+}
+
+/**
+ * U15 (D260): the trade page's "Plan and what happened": a sentence for every verdict the owner could give, kept or not
+ * (the stop first, then the size). A verdict it could not give ('unknown') says nothing.
+ */
+export function describePlanAndWhatHappened(result: TradePlanVsExecution): readonly string[] {
+  const lines: string[] = [];
+  if (result.stop.verdict === 'passed') lines.push(stopSentence(result.stop.stop, result.stop.averageExit));
+  if (result.stop.verdict === 'kept') lines.push(`Your stop was ${result.stop.stop}, and you closed at ${result.stop.averageExit} on average, without reaching it.`);
+  if (result.size.verdict === 'bigger') lines.push(sizeSentence(result.size.planned, result.size.traded));
+  if (result.size.verdict === 'as-planned') lines.push(`You traded the size you planned: ${result.size.traded}.`);
+  if (result.size.verdict === 'smaller') lines.push(`You planned a size of ${result.size.planned} and traded ${result.size.traded}, less than planned.`);
   return Object.freeze(lines);
 }
 
@@ -79,6 +95,18 @@ export function describeCoachNote(note: CoachNote): CoachNoteWords {
         step: 'In your trade history, tap "After the trade" on each trade that is not reviewed yet, while you still remember it.',
       });
   }
+}
+
+/**
+ * U15 (D262): a repeated mistake's link to every trade marked with it, in the Journal's list (Practice's for the practice
+ * coach). The list is not limited to this month, so the words say "all". Other notes have no list to open.
+ */
+export function describeCoachNoteListLink(note: CoachNote, scope: JournalHistoryScope): Readonly<{ to: string; text: string }> | null {
+  if (note.kind !== 'mistake-repeated') return null;
+  return Object.freeze({
+    to: journalListHref(scope, { mistake: note.itemId }),
+    text: `See all your ${scope === 'practice' ? 'practice trades' : 'trades'} marked "${note.label}"`,
+  });
 }
 
 /** The facts for one trade a note names, in the same words as the card line. */

@@ -77,7 +77,8 @@ describe('P12.6R1 journal history USER_HEAVY performance canary', () => {
       expect(screen.getByText(`${HISTORY_PAGE_LIMIT} shown`)).toBeInTheDocument();
       const closedRows = screen.getAllByRole('listitem');
       expect(closedRows).toHaveLength(HISTORY_PAGE_LIMIT);
-      for (const row of closedRows) expect(row).toHaveTextContent('Closed');
+      // A closed row says its status in its link's name ("HVY00002 long, closed, opened …"); the row's words leave it out.
+      for (const row of closedRows) expect(row.querySelector('a.kairos-history-card__link')).toHaveAccessibleName(expect.stringContaining(', closed, '));
     });
     const filterElapsedMs = performance.now() - filterStartedAt;
 

@@ -1,4 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie';
+import { tradeJournalAt } from '../../domain/trades';
 import { registerKairosMigrations } from './migrations';
 import {
   KAIROS_DATABASE_NAME,
@@ -31,5 +32,24 @@ export class KairosDatabase extends Dexie {
   constructor(name = KAIROS_DATABASE_NAME) {
     super(name);
     registerKairosMigrations(this);
+    // U15 (D259): every write of a trade stamps the Journal's order, whichever command, import, restore or test wrote it.
+    // Stored records are often frozen, so each one is copied with the stamp rather than changed in place.
+    this.use({
+      stack: 'dbcore',
+      name: 'kairos-journal-order',
+      create: down => ({
+        ...down,
+        table: tableName => {
+          const table = down.table(tableName);
+          if (tableName !== 'trades') return table;
+          return {
+            ...table,
+            mutate: request => (request.type === 'add' || request.type === 'put'
+              ? table.mutate({ ...request, values: request.values.map((trade: DatabaseTradeRecord) => ({ ...trade, journalAt: tradeJournalAt(trade) })) })
+              : table.mutate(request)),
+          };
+        },
+      }),
+    });
   }
 }

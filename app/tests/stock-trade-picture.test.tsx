@@ -24,6 +24,7 @@ import {
   type TradeSide,
 } from '../src/domain/trades';
 import { TradePicture } from '../src/features/journal/TradePicture';
+import { renderTradePage, tradePageHeading } from './fixtures/tradePage';
 import { TradePictureCard } from '../src/features/journal/TradePictureCard';
 import { TradePictureCandleLoaderContext, type TradePictureCandleLoader } from '../src/features/journal/tradePictureCandleQueue';
 
@@ -165,7 +166,7 @@ describe('T-044c the stock trade picture', () => {
     expect(await within(dialog).findByText(/A small piece of a company/)).toBeInTheDocument();
   });
 
-  it('never asks for stock candles, in the Journal and in Analysis', async () => {
+  it('never asks for stock candles, on the trade\'s page (T-060c: a Journal row reads none) and in Analysis', async () => {
     const db = await database();
     const stock = await saveManualTrade(db, {
       symbol: 'AAPL', marketType: 'stock', side: 'long', status: 'closed', openedAt: opened, closedAt: closed, grossPnlCurrency: 'USD',
@@ -178,13 +179,17 @@ describe('T-044c the stock trade picture', () => {
       executions: [{ type: 'entry', price: '60000', quantity: '0.1', executedAt: opened }, { type: 'exit', price: '61500', quantity: '0.1', executedAt: closed }],
     });
     expect(stock.ok && btc.ok).toBe(true);
+    if (!stock.ok || !btc.ok) throw new Error('fixture');
     const offline: TradePictureCandleLoader = async () => ({ ok: false, why: 'no-candles', retryAfterSeconds: null, note: null });
     const loader = vi.fn(offline);
-    render(<TradePictureCandleLoaderContext.Provider value={loader}><MemoryRouter><JournalRoute db={db} /></MemoryRouter></TradePictureCandleLoaderContext.Provider>);
-    const aaplButton = await screen.findByRole('button', { name: 'Open the AAPL trade picture' });
-    await waitFor(() => expect(within(aaplButton).getByText('Candles are shown for crypto and forex trades for now.')).toBeInTheDocument());
-    const crypto = screen.getByRole('button', { name: 'Open the BTCUSDT trade picture' });
-    await waitFor(() => expect(within(crypto).getByText('No candles for this time.')).toBeInTheDocument());
+    const wrap = (node: React.ReactNode) => <TradePictureCandleLoaderContext.Provider value={loader}>{node}</TradePictureCandleLoaderContext.Provider>;
+    renderTradePage(db, stock.tradeId, { wrap });
+    await tradePageHeading('AAPL · Long');
+    await waitFor(() => expect(within(screen.getByRole('region', { name: 'Your trade' })).getByText('Candles are shown for crypto and forex trades for now.')).toBeInTheDocument());
+    cleanup();
+    renderTradePage(db, btc.tradeId, { wrap });
+    await tradePageHeading('BTCUSDT · Long');
+    await waitFor(() => expect(within(screen.getByRole('region', { name: 'Your trade' })).getByText('No candles for this time.')).toBeInTheDocument());
     expect(loader.mock.calls.map(([record]) => record.symbol)).toEqual(['BTCUSDT']);
     cleanup();
 

@@ -2,7 +2,8 @@ import type { KairosDatabase } from '../../data/database';
 import { createKairosRepositories } from '../../data/repositories';
 import { calculateSavedTradeMetrics, type TradeMetricsResult } from '../../domain/calculations';
 import { projectVisualPnlOutcome, type VisualPnlOutcomeProjection } from '../visual-pnl';
-import type { TradeExecutionRecord, TradeFeeRecord, TradePlanRecord, TradeRecord, TradeSource, TradeStatus, TradeId } from '../../domain/trades';
+import { tradeJournalAt, type TradeExecutionRecord, type TradeFeeRecord, type TradePlanRecord, type TradeRecord, type TradeSource, type TradeStatus, type TradeId } from '../../domain/trades';
+import { journalDateBounds, matchesJournalDetails, matchesJournalTradeFields, needsJournalDetails, NO_JOURNAL_FILTERS, type JournalFilters } from './journalFilters';
 
 export interface JournalHistoryEntry {
   readonly trade: TradeRecord;
@@ -41,9 +42,8 @@ export async function listJournalHistory(
 ): Promise<readonly JournalHistoryEntry[]> {
   const repositories = createKairosRepositories(db);
   const scoped = repositories.trades.scopedBySource(JOURNAL_HISTORY_SOURCES[options.scope ?? DEFAULT_JOURNAL_HISTORY_SCOPE]);
-  const trades = options.status === undefined
-    ? await scoped.listRecentByUpdatedAt(normalizeHistoryLimit(options.limit))
-    : await scoped.listRecentByStatusAndUpdatedAt(options.status, normalizeHistoryLimit(options.limit));
+  // The Journal's order (D259): when each trade happened, latest first.
+  const trades = await scoped.listPageByJournalAt(options.status ?? null, null, normalizeHistoryLimit(options.limit));
 
   const entries = await Promise.all(trades.map(trade => hydrateJournalHistoryEntry(repositories, trade)));
 
@@ -129,24 +129,88 @@ export async function listJournalOpenTrades(
 }
 
 export const JOURNAL_HISTORY_PAGE_SIZE = DEFAULT_JOURNAL_HISTORY_LIMIT;
-export interface JournalHistoryCursor { readonly updatedAt: string; readonly id: TradeId; }
+export interface JournalHistoryCursor { readonly journalAt: string; readonly id: TradeId; }
 export interface JournalHistoryPage { readonly entries: readonly JournalHistoryEntry[]; readonly nextCursor: JournalHistoryCursor | null; }
 
-/** One page of the history list, newest edit first, strictly before `before`; `nextCursor` is null on the last page. */
+/** Where the next page starts: just after this trade in the Journal's order (the stored index key, which a read trade carries). */
+const cursorOf = (trade: TradeRecord & { readonly journalAt?: string }): JournalHistoryCursor => Object.freeze({ journalAt: trade.journalAt ?? tradeJournalAt(trade), id: trade.id });
+
+/** Trades read and checked at a time when filters need each trade's result, checklist or review (D262). */
+export const JOURNAL_FILTER_BATCH = 200;
+
+export interface JournalMatchOptions {
+  readonly scope?: JournalHistoryScope;
+  readonly filters?: JournalFilters;
+  /** The trader's time zone, for the From and To days. */
+  readonly timeZone?: string;
+  readonly before?: JournalHistoryCursor | null;
+}
+
+/**
+ * U15 (D262): the trades matching the filters in the Journal's order, strictly before `before`: at most `wanted`
+ * (null: all), with whether more are left. The trade's own fields (scope, status, market, side, the symbol search,
+ * the dates) are tested while the cursor walks; its result, strategy and mistakes are read and tested a batch at a time.
+ * Call inside a read transaction over the trades, their plans, entries and exits, fees and checklist records.
+ */
+async function collectJournalMatches(
+  repositories: ReturnType<typeof createKairosRepositories>, options: JournalMatchOptions, wanted: number | null,
+): Promise<Readonly<{ entries: readonly JournalHistoryEntry[]; more: boolean }>> {
+  const filters = options.filters ?? NO_JOURNAL_FILTERS;
+  const timeZone = options.timeZone ?? 'UTC';
+  // Only a closed trade has a result after fees.
+  if (filters.result !== null && filters.status !== null && filters.status !== 'closed') return { entries: [], more: false };
+  const status = filters.result !== null ? 'closed' : filters.status;
+  const scoped = repositories.trades.scopedBySource(JOURNAL_HISTORY_SOURCES[options.scope ?? DEFAULT_JOURNAL_HISTORY_SCOPE]);
+  const dates = journalDateBounds(filters);
+  const keep = (trade: TradeRecord) => matchesJournalTradeFields(trade, filters, timeZone);
+  if (!needsJournalDetails(filters)) {
+    const rows = await scoped.listPageByJournalAtWhere(status, options.before ?? null, dates, keep, wanted === null ? Infinity : wanted + 1);
+    const kept = wanted === null ? rows : rows.slice(0, wanted);
+    return { entries: await hydrateJournalHistoryEntries(repositories, kept), more: wanted !== null && rows.length > wanted };
+  }
+  const matches: JournalHistoryEntry[] = [];
+  let cursor = options.before ?? null;
+  for (;;) {
+    const rows = await scoped.listPageByJournalAtWhere(status, cursor, dates, keep, JOURNAL_FILTER_BATCH);
+    const [entries, records] = await Promise.all([
+      hydrateJournalHistoryEntries(repositories, rows),
+      filters.strategy !== null || filters.mistake !== null ? repositories.tradeDiscipline.listByTradeIds(rows.map(trade => trade.id)) : [],
+    ]);
+    const recordOf = new Map(records.map(record => [record.tradeId, record]));
+    for (const entry of entries) {
+      if (!matchesJournalDetails(entry.visualPnl.outcome, recordOf.get(entry.trade.id) ?? null, filters)) continue;
+      if (wanted !== null && matches.length === wanted) return { entries: matches, more: true };
+      matches.push(entry);
+    }
+    const last = rows[rows.length - 1];
+    if (rows.length < JOURNAL_FILTER_BATCH || last === undefined) return { entries: matches, more: false };
+    cursor = cursorOf(last);
+  }
+}
+
+const MATCH_STORES = ['trades', 'tradePlans', 'tradeExecutions', 'tradeFees', 'tradeDiscipline'] as const;
+
+/**
+ * One page of the history list in the Journal's order (D259), strictly before `before`, of the trades that match the
+ * filters (D262; `status` alone is the same as a status filter); `nextCursor` is null on the last page.
+ */
 export async function listJournalHistoryPage(
   db: KairosDatabase,
-  options: { readonly scope?: JournalHistoryScope; readonly status?: TradeStatus; readonly before?: JournalHistoryCursor | null } = {},
+  options: JournalMatchOptions & { readonly status?: TradeStatus } = {},
 ): Promise<JournalHistoryPage> {
   const repositories = createKairosRepositories(db);
-  return db.transaction('r', ['trades', 'tradePlans', 'tradeExecutions', 'tradeFees'], async () => {
-    const rows = await repositories.trades
-      .scopedBySource(JOURNAL_HISTORY_SOURCES[options.scope ?? DEFAULT_JOURNAL_HISTORY_SCOPE])
-      .listPageByUpdatedAt(options.status ?? null, options.before ?? null, JOURNAL_HISTORY_PAGE_SIZE + 1);
-    const kept = rows.slice(0, JOURNAL_HISTORY_PAGE_SIZE);
-    const last = kept[kept.length - 1];
-    const nextCursor = rows.length > JOURNAL_HISTORY_PAGE_SIZE && last ? Object.freeze({ updatedAt: last.updatedAt, id: last.id }) : null;
-    return Object.freeze({ entries: await hydrateJournalHistoryEntries(repositories, kept), nextCursor });
+  const filters = options.filters ?? (options.status === undefined ? NO_JOURNAL_FILTERS : Object.freeze({ ...NO_JOURNAL_FILTERS, status: options.status }));
+  return db.transaction('r', [...MATCH_STORES], async () => {
+    const found = await collectJournalMatches(repositories, { ...options, filters }, JOURNAL_HISTORY_PAGE_SIZE);
+    const last = found.entries[found.entries.length - 1];
+    return Object.freeze({ entries: Object.freeze([...found.entries]), nextCursor: found.more && last ? cursorOf(last.trade) : null });
   });
+}
+
+/** Every trade matching the filters, in the Journal's order, in one read (the list's totals and its spreadsheet, D262). */
+export async function listAllJournalMatches(db: KairosDatabase, options: JournalMatchOptions): Promise<readonly JournalHistoryEntry[]> {
+  const repositories = createKairosRepositories(db);
+  return db.transaction('r', [...MATCH_STORES], async () => (await collectJournalMatches(repositories, { ...options, before: null }, null)).entries);
 }
 
 /** A consistent read of one saved identity; never scan or fall back to a recent trade. */

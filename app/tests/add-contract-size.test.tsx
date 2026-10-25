@@ -1,11 +1,10 @@
 import 'fake-indexeddb/auto';
 import '@testing-library/jest-dom/vitest';
 import Dexie from 'dexie';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, describe, expect, it } from 'vitest';
 import { AnalysisRoute } from '../src/app/AnalysisRoute';
-import { JournalRoute } from '../src/app/JournalRoute';
 import { tradeReviewHref } from '../src/app/ReviewTradeLink';
 import { getJournalHistoryEntry } from '../src/application/journal';
 import { loadTradeReview } from '../src/application/journal/loadTradeReview';
@@ -15,6 +14,7 @@ import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '.
 import type { DecimalString, TradeId, TradeRecord } from '../src/domain/trades';
 import { TradePictureCandleLoaderContext, type TradePictureCandleLoader } from '../src/features/journal/tradePictureCandleQueue';
 import { axeViolations } from './fixtures/axe';
+import { renderTradePage, tradePageHeading } from './fixtures/tradePage';
 
 const names: string[] = [];
 const opened: Dexie[] = [];
@@ -91,58 +91,65 @@ describe('T-056d adding how much one point is worth to a saved trade', () => {
   });
 });
 
-describe('T-056d on the Journal card', () => {
-  async function journal(db: KairosDatabase) {
-    const view = render(<TradePictureCandleLoaderContext.Provider value={offline}><MemoryRouter><JournalRoute db={db} /></MemoryRouter></TradePictureCandleLoaderContext.Provider>);
-    await waitFor(() => expect(view.container.querySelector('.kairos-history-card')).not.toBeNull());
+describe('T-056d on the trade page', () => {
+  const POINT = 'Add how much one point is worth';
+  /** Opens a trade's own page (U15): the Journal's rows are one link each, so its controls live here. */
+  async function tradePage(db: KairosDatabase, id: TradeId, symbol: string) {
+    const view = renderTradePage(db, id, { wrap: node => <TradePictureCandleLoaderContext.Provider value={offline}>{node}</TradePictureCandleLoaderContext.Provider> });
+    await tradePageHeading(`${symbol} · Long`);
     return view;
   }
+  const result = () => screen.getByRole('region', { name: 'Recorded result' });
 
   it('offers it only where needed, says why a value is refused, and once saved shows the result with focus on it', async () => {
-    const { db } = await database(es(), es({ symbol: 'BTCUSDT-PERP', grossPnlCurrency: 'USDT' }), es({ symbol: 'NQZ6', contractSize: '20' }));
-    const { container } = await journal(db);
-    await waitFor(() => expect(container.querySelectorAll('.kairos-history-card')).toHaveLength(3));
-    const bySymbol = (symbol: string) => [...container.querySelectorAll<HTMLElement>('.kairos-history-card')].find(item => item.querySelector('strong')?.textContent === symbol)!;
+    const { db, ids } = await database(es(), es({ symbol: 'BTCUSDT-PERP', grossPnlCurrency: 'USDT' }), es({ symbol: 'NQZ6', contractSize: '20' }));
     // A crypto perpetual priced in USDT is 1 a point, and NQZ6 has its own: neither is offered it.
-    expect(screen.getAllByRole('button', { name: 'Add how much one point is worth' })).toHaveLength(1);
-    const card = bySymbol('ESZ6');
-    expect(within(card).getByText(WORDS)).toBeInTheDocument();
-    fireEvent.click(within(card).getByRole('button', { name: 'Add how much one point is worth' }));
-    const field = within(card).getByLabelText('Each point is worth');
+    const offered: number[] = [];
+    for (const [index, symbol] of ['ESZ6', 'BTCUSDT-PERP', 'NQZ6'].entries()) {
+      const view = await tradePage(db, ids[index]!, symbol);
+      offered.push(screen.queryAllByRole('button', { name: POINT }).length);
+      view.unmount();
+    }
+    expect(offered).toEqual([1, 0, 0]);
+    const { router } = await tradePage(db, ids[0]!, 'ESZ6');
+    expect(within(result()).getByText(WORDS)).toBeInTheDocument();
+    fireEvent.click(within(result()).getByRole('button', { name: POINT }));
+    const field = within(result()).getByLabelText('Each point is worth');
     expect(field).toHaveFocus();
-    expect(await axeViolations(card)).toEqual([]);
+    expect(await axeViolations(result())).toEqual([]);
 
     fireEvent.change(field, { target: { value: '0' } });
-    fireEvent.click(within(card).getByRole('button', { name: 'Save' }));
+    fireEvent.click(within(result()).getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(field).toHaveAccessibleDescription(expect.stringContaining('Enter how much one point is worth, such as 50.')));
     expect(field).toHaveFocus();
 
     fireEvent.change(field, { target: { value: '50' } });
-    fireEvent.click(within(card).getByRole('button', { name: 'Save' }));
-    await waitFor(() => expect(bySymbol('ESZ6').querySelector('.kairos-history-card__outcome')).toHaveTextContent('+500 USD'));
-    const saved = bySymbol('ESZ6');
-    await waitFor(() => expect(fact(saved, 'Result after fees')).toHaveFocus());
-    expect(within(saved).queryByText(WORDS)).toBeNull();
-    expect(within(saved).queryByRole('button', { name: 'Add how much one point is worth' })).toBeNull();
+    fireEvent.click(within(result()).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(result().querySelector('.kairos-review__result')).toHaveTextContent('500 USD'));
+    await waitFor(() => expect(result().querySelector('.kairos-review__result')).toHaveFocus());
+    expect(within(result()).queryByText(WORDS)).toBeNull();
+    expect(within(result()).queryByRole('button', { name: POINT })).toBeNull();
+    // And the Journal's row for it shows the result the page now has.
+    await act(async () => { await router.navigate('/journal'); });
+    await waitFor(() => expect(document.querySelector(`li.kairos-history-card[data-trade-id="${ids[0]}"] .kairos-history-card__outcome`)).toHaveTextContent('+500 USD'));
   });
 
   it('Cancel closes it and returns focus to its button', async () => {
-    const { db } = await database(es());
-    const { container } = await journal(db);
-    const card = container.querySelector<HTMLElement>('.kairos-history-card')!;
-    fireEvent.click(within(card).getByRole('button', { name: 'Add how much one point is worth' }));
-    fireEvent.click(within(card).getByRole('button', { name: 'Cancel' }));
-    expect(within(card).getByRole('button', { name: 'Add how much one point is worth' })).toHaveFocus();
-    expect(within(card).queryByLabelText('Each point is worth')).toBeNull();
+    const { db, ids } = await database(es());
+    await tradePage(db, ids[0]!, 'ESZ6');
+    fireEvent.click(within(result()).getByRole('button', { name: POINT }));
+    fireEvent.click(within(result()).getByRole('button', { name: 'Cancel' }));
+    expect(within(result()).getByRole('button', { name: POINT })).toHaveFocus();
+    expect(within(result()).queryByLabelText('Each point is worth')).toBeNull();
   });
 
-  it('shows at most 3 tags as chips, then how many more', async () => {
-    const { db } = await database(es({ tags: ['breakout', 'London open', 'news', 'A+', 'revenge'] }), es({ symbol: 'NQZ6', tags: ['scalp'] }));
-    const { container } = await journal(db);
-    await waitFor(() => expect(container.querySelectorAll('.kairos-history-card')).toHaveLength(2));
-    const chips = screen.getAllByRole('list', { name: 'Tags' }).map(list => within(list).getAllByRole('listitem').map(item => item.textContent));
-    expect(chips).toContainEqual(['breakout', 'London open', 'news', '+2 more tags']);
-    expect(chips).toContainEqual(['scalp']);
+  it('lists every tag on the trade page, joined by commas', async () => {
+    const { db, ids } = await database(es({ tags: ['breakout', 'London open', 'news', 'A+', 'revenge'] }), es({ symbol: 'NQZ6', tags: ['scalp'] }));
+    await tradePage(db, ids[0]!, 'ESZ6');
+    expect(fact(screen.getByRole('region', { name: 'Trade overview' }), 'Tags')?.querySelector('dd')).toHaveTextContent('breakout, London open, news, A+, revenge');
+    cleanup();
+    await tradePage(db, ids[1]!, 'NQZ6');
+    expect(fact(screen.getByRole('region', { name: 'Trade overview' }), 'Tags')?.querySelector('dd')).toHaveTextContent('scalp');
   });
 });
 

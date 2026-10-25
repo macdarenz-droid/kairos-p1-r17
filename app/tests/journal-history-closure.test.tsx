@@ -1,12 +1,13 @@
 import 'fake-indexeddb/auto';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { JournalRoute } from '../src/app/JournalRoute';
 import { listJournalHistory } from '../src/application/journal';
 import { createKairosDatabase, openKairosDatabase } from '../src/data/database';
 import { createKairosRepositories } from '../src/data/repositories';
 import { createTradeDomainId, parseDecimalString, type TradeExecutionId, type TradeFeeId, type TradeId } from '../src/domain/trades';
+import { renderTradePage, tradePageHeading } from './fixtures/tradePage';
 
 const names = new Set<string>();
 function dbName(): string { const name=`kairos-p127-${crypto.randomUUID()}`; names.add(name); return name; }
@@ -48,8 +49,15 @@ describe('P12.7 Journal History closure', () => {
     fireEvent.change(filter,{target:{value:'closed'}});
     await waitFor(()=>expect(filter).toHaveValue('closed'));
     await waitFor(()=>expect(screen.getAllByRole('listitem')).toHaveLength(1));
-    expect(screen.getByText('40')).toBeInTheDocument();
     expect(screen.getAllByText('Not available').length).toBeGreaterThanOrEqual(1);
+
+    // The row says only that the result is not available; the figures are on the trade's page.
+    cleanup();
+    renderTradePage(db, tradeId);
+    await tradePageHeading('CLOSEOUT · Long');
+    const fact = (term: string) => within(screen.getByRole('region', { name: 'Recorded result' })).getByText(term).closest('div')!.querySelector('dd')!.textContent;
+    expect(fact('Result before fees')).toBe('40 · Currency not recorded');
+    expect(fact('Result after fees')).toBe('Not available');
     db.close();
   });
 });

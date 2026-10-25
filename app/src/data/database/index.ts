@@ -37,7 +37,9 @@ export {
   KAIROS_V12_STORES,
   KAIROS_V13_STORES,
   KAIROS_V14_STORES,
+  KAIROS_V15_STORES,
   KAIROS_CURRENT_STORES,
+  tradeWithoutJournalOrder,
 } from './schema';
 export type {
   DatabaseLifecycleState,
@@ -52,6 +54,7 @@ export type { DatabaseDeviceHandleRecord, DatabaseEconomicEventRecord, DatabaseE
 
 export type { DatabaseIntegrityCheck, DatabaseIntegrityCheckId, DatabaseIntegrityCheckTier, DatabaseIntegrityReport } from './integrity';
 export {
+  JOURNAL_CHANGED_EVENT,
   KAIROS_JOURNAL_CHANNEL,
   classifyKairosWriteFailure,
   listenForKairosJournalChanges,

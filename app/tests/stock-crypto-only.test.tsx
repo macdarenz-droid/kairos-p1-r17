@@ -7,7 +7,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { AnalysisHistoryWorkspace } from '../src/app/AnalysisHistoryWorkspace';
 import type { AnalysisLiveCandleCanvasProps } from '../src/app/AnalysisLiveCandleCanvas';
 import type { AnalysisSavedTradeOverlayLiveCandleCanvasProps } from '../src/app/AnalysisSavedTradeOverlayLiveCandleCanvas';
-import { TradeReviewDetails } from '../src/app/TradeReviewDetails';
+import { TradeDetails } from '../src/features/journal/TradeDetails';
 import { getJournalHistoryEntry, type JournalHistoryEntry } from '../src/application/journal';
 import { saveManualTrade } from '../src/application/trades';
 import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
@@ -67,7 +67,7 @@ describe('T-044d crypto only for now, for stocks too', () => {
       fees: [{ amount: '1', currency: 'USD' }],
     });
     if (!saved.ok) throw new Error('fixture');
-    render(<TradeReviewDetails entry={(await getJournalHistoryEntry(db, saved.tradeId))!} />);
+    render(<TradeDetails entry={(await getJournalHistoryEntry(db, saved.tradeId))!} />);
     const overview = within(screen.getByRole('region', { name: 'Trade overview' }));
     expect(overview.getByText('Stock')).toBeInTheDocument();
     expect(overview.getByText('USD')).toBeInTheDocument();

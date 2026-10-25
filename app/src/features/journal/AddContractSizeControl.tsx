@@ -50,7 +50,7 @@ export function AddContractSizeControl({ entry, idPrefix, save, onSaved }: AddCo
     if (saving) return;
     setSaving(true);
     setError(null);
-    const result = await save({ expected: { trade: entry.trade, executions: entry.executions, fees: entry.fees }, contractSize: value }).catch((): AddTradeContractSizeResult => ({ ok: false, type: 'storage-error', reason: 'trade-save-failed' }));
+    const result = await save({ expected: { trade: entry.trade, executions: entry.executions, fees: entry.fees, plans: entry.plans }, contractSize: value }).catch((): AddTradeContractSizeResult => ({ ok: false, type: 'storage-error', reason: 'trade-save-failed' }));
     setSaving(false);
     if (!result.ok) {
       setError(REFUSED[result.type === 'validation-error' ? 'invalid' : result.reason]);

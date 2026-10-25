@@ -8,7 +8,7 @@ import { saveManualTrade, type SaveManualTradeInput } from '../src/application/t
 import { getJournalHistoryEntry, listJournalHistory } from '../src/application/journal';
 import { loadTradeReview, type TradeReviewResult } from '../src/application/journal/loadTradeReview';
 import { AnalysisRoute } from '../src/app/AnalysisRoute';
-import { TradeReviewDetails } from '../src/app/TradeReviewDetails';
+import { TradeDetails } from '../src/features/journal/TradeDetails';
 import { ReviewTradeLink, tradeReviewHref } from '../src/app/ReviewTradeLink';
 import type { TradeId } from '../src/domain/trades';
 
@@ -60,15 +60,17 @@ it('keeps unknown currency and zero-execution results explicit instead of using 
 });
 it('keeps fees attached to the correct execution and does not invent a missing association', async () => {
   const id = await start(); const entry = (await getJournalHistoryEntry(db, id))!;
-  const ui = render(<TradeReviewDetails entry={{ ...entry, fees: [{ ...entry.fees[0], executionId: entry.executions[1].id }] }} />);
+  const ui = render(<TradeDetails entry={{ ...entry, fees: [{ ...entry.fees[0], executionId: entry.executions[1].id }] }} />);
   expect(screen.getByText('For exit 2')).toBeVisible();
-  ui.rerender(<TradeReviewDetails entry={{ ...entry, fees: [{ ...entry.fees[0], executionId: 'missing' as typeof entry.executions[0]['id'] }] }} />);
+  ui.rerender(<TradeDetails entry={{ ...entry, fees: [{ ...entry.fees[0], executionId: 'missing' as typeof entry.executions[0]['id'] }] }} />);
   expect(screen.getByText('Its entry or exit is not available')).toBeVisible();
 });
 it('encodes a saved identity in a standalone link without confusing symbols or query characters', () => {
   const id = 'saved/id?#two trades'; render(<ReviewTradeLink id={id} />);
   const href = screen.getByRole('link', { name: 'View trade' }).getAttribute('href')!;
-  expect(new URL(href, 'https://kairos.test').searchParams.get('trade')).toBe(id);
+  const { pathname } = new URL(href, 'https://kairos.test');
+  expect(pathname.startsWith('/journal/trades/')).toBe(true);
+  expect(decodeURIComponent(pathname.slice('/journal/trades/'.length))).toBe(id);
 });
 it('offers the recent selector and follows the chosen ID when two symbols are identical', async () => {
   const first = await start();
