@@ -42,6 +42,8 @@ describe('existing open manual trade updates', () => {
     // T-061d (D270): Home shows closed trades only; the trade still open is not there yet.
     expect(await homeYourTradesAllTime(db)).toEqual([]);
     expected = (await listJournalHistory(db))[0];
+    // A partial exit invents no result while the trade is open.
+    expect(expected.visualPnl.amount).toBeNull();
     expect((await updateOpenManualTrade(db, { expected, status: 'closed', closedAt, executions: [exit('1.5')], fees: [] })).ok).toBe(true);
     expect(await db.trades.count()).toBe(1); expect(await db.tradeExecutions.count()).toBe(3);
     expect((await homeYourTradesAllTime(db))[0]).toMatchObject({ amount: '40' });
