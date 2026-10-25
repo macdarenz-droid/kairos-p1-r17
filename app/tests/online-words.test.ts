@@ -135,4 +135,11 @@ describe('T-061c describeUpdatedAgo', () => {
   it('says "just now" for a time a little ahead of this clock', () => {
     expect(describeUpdatedAgo(-5_000)).toBe('just now');
   });
+
+  it('review r1: says nothing for an age that is not a number, never "just now"', () => {
+    expect(describeUpdatedAgo(Number.NaN)).toBeNull();
+    expect(describeUpdatedAgo(Number.POSITIVE_INFINITY)).toBeNull();
+    expect(describeUpdatedAgo(Number.NEGATIVE_INFINITY)).toBeNull();
+    expect(describeUpdatedAgo(50 * 3_600_000)).toBe('50 h ago');
+  });
 });

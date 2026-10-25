@@ -702,3 +702,95 @@ describe('T-061c the next big news on "Today"', () => {
     expect(calendar).toHaveBeenCalledTimes(9);
   });
 });
+
+const BUSY: PriceNowResult = { ok: false, why: 'busy', retryAfterSeconds: 150, note: null, source: { provider: 'binance' } };
+
+describe('T-061c review r1', () => {
+  it('a price read in the background that works while "Try again" has focus puts focus on the trade: back online, and the minute read', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    const db = await database();
+    await save(db, open('BTCUSDT', '2026-10-24T08:00:00.000Z', { stop: '62000' }));
+    let answer: PriceNowResult = OFFLINE;
+    const { value } = market(() => answer);
+    cardWithMarket(db, value);
+    const today = await region();
+    const item = () => tradeItem(today, 'BTCUSDT');
+    await waitFor(() => expect(priceLine(item())).toHaveTextContent("Price now: you're offline."));
+    within(item()).getByRole('button', { name: 'Try again' }).focus();
+    answer = price('63000');
+    act(() => { window.dispatchEvent(new Event('online')); });
+    await waitFor(() => expect(priceLine(item())).toHaveTextContent(/^Price now 63000 USDT/));
+    await waitFor(() => expect(document.activeElement).toBe(within(item()).getByRole('link')));
+
+    // The minute's read does the same.
+    answer = OFFLINE;
+    act(() => { window.dispatchEvent(new Event('online')); });
+    await waitFor(() => expect(within(item()).getByRole('button', { name: 'Try again' })).toBeInTheDocument());
+    within(item()).getByRole('button', { name: 'Try again' }).focus();
+    answer = price('63500');
+    await act(async () => { vi.advanceTimersByTime(60_000); });
+    await waitFor(() => expect(priceLine(item())).toHaveTextContent(/^Price now 63500 USDT/));
+    await waitFor(() => expect(document.activeElement).toBe(within(item()).getByRole('link')));
+  });
+
+  it('"Open the news calendar" keeps focus when the first trade comes in, and when the news cannot be read', async () => {
+    const db = await newsDatabase('2026-10-25T09:00:00.000Z', [JOBS], { trade: false });
+    let newsFails = false;
+    const load = vi.fn(async (store: KairosDatabase, options: Readonly<{ now: string }>) => {
+      const result = await loadHomeToday(store, options);
+      return newsFails && result.kind === 'ready' ? { ...result, projection: { ...result.projection, news: 'unavailable' as const } } : result;
+    });
+    card(db, { load });
+    const today = await region();
+    await within(today).findByText('Your day shows here once you log a trade.');
+    within(today).getByRole('link', { name: 'Open the news calendar' }).focus();
+    await save(db, closed('2026-10-25T08:00:00.000Z', '130'));
+    act(() => { window.dispatchEvent(new Event(JOURNAL_CHANGED_EVENT)); });
+    await within(today).findByText(/^This month:/);
+    await settled(today);
+    expect(document.activeElement).toBe(within(today).getByRole('link', { name: 'Open the news calendar' }));
+
+    newsFails = true;
+    act(() => { window.dispatchEvent(new Event(JOURNAL_CHANGED_EVENT)); });
+    await within(today).findByText('Kairos could not load the news. Your trades are not affected.');
+    await settled(today);
+    expect(document.activeElement).toBe(within(today).getByRole('link', { name: 'Open the news calendar' }));
+  });
+
+  it('reads one price for shown trades on the same market', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    const db = await database();
+    await save(db, open('BTCUSDT', '2026-10-24T08:00:00.000Z', { stop: '62000' }));
+    await save(db, open('BTCUSDT', '2026-10-23T08:00:00.000Z', {}, '63000'));
+    await save(db, open('ETHUSDT', '2026-10-22T08:00:00.000Z', {}, '2500'));
+    const { value, priceNow } = market(ask => price(ask.symbol === 'BTCUSDT' ? '64000' : '2450'));
+    cardWithMarket(db, value);
+    const today = await region();
+    await waitFor(() => expect(within(today).getAllByText(/^Price now 64000 USDT/)).toHaveLength(2));
+    await waitFor(() => expect(within(today).getByText(/^Price now 2450 USDT/)).toBeInTheDocument());
+    expect(priceNow.mock.calls.map(([ask]) => ask.symbol)).toEqual(['BTCUSDT', 'ETHUSDT']);
+    await act(async () => { vi.advanceTimersByTime(60_000); });
+    expect(priceNow.mock.calls.map(([ask]) => ask.symbol)).toEqual(['BTCUSDT', 'ETHUSDT', 'BTCUSDT', 'ETHUSDT']);
+  });
+
+  it('asks nothing more of a busy source until the wait it asked for has passed', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] });
+    vi.setSystemTime(Date.parse(NOW));
+    const db = await database();
+    await save(db, open('BTCUSDT', '2026-10-24T08:00:00.000Z', { stop: '62000' }));
+    let answer: PriceNowResult = BUSY;
+    const { value, priceNow } = market(() => answer);
+    cardWithMarket(db, value);
+    const today = await region();
+    await waitFor(() => expect(priceLine(tradeItem(today, 'BTCUSDT'))).toHaveTextContent('Price now: too many requests right now. Wait a minute, then try again.'));
+    expect(priceNow).toHaveBeenCalledTimes(1);
+    answer = price('64000');
+    await act(async () => { vi.advanceTimersByTime(60_000); });
+    act(() => { window.dispatchEvent(new Event('online')); });
+    await act(async () => { vi.advanceTimersByTime(60_000); });
+    expect(priceNow).toHaveBeenCalledTimes(1);
+    await act(async () => { vi.advanceTimersByTime(60_000); });
+    expect(priceNow).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(priceLine(tradeItem(today, 'BTCUSDT'))).toHaveTextContent(/^Price now 64000 USDT/));
+  });
+});

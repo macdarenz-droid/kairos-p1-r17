@@ -1,4 +1,4 @@
-import { useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useContext, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { Link, useInRouterContext } from 'react-router';
 import { describeCoachNote } from '../../application/coach/coachWords';
 import { describeTotalsInHomeCurrency } from '../../application/currency/currencyWords';
@@ -126,74 +126,120 @@ function openTradeWords({ entry, inAt, stop, target }: HomeTodayOpenTrade): stri
 }
 
 type PriceNow = NonNullable<TradeFormMarket['priceNow']>;
+type PriceAsk = Parameters<PriceNow>[0];
+/** The last answer for one market (null before the first) and whether a read for it is on its way. */
+type MarketPrice = Readonly<{ answer: PriceNowResult | null; reading: boolean }>;
+const NOT_READ: MarketPrice = Object.freeze({ answer: null, reading: false });
+const priceKey = ({ marketType, symbol }: PriceAsk): string => `${marketType}:${symbol}`;
+
+/**
+ * U16 (D268): the price now of the shown open trades' markets, one read per market however many shown trades share it.
+ * Each market is read when it first shows, every minute while the page shows and the device is online, and when the
+ * device is back online; a minute missed while the page was hidden is read when it shows again. After a source says
+ * it is busy, nothing is asked of that market until the wait it asked for has passed, except by "Try again". When an
+ * answer takes away the "Try again" that had focus, the trade's link takes it (focus never falls to the page).
+ */
+function usePricesNow(asks: readonly PriceAsk[], read: PriceNow | undefined, list: RefObject<HTMLUListElement | null>) {
+  const [prices, setPrices] = useState<ReadonlyMap<string, MarketPrice>>(() => new Map());
+  const asked = useRef<ReadonlyMap<string, PriceAsk>>(new Map());
+  asked.current = new Map(asks.map(ask => [priceKey(ask), ask]));
+  const keysText = [...asked.current.keys()].join('|');
+  /** The markets read so far in this mount of the reader. */
+  const shown = useRef<ReadonlySet<string>>(new Set());
+  /** Set by the reading effect: read one market ("Try again" does not wait for a busy source), or let one go. */
+  const reader = useRef<Readonly<{ read: (key: string, byTrader: boolean) => void; stop: (key: string) => void }> | null>(null);
+  /** The open trade whose price line had focus when an answer came: its link takes focus if the answer took it away. */
+  const refocus = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (read === undefined) return;
+    const running = new Map<string, AbortController>();
+    const busyUntil = new Map<string, number>();
+    let missed = false;
+    const readMarket = (key: string, byTrader: boolean) => {
+      const ask = asked.current.get(key);
+      if (ask === undefined || (!byTrader && (busyUntil.get(key) ?? 0) > Date.now())) return;
+      running.get(key)?.abort();
+      const mine = new AbortController();
+      running.set(key, mine);
+      setPrices(current => new Map(current).set(key, { answer: current.get(key)?.answer ?? null, reading: true }));
+      const settle = (answer: PriceNowResult) => {
+        if (mine.signal.aborted) return;
+        running.delete(key);
+        if (!answer.ok && answer.retryAfterSeconds !== null) busyUntil.set(key, Date.now() + answer.retryAfterSeconds * 1000);
+        else busyUntil.delete(key);
+        const active = document.activeElement;
+        if (active !== null && active.closest('.kairos-today__price') !== null && (list.current?.contains(active) ?? false)) refocus.current = active.closest('li');
+        setPrices(current => new Map(current).set(key, { answer, reading: false }));
+      };
+      read(ask, mine.signal).then(settle, () => settle(SOURCE_DOWN));
+    };
+    const readAll = () => { for (const key of asked.current.keys()) readMarket(key, false); };
+    const whenShown = () => { if (document.hidden) missed = true; else readAll(); };
+    const visible = () => { if (!document.hidden && missed) { missed = false; readAll(); } };
+    reader.current = Object.freeze({
+      read: (key: string, byTrader: boolean) => { if (!byTrader && document.hidden) missed = true; else readMarket(key, byTrader); },
+      stop: (key: string) => { running.get(key)?.abort(); running.delete(key); busyUntil.delete(key); },
+    });
+    const timer = setInterval(() => { if (navigator.onLine !== false) whenShown(); }, MINUTE);
+    document.addEventListener('visibilitychange', visible);
+    window.addEventListener('online', whenShown);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', visible);
+      window.removeEventListener('online', whenShown);
+      for (const controller of running.values()) controller.abort();
+      reader.current = null;
+      shown.current = new Set();
+      setPrices(new Map());
+    };
+  }, [read, list]);
+
+  // A market that starts to show is read at once; one that no longer shows is let go.
+  useEffect(() => {
+    const current = reader.current;
+    if (current === null) return;
+    const now = new Set(keysText === '' ? [] : keysText.split('|'));
+    for (const key of shown.current) {
+      if (now.has(key)) continue;
+      current.stop(key);
+      setPrices(prices => { const next = new Map(prices); next.delete(key); return next; });
+    }
+    for (const key of now) if (!shown.current.has(key)) current.read(key, false);
+    shown.current = now;
+  }, [read, keysText]);
+
+  // In the commit that shows the answer (a layout effect), before anything else can run.
+  useLayoutEffect(() => {
+    const trade = refocus.current;
+    refocus.current = null;
+    const active = document.activeElement;
+    if (trade !== null && trade.isConnected && (active === null || active === document.body)) trade.querySelector<HTMLElement>('a')?.focus();
+  }, [prices]);
+
+  return {
+    price: (ask: PriceAsk): MarketPrice => prices.get(priceKey(ask)) ?? NOT_READ,
+    retry: (ask: PriceAsk): void => reader.current?.read(priceKey(ask), true),
+  };
+}
 
 /**
  * U16 (D268): the price now under one shown open trade and how the trade would stand if it closed at that price
- * (`projectOpenTradeNow`), or why there is no price. The price is market data: never saved, never in a total (rule 7). It
- * is read when the line shows, every minute while the page shows and the device is online, and when the device is back
- * online; a minute missed while the page was hidden is read when it shows again.
+ * (`projectOpenTradeNow`), or why there is no price, with "Try again" when it can help. The price is market data: never
+ * saved, never in a total (rule 7).
  */
-function OpenTradeNowLine({ trade, read }: { readonly trade: HomeTodayOpenTrade; readonly read: PriceNow }) {
-  const { entry } = trade;
-  const { marketType, symbol } = entry.trade;
-  const [answer, setAnswer] = useState<PriceNowResult | null>(null);
-  const [reading, setReading] = useState(false);
-  const line = useRef<HTMLParagraphElement>(null);
-  /** The current read, for "Try again"; set by the effect below. */
-  const ask = useRef<(fromRetry: boolean) => void>(() => undefined);
-  /** Set when "Try again" answered: focus goes to the trade when the "Try again" button went away. */
-  const retried = useRef(false);
-
-  useEffect(() => {
-    let controller: AbortController | null = null;
-    let missed = false;
-    /** A "Try again" whose read is still on its way, even when a minute's read replaced it. */
-    let retrying = false;
-    setAnswer(null);
-    ask.current = (fromRetry: boolean) => {
-      controller?.abort();
-      const mine = new AbortController();
-      controller = mine;
-      retrying ||= fromRetry;
-      setReading(true);
-      const settle = (result: PriceNowResult) => {
-        if (mine.signal.aborted) return;
-        retried.current = retrying;
-        retrying = false;
-        setAnswer(result);
-        setReading(false);
-      };
-      read({ marketType, symbol }, mine.signal).then(settle, () => settle(SOURCE_DOWN));
-    };
-    const whenShown = () => { if (document.hidden) missed = true; else ask.current(false); };
-    whenShown();
-    const timer = setInterval(() => { if (navigator.onLine !== false) whenShown(); }, MINUTE);
-    const visible = () => { if (!document.hidden && missed) { missed = false; ask.current(false); } };
-    const online = () => whenShown();
-    document.addEventListener('visibilitychange', visible);
-    window.addEventListener('online', online);
-    return () => { clearInterval(timer); document.removeEventListener('visibilitychange', visible); window.removeEventListener('online', online); controller?.abort(); };
-  }, [read, marketType, symbol]);
-
-  const failure = answer !== null && !answer.ok ? describePriceNowFailure(answer) : null;
-  useEffect(() => {
-    if (!retried.current || answer === null) return;
-    retried.current = false;
-    // A "Try again" that is still there keeps focus; one that went away hands it to the trade, never to the page.
-    const active = document.activeElement;
-    if (failure?.retry !== true && (active === null || active === document.body)) line.current?.closest('li')?.querySelector<HTMLElement>('a')?.focus();
-  }, [answer, failure?.retry]);
-
+function OpenTradeNowLine({ entry, price, onRetry }: { readonly entry: HomeTodayOpenTrade['entry']; readonly price: MarketPrice; readonly onRetry: () => void }) {
+  const { answer, reading } = price;
   if (answer === null) return null;
-  if (failure !== null) {
-    return <p ref={line} className="kairos-today__price">{failure.message}
+  if (!answer.ok) {
+    const failure = describePriceNowFailure(answer);
+    return <p className="kairos-today__price">{failure.message}
       {failure.retry ? <> <Button variant="ghost" size="sm" aria-disabled={reading || undefined} aria-busy={reading || undefined}
-        onClick={() => { if (!reading) ask.current(true); }}>Try again</Button></> : null}</p>;
+        onClick={() => { if (!reading) onRetry(); }}>Try again</Button></> : null}</p>;
   }
-  if (!answer.ok) return null;
   const now = projectOpenTradeNow(entry, answer);
   const times = now.ok && now.timesRisked !== null ? describeTimesRisked(now.timesRisked) : null;
-  return <p ref={line} className="kairos-today__price">
+  return <p className="kairos-today__price">
     {`Price now ${answer.price}${answer.quote === null ? '' : ` ${answer.quote}`} (market, not saved) · `}
     {now.ok
       ? <>If you closed now <ResultText outcome={now.outcome} label={OUTCOME_WORDS[now.outcome]} showLabel={false} amount={now.amount} currency={now.currency} />{times === null ? null : ` · ${times}`}</>
@@ -203,14 +249,19 @@ function OpenTradeNowLine({ trade, read }: { readonly trade: HomeTodayOpenTrade;
 
 function OpenTrades({ open, priceNow }: { readonly open: HomeTodayProjection['openTrades']; readonly priceNow: PriceNow | undefined }) {
   const titleId = useId();
+  const list = useRef<HTMLUListElement>(null);
   const more = open.count - open.shown.length;
+  const prices = usePricesNow(open.shown.map(({ entry }) => ({ marketType: entry.trade.marketType, symbol: entry.trade.symbol })), priceNow, list);
   return <div className="kairos-today__open">
     <h3 id={titleId}>Open trades</h3>
-    {open.count === 0 ? <p>No open trades right now.</p> : <ul className="kairos-today__trades" aria-labelledby={titleId}>
-      {open.shown.map(trade => <li key={trade.entry.trade.id}>
-        <TodayLink to={tradePageHref(trade.entry.trade.id)}>{openTradeWords(trade)}</TodayLink>
-        {priceNow === undefined ? null : <OpenTradeNowLine trade={trade} read={priceNow} />}
-      </li>)}
+    {open.count === 0 ? <p>No open trades right now.</p> : <ul ref={list} className="kairos-today__trades" aria-labelledby={titleId}>
+      {open.shown.map(({ entry, ...trade }) => {
+        const ask = { marketType: entry.trade.marketType, symbol: entry.trade.symbol };
+        return <li key={entry.trade.id}>
+          <TodayLink to={tradePageHref(entry.trade.id)}>{openTradeWords({ entry, ...trade })}</TodayLink>
+          {priceNow === undefined ? null : <OpenTradeNowLine entry={entry} price={prices.price(ask)} onRetry={() => prices.retry(ask)} />}
+        </li>;
+      })}
     </ul>}
     {more > 0 ? <p><TodayLink to={journalListHref('real', { status: 'open' })}>{`+ ${more} more open ${more === 1 ? 'trade' : 'trades'}`}</TodayLink></p> : null}
   </div>;
@@ -225,20 +276,25 @@ function CoachLine({ coach }: { readonly coach: HomeTodayProjection['coach'] }) 
   </div>;
 }
 
-/** D269: the next big news and when the official schedules were last fetched, or why the news could not be read. */
+/**
+ * D269: the next big news and when the official schedules were last fetched, or why the news could not be read; always
+ * with "Open the news calendar" in the same place, so a link that has focus keeps it when the card reads again.
+ */
 function NewsLines({ news, nowMs }: { readonly news: NextBigNews | 'unavailable'; readonly nowMs: number }) {
-  if (news === 'unavailable') return <div className="kairos-today__news"><p>Kairos could not load the news. Your trades are not affected.</p></div>;
-  const { next, timeZone, refreshedAt } = news;
+  const ago = news === 'unavailable' || news.refreshedAt === null ? null : describeUpdatedAgo(nowMs - Date.parse(news.refreshedAt));
+  const checked = news === 'unavailable' ? null : news.refreshedAt === null ? "Kairos hasn't got the official schedules yet." : ago === null ? null : `News checked ${ago}`;
   return <div className="kairos-today__news">
-    {next === null
-      ? <p className="kairos-today__line">No big news in the next 14 days.</p>
-      : <p className="kairos-today__line"><span className="kairos-today__label">Next big news:</span> {next.name} · {describeCalendarMoment(next.event.startsAt, timeZone)}</p>}
-    <p className="kairos-today__checked">{refreshedAt === null ? "Kairos hasn't got the official schedules yet." : `News checked ${describeUpdatedAgo(nowMs - Date.parse(refreshedAt))}`}</p>
+    {news === 'unavailable'
+      ? <p>Kairos could not load the news. Your trades are not affected.</p>
+      : news.next === null
+        ? <p className="kairos-today__line">No big news in the next 14 days.</p>
+        : <p className="kairos-today__line"><span className="kairos-today__label">Next big news:</span> {news.next.name} · {describeCalendarMoment(news.next.event.startsAt, news.timeZone)}</p>}
+    {checked === null ? null : <p className="kairos-today__checked">{checked}</p>}
     <p><TodayLink to="/news-calendar">Open the news calendar</TodayLink></p>
   </div>;
 }
 
-function TodayBody({ today, priceNow, nowMs }: { readonly today: HomeTodayProjection; readonly priceNow: PriceNow | undefined; readonly nowMs: number }) {
+function TodayBody({ today, priceNow }: { readonly today: HomeTodayProjection; readonly priceNow: PriceNow | undefined }) {
   const { month } = today;
   return <>
     <div className="kairos-today__results">
@@ -258,7 +314,6 @@ function TodayBody({ today, priceNow, nowMs }: { readonly today: HomeTodayProjec
     </div>
     <OpenTrades open={today.openTrades} priceNow={priceNow} />
     <CoachLine coach={today.coach} />
-    <NewsLines news={today.news} nowMs={nowMs} />
   </>;
 }
 
@@ -423,7 +478,9 @@ export function TodayCard({ db, now, load = loadOnDemand, news }: TodayCardProps
     {result === null && !readFailed ? <Skeleton label="Loading today" lines={3} /> : null}
     {failed ? <ErrorState message={FAILED} onRetry={retry} busy={busy} /> : null}
     {!failed && result?.kind === 'time-zone-unconfigured' ? <p>Kairos needs your time zone to show today. <TodayLink to="/settings">Open Settings</TodayLink></p> : null}
-    {shown !== null && !shown.hasTrades ? <><p>Your day shows here once you log a trade.</p><NewsLines news={shown.news} nowMs={Date.parse(nowRef.current())} /></> : null}
-    {shown !== null && shown.hasTrades ? <TodayBody today={shown} priceNow={priceNow} nowMs={Date.parse(nowRef.current())} /> : null}
+    {shown !== null && !shown.hasTrades ? <p>Your day shows here once you log a trade.</p> : null}
+    {shown !== null && shown.hasTrades ? <TodayBody today={shown} priceNow={priceNow} /> : null}
+    {/* D269: one place for the news, before the first trade and after, so its link keeps focus when that changes. */}
+    {shown !== null ? <NewsLines news={shown.news} nowMs={Date.parse(nowRef.current())} /> : null}
   </Card>;
 }
