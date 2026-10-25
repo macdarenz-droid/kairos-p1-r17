@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
+import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it } from 'vitest';
 import { PracticeRoute } from '../src/app/PracticeRoute';
 import { savePracticeTrade } from '../src/application/practice';
@@ -59,6 +60,36 @@ describe('P26.3 Your practice money', () => {
     expect(bar('start').getAttribute('data-steps')).toBe('20');
     expect(bar('now').getAttribute('data-steps')).toBe('18');
     expect(bar('now').getAttribute('data-outcome')).toBe('loss');
+  });
+
+  it('focus reaches the starting amount when "Change" is tapped as the money first shows, before that render\'s effects ran', async () => {
+    const db = await database();
+    await savePracticeMoney(db, { startAmount: '1000', currency: 'USDT' }, { now });
+    // Outside act, as in the app: React runs a render's effects a moment after it shows (CI's slower machine tapped first).
+    const acting = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean };
+    const before = acting.IS_REACT_ACT_ENVIRONMENT;
+    acting.IS_REACT_ACT_ENVIRONMENT = false;
+    const host = document.body.appendChild(document.createElement('div'));
+    const root = createRoot(host);
+    try {
+      const tapped = new Promise<void>(resolve => {
+        const observer = new MutationObserver(() => {
+          const change = [...host.querySelectorAll('button')].find(button => button.textContent === 'Change starting amount');
+          if (change === undefined) return;
+          observer.disconnect();
+          change.click();
+          resolve();
+        });
+        observer.observe(host, { childList: true, subtree: true, characterData: true });
+      });
+      root.render(<PracticeMoneyCard db={db} refreshRevision={0} />);
+      await tapped;
+      await waitFor(() => expect(document.activeElement).toBe(within(host).getByLabelText(/^Starting amount/)));
+    } finally {
+      root.unmount();
+      host.remove();
+      acting.IS_REACT_ACT_ENVIRONMENT = before;
+    }
   });
 
   it('changes the start, or cancels without writing', async () => {
