@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeMarketDataUnavailable, describeOnlineServices, describeUnavailable } from '../src/application/online/onlineWords';
+import { describeMarketDataUnavailable, describeOnlineServices, describeUnavailable, describeUpdatedAgo } from '../src/application/online/onlineWords';
 import type { MarketDataUnavailableWhy } from '../src/services/market-data/marketDataTypes';
 
 const HEALTH = { serverTime: '2026-09-26T10:00:00.000Z', checks: { deviceKey: 'ready', cache: 'ready', limits: 'ready' } } as const;
@@ -117,5 +117,22 @@ describe('describeUnavailable for the market reasons', () => {
     expect(describeUnavailable(server('unknown-market', 404), 'Candles')).toMatchObject({ message: "Candles: Binance doesn't list this market. Check the spelling, for example BTCUSDT.", retryLabel: null });
     expect(describeUnavailable(server('source-busy', 503, 12), 'Candles')).toMatchObject({ message: 'Candles: too many requests from this device. Wait a minute, then try again.', retryLabel: 'Try again', retryAfterSeconds: 12 });
     expect(describeUnavailable(server('source-refused', 451), 'Candles')).toMatchObject({ message: "Candles: Binance isn't available in your region, and the backup source couldn't help. Try again later.", retryLabel: 'Try again' });
+  });
+});
+
+describe('T-061c describeUpdatedAgo', () => {
+  it('says "just now" under 10 seconds, then seconds, minutes and hours ago', () => {
+    expect(describeUpdatedAgo(0)).toBe('just now');
+    expect(describeUpdatedAgo(9_999)).toBe('just now');
+    expect(describeUpdatedAgo(10_000)).toBe('10 s ago');
+    expect(describeUpdatedAgo(40_900)).toBe('40 s ago');
+    expect(describeUpdatedAgo(60_000)).toBe('1 min ago');
+    expect(describeUpdatedAgo(2 * 60_000 + 59_000)).toBe('2 min ago');
+    expect(describeUpdatedAgo(60 * 60_000)).toBe('1 h ago');
+    expect(describeUpdatedAgo(3 * 3_600_000 + 59 * 60_000)).toBe('3 h ago');
+  });
+
+  it('says "just now" for a time a little ahead of this clock', () => {
+    expect(describeUpdatedAgo(-5_000)).toBe('just now');
   });
 });

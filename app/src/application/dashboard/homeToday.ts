@@ -1,8 +1,8 @@
 /**
  * U16 (P21.A1, D267): the one read behind Home's "Today" card. It gathers what the owners already give: this month's
  * results dashboard (today's day, the month's result after fees and what blocks it, the current streak, the days for the
- * small calendar), the open trades in the Journal's order, the coach's first note and whether the journal holds any
- * trade. It adds up no money, writes nothing and never guesses a time zone.
+ * small calendar), the open trades in the Journal's order, the coach's first note, the next big news (D269) and whether
+ * the journal holds any trade. It adds up no money, writes nothing and never guesses a time zone.
  */
 
 import type { KairosDatabase } from '../../data/database';
@@ -10,6 +10,7 @@ import { createKairosRepositories } from '../../data/repositories';
 import type { DecimalString } from '../../domain/trades';
 import type { CoachNote } from '../coach/coachNotes';
 import { loadCoachNotes } from '../coach/loadCoachNotes';
+import { loadNextBigNews, type NextBigNews } from '../economic-calendar/nextBigNews';
 import type { ResultsInHomeCurrencySummary } from '../currency/resultsInHomeCurrency';
 import { JOURNAL_HISTORY_SOURCES, listAllJournalMatches, type JournalHistoryEntry } from '../journal/historyQuery';
 import { NO_JOURNAL_FILTERS } from '../journal/journalFilters';
@@ -52,6 +53,8 @@ export interface HomeTodayProjection {
   readonly openTrades: Readonly<{ shown: readonly HomeTodayOpenTrade[]; count: number }>;
   /** The coach's first note this month; null when it has none; 'unavailable' when it could not be read (the rest still shows). */
   readonly coach: CoachNote | null | 'unavailable';
+  /** The next big news (D269); 'unavailable' when it could not be read (the rest still shows). */
+  readonly news: NextBigNews | 'unavailable';
   /** Whether the journal holds any real trade at all (planned, open, closed or cancelled). */
   readonly hasTrades: boolean;
 }
@@ -80,6 +83,15 @@ async function loadCoachFirstNote(db: KairosDatabase, now: string): Promise<Home
   }
 }
 
+async function loadNews(db: KairosDatabase, now: string): Promise<HomeTodayProjection['news']> {
+  try {
+    const news = await loadNextBigNews(db, { now });
+    return news.kind === 'ready' ? news.news : 'unavailable';
+  } catch {
+    return 'unavailable';
+  }
+}
+
 /** "Today" at the moment `now`, in the saved time zone. A refusal is a result, never a throw; a storage failure rejects. */
 export async function loadHomeToday(db: KairosDatabase, options: Readonly<{ now: string }>): Promise<HomeTodayResult> {
   const read = await loadResultsDashboard(db, { choice: VISUAL_PNL_DEFAULT_PERIOD, now: options.now });
@@ -91,10 +103,11 @@ export async function loadHomeToday(db: KairosDatabase, options: Readonly<{ now:
   const calendar = projectVisualPnlMonthGrid({ monthKey: todayKey.slice(0, 7), days: dashboard.days.days, todayKey, period: { fromDayKey: period.fromDayKey, toDayKey: period.toDayKey } });
   if (calendar === null) return Object.freeze({ kind: 'unavailable' as const, reason: 'invalid-day-key' as const });
 
-  const [open, anyTrade, coach] = await Promise.all([
+  const [open, anyTrade, coach, news] = await Promise.all([
     listAllJournalMatches(db, { scope: 'real', filters: Object.freeze({ ...NO_JOURNAL_FILTERS, status: 'open' as const }) }),
     createKairosRepositories(db).trades.scopedBySource(JOURNAL_HISTORY_SOURCES.real).listPageByJournalAt(null, null, 1),
     loadCoachFirstNote(db, options.now),
+    loadNews(db, options.now),
   ]);
 
   const projection: HomeTodayProjection = Object.freeze({
@@ -106,6 +119,7 @@ export async function loadHomeToday(db: KairosDatabase, options: Readonly<{ now:
     calendar,
     openTrades: Object.freeze({ shown: Object.freeze(open.slice(0, HOME_TODAY_OPEN_TRADES_SHOWN).map(projectOpenTrade)), count: open.length }),
     coach,
+    news,
     hasTrades: anyTrade.length > 0,
   });
   return Object.freeze({ kind: 'ready' as const, projection });

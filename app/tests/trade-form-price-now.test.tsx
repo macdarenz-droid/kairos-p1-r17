@@ -13,7 +13,7 @@ import { axeViolations } from './fixtures/axe';
 const names: string[] = [];
 afterEach(async () => { cleanup(); localStorage.clear(); for (const name of names.splice(0)) await Dexie.delete(name); });
 
-const FILLED: PriceNowResult = { ok: true, price: '65000.5' as DecimalString, at: '2026-10-24T10:32:00.000Z', source: 'binance', market: 'BTCUSDT', midPrice: false, futures: false };
+const FILLED: PriceNowResult = { ok: true, price: '65000.5' as DecimalString, at: '2026-10-24T10:32:00.000Z', source: 'binance', market: 'BTCUSDT', midPrice: false, futures: false, quote: 'USDT' };
 const OFFLINE: PriceNowResult = { ok: false, why: 'offline', retryAfterSeconds: null, note: null, source: { provider: 'binance' } };
 function provider(...results: PriceNowResult[]) {
   const queue = [...results];

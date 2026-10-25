@@ -1,15 +1,23 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Link, useInRouterContext } from 'react-router';
 import { describeCoachNote } from '../../application/coach/coachWords';
 import { describeTotalsInHomeCurrency } from '../../application/currency/currencyWords';
 import type { HomeTodayOpenTrade, HomeTodayProjection, HomeTodayResult, loadHomeToday } from '../../application/dashboard/homeToday';
+import { describeCalendarMoment } from '../../application/economic-calendar/calendarWords';
+import { isNewsRefreshDue, refreshNewsCalendar, type NewsApiPort } from '../../application/economic-calendar/fetchedNews';
+import type { NextBigNews } from '../../application/economic-calendar/nextBigNews';
 import { journalListHref } from '../../application/journal/journalFilters';
+import { describePriceNowFailure, type PriceNowResult } from '../../application/market-reference/priceNow';
+import { describeUpdatedAgo } from '../../application/online/onlineWords';
 import { describePeriodMoneyUnavailable } from '../../application/performance/periodWords';
+import { describeTimesRisked } from '../../application/performance/tradeRisk';
+import { projectOpenTradeNow } from '../../application/trades/openTradeNow';
 import { projectVisualPnlDayKey, startVisualPnlTimeZoneFromDevice, type VisualPnlAggregationSummary, type VisualPnlMonthDayResult, type VisualPnlMonthGridDay, type VisualPnlMonthGridProjection } from '../../application/visual-pnl';
 import { JOURNAL_CHANGED_EVENT, type KairosDatabase } from '../../data/database';
 import { Icon, type IconName } from '../../design-system/icons/Icon';
-import { Card, ErrorState, ResultText, Skeleton } from '../../design-system/primitives';
+import { Button, Card, ErrorState, ResultText, Skeleton } from '../../design-system/primitives';
 import { tradePageHref } from '../journal/tradeAddress';
+import { TradeFormMarketContext, type TradeFormMarket } from '../journal/tradeFormMarket';
 import { monthLabel } from '../results/ResultsCalendar';
 import { VisualPnlStreak } from '../results/VisualPnlStreak';
 import { readDeviceTimeZone } from '../settings/DeviceTimeZoneButton';
@@ -22,6 +30,8 @@ export interface TodayCardProps {
   readonly now: () => string;
   /** Tests inject a loader; the app loads the read on demand, as the coach card does. */
   readonly load?: typeof loadHomeToday;
+  /** The Kairos server's news routes (D269), as the News page gets them; without them the saved news still shows. */
+  readonly news?: NewsApiPort;
 }
 
 /** The last answer (null before the first) and whether the last read failed; a failed read always shows (D267). */
@@ -31,6 +41,16 @@ type ReadCause = 'return' | 'other';
 
 const FAILED = 'Kairos could not load today. Your trades are not affected.';
 const MINUTE = 60_000;
+/** D269: the background news refresh waits this long after the first read, so Home shows first. */
+const NEWS_REFRESH_DELAY_MS = 10_000;
+const NO_RESULT_AT_PRICE = "Kairos can't work out a result at this price.";
+const SOURCE_DOWN: PriceNowResult = Object.freeze({ ok: false as const, why: 'source-down' as const, retryAfterSeconds: null, note: null, source: Object.freeze({ provider: 'binance' as const }) });
+/**
+ * When Home last started a background news refresh with each port (the app has one). A refresh is 9 requests and the
+ * server allows 30 a minute without a device; so, whatever its outcome, Home starts at most one per port every 30
+ * minutes (the News page's own rule), however often Home opens.
+ */
+const lastHomeNewsRefresh = new WeakMap<NewsApiPort, string>();
 const OUTCOME_WORDS = Object.freeze({ profit: 'Profit', loss: 'Loss', breakeven: 'Break-even' } as const);
 const DAY_WORDS: Readonly<Record<VisualPnlMonthDayResult, string>> = Object.freeze({ profit: 'won', loss: 'lost', breakeven: 'broke even', unavailable: 'result not available', 'no-trades': 'no trades' });
 const DAY_ICONS: Readonly<Partial<Record<VisualPnlMonthDayResult, IconName>>> = Object.freeze({ profit: 'result-up', loss: 'result-down', breakeven: 'result-flat', unavailable: 'result-unknown' });
@@ -105,13 +125,92 @@ function openTradeWords({ entry, inAt, stop, target }: HomeTodayOpenTrade): stri
   return parts.join(' · ');
 }
 
-function OpenTrades({ open }: { readonly open: HomeTodayProjection['openTrades'] }) {
+type PriceNow = NonNullable<TradeFormMarket['priceNow']>;
+
+/**
+ * U16 (D268): the price now under one shown open trade and how the trade would stand if it closed at that price
+ * (`projectOpenTradeNow`), or why there is no price. The price is market data: never saved, never in a total (rule 7). It
+ * is read when the line shows, every minute while the page shows and the device is online, and when the device is back
+ * online; a minute missed while the page was hidden is read when it shows again.
+ */
+function OpenTradeNowLine({ trade, read }: { readonly trade: HomeTodayOpenTrade; readonly read: PriceNow }) {
+  const { entry } = trade;
+  const { marketType, symbol } = entry.trade;
+  const [answer, setAnswer] = useState<PriceNowResult | null>(null);
+  const [reading, setReading] = useState(false);
+  const line = useRef<HTMLParagraphElement>(null);
+  /** The current read, for "Try again"; set by the effect below. */
+  const ask = useRef<(fromRetry: boolean) => void>(() => undefined);
+  /** Set when "Try again" answered: focus goes to the trade when the "Try again" button went away. */
+  const retried = useRef(false);
+
+  useEffect(() => {
+    let controller: AbortController | null = null;
+    let missed = false;
+    /** A "Try again" whose read is still on its way, even when a minute's read replaced it. */
+    let retrying = false;
+    setAnswer(null);
+    ask.current = (fromRetry: boolean) => {
+      controller?.abort();
+      const mine = new AbortController();
+      controller = mine;
+      retrying ||= fromRetry;
+      setReading(true);
+      const settle = (result: PriceNowResult) => {
+        if (mine.signal.aborted) return;
+        retried.current = retrying;
+        retrying = false;
+        setAnswer(result);
+        setReading(false);
+      };
+      read({ marketType, symbol }, mine.signal).then(settle, () => settle(SOURCE_DOWN));
+    };
+    const whenShown = () => { if (document.hidden) missed = true; else ask.current(false); };
+    whenShown();
+    const timer = setInterval(() => { if (navigator.onLine !== false) whenShown(); }, MINUTE);
+    const visible = () => { if (!document.hidden && missed) { missed = false; ask.current(false); } };
+    const online = () => whenShown();
+    document.addEventListener('visibilitychange', visible);
+    window.addEventListener('online', online);
+    return () => { clearInterval(timer); document.removeEventListener('visibilitychange', visible); window.removeEventListener('online', online); controller?.abort(); };
+  }, [read, marketType, symbol]);
+
+  const failure = answer !== null && !answer.ok ? describePriceNowFailure(answer) : null;
+  useEffect(() => {
+    if (!retried.current || answer === null) return;
+    retried.current = false;
+    // A "Try again" that is still there keeps focus; one that went away hands it to the trade, never to the page.
+    const active = document.activeElement;
+    if (failure?.retry !== true && (active === null || active === document.body)) line.current?.closest('li')?.querySelector<HTMLElement>('a')?.focus();
+  }, [answer, failure?.retry]);
+
+  if (answer === null) return null;
+  if (failure !== null) {
+    return <p ref={line} className="kairos-today__price">{failure.message}
+      {failure.retry ? <> <Button variant="ghost" size="sm" aria-disabled={reading || undefined} aria-busy={reading || undefined}
+        onClick={() => { if (!reading) ask.current(true); }}>Try again</Button></> : null}</p>;
+  }
+  if (!answer.ok) return null;
+  const now = projectOpenTradeNow(entry, answer);
+  const times = now.ok && now.timesRisked !== null ? describeTimesRisked(now.timesRisked) : null;
+  return <p ref={line} className="kairos-today__price">
+    {`Price now ${answer.price}${answer.quote === null ? '' : ` ${answer.quote}`} (market, not saved) · `}
+    {now.ok
+      ? <>If you closed now <ResultText outcome={now.outcome} label={OUTCOME_WORDS[now.outcome]} showLabel={false} amount={now.amount} currency={now.currency} />{times === null ? null : ` · ${times}`}</>
+      : NO_RESULT_AT_PRICE}
+  </p>;
+}
+
+function OpenTrades({ open, priceNow }: { readonly open: HomeTodayProjection['openTrades']; readonly priceNow: PriceNow | undefined }) {
   const titleId = useId();
   const more = open.count - open.shown.length;
   return <div className="kairos-today__open">
     <h3 id={titleId}>Open trades</h3>
     {open.count === 0 ? <p>No open trades right now.</p> : <ul className="kairos-today__trades" aria-labelledby={titleId}>
-      {open.shown.map(trade => <li key={trade.entry.trade.id}><TodayLink to={tradePageHref(trade.entry.trade.id)}>{openTradeWords(trade)}</TodayLink></li>)}
+      {open.shown.map(trade => <li key={trade.entry.trade.id}>
+        <TodayLink to={tradePageHref(trade.entry.trade.id)}>{openTradeWords(trade)}</TodayLink>
+        {priceNow === undefined ? null : <OpenTradeNowLine trade={trade} read={priceNow} />}
+      </li>)}
     </ul>}
     {more > 0 ? <p><TodayLink to={journalListHref('real', { status: 'open' })}>{`+ ${more} more open ${more === 1 ? 'trade' : 'trades'}`}</TodayLink></p> : null}
   </div>;
@@ -126,7 +225,20 @@ function CoachLine({ coach }: { readonly coach: HomeTodayProjection['coach'] }) 
   </div>;
 }
 
-function TodayBody({ today }: { readonly today: HomeTodayProjection }) {
+/** D269: the next big news and when the official schedules were last fetched, or why the news could not be read. */
+function NewsLines({ news, nowMs }: { readonly news: NextBigNews | 'unavailable'; readonly nowMs: number }) {
+  if (news === 'unavailable') return <div className="kairos-today__news"><p>Kairos could not load the news. Your trades are not affected.</p></div>;
+  const { next, timeZone, refreshedAt } = news;
+  return <div className="kairos-today__news">
+    {next === null
+      ? <p className="kairos-today__line">No big news in the next 14 days.</p>
+      : <p className="kairos-today__line"><span className="kairos-today__label">Next big news:</span> {next.name} · {describeCalendarMoment(next.event.startsAt, timeZone)}</p>}
+    <p className="kairos-today__checked">{refreshedAt === null ? "Kairos hasn't got the official schedules yet." : `News checked ${describeUpdatedAgo(nowMs - Date.parse(refreshedAt))}`}</p>
+    <p><TodayLink to="/news-calendar">Open the news calendar</TodayLink></p>
+  </div>;
+}
+
+function TodayBody({ today, priceNow, nowMs }: { readonly today: HomeTodayProjection; readonly priceNow: PriceNow | undefined; readonly nowMs: number }) {
   const { month } = today;
   return <>
     <div className="kairos-today__results">
@@ -144,19 +256,21 @@ function TodayBody({ today }: { readonly today: HomeTodayProjection }) {
       <TodayCalendar grid={today.calendar} />
       <p><TodayLink to="/analysis">See your results</TodayLink></p>
     </div>
-    <OpenTrades open={today.openTrades} />
+    <OpenTrades open={today.openTrades} priceNow={priceNow} />
     <CoachLine coach={today.coach} />
+    <NewsLines news={today.news} nowMs={nowMs} />
   </>;
 }
 
 /**
  * U16 (D267): Home's "Today": today's and this month's result after fees, the streak, a small calendar of the month, the
- * open trades with their plan and the coach's first note. Every number comes from `loadHomeToday`; this card only shows
- * them. On first use it saves this device's time zone (D199). It reads again when another tab saves, when you come back
- * to the app, and when a new day starts (checked each minute), never while the page is hidden; any read that fails says
- * so, with "Try again", in place of the last numbers.
+ * open trades with their plan and the price now (D268, with the app's market port), the coach's first note and the next
+ * big news (D269, also before the first trade). Every number comes from its owner; this card only shows them. On first
+ * use it saves this device's time zone (D199). It reads again when another tab saves, when you come back to the app,
+ * when a new day starts (checked each minute) and after fresh official schedules came in the background, never while the
+ * page is hidden; any read that fails says so, with "Try again", in place of the last numbers and news.
  */
-export function TodayCard({ db, now, load = loadOnDemand }: TodayCardProps) {
+export function TodayCard({ db, now, load = loadOnDemand, news }: TodayCardProps) {
   const titleId = useId();
   const heading = useRef<HTMLHeadingElement>(null);
   /** The card itself (the heading's section). */
@@ -193,6 +307,10 @@ export function TodayCard({ db, now, load = loadOnDemand }: TodayCardProps) {
     runningCause.current = cause;
     setRevision(current => current + 1);
   });
+  /** Without the app shell's market port (or its price now), no price line shows. */
+  const priceNow = useContext(TradeFormMarketContext)?.priceNow;
+  /** Moves each minute while the page shows, so "News checked 3 min ago" stays true. */
+  const [, setMinute] = useState(0);
 
   useEffect(() => () => { request.current += 1; }, []);
   useEffect(() => {
@@ -240,6 +358,7 @@ export function TodayCard({ db, now, load = loadOnDemand }: TodayCardProps) {
   useEffect(() => {
     if (shownZone === null || shownDay === null) return;
     const timer = setInterval(() => {
+      if (!document.hidden) setMinute(current => current + 1);
       const day = projectVisualPnlDayKey(nowRef.current(), shownZone);
       if (day.available && day.dayKey !== shownDay) readAgain.current('other');
     }, MINUTE);
@@ -247,6 +366,46 @@ export function TodayCard({ db, now, load = loadOnDemand }: TodayCardProps) {
   }, [shownZone, shownDay]);
 
   const failed = readFailed || result?.kind === 'unavailable';
+  // A failed read shows the failure, never the last numbers or news as if they were current (D267).
+  const shown = failed ? null : last;
+
+  // D269: when the News page's 30-minute rule says the official schedules are due and the server is set up, get them
+  // once in the background, 10 s after the first read that shows the news (and not while the page is hidden), then read
+  // again. A failure writes nothing, so the saved copy stays.
+  const shownNews = shown !== null && shown.news !== 'unavailable' ? shown.news : null;
+  const newsDue = news !== undefined && news.setUp && shownNews !== null && isNewsRefreshDue(shownNews.refreshedAt, nowRef.current());
+  const newsAsked = useRef(false);
+  useEffect(() => {
+    if (!newsDue || news === undefined || newsAsked.current) return;
+    const controller = new AbortController();
+    let waiting: (() => void) | null = null;
+    const run = () => {
+      newsAsked.current = true;
+      const at = nowRef.current();
+      if (!isNewsRefreshDue(lastHomeNewsRefresh.get(news) ?? null, at)) return;
+      lastHomeNewsRefresh.set(news, at);
+      void refreshNewsCalendar(db, news, { now: at, signal: controller.signal }).then(outcome => {
+        if (!controller.signal.aborted && outcome.ok) readAgain.current('other');
+      });
+    };
+    const timer = setTimeout(() => {
+      if (!document.hidden) { run(); return; }
+      const whenShown = () => {
+        if (document.hidden) return;
+        document.removeEventListener('visibilitychange', whenShown);
+        waiting = null;
+        run();
+      };
+      waiting = whenShown;
+      document.addEventListener('visibilitychange', whenShown);
+    }, NEWS_REFRESH_DELAY_MS);
+    return () => {
+      clearTimeout(timer);
+      if (waiting !== null) document.removeEventListener('visibilitychange', waiting);
+      controller.abort();
+    };
+  }, [db, news, newsDue]);
+
   useEffect(() => {
     if (busy) return;
     if (refocusRetry.current) {
@@ -259,14 +418,12 @@ export function TodayCard({ db, now, load = loadOnDemand }: TodayCardProps) {
   }, [busy, failed, state]);
   const retry = () => { retried.current = true; readAgain.current('other'); };
 
-  // A failed read shows the failure, never the last numbers as if they were current (D267).
-  const shown = failed ? null : last;
   return <Card as="section" className="kairos-today" aria-labelledby={titleId} aria-busy={busy || undefined}>
     <h2 id={titleId} ref={heading} tabIndex={-1}>Today</h2>
     {result === null && !readFailed ? <Skeleton label="Loading today" lines={3} /> : null}
     {failed ? <ErrorState message={FAILED} onRetry={retry} busy={busy} /> : null}
     {!failed && result?.kind === 'time-zone-unconfigured' ? <p>Kairos needs your time zone to show today. <TodayLink to="/settings">Open Settings</TodayLink></p> : null}
-    {shown !== null && !shown.hasTrades ? <p>Your day shows here once you log a trade.</p> : null}
-    {shown !== null && shown.hasTrades ? <TodayBody today={shown} /> : null}
+    {shown !== null && !shown.hasTrades ? <><p>Your day shows here once you log a trade.</p><NewsLines news={shown.news} nowMs={Date.parse(nowRef.current())} /></> : null}
+    {shown !== null && shown.hasTrades ? <TodayBody today={shown} priceNow={priceNow} nowMs={Date.parse(nowRef.current())} /> : null}
   </Card>;
 }

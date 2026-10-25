@@ -9,6 +9,7 @@ import './homeDashboardYourTrades.css';
 import { HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTextEvidenceRuntime } from './HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTextEvidenceRuntime';
 import { createHomeDashboardLiveCryptoBubbleDefaultRuntimeProductConfiguration } from './homeDashboardLiveCryptoBubbleRuntimeProductPolicy';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
+import type { NewsApiPort } from '../application/economic-calendar/fetchedNews';
 import { HomeDisciplineCard } from '../features/discipline/HomeDisciplineCard';
 import { TodayCard } from '../features/home/TodayCard';
 import { BackupReminderCard } from '../features/backup/BackupReminderCard';
@@ -23,7 +24,8 @@ const wallClock = (): string => new Date().toISOString();
 const viewFor = (markets: readonly MarketType[] | null | undefined): 'market' | 'trades' =>
   markets !== null && markets !== undefined && !markets.includes('crypto') ? 'trades' : 'market';
 
-export function HomeRoute({ db = kairosDatabase, now = wallClock }: { readonly db?: KairosDatabase; readonly now?: () => string } = {}) {
+/** `news`: the Kairos server's news routes, built as the News page's (routes.tsx); "Today" refreshes the official schedules with them (D269). */
+export function HomeRoute({ db = kairosDatabase, now = wallClock, news }: { readonly db?: KairosDatabase; readonly now?: () => string; readonly news?: NewsApiPort } = {}) {
   // Home shows at once, on the markets last known in this visit (read at start, before the app shows: main.tsx).
   const [view,setViewState] = useState<'market'|'trades'>(() => viewFor(knownTradedMarkets(db)));
   const chosen = useRef(false);
@@ -53,7 +55,7 @@ export function HomeRoute({ db = kairosDatabase, now = wallClock }: { readonly d
       <PageHeader title="Home" titleId="kairos-route-home" intro="How you're doing today, and the markets now." />
       {openSetup && inRouter ? <Navigate to="/setup" replace /> : null}
       {/* D267: Home answers "how am I doing?" first, above the reminders and the dashboard view. */}
-      <TodayCard db={db} now={now} />
+      <TodayCard db={db} now={now} news={news} />
       <BackupReminderCard db={db} now={now} />
       {/* D224: after "Hide", focus goes to the next thing on the page: the install card, or the dashboard control. */}
       <GettingStartedCard db={db} now={now} onHidden={() => { const next = install.current?.querySelector<HTMLElement>('button'); if (next) next.focus(); else focusControl(); }} />

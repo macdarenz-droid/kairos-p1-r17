@@ -2307,13 +2307,16 @@ test('(ah) Search and filters in the address: your BTC losses in March, with wha
   expect(errors).toEqual([]);
 });
 
-test('(ai) Home opens with "Today": a trade closed today and an open trade with its plan, on a fixed clock', async ({ page }) => {
+test('(ai) Home opens with "Today": a trade closed today and an open trade with its plan and the price now, on a fixed clock', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
-  // 15 October 2026 at 12:00 in Manila (the phone's zone), whatever day the test runs on.
-  await openKairos(page, { fixedClock: '2026-10-15T04:00:00.000Z' });
+  // 15 October 2026 at 12:00 in Manila (the phone's zone), whatever day the test runs on. T-061c: the fake server
+  // answers 1-minute candles, so the open trade has a price now (ETHUSDT at 2450).
+  await openKairos(page, { fixedClock: '2026-10-15T04:00:00.000Z', server: 'fixed-market' });
   const today = page.getByRole('region', { name: 'Today' });
   await expect(today.getByText('Your day shows here once you log a trade.')).toBeVisible();
+  // D269: the news shows before the first trade too.
+  await expect(today.getByText('No big news in the next 14 days.')).toBeVisible();
   // D267: the header is shown again, above "Today".
   const header = page.getByRole('heading', { level: 1, name: 'Home' });
   expect((await header.boundingBox())?.height ?? 0).toBeGreaterThan(16);
@@ -2364,6 +2367,13 @@ test('(ai) Home opens with "Today": a trade closed today and an open trade with 
   await expect(today.getByText('15 October, today: won')).toHaveCount(1);
   await expect(today.locator('[data-day-key="2026-10-15"]')).toHaveAttribute('data-day-result', 'profit');
   await expect(today.getByText('Your coach: You reviewed 0 of your 1 closed trade this month.')).toBeVisible();
+  // D268: the price now under the open trade, with how it would stand if closed at it; it is in no total (above).
+  await expect(today.getByRole('listitem').filter({ hasText: 'ETHUSDT' }).locator('p'))
+    .toHaveText(/^Price now 2450 USDT \(market, not saved\) · If you closed now Loss\s*-50 USDT · -0\.5× what you risked$/);
+  await expect(today.locator('p').filter({ hasText: /^This month:/ })).toHaveText(/^This month: Profit\s*\+150 USDT · 1 trade$/);
+  // D269: no news saved yet, and the official schedules never fetched on this device.
+  await expect(today.getByText('No big news in the next 14 days.')).toBeVisible();
+  await expect(today.getByText("Kairos hasn't got the official schedules yet.")).toBeVisible();
   const axe = await new AxeBuilder({ page }).include('.kairos-today').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
   expect(axe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);

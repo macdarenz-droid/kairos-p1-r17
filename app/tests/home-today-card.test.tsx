@@ -6,14 +6,19 @@ import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { saveHomeCurrency } from '../src/application/currency/homeCurrency';
 import { loadHomeToday } from '../src/application/dashboard/homeToday';
+import { NEWS_COVERAGE_KEY, type NewsApiPort } from '../src/application/economic-calendar/fetchedNews';
+import type { PriceNowResult } from '../src/application/market-reference/priceNow';
 import { skipSetup } from '../src/application/setup/setupState';
 import { saveManualTrade, type SaveManualTradeInput } from '../src/application/trades';
 import { loadVisualPnlTimeZone, writeVisualPnlTimeZonePreference } from '../src/application/visual-pnl';
 import { createKairosDatabase, JOURNAL_CHANGED_EVENT, openKairosDatabase, type KairosDatabase } from '../src/data/database';
 import { createKairosRepositories } from '../src/data/repositories';
 import { exchangeRateId } from '../src/domain/calculations/currencyConversion';
-import type { DecimalString, TradeId } from '../src/domain/trades';
+import type { DecimalString, MarketType, TradeId } from '../src/domain/trades';
 import { TodayCard } from '../src/features/home/TodayCard';
+import { TradeFormMarketContext, type TradeFormMarket } from '../src/features/journal/tradeFormMarket';
+import type { KairosApiResult } from '../src/services/kairos-api/kairosApi';
+import type { NewsCalendarAnswer } from '../src/services/kairos-api/newsApi';
 import { axeViolations } from './fixtures/axe';
 
 vi.mock('../src/app/HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTextEvidenceRuntime', () => ({
@@ -365,5 +370,335 @@ describe('T-061b Home opens with "Today"', () => {
     expect(today.compareDocumentPosition(view) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     const started = await screen.findByRole('region', { name: 'Getting started' });
     expect(today.compareDocumentPosition(started) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
+
+const price = (value: string, quote: string | null = 'USDT'): PriceNowResult =>
+  ({ ok: true, price: value as DecimalString, at: '2026-10-25T11:59:00.000Z', source: 'binance', market: 'BTCUSDT', midPrice: false, futures: false, quote });
+const OFFLINE: PriceNowResult = { ok: false, why: 'offline', retryAfterSeconds: null, note: null, source: { provider: 'binance' } };
+type Ask = Readonly<{ marketType: MarketType; symbol: string }>;
+/** The app shell's market port, with only the price now (the card asks for nothing else). */
+function market(answer: (ask: Ask) => PriceNowResult) {
+  const priceNow = vi.fn(async (ask: Ask, _signal: AbortSignal) => answer(ask));
+  const value: TradeFormMarket = { marketList: async () => ({ ok: false as const }), priceNow };
+  return { value, priceNow };
+}
+function cardWithMarket(db: KairosDatabase, value: TradeFormMarket, props: Partial<Parameters<typeof TodayCard>[0]> = {}) {
+  return render(<MemoryRouter><TradeFormMarketContext.Provider value={value}><TodayCard db={db} now={now} {...props} /></TradeFormMarketContext.Provider></MemoryRouter>);
+}
+/** The list item of the open trade whose link starts with `symbol`. */
+const tradeItem = (box: HTMLElement, symbol: string) => within(box).getByRole('link', { name: new RegExp(`^${symbol} · `) }).closest('li') as HTMLElement;
+const priceLine = (item: HTMLElement) => line(item, 'Price now');
+
+describe('T-061c the price now under the open trades', () => {
+  it('shows the price now and the result after fees if you closed now, never saved', async () => {
+    const db = await database();
+    await save(db, closed('2026-10-25T08:00:00.000Z', '130'));
+    await save(db, open('BTCUSDT', '2026-10-24T08:00:00.000Z', { stop: '62000', target: '70000' }));
+    await save(db, open('ETHUSDT', '2026-10-23T08:00:00.000Z', {}, '2500', 'short'));
+    await save(db, open('SOLUSDT', '2026-10-22T08:00:00.000Z', {}, null));
+    const executions = await db.tradeExecutions.count();
+    const { value, priceNow } = market(ask => price({ BTCUSDT: '64210.5', ETHUSDT: '2450', SOLUSDT: '150' }[ask.symbol] ?? '1'));
+    cardWithMarket(db, value);
+    const today = await region();
+    await waitFor(() => expect(priceLine(tradeItem(today, 'SOLUSDT'))).toBeInTheDocument());
+    expect(priceLine(tradeItem(today, 'BTCUSDT'))).toHaveTextContent(/^Price now 64210\.5 USDT \(market, not saved\) · If you closed now Profit\s*\+21\.05 USDT · \+0\.11× what you risked$/);
+    // No stop: no × what you risked.
+    expect(priceLine(tradeItem(today, 'ETHUSDT'))).toHaveTextContent(/^Price now 2450 USDT \(market, not saved\) · If you closed now Profit\s*\+5 USDT$/);
+    expect(priceLine(tradeItem(today, 'SOLUSDT'))).toHaveTextContent("Price now 150 USDT (market, not saved) · Kairos can't work out a result at this price.");
+    expect(priceNow.mock.calls.map(([ask]) => ask)).toEqual([
+      { marketType: 'crypto', symbol: 'BTCUSDT' }, { marketType: 'crypto', symbol: 'ETHUSDT' }, { marketType: 'crypto', symbol: 'SOLUSDT' },
+    ]);
+    // The price stays out of every total and is never stored.
+    expect(line(today, 'This month:')).toHaveTextContent(/^This month: Profit\s*\+30 USDT · 1 trade$/);
+    expect(await db.tradeExecutions.count()).toBe(executions);
+    expect(within(tradeItem(today, 'BTCUSDT')).getAllByRole('link')).toHaveLength(1);
+  });
+
+  it('says when it cannot work out a result at a price in another currency', async () => {
+    const db = await database();
+    await save(db, open('BTCUSDT', '2026-10-24T08:00:00.000Z', { stop: '62000' }));
+    const { value } = market(() => price('64210.5', 'USDC'));
+    cardWithMarket(db, value);
+    const today = await region();
+    await waitFor(() => expect(priceLine(tradeItem(today, 'BTCUSDT'))).toHaveTextContent("Price now 64210.5 USDC (market, not saved) · Kairos can't work out a result at this price."));
+    expect(within(today).queryByText(/If you closed now/)).toBeNull();
+  });
+
+  it("says why there is no price; \"Try again\" reads it again and focus moves to the trade", async () => {
+    const db = await database();
+    await save(db, open('BTCUSDT', '2026-10-24T08:00:00.000Z', { stop: '62000' }));
+    let answer: PriceNowResult = OFFLINE;
+    const { value, priceNow } = market(() => answer);
+    cardWithMarket(db, value);
+    const today = await region();
+    await waitFor(() => expect(priceLine(tradeItem(today, 'BTCUSDT'))).toHaveTextContent("Price now: you're offline. Try again when you're back online."));
+    const retry = within(tradeItem(today, 'BTCUSDT')).getByRole('button', { name: 'Try again' });
+    retry.focus();
+    answer = price('63000');
+    fireEvent.click(retry);
+    await waitFor(() => expect(priceLine(tradeItem(today, 'BTCUSDT'))).toHaveTextContent(/^Price now 63000 USDT \(market, not saved\) · If you closed now Loss\s*-100 USDT · -0\.5× what you risked$/));
+    expect(priceNow).toHaveBeenCalledTimes(2);
+    expect(document.activeElement).toBe(within(tradeItem(today, 'BTCUSDT')).getByRole('link'));
+  });
+
+  it('reads the shown trades only: on show, every 60 s while the page shows and is online, and when back online', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    const db = await database();
+    for (const [index, symbol] of ['BTCUSDT', 'ETHUSDT', 'XRPUSDT', 'ADAUSDT'].entries()) await save(db, open(symbol, `2026-10-2${4 - index}T08:00:00.000Z`));
+    const load = vi.fn(loadHomeToday);
+    const { value, priceNow } = market(() => price('1'));
+    cardWithMarket(db, value, { load });
+    const today = await region();
+    await waitFor(() => expect(priceNow).toHaveBeenCalledTimes(3));
+    expect(priceNow.mock.calls.map(([ask]) => ask.symbol)).toEqual(['BTCUSDT', 'ETHUSDT', 'XRPUSDT']);
+    await waitFor(() => expect(priceLine(tradeItem(today, 'XRPUSDT'))).toBeInTheDocument());
+
+    // The card reading again (focus, a journal change) asks for no price.
+    act(() => { window.dispatchEvent(new Event('focus')); });
+    await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+    expect(priceNow).toHaveBeenCalledTimes(3);
+
+    await act(async () => { vi.advanceTimersByTime(59_999); });
+    expect(priceNow).toHaveBeenCalledTimes(3);
+    await act(async () => { vi.advanceTimersByTime(1); });
+    expect(priceNow).toHaveBeenCalledTimes(6);
+
+    // Hidden: no read; shown again, the missed one.
+    const hidden = vi.spyOn(Document.prototype, 'hidden', 'get').mockReturnValue(true);
+    await act(async () => { vi.advanceTimersByTime(120_000); });
+    expect(priceNow).toHaveBeenCalledTimes(6);
+    hidden.mockReturnValue(false);
+    act(() => { document.dispatchEvent(new Event('visibilitychange')); });
+    expect(priceNow).toHaveBeenCalledTimes(9);
+    act(() => { document.dispatchEvent(new Event('visibilitychange')); });
+    expect(priceNow).toHaveBeenCalledTimes(9);
+
+    // Offline: no read; back online, a read at once.
+    const online = vi.spyOn(Navigator.prototype, 'onLine', 'get').mockReturnValue(false);
+    await act(async () => { vi.advanceTimersByTime(60_000); });
+    expect(priceNow).toHaveBeenCalledTimes(9);
+    online.mockReturnValue(true);
+    act(() => { window.dispatchEvent(new Event('online')); });
+    expect(priceNow).toHaveBeenCalledTimes(12);
+  });
+
+  it('asks for no price while the page is hidden when it shows', async () => {
+    const hidden = vi.spyOn(Document.prototype, 'hidden', 'get').mockReturnValue(true);
+    const db = await database();
+    await save(db, open('BTCUSDT', '2026-10-24T08:00:00.000Z'));
+    const { value, priceNow } = market(() => price('1'));
+    cardWithMarket(db, value);
+    const today = await region();
+    await within(today).findByText('Open trades');
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 20)); });
+    expect(priceNow).not.toHaveBeenCalled();
+    expect(within(today).queryByText(/^Price now/)).toBeNull();
+    // Shown: the first read.
+    hidden.mockReturnValue(false);
+    act(() => { document.dispatchEvent(new Event('visibilitychange')); });
+    await waitFor(() => expect(priceLine(tradeItem(today, 'BTCUSDT'))).toHaveTextContent(/^Price now 1 USDT \(market, not saved\)/));
+    expect(priceNow).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows no price line without a market port, or one with no price now', async () => {
+    const db = await database();
+    await save(db, open('BTCUSDT', '2026-10-24T08:00:00.000Z'));
+    cardWithMarket(db, market(() => price('64000')).value);
+    let today = await region();
+    await waitFor(() => expect(priceLine(tradeItem(today, 'BTCUSDT'))).toBeInTheDocument());
+    cleanup();
+    card(db);
+    today = await region();
+    await within(today).findByText('Open trades');
+    expect(within(today).queryByText(/Price now/)).toBeNull();
+    cleanup();
+    cardWithMarket(db, { marketList: async () => ({ ok: false as const }) });
+    today = await region();
+    await within(today).findByText('Open trades');
+    expect(within(today).queryByText(/Price now/)).toBeNull();
+  });
+
+  it('passes axe at 390 px with the price lines and a "Try again"', async () => {
+    window.innerWidth = 390;
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(390);
+    const db = await database();
+    await save(db, closed('2026-10-25T08:00:00.000Z', '130'));
+    await save(db, open('BTCUSDT', '2026-10-24T08:00:00.000Z', { stop: '62000', target: '70000' }));
+    await save(db, open('ETHUSDT', '2026-10-23T08:00:00.000Z'));
+    const { value } = market(ask => (ask.symbol === 'ETHUSDT' ? OFFLINE : price('64210.5')));
+    cardWithMarket(db, value);
+    const today = await region();
+    await within(today).findByRole('button', { name: 'Try again' });
+    await waitFor(() => expect(priceLine(tradeItem(today, 'BTCUSDT'))).toBeInTheDocument());
+    expect(await axeViolations(today)).toEqual([]);
+  });
+});
+
+const COVERS = { from: '2026-10-01T00:00:00.000Z', to: '2026-12-31T00:00:00.000Z' };
+const JOBS = { id: 'bls:00000000000000b1', source: 'bls' as const, title: 'Employment Situation', currency: 'USD', startsAt: '2026-11-06T14:30:00.000Z', impact: null, expected: null, previous: null, actual: null, savedAt: NOW, fetchedAt: NOW };
+async function newsDatabase(refreshedAt: string | null, events: readonly (typeof JOBS)[] = [], { trade = true }: { trade?: boolean } = {}): Promise<KairosDatabase> {
+  const db = await database();
+  if (trade) await save(db, closed('2026-10-25T08:00:00.000Z', '130'));
+  if (events.length > 0) await db.economicEvents.bulkPut([...events]);
+  if (refreshedAt !== null) await db.metadata.put({ key: NEWS_COVERAGE_KEY, value: JSON.stringify({ version: 1, refreshedAt, windows: [{ source: 'bls', ...COVERS, fetchedAt: refreshedAt }] }), updatedAt: refreshedAt });
+  return db;
+}
+const calendarAnswer = (source: string): NewsCalendarAnswer => source === 'bls'
+  ? { source, fetchedAt: NOW, covers: COVERS, events: [{ key: '00000000000000c1', title: 'Consumer Price Index', startsAt: '2026-10-28T12:30:00.000Z' }], leftOut: 0 }
+  : { source, fetchedAt: NOW, covers: null, events: [], leftOut: 0 };
+function newsPort(setUp: boolean, calendar: (source: string) => Promise<KairosApiResult<NewsCalendarAnswer>> = async source => ({ ok: true, value: calendarAnswer(source) })) {
+  const spy = vi.fn(calendar);
+  const news: NewsApiPort = { setUp, calendar: spy, headlines: vi.fn(async () => ({ ok: false as const, reason: 'transport-failed' as const })) };
+  return { news, calendar: spy };
+}
+const newsLine = (box: HTMLElement) => line(box, 'Next big news:');
+/** Lets React run the card's effects (which start the 10 s wait) before the test moves the clock. */
+const settle = () => act(async () => {});
+
+describe('T-061c the next big news on "Today"', () => {
+  it('names the next big news and when it is, says when the news was checked, and links the news calendar', async () => {
+    const db = await newsDatabase('2026-10-25T09:00:00.000Z', [JOBS]);
+    card(db);
+    const today = await region();
+    await waitFor(() => expect(newsLine(today)).toHaveTextContent('Next big news: US jobs report · Friday 6 November 2026 at 14:30'));
+    expect(within(today).getByText('News checked 3 h ago')).toBeInTheDocument();
+    expect(within(today).getByRole('link', { name: 'Open the news calendar' })).toHaveAttribute('href', '/news-calendar');
+  });
+
+  it('shows the news before the first trade too, and gets the official schedules then as well', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'], shouldAdvanceTime: true });
+    const db = await newsDatabase(null, [JOBS], { trade: false });
+    const { news, calendar } = newsPort(true);
+    card(db, { news });
+    const today = await region();
+    expect(await within(today).findByText('Your day shows here once you log a trade.')).toBeInTheDocument();
+    expect(newsLine(today)).toHaveTextContent('Next big news: US jobs report · Friday 6 November 2026 at 14:30');
+    expect(within(today).getByText("Kairos hasn't got the official schedules yet.")).toBeInTheDocument();
+    expect(within(today).getByRole('link', { name: 'Open the news calendar' })).toHaveAttribute('href', '/news-calendar');
+    expect(within(today).queryByText(/^This month/)).toBeNull();
+    await settle();
+    await act(async () => { vi.advanceTimersByTime(10_000); });
+    expect(calendar).toHaveBeenCalledTimes(9);
+    await waitFor(() => expect(newsLine(today)).toHaveTextContent('Next big news: US inflation (CPI) · Wednesday 28 October 2026 at 12:30'));
+    expect(within(today).getByText('News checked just now')).toBeInTheDocument();
+  });
+
+  it('a failed read takes away the news and the prices with the old numbers, and reads no price meanwhile', async () => {
+    const db = await newsDatabase('2026-10-25T09:00:00.000Z', [JOBS]);
+    await save(db, open('BTCUSDT', '2026-10-24T08:00:00.000Z', { stop: '62000' }));
+    const load = vi.fn(loadHomeToday);
+    const { value, priceNow } = market(() => price('64210.5'));
+    cardWithMarket(db, value, { load });
+    const today = await region();
+    await waitFor(() => expect(priceLine(tradeItem(today, 'BTCUSDT'))).toBeInTheDocument());
+    expect(newsLine(today)).toHaveTextContent('US jobs report');
+    load.mockRejectedValueOnce(new Error('storage'));
+    act(() => { window.dispatchEvent(new Event(JOURNAL_CHANGED_EVENT)); });
+    expect(await within(today).findByRole('alert')).toHaveTextContent(FAILED);
+    expect(within(today).queryByText(/Next big news/)).toBeNull();
+    expect(within(today).queryByText(/News checked/)).toBeNull();
+    expect(within(today).queryByText(/Price now/)).toBeNull();
+    const reads = priceNow.mock.calls.length;
+    act(() => { window.dispatchEvent(new Event('online')); });
+    expect(priceNow).toHaveBeenCalledTimes(reads);
+    fireEvent.click(within(today).getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(newsLine(today)).toHaveTextContent('US jobs report'));
+    await waitFor(() => expect(priceLine(tradeItem(today, 'BTCUSDT'))).toBeInTheDocument());
+  });
+
+  it('says when there is no big news in the next 14 days, and when the schedules were never fetched', async () => {
+    const db = await newsDatabase(null, [{ ...JOBS, startsAt: '2026-11-08T12:00:00.001Z' }]);
+    card(db);
+    const today = await region();
+    expect(await within(today).findByText('No big news in the next 14 days.')).toBeInTheDocument();
+    expect(within(today).getByText("Kairos hasn't got the official schedules yet.")).toBeInTheDocument();
+    expect(within(today).getByRole('link', { name: 'Open the news calendar' })).toBeInTheDocument();
+  });
+
+  it('gets the official schedules once, 10 s after its first read, when they are due and the server is set up, then reads again', async () => {
+    // Real time still runs (the testing library waits with setTimeout); the 10 s wait is moved on by hand.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'], shouldAdvanceTime: true });
+    const db = await newsDatabase(null);
+    const { news, calendar } = newsPort(true);
+    card(db, { news });
+    const today = await region();
+    await within(today).findByText('No big news in the next 14 days.');
+    await settle();
+    // Real time moves the clock a little too while the test waits, so the check leaves it a second.
+    await act(async () => { vi.advanceTimersByTime(9_000); });
+    expect(calendar).not.toHaveBeenCalled();
+    await act(async () => { vi.advanceTimersByTime(1_000); });
+    expect(calendar).toHaveBeenCalledTimes(9);
+    await waitFor(() => expect(newsLine(today)).toHaveTextContent('Next big news: US inflation (CPI) · Wednesday 28 October 2026 at 12:30'));
+    expect(within(today).getByText('News checked just now')).toBeInTheDocument();
+    await act(async () => { vi.advanceTimersByTime(60_000); });
+    expect(calendar).toHaveBeenCalledTimes(9);
+  });
+
+  it('gets nothing when the saved news is fresh or the server is not set up', async () => {
+    // Real time still runs (the testing library waits with setTimeout); the 10 s wait is moved on by hand.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'], shouldAdvanceTime: true });
+    const fresh = newsPort(true);
+    card(await newsDatabase('2026-10-25T11:55:00.000Z', [JOBS]), { news: fresh.news });
+    let today = await region();
+    await within(today).findByText('News checked 5 min ago');
+    await settle();
+    await act(async () => { vi.advanceTimersByTime(30_000); });
+    expect(fresh.calendar).not.toHaveBeenCalled();
+    cleanup();
+
+    const notSetUp = newsPort(false);
+    card(await newsDatabase(null), { news: notSetUp.news });
+    today = await region();
+    await within(today).findByText("Kairos hasn't got the official schedules yet.");
+    await settle();
+    await act(async () => { vi.advanceTimersByTime(30_000); });
+    expect(notSetUp.calendar).not.toHaveBeenCalled();
+  });
+
+  it('a failed refresh keeps the saved news, and the same port asks again only after 30 minutes', async () => {
+    // Real time still runs (the testing library waits with setTimeout); the 10 s wait is moved on by hand.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'], shouldAdvanceTime: true });
+    const db = await newsDatabase('2026-10-25T09:00:00.000Z', [JOBS]);
+    const { news, calendar } = newsPort(true, async () => ({ ok: false, reason: 'transport-failed' }));
+    let clock = NOW;
+    const view = card(db, { news, now: () => clock });
+    const today = await region();
+    await waitFor(() => expect(newsLine(today)).toHaveTextContent('US jobs report'));
+    await settle();
+    await act(async () => { vi.advanceTimersByTime(10_000); });
+    expect(calendar).toHaveBeenCalledTimes(9);
+    await act(async () => { await Promise.resolve(); });
+    expect(newsLine(today)).toHaveTextContent('Next big news: US jobs report · Friday 6 November 2026 at 14:30');
+    expect(within(today).getByText('News checked 3 h ago')).toBeInTheDocument();
+    view.unmount();
+
+    card(db, { news, now: () => clock });
+    await within(await region()).findByText('News checked 3 h ago');
+    await settle();
+    await act(async () => { vi.advanceTimersByTime(10_000); });
+    expect(calendar).toHaveBeenCalledTimes(9);
+    cleanup();
+
+    clock = '2026-10-25T12:30:00.000Z';
+    card(db, { news, now: () => clock });
+    await within(await region()).findByText('News checked 3 h ago');
+    await settle();
+    await act(async () => { vi.advanceTimersByTime(10_000); });
+    expect(calendar).toHaveBeenCalledTimes(18);
+  });
+
+  it('Home hands its news port to "Today"', async () => {
+    // Real time still runs (the testing library waits with setTimeout); the 10 s wait is moved on by hand.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'], shouldAdvanceTime: true });
+    const db = await newsDatabase(null);
+    await skipSetup(db, { now });
+    const { news, calendar } = newsPort(true);
+    render(<MemoryRouter><HomeRoute db={db} now={now} news={news} /></MemoryRouter>);
+    await within(await region()).findByText('No big news in the next 14 days.');
+    await settle();
+    await act(async () => { vi.advanceTimersByTime(10_000); });
+    expect(calendar).toHaveBeenCalledTimes(9);
   });
 });

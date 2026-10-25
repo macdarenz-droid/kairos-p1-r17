@@ -19,11 +19,30 @@ const FIXED_MARKET: Readonly<Record<string, string>> = {
   ] }),
 };
 
+/** T-061c: the price of each fixed market's 1-minute candles (the "Price now" of an open trade), the same every minute. */
+const FIXED_MINUTE_PRICES: Readonly<Record<string, string>> = { BTCUSDT: '61000', ETHUSDT: '2450' };
+
+/** `/market/candles` for 1-minute candles of a fixed market, every minute of the asked window at its fixed price; null otherwise. */
+function fixedMinuteCandles(url: URL): string | null {
+  const query = url.searchParams;
+  const symbol = query.get('symbol') ?? '';
+  const price = FIXED_MINUTE_PRICES[symbol];
+  const start = Number(query.get('start')), end = Number(query.get('end')), limit = Number(query.get('limit'));
+  if (url.pathname !== '/market/candles' || query.get('interval') !== '1m' || query.get('market') !== 'binance-spot' || price === undefined) return null;
+  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || !Number.isSafeInteger(limit)) return null;
+  const candles: unknown[] = [];
+  for (let openMs = start; openMs <= end && candles.length < limit; openMs += 60_000) {
+    candles.push({ openTime: new Date(openMs).toISOString(), closeTime: new Date(openMs + 59_999).toISOString(), open: price, high: price, low: price, close: price, volume: '1' });
+  }
+  return serverAnswer({ source: { provider: 'binance', market: 'spot', symbol }, backup: null, interval: '1m', fetchedAt: MARKET_FETCHED_AT, candles, next: null });
+}
+
 /**
  * Opens the QA build signed in: the theme choice (if given) is stored before the app starts, the activation request
  * gets a fixed signed receipt, and every other https request is aborted (no network in design checks).
- * `fixedClock` freezes the page's clock before the first load; `server: 'fixed-market'` answers the market list and
- * the two 24-hour prices with fixed values (anything else still aborted), so screenshots never change with the time.
+ * `fixedClock` freezes the page's clock before the first load; `server: 'fixed-market'` answers the market list, the
+ * two 24-hour prices and their 1-minute candles with fixed values (anything else still aborted), so screenshots never
+ * change with the time.
  */
 /** T-053d: a fresh install opens the setup (D222); `setup: 'show'` leaves it open, otherwise "Skip for now" is tapped. */
 export async function openKairos(page: Page, options: Readonly<{ theme?: string; fixedClock?: string; server?: 'offline' | 'fixed-market'; setup?: 'skip' | 'show' }> = {}): Promise<void> {
@@ -39,8 +58,8 @@ export async function openKairos(page: Page, options: Readonly<{ theme?: string;
   await page.route(url => url.protocol === 'https:', async route => {
     const url = new URL(route.request().url());
     if (fixedMarket && url.hostname === SERVER_HOST) {
-      const body = FIXED_MARKET[url.pathname + decodeURIComponent(url.search)];
-      if (body === undefined) return route.abort();
+      const body = FIXED_MARKET[url.pathname + decodeURIComponent(url.search)] ?? fixedMinuteCandles(url);
+      if (body === undefined || body === null) return route.abort();
       return route.fulfill({ headers: { 'access-control-allow-origin': '*' }, contentType: 'application/json', body });
     }
     if (route.request().url() !== ACTIVATION_URL) return route.abort();

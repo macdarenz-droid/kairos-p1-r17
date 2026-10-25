@@ -29,3 +29,10 @@
 .kairos-today__trades { display: grid; gap: var(--kairos-space-1); margin: 0; padding: 0; list-style: none; }
 .kairos-today__trades a { display: inline-flex; align-items: center; min-height: var(--kairos-control-sm); font-family: var(--kairos-font-mono); font-size: var(--kairos-font-size-sm); overflow-wrap: anywhere; }
 .kairos-today__coach { display: grid; gap: var(--kairos-space-1); }
+.kairos-today__trades li { display: grid; justify-items: start; gap: 2px; min-width: 0; }
+/* D268: the price now is market data, set apart from the saved plan above it. */
+.kairos-card.kairos-today .kairos-today__price { margin-block-end: var(--kairos-space-1); font-size: var(--kairos-font-size-sm); font-variant-numeric: tabular-nums; }
+.kairos-today__price .kairos-result { vertical-align: middle; }
+.kairos-today__price .kairos-button { margin-inline-start: var(--kairos-space-1); }
+.kairos-today__news { display: grid; gap: var(--kairos-space-1); }
+.kairos-card.kairos-today .kairos-today__checked { font-size: var(--kairos-font-size-sm); }

@@ -23,7 +23,7 @@ describe('T-059c the price now', () => {
       instrument: { venue: 'binance-spot', symbol: 'PEPEUSDT' }, interval: '1m', limit: 6,
       startTimeMs: Date.parse('2026-10-24T10:27:00.000Z'), endTimeMs: NOW, pair: { base: 'PEPE', quote: 'USDT' },
     });
-    expect(result).toEqual({ ok: true, price: '0.00001234', at: '2026-10-24T10:32:00.000Z', source: 'binance', market: 'PEPEUSDT', midPrice: false, futures: false });
+    expect(result).toEqual({ ok: true, price: '0.00001234', at: '2026-10-24T10:32:00.000Z', source: 'binance', market: 'PEPEUSDT', midPrice: false, futures: false, quote: 'USDT' });
     if (!result.ok) return;
     expect(describePriceNowSource(result)).toMatch(/^Binance · PEPEUSDT · \d\d:\d\d$/);
   });
@@ -40,7 +40,7 @@ describe('T-059c the price now', () => {
     expect(acquireHistory.mock.calls[0]![0].instrument).toEqual({ venue: 'oanda-forex', symbol: 'EURUSD' });
     expect(acquireHistory.mock.calls[0]![0].pair).toBeUndefined();
     expect(value.metadata.acquireInstrumentMetadata).not.toHaveBeenCalled();
-    expect(result).toEqual({ ok: true, price: '1.16682', at: '2026-10-24T10:31:00.000Z', source: 'oanda', market: 'EUR/USD', midPrice: true, futures: false });
+    expect(result).toEqual({ ok: true, price: '1.16682', at: '2026-10-24T10:31:00.000Z', source: 'oanda', market: 'EUR/USD', midPrice: true, futures: false, quote: 'USD' });
     if (!result.ok) return;
     expect(describePriceNowSource(result)).toMatch(/^OANDA · EUR\/USD · mid price · \d\d:\d\d$/);
   });
@@ -111,5 +111,22 @@ describe('T-059c the price now', () => {
     const spot = await readPriceNow(value, { marketType: 'futures', symbol: 'BTCUSDT' }, { nowMs: NOW });
     expect(acquireHistory.mock.calls.map(call => call[0].instrument.venue)).toEqual(['binance-usdm', 'binance-spot']);
     expect(spot).toMatchObject({ ok: true, price: '65000', futures: false });
+  });
+
+  it("T-061c gives the price's quote currency: the Binance pair's, a forex pair's when Kairos knows it, else none", async () => {
+    const quoteOf = async (marketType: 'crypto' | 'futures' | 'forex', symbol: string, markets?: LiveMarketUniverseInstrumentMetadataFact[]) => {
+      const result = await readPriceNow(deps(() => answer(candle('2026-10-24T10:31:00.000Z', '1.5')), markets).value, { marketType, symbol }, { nowMs: NOW });
+      if (!result.ok) throw new Error(`no price for ${symbol}`);
+      return result.quote;
+    };
+    expect(await quoteOf('crypto', 'BTCUSDT')).toBe('USDT');
+    expect(await quoteOf('crypto', 'ETHBTC', [fact('ETH', 'BTC')])).toBe('BTC');
+    expect(await quoteOf('futures', 'BTCUSDT')).toBe('USDT');
+    expect(await quoteOf('forex', 'EUR/USD')).toBe('USD');
+    expect(await quoteOf('forex', 'XAUUSD')).toBe('USD');
+    // CNH is not one of the eight currencies Kairos knows, so the pair's quote is not taken as a currency.
+    expect(await quoteOf('forex', 'USDCNH')).toBeNull();
+    // A futures-only market is read by its name alone: Kairos does not know its quote.
+    expect(await quoteOf('futures', '1000PEPEUSDT')).toBeNull();
   });
 });

@@ -35,6 +35,11 @@ export type PriceNowResult =
       midPrice: boolean;
       /** Read from Binance Futures (a futures trade). */
       futures: boolean;
+      /**
+       * U16 (D268): the currency the price is in: the Binance pair's quote (USDT), or a forex pair's when it is one of the
+       * eight currencies Kairos knows (quoteKnown); null when Kairos does not know it (a futures-only market read by its name).
+       */
+      quote: string | null;
     }>
   | Readonly<{ ok: false; why: PriceNowFailure; retryAfterSeconds: number | null; note: string | null; source: MarketSourceWords }>;
 
@@ -68,13 +73,15 @@ function fromCandles(result: MarketCandleHistoryResult, market: Extract<FormMark
   const candles = market.source === 'oanda' ? result.snapshot.candles.filter(candle => Date.parse(candle.closeTime) < nowMs) : result.snapshot.candles;
   const last = candles[candles.length - 1];
   if (last === undefined) return Object.freeze({ ok: false as const, why: 'no-candles' as const, retryAfterSeconds: null, note: null, source: market.words });
-  return Object.freeze({ ok: true as const, price: last.close, at: last.openTime, source: market.source, market: market.market, midPrice: market.source === 'oanda', futures: market.instrument.venue === FUTURES_CANDLE_VENUE });
+  return Object.freeze({ ok: true as const, price: last.close, at: last.openTime, source: market.source, market: market.market, midPrice: market.source === 'oanda', futures: market.instrument.venue === FUTURES_CANDLE_VENUE, quote: market.quote });
 }
 
 /** A typed market as the candle source names it, or why it has none: the shared first step of "Price now" and the minute check (D256, D257). */
 export type FormMarketSource =
   | Readonly<{
       ok: true; instrument: MarketDataInstrument; pair: Readonly<{ base: string; quote: string }> | null; source: 'binance' | 'oanda'; market: string; words: MarketSourceWords;
+      /** The currency the market's price is in, when Kairos knows it (PriceNowResult.quote). */
+      quote: string | null;
       /** A futures-only market (D171), read from Binance Futures by its name alone: what was typed and the spot list's note. */
       futuresOnly: Readonly<{ typed: string; spotNote: string }> | null;
       /** A futures trade on a market Binance Spot also lists: its spot venue, read once when there are no futures candles. */
@@ -93,7 +100,7 @@ export async function resolveFormMarket(
     const parsed = parseForexPair(ask.symbol);
     if (!parsed.ok) return none('no-source');
     const pair = parsed.pair;
-    return Object.freeze({ ok: true as const, instrument: { venue: FOREX_CANDLE_VENUE, symbol: pair.symbol }, pair: null, source: 'oanda' as const, market: pair.label, words: { provider: 'oanda' as const, pair: pair.label }, futuresOnly: null, spotVenue: null });
+    return Object.freeze({ ok: true as const, instrument: { venue: FOREX_CANDLE_VENUE, symbol: pair.symbol }, pair: null, source: 'oanda' as const, market: pair.label, words: { provider: 'oanda' as const, pair: pair.label }, quote: pair.quoteKnown ? pair.quote : null, futuresOnly: null, spotVenue: null });
   }
   const listed = await deps.metadata.acquireInstrumentMetadata(signal);
   if (!listed.ok) {
@@ -106,11 +113,11 @@ export async function resolveFormMarket(
     // A futures-only market (D171) is read from Binance Futures by its name, as the trade picture does.
     const futuresOnly = match.why === 'not-listed' ? futuresOnlyMarket(ask.symbol, ask.marketType) : null;
     if (futuresOnly === null) return Object.freeze({ ok: false as const, why: 'not-listed' as const, retryAfterSeconds: null, note: match.note, source: binance });
-    return Object.freeze({ ok: true as const, instrument: { venue: FUTURES_CANDLE_VENUE, symbol: futuresOnly }, pair: null, source: 'binance' as const, market: futuresOnly, words: binance, futuresOnly: { typed: ask.symbol, spotNote: match.note }, spotVenue: null });
+    return Object.freeze({ ok: true as const, instrument: { venue: FUTURES_CANDLE_VENUE, symbol: futuresOnly }, pair: null, source: 'binance' as const, market: futuresOnly, words: binance, quote: null, futuresOnly: { typed: ask.symbol, spotNote: match.note }, spotVenue: null });
   }
   const venue = match.candles === 'usdm-futures' ? FUTURES_CANDLE_VENUE : deps.venue;
   return Object.freeze({
-    ok: true as const, instrument: { venue, symbol: match.symbol }, pair: { base: match.base, quote: match.quote }, source: 'binance' as const, market: match.symbol, words: binance, futuresOnly: null,
+    ok: true as const, instrument: { venue, symbol: match.symbol }, pair: { base: match.base, quote: match.quote }, source: 'binance' as const, market: match.symbol, words: binance, quote: match.quote, futuresOnly: null,
     spotVenue: venue === FUTURES_CANDLE_VENUE ? deps.venue : null,
   });
 }
