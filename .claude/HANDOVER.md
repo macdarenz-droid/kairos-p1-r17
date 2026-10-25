@@ -57,6 +57,7 @@
 - Workers (in `app/backend/kairos-api` and `app/backend/activation-worker`): `npm run typecheck`, `npm test`, `npm run build` (a dry run)
 
 ## Known things that are not bugs in this branch
+- **CI's first step refuses changes outside `app/`** and the listed root files (`CLAUDE.md`, `README.md`, `.ignore`, `.gitignore`, `.github/workflows/ci.yml`, `.claude/`). That is why this file lives in `.claude/`.
 - **Cloudflare Pages check is always red** on PRs: the owner's Pages settings. It is commented on each PR. From T-062d on, a Pages build also needs the two activation settings.
 - **Timing tests under heavy load:** `journal-history-performance`, `journal-open-trade-update`, `results-rates-on-their-own` and `trade-edit-screen` failed once each while two full suites ran at once. Each passed alone and in the next full run, and CI has not failed on them. If one fails alone, look at it then.
 - **Two harmless leftovers in T-062f** (found in review, left as is): a tab whose activation another tab replaced keeps asking `/devices/check` once an hour for that session and changes nothing; and a test would still pass if `isSameActivation` compared only `activationId` (safe, as `activation_id` is unique in D1).

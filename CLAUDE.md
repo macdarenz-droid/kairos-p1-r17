@@ -2,9 +2,9 @@
 
 Kairos is a PWA trading journal: React 19, TypeScript 7, Vite 8, Dexie 4 (IndexedDB), decimal.js, lightweight-charts 5.2.1, Vitest 4.
 
-**Work is paused (2026-10-25, the owner's request).** Read `HANDOVER.md` first: where the work stopped and how to go on.
+**Work is paused (2026-10-25, the owner's request).** Read `.claude/HANDOVER.md` first: where the work stopped and how to go on.
 
-**The app lives in `app/`.** Agent files at the root are `CLAUDE.md`, `HANDOVER.md`, `README.md`, `.ignore`, `.gitignore`, `.claude/` (settings and the owner's rules in `.claude/owner-rules.md`, shown to every agent before each reply) and `.github/workflows/ci.yml`. A coder edits `ci.yml` only when its task says so.
+**The app lives in `app/`.** Agent files at the root are `CLAUDE.md`, `README.md`, `.ignore`, `.gitignore`, `.claude/` (settings and the owner's rules in `.claude/owner-rules.md`, shown to every agent before each reply) and `.github/workflows/ci.yml`. A coder edits `ci.yml` only when its task says so.
 
 Everything else at the root is the ZIP-era archive: the `*.zip` files, root `src/ tests/ docs/ scripts/ package.json`, old workflows and helper payloads. The last ZIP-era GOLDEN is commit `f4e8178` (Gate531). The archive has its own stale `package.json` and `src/`, so:
 - write every path as `app/…`;
