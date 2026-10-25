@@ -9,6 +9,7 @@ import { JournalHistoryList } from './JournalHistoryList';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
 import type { MarketType as TradeMarket } from '../domain/trades';
 import { hasJournalFilters, NO_JOURNAL_FILTERS, readJournalFilters, writeJournalFilters, type JournalFilters } from '../application/journal';
+import { JournalCsvButton } from '../features/journal/JournalCsvButton';
 import { JournalFilterBar, useJournalTimeZone } from '../features/journal/JournalFilterBar';
 import './journalRoute.css';
 import { TradeForm } from '../features/journal/TradeForm';
@@ -116,6 +117,8 @@ function JournalPage(props: JournalRouteProps) {
         statusFilter={filters.status ?? ''}
         onStatusFilterChange={status => changeFilters({ ...filters, status: status === '' ? null : status })}
         filterBar={<JournalFilterBar db={db} scope="real" filters={filters} onChange={changeFilters} timeZone={timeZone} refreshRevision={journalRevision} />}
+        tools={<JournalCsvButton db={db} scope="real" filters={filters} timeZone={timeZone} filtered={hasJournalFilters(filters)}
+          empty={!pages.isLoading && !pages.failed && pages.entries.length === 0} />}
         filtered={hasJournalFilters({ ...filters, status: null })}
         onClearFilters={() => changeFilters(NO_JOURNAL_FILTERS)}
         focusOnArrival={arrivedNotice !== undefined}

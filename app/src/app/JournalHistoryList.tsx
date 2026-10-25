@@ -32,6 +32,8 @@ interface JournalHistoryListProps {
   readonly focusOnArrival?: boolean;
   /** U15 (D262): the search, filters and totals above the list. */
   readonly filterBar?: ReactNode;
+  /** U15 (D266): under the list's heading: "Download as a spreadsheet". */
+  readonly tools?: ReactNode;
   /** A filter other than the status is set: an empty list says no trade matches, with "Clear filters". */
   readonly filtered?: boolean;
   readonly onClearFilters?: () => void;
@@ -94,7 +96,7 @@ function RowLink({ to, label, children }: { readonly to: string; readonly label:
  * U15 (D261): the Journal's and Practice's list, one short row per trade, newest first (D259). A row is one link to the
  * trade's page (D260), where everything that changes a trade lives: one tab stop per trade.
  */
-export function JournalHistoryList({ entries, isLoading, errorMessage, statusFilter, onStatusFilterChange, onRetry, scope = 'real', notice, hasOlder = false, isLoadingOlder = false, olderFailed = false, onShowOlder, focusOnArrival = false, filterBar, filtered = false, onClearFilters }: JournalHistoryListProps) {
+export function JournalHistoryList({ entries, isLoading, errorMessage, statusFilter, onStatusFilterChange, onRetry, scope = 'real', notice, hasOlder = false, isLoadingOlder = false, olderFailed = false, onShowOlder, focusOnArrival = false, filterBar, tools, filtered = false, onClearFilters }: JournalHistoryListProps) {
   const section = useRef<HTMLElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const noticeRef = useRef<HTMLParagraphElement>(null);
@@ -139,6 +141,7 @@ export function JournalHistoryList({ entries, isLoading, errorMessage, statusFil
         </div>
         <span className="kairos-history__count">{entries.length} shown</span>
       </div>
+      {tools}
 
       {filterBar}
       <div className="kairos-history__controls">

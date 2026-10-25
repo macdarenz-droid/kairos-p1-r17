@@ -41,6 +41,7 @@ function canonicalInstant(value: string): Date | null {
 /** Making a formatter costs far more than using one, and a dashboard reads thousands of trades: one per time zone and use (null: the zone is refused). */
 const DAY_FORMATTERS = new Map<string, Intl.DateTimeFormat | null>();
 const HOUR_FORMATTERS = new Map<string, Intl.DateTimeFormat | null>();
+const CLOCK_FORMATTERS = new Map<string, Intl.DateTimeFormat | null>();
 const FORMATTERS_KEPT = 32;
 function formatterFor(cache: Map<string, Intl.DateTimeFormat | null>, timeZone: string, make: () => Intl.DateTimeFormat): Intl.DateTimeFormat | null {
   const kept = cache.get(timeZone);
@@ -127,9 +128,12 @@ export function projectVisualPnlClockTime(instant: string | null, timeZone: stri
   if (instant === null) return null;
   const at = canonicalInstant(instant);
   if (at === null) return null;
+  // One formatter per zone, kept (a spreadsheet of 10,000 trades asks 20,000 times).
+  const formatter = formatterFor(CLOCK_FORMATTERS, timeZone, () => new Intl.DateTimeFormat('en', { numberingSystem: 'latn', timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }));
+  if (formatter === null) return null;
   let parts: Intl.DateTimeFormatPart[];
   try {
-    parts = new Intl.DateTimeFormat('en', { numberingSystem: 'latn', timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(at);
+    parts = formatter.formatToParts(at);
   } catch {
     return null;
   }

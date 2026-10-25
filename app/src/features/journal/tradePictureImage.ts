@@ -1,4 +1,5 @@
 import { TRADE_PICTURE_HEIGHT, TRADE_PICTURE_WIDTH } from './TradePictureCard';
+import { browserFileDeliveryPorts, deliverFile, type FileDeliveryPorts, type FileDeliveryResult } from './fileDelivery';
 import { browserTradeShareImagePorts, type TradeShareImagePorts } from './tradeShareCardImage';
 
 /** Style properties copied onto each element so the saved image looks like the screen without the page's CSS. */
@@ -33,42 +34,16 @@ export function tradePictureFileName(symbol: string, dateIso: string | null, now
   return `kairos-${safe}-${date.toISOString().slice(0, 10)}.png`;
 }
 
-export interface TradePictureSavePorts extends TradeShareImagePorts {
-  canShare(data: { files: File[] }): boolean;
-  share(data: { files: File[]; title: string }): Promise<void>;
-  download(blob: Blob, fileName: string): void;
-}
+/** The picture's ports: drawing the share card, then handing the PNG over (the shared share-else-download helper). */
+export interface TradePictureSavePorts extends TradeShareImagePorts, FileDeliveryPorts {}
 
-export type TradePictureSaveResult = 'shared' | 'downloaded' | 'cancelled' | 'failed';
+export type TradePictureSaveResult = FileDeliveryResult;
 
 /** Hands the share card's PNG to the share sheet when the device offers one, else downloads it (D214). */
-export async function saveTradePictureImage(image: Blob, fileName: string, ports: TradePictureSavePorts = browserTradePictureSavePorts()): Promise<TradePictureSaveResult> {
-  try {
-    const file = new File([image], fileName, { type: 'image/png' });
-    if (ports.canShare({ files: [file] })) {
-      await ports.share({ files: [file], title: fileName });
-      return 'shared';
-    }
-    ports.download(image, fileName);
-    return 'downloaded';
-  } catch (error) {
-    // Closing the phone's share sheet is the trader's choice, not a failure.
-    return typeof error === 'object' && error !== null && (error as { name?: unknown }).name === 'AbortError' ? 'cancelled' : 'failed';
-  }
+export function saveTradePictureImage(image: Blob, fileName: string, ports: TradePictureSavePorts = browserTradePictureSavePorts()): Promise<TradePictureSaveResult> {
+  return deliverFile(image, fileName, 'image/png', ports);
 }
 
 export function browserTradePictureSavePorts(): TradePictureSavePorts {
-  return {
-    ...browserTradeShareImagePorts(),
-    canShare: data => typeof navigator.canShare === 'function' && navigator.canShare(data),
-    share: data => navigator.share(data),
-    download: (blob, fileName) => {
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = fileName;
-      anchor.click();
-      setTimeout(() => URL.revokeObjectURL(url), 0);
-    },
-  };
+  return { ...browserTradeShareImagePorts(), ...browserFileDeliveryPorts() };
 }

@@ -5,6 +5,7 @@ import { practicePlanDraft, readPracticePlanStart } from '../application/practic
 import { readVisualPnlPeriodChoice, writeVisualPnlPeriodChoice } from '../application/visual-pnl';
 import { kairosDatabase, type KairosDatabase } from '../data/database';
 import { hasJournalFilters, NO_JOURNAL_FILTERS, readJournalFilters, writeJournalFilters, type JournalFilters } from '../application/journal';
+import { JournalCsvButton } from '../features/journal/JournalCsvButton';
 import { JournalFilterBar, useJournalTimeZone } from '../features/journal/JournalFilterBar';
 import { TradeCopyArrival } from '../features/journal/TradeCopy';
 import { TradeForm } from '../features/journal/TradeForm';
@@ -74,6 +75,8 @@ export function PracticeRoute({ db = kairosDatabase, now, rates = null }: Practi
 
       <JournalHistoryList scope="practice" notice={listNotice} entries={pages.entries} isLoading={pages.isLoading} errorMessage={pages.failed ? 'Kairos could not load your practice trades. Your stored trades were not changed.' : null} hasOlder={pages.hasOlder} isLoadingOlder={pages.isLoadingOlder} olderFailed={pages.olderFailed} onShowOlder={pages.showOlder} onRetry={pages.refresh} statusFilter={filters.status ?? ''} onStatusFilterChange={status => changeFilters({ ...filters, status: status === '' ? null : status })} focusOnArrival={arrivedNotice !== undefined}
         filterBar={<JournalFilterBar db={db} scope="practice" filters={filters} onChange={changeFilters} timeZone={timeZone} refreshRevision={practiceRevision} />}
+        tools={<JournalCsvButton db={db} scope="practice" filters={filters} timeZone={timeZone} filtered={hasJournalFilters(filters)}
+          empty={!pages.isLoading && !pages.failed && pages.entries.length === 0} />}
         filtered={hasJournalFilters({ ...filters, status: null })} onClearFilters={() => changeFilters(NO_JOURNAL_FILTERS)} />
     </section>
   );

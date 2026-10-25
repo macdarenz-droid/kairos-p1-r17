@@ -2252,6 +2252,16 @@ test('(ah) Search and filters in the address: your BTC losses in March, with wha
   await expect(chips.getByRole('button', { name: /^Remove / })).toHaveCount(4);
   await expect(page.getByText('2 trades · won 0 · lost 2 · result after fees -9 USDT')).toBeVisible();
   await expect(page.getByLabel('Search symbols')).toHaveValue('btc');
+  // D266: the spreadsheet holds every matching trade, newest first; a phone without a share sheet downloads it.
+  const [sheet] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download as a spreadsheet' }).click()]);
+  expect(sheet.suggestedFilename()).toMatch(/^kairos-journal-\d{4}-\d{2}-\d{2}\.csv$/);
+  const bytes = readFileSync(await sheet.path());
+  expect([...bytes.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+  const lines = bytes.subarray(3).toString('utf8').split('\r\n');
+  expect(lines[0]).toBe("Opened,Closed,Time zone,Symbol,Market,Direction,Status,Made by,Quantity,Average entry,Average exit,Price currency,Planned stop,Planned target,Result before fees,Fees,Fees currency,Result after fees,Result currency,× what you risked,Strategy,Mistakes,Tags,Where you traded,Leverage,Why I'm taking it,Note");
+  expect(lines[1]).toMatch(/^2026-03-20 09:00,2026-03-20 10:00,[^,]+,BTC\/USDT,Crypto,Long,Closed,By hand,1,100,95,USDT,,,-5,,,-5,USDT,/);
+  expect(lines).toHaveLength(4);
+  await expect(page.getByText(/^Saved kairos-journal-\d{4}-\d{2}-\d{2}\.csv\.$/)).toBeVisible();
   const axe = await new AxeBuilder({ page }).include('.kairos-history').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
   expect(axe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
