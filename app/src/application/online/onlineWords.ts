@@ -65,6 +65,23 @@ export function describeMarketDataUnavailable(failure: MarketDataUnavailable, su
   }
 }
 
+const SECOND_MS = 1_000;
+const MINUTE_MS = 60 * SECOND_MS;
+const HOUR_MS = 60 * MINUTE_MS;
+
+/**
+ * U16 (D269): how long ago something online was checked or updated, in whole units: "just now" under 10 seconds (and
+ * for a time a little ahead of this device's clock), then "40 s ago", "2 min ago", "3 h ago" (hours however long).
+ * null when the age is not a number: freshness is never made up.
+ */
+export function describeUpdatedAgo(ageMs: number): string | null {
+  if (!Number.isFinite(ageMs)) return null;
+  if (ageMs < 10 * SECOND_MS) return 'just now';
+  if (ageMs < MINUTE_MS) return `${Math.floor(ageMs / SECOND_MS)} s ago`;
+  if (ageMs < HOUR_MS) return `${Math.floor(ageMs / MINUTE_MS)} min ago`;
+  return `${Math.floor(ageMs / HOUR_MS)} h ago`;
+}
+
 export type OnlineServicesLine =
   | Readonly<{ kind: 'working'; text: string }>
   | Readonly<{ kind: 'unavailable'; words: UnavailableWords }>;

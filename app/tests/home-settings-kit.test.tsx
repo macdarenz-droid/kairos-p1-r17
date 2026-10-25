@@ -11,9 +11,9 @@ import { HomeRoute } from '../src/app/HomeRoute';
 import { HomeDashboardYourTrades } from '../src/app/HomeDashboardYourTrades';
 import { SettingsRoute } from '../src/app/SettingsRoute';
 import { DisciplineListsEditor } from '../src/features/discipline/DisciplineListsEditor';
-import type { HomeYourTrade } from '../src/application/dashboard/homeDashboardYourTradesQuery';
+import type { HomeYourTrade, HomeYourTradesResult } from '../src/application/dashboard/homeDashboardYourTradesQuery';
 import { loadDisciplineLists } from '../src/application/discipline';
-import { visualPnlTimeZonePreferenceMetadataKey, writeVisualPnlTimeZonePreference } from '../src/application/visual-pnl';
+import { projectVisualPnlPeriod, visualPnlTimeZonePreferenceMetadataKey, writeVisualPnlTimeZonePreference } from '../src/application/visual-pnl';
 import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
 import { createKairosRepositories } from '../src/data/repositories';
 import { ToastProvider } from '../src/design-system/primitives';
@@ -31,14 +31,19 @@ async function database(): Promise<KairosDatabase> {
 }
 afterEach(async () => { cleanup(); vi.restoreAllMocks(); for (const name of names.splice(0)) await Dexie.delete(name); });
 
-const trade: HomeYourTrade = { id: 't1', symbol: 'BTCUSDT', side: 'long', status: 'closed', outcome: 'profit', resultLabel: 'Profit', amount: '40', currency: null, source: 'net-pnl', timestamp: '2026-09-12T01:00:00Z' };
+// T-061d (D270): the read gives the closed trades of a period, each with the result its bubble compares.
+const trade = { id: 't1', symbol: 'BTCUSDT', side: 'long', outcome: 'profit', resultLabel: 'Profit', amount: '40', currency: null, source: 'net-pnl', compared: { kind: 'not-compared', reason: 'unknown-currency' }, closedAt: '2026-09-12T01:00:00.000Z', closeDayKey: '2026-09-12' } as HomeYourTrade;
+const month = projectVisualPnlPeriod({ kind: 'month', at: null }, '2026-09-27');
+if (!month.ok) throw new Error('fixture period');
+const yourTrades = (trades: readonly HomeYourTrade[]): HomeYourTradesResult => ({ kind: 'ready', timeZone: 'UTC', todayKey: '2026-09-27', period: month.period, homeCurrency: null, trades, hasTrades: trades.length > 0 });
 
 describe('T-049f Home on the kit', () => {
   it('has a level-1 heading with its intro, and a "Dashboard view" switch that shows Your Trades', async () => {
     const db = await database();
     render(<MemoryRouter><HomeRoute db={db} /></MemoryRouter>);
     expect(screen.getByRole('heading', { level: 1, name: 'Home' })).toBeInTheDocument();
-    expect(screen.getByText('Your markets and your trades at a glance.')).toBeInTheDocument();
+    // T-061b (D267): the header is shown again, with the new intro.
+    expect(screen.getByText("How you're doing today, and the markets now.")).toBeInTheDocument();
     const view = screen.getByRole('group', { name: 'Dashboard view' });
     const options = within(view).getAllByRole('button');
     expect(options.map(option => option.textContent)).toEqual(['Live Market', 'Your Trades']);
@@ -53,19 +58,19 @@ describe('T-049f Home on the kit', () => {
   });
 
   it('Your Trades: loading, an error with "Try again" that loads again, and an empty state that links to the journal', async () => {
-    let finish: (rows: readonly HomeYourTrade[]) => void = () => {};
-    const load = vi.fn<() => Promise<readonly HomeYourTrade[]>>()
+    let finish: (answer: HomeYourTradesResult) => void = () => {};
+    const load = vi.fn<() => Promise<HomeYourTradesResult>>()
       .mockRejectedValueOnce(new Error('read'))
       .mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }))
-      .mockResolvedValue([]);
+      .mockResolvedValue(yourTrades([]));
     vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(390);
     const view = render(<MemoryRouter><HomeDashboardYourTrades load={load} /></MemoryRouter>);
     expect(await screen.findByRole('alert')).toHaveTextContent('Kairos could not load your saved trades. They are still on this device.');
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(load).toHaveBeenCalledTimes(2);
     expect(screen.getByRole('status')).toHaveTextContent('Loading your saved trades…');
-    await act(async () => { finish([trade]); });
-    expect(await screen.findByRole('button', { name: /^BTCUSDT, long, Profit/ })).toBeInTheDocument();
+    await act(async () => { finish(yourTrades([trade])); });
+    expect(await screen.findByRole('link', { name: /^BTCUSDT long, closed 12 Sep, result after fees \+40/ })).toBeInTheDocument();
     view.unmount();
 
     render(<MemoryRouter><HomeDashboardYourTrades load={load} /></MemoryRouter>);
@@ -251,11 +256,11 @@ describe('T-049f fix r1', () => {
   });
 
   it('Your Trades: a "Try again" tapped as soon as it shows still gives focus to the heading once the trades load (T-051j fix ci 3)', async () => {
-    const load = vi.fn<() => Promise<readonly HomeYourTrade[]>>().mockRejectedValueOnce(new Error('read')).mockResolvedValue([trade]);
+    const load = vi.fn<() => Promise<HomeYourTradesResult>>().mockRejectedValueOnce(new Error('read')).mockResolvedValue(yourTrades([trade]));
     vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(390);
     const view = render(<MemoryRouter><HomeDashboardYourTrades load={load} /></MemoryRouter>);
     await tapWhenShown(view.container);
-    expect(await screen.findByRole('button', { name: /^BTCUSDT, long, Profit/ })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: /^BTCUSDT long, closed 12 Sep, result after fees \+40/ })).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Your Trades' })).toHaveFocus());
   });
 });

@@ -2,16 +2,19 @@
  * P16.A1: the market data routes. Public and rate-limited like the news routes: the data is public, keyless and the
  * same for every trader. Each reads one fixed host; no request value becomes a host.
  */
-import type { RouteCachePolicy } from '../cache';
+import { cacheKey, keep, readCached, type RouteCachePolicy } from '../cache';
 import type { KairosApiEnv } from '../env';
-import type { KairosApiRoute, RouteAnswer } from '../router';
+import type { KairosApiRoute, RouteAnswer, RouteContext } from '../router';
 import type { UpstreamFetch } from '../upstream';
 import {
   BINANCE_SPOT_HOST, BINANCE_USDM_HOST, binanceFailure, decodeBinanceExchangeInfo, decodeBinanceKlines, decodeBinanceTickers, failureAnswer, type MarketCandle,
 } from './binance';
 import { isMarketInterval, isSettled, type MarketInterval } from './marketValues';
 import { decodeOkxCandles, OKX_BARS, OKX_HOST, okxInstrument, readOkxPages, type CandleMarket } from './okx';
-import { COINGECKO_DEMO_HOST, COINGECKO_PRO_HOST, coinDataPlan, coinGeckoFailure, coinNamesRequest, decodeCoinGeckoMarkets } from './coinGecko';
+import {
+  COINGECKO_DEMO_HOST, COINGECKO_IMAGE_HOST, COINGECKO_PRO_HOST, coinDataPlan, coinGeckoFailure, coinLogoDataAddress, coinNamesOf, coinNamesRequest,
+  decodeCoinGeckoMarkets, keptCoinGeckoImages, type CoinGeckoCoin,
+} from './coinGecko';
 import { decodeOandaCandles, forexSource, OANDA_GRANULARITY, OANDA_LIVE_HOST, OANDA_PRACTICE_HOST, oandaCandlesUrl, oandaFailure, oandaHost, oandaInstrument } from './oanda';
 
 /** The market list changes a few times a day: 1 hour in Workers Cache and memory, 6 hours in KV. */
@@ -61,6 +64,41 @@ const marketTickersRoute: KairosApiRoute = {
     const tickers = decodeBinanceTickers(result.text, list);
     if (tickers === null) return { ok: false, reason: 'source-unavailable' };
     return { ok: true, data: { source: 'binance-spot', fetchedAt: now.toISOString(), tickers } };
+  },
+};
+
+/**
+ * T-061e (D271): the 1-hour and 7-day moves of up to 100 markets, from Binance's rolling-window ticker: 30 seconds for
+ * the 1-hour window (Home reads it every 30 s while chosen), 5 minutes for the 7-day one (read every 5 minutes); never KV.
+ * One version: the 7-day answer carries its own policy (router.ts keeps and labels it with that).
+ */
+export const MARKET_MOVES_CACHE: RouteCachePolicy = Object.freeze({ version: 1, edgeSeconds: 30, memorySeconds: 30, kvSeconds: null });
+export const MARKET_MOVES_WEEK_CACHE: RouteCachePolicy = Object.freeze({ version: 1, edgeSeconds: 300, memorySeconds: 300, kvSeconds: null });
+
+const marketMovesRoute: KairosApiRoute = {
+  id: 'market-moves',
+  path: '/market/moves',
+  access: 'public',
+  rateLimited: true,
+  // The same list as /market/tickers; Binance's rolling window takes 100 symbols a request (weight 4 each, capped at 200).
+  query: { symbols: marketTickersRoute.query.symbols, window: { pattern: /^(?:1h|7d)$/, required: true } },
+  maxQueryLength: 4_096,
+  upstreamHosts: [BINANCE_SPOT_HOST],
+  cache: MARKET_MOVES_CACHE,
+  async handle({ query, upstream, now }) {
+    const list = (query.get('symbols') ?? '').split(',');
+    const windowSize = query.get('window') === '7d' ? '7d' : '1h';
+    // Strictly ascending (so no repeats): one order means one cache key for every device.
+    if (list.length > MAX_TICKER_SYMBOLS || list.some((symbol, index) => index > 0 && !(list[index - 1] < symbol))) return { ok: false, reason: 'bad-request' };
+    const url = `https://${BINANCE_SPOT_HOST}/api/v3/ticker?symbols=${encodeURIComponent(JSON.stringify(list))}&windowSize=${windowSize}&type=MINI`;
+    const result = await upstream(url, { accept: 'application/json', readErrorBody: true });
+    if (!result.ok) return failureAnswer(binanceFailure(result));
+    // The rolling-window MINI rows have the 24-hour rows' shape; only what a move needs is answered.
+    const tickers = decodeBinanceTickers(result.text, list);
+    if (tickers === null) return { ok: false, reason: 'source-unavailable' };
+    const moves = tickers.map(({ symbol, openPrice, lastPrice, openTime, closeTime }) => ({ symbol, openPrice, lastPrice, openTime, closeTime }));
+    const data = { source: 'binance-spot', window: windowSize, fetchedAt: now.toISOString(), moves };
+    return windowSize === '7d' ? { ok: true, data, cache: MARKET_MOVES_WEEK_CACHE } : { ok: true, data };
   },
 };
 
@@ -199,6 +237,42 @@ function candlesAnswer(
 export const MARKET_COIN_NAMES_CACHE: RouteCachePolicy = Object.freeze({ version: 1, edgeSeconds: 86_400, memorySeconds: 3_600, kvSeconds: 86_400 });
 /** CoinGecko's 250 coins with their prices and supply are about 200 KB. */
 const COIN_NAMES_MAX_BYTES = 2_097_152;
+/**
+ * T-061f (D272): CoinGecko's list as both coin routes use it (names and logo addresses), one copy under one key: an
+ * hour in memory, a day in KV, never at the edge (it is no answer). Version 1: `[{ symbol, name?, image? }]`.
+ */
+export const COINGECKO_COINS_CACHE: RouteCachePolicy = Object.freeze({ version: 1, edgeSeconds: 0, memorySeconds: 3_600, kvSeconds: 86_400 });
+const COINGECKO_COINS_KEY = cacheKey('coingecko-coins', COINGECKO_COINS_CACHE, new URLSearchParams());
+
+type CoinsRead = Readonly<{ ok: true; coins: readonly CoinGeckoCoin[] }> | Readonly<{ ok: false; answer: RouteAnswer }>;
+
+/** The one read of CoinGecko's list with the owner's key (O6); a good list becomes the shared copy. */
+async function fetchCoinGeckoCoins({ env, upstream, now, waitUntil }: RouteContext, key: string): Promise<CoinsRead> {
+  const { url, headers } = coinNamesRequest(coinDataPlan(env.COIN_DATA_PLAN), key);
+  const result = await upstream(url, { accept: 'application/json', headers, maxBytes: COIN_NAMES_MAX_BYTES, readErrorBody: true });
+  if (!result.ok) return { ok: false, answer: coinGeckoFailure(result) };
+  const coins = decodeCoinGeckoMarkets(result.text);
+  if (coins === null || coins.length === 0) return { ok: false, answer: { ok: false, reason: 'source-unavailable' } };
+  keep(COINGECKO_COINS_KEY, { storedAt: now.toISOString(), data: coins }, COINGECKO_COINS_CACHE, env.KAIROS_API_CACHE, now.getTime(), waitUntil);
+  return { ok: true, coins };
+}
+
+/**
+ * The logo addresses of these coins: from the shared copy when there is a good one (any coin route may have read it),
+ * else from one read of the list.
+ */
+async function coinGeckoImages(context: RouteContext, key: string, symbols: readonly string[]): Promise<Readonly<{ ok: true; images: ReadonlyMap<string, string> }> | Readonly<{ ok: false; answer: RouteAnswer }>> {
+  const hit = await readCached(COINGECKO_COINS_KEY, COINGECKO_COINS_CACHE, context.env.KAIROS_API_CACHE, context.now.getTime());
+  const kept = hit === null ? null : keptCoinGeckoImages(hit.stored.data, symbols);
+  if (kept !== null) return { ok: true, images: kept };
+  const read = await fetchCoinGeckoCoins(context, key);
+  if (!read.ok) return read;
+  const asked = new Set(symbols);
+  return { ok: true, images: new Map(read.coins.flatMap((coin) => (coin.image === undefined || !asked.has(coin.symbol) ? [] : [[coin.symbol, coin.image] as const]))) };
+}
+
+/** The owner's CoinGecko key (O6), or null: not set up. */
+const coinDataKey = (env: KairosApiEnv): string | null => (env.COIN_DATA_API_KEY === undefined || env.COIN_DATA_API_KEY === '' ? null : env.COIN_DATA_API_KEY);
 
 /** U14 (D255): coin names for the symbol search, only with the owner's CoinGecko key (O6); never a guessed name. */
 const marketCoinNamesRoute: KairosApiRoute = {
@@ -209,17 +283,77 @@ const marketCoinNamesRoute: KairosApiRoute = {
   query: {},
   upstreamHosts: [COINGECKO_DEMO_HOST, COINGECKO_PRO_HOST],
   cache: MARKET_COIN_NAMES_CACHE,
-  async handle({ env, upstream, now }) {
-    const key = env.COIN_DATA_API_KEY;
+  async handle(context) {
+    const key = coinDataKey(context.env);
     // Not set up until the owner adds the key (O6): said as such, never as an empty list.
-    if (key === undefined || key === '') return { ok: false, reason: 'not-set-up' };
-    const { url, headers } = coinNamesRequest(coinDataPlan(env.COIN_DATA_PLAN), key);
-    const result = await upstream(url, { accept: 'application/json', headers, maxBytes: COIN_NAMES_MAX_BYTES, readErrorBody: true });
-    if (!result.ok) return coinGeckoFailure(result);
-    const names = decodeCoinGeckoMarkets(result.text);
-    if (names === null || names.length === 0) return { ok: false, reason: 'source-unavailable' };
-    return { ok: true, data: { source: 'coingecko', fetchedAt: now.toISOString(), names } };
+    if (key === null) return { ok: false, reason: 'not-set-up' };
+    // This answer's own copy has run out, so the list is read fresh (a kept list would make the names older still); the
+    // read becomes the shared copy the logos use.
+    const read = await fetchCoinGeckoCoins(context, key);
+    if (!read.ok) return read.answer;
+    const names = coinNamesOf(read.coins);
+    if (names.length === 0) return { ok: false, reason: 'source-unavailable' };
+    return { ok: true, data: { source: 'coingecko', fetchedAt: context.now.toISOString(), names } };
   },
 };
 
-export const MARKET_ROUTES: readonly KairosApiRoute[] = Object.freeze([marketSymbolsRoute, marketTickersRoute, marketCandlesRoute, marketCoinNamesRoute]);
+/**
+ * T-061f (D272): at most 10 coins a request (the app asks Home's 30 markets in three), each logo at most 32 KB. The cap
+ * keeps a miss inside the Free plan's 10 ms of CPU (README, O10). Measured cold in Node 22 (review r1): reading the
+ * list, only when the shared copy is missing, 1.6–3.8 ms for CoinGecko's 250 rows (188 KB; 4.6–7.8 ms before the
+ * logo address was checked by one pattern); one answer of at most 10 × 44 KB of JSON, about 2.3–3 ms; the base64 is the
+ * runtime's own (`toBase64`). So about 4–7 ms at worst; the Worker's own CPU is UNVERIFIED until a deploy.
+ */
+export const MAX_COIN_LOGOS = 10;
+export const COIN_LOGO_MAX_BYTES = 32_768;
+/**
+ * A logo address changes when the coin changes its logo, rarely: 30 days in Workers Cache (and the browser); never in
+ * memory (its JSON text would cost CPU on every miss, and the edge copy answers repeats) or KV (the question varies).
+ */
+export const MARKET_COIN_LOGOS_CACHE: RouteCachePolicy = Object.freeze({ version: 1, edgeSeconds: 2_592_000, memorySeconds: 0, kvSeconds: null });
+/** An answer missing a logo that could not be read just now (down, busy or too slow): an hour, so a later visit gets it. */
+export const MARKET_COIN_LOGOS_SHORT_CACHE: RouteCachePolicy = Object.freeze({ version: 1, edgeSeconds: 3_600, memorySeconds: 0, kvSeconds: null });
+
+/**
+ * T-061f (D272): the logos of up to 10 coins, as data addresses. The list (the shared copy, or one read) gives each
+ * coin's logo address on CoinGecko's image host; each logo is read from that host only, as bytes, at most 32 KB, and
+ * kept only when its first bytes are PNG, JPEG or WebP. A coin without a sure logo is left out. No request value
+ * becomes an address: the symbols only pick rows of CoinGecko's own list.
+ */
+const marketCoinLogosRoute: KairosApiRoute = {
+  id: 'market-coin-logos',
+  path: '/market/coin-logos',
+  access: 'public',
+  rateLimited: true,
+  query: { symbols: { pattern: /^[A-Z0-9]{1,20}(?:,[A-Z0-9]{1,20}){0,9}$/, required: true } },
+  maxQueryLength: 512,
+  upstreamHosts: [COINGECKO_DEMO_HOST, COINGECKO_PRO_HOST, COINGECKO_IMAGE_HOST],
+  cache: MARKET_COIN_LOGOS_CACHE,
+  async handle(context) {
+    const list = (context.query.get('symbols') ?? '').split(',');
+    // Strictly ascending (so no repeats): one order means one cache key for every device.
+    if (list.length > MAX_COIN_LOGOS || list.some((symbol, index) => index > 0 && !(list[index - 1]! < symbol))) return { ok: false, reason: 'bad-request' };
+    const key = coinDataKey(context.env);
+    if (key === null) return { ok: false, reason: 'not-set-up' };
+    const read = await coinGeckoImages(context, key, list);
+    if (!read.ok) return read.answer;
+    const addresses = read.images;
+    let missed = false;
+    const logos = await Promise.all(list.map(async (symbol) => {
+      const address = addresses.get(symbol);
+      if (address === undefined) return null;
+      const result = await context.upstreamBytes(address, { accept: 'image/png, image/jpeg, image/webp', maxBytes: COIN_LOGO_MAX_BYTES });
+      if (!result.ok) {
+        // Down, busy or too slow may pass; a redirect, a refusal or a logo too big will not.
+        if (result.failure === 'timeout' || result.failure === 'network' || (result.failure === 'status' && (result.status === 429 || (result.status ?? 0) >= 500))) missed = true;
+        return null;
+      }
+      const image = coinLogoDataAddress(result.bytes);
+      return image === null ? null : Object.freeze({ symbol, image });
+    }));
+    const data = { source: 'coingecko', fetchedAt: context.now.toISOString(), logos: logos.filter((logo) => logo !== null) };
+    return missed ? { ok: true, data, cache: MARKET_COIN_LOGOS_SHORT_CACHE } : { ok: true, data };
+  },
+};
+
+export const MARKET_ROUTES: readonly KairosApiRoute[] = Object.freeze([marketSymbolsRoute, marketTickersRoute, marketMovesRoute, marketCandlesRoute, marketCoinNamesRoute, marketCoinLogosRoute]);

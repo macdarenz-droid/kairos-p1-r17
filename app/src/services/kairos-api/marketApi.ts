@@ -1,9 +1,11 @@
 /**
- * U2 (P16.A1): the app's market data from the Kairos server (/market/symbols, /market/tickers, /market/candles).
+ * U2 (P16.A1): the app's market data from the Kairos server (/market/symbols, /market/tickers, /market/candles,
+ * T-061e's /market/moves, U14's /market/coin-names and T-061f's /market/coin-logos).
  * Transport and strict decoding only, over the one server client (kairosApi.ts): the server-backed market ports, the
  * device copy of the market list, and what a server failure means (`why`). The words are onlineWords.ts's.
  */
 import { decimalCompare } from '../../domain/calculations/decimalKernel';
+import { COIN_SYMBOL, parseCoinLogoAddress, type CoinLogoAddress } from '../../domain/market/coinLogo';
 import { parseDecimalString, parsePositiveDecimalString, type DecimalString } from '../../domain/trades';
 import type { LiveMarketSummaryBaselineAcquisitionPort, LiveMarketSummaryBaselineAcquisitionResult } from '../market-data/LiveMarketSummaryBaselineAcquisitionPort';
 import type { LiveMarketUniverseInstrumentMetadataAcquisitionPort, LiveMarketUniverseInstrumentMetadataAcquisitionResult } from '../market-data/LiveMarketUniverseInstrumentMetadataAcquisitionPort';
@@ -11,6 +13,7 @@ import type { LiveMarketUniverseInstrumentMetadataFact } from '../market-data/li
 import { validateLiveMarketSummaryBaselineSuccess } from '../market-data/liveMarketSummaryBaselineAcquisitionSemantics';
 import { validateLiveMarketSummaryFact } from '../market-data/liveMarketSummaryFactSemantics';
 import type { MarketCandle, MarketCandleHistoryPort, MarketCandleHistoryRequest, MarketCandleOrigin } from '../market-data/MarketCandleHistoryPort';
+import type { MarketMove, MarketMovesPort, MarketMovesResult, MarketMovesWindow } from '../market-data/MarketMovesPort';
 import { BINANCE_USDM_VENUE, OANDA_FOREX_VENUE, type LiveMarketSummaryFact, type MarketDataUnavailable, type MarketDataUnavailableWhy } from '../market-data/marketDataTypes';
 import type { KairosApiClient, KairosApiFailure, KairosApiQuery } from './kairosApi';
 
@@ -30,6 +33,8 @@ export const COIN_NAMES_STORE_KEY = '/kairos-market-list/coin-names';
 export const COIN_NAMES_FRESH_MS = 24 * 60 * 60 * 1000;
 export const COIN_NAMES_KEEP_MS = 7 * 24 * 60 * 60 * 1000;
 export const COIN_NAMES_MAX = 250;
+/** T-061e review r2: a failed coin-names ask (not "not set up") is not asked again for 10 minutes, or the server's wait if longer. */
+export const COIN_NAMES_FAILURE_KEEP_MS = 10 * 60 * 1000;
 const SPOT_VENUE = 'binance-spot';
 
 export interface ServerMarket {
@@ -107,6 +112,24 @@ export function decodeMarketTickers(data: unknown, requested: readonly string[])
     facts.push(Object.freeze(validated.fact));
   }
   return Object.freeze(facts);
+}
+
+/**
+ * T-061e (D271): the /market/moves data for this window as moves in the requested order, with the server's read time;
+ * null for any fault (the batch is unreadable).
+ */
+export function decodeMarketMoves(data: unknown, requested: readonly string[], window: MarketMovesWindow): Readonly<{ fetchedAt: string; moves: readonly MarketMove[] }> | null {
+  if (!isRecord(data) || data.source !== 'binance-spot' || data.window !== window || !isCanonicalIso(data.fetchedAt) || !Array.isArray(data.moves)) return null;
+  const rows = data.moves as unknown[];
+  if (rows.length !== requested.length) return null;
+  const moves: MarketMove[] = [];
+  for (const [index, item] of rows.entries()) {
+    if (!isRecord(item) || item.symbol !== requested[index] || !isCanonicalIso(item.openTime) || !isCanonicalIso(item.closeTime) || Date.parse(item.openTime) > Date.parse(item.closeTime)) return null;
+    const open = nonNegative(item.openPrice), last = nonNegative(item.lastPrice);
+    if (open === null || last === null) return null;
+    moves.push(Object.freeze({ symbol: requested[index]!, open, last }));
+  }
+  return Object.freeze({ fetchedAt: data.fetchedAt, moves: Object.freeze(moves) });
 }
 
 const PROVIDERS = ['binance', 'okx'] as const;
@@ -247,6 +270,8 @@ export interface KairosMarketDataPorts {
   readonly history: MarketCandleHistoryPort;
   readonly metadata: LiveMarketUniverseInstrumentMetadataAcquisitionPort;
   readonly baseline: LiveMarketSummaryBaselineAcquisitionPort;
+  /** T-061e (D271): the 1-hour and 7-day moves. */
+  readonly moves: MarketMovesPort;
 }
 
 export interface KairosMarketDataPortOptions {
@@ -387,7 +412,27 @@ export function createKairosMarketDataPorts(client: KairosApiClient, options: Ka
     },
   };
 
-  return Object.freeze({ history, metadata, baseline });
+  const moves: MarketMovesPort = {
+    async acquireMoves({ symbols, window }, callerOptions): Promise<MarketMovesResult> {
+      const signal = callerOptions?.signal;
+      const bySymbol = new Map<string, MarketMove>();
+      let observedAt: string | null = null;
+      // One ascending order means one cache key for every device (the server refuses any other order).
+      const ascending = [...new Set(symbols)].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+      for (const batch of tickerBatches(ascending)) {
+        if (signal?.aborted) return unavailable(isOnline() ? 'source-down' : 'offline');
+        const result = await client.request('/market/moves', { symbols: batch.join(','), window }, (data) => decodeMarketMoves(data, batch, window), signal === undefined ? undefined : { signal });
+        if (!result.ok) return failed(result);
+        for (const move of result.value.moves) bySymbol.set(move.symbol, move);
+        // The oldest read of the batches: freshness is never made better than it is.
+        if (observedAt === null || Date.parse(result.value.fetchedAt) < Date.parse(observedAt)) observedAt = result.value.fetchedAt;
+      }
+      if (observedAt === null) return unavailable('unreadable');
+      return Object.freeze({ ok: true as const, observedAt, moves: Object.freeze(symbols.map(symbol => bySymbol.get(symbol) as MarketMove)) });
+    },
+  };
+
+  return Object.freeze({ history, metadata, baseline, moves });
 }
 
 /** U14 (D255): a coin's name by its symbol (BTC → Bitcoin), as the server checked it. */
@@ -396,7 +441,6 @@ export interface ServerCoinName {
   readonly name: string;
 }
 
-const COIN_SYMBOL = /^[A-Z0-9]{1,20}$/;
 // Control characters are never part of a name.
 const CONTROL = /[\u0000-\u001f\u007f-\u009f]/;
 
@@ -431,6 +475,13 @@ export function createKairosCoinNames(client: KairosApiClient, options: Readonly
   const isOnline = options.isOnline ?? (() => globalThis.navigator?.onLine !== false);
   let session: { readonly names: ReadonlyMap<string, string>; readonly storedAt: number } | null = null;
   let inFlight: Promise<CoinNamesResult> | null = null;
+  /**
+   * T-061e review r1, r2: an answer that was not new names is kept, as Home asks on every visit and each ask counts
+   * against the server's limit: "not set up" (no owner's key) for this visit; any other failure, or the device copy used
+   * after one, for 10 minutes (or the server's wait, if longer), so one timeout never turns names off until a reload.
+   * A failure while offline reached no server and is not kept.
+   */
+  let kept: { readonly result: CoinNamesResult; readonly until: number } | null = null;
   const ageOk = (storedAt: number, limit: number) => { const age = now() - storedAt; return age >= 0 && age <= limit; };
   const readCopy = async (): Promise<{ readonly storedAt: number; readonly names: readonly ServerCoinName[] } | null> => {
     const text = (await options.store?.read()) ?? null;
@@ -451,11 +502,15 @@ export function createKairosCoinNames(client: KairosApiClient, options: Readonly
     }
     const failure = result.ok ? unavailable('unreadable') : marketDataUnavailableOf(result, isOnline);
     const copy = await readCopy();
-    return copy !== null && ageOk(copy.storedAt, COIN_NAMES_KEEP_MS) ? { ok: true, names: coinNamesMap(copy.names) } : failure;
+    const answer: CoinNamesResult = copy !== null && ageOk(copy.storedAt, COIN_NAMES_KEEP_MS) ? { ok: true, names: coinNamesMap(copy.names) } : failure;
+    if (failure.why === 'not-set-up') kept = { result: answer, until: Number.POSITIVE_INFINITY };
+    else if (failure.why !== 'offline') kept = { result: answer, until: now() + Math.max(COIN_NAMES_FAILURE_KEEP_MS, (failure.retryAfterSeconds ?? 0) * 1000) };
+    return answer;
   };
   return Object.freeze({
     async coinNames(callerOptions?: Readonly<{ signal?: AbortSignal }>): Promise<CoinNamesResult> {
       if (session !== null && ageOk(session.storedAt, COIN_NAMES_FRESH_MS)) return { ok: true, names: session.names };
+      if (kept !== null && now() < kept.until) return kept.result;
       if (inFlight === null) {
         const copy = await readCopy();
         if (copy !== null && ageOk(copy.storedAt, COIN_NAMES_FRESH_MS)) {
@@ -473,6 +528,52 @@ export function createKairosCoinNames(client: KairosApiClient, options: Readonly
         signal.addEventListener('abort', stop, { once: true });
         void shared.then((result) => { signal.removeEventListener('abort', stop); resolve(result); });
       });
+    },
+  });
+}
+
+/** T-061f (D272): the most coins one /market/coin-logos request may name (the server's limit, which keeps its CPU low). */
+export const COIN_LOGOS_MAX_COINS = 10;
+
+/**
+ * The /market/coin-logos data for the coins asked (A→Z): each logo for a coin asked, once, A→Z, and a checked data
+ * address (parseCoinLogoAddress); a coin the server has no logo for is simply not there. Null for any fault: one bad
+ * logo makes the whole answer unreadable.
+ */
+export function decodeCoinLogos(data: unknown, requested: readonly string[]): ReadonlyMap<string, CoinLogoAddress> | null {
+  if (!isRecord(data) || data.source !== 'coingecko' || !isCanonicalIso(data.fetchedAt) || !Array.isArray(data.logos) || data.logos.length > requested.length) return null;
+  const asked = new Set(requested);
+  const logos = new Map<string, CoinLogoAddress>();
+  let previous = '';
+  for (const item of data.logos as unknown[]) {
+    if (!isRecord(item) || typeof item.symbol !== 'string' || !asked.has(item.symbol) || !(previous < item.symbol)) return null;
+    const image = parseCoinLogoAddress(item.image);
+    if (image === null) return null;
+    logos.set(item.symbol, image);
+    previous = item.symbol;
+  }
+  return logos;
+}
+
+export type CoinLogosResult = Readonly<{ ok: true; logos: ReadonlyMap<string, CoinLogoAddress> }> | MarketDataUnavailable;
+
+export interface KairosCoinLogos {
+  /**
+   * The logos the Kairos server has for these coins, in one request: only coins of A–Z and 0–9, each once, the first
+   * 10 of them, asked A→Z (one order, one cache key for every device). No coin to ask: an empty answer, no request.
+   */
+  coinLogos(coins: readonly string[], options?: Readonly<{ signal?: AbortSignal }>): Promise<CoinLogosResult>;
+}
+
+/** T-061f (D272): the coin logos from the Kairos server; transport and checks only (application/markets/coinLogos.ts keeps them). */
+export function createKairosCoinLogos(client: KairosApiClient, options: Readonly<{ isOnline?: () => boolean }> = {}): KairosCoinLogos {
+  const isOnline = options.isOnline ?? (() => globalThis.navigator?.onLine !== false);
+  return Object.freeze({
+    async coinLogos(coins: readonly string[], callerOptions?: Readonly<{ signal?: AbortSignal }>): Promise<CoinLogosResult> {
+      const asked = [...new Set(coins.filter(coin => COIN_SYMBOL.test(coin)))].slice(0, COIN_LOGOS_MAX_COINS).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+      if (asked.length === 0) return Object.freeze({ ok: true as const, logos: new Map<string, CoinLogoAddress>() });
+      const result = await client.request('/market/coin-logos', { symbols: asked.join(',') }, data => decodeCoinLogos(data, asked), callerOptions?.signal === undefined ? undefined : { signal: callerOptions.signal });
+      return result.ok ? Object.freeze({ ok: true as const, logos: result.value }) : marketDataUnavailableOf(result, isOnline);
     },
   });
 }

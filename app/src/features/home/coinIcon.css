@@ -1,0 +1,3 @@
+/* T-061f (D272): a coin's mark, sized by its place's font size: the logo or the drawn mark fills 1em. */
+.kairos-coin-icon > svg, .kairos-coin-icon > img { display: block; width: 1em; height: 1em; }
+.kairos-coin-icon > img { object-fit: contain; user-select: none; }

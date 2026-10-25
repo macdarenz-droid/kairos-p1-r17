@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { MemoryRouter } from 'react-router';
 import { PracticeRoute } from '../src/app/PracticeRoute';
 import { listJournalHistory } from '../src/application/journal';
-import { loadHomeYourTrades } from '../src/application/dashboard/homeDashboardYourTradesQuery';
+import { homeYourTradesAllTime } from './fixtures/homeYourTrades';
 import { saveManualTrade } from '../src/application/trades';
 import { createKairosDatabase, openKairosDatabase } from '../src/data/database';
 
@@ -38,7 +38,8 @@ describe('P29.3 Practice route', () => {
     expect(screen.getByLabelText(/Symbol/)).toHaveValue('');
     expect(route().querySelector('.kairos-history-card__topline strong')!.textContent).toBe('ETHUSDT');
     expect((await listJournalHistory(db)).map(entry => entry.trade.symbol)).toEqual(['BTCUSDT']);
-    expect((await loadHomeYourTrades(db)).map(trade => trade.id)).toHaveLength(1);
+    // T-061d (D270): Home shows closed real trades only: the open BTCUSDT is not there yet, and the closed practice ETHUSDT never is.
+    expect((await homeYourTradesAllTime(db)).map(trade => trade.symbol)).toEqual([]);
   });
 
   it('refuses an incomplete practice trade in plain words, keeps the form and writes nothing', async () => {

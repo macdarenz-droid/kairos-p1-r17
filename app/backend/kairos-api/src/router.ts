@@ -8,7 +8,7 @@ import { cacheControlFor, cacheKey, keep, readCached, type RouteCachePolicy } fr
 import { checkDevice, KAIROS_DEVICE_HEADER, type DeviceCheck } from './device';
 import type { KairosApiEnv } from './env';
 import { isAllowedOrigin, okResponse, parseAllowedOrigins, preflightResponse, unavailableResponse, type UnavailableReason } from './http';
-import { createUpstreamFetch, UpstreamHostRefused, type UpstreamFetch } from './upstream';
+import { createUpstreamBytesFetch, createUpstreamFetch, UpstreamHostRefused, type UpstreamBytesFetch, type UpstreamFetch } from './upstream';
 
 export interface QueryRule { readonly pattern: RegExp; readonly required: boolean }
 
@@ -22,7 +22,11 @@ export interface RouteContext {
   readonly env: KairosApiEnv;
   readonly device: DeviceCheck;
   readonly upstream: UpstreamFetch;
+  /** T-061f: the same hosts, read as bytes (an image). */
+  readonly upstreamBytes: UpstreamBytesFetch;
   readonly now: Date;
+  /** Work that may finish after the answer (a KV write); it never fails the request. */
+  readonly waitUntil: (promise: Promise<unknown>) => void;
 }
 
 export interface KairosApiRoute {
@@ -114,7 +118,10 @@ export async function handleKairosApiRequest(request: Request, env: KairosApiEnv
         return response;
       }
     }
-    const answer = await route.handle({ query: url.searchParams, env, device, upstream: createUpstreamFetch(route.upstreamHosts, options.fetchImpl), now });
+    const answer = await route.handle({
+      query: url.searchParams, env, device, now, waitUntil: (promise) => ctx.waitUntil(promise),
+      upstream: createUpstreamFetch(route.upstreamHosts, options.fetchImpl), upstreamBytes: createUpstreamBytesFetch(route.upstreamHosts, options.fetchImpl),
+    });
     if (!answer.ok) return fail(answer.reason, answer.retryAfter);
     // An answer's own policy must belong to the route's cache (same version); anything else is a bug.
     if (answer.cache !== undefined && (route.cache === null || answer.cache.version !== route.cache.version)) return fail('service-error');

@@ -2,6 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { createPrivateKey, sign } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { FIXED_BTC_LOGO, openKairos } from './qaSession';
 
 const ACTIVATION_URL = 'https://activation.qa.invalid/v1/activate';
 
@@ -94,9 +95,19 @@ test('(c) log a closed trade, find it in Your Trades and open it in Analysis', a
 
   await page.goto('/');
   await page.getByRole('button', { name: 'Your Trades' }).click();
+  // T-061d (D270): the trade closed on 20 September, before this month (the real clock): "All time" shows it, and the
+  // bubble itself opens the trade's page (no "View trade" panel). The address keeps the view and the period.
+  const yourTrades = page.getByRole('region', { name: 'Your Trades' });
+  await yourTrades.getByRole('group', { name: 'Trades closed in' }).getByRole('button', { name: 'All time' }).click();
+  await expect(page).toHaveURL(/\/\?view=trades&period=all$/);
+  const bubble = yourTrades.getByRole('link', { name: /^BTCUSDT long, closed 20 Sep(?: 2026)?, result after fees \+150 USDT$/ });
+  await expect(bubble).toHaveAttribute('data-movement', 'positive');
+  const yourTradesAxe = await new AxeBuilder({ page }).include('.kairos-your-trades').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(yourTradesAxe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await expect(page.getByRole('link', { name: 'View trade' })).toHaveCount(0);
   // The bubbles float, so a normal click never settles; dispatch the click directly.
-  await page.getByRole('button', { name: /BTCUSDT, long, Profit/ }).dispatchEvent('click');
-  await page.getByRole('link', { name: 'View trade' }).or(page.getByRole('button', { name: 'View trade' })).first().click();
+  await bubble.dispatchEvent('click');
 
   // U15 (D260): the trade's own page, then the same trade on the market chart.
   await expect(page).toHaveURL(/\/journal\/trades\//);
@@ -106,6 +117,13 @@ test('(c) log a closed trade, find it in Your Trades and open it in Analysis', a
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   const tradePageAxe = await new AxeBuilder({ page }).include('main').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
   expect(tradePageAxe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+  // D270: Back returns to the same bubbles: "Your Trades", all time.
+  await page.goBack();
+  await expect(page).toHaveURL(/\/\?view=trades&period=all$/);
+  await expect(yourTrades.getByRole('group', { name: 'Trades closed in' }).getByRole('button', { name: 'All time' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(bubble).toBeVisible();
+  await page.goForward();
+  await expect(page.getByRole('heading', { level: 1, name: 'BTCUSDT · Long' })).toBeVisible();
   await page.getByRole('link', { name: 'See it on the market chart' }).click();
   await expect(page).toHaveURL(/\/analysis\?trade=/);
   await expect(page.getByText('Recorded result')).toBeVisible();
@@ -775,6 +793,7 @@ test('(q) Market data through the Kairos server: sources on the pictures, the re
   const minute = 60_000;
   const intervalMs: Record<string, number> = { '1m': minute, '3m': 3 * minute, '5m': 5 * minute, '15m': 15 * minute, '30m': 30 * minute, '1h': 60 * minute, '2h': 120 * minute, '4h': 240 * minute, '6h': 360 * minute, '8h': 480 * minute, '12h': 720 * minute, '1d': 1_440 * minute };
   const candleCalls: string[] = [];
+  const movesAsked: string[] = [];
   // ETH's source says it is busy until the test lets it answer: the Journal's row may ask first (U15), and its failed
   // read is never kept, so the trade's page asks again and must hear the same reason.
   let ethBusy = true;
@@ -797,6 +816,16 @@ test('(q) Market data through the Kairos server: sources on the pictures, the re
         volume: '1000', quoteVolume: index === 0 ? '61000000' : '2450000', openTime: new Date(now - 86_400_000).toISOString(), closeTime: new Date(now).toISOString(),
       }));
       return route.fulfill({ headers: cors, contentType: 'application/json', body: serverAnswer({ source: 'binance-spot', fetchedAt, tickers }) });
+    }
+    // T-061e (D271): the 1-hour and 7-day moves, one request for every market on the map.
+    if (url.pathname === '/market/moves') {
+      const window = url.searchParams.get('window') ?? '';
+      movesAsked.push(`${window} ${url.searchParams.get('symbols')}`);
+      const openTime = new Date(Date.now() - (window === '1h' ? 3_600_000 : 604_800_000)).toISOString();
+      const moves = (url.searchParams.get('symbols') ?? '').split(',').map(symbol => ({
+        symbol, openPrice: symbol === 'BTCUSDT' ? (window === '1h' ? '60500' : '64000') : '2400', lastPrice: symbol === 'BTCUSDT' ? '61000' : '2450', openTime, closeTime: fetchedAt,
+      }));
+      return route.fulfill({ headers: cors, contentType: 'application/json', body: serverAnswer({ source: 'binance-spot', window, fetchedAt, moves }) });
     }
     if (url.pathname !== '/market/candles') return route.abort();
     const market = url.searchParams.get('market'), symbol = url.searchParams.get('symbol') ?? '', interval = url.searchParams.get('interval') ?? '';
@@ -885,10 +914,42 @@ test('(q) Market data through the Kairos server: sources on the pictures, the re
   await closePicture();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 
+  // Still bubbles under reduced motion, so a real tap lands on one (they float otherwise).
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
   await expect(page.locator('.kairos-glass-bubble[data-identity="BTC"]')).toBeVisible({ timeout: 15_000 });
   await expect(page.locator('.kairos-glass-bubble[data-identity="ETH"]')).toBeVisible();
   await expect(page.getByText('Unavailable · Live prices', { exact: false })).toHaveCount(0);
+
+  // T-061e (D271): "24 hours" asks for nothing more; "1 hour" sizes and names the bubbles by that move, in one request.
+  expect(movesAsked).toEqual([]);
+  const periods = page.getByRole('group', { name: 'Size by the move in' });
+  await expect(periods.getByRole('button', { name: '24 hours' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByText(/^Prices updated (just now|\d+ s ago)$/)).toBeVisible();
+  await periods.getByRole('button', { name: '1 hour' }).click();
+  const btc = page.getByRole('button', { name: 'BTC, up 0.8% in 1 hour. Show details' });
+  await expect(btc).toBeVisible();
+  expect(movesAsked).toEqual(['1h BTCUSDT,ETHUSDT']);
+  // A tap on BTC opens its sheet: the price, the three moves, the line of the last hour and "Open chart".
+  await btc.tap();
+  const sheet = page.getByRole('dialog', { name: 'BTC' });
+  await expect(sheet.getByText('Price 61000 USDT')).toBeVisible();
+  await expect(sheet.locator('li').filter({ hasText: '1 hour' })).toContainText('▲ 0.8%');
+  await expect(sheet.locator('li').filter({ hasText: '24 hours' })).toContainText('▲ 1.7%');
+  await expect(sheet.locator('li').filter({ hasText: '7 days' })).toContainText('▼ 4.7%');
+  await expect(sheet.getByRole('img', { name: /^Price over the last hour, from \d+ to \d+$/ })).toBeVisible();
+  const sheetAxe = await new AxeBuilder({ page }).include('.kairos-sheet__panel').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(sheetAxe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  // Escape closes it and the focus is back on the bubble that opened it.
+  await page.keyboard.press('Escape');
+  await expect(sheet).toHaveCount(0);
+  await expect(btc).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(sheet).toBeVisible();
+  await sheet.getByRole('link', { name: 'Open chart' }).click();
+  await expect(page).toHaveURL(/\/analysis\?market=binance-spot%3ABTCUSDT$/);
+  await expect(page.getByRole('group', { name: /^BTCUSDT .*candlestick chart$/ })).toBeVisible({ timeout: 15_000 });
   expect(errors).toEqual([]);
 });
 
@@ -2303,5 +2364,125 @@ test('(ah) Search and filters in the address: your BTC losses in March, with wha
   await expect(rows).toHaveCount(2);
   await expect(page.getByRole('group', { name: 'Filters in use' }).getByText('Mistake: Moved my stop')).toBeVisible();
   await expect(page.getByText('2 trades · won 0 · lost 2 · result after fees -6 USDT')).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('(ai) Home opens with "Today": a trade closed today and an open trade with its plan and the price now, on a fixed clock', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  // 15 October 2026 at 12:00 in Manila (the phone's zone), whatever day the test runs on. T-061c: the fake server
+  // answers 1-minute candles, so the open trade has a price now (ETHUSDT at 2450).
+  await openKairos(page, { fixedClock: '2026-10-15T04:00:00.000Z', server: 'fixed-market' });
+  const today = page.getByRole('region', { name: 'Today' });
+  await expect(today.getByText('Your day shows here once you log a trade.')).toBeVisible();
+  // D269: the news shows before the first trade too.
+  await expect(today.getByText('No big news in the next 14 days.')).toBeVisible();
+  // D267: the header is shown again, above "Today".
+  const header = page.getByRole('heading', { level: 1, name: 'Home' });
+  expect((await header.boundingBox())?.height ?? 0).toBeGreaterThan(16);
+  await expect(page.getByText("How you're doing today, and the markets now.")).toBeVisible();
+
+  // A trade closed today: +150 USDT.
+  await page.goto('/journal');
+  await page.getByLabel(/^Symbol/).fill('BTCUSDT');
+  await page.getByLabel(/^Market/).selectOption('crypto');
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Status/).selectOption('closed');
+  await page.locator('#kairos-trade-opened-at').fill('2026-10-15T09:00');
+  await page.locator('#kairos-trade-closed-at').fill('2026-10-15T10:00');
+  await page.getByLabel('Currency code').fill('USDT');
+  await page.getByRole('button', { name: 'Add entry' }).click();
+  await page.getByLabel('Entry 1 price').fill('60000');
+  await page.getByLabel('Entry 1 quantity').fill('0.1');
+  await page.getByLabel('Entry 1 date and time').fill('2026-10-15T09:00');
+  await page.getByRole('button', { name: 'Add exit' }).click();
+  await page.getByLabel('Exit 2 price').fill('61500');
+  await page.getByLabel('Exit 2 quantity').fill('0.1');
+  await page.getByLabel('Exit 2 date and time').fill('2026-10-15T10:00');
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+
+  // An open trade from yesterday, with its stop and target.
+  await page.goto('/journal');
+  await page.getByLabel(/^Symbol/).fill('ETHUSDT');
+  await page.getByLabel(/^Market/).selectOption('crypto');
+  await page.getByLabel(/^Direction/).selectOption('long');
+  await page.getByLabel(/^Status/).selectOption('open');
+  await page.locator('#kairos-trade-opened-at').fill('2026-10-14T09:00');
+  await page.getByLabel('Currency code').fill('USDT');
+  await page.getByRole('button', { name: 'Add entry' }).click();
+  await page.getByLabel('Entry 1 price').fill('2500');
+  await page.getByLabel('Entry 1 quantity').fill('1');
+  await page.getByLabel('Entry 1 date and time').fill('2026-10-14T09:00');
+  await page.getByText('Trade plan · Optional').click();
+  await page.getByLabel('Planned stop').fill('2400');
+  await page.getByLabel('Planned target').fill('2800');
+  await page.getByRole('button', { name: 'Save trade' }).click();
+  await expect(page.getByText('Trade saved to your journal.')).toBeVisible();
+
+  await page.goto('/');
+  await expect(today.getByRole('heading', { level: 3, name: 'Open trades' })).toBeVisible();
+  await expect(today.locator('p').filter({ hasText: /^Today:/ })).toHaveText(/^Today: Profit\s*\+150 USDT · 1 trade$/);
+  await expect(today.locator('p').filter({ hasText: /^This month:/ })).toHaveText(/^This month: Profit\s*\+150 USDT · 1 trade$/);
+  await expect(today.getByText('15 October, today: won')).toHaveCount(1);
+  await expect(today.locator('[data-day-key="2026-10-15"]')).toHaveAttribute('data-day-result', 'profit');
+  await expect(today.getByText('Your coach: You reviewed 0 of your 1 closed trade this month.')).toBeVisible();
+  // D268: the price now under the open trade, with how it would stand if closed at it; it is in no total (above).
+  await expect(today.getByRole('listitem').filter({ hasText: 'ETHUSDT' }).locator('p'))
+    .toHaveText(/^Price now 2450 USDT \(market, not saved\) · If you closed now Loss\s*-50 USDT · -0\.5× what you risked$/);
+  await expect(today.locator('p').filter({ hasText: /^This month:/ })).toHaveText(/^This month: Profit\s*\+150 USDT · 1 trade$/);
+  // D269: no news saved yet, and the official schedules never fetched on this device.
+  await expect(today.getByText('No big news in the next 14 days.')).toBeVisible();
+  await expect(today.getByText("Kairos hasn't got the official schedules yet.")).toBeVisible();
+  const axe = await new AxeBuilder({ page }).include('.kairos-today').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(axe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+
+  // The open trade is one link to its own page.
+  await today.getByRole('link', { name: 'ETHUSDT · Long · in at 2500 · stop 2400 · target 2800' }).click();
+  await expect(page).toHaveURL(/\/journal\/trades\//);
+  await expect(page.getByRole('heading', { level: 1, name: 'ETHUSDT · Long' })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('(aj) Home: a real coin logo from the Kairos server, kept on the phone, and nothing from another host', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(`${page.url()}: ${error.message}`));
+  const hosts = new Set<string>();
+  const logosAsked: string[] = [];
+  page.on('request', request => {
+    const url = new URL(request.url());
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
+    hosts.add(url.host);
+    if (url.pathname === '/market/coin-logos') logosAsked.push(url.searchParams.get('symbols') ?? '');
+  });
+  // Still bubbles under reduced motion, so a real tap lands on one.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openKairos(page, { fixedClock: '2026-09-20T04:00:00.000Z', server: 'fixed-market' });
+  const btc = page.locator('.kairos-glass-bubble[data-identity="BTC"]');
+  const logo = btc.locator('.kairos-glass-icon img');
+  await expect(logo).toBeVisible({ timeout: 15_000 });
+  await expect(logo).toHaveAttribute('src', FIXED_BTC_LOGO);
+  await expect(logo).toHaveAttribute('alt', '');
+  // The browser drew it: a real 32 × 32 PNG.
+  expect(await logo.evaluate(image => (image as HTMLImageElement).complete ? (image as HTMLImageElement).naturalWidth : 0)).toBe(32);
+  await expect(page.locator('.kairos-glass-bubble[data-identity="ETH"] .kairos-glass-icon svg')).toBeVisible();
+  expect(logosAsked).toEqual(['BTC,ETH']);
+  // Its sheet shows it too, with CoinGecko's credit.
+  await btc.tap();
+  const sheet = page.getByRole('dialog', { name: 'BTC' });
+  await expect(sheet.locator('.kairos-market-sheet__icon img')).toHaveAttribute('src', FIXED_BTC_LOGO);
+  await expect(sheet.getByText('Coin logos and names: CoinGecko')).toBeVisible();
+  const sheetAxe = await new AxeBuilder({ page }).include('.kairos-sheet__panel').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(sheetAxe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+  await page.keyboard.press('Escape');
+  await expect(sheet).toHaveCount(0);
+  // Kept on the phone (Cache Storage, 30 days): the next visit shows it without asking again.
+  await page.reload();
+  await expect(logo).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('.kairos-glass-bubble[data-identity="ETH"]')).toBeVisible();
+  expect(logosAsked).toEqual(['BTC,ETH']);
+  // Nothing was asked of any host but the app, the Kairos server and the activation service: never CoinGecko.
+  expect([...hosts].filter(host => !['localhost:4317', 'api.qa.invalid', 'activation.qa.invalid'].includes(host))).toEqual([]);
   expect(errors).toEqual([]);
 });

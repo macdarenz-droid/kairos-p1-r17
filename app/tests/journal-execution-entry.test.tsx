@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { JournalRoute } from '../src/app/JournalRoute';
 import { createKairosDatabase, type KairosDatabase } from '../src/data/database';
-import { loadHomeYourTrades } from '../src/application/dashboard/homeDashboardYourTradesQuery';
+import { homeYourTradesAllTime } from './fixtures/homeYourTrades';
 import { prepareManualTradeExecutionDetails } from '../src/application/trades/manualTradeExecutionDraft';
 
 let db: KairosDatabase;
@@ -31,16 +31,16 @@ describe('Journal actual execution entry integration', () => {
     expect(screen.queryByLabelText('Entry 1 price')).toBeNull();
     expect(screen.getByLabelText(/Symbol/)).toHaveValue('');
     db.close(); await db.open();
-    expect((await loadHomeYourTrades(db))[0]).toMatchObject({ amount, resultLabel, currency: null });
+    expect((await homeYourTradesAllTime(db))[0]).toMatchObject({ amount, resultLabel, currency: null });
   });
   it('retains each partial exit and delegates the weighted result to P11', async () => {
     await start(); fill('entry', 1, '100', '2'); fill('exit', 2, '110', '0.5'); fill('exit', 3, '120', '1.5'); await save();
     expect(await db.tradeExecutions.count()).toBe(3);
-    expect((await loadHomeYourTrades(db))[0]).toMatchObject({ amount: '35', resultLabel: 'Profit' });
+    expect((await homeYourTradesAllTime(db))[0]).toMatchObject({ amount: '35', resultLabel: 'Profit' });
   });
   it('does not report a fully realized result when exit quantity is incomplete', async () => {
     await start(); fill('entry', 1, '100', '2'); fill('exit', 2, '120', '1'); await save();
-    expect((await loadHomeYourTrades(db))[0]).toMatchObject({ amount: null, resultLabel: 'Not available' });
+    expect((await homeYourTradesAllTime(db))[0]).toMatchObject({ amount: null, resultLabel: 'Not available' });
   });
   it('preserves invalid input and commits no aggregate until the save command validates it', async () => {
     await start(); fill('entry', 1, '100', '0');
@@ -66,7 +66,7 @@ describe('Journal actual execution entry integration', () => {
     fireEvent.change(screen.getByLabelText('Fee 1 amount'), { target: { value: '0.5' } });
     fireEvent.change(screen.getByLabelText('Fee 1 currency'), { target: { value: ' usdt ' } }); await save();
     expect(await db.tradeFees.toArray()).toEqual([expect.objectContaining({ amount: '0.5', currency: 'USDT' })]);
-    expect((await loadHomeYourTrades(db))[0]).toMatchObject({ amount: null, currency: null, resultLabel: 'Not available' });
+    expect((await homeYourTradesAllTime(db))[0]).toMatchObject({ amount: null, currency: null, resultLabel: 'Not available' });
   });
   it('rolls back the whole save on storage failure and keeps all form facts for retry', async () => {
     await start(); fill('entry', 1, '100', '2'); fill('exit', 2, '120', '2');

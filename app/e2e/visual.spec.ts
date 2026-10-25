@@ -21,7 +21,8 @@ test.use({ contextOptions: { reducedMotion: 'reduce' }, colorScheme: 'dark' });
 
 const THEMES = ['ink', 'paper', 'kairos-depth', 'cosmic', 'ocean'] as const;
 const SCREENS: readonly Readonly<{ name: string; path: string; firstContent: (page: Page) => Locator[] }>[] = [
-  { name: 'home', path: '/', firstContent: page => ['BTC', 'ETH'].map(symbol => page.locator(`.kairos-glass-bubble[data-identity="${symbol}"] canvas[data-glass-ready="true"]`)) },
+  // T-061b: "Today" sits under the header; a fresh journal shows its one line, and (T-061c) the next big news.
+  { name: 'home', path: '/', firstContent: page => [page.getByRole('region', { name: 'Today' }).getByText('Your day shows here once you log a trade.'), ...['BTC', 'ETH'].map(symbol => page.locator(`.kairos-glass-bubble[data-identity="${symbol}"] .kairos-glass-art[data-glass-ready="true"]`))] },
   { name: 'journal', path: '/journal', firstContent: page => [page.getByRole('combobox', { name: /^Symbol/ })] },
   { name: 'analysis', path: '/analysis', firstContent: page => [page.getByRole('combobox', { name: 'Period' }), page.getByRole('heading', { name: 'No closed trades in September 2026' })] },
   { name: 'analysis-chart', path: '/analysis?view=chart', firstContent: page => [page.locator('.kairos-symbol-picker [role="combobox"]').first()] },

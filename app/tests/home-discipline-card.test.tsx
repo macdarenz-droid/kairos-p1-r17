@@ -67,6 +67,25 @@ describe('T-033c Home "Your discipline and goals" card', () => {
     expect(screen.getByRole('img', { name: 'Discipline score: not available yet' })).toBeTruthy();
   });
 
+  it('T-061b (D267): leaves the month result to "Today"; a result goal alone points to the Goals page', async () => {
+    const db = await database();
+    await withZone(db);
+    const metadata = createKairosRepositories(db).metadata;
+    expect((await writeGoalsPreference(metadata, { monthlyResultTargetAmount: '100', monthlyResultTargetCurrency: 'USDT' }, now())).ok).toBe(true);
+    await closedWithFullChecklist(db);
+    render(<MemoryRouter><HomeDisciplineCard db={db} now={now} /></MemoryRouter>);
+    expect(await screen.findByText('Your result goal is on the Goals page.')).toBeTruthy();
+    expect(screen.queryByText(/Result this month/)).toBeNull();
+    expect(screen.queryByText('No goals set yet.')).toBeNull();
+    cleanup();
+
+    expect((await writeGoalsPreference(metadata, { tradesPerMonthTarget: '20', monthlyResultTargetAmount: '100', monthlyResultTargetCurrency: 'USDT' }, now())).ok).toBe(true);
+    render(<MemoryRouter><HomeDisciplineCard db={db} now={now} /></MemoryRouter>);
+    expect(await screen.findByText('Closed trades: 1 of 20')).toBeTruthy();
+    expect(screen.queryByText(/Result this month/)).toBeNull();
+    expect(screen.queryByText('Your result goal is on the Goals page.')).toBeNull();
+  });
+
   it('points to Settings without a time zone', async () => {
     const db = await database();
     render(<MemoryRouter><HomeDisciplineCard db={db} now={now} /></MemoryRouter>);

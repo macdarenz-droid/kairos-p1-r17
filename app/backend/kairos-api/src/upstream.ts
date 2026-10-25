@@ -2,6 +2,7 @@
  * U1: the only way the Kairos server reads another site. A route names its upstream hosts in the route table; this
  * fetcher refuses every other host, never follows a redirect, never forwards the caller's headers, gives up after a time
  * limit and refuses an answer over a byte cap. The Worker is never an open proxy: no request value ever becomes a host.
+ * Answers are read as text, or (T-061f, an image) as bytes with the same rules.
  */
 export const UPSTREAM_TIMEOUT_MS = 8_000;
 export const UPSTREAM_MAX_BYTES = 1_048_576;
@@ -32,39 +33,88 @@ export interface UpstreamRequest {
 
 export type UpstreamFetch = (url: string, request: UpstreamRequest) => Promise<UpstreamResult>;
 
+export type UpstreamFailure = Extract<UpstreamResult, { ok: false }>;
+
+/**
+ * T-061f (D272): an answer read as bytes, not text (an image). Its kind is never taken from its content-type: the caller
+ * checks the bytes themselves.
+ */
+export type UpstreamBytesResult = Readonly<{ ok: true; status: number; contentType: string; bytes: Uint8Array }> | UpstreamFailure;
+
+export interface UpstreamBytesRequest {
+  readonly accept: 'image/png, image/jpeg, image/webp';
+  /** Required: a bytes answer always has a route's own cap. */
+  readonly maxBytes: number;
+  readonly timeoutMs?: number;
+}
+
+export type UpstreamBytesFetch = (url: string, request: UpstreamBytesRequest) => Promise<UpstreamBytesResult>;
+
 /** A route asked for a host it did not list: a bug, answered as 'service-error' before any network use. */
 export class UpstreamHostRefused extends Error {}
 
-export function createUpstreamFetch(allowedHosts: readonly string[], fetchImpl: typeof fetch = (input, init) => fetch(input, init)): UpstreamFetch {
+type FetchImpl = typeof fetch;
+const defaultFetch: FetchImpl = (input, init) => fetch(input, init);
+
+/** The host rule, then one GET with only the route's own headers; a redirect or failed status is a failure. */
+async function send(
+  allowedHosts: readonly string[], fetchImpl: FetchImpl, rawUrl: string,
+  request: Readonly<{ accept: string; headers?: Readonly<Record<string, string>>; timeoutMs?: number; readErrorBody?: true }>,
+): Promise<Readonly<{ ok: true; response: Response; timeout: AbortSignal }> | UpstreamFailure> {
+  let url: URL;
+  try { url = new URL(rawUrl); } catch { throw new UpstreamHostRefused('not a URL'); }
+  if (url.protocol !== 'https:' || url.username !== '' || url.password !== '' || url.port !== '' || !allowedHosts.includes(url.hostname)) {
+    throw new UpstreamHostRefused(url.hostname);
+  }
+  const timeout = AbortSignal.timeout(request.timeoutMs ?? UPSTREAM_TIMEOUT_MS);
+  let response: Response;
+  try {
+    response = await fetchImpl(url.href, {
+      method: 'GET',
+      headers: { ...request.headers, accept: request.accept, 'user-agent': UPSTREAM_USER_AGENT },
+      redirect: 'manual',
+      signal: timeout,
+    });
+  } catch (error) {
+    return { ok: false, failure: error instanceof DOMException && error.name === 'TimeoutError' ? 'timeout' : 'network', status: null };
+  }
+  if (response.status >= 300 && response.status < 400) return discard(response, 'redirect', request);
+  if (!response.ok) return discard(response, 'status', request);
+  return { ok: true, response, timeout };
+}
+
+/** The body as bytes, refused past maxBytes (declared or read). */
+async function readBody(response: Response, timeout: AbortSignal, maxBytes: number, request: Readonly<{ readErrorBody?: true }>): Promise<Readonly<{ ok: true; bytes: Uint8Array }> | UpstreamFailure> {
+  const declared = Number.parseInt(response.headers.get('content-length') ?? '', 10);
+  if (Number.isFinite(declared) && declared > maxBytes) return discard(response, 'too-large', request);
+  const bytes = await readCapped(response, maxBytes);
+  if (bytes === null) return { ok: false, failure: 'too-large', status: response.status };
+  if (bytes === undefined) return { ok: false, failure: timedOut(timeout) ? 'timeout' : 'network', status: response.status };
+  return { ok: true, bytes };
+}
+
+export function createUpstreamFetch(allowedHosts: readonly string[], fetchImpl: FetchImpl = defaultFetch): UpstreamFetch {
   return async (rawUrl, request) => {
-    let url: URL;
-    try { url = new URL(rawUrl); } catch { throw new UpstreamHostRefused('not a URL'); }
-    if (url.protocol !== 'https:' || url.username !== '' || url.password !== '' || url.port !== '' || !allowedHosts.includes(url.hostname)) {
-      throw new UpstreamHostRefused(url.hostname);
-    }
-    const maxBytes = request.maxBytes ?? UPSTREAM_MAX_BYTES;
-    const timeout = AbortSignal.timeout(request.timeoutMs ?? UPSTREAM_TIMEOUT_MS);
-    let response: Response;
-    try {
-      response = await fetchImpl(url.href, {
-        method: 'GET',
-        headers: { ...request.headers, accept: request.accept, 'user-agent': UPSTREAM_USER_AGENT },
-        redirect: 'manual',
-        signal: timeout,
-      });
-    } catch (error) {
-      return { ok: false, failure: error instanceof DOMException && error.name === 'TimeoutError' ? 'timeout' : 'network', status: null };
-    }
-    if (response.status >= 300 && response.status < 400) return discard(response, 'redirect', request);
-    if (!response.ok) return discard(response, 'status', request);
+    const sent = await send(allowedHosts, fetchImpl, rawUrl, request);
+    if (!sent.ok) return sent;
+    const { response, timeout } = sent;
     const contentType = (response.headers.get('content-type') ?? '').toLowerCase();
     if (!contentType.includes(request.accept) && !(request.accept.endsWith('xml') && contentType.includes('xml'))) return discard(response, 'content-type', request);
-    const declared = Number.parseInt(response.headers.get('content-length') ?? '', 10);
-    if (Number.isFinite(declared) && declared > maxBytes) return discard(response, 'too-large', request);
-    const text = await readCapped(response, maxBytes);
-    if (text === null) return { ok: false, failure: 'too-large', status: response.status };
-    if (text === undefined) return { ok: false, failure: timedOut(timeout) ? 'timeout' : 'network', status: response.status };
-    return { ok: true, status: response.status, contentType, text };
+    const body = await readBody(response, timeout, request.maxBytes ?? UPSTREAM_MAX_BYTES, request);
+    if (!body.ok) return body;
+    return { ok: true, status: response.status, contentType, text: new TextDecoder().decode(body.bytes) };
+  };
+}
+
+/** T-061f (D272): the same rules (listed hosts only, no redirect, no caller headers, a time limit), read as bytes up to the route's cap. */
+export function createUpstreamBytesFetch(allowedHosts: readonly string[], fetchImpl: FetchImpl = defaultFetch): UpstreamBytesFetch {
+  return async (rawUrl, request) => {
+    const sent = await send(allowedHosts, fetchImpl, rawUrl, request);
+    if (!sent.ok) return sent;
+    const { response, timeout } = sent;
+    const body = await readBody(response, timeout, request.maxBytes, {});
+    if (!body.ok) return body;
+    return { ok: true, status: response.status, contentType: (response.headers.get('content-type') ?? '').toLowerCase(), bytes: body.bytes };
   };
 }
 
@@ -74,12 +124,13 @@ function timedOut(signal: AbortSignal): boolean {
 }
 
 /** The failure, with the source's retry-after when it gave one, and its error body when the route asked for it. */
-async function discard(response: Response, failure: 'redirect' | 'status' | 'too-large' | 'content-type', request: UpstreamRequest): Promise<UpstreamResult> {
+async function discard(response: Response, failure: 'redirect' | 'status' | 'too-large' | 'content-type', request: Readonly<{ readErrorBody?: true }>): Promise<UpstreamFailure> {
   const retryAfter = response.headers.get('retry-after')?.trim() ?? '';
   const seconds = /^[0-9]+$/.test(retryAfter) ? Number.parseInt(retryAfter, 10) : 0;
-  let errorText: string | null | undefined;
+  let errorText: string | undefined;
   if (request.readErrorBody === true && response.status >= 400) {
-    errorText = await readCapped(response, ERROR_BODY_MAX_BYTES);
+    const bytes = await readCapped(response, ERROR_BODY_MAX_BYTES);
+    if (bytes instanceof Uint8Array) errorText = new TextDecoder().decode(bytes);
   } else {
     try { await response.body?.cancel(); } catch { /* already closed */ }
   }
@@ -92,9 +143,9 @@ async function discard(response: Response, failure: 'redirect' | 'status' | 'too
   };
 }
 
-/** The body as text; null when it passes maxBytes, undefined when reading fails. */
-async function readCapped(response: Response, maxBytes: number): Promise<string | null | undefined> {
-  if (response.body === null) return '';
+/** The body's bytes; null when it passes maxBytes, undefined when reading fails. */
+async function readCapped(response: Response, maxBytes: number): Promise<Uint8Array | null | undefined> {
+  if (response.body === null) return new Uint8Array(0);
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
   let total = 0;
@@ -112,5 +163,5 @@ async function readCapped(response: Response, maxBytes: number): Promise<string 
   const bytes = new Uint8Array(total);
   let offset = 0;
   for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
-  return new TextDecoder().decode(bytes);
+  return bytes;
 }

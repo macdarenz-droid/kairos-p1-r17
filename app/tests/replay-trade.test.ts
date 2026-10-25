@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { commitBackupRestore, commitTradeImport, exportKairosBackup, prepareBackupRestore, prepareTradeImport } from '../src/application/backup';
-import { loadHomeYourTrades } from '../src/application/dashboard/homeDashboardYourTradesQuery';
+import { homeYourTradesAllTime } from './fixtures/homeYourTrades';
 import { listJournalHistory } from '../src/application/journal';
 import { savePracticeTrade } from '../src/application/practice';
 import { REPLAY_CANDLE_SIZES, type LoadedReplay } from '../src/application/practice/replayCandles';
@@ -83,7 +83,7 @@ describe('T-038c saving a replay', () => {
     expect(practice).toHaveLength(1);
     expect(practice[0]!.visualPnl).toMatchObject({ outcome: 'profit', amount: '20', currency: 'USDT' });
     expect(await listJournalHistory(db)).toHaveLength(0);
-    expect(await loadHomeYourTrades(db)).toHaveLength(0);
+    expect(await homeYourTradesAllTime(db)).toHaveLength(0);
   });
 
   it('keeps its replay source through a full restore and a merge import', async () => {

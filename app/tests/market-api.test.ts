@@ -272,6 +272,43 @@ describe('T-059b coin names: the session, the device copy and the server', () =>
     expect(decodeCoinNames({ source: 'coingecko', fetchedAt: FETCHED_AT, names: NAMES })).toEqual(NAMES);
   });
 
+  it('T-061e review r1, r2: keeps "not set up" for the visit and any other failure 10 minutes, so Home asks once, and one timeout never turns names off', async () => {
+    let clock = NOW;
+    const keeping = (fetchImpl: typeof fetch, online = true) => createKairosCoinNames(createKairosApiClient({ baseUrl: BASE, fetchImpl }), { store: null, now: () => clock, isOnline: () => online });
+    const notSetUp = vi.fn<typeof fetch>(async () => failAnswer('not-set-up', 503));
+    const withoutKey = keeping(notSetUp);
+    expect(await withoutKey.coinNames()).toMatchObject({ ok: false, why: 'not-set-up' });
+    clock += 2 * HOUR;
+    expect(await withoutKey.coinNames()).toMatchObject({ ok: false, why: 'not-set-up' });
+    expect(notSetUp).toHaveBeenCalledTimes(1);
+    // A rate-limited answer is kept 10 minutes (longer than its wait), then asked again.
+    const limited = vi.fn<typeof fetch>(async () => failAnswer('rate-limited', 429, 60));
+    const busy = keeping(limited);
+    expect(await busy.coinNames()).toMatchObject({ ok: false, why: 'busy', retryAfterSeconds: 60 });
+    clock += 10 * 60_000 - 1;
+    await busy.coinNames();
+    expect(limited).toHaveBeenCalledTimes(1);
+    clock += 1;
+    await busy.coinNames();
+    expect(limited).toHaveBeenCalledTimes(2);
+    // A timeout while online (no wait asked): kept 10 minutes, then names are asked for again.
+    const timeout = vi.fn<typeof fetch>(async () => { throw new TypeError('timed out'); });
+    const down = keeping(timeout);
+    expect(await down.coinNames()).toMatchObject({ ok: false, why: 'source-down', retryAfterSeconds: null });
+    clock += 9 * 60_000;
+    await down.coinNames();
+    expect(timeout).toHaveBeenCalledTimes(1);
+    clock += 60_000;
+    await down.coinNames();
+    expect(timeout).toHaveBeenCalledTimes(2);
+    // Offline reached no server: asked again when it is.
+    const offline = vi.fn<typeof fetch>(async () => { throw new TypeError('Failed to fetch'); });
+    const lost = keeping(offline, false);
+    expect(await lost.coinNames()).toMatchObject({ ok: false, why: 'offline' });
+    await lost.coinNames();
+    expect(offline).toHaveBeenCalledTimes(2);
+  });
+
   it('a caller\'s abort ends only its own wait', async () => {
     let release: (response: Response) => void = () => undefined;
     const fetchImpl = vi.fn<typeof fetch>(() => new Promise<Response>(resolve => { release = resolve; }));

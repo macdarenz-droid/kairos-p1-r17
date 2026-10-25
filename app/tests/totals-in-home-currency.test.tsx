@@ -208,11 +208,33 @@ describe('T-045h Goals, Home, Patterns and practice money', () => {
   it('adds the note to Home\'s goal lines', async () => {
     const db = await database();
     await twoTradesInEuro(db);
-    await goal(db, 'EUR');
+    // T-061b (D267): Home's goal lines no longer show the month's result ("Today" does); the note is checked on a loss limit in EUR.
+    await writeGoalsPreference(createKairosRepositories(db).metadata, { monthlyResultTargetAmount: '100', monthlyResultTargetCurrency: 'EUR', lossLimitPerWeek: '200', lossLimitCurrency: 'EUR' }, NOW);
     render(<HomeDisciplineCard db={db} now={now} />);
-    expect(await screen.findByText('Result this month: 80.04 of 100 EUR')).toBeInTheDocument();
+    expect(await screen.findByText('Lost this week: 0 of 200 EUR')).toBeInTheDocument();
+    expect(screen.queryByText(/^Result this month/)).toBeNull();
     expect(screen.getByText(CONVERTED_NOTE, { exact: false })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'See your rates' })).toHaveAttribute('href', '/currency');
+  });
+
+  it("review r1: leaves the note off Home's goal lines when none of them is money", async () => {
+    const db = await database();
+    await twoTradesInEuro(db);
+    await writeGoalsPreference(createKairosRepositories(db).metadata, { tradesPerMonthTarget: '20', monthlyResultTargetAmount: '100', monthlyResultTargetCurrency: 'EUR' }, NOW);
+    render(<HomeDisciplineCard db={db} now={now} />);
+    expect(await screen.findByText('Closed trades: 2 of 20')).toBeInTheDocument();
+    expect(screen.queryByText(CONVERTED_NOTE, { exact: false })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'See your rates' })).toBeNull();
+  });
+
+  it("review r2: leaves the note off Home's loss limit in another currency", async () => {
+    const db = await database();
+    await twoTradesInEuro(db);
+    await writeGoalsPreference(createKairosRepositories(db).metadata, { monthlyResultTargetAmount: '100', monthlyResultTargetCurrency: 'EUR', lossLimitPerWeek: '200', lossLimitCurrency: 'USD' }, NOW);
+    render(<HomeDisciplineCard db={db} now={now} />);
+    expect(await screen.findByText(/^Lost this week:/)).toBeInTheDocument();
+    expect(screen.queryByText(/^Totals in/)).toBeNull();
+    expect(screen.queryByRole('link', { name: 'See your rates' })).toBeNull();
   });
 
   it('adds the note to Patterns', async () => {

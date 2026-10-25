@@ -43,13 +43,16 @@ export function PeriodChooser({ period, todayKey, onChoiceChange }: PeriodChoose
   const previous = useRef<HTMLButtonElement>(null);
   const nextPressed = useRef(false);
 
-  // A period chosen elsewhere (the arrows, the address, "Show all time") resets the list and the custom days.
+  // A period chosen elsewhere (the arrows, the address, "Show all time") resets the list and the custom days, in the
+  // render that shows it: an effect would run a moment later and undo a choice made in between (CI caught "Custom").
   const periodKey = `${period.kind}:${period.fromDayKey ?? ''}:${period.toDayKey ?? ''}`;
-  useEffect(() => {
+  const [shownKey, setShownKey] = useState(`${periodKey}|${todayKey}`);
+  if (shownKey !== `${periodKey}|${todayKey}`) {
+    setShownKey(`${periodKey}|${todayKey}`);
     setMode(period.kind);
     setCustom(customStart(period, todayKey));
     setProblem(null);
-  }, [periodKey, todayKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }
 
   // "›" goes away under focus when today's period is reached, so focus moves to "‹" (WCAG 2.4.3).
   useEffect(() => {

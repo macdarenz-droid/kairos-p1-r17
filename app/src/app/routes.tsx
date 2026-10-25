@@ -9,6 +9,8 @@ import { createTradePictureCandleBrowserDeps } from './tradePictureCandleBrowser
 import { ReviewTradeLink } from './ReviewTradeLink';
 import { kairosRepositories } from '../data/repositories';
 import { ActivationReceiptRepository } from '../services/activation';
+import * as kairosApiModule from '../services/kairos-api/kairosApi';
+import { createNewsApiPort, type NewsApiPort } from '../services/kairos-api/newsApi';
 
 /** Shown only when the app starts on a screen whose code is still loading. */
 function RouteLoading() {
@@ -31,6 +33,16 @@ function kairosApiClientFrom(kairosApi: typeof import('../services/kairos-api/ka
   return kairosApi.createKairosApiClient({ baseUrl: kairosApi.parseKairosApiBaseUrl(import.meta.env.VITE_KAIROS_API_URL), readReceipt: kairosApi.storedReceiptReader(new ActivationReceiptRepository(kairosRepositories.metadata)) });
 }
 
+/** D269: the Kairos server's news routes, one port for Home's "Today" and the News page (its client is in the first script already, for market data). */
+let newsPort: NewsApiPort | null = null;
+function appNewsPort(): NewsApiPort {
+  newsPort ??= createNewsApiPort(kairosApiClientFrom(kairosApiModule));
+  return newsPort;
+}
+function HomeWithNewsRoute() {
+  return <HomeRoute news={appNewsPort()} />;
+}
+
 export const appRoutes = [
   {
     path: '/',
@@ -38,7 +50,7 @@ export const appRoutes = [
     ErrorBoundary: RouteError,
     HydrateFallback: RouteLoading,
     children: [
-      { index: true, element: <HomeRoute /> },
+      { index: true, element: <HomeWithNewsRoute /> },
       { path: 'journal', lazy: async () => ({ Component: (await import('./JournalRoute')).JournalRoute }) },
       // D258: the log page wears the Journal page's look (its form, fields and Save), so it loads the Journal's styles too.
       { path: 'journal/log', lazy: async () => {
@@ -106,8 +118,8 @@ export const appRoutes = [
         return { Component: function PatternsRoute() { return <PatternsScreen db={kairosDatabase} scope="real" />; } };
       } },
       { path: 'news-calendar', lazy: async () => {
-        const [{ NewsCalendarScreen }, kairosApi, { createNewsApiPort }] = await Promise.all([import('../features/economic-calendar/NewsCalendarScreen'), import('../services/kairos-api/kairosApi'), import('../services/kairos-api/newsApi')]);
-        const news = createNewsApiPort(kairosApiClientFrom(kairosApi));
+        const { NewsCalendarScreen } = await import('../features/economic-calendar/NewsCalendarScreen');
+        const news = appNewsPort();
         return { Component: function NewsCalendarRoute() { return <NewsCalendarScreen db={kairosDatabase} news={news} />; } };
       } },
       { path: 'currency', lazy: async () => {

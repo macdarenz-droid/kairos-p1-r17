@@ -9,33 +9,37 @@ const radiusScaleModel = {
 } as unknown as HomeDashboardLiveCryptoBubbleReactRadiusScaleViewModel;
 
 const configuredRadiusHookMock = vi.hoisted(() => vi.fn((_configuration: unknown) => radiusScaleModel));
-const radiusTextEvidenceMock = vi.hoisted(() => vi.fn((_props: unknown) => null));
+const glassMapMock = vi.hoisted(() => vi.fn((_props: unknown) => null));
 
 vi.mock('../src/app/useHomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleViewModel', () => ({
   useHomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleViewModel: configuredRadiusHookMock,
 }));
 
-vi.mock('../src/app/HomeDashboardLiveCryptoBubbleRadiusScaleTextEvidence', () => ({
-  HomeDashboardLiveCryptoBubbleRadiusScaleTextEvidence: radiusTextEvidenceMock,
+vi.mock('../src/app/HomeDashboardGlassBubbleMap', () => ({
+  HomeDashboardGlassBubbleMap: glassMapMock,
 }));
 
 import { HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTextEvidenceRuntime } from '../src/app/HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTextEvidenceRuntime';
 
 describe('Home Live Crypto Bubble configured browser radius-scale text-evidence runtime composition foundation', () => {
-  it('passes the exact caller configuration once to the released hook and the exact returned model once to the released presenter', () => {
+  it('passes the exact caller configuration once to the released hook and the exact returned model once to the map, with nothing else', () => {
     const configuration: HomeDashboardLiveCryptoBubbleRuntimeProductConfiguration = {
       excludedStablecoinBaseAssets: new Set(['FIXTURE_STABLE_A', 'FIXTURE_STABLE_B']),
       neutralMaxAbsoluteMovementPercent: '0.125' as DecimalString,
     };
 
-    renderToStaticMarkup(
-      <HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTextEvidenceRuntime configuration={configuration} />,
+    const onRetry = vi.fn();
+    // T-061a (D273): no hidden text list beside the map.
+    const markup = renderToStaticMarkup(
+      <HomeDashboardLiveCryptoBubbleConfiguredBrowserRadiusScaleTextEvidenceRuntime configuration={configuration} onRetry={onRetry} />,
     );
 
     expect(configuredRadiusHookMock).toHaveBeenCalledTimes(1);
     expect(configuredRadiusHookMock).toHaveBeenCalledWith(configuration);
-    expect(radiusTextEvidenceMock).toHaveBeenCalledTimes(1);
-    const props = radiusTextEvidenceMock.mock.calls[0]![0] as Record<'model', unknown>;
+    expect(glassMapMock).toHaveBeenCalledTimes(1);
+    const props = glassMapMock.mock.calls[0]![0] as Record<'model' | 'onRetry', unknown>;
     expect(props.model).toBe(radiusScaleModel);
+    expect(props.onRetry).toBe(onRetry);
+    expect(markup).toBe('');
   });
 });

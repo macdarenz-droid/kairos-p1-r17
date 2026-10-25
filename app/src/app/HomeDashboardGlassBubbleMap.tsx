@@ -1,19 +1,33 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react';
 import type { HomeDashboardLiveCryptoBubbleReactRadiusScaleViewModel } from './homeDashboardLiveCryptoBubbleReactRadiusScaleViewModel';
 import { projectHomeDashboardLiveCryptoBubblePixelRadii } from '../application/dashboard/homeDashboardLiveCryptoBubblePixelRadiusProjection';
+import type { HomeDashboardLiveCryptoBubbleMovementSemantic } from '../application/dashboard/homeDashboardLiveCryptoBubblePresentationStateProjection';
 import { glassMovementWeight, layoutGlassViewportCircles } from './homeDashboardGlassViewportLayout';
 import { useHomeDashboardGlassMotion } from './useHomeDashboardGlassMotion';
 import { removeGlassBlackMatte } from './homeDashboardGlassMaterial';
 import { formatHomeDashboardLiveCryptoBubbleMovement } from './homeDashboardGlassBubbleFormatting';
-import { describeMarketDataUnavailable } from '../application/online/onlineWords';
-import { UnavailableNotice } from '../design-system/primitives';
+import { describeMarketMove, MARKET_MOVE_PERIOD_WORDS, MARKET_MOVE_PERIODS, type MarketMovePeriod, type MarketMovesWindow } from '../application/markets/marketMoves';
+import { describeMarketDataUnavailable, describeUpdatedAgo } from '../application/online/onlineWords';
+import { decimalAbs, decimalCompare, decimalScaleToSteps } from '../domain/calculations/decimalKernel';
+import type { DecimalString } from '../domain/trades';
+import { Button, Segmented, UnavailableNotice } from '../design-system/primitives';
+import { CoinIcon, marketCoin } from '../features/home/CoinIcon';
+import { useNowEvery } from '../features/home/MarketSheet';
+import type { CoinLogoAddress } from '../domain/market/coinLogo';
 import approvedGlassUrl from '../assets/kairos-glass-approved.webp';
 import './homeDashboardGlassBubbleMap.css';
 
-let materialPromise: Promise<HTMLCanvasElement> | null = null;
-function glassMaterial(): Promise<HTMLCanvasElement> {
+/** The size the glass art is drawn at once; every bubble scales the same image (D273). */
+const GLASS_SIZE = 512;
+let glassUrl: string | null = null;
+let materialPromise: Promise<string> | null = null;
+/**
+ * T-061a (D273): the approved glass art with its black matte removed, drawn once per page at 512×512 and shared by every
+ * bubble as one image address, not a canvas per bubble.
+ */
+function glassMaterial(): Promise<string> {
   if (materialPromise) return materialPromise;
-  materialPromise = new Promise<HTMLCanvasElement>((resolve, reject) => {
+  materialPromise = new Promise<string>((resolve, reject) => {
     const image = new Image();
     image.onload = () => {
       try {
@@ -26,7 +40,20 @@ function glassMaterial(): Promise<HTMLCanvasElement> {
         const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
         removeGlassBlackMatte(pixels.data);
         context.putImageData(pixels, 0, 0);
-        resolve(canvas);
+        const art = document.createElement('canvas');
+        art.width = GLASS_SIZE;
+        art.height = GLASS_SIZE;
+        const artContext = art.getContext('2d');
+        if (!artContext) throw new Error('Glass canvas unavailable');
+        artContext.drawImage(canvas, 0, 0, GLASS_SIZE, GLASS_SIZE);
+        // The blob comes later, outside this try: its own failure must settle the promise too, so a later bubble retries.
+        art.toBlob(blob => {
+          try {
+            if (blob === null) throw new Error('Glass image unavailable');
+            glassUrl = URL.createObjectURL(blob);
+            resolve(glassUrl);
+          } catch (error) { reject(error); }
+        }, 'image/png');
       } catch (error) { reject(error); }
     };
     image.onerror = () => reject(new Error('Glass image unavailable'));
@@ -49,36 +76,20 @@ export function glassFieldBottom(element: HTMLElement): number {
 }
 
 export function GlassDecoration() {
-  const ref = useRef<HTMLCanvasElement>(null);
-  const [ready, setReady] = useState(false);
+  const [url, setUrl] = useState(glassUrl);
   useEffect(() => {
+    if (url !== null) return;
     let active = true;
-    void glassMaterial().then(material => {
-      if (!active || !ref.current) return;
-      const context = ref.current.getContext('2d');
-      if (!context) return;
-      context.drawImage(material, 0, 0, 512, 512);
-      setReady(true);
-    }).catch(() => { /* The plain theme surface and market labels remain usable. */ });
+    void glassMaterial().then(next => { if (active) setUrl(next); })
+      .catch(() => { /* The plain theme surface and market labels remain usable. */ });
     return () => { active = false; };
-  }, []);
-  return <canvas ref={ref} width={512} height={512} className="kairos-glass-art" data-glass-ready={ready} aria-hidden="true" />;
-}
-
-export function GlassIcon({ symbol }: { readonly symbol: string }) {
-  const content = symbol === 'BTC' ? <g fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round"><path d="M15 11h13c14 0 14 13 0 13H15m0 0h15c14 0 14 14 0 14H15M18 10v29M23 5v5m8-5v5M23 39v5m8-5v5" /></g>
-    : symbol === 'ETH' ? <><path fill="currentColor" opacity=".8" d="M24 2 9 25l15 9 15-9Z"/><path fill="currentColor" d="m9 29 15 17 15-17-15 9Z"/></>
-    : symbol === 'SOL' ? <path fill="currentColor" d="m12 7 30 0-8 8H4Zm-8 13h30l8 8H12Zm8 13h30l-8 8H4Z"/>
-    : symbol === 'BNB' ? <g fill="currentColor"><path d="m24 2 10 10-5 5-5-5-5 5-5-5ZM2 24l9-9 9 9-9 9Zm26 0 9-9 9 9-9 9ZM14 36l5-5 5 5 5-5 5 5-10 10Z"/><path d="m18 24 6-6 6 6-6 6Z"/></g>
-    : symbol === 'XRP' ? <g fill="none" stroke="currentColor" strokeWidth="4"><path d="m5 8 12 12q7 7 14 0L43 8M5 40l12-12q7-7 14 0l12 12"/></g>
-    : symbol === 'LINK' ? <path fill="none" stroke="currentColor" strokeWidth="5" d="m24 4 17 10v20L24 44 7 34V14Z"/>
-    : symbol === 'SUI' ? <g fill="none" stroke="currentColor" strokeWidth="3"><path d="M24 3C19 13 8 23 8 32a16 16 0 0 0 32 0C40 23 29 13 24 3Z"/><path d="M18 21c-6 17 22 5 15 21"/></g>
-    : symbol === 'ADA' ? <g fill="currentColor">{Array.from({length:12},(_,i)=><circle key={i} cx={24+Math.cos(i*Math.PI/6)*(i%2?18:12)} cy={24+Math.sin(i*Math.PI/6)*(i%2?18:12)} r={i%2?1.8:2.5}/>)}<circle cx="24" cy="24" r="3"/></g> : null;
-  return content ? <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">{content}</svg> : <>{symbol.slice(0,2)}</>;
+  }, [url]);
+  return url === null ? null : <img src={url} alt="" className="kairos-glass-art" data-glass-ready="true" aria-hidden="true" />;
 }
 
 // Identity and decorative phase belong to the instrument, never its current rank.
-function instrumentIdentity(venue: string, symbol: string): string {
+/** A market bubble's key (its `data-glass-key`): the instrument, never its rank. */
+export function instrumentIdentity(venue: string, symbol: string): string {
   return JSON.stringify([venue, symbol]);
 }
 function hoverTiming(identity: string) {
@@ -87,10 +98,65 @@ function hoverTiming(identity: string) {
   return { duration: `${8.4 + (hash % 30) * 0.37}s`, delay: `${-(hash % 1024) / 80}s` };
 }
 
+/** T-061e (D271): the 1-hour or 7-day move of each market by symbol, with its colour, when that is what the bubbles show. */
+export interface GlassMapShownMoves {
+  readonly period: MarketMovesWindow;
+  readonly values: ReadonlyMap<string, Readonly<{ percent: DecimalString | null; semantic: HomeDashboardLiveCryptoBubbleMovementSemantic | null }>>;
+  /** When the source read these moves. */
+  readonly observedAt: string;
+}
+
+/** T-061e: what sizes the bubbles. The configured runtime holds the choice and reads the moves. */
+export interface GlassMapMoves {
+  readonly chosen: MarketMovePeriod;
+  readonly onChoose: (period: MarketMovePeriod) => void;
+  /** null: the 24-hour move shows (chosen, or while the chosen moves load or after they failed). */
+  readonly shown: GlassMapShownMoves | null;
+  readonly loading: boolean;
+  /** The moves that failed: the map is back on 24 hours. `retry` false: a retry cannot help. */
+  readonly unavailable: Readonly<{ window: MarketMovesWindow; retry: boolean; busy: boolean }> | null;
+  readonly onRetry: () => void;
+}
+
 export interface HomeDashboardGlassBubbleMapProps {
   readonly model: HomeDashboardLiveCryptoBubbleReactRadiusScaleViewModel;
   /** "Try again": the host remounts the live runtime. */
   readonly onRetry?: () => void;
+  /** T-061e: the switch and the moves; without it the bubbles show the 24-hour move. */
+  readonly moves?: GlassMapMoves;
+  /** D255: coin names by coin (BTC → Bitcoin), when Kairos is sure of them. */
+  readonly names?: ReadonlyMap<string, string> | null;
+  /** T-061f (D272): coin logos by coin, when this device keeps them; else the drawn marks and letters. */
+  readonly logos?: ReadonlyMap<string, CoinLogoAddress> | null;
+  /** T-061e: a bubble's tap, click or Enter opens its details; the key is the bubble's `data-glass-key`. */
+  readonly onOpen?: (key: string) => void;
+  /** The map's section, for a host that gives the focus back to a bubble. */
+  readonly sectionRef?: RefObject<HTMLElement | null>;
+}
+
+const SIZE_STEPS = 1_000;
+const PERIOD_OPTIONS = MARKET_MOVE_PERIODS.map(value => Object.freeze({ value, label: MARKET_MOVE_PERIOD_WORDS[value] }));
+const MOVE_NAME: Readonly<Record<MarketMovePeriod, string>> = Object.freeze({ '1h': '1-hour', '24h': '24-hour', '7d': '7-day' });
+const AGO_TICK_MS = 5_000;
+
+/** For drawing only: each move's size in steps of the biggest |move| shown (exact, through the kernel); null when unknown. */
+function moveSteps(values: readonly (DecimalString | null)[]): readonly (number | null)[] {
+  const sizes = values.map(value => {
+    if (value === null) return null;
+    const size = decimalAbs(value);
+    return size.ok ? size.value : null;
+  });
+  let biggest: DecimalString | null = null;
+  for (const size of sizes) if (size !== null && (biggest === null || (decimalCompare(size, biggest) ?? 0) > 0)) biggest = size;
+  return sizes.map(size => size === null ? null : biggest === null || decimalCompare(biggest, '0') === 0 ? 0 : decimalScaleToSteps(size, biggest, SIZE_STEPS));
+}
+
+/** "BTC, Bitcoin, up 2.3% in 24 hours, price 2 min ago. Show details": every word the bubble shows, and what a tap does. */
+function bubbleName(base: string, name: string | null, period: MarketMovePeriod, percent: DecimalString | null, ago: string | null): string {
+  const words = describeMarketMove(percent);
+  const move = words === null ? `${MOVE_NAME[period]} move not available`
+    : `${words.direction === 'none' ? 'no change' : `${words.direction} ${words.size}`} in ${MARKET_MOVE_PERIOD_WORDS[period]}`;
+  return `${[base, name, move, ago === null ? null : `price ${ago}`].filter(part => part !== null).join(', ')}. Show details`;
 }
 
 /** A start that has not produced data by now is treated as unavailable. */
@@ -119,9 +185,15 @@ function readOnline(): boolean {
  * Only this visual consumer measures bounds, chooses visual radii and packs.
  * Labels consume authoritative decimal strings and upstream semantic/freshness
  * states; only the constrained visual text is formatted here.
+ * T-061e (D271): each bubble is a button that opens its details; the switch chooses the move that sizes and labels the
+ * bubbles (the moves come from their owner, application/markets/marketMoves.ts); "Prices updated … ago" sits under the field.
+ * T-061f (D272): each coin shows its real logo when this device keeps one (features/home/CoinIcon.tsx).
  */
-export function HomeDashboardGlassBubbleMap({ model, onRetry }: HomeDashboardGlassBubbleMapProps) {
+export function HomeDashboardGlassBubbleMap({ model, onRetry, moves, names = null, logos = null, onOpen, sectionRef }: HomeDashboardGlassBubbleMapProps) {
   const container = useRef<HTMLDivElement>(null);
+  const toolbar = useRef<HTMLDivElement>(null);
+  const updated = useRef<HTMLParagraphElement>(null);
+  const remeasure = useRef<(() => void) | null>(null);
   const [width, setWidth] = useState(0);
   const [height, setHeight] = useState(0);
   const [hidden, setHidden] = useState(false);
@@ -130,8 +202,11 @@ export function HomeDashboardGlassBubbleMap({ model, onRetry }: HomeDashboardGla
     if (!element) return;
     const measure = () => {
       setWidth(element.clientWidth);
-      setHeight(Math.max(240, glassFieldBottom(element) - element.getBoundingClientRect().top - 16));
+      // The "Prices updated" line under the field keeps its room above the bottom.
+      const below = updated.current?.offsetHeight ?? 0;
+      setHeight(Math.max(240, glassFieldBottom(element) - element.getBoundingClientRect().top - 16 - below));
     };
+    remeasure.current = measure;
     measure();
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
     observer?.observe(element);
@@ -140,7 +215,7 @@ export function HomeDashboardGlassBubbleMap({ model, onRetry }: HomeDashboardGla
     if (main !== null) observer?.observe(main);
     window.addEventListener('resize', measure);
     window.visualViewport?.addEventListener('resize', measure);
-    return () => { observer?.disconnect(); window.removeEventListener('resize', measure); window.visualViewport?.removeEventListener('resize', measure); };
+    return () => { remeasure.current = null; observer?.disconnect(); window.removeEventListener('resize', measure); window.visualViewport?.removeEventListener('resize', measure); };
   }, []);
   useEffect(() => {
     const visibility = () => setHidden(document.hidden);
@@ -157,6 +232,7 @@ export function HomeDashboardGlassBubbleMap({ model, onRetry }: HomeDashboardGla
     const timeout = window.setTimeout(() => setStartTimedOut(true), HOME_LIVE_MARKET_START_TIMEOUT_MS);
     return () => { window.removeEventListener('online', update); window.removeEventListener('offline', update); window.clearTimeout(timeout); };
   }, []);
+  const now = useNowEvery(AGO_TICK_MS, !hidden);
   const source = model.radiusScaleProjection;
   const loadState = deriveHomeLiveMarketLoadState({ hasData: source !== null, status: model.runtimeState.status, online, startTimedOut });
   // The port's reason when it gave one; otherwise offline or a source that did not answer.
@@ -168,14 +244,16 @@ export function HomeDashboardGlassBubbleMap({ model, onRetry }: HomeDashboardGla
     minimumRadiusCssPixels: 48,
     maximumRadiusCssPixels: Math.max(48, Math.min(155, width * 0.225)),
   }) : null;
-  const magnitudes = projection?.ok ? projection.entries.map(entry => {
-    const value = entry.radiusScaleEntry.areaWeightEntry.presentationEntry.metricInput.movementPercent24h;
-    return value === null ? NaN : Math.abs(Number(value));
-  }) : [];
-  const maximum = Math.max(0, ...magnitudes.filter(Number.isFinite));
+  const shown = moves?.shown ?? null;
+  const period: MarketMovePeriod = shown?.period ?? '24h';
+  const moveOf = (metric: { readonly instrument: { readonly symbol: string }; readonly movementPercent24h: DecimalString | null }): DecimalString | null =>
+    shown === null ? metric.movementPercent24h : shown.values.get(metric.instrument.symbol)?.percent ?? null;
+  const steps = projection?.ok ? moveSteps(projection.entries.map(entry => moveOf(entry.radiusScaleEntry.areaWeightEntry.presentationEntry.metricInput))) : [];
+  // A 1-hour or 7-day move that is not known (a market new to the map since the last read) is drawn at the smallest
+  // size and says "not available"; a market with no 24-hour move has no bubble, as before.
   const entries = projection?.ok ? projection.entries.map((entry, index) => ({
-    ...entry, radiusCssPixels: entry.radiusCssPixels === null || !Number.isFinite(magnitudes[index])
-      ? null : glassMovementWeight(magnitudes[index], maximum),
+    ...entry, radiusCssPixels: entry.radiusCssPixels === null || (steps[index] === null && shown === null)
+      ? null : glassMovementWeight(steps[index] ?? 0, SIZE_STEPS),
   })) : [];
   const items = entries.flatMap(entry => {
     const presentation = entry.radiusScaleEntry.areaWeightEntry.presentationEntry;
@@ -195,16 +273,37 @@ export function HomeDashboardGlassBubbleMap({ model, onRetry }: HomeDashboardGla
     return ak < bk ? -1 : ak > bk ? 1 : 0;
   });
   const stopped = hidden;
+  // A line that comes or goes above the field moves it: measure again so it still ends above the bottom.
+  const above = `${moves?.loading === true}|${moves?.unavailable?.window ?? ''}|${model.runtimeState.lastError !== null}|${unavailable !== null}|${loadState}`;
+  useLayoutEffect(() => { remeasure.current?.(); }, [above]);
+
+  const observed = entries.flatMap(entry => {
+    const at = Date.parse(entry.radiusScaleEntry.areaWeightEntry.presentationEntry.metricInput.fact?.observedAt ?? '');
+    return Number.isFinite(at) ? [at] : [];
+  });
+  const pricesAgo = observed.length === 0 ? null : describeUpdatedAgo(now - Math.max(...observed));
+  const movesAgo = shown === null ? null : describeUpdatedAgo(now - Date.parse(shown.observedAt));
+  const retryMoves = () => {
+    // "Try again" goes away while the moves load: the switch's choice holds the focus (never the page).
+    const window = moves?.unavailable?.window;
+    if (window !== undefined) toolbar.current?.querySelectorAll<HTMLElement>('button')[MARKET_MOVE_PERIODS.indexOf(window)]?.focus();
+    moves?.onRetry();
+  };
 
   return (
-    <section className="kairos-glass-map" aria-label="Live Crypto Bubble map" data-motion={stopped ? 'paused' : 'running'}>
-      <div className="kairos-glass-toolbar">
-        <span>24h · size by % move</span>
-      </div>
-      {model.runtimeState.lastError !== null ? <p role="status">Market update failed. Showing the last available observations with their freshness labels.</p> : null}
+    <section ref={sectionRef} className="kairos-glass-map" aria-label="Live Crypto Bubble map" data-motion={stopped ? 'paused' : 'running'}>
+      {moves === undefined ? null : <div ref={toolbar} className="kairos-glass-toolbar">
+        <span aria-hidden="true">Size by the move in</span>
+        <Segmented label="Size by the move in" options={PERIOD_OPTIONS} value={moves.chosen} onChange={moves.onChoose} />
+      </div>}
+      {moves?.loading ? <p role="status">{`Loading ${MOVE_NAME[moves.chosen]} moves…`}</p> : null}
+      {moves?.unavailable ? <p className="kairos-glass-moves-unavailable" role="status">{`${MOVE_NAME[moves.unavailable.window]} moves are unavailable right now.`}
+        {moves.unavailable.retry ? <> <Button variant="ghost" size="sm" aria-disabled={moves.unavailable.busy || undefined} aria-busy={moves.unavailable.busy || undefined}
+          onClick={() => { if (!moves.unavailable?.busy) retryMoves(); }}>Try again</Button></> : null}</p> : null}
+      {model.runtimeState.lastError !== null ? <p role="status">Prices couldn't update. Showing the last prices with how old each is.</p> : null}
       {unavailable !== null ? <div className="kairos-glass-unavailable"><UnavailableNotice message={unavailable.message} retryLabel={unavailable.retryLabel} onRetry={onRetry} retryWhenOnline={unavailable.retryWhenOnline} /></div>
         : loadState === 'loading' ? <p role="status">Loading live prices…</p>
-        : source === null ? null : !source.ok ? <p role="status">Bubble data unavailable.</p> : source.entries.length === 0 ? <p role="status">No eligible markets available.</p> : null}
+        : source === null ? null : !source.ok ? <p role="status">Bubble data unavailable.</p> : source.entries.length === 0 ? <p role="status">No markets to show right now.</p> : null}
       <div ref={container} className="kairos-glass-field" style={{ height: layout.height }}>
         {renderedEntries.map(entry => {
           const p = entry.radiusScaleEntry.areaWeightEntry.presentationEntry;
@@ -214,8 +313,13 @@ export function HomeDashboardGlassBubbleMap({ model, onRetry }: HomeDashboardGla
           const circle = positions.get(key);
           if (!circle) return null;
           const expired = p.freshnessState === 'expired' || p.freshnessState === 'missing';
-          const value = formatHomeDashboardLiveCryptoBubbleMovement(metric.movementPercent24h, expired);
-          const base = symbol.endsWith('USDT') ? symbol.slice(0, -4) : symbol;
+          // The 24-hour move of an expired price is not shown as now; a 1-hour or 7-day move has its own read.
+          const percent = shown === null ? (expired ? null : metric.movementPercent24h) : moveOf(metric);
+          const value = formatHomeDashboardLiveCryptoBubbleMovement(percent, percent === null);
+          const semantic = shown === null ? p.movementSemantic : shown.values.get(symbol)?.semantic ?? null;
+          const base = marketCoin(symbol);
+          const observedAt = Date.parse(metric.fact?.observedAt ?? '');
+          const ago = p.freshnessState === 'fresh' ? null : describeUpdatedAgo(Number.isFinite(observedAt) ? now - observedAt : metric.ageMs ?? Number.NaN);
           const timing = hoverTiming(key);
           const style = {
             left: circle.x - circle.radius, top: circle.y - circle.radius,
@@ -225,19 +329,20 @@ export function HomeDashboardGlassBubbleMap({ model, onRetry }: HomeDashboardGla
             '--glass-icon-size': `${Math.min(38, Math.max(14, circle.radius * 0.5))}px`,
             '--glass-duration': timing.duration, '--glass-delay': timing.delay,
           } as CSSProperties;
-          return <div key={key} className="kairos-glass-bubble" data-glass-key={key} data-identity={base === 'BTC' || base === 'ETH' ? base : undefined} data-movement={p.movementSemantic ?? 'neutral'} data-freshness={p.freshnessState} title={`${base} ${value}`} style={style}>
-            <div className="kairos-glass-core" aria-hidden="true" />
-            <div className="kairos-glass-smoke" aria-hidden="true" />
+          return <button type="button" key={key} className="kairos-glass-bubble" data-glass-key={key} data-identity={base === 'BTC' || base === 'ETH' ? base : undefined} data-movement={semantic ?? 'neutral'} data-freshness={p.freshnessState}
+            aria-label={bubbleName(base, names?.get(base) ?? null, period, percent, ago)} onClick={() => onOpen?.(key)} style={style}>
+            <span className="kairos-glass-core" aria-hidden="true" />
+            <span className="kairos-glass-smoke" aria-hidden="true" />
             <GlassDecoration />
-            <div className="kairos-glass-label">
-              <span className="kairos-glass-icon" data-fallback={!(['BTC','ETH','SOL','BNB','XRP','LINK','SUI','ADA'].includes(base))} aria-hidden="true"><GlassIcon symbol={base} /></span>
+            <span className="kairos-glass-label" aria-hidden="true">
+              <CoinIcon coin={base} logo={logos?.get(base) ?? null} className="kairos-glass-icon" />
               <strong>{base}</strong><span className="kairos-glass-movement">{value}</span>
-              <small hidden={p.freshnessState === 'fresh'}>{p.freshnessState}</small>
-              <span className="kairos-glass-sr">{symbol}, {metric.instrument.venue}. 24 hour quote volume {metric.quoteVolume24h ?? 'unavailable'}.</span>
-            </div>
-          </div>;
+              {ago === null ? null : <small className="kairos-glass-ago">{ago}</small>}
+            </span>
+          </button>;
         })}
       </div>
+      <p ref={updated} className="kairos-glass-updated">{pricesAgo === null ? '\u00a0' : `Prices updated ${pricesAgo}${movesAgo === null ? '' : ` · ${MOVE_NAME[period]} moves ${movesAgo}`}`}</p>
       {width > 0 && width < 140 ? <p>More space is needed to display the bubble map. </p> : null}
       {entries.some(e => e.radiusCssPixels === null) ? <p>Some markets have no bubble size available.</p> : null}
     </section>
