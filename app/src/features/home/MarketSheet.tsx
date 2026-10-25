@@ -167,11 +167,15 @@ function MarketSheetBody({ coin, period, reader, symbols, chartHref }: Omit<Mark
   const observedMs = coin.observedAt === null ? Number.NaN : Date.parse(coin.observedAt);
   const ago = describeUpdatedAgo(now - observedMs);
   const moveState = (window: MarketMovesWindow) => {
-    const { reading, failure } = moves[window];
+    const { reading, pending, failure } = moves[window];
+    const symbol = coin.instrument.symbol;
     if (failure !== null) return { state: 'failed' as const, percent: null };
-    // No reading yet, or one too old to say the move now (or without this market): the sheet's read is on its way.
-    if (reading === null || !isMarketMovesReadingFresh(reading, now, [coin.instrument.symbol])) return { state: 'loading' as const, percent: null };
-    return { state: 'shown' as const, percent: reading.moves.get(coin.instrument.symbol) ?? null };
+    // No reading yet: the sheet's first read is on its way.
+    if (reading === null) return { state: 'loading' as const, percent: null };
+    // A reading too old to say the move now, or without this market, gives way while a new read is on its way. With
+    // none on its way it is at most one sheet refresh old and shows; one without this market says "not available".
+    if (pending && !isMarketMovesReadingFresh(reading, now, [symbol])) return { state: 'loading' as const, percent: null };
+    return { state: 'shown' as const, percent: reading.moves.get(symbol) ?? null };
   };
   const hour = moveState('1h'), week = moveState('7d');
   // What failed, in its owner's words: the line first, else the first move that failed.

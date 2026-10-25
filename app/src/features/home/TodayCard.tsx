@@ -478,18 +478,26 @@ export function TodayCard({ db, now, load = loadOnDemand, news, budget = null }:
     if (!newsDue || news === undefined || newsAsked.current) return;
     const controller = new AbortController();
     let waiting: (() => void) | null = null;
+    /** Sends the refresh when it is still due (another Home may have sent one meanwhile), and says whether it went. */
+    const send = (): boolean => {
+      const at = nowRef.current();
+      if (!isNewsRefreshDue(lastHomeNewsRefresh.get(news) ?? null, at)) return false;
+      lastHomeNewsRefresh.set(news, at);
+      void refreshNewsCalendar(db, news, { now: at, signal: controller.signal }).then(outcome => {
+        if (!controller.signal.aborted && outcome.ok) readAgain.current('other');
+      });
+      return true;
+    };
     const run = () => {
       newsAsked.current = true;
-      const at = nowRef.current();
-      if (!isNewsRefreshDue(lastHomeNewsRefresh.get(news) ?? null, at)) return;
-      lastHomeNewsRefresh.set(news, at);
+      if (!isNewsRefreshDue(lastHomeNewsRefresh.get(news) ?? null, nowRef.current())) return;
+      if (budget === null) { send(); return; }
       // All the calendars at once, when they fit in Home's request budget (they wait for recent market reads to age).
-      const room = budget === null ? Promise.resolve(true) : budget.take(NEWS_CALENDAR_SOURCE_IDS.length, controller.signal);
-      void room.then(granted => {
-        if (!granted || controller.signal.aborted) return;
-        void refreshNewsCalendar(db, news, { now: budget === null ? at : nowRef.current(), signal: controller.signal }).then(outcome => {
-          if (!controller.signal.aborted && outcome.ok) readAgain.current('other');
-        });
+      // Its time is kept only when it goes: Home left during the wait asks again on its next visit. Room granted but not
+      // used (left between the grant and the send, or no longer due) goes back to the budget.
+      const count = NEWS_CALENDAR_SOURCE_IDS.length;
+      void budget.take(count, controller.signal).then(granted => {
+        if (granted && (controller.signal.aborted || !send())) budget.refund(count);
       });
     };
     const timer = setTimeout(() => {

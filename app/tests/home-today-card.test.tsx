@@ -878,4 +878,51 @@ describe('T-061e review r1: Home within the server\'s limit', () => {
     await act(async () => { vi.advanceTimersByTime(30_000); });
     expect(granted).toBe(true);
   });
+
+  it('review r2: Home left while the news waits in the budget asks again on its next visit, and gets it once there is room', async () => {
+    // Real time still runs (the testing library waits with setTimeout); the waits are moved on by hand.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'], shouldAdvanceTime: true });
+    const budget = createRequestBudget(HOME_SHARED_READS_PER_MINUTE);
+    expect(await budget.take(1)).toBe(true);
+    const db = await newsDatabase(null);
+    const { news, calendar } = newsPort(true);
+    const first = card(db, { news, budget });
+    await within(await region()).findByText('No big news in the next 14 days.');
+    await settle();
+    // The news waits for the market read to age; Home is left meanwhile.
+    await act(async () => { vi.advanceTimersByTime(10_000); });
+    first.unmount();
+    card(db, { news, budget });
+    const today = await region();
+    await within(today).findByText('No big news in the next 14 days.');
+    await settle();
+    await act(async () => { vi.advanceTimersByTime(10_000); });
+    expect(calendar).not.toHaveBeenCalled();
+    await act(async () => { vi.advanceTimersByTime(45_000); });
+    expect(calendar).toHaveBeenCalledTimes(9);
+    await waitFor(() => expect(newsLine(today)).toHaveTextContent('Next big news: US inflation (CPI)'));
+  });
+
+  it('review r2: room granted to the news but left unused (Home left between the grant and the send) goes back to the budget', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'], shouldAdvanceTime: true });
+    const budget = createRequestBudget(HOME_SHARED_READS_PER_MINUTE);
+    expect(await budget.take(1)).toBe(true);
+    const db = await newsDatabase(null);
+    const { news, calendar } = newsPort(true);
+    const view = card(db, { news, budget });
+    await within(await region()).findByText('No big news in the next 14 days.');
+    await settle();
+    await act(async () => { vi.advanceTimersByTime(10_000); });
+    // The room comes (the market read ages out) and Home is left before the news can go.
+    vi.advanceTimersByTime(50_000);
+    view.unmount();
+    await act(async () => {});
+    expect(calendar).not.toHaveBeenCalled();
+    // Nothing went out, so the whole budget is free at once.
+    let granted = false;
+    void budget.take(HOME_SHARED_READS_PER_MINUTE).then(ok => { granted = ok; });
+    await act(async () => {});
+    expect(granted).toBe(true);
+  });
 });
+

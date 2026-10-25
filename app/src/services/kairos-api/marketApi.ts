@@ -32,6 +32,8 @@ export const COIN_NAMES_STORE_KEY = '/kairos-market-list/coin-names';
 export const COIN_NAMES_FRESH_MS = 24 * 60 * 60 * 1000;
 export const COIN_NAMES_KEEP_MS = 7 * 24 * 60 * 60 * 1000;
 export const COIN_NAMES_MAX = 250;
+/** T-061e review r2: a failed coin-names ask (not "not set up") is not asked again for 10 minutes, or the server's wait if longer. */
+export const COIN_NAMES_FAILURE_KEEP_MS = 10 * 60 * 1000;
 const SPOT_VENUE = 'binance-spot';
 
 export interface ServerMarket {
@@ -474,9 +476,10 @@ export function createKairosCoinNames(client: KairosApiClient, options: Readonly
   let session: { readonly names: ReadonlyMap<string, string>; readonly storedAt: number } | null = null;
   let inFlight: Promise<CoinNamesResult> | null = null;
   /**
-   * T-061e review r1: an answer that was not new names ("not set up" without the owner's key, a failure, or the device
-   * copy used after one) is kept for this visit, or until the wait the server asked for: Home asks on every visit, and
-   * each ask counts against the server's limit. A failure while offline reached no server and is not kept.
+   * T-061e review r1, r2: an answer that was not new names is kept, as Home asks on every visit and each ask counts
+   * against the server's limit: "not set up" (no owner's key) for this visit; any other failure, or the device copy used
+   * after one, for 10 minutes (or the server's wait, if longer), so one timeout never turns names off until a reload.
+   * A failure while offline reached no server and is not kept.
    */
   let kept: { readonly result: CoinNamesResult; readonly until: number } | null = null;
   const ageOk = (storedAt: number, limit: number) => { const age = now() - storedAt; return age >= 0 && age <= limit; };
@@ -500,7 +503,8 @@ export function createKairosCoinNames(client: KairosApiClient, options: Readonly
     const failure = result.ok ? unavailable('unreadable') : marketDataUnavailableOf(result, isOnline);
     const copy = await readCopy();
     const answer: CoinNamesResult = copy !== null && ageOk(copy.storedAt, COIN_NAMES_KEEP_MS) ? { ok: true, names: coinNamesMap(copy.names) } : failure;
-    if (failure.why !== 'offline') kept = { result: answer, until: failure.retryAfterSeconds === null ? Number.POSITIVE_INFINITY : now() + failure.retryAfterSeconds * 1000 };
+    if (failure.why === 'not-set-up') kept = { result: answer, until: Number.POSITIVE_INFINITY };
+    else if (failure.why !== 'offline') kept = { result: answer, until: now() + Math.max(COIN_NAMES_FAILURE_KEEP_MS, (failure.retryAfterSeconds ?? 0) * 1000) };
     return answer;
   };
   return Object.freeze({

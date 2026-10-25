@@ -160,6 +160,28 @@ describe('the market sheet (T-061e, D271)', () => {
     expect(moveLine(sheet, '1 hour')).toHaveTextContent('▲ 0.4%');
   });
 
+  it('review r2: between the sheet\'s reads its moves keep showing (at 35 s and 55 s); "loading" only while a read is on its way', async () => {
+    vi.useFakeTimers({ now: NOW, toFake: ['Date', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
+    const { reader } = setUp();
+    const sheet = await openSheet(reader);
+    expect(moveLine(sheet, '1 hour')).toHaveTextContent('▲ 0.4%');
+    await act(async () => { vi.advanceTimersByTime(35_000); });
+    expect(reader.state()['1h'].pending).toBe(false);
+    expect(moveLine(sheet, '1 hour')).toHaveTextContent('▲ 0.4%');
+    await act(async () => { vi.advanceTimersByTime(20_000); });
+    expect(moveLine(sheet, '1 hour')).toHaveTextContent('▲ 0.4%');
+    expect(moveLine(sheet, '7 days')).toHaveTextContent('▼ 5.1%');
+  });
+
+  it('review r2: a reading without this market, with no read on its way, says "not available"', async () => {
+    const hourWithoutBtc: MarketMovesResult = { ok: true, observedAt: new Date(NOW).toISOString(), moves: [{ symbol: 'ETHUSDT', open: d('4000'), last: d('4000') }] };
+    const { reader } = setUp({ '1h': hourWithoutBtc });
+    const sheet = await openSheet(reader);
+    expect(reader.state()['1h'].pending).toBe(false);
+    expect(moveLine(sheet, '1 hour')).toHaveTextContent('not available');
+    expect(moveLine(sheet, '1 hour')).not.toHaveTextContent('loading');
+  });
+
   it('passes axe at 390 px', async () => {
     window.innerWidth = 390;
     vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(390);
