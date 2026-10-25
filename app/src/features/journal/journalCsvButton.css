@@ -1,0 +1,4 @@
+/* U15 (D266): "Download as a spreadsheet" under the list's heading, with what it did. */
+.kairos-history__csv { display: flex; flex-wrap: wrap; align-items: center; gap: var(--kairos-space-2); margin: 0 0 var(--kairos-space-3); }
+.kairos-history__csv-note { margin: 0; color: var(--kairos-text-secondary); overflow-wrap: anywhere; }
+.kairos-history__csv-error { color: var(--kairos-state-error); }

@@ -1,0 +1,3 @@
+.kairos-online-services { display: flex; flex-wrap: wrap; align-items: center; gap: var(--kairos-space-3); margin: 0; }
+.kairos-online-services > p { flex: 1 1 14rem; margin: 0; }
+.kairos-online-services > .kairos-unavailable { flex: 1 1 100%; }

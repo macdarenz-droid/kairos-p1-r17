@@ -1,0 +1,45 @@
+@media (max-width: 34rem) { .kairos-trade-form__actions .kairos-button { width: 100%; } }
+.kairos-trade-form__time { display: flex; align-items: center; gap: var(--kairos-space-2); }
+.kairos-trade-form__time input { flex: 1 1 auto; }
+.kairos-trade-form__strategy-note { display:grid; gap:var(--kairos-space-2); margin-top:var(--kairos-space-3); overflow-wrap:anywhere; min-width:0; }
+.kairos-trade-form__strategy-note p { margin:0 !important; }
+.kairos-trade-form__forex-note, .kairos-trade-form__stock-note { display:grid; gap:var(--kairos-space-2); margin-top:var(--kairos-space-3); overflow-wrap:anywhere; min-width:0; }
+.kairos-trade-form__forex-note p, .kairos-trade-form__stock-note p { margin:0 !important; }
+.kairos-trade-form__strategy-marks { letter-spacing:.2em; font-variant-numeric:tabular-nums; }
+.kairos-trade-form__strategy-note [data-verdict="kept"] { color:var(--kairos-state-success); }
+.kairos-trade-form__strategy-note [data-verdict="broken"] { color:var(--kairos-state-error); }
+.kairos-trade-form__strategy-note [data-verdict="unknown"] { color:var(--kairos-text-muted); }
+.kairos-trade-form__tags { display:grid; gap:var(--kairos-space-2); margin-top:var(--kairos-space-3); min-width:0; }
+.kairos-trade-form__tag-list { display:flex; flex-wrap:wrap; gap:var(--kairos-space-2); margin:0; padding:0; list-style:none; }
+.kairos-trade-form__tag { display:inline-flex; align-items:center; gap:var(--kairos-space-1); max-width:100%; padding-left:var(--kairos-space-3); border:1px solid var(--kairos-border-subtle); border-radius:var(--kairos-radius-full); background:var(--kairos-accent-soft); color:var(--kairos-text-primary); font-size:var(--kairos-font-size-sm); overflow-wrap:anywhere; }
+.kairos-trade-form__check { display:flex; align-items:flex-start; gap:var(--kairos-space-2); min-height:44px; padding:var(--kairos-space-2) 0; overflow-wrap:anywhere; }
+.kairos-trade-form__check input { flex:none; width:1.25rem; height:1.25rem; margin-top:0.1rem; }
+.kairos-trade-form__before-title { margin:0; font-size:var(--kairos-font-size-md); }
+.kairos-trade-form__before-save { display:grid; gap:var(--kairos-space-3); border-left:3px solid var(--kairos-state-warning); min-width:0; overflow-wrap:anywhere; }
+.kairos-trade-form__before-save-title { margin:0; font-size:var(--kairos-font-size-md); }
+.kairos-trade-form__before-save-list { display:grid; gap:var(--kairos-space-2); margin:0; padding-left:var(--kairos-space-5); }
+.kairos-trade-form__before-save .kairos-button { justify-self:start; }
+/* U14 (D254): the symbol search's list, under the field. */
+.kairos-symbol-search { position: relative; }
+.kairos-symbol-search > input { width: 100%; }
+.kairos-symbol-search__popup { position: absolute; z-index: 5; top: 100%; left: 0; right: 0; margin: var(--kairos-space-1) 0 0; padding: var(--kairos-space-1); border: 1px solid var(--kairos-border-strong); border-radius: var(--kairos-radius-md); background: var(--kairos-surface-raised); box-shadow: var(--kairos-shadow-md, 0 8px 24px rgb(0 0 0 / 0.25)); }
+.kairos-symbol-search__popup[hidden] { display: none; }
+.kairos-symbol-search__list { max-height: 18rem; overflow: auto; margin: 0; padding: 0; list-style: none; }
+.kairos-symbol-search__option { padding: var(--kairos-space-2); border-radius: var(--kairos-radius-sm); color: var(--kairos-text-primary); cursor: pointer; overflow-wrap: anywhere; }
+.kairos-symbol-search__option[aria-selected="true"], .kairos-symbol-search__option:hover { background: var(--kairos-accent-soft); }
+.kairos-symbol-search__credit { margin: var(--kairos-space-1) var(--kairos-space-2) 0; color: var(--kairos-text-muted); font-size: var(--kairos-font-size-xs); text-align: right; }
+/* U14 (D256): "Price now" beside a price, and the line that says where the price came from. */
+.kairos-price-now { display: grid; gap: var(--kairos-space-1); min-width: 0; }
+.kairos-price-now__row { display: flex; gap: var(--kairos-space-2); align-items: center; min-width: 0; }
+.kairos-price-now__row > input { flex: 1 1 auto; min-width: 0; }
+.kairos-price-now__row > button { flex: none; }
+.kairos-price-now__source, .kairos-price-now__failed { color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-xs); }
+/* U14 (D257): the minute under a time, and "Typo?" under a price. */
+.kairos-market-minute { display: grid; gap: var(--kairos-space-1); justify-items: start; min-width: 0; grid-column: 1 / -1; }
+.kairos-market-minute__line { color: var(--kairos-text-secondary); font-size: var(--kairos-font-size-xs); overflow-wrap: anywhere; }
+.kairos-price-now__typo { color: var(--kairos-state-warning, var(--kairos-text-primary)); font-size: var(--kairos-font-size-xs); overflow-wrap: anywhere; }
+.kairos-trade-form__kept { display: flex; flex-wrap: wrap; gap: var(--kairos-space-2); align-items: center; margin: 0 0 var(--kairos-space-3); color: var(--kairos-text-secondary); }
+/* U15 (D264): Duplicate's copy arrives above the form, or asks first when another trade was being typed. */
+.kairos-trade-copy { display: grid; gap: var(--kairos-space-3); margin: 0 0 var(--kairos-space-3); color: var(--kairos-text-secondary); }
+.kairos-trade-copy p { margin: 0; }
+.kairos-trade-copy__choices { display: flex; flex-wrap: wrap; gap: var(--kairos-space-3); }

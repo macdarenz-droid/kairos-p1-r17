@@ -1,0 +1,3 @@
+.kairos-add-point-value__open { justify-self: start; margin-top: var(--kairos-space-2); }
+.kairos-add-point-value { display: grid; gap: var(--kairos-space-2); margin-top: var(--kairos-space-2); min-width: 0; }
+.kairos-add-point-value__actions { display: flex; flex-wrap: wrap; gap: var(--kairos-space-2); }

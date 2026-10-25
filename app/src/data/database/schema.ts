@@ -1,0 +1,141 @@
+import type { SavedAnalysis } from '../../domain/saved-records/savedAnalysisContract';
+import type { SavedTimeAssistedSnapshot } from '../../domain/saved-records/savedTimeAssistedSnapshotContract';
+import type { TradeDisciplineRecord } from '../../domain/discipline';
+import type { TradeExecutionRecord, TradeFeeRecord, TradePlanRecord, TradeRecord } from '../../domain/trades';
+import type { ExchangeRateRecord } from '../../domain/calculations/currencyConversion';
+import type { EconomicEventRecord } from '../../domain/economic-calendar/economicEvent';
+
+export const KAIROS_DATABASE_NAME = 'kairos';
+export const KAIROS_DB_SCHEMA_VERSION = 15 as const;
+
+/** Immutable released V1 contract. Never edit. */
+export const KAIROS_V1_STORES = Object.freeze({
+  metadata: '&key',
+});
+
+/** V2 appends the first roadmap-owned trade persistence stores. */
+export const KAIROS_V2_STORES = Object.freeze({
+  metadata: '&key',
+  trades: '&id,status,symbol,updatedAt',
+  tradePlans: '&id,tradeId,updatedAt',
+  tradeExecutions: '&id,tradeId,type,executedAt',
+  tradeFees: '&id,tradeId,executionId',
+});
+
+
+/** V3 adds an indexed newest-first status history access path without changing stored trade records. */
+export const KAIROS_V3_STORES = Object.freeze({
+  trades: '&id,status,symbol,updatedAt,[status+updatedAt]',
+});
+
+/** V4 appends Saved Analysis persistence without rewriting released history. */
+export const KAIROS_V4_STORES = Object.freeze({
+  savedAnalyses: '&id',
+});
+
+/** V5 appends saved time-assisted snapshot persistence without rewriting released history. */
+export const KAIROS_V5_STORES = Object.freeze({
+  savedTimeAssistedSnapshots: '&id',
+});
+
+/** V6 appends the P36.1 trade discipline store (one record per trade) without rewriting released history. */
+export const KAIROS_V6_STORES = Object.freeze({
+  tradeDiscipline: '&id,tradeId,updatedAt',
+});
+
+/** V7 adds an indexed close-time path for period totals without changing stored trade records. */
+export const KAIROS_V7_STORES = Object.freeze({
+  trades: '&id,status,symbol,updatedAt,[status+updatedAt],[status+closedAt]',
+});
+
+/** V8 makes tradeId unique: the database keeps one discipline record per trade (D7). Records store answers by list item id with their label (D6). */
+export const KAIROS_V8_STORES = Object.freeze({
+  tradeDiscipline: '&id,&tradeId,updatedAt',
+});
+
+/** V9 changes no store or index: a discipline record may now carry the strategy its trade follows (P28, optional field, nothing to convert). */
+export const KAIROS_V9_STORES = Object.freeze({});
+
+/** V10 appends the P33 exchange rate store: one rate per source, pair and UTC day (D114). Nothing to convert. */
+export const KAIROS_V10_STORES = Object.freeze({ exchangeRates: '&id,day' });
+
+/** V11 appends the P34 news store: one row per saved news event, indexed by the instant it is scheduled (D124). Nothing to convert. */
+export const KAIROS_V11_STORES = Object.freeze({ economicEvents: '&id,startsAt' });
+
+/**
+ * V12 appends a device-only store for things that are not text, such as the backup folder a browser lets Kairos write
+ * to (U8, D227). It is never in a backup, and a restore keeps it: the snapshot and the restore name their stores. Nothing
+ * to convert.
+ */
+export const KAIROS_V12_STORES = Object.freeze({ deviceHandles: '&key' });
+
+/**
+ * V13 (U11, D240) restates the trades store with a multi-entry `*tags` index, for finding trades by tag. Trades and plans
+ * may now carry optional fields (contract size, where it was traded, tags, leverage; why on the plan). No record is
+ * rewritten: nothing is filled in for the trader (D237).
+ */
+export const KAIROS_V13_STORES = Object.freeze({
+  trades: '&id,status,symbol,updatedAt,[status+updatedAt],[status+closedAt],*tags',
+});
+
+/** V14 (U12, D243) changes no store or index: a discipline record may now carry what "Before you save" named (optional field, nothing to convert). */
+export const KAIROS_V14_STORES = Object.freeze({});
+
+/**
+ * V15 (U15, D259, D265) restates the trades store with `[journalAt+id]`: the Journal's order, when the trade happened
+ * (`tradeJournalAt`), stamped on every trade by the database (`KairosDatabase`) and never in a backup.
+ * `[status+journalAt+id]` is the same order for one status. A trade may also carry a note.
+ */
+export const KAIROS_V15_STORES = Object.freeze({
+  trades: '&id,status,symbol,updatedAt,[status+updatedAt],[status+closedAt],*tags,[journalAt+id],[status+journalAt+id]',
+});
+
+/** Current complete store authority used by transactions/integrity only. */
+export const KAIROS_CURRENT_STORES = Object.freeze({
+  ...KAIROS_V2_STORES,
+  ...KAIROS_V3_STORES,
+  ...KAIROS_V4_STORES,
+  ...KAIROS_V5_STORES,
+  ...KAIROS_V6_STORES,
+  ...KAIROS_V7_STORES,
+  ...KAIROS_V8_STORES,
+  ...KAIROS_V9_STORES,
+  ...KAIROS_V10_STORES,
+  ...KAIROS_V11_STORES,
+  ...KAIROS_V12_STORES,
+  ...KAIROS_V13_STORES,
+  ...KAIROS_V14_STORES,
+  ...KAIROS_V15_STORES,
+});
+
+export interface DatabaseMetadataRecord {
+  readonly key: string;
+  readonly value: string;
+  readonly updatedAt: string;
+}
+
+/** A stored trade: the trade, plus `journalAt` (D259), which the database stamps on every write (schema v15). */
+export type DatabaseTradeRecord = TradeRecord & { readonly journalAt?: string };
+
+/** A stored trade as the trader entered it: without the derived Journal order, for backups and their checks (D259). */
+export function tradeWithoutJournalOrder(record: DatabaseTradeRecord): TradeRecord {
+  const { journalAt: _order, ...trade } = record;
+  return trade;
+}
+export type DatabaseTradePlanRecord = TradePlanRecord;
+export type DatabaseTradeExecutionRecord = TradeExecutionRecord;
+export type DatabaseTradeFeeRecord = TradeFeeRecord;
+export type DatabaseExchangeRateRecord = ExchangeRateRecord;
+export type DatabaseEconomicEventRecord = EconomicEventRecord;
+
+/** One device-only handle (D227): `handle` is whatever the browser gave (a folder handle), kept by structured clone. */
+export interface DatabaseDeviceHandleRecord {
+  readonly key: string;
+  readonly name: string;
+  readonly handle: unknown;
+  readonly savedAt: string;
+}
+
+export type DatabaseSavedAnalysisRecord = SavedAnalysis;
+export type DatabaseSavedTimeAssistedSnapshotRecord = SavedTimeAssistedSnapshot;
+export type DatabaseTradeDisciplineRecord = TradeDisciplineRecord;

@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "lessons": [
+    { "id": "set-your-stop-first", "revision": 2, "title": "Set your stop first",
+      "summary": "Where your stop goes, and why you choose it before you buy or sell.",
+      "level": 1, "minutes": 3,
+      "steps": [
+        { "id": "what-a-stop-is", "title": "What a stop is", "blocks": [
+          { "kind": "picture", "picture": { "kind": "risk-box", "side": "long", "target": false, "highlight": "stop" }, "caption": "Your entry, your stop, and the part you can lose between them." },
+          { "kind": "text", "text": "A stop is the price where you get out if the trade goes against you. It keeps a bad trade small." },
+          { "kind": "words", "termIds": ["stop"] } ] },
+        { "id": "stop-on-a-buy", "title": "On a buy", "blocks": [
+          { "kind": "picture", "picture": { "kind": "risk-box", "side": "long", "target": false, "highlight": "stop" }, "caption": null },
+          { "kind": "text", "text": "When you buy, you lose money if the price falls. So your stop goes below your entry." },
+          { "kind": "words", "termIds": ["long"] } ] },
+        { "id": "stop-on-a-sell", "title": "On a sell", "blocks": [
+          { "kind": "picture", "picture": { "kind": "risk-box", "side": "short", "target": false, "highlight": "stop" }, "caption": null },
+          { "kind": "text", "text": "When you sell first, you lose money if the price rises. So your stop goes above your entry." },
+          { "kind": "words", "termIds": ["short"] } ] },
+        { "id": "why-first", "title": "Why you choose it first", "blocks": [
+          { "kind": "picture", "picture": { "kind": "risk-box", "side": "long", "target": false, "highlight": "risk" }, "caption": null },
+          { "kind": "text", "text": "The gap between your entry and your stop decides how much you can lose. Choose it before you trade, while you are calm, not after the price has moved." },
+          { "kind": "text", "text": "Kairos draws the risk box on your trade picture only when the trade has a stop." } ] },
+        { "id": "check", "title": "Check yourself", "blocks": [
+          { "kind": "check", "question": "You buy at 100. Where does your stop go?",
+            "choices": [ { "text": "Below 100", "right": true }, { "text": "Above 100", "right": false }, { "text": "Exactly at 100", "right": false } ],
+            "explanation": "On a buy you lose when the price falls, so the stop sits below your entry. A stop at 100 leaves no room: the smallest dip would close the trade." } ] },
+        { "id": "try-it", "title": "Try it", "blocks": [
+          { "kind": "try", "text": "When you log your next trade, open Trade plan and fill in Planned stop before you save.", "tool": "journal" },
+          { "kind": "try", "text": "Or practise it first with pretend money: save a practice trade with a Planned stop.", "tool": "practice" } ] }
+      ] },
+    { "id": "how-much-to-buy", "revision": 1, "title": "How much to buy for your risk",
+      "summary": "Choose the most you are willing to lose, then let your stop decide how much you can buy.",
+      "level": 1, "minutes": 4,
+      "steps": [
+        { "id": "lose-first", "title": "Start with what you can lose", "blocks": [
+          { "kind": "picture", "picture": { "kind": "risk-box", "side": "long", "target": false, "highlight": "risk" }, "caption": null },
+          { "kind": "text", "text": "Before you buy, choose the most you are willing to lose on this one trade. Many traders choose 1% of their account or less." } ] },
+        { "id": "stop-sets-size", "title": "Your stop sets the size", "blocks": [
+          { "kind": "text", "text": "Each coin you buy can lose the gap between your entry and your stop. Divide what you are willing to lose by that gap: that is how much you can buy." },
+          { "kind": "words", "termIds": ["position-size", "stop"] } ] },
+        { "id": "near-stop", "title": "An example", "blocks": [
+          { "kind": "size-example", "accountSize": "1000", "riskPercent": "1", "entryPrice": "100", "stopPrice": "95" } ] },
+        { "id": "far-stop", "title": "A stop further away", "blocks": [
+          { "kind": "text", "text": "Move the stop further away and you can buy less. The loss at the stop stays the same." },
+          { "kind": "size-example", "accountSize": "1000", "riskPercent": "1", "entryPrice": "100", "stopPrice": "90" } ] },
+        { "id": "check", "title": "Check yourself", "blocks": [
+          { "kind": "check", "question": "Your stop moves further from your entry. What happens to how much you can buy?",
+            "choices": [ { "text": "You can buy less", "right": true }, { "text": "You can buy more", "right": false }, { "text": "It stays the same", "right": false } ],
+            "explanation": "Each coin can now lose more, so fewer coins fit inside the amount you chose to lose." } ] },
+        { "id": "try-it", "title": "Try it", "blocks": [
+          { "kind": "try", "text": "Work out a trade of your own, with your own numbers.", "tool": "calculators" } ] }
+      ] },
+    { "id": "read-your-trade-picture", "revision": 2, "title": "Read your trade picture",
+      "summary": "What the boxes, the candles and the result on your trade picture mean.",
+      "level": 1, "minutes": 4,
+      "steps": [
+        { "id": "the-picture", "title": "Your trade as a picture", "blocks": [
+          { "kind": "picture", "picture": { "kind": "risk-box", "side": "long", "target": true, "highlight": null }, "caption": null },
+          { "kind": "text", "text": "Every trade in your Journal has a picture: your plan drawn as boxes, and your entries and exits as marks." },
+          { "kind": "words", "termIds": ["entries-and-exits"] } ] },
+        { "id": "the-boxes", "title": "The two boxes", "blocks": [
+          { "kind": "picture", "picture": { "kind": "risk-box", "side": "long", "target": true, "highlight": "risk" }, "caption": null },
+          { "kind": "text", "text": "The box between your entry and your stop is the part you can lose. The box between your entry and your target is the part you can win." },
+          { "kind": "words", "termIds": ["stop", "target"] } ] },
+        { "id": "planned-reward", "title": "Planned reward", "blocks": [
+          { "kind": "picture", "picture": { "kind": "risk-box", "side": "long", "target": true, "highlight": "reward" }, "caption": null },
+          { "kind": "text", "text": "Planned reward compares the two boxes. 2× means the part you can win is twice as big as the part you can lose." },
+          { "kind": "words", "termIds": ["reward-to-risk"] } ] },
+        { "id": "the-candles", "title": "The candles", "blocks": [
+          { "kind": "picture", "picture": { "kind": "candle", "direction": "up" }, "caption": null },
+          { "kind": "text", "text": "Behind the boxes are the candles from the time of your trade. With no internet connection, the picture shows only your plan and your entries and exits." },
+          { "kind": "words", "termIds": ["candle"] } ] },
+        { "id": "the-result", "title": "The result", "blocks": [
+          { "kind": "picture", "picture": { "kind": "result-bars", "highlight": "after-fees" }, "caption": null },
+          { "kind": "text", "text": "Result after fees is what the trade really made or lost. Actual result compares it with what you planned to lose: +2× means you won twice that." },
+          { "kind": "words", "termIds": ["result-after-fees", "times-what-you-risked"] } ] },
+        { "id": "check", "title": "Check yourself", "blocks": [
+          { "kind": "check", "question": "Your trade picture says +2× what you risked. What happened?",
+            "choices": [ { "text": "You won twice what you planned to lose", "right": true }, { "text": "You doubled all the money in your account", "right": false }, { "text": "You lost twice what you planned to lose", "right": false } ],
+            "explanation": "× what you risked compares your result with the loss you planned at your stop, not with all the money in your account." } ] },
+        { "id": "try-it", "title": "Try it", "blocks": [
+          { "kind": "try", "text": "Open the Journal and tap the small picture on a trade card to see your own trade.", "tool": "journal" },
+          { "kind": "try", "text": "Or replay a past market: place a practice trade and watch its picture grow, one candle at a time.", "tool": "replay" } ] }
+      ] }
+  ]
+}

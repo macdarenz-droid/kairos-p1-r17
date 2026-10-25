@@ -1,0 +1,579 @@
+/**
+ * U2 (P16.A1): the app's market data from the Kairos server (/market/symbols, /market/tickers, /market/candles,
+ * T-061e's /market/moves, U14's /market/coin-names and T-061f's /market/coin-logos).
+ * Transport and strict decoding only, over the one server client (kairosApi.ts): the server-backed market ports, the
+ * device copy of the market list, and what a server failure means (`why`). The words are onlineWords.ts's.
+ */
+import { decimalCompare } from '../../domain/calculations/decimalKernel';
+import { COIN_SYMBOL, parseCoinLogoAddress, type CoinLogoAddress } from '../../domain/market/coinLogo';
+import { parseDecimalString, parsePositiveDecimalString, type DecimalString } from '../../domain/trades';
+import type { LiveMarketSummaryBaselineAcquisitionPort, LiveMarketSummaryBaselineAcquisitionResult } from '../market-data/LiveMarketSummaryBaselineAcquisitionPort';
+import type { LiveMarketUniverseInstrumentMetadataAcquisitionPort, LiveMarketUniverseInstrumentMetadataAcquisitionResult } from '../market-data/LiveMarketUniverseInstrumentMetadataAcquisitionPort';
+import type { LiveMarketUniverseInstrumentMetadataFact } from '../market-data/liveMarketUniverseInstrumentMetadataFact';
+import { validateLiveMarketSummaryBaselineSuccess } from '../market-data/liveMarketSummaryBaselineAcquisitionSemantics';
+import { validateLiveMarketSummaryFact } from '../market-data/liveMarketSummaryFactSemantics';
+import type { MarketCandle, MarketCandleHistoryPort, MarketCandleHistoryRequest, MarketCandleOrigin } from '../market-data/MarketCandleHistoryPort';
+import type { MarketMove, MarketMovesPort, MarketMovesResult, MarketMovesWindow } from '../market-data/MarketMovesPort';
+import { BINANCE_USDM_VENUE, OANDA_FOREX_VENUE, type LiveMarketSummaryFact, type MarketDataUnavailable, type MarketDataUnavailableWhy } from '../market-data/marketDataTypes';
+import type { KairosApiClient, KairosApiFailure, KairosApiQuery } from './kairosApi';
+
+/** A device copy of the market list younger than this is used without asking the server. */
+export const MARKET_LIST_FRESH_MS = 6 * 60 * 60 * 1000;
+/** When the server fails, a device copy up to this old is still used. */
+export const MARKET_LIST_KEEP_MS = 7 * 24 * 60 * 60 * 1000;
+/** After a failed market list request answered from the device copy, the server is asked again after its wait, or this many seconds. */
+export const MARKET_LIST_RETRY_SECONDS = 60;
+export const MARKET_LIST_MAX_MARKETS = 5_000;
+export const MARKET_TICKERS_MAX_SYMBOLS = 100;
+export const MARKET_TICKERS_MAX_QUERY = 3_000;
+const MARKET_LIST_CACHE = 'kairos-market-list';
+const MARKET_LIST_KEY = '/kairos-market-list/binance-spot';
+export const COIN_NAMES_STORE_KEY = '/kairos-market-list/coin-names';
+/** U14 (D255): a device copy of the coin names younger than a day is used without asking; up to 7 days when the server fails. */
+export const COIN_NAMES_FRESH_MS = 24 * 60 * 60 * 1000;
+export const COIN_NAMES_KEEP_MS = 7 * 24 * 60 * 60 * 1000;
+export const COIN_NAMES_MAX = 250;
+/** T-061e review r2: a failed coin-names ask (not "not set up") is not asked again for 10 minutes, or the server's wait if longer. */
+export const COIN_NAMES_FAILURE_KEEP_MS = 10 * 60 * 1000;
+const SPOT_VENUE = 'binance-spot';
+
+export interface ServerMarket {
+  readonly symbol: string;
+  readonly base: string;
+  readonly quote: string;
+  readonly tickSize: DecimalString;
+  readonly stepSize: DecimalString;
+}
+
+export interface ServerMarketList {
+  readonly fetchedAt: string;
+  readonly markets: readonly ServerMarket[];
+  readonly leftOut: number;
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
+const isCanonicalIso = (value: unknown): value is string =>
+  typeof value === 'string' && !Number.isNaN(Date.parse(value)) && new Date(Date.parse(value)).toISOString() === value;
+const isText = (value: unknown): value is string => typeof value === 'string' && value !== '';
+const positive = (value: unknown): DecimalString | null => {
+  if (typeof value !== 'string') return null;
+  const parsed = parsePositiveDecimalString(value);
+  return parsed.ok && parsed.value === value ? parsed.value : null;
+};
+const nonNegative = (value: unknown): DecimalString | null => {
+  if (typeof value !== 'string') return null;
+  const parsed = parseDecimalString(value);
+  return parsed.ok && parsed.value === value && !value.startsWith('-') ? parsed.value : null;
+};
+
+function decodeMarket(value: unknown): ServerMarket | null {
+  if (!isRecord(value)) return null;
+  const { symbol, base, quote } = value;
+  const tickSize = positive(value.tickSize);
+  const stepSize = positive(value.stepSize);
+  if (!isText(symbol) || !isText(base) || !isText(quote) || base + quote !== symbol || tickSize === null || stepSize === null) return null;
+  return Object.freeze({ symbol, base, quote, tickSize, stepSize });
+}
+
+/** The /market/symbols data, or null when any part breaks the server's rules (the whole answer is refused). */
+export function decodeMarketSymbols(data: unknown): ServerMarketList | null {
+  if (!isRecord(data) || data.source !== 'binance-spot' || !isCanonicalIso(data.fetchedAt)) return null;
+  const { markets, leftOut } = data;
+  if (!Array.isArray(markets) || markets.length > MARKET_LIST_MAX_MARKETS || typeof leftOut !== 'number' || !Number.isSafeInteger(leftOut) || leftOut < 0) return null;
+  const decoded: ServerMarket[] = [];
+  for (const item of markets as unknown[]) {
+    const market = decodeMarket(item);
+    // Ascending and unique, as the server sends them.
+    if (market === null || (decoded.length > 0 && !(decoded[decoded.length - 1].symbol < market.symbol))) return null;
+    decoded.push(market);
+  }
+  return Object.freeze({ fetchedAt: data.fetchedAt, markets: Object.freeze(decoded), leftOut });
+}
+
+/** The /market/tickers data as summary facts in the requested order, or null for any fault (the batch is unreadable). */
+export function decodeMarketTickers(data: unknown, requested: readonly string[]): readonly LiveMarketSummaryFact[] | null {
+  if (!isRecord(data) || data.source !== 'binance-spot' || !isCanonicalIso(data.fetchedAt) || !Array.isArray(data.tickers)) return null;
+  const tickers = data.tickers as unknown[];
+  if (tickers.length !== requested.length) return null;
+  const facts: LiveMarketSummaryFact[] = [];
+  for (const [index, item] of tickers.entries()) {
+    if (!isRecord(item) || item.symbol !== requested[index] || !isCanonicalIso(item.openTime) || !isCanonicalIso(item.closeTime)) return null;
+    const [lastPrice, openPrice, highPrice, lowPrice, volume, quoteVolume] = (['lastPrice', 'openPrice', 'highPrice', 'lowPrice', 'volume', 'quoteVolume'] as const).map((field) => nonNegative(item[field]));
+    if (lastPrice === null || openPrice === null || highPrice === null || lowPrice === null || volume === null || quoteVolume === null) return null;
+    const fact: LiveMarketSummaryFact = {
+      instrument: { venue: SPOT_VENUE, symbol: requested[index] },
+      lastPrice, open24h: openPrice, high24h: highPrice, low24h: lowPrice, baseVolume24h: volume, quoteVolume24h: quoteVolume,
+      // The server's read time, so Home's freshness check stays honest.
+      observedAt: data.fetchedAt,
+      sourceTimestamp: item.closeTime,
+    };
+    const validated = validateLiveMarketSummaryFact(fact);
+    if (!validated.ok) return null;
+    facts.push(Object.freeze(validated.fact));
+  }
+  return Object.freeze(facts);
+}
+
+/**
+ * T-061e (D271): the /market/moves data for this window as moves in the requested order, with the server's read time;
+ * null for any fault (the batch is unreadable).
+ */
+export function decodeMarketMoves(data: unknown, requested: readonly string[], window: MarketMovesWindow): Readonly<{ fetchedAt: string; moves: readonly MarketMove[] }> | null {
+  if (!isRecord(data) || data.source !== 'binance-spot' || data.window !== window || !isCanonicalIso(data.fetchedAt) || !Array.isArray(data.moves)) return null;
+  const rows = data.moves as unknown[];
+  if (rows.length !== requested.length) return null;
+  const moves: MarketMove[] = [];
+  for (const [index, item] of rows.entries()) {
+    if (!isRecord(item) || item.symbol !== requested[index] || !isCanonicalIso(item.openTime) || !isCanonicalIso(item.closeTime) || Date.parse(item.openTime) > Date.parse(item.closeTime)) return null;
+    const open = nonNegative(item.openPrice), last = nonNegative(item.lastPrice);
+    if (open === null || last === null) return null;
+    moves.push(Object.freeze({ symbol: requested[index]!, open, last }));
+  }
+  return Object.freeze({ fetchedAt: data.fetchedAt, moves: Object.freeze(moves) });
+}
+
+const PROVIDERS = ['binance', 'okx'] as const;
+const MARKETS = ['spot', 'usdm-futures', 'perpetual-swap'] as const;
+const BACKUPS = ['refused', 'busy', 'down'] as const;
+
+/** Whether the answer's source fits the market asked: OANDA forex with no backup for forex (D231), Binance or its backup otherwise. */
+function sourceFits(venue: string, provider: unknown, market: unknown, backup: unknown): boolean {
+  if (venue === OANDA_FOREX_VENUE) return provider === 'oanda' && market === 'forex' && backup === null;
+  return PROVIDERS.includes(provider as never) && MARKETS.includes(market as never) && (backup === null || BACKUPS.includes(backup as never));
+}
+const atLeast = (a: DecimalString, b: DecimalString) => { const order = decimalCompare(a, b); return order !== null && order >= 0; };
+
+export interface ServerCandlePage {
+  readonly fetchedAt: string;
+  readonly origin: MarketCandleOrigin;
+  readonly candles: readonly MarketCandle[];
+  readonly next: number | null;
+}
+
+/** The /market/candles data for this request, or null for any fault. Forex candles have no volume (D232). */
+export function decodeMarketCandles(data: unknown, request: MarketCandleHistoryRequest): ServerCandlePage | null {
+  if (!isRecord(data) || !isRecord(data.source) || !isCanonicalIso(data.fetchedAt) || data.interval !== request.interval || !Array.isArray(data.candles)) return null;
+  const { provider, market, symbol } = data.source;
+  const backup = data.backup;
+  if (!sourceFits(request.instrument.venue, provider, market, backup) || !isText(symbol)) return null;
+  const forex = provider === 'oanda';
+  const rows = data.candles as unknown[];
+  if (rows.length > request.limit) return null;
+  const candles: MarketCandle[] = [];
+  let previousOpenMs = -Infinity;
+  for (const row of rows) {
+    if (!isRecord(row) || !isCanonicalIso(row.openTime) || !isCanonicalIso(row.closeTime)) return null;
+    const openMs = Date.parse(row.openTime);
+    const closeMs = Date.parse(row.closeTime);
+    if (openMs <= previousOpenMs || closeMs <= openMs) return null;
+    if ((request.startTimeMs !== undefined && openMs < request.startTimeMs) || (request.endTimeMs !== undefined && openMs > request.endTimeMs)) return null;
+    const open = positive(row.open), high = positive(row.high), low = positive(row.low), close = positive(row.close);
+    const volume = forex ? (row.volume === null ? undefined : null) : nonNegative(row.volume);
+    if (open === null || high === null || low === null || close === null || volume === null) return null;
+    if (!atLeast(high, open) || !atLeast(high, close) || !atLeast(open, low) || !atLeast(close, low)) return null;
+    candles.push(Object.freeze(volume === undefined ? { openTime: row.openTime, closeTime: row.closeTime, open, high, low, close } : { openTime: row.openTime, closeTime: row.closeTime, open, high, low, close, volume }));
+    previousOpenMs = openMs;
+  }
+  const next = data.next;
+  if (next !== null && !(typeof next === 'number' && Number.isSafeInteger(next) && (candles.length === 0 || next > previousOpenMs))) return null;
+  const origin: MarketCandleOrigin = Object.freeze({
+    provider: provider as MarketCandleOrigin['provider'],
+    market: market as MarketCandleOrigin['market'],
+    symbol,
+    backup: backup as MarketCandleOrigin['backup'],
+  });
+  return Object.freeze({ fetchedAt: data.fetchedAt, origin, candles: Object.freeze(candles), next: next as number | null });
+}
+
+const unavailable = (why: MarketDataUnavailableWhy, retryAfterSeconds: number | null = null): MarketDataUnavailable =>
+  Object.freeze({ ok: false as const, reason: 'unavailable' as const, why, retryAfterSeconds });
+
+/** What a server client failure means for market data. */
+export function marketDataUnavailableOf(failure: KairosApiFailure, isOnline: () => boolean = () => globalThis.navigator?.onLine !== false): MarketDataUnavailable {
+  switch (failure.reason) {
+    case 'not-set-up': return unavailable('not-set-up');
+    // The server or the network path failed while the device is online.
+    case 'transport-failed': return unavailable(isOnline() ? 'source-down' : 'offline');
+    case 'invalid-response': return unavailable('unreadable');
+    case 'unavailable': {
+      const retry = failure.retryAfterSeconds;
+      switch (failure.serverReason) {
+        case 'rate-limited':
+        case 'source-busy': return unavailable('busy', retry);
+        case 'source-refused': return unavailable('region', retry);
+        case 'unknown-market': return unavailable('unknown-market', retry);
+        case 'not-set-up':
+        case 'device-not-recognised': return unavailable('not-set-up', retry);
+        default: return unavailable('source-down', retry);
+      }
+    }
+  }
+}
+
+/** The device copy of the market list; read and write never throw. */
+export interface MarketListStore {
+  read(): Promise<string | null>;
+  write(text: string): Promise<void>;
+}
+
+/**
+ * Cache Storage `kairos-market-list` (the service worker deletes only kairos-app-shell-* caches); null without Cache
+ * Storage. The coin names (U14) are a second entry in the same cache.
+ */
+export function browserMarketListStore(entry: string = MARKET_LIST_KEY): MarketListStore | null {
+  const storage = globalThis.caches;
+  if (storage === undefined) return null;
+  const key = () => new Request(entry);
+  return Object.freeze({
+    async read() {
+      try {
+        const cache = await storage.open(MARKET_LIST_CACHE);
+        const response = await cache.match(key());
+        return response === undefined ? null : await response.text();
+      } catch { return null; }
+    },
+    async write(text: string) {
+      try {
+        const cache = await storage.open(MARKET_LIST_CACHE);
+        await cache.put(key(), new Response(text, { headers: { 'content-type': 'application/json' } }));
+      } catch { /* a copy that cannot be kept is only a slower next start */ }
+    },
+  });
+}
+
+interface DeviceCopy { readonly storedAt: number; readonly markets: readonly ServerMarket[] }
+
+/** The stored text checked with the server's rules again; a bad copy reads as null. */
+function decodeDeviceCopy(text: string | null): DeviceCopy | null {
+  if (text === null) return null;
+  let body: unknown;
+  try { body = JSON.parse(text); } catch { return null; }
+  if (!isRecord(body) || typeof body.storedAt !== 'number' || !Number.isSafeInteger(body.storedAt)) return null;
+  const list = decodeMarketSymbols({ source: 'binance-spot', fetchedAt: new Date(0).toISOString(), markets: body.markets, leftOut: 0 });
+  return list === null || list.markets.length === 0 ? null : { storedAt: body.storedAt, markets: list.markets };
+}
+
+const factsOf = (markets: readonly ServerMarket[]): readonly LiveMarketUniverseInstrumentMetadataFact[] =>
+  Object.freeze(markets.map((market) => Object.freeze({
+    instrument: Object.freeze({ venue: SPOT_VENUE, symbol: market.symbol }),
+    baseAsset: market.base,
+    quoteAsset: market.quote,
+    tradingEnabled: true,
+    tickSize: market.tickSize,
+    stepSize: market.stepSize,
+  })));
+
+type MetadataResult = LiveMarketUniverseInstrumentMetadataAcquisitionResult;
+type InFlight = { promise: Promise<MetadataResult>; readonly controller: AbortController; waiters: number };
+
+export interface KairosMarketDataPorts {
+  readonly history: MarketCandleHistoryPort;
+  readonly metadata: LiveMarketUniverseInstrumentMetadataAcquisitionPort;
+  readonly baseline: LiveMarketSummaryBaselineAcquisitionPort;
+  /** T-061e (D271): the 1-hour and 7-day moves. */
+  readonly moves: MarketMovesPort;
+}
+
+export interface KairosMarketDataPortOptions {
+  readonly store: MarketListStore | null;
+  readonly now?: () => number;
+  readonly isOnline?: () => boolean;
+}
+
+/** One ticker batch: at most 100 symbols and at most 3,000 characters of encoded query. */
+function tickerBatches(symbols: readonly string[]): readonly (readonly string[])[] {
+  const batches: string[][] = [];
+  let current: string[] = [];
+  for (const symbol of symbols) {
+    const candidate = [...current, symbol];
+    const length = new URLSearchParams({ symbols: candidate.join(',') }).toString().length;
+    if (current.length > 0 && (candidate.length > MARKET_TICKERS_MAX_SYMBOLS || length > MARKET_TICKERS_MAX_QUERY)) {
+      batches.push(current);
+      current = [symbol];
+    } else {
+      current = candidate;
+    }
+  }
+  if (current.length > 0) batches.push(current);
+  return batches;
+}
+
+export function createKairosMarketDataPorts(client: KairosApiClient, options: KairosMarketDataPortOptions): KairosMarketDataPorts {
+  const now = options.now ?? (() => Date.now());
+  const isOnline = options.isOnline ?? (() => globalThis.navigator?.onLine !== false);
+  const failed = (failure: KairosApiFailure) => marketDataUnavailableOf(failure, isOnline);
+  let session: { readonly facts: readonly LiveMarketUniverseInstrumentMetadataFact[]; readonly storedAt: number } | null = null;
+  let inFlight: InFlight | null = null;
+  /** A device copy used after a failed request, kept until the server's wait has passed, so callers do not ask again at once. */
+  let fallback: { readonly facts: readonly LiveMarketUniverseInstrumentMetadataFact[]; readonly until: number } | null = null;
+  const ageOk = (storedAt: number, limit: number) => { const age = now() - storedAt; return age >= 0 && age <= limit; };
+
+  const history: MarketCandleHistoryPort = {
+    async acquireHistory(request, callerOptions) {
+      const { venue, symbol } = request.instrument;
+      if (venue !== SPOT_VENUE && venue !== BINANCE_USDM_VENUE && venue !== OANDA_FOREX_VENUE) return { ok: false, reason: 'invalid-request', detail: 'venue-mismatch' };
+      const signal = callerOptions?.signal;
+      if (signal?.aborted) return { ok: false, reason: 'cancelled' };
+      const query: Record<string, string> = { market: venue, symbol, interval: request.interval, limit: String(request.limit) };
+      if (request.startTimeMs !== undefined) query.start = String(request.startTimeMs);
+      if (request.endTimeMs !== undefined) query.end = String(request.endTimeMs);
+      // The server refuses a base and quote for forex: OANDA has no backup source.
+      if (request.pair !== undefined && venue !== OANDA_FOREX_VENUE) { query.base = request.pair.base; query.quote = request.pair.quote; }
+      const result = await client.request('/market/candles', query as KairosApiQuery, (data) => decodeMarketCandles(data, request), signal === undefined ? undefined : { signal });
+      if (signal?.aborted) return { ok: false, reason: 'cancelled' };
+      if (!result.ok) return failed(result);
+      const page = result.value;
+      return { ok: true, snapshot: Object.freeze({ source: 'market-reference' as const, timeZone: 'UTC' as const, request, observedAt: page.fetchedAt, candles: page.candles, origin: page.origin }) };
+    },
+  };
+
+  /** One /market/symbols request shared by every caller; a failure falls back to a device copy up to 7 days old. */
+  function startSharedRequest(): InFlight {
+    const controller = new AbortController();
+    const entry: InFlight = { controller, waiters: 0, promise: Promise.resolve({ ok: false, reason: 'acquisition-failed' }) };
+    entry.promise = (async (): Promise<MetadataResult> => {
+      const result = await client.request('/market/symbols', {}, decodeMarketSymbols, { signal: controller.signal });
+      if (result.ok && result.value.markets.length > 0) {
+        const storedAt = now();
+        const facts = factsOf(result.value.markets);
+        if (inFlight === entry) { session = { facts, storedAt }; fallback = null; }
+        await options.store?.write(JSON.stringify({ storedAt, markets: result.value.markets }));
+        return { ok: true, facts };
+      }
+      // An empty list is never kept: it would hide every market.
+      const failure = result.ok ? unavailable('unreadable') : failed(result);
+      const copy = decodeDeviceCopy((await options.store?.read()) ?? null);
+      if (copy !== null && ageOk(copy.storedAt, MARKET_LIST_KEEP_MS)) {
+        const facts = factsOf(copy.markets);
+        if (inFlight === entry) fallback = { facts, until: now() + (failure.retryAfterSeconds ?? MARKET_LIST_RETRY_SECONDS) * 1000 };
+        return { ok: true, facts };
+      }
+      return failure;
+    })().finally(() => { if (inFlight === entry) inFlight = null; });
+    return entry;
+  }
+
+  /** A caller's abort ends only its own wait; the request stops when every waiter has left. */
+  function waitFor(entry: InFlight, signal: AbortSignal | undefined): Promise<MetadataResult> {
+    entry.waiters += 1;
+    return new Promise((resolve) => {
+      let settled = false;
+      const leave = () => { settled = true; entry.waiters -= 1; signal?.removeEventListener('abort', onAbort); };
+      const onAbort = () => {
+        if (settled) return;
+        leave();
+        if (entry.waiters === 0) {
+          if (inFlight === entry) inFlight = null;
+          entry.controller.abort();
+        }
+        resolve({ ok: false, reason: 'acquisition-failed' });
+      };
+      signal?.addEventListener('abort', onAbort, { once: true });
+      void entry.promise.then((result) => { if (!settled) { leave(); resolve(result); } });
+    });
+  }
+
+  const metadata: LiveMarketUniverseInstrumentMetadataAcquisitionPort = {
+    async acquireInstrumentMetadata(callerOptions) {
+      const signal = callerOptions?.signal;
+      if (signal?.aborted) return { ok: false, reason: 'acquisition-failed' };
+      if (session !== null && ageOk(session.storedAt, MARKET_LIST_FRESH_MS)) return { ok: true, facts: session.facts };
+      if (fallback !== null && now() < fallback.until) return { ok: true, facts: fallback.facts };
+      if (inFlight === null) {
+        const copy = decodeDeviceCopy((await options.store?.read()) ?? null);
+        if (copy !== null && ageOk(copy.storedAt, MARKET_LIST_FRESH_MS)) {
+          session = { facts: factsOf(copy.markets), storedAt: copy.storedAt };
+          return { ok: true, facts: session.facts };
+        }
+      }
+      if (signal?.aborted) return { ok: false, reason: 'acquisition-failed' };
+      if (inFlight === null) inFlight = startSharedRequest();
+      return waitFor(inFlight, signal);
+    },
+  };
+
+  const baseline: LiveMarketSummaryBaselineAcquisitionPort = {
+    async acquireBaseline(scope, callerOptions): Promise<LiveMarketSummaryBaselineAcquisitionResult> {
+      const symbols = scope.map((instrument) => instrument.symbol);
+      if (scope.some((instrument) => instrument.venue !== SPOT_VENUE) || new Set(symbols).size !== symbols.length) return { ok: false, reason: 'acquisition-failed' };
+      const signal = callerOptions?.signal;
+      const bySymbol = new Map<string, LiveMarketSummaryFact>();
+      // One ascending order means one cache key for every device.
+      const ascending = [...symbols].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+      for (const batch of tickerBatches(ascending)) {
+        if (signal?.aborted) return { ok: false, reason: 'acquisition-failed' };
+        const result = await client.request('/market/tickers', { symbols: batch.join(',') }, (data) => decodeMarketTickers(data, batch), signal === undefined ? undefined : { signal });
+        if (!result.ok) return failed(result);
+        for (const fact of result.value) bySymbol.set(fact.instrument.symbol, fact);
+      }
+      const facts = scope.map((instrument) => bySymbol.get(instrument.symbol) as LiveMarketSummaryFact);
+      const validated = validateLiveMarketSummaryBaselineSuccess(scope, { completeness: 'complete-for-scope', scope: [...scope], facts });
+      return validated.ok ? { ok: true, delivery: validated.delivery } : unavailable('unreadable');
+    },
+  };
+
+  const moves: MarketMovesPort = {
+    async acquireMoves({ symbols, window }, callerOptions): Promise<MarketMovesResult> {
+      const signal = callerOptions?.signal;
+      const bySymbol = new Map<string, MarketMove>();
+      let observedAt: string | null = null;
+      // One ascending order means one cache key for every device (the server refuses any other order).
+      const ascending = [...new Set(symbols)].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+      for (const batch of tickerBatches(ascending)) {
+        if (signal?.aborted) return unavailable(isOnline() ? 'source-down' : 'offline');
+        const result = await client.request('/market/moves', { symbols: batch.join(','), window }, (data) => decodeMarketMoves(data, batch, window), signal === undefined ? undefined : { signal });
+        if (!result.ok) return failed(result);
+        for (const move of result.value.moves) bySymbol.set(move.symbol, move);
+        // The oldest read of the batches: freshness is never made better than it is.
+        if (observedAt === null || Date.parse(result.value.fetchedAt) < Date.parse(observedAt)) observedAt = result.value.fetchedAt;
+      }
+      if (observedAt === null) return unavailable('unreadable');
+      return Object.freeze({ ok: true as const, observedAt, moves: Object.freeze(symbols.map(symbol => bySymbol.get(symbol) as MarketMove)) });
+    },
+  };
+
+  return Object.freeze({ history, metadata, baseline, moves });
+}
+
+/** U14 (D255): a coin's name by its symbol (BTC → Bitcoin), as the server checked it. */
+export interface ServerCoinName {
+  readonly symbol: string;
+  readonly name: string;
+}
+
+// Control characters are never part of a name.
+const CONTROL = /[\u0000-\u001f\u007f-\u009f]/;
+
+/** The /market/coin-names data, checked again: at most 250 names, symbols A→Z and each once; null for any fault. */
+export function decodeCoinNames(data: unknown): readonly ServerCoinName[] | null {
+  if (!isRecord(data) || data.source !== 'coingecko' || !isCanonicalIso(data.fetchedAt) || !Array.isArray(data.names) || data.names.length > COIN_NAMES_MAX) return null;
+  const names: ServerCoinName[] = [];
+  for (const item of data.names as unknown[]) {
+    if (!isRecord(item) || typeof item.symbol !== 'string' || !COIN_SYMBOL.test(item.symbol) || typeof item.name !== 'string') return null;
+    if (item.name.trim() !== item.name || item.name.length === 0 || item.name.length > 60 || CONTROL.test(item.name)) return null;
+    if (names.length > 0 && !(names[names.length - 1]!.symbol < item.symbol)) return null;
+    names.push(Object.freeze({ symbol: item.symbol, name: item.name }));
+  }
+  return Object.freeze(names);
+}
+
+export type CoinNamesResult = Readonly<{ ok: true; names: ReadonlyMap<string, string> }> | MarketDataUnavailable;
+
+export interface KairosCoinNames {
+  /** The names by symbol; a caller's abort ends only its own wait. */
+  coinNames(options?: Readonly<{ signal?: AbortSignal }>): Promise<CoinNamesResult>;
+}
+
+const coinNamesMap = (names: readonly ServerCoinName[]): ReadonlyMap<string, string> => new Map(names.map((coin) => [coin.symbol, coin.name]));
+
+/**
+ * U14 (D255): the coin names from the Kairos server, read at most once at a time; a device copy younger than a day is
+ * used without asking, and one up to 7 days old when the server fails. "Not set up" (no CoinGecko key, O6) is said as such.
+ */
+export function createKairosCoinNames(client: KairosApiClient, options: Readonly<{ store: MarketListStore | null; now?: () => number; isOnline?: () => boolean }>): KairosCoinNames {
+  const now = options.now ?? (() => Date.now());
+  const isOnline = options.isOnline ?? (() => globalThis.navigator?.onLine !== false);
+  let session: { readonly names: ReadonlyMap<string, string>; readonly storedAt: number } | null = null;
+  let inFlight: Promise<CoinNamesResult> | null = null;
+  /**
+   * T-061e review r1, r2: an answer that was not new names is kept, as Home asks on every visit and each ask counts
+   * against the server's limit: "not set up" (no owner's key) for this visit; any other failure, or the device copy used
+   * after one, for 10 minutes (or the server's wait, if longer), so one timeout never turns names off until a reload.
+   * A failure while offline reached no server and is not kept.
+   */
+  let kept: { readonly result: CoinNamesResult; readonly until: number } | null = null;
+  const ageOk = (storedAt: number, limit: number) => { const age = now() - storedAt; return age >= 0 && age <= limit; };
+  const readCopy = async (): Promise<{ readonly storedAt: number; readonly names: readonly ServerCoinName[] } | null> => {
+    const text = (await options.store?.read()) ?? null;
+    if (text === null) return null;
+    let body: unknown;
+    try { body = JSON.parse(text); } catch { return null; }
+    if (!isRecord(body) || typeof body.storedAt !== 'number' || !Number.isSafeInteger(body.storedAt)) return null;
+    const names = decodeCoinNames({ source: 'coingecko', fetchedAt: new Date(0).toISOString(), names: body.names });
+    return names === null || names.length === 0 ? null : { storedAt: body.storedAt, names };
+  };
+  const ask = async (): Promise<CoinNamesResult> => {
+    const result = await client.request('/market/coin-names', {}, decodeCoinNames);
+    if (result.ok && result.value.length > 0) {
+      const storedAt = now();
+      session = { names: coinNamesMap(result.value), storedAt };
+      await options.store?.write(JSON.stringify({ storedAt, names: result.value }));
+      return { ok: true, names: session.names };
+    }
+    const failure = result.ok ? unavailable('unreadable') : marketDataUnavailableOf(result, isOnline);
+    const copy = await readCopy();
+    const answer: CoinNamesResult = copy !== null && ageOk(copy.storedAt, COIN_NAMES_KEEP_MS) ? { ok: true, names: coinNamesMap(copy.names) } : failure;
+    if (failure.why === 'not-set-up') kept = { result: answer, until: Number.POSITIVE_INFINITY };
+    else if (failure.why !== 'offline') kept = { result: answer, until: now() + Math.max(COIN_NAMES_FAILURE_KEEP_MS, (failure.retryAfterSeconds ?? 0) * 1000) };
+    return answer;
+  };
+  return Object.freeze({
+    async coinNames(callerOptions?: Readonly<{ signal?: AbortSignal }>): Promise<CoinNamesResult> {
+      if (session !== null && ageOk(session.storedAt, COIN_NAMES_FRESH_MS)) return { ok: true, names: session.names };
+      if (kept !== null && now() < kept.until) return kept.result;
+      if (inFlight === null) {
+        const copy = await readCopy();
+        if (copy !== null && ageOk(copy.storedAt, COIN_NAMES_FRESH_MS)) {
+          session = { names: coinNamesMap(copy.names), storedAt: copy.storedAt };
+          return { ok: true, names: session.names };
+        }
+      }
+      if (inFlight === null) inFlight = ask().finally(() => { inFlight = null; });
+      const shared = inFlight;
+      const signal = callerOptions?.signal;
+      if (signal === undefined) return shared;
+      return new Promise((resolve) => {
+        const stop = () => resolve(unavailable(isOnline() ? 'source-down' : 'offline'));
+        if (signal.aborted) { stop(); return; }
+        signal.addEventListener('abort', stop, { once: true });
+        void shared.then((result) => { signal.removeEventListener('abort', stop); resolve(result); });
+      });
+    },
+  });
+}
+
+/** T-061f (D272): the most coins one /market/coin-logos request may name (the server's limit, which keeps its CPU low). */
+export const COIN_LOGOS_MAX_COINS = 10;
+
+/**
+ * The /market/coin-logos data for the coins asked (A→Z): each logo for a coin asked, once, A→Z, and a checked data
+ * address (parseCoinLogoAddress); a coin the server has no logo for is simply not there. Null for any fault: one bad
+ * logo makes the whole answer unreadable.
+ */
+export function decodeCoinLogos(data: unknown, requested: readonly string[]): ReadonlyMap<string, CoinLogoAddress> | null {
+  if (!isRecord(data) || data.source !== 'coingecko' || !isCanonicalIso(data.fetchedAt) || !Array.isArray(data.logos) || data.logos.length > requested.length) return null;
+  const asked = new Set(requested);
+  const logos = new Map<string, CoinLogoAddress>();
+  let previous = '';
+  for (const item of data.logos as unknown[]) {
+    if (!isRecord(item) || typeof item.symbol !== 'string' || !asked.has(item.symbol) || !(previous < item.symbol)) return null;
+    const image = parseCoinLogoAddress(item.image);
+    if (image === null) return null;
+    logos.set(item.symbol, image);
+    previous = item.symbol;
+  }
+  return logos;
+}
+
+export type CoinLogosResult = Readonly<{ ok: true; logos: ReadonlyMap<string, CoinLogoAddress> }> | MarketDataUnavailable;
+
+export interface KairosCoinLogos {
+  /**
+   * The logos the Kairos server has for these coins, in one request: only coins of A–Z and 0–9, each once, the first
+   * 10 of them, asked A→Z (one order, one cache key for every device). No coin to ask: an empty answer, no request.
+   */
+  coinLogos(coins: readonly string[], options?: Readonly<{ signal?: AbortSignal }>): Promise<CoinLogosResult>;
+}
+
+/** T-061f (D272): the coin logos from the Kairos server; transport and checks only (application/markets/coinLogos.ts keeps them). */
+export function createKairosCoinLogos(client: KairosApiClient, options: Readonly<{ isOnline?: () => boolean }> = {}): KairosCoinLogos {
+  const isOnline = options.isOnline ?? (() => globalThis.navigator?.onLine !== false);
+  return Object.freeze({
+    async coinLogos(coins: readonly string[], callerOptions?: Readonly<{ signal?: AbortSignal }>): Promise<CoinLogosResult> {
+      const asked = [...new Set(coins.filter(coin => COIN_SYMBOL.test(coin)))].slice(0, COIN_LOGOS_MAX_COINS).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+      if (asked.length === 0) return Object.freeze({ ok: true as const, logos: new Map<string, CoinLogoAddress>() });
+      const result = await client.request('/market/coin-logos', { symbols: asked.join(',') }, data => decodeCoinLogos(data, asked), callerOptions?.signal === undefined ? undefined : { signal: callerOptions.signal });
+      return result.ok ? Object.freeze({ ok: true as const, logos: result.value }) : marketDataUnavailableOf(result, isOnline);
+    },
+  });
+}

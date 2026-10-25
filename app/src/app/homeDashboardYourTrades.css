@@ -1,0 +1,14 @@
+.kairos-your-trades__heading { display:flex; justify-content:space-between; align-items:center; gap:var(--kairos-space-2); }
+.kairos-your-trades__caption, .kairos-your-trades__note { font-size:var(--kairos-font-size-xs); color:var(--kairos-text-secondary); margin:var(--kairos-space-1) 0; }
+.kairos-your-trades a:not(.kairos-button):not(.kairos-your-trades__bubble) { color:var(--kairos-accent-primary); }
+.kairos-your-trades a.kairos-button { text-decoration:none; }
+.kairos-your-trades__bubble { display:block; padding:0; color:var(--kairos-text-primary); font-family:inherit; text-decoration:none; cursor:pointer; -webkit-user-drag:none; }
+/* D270: a result that could not be compared (a missing rate, no currency) sits off the scale: a dashed edge. */
+.kairos-your-trades__bubble[data-compared="false"] { border:2px dashed var(--kairos-text-secondary); }
+/* "Trades closed in": five periods that fit a phone's width. */
+.kairos-your-trades__periods { display:flex; flex-wrap:wrap; align-items:center; gap:var(--kairos-space-1) var(--kairos-space-2); margin:var(--kairos-space-2) 0 var(--kairos-space-1); font-size:var(--kairos-font-size-sm); color:var(--kairos-text-secondary); }
+.kairos-your-trades__periods .kairos-segmented { max-width:100%; }
+.kairos-your-trades__periods .kairos-segmented__option.kairos-button { padding:0 var(--kairos-space-2); white-space:nowrap; }
+.kairos-your-trades__empty { padding:var(--kairos-space-4) 0; }
+.kairos-your-trades__empty p { margin:0 0 var(--kairos-space-2); }
+.kairos-your-trades__actions { display:flex; flex-wrap:wrap; align-items:center; gap:var(--kairos-space-3); }

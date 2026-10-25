@@ -1,0 +1,18 @@
+/* T-054c: Home's install help, laid out like the backup reminder card. */
+.kairos-install { display: grid; gap: var(--kairos-space-3); margin-block: var(--kairos-space-4); }
+.kairos-install__heading { display: flex; align-items: center; gap: var(--kairos-space-3); }
+.kairos-install__heading h2 { margin: 0; font-size: var(--kairos-font-size-lg); }
+.kairos-install__icon { flex: none; color: var(--kairos-accent-primary); }
+.kairos-install p { margin: 0; }
+.kairos-install__actions { display: flex; flex-wrap: wrap; gap: var(--kairos-space-3); }
+.kairos-install .kairos-install__problem { color: var(--kairos-state-error); }
+.kairos-install__guide { display: grid; gap: var(--kairos-space-3); margin: 0; padding: 0; list-style: none; }
+.kairos-install__guide li { display: flex; align-items: center; gap: var(--kairos-space-3); }
+.kairos-install__number {
+  display: grid; place-items: center; flex: none; inline-size: 1.75rem; block-size: 1.75rem; border-radius: 50%;
+  background: var(--kairos-accent-soft); color: var(--kairos-text-primary); font-weight: 700;
+}
+.kairos-install__picture {
+  display: grid; place-items: center; flex: none; inline-size: 2.75rem; block-size: 2.75rem;
+  border: 1px solid var(--kairos-border-subtle); border-radius: var(--kairos-radius-md); color: var(--kairos-accent-primary);
+}

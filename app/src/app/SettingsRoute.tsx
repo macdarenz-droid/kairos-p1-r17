@@ -1,0 +1,172 @@
+import { FormEvent, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Link, useInRouterContext } from 'react-router';
+import {
+  readVisualPnlTimeZonePreference,
+  writeVisualPnlTimeZonePreference,
+} from '../application/visual-pnl';
+import { kairosDatabase, type KairosDatabase } from '../data/database';
+import { createKairosRepositories } from '../data/repositories';
+import { DeviceTimeZoneButton, readDeviceTimeZone } from '../features/settings/DeviceTimeZoneButton';
+import { ThemePicker } from '../features/settings/ThemePicker';
+import { Button, ErrorState, Field, PageHeader } from '../design-system/primitives';
+import './settingsRoute.css';
+
+/** Every zone the browser knows, plus UTC and the saved value; empty when the browser cannot list zones. */
+function listTimeZoneOptions(saved: string | null): readonly string[] {
+  const supportedValuesOf = (Intl as { supportedValuesOf?: (key: 'timeZone') => string[] }).supportedValuesOf;
+  if (typeof supportedValuesOf !== 'function') return [];
+  let zones: string[];
+  try { zones = supportedValuesOf('timeZone'); } catch { return []; }
+  return [...new Set([...zones, 'UTC', ...(saved === null ? [] : [saved])])];
+}
+
+interface SettingsRouteProps {
+  readonly db?: KairosDatabase;
+}
+
+type Feedback =
+  | Readonly<{ kind: 'success'; message: string }>
+  | Readonly<{ kind: 'error'; message: string }>
+  | null;
+
+/**
+ * First explicit Visual P&L timezone control.
+ *
+ * The user supplies an IANA timezone identifier. Validation and persistence are
+ * delegated to the P13.10R1 application contract and MetadataRepository.
+ * The device time zone is saved only on an explicit tap.
+ */
+/** SPA navigation inside the app, a plain link outside a router (Settings is also shown on its own in tests). */
+function SettingsLink({ to, children }: { readonly to: string; readonly children: ReactNode }) {
+  return useInRouterContext() ? <Link to={to}>{children}</Link> : <a href={to}>{children}</a>;
+}
+
+export function SettingsRoute({ db = kairosDatabase }: SettingsRouteProps) {
+  const repositories = useMemo(() => createKairosRepositories(db), [db]);
+  const [timeZone, setTimeZone] = useState('');
+  const [savedTimeZone, setSavedTimeZone] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [feedback, setFeedback] = useState<Feedback>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  // "Try again" after a failed load bumps this, which runs the load effect again.
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  // The "Try again" that was tapped with focus: once the load settles, focus goes to the field, or to the new "Try again"
+  // (WCAG 2.4.3). React may run the effect for the screen the tap was made on after the tap: that run finds the tapped button
+  // itself and is skipped.
+  const refocusAfterRetry = useRef<Element | null>(null);
+  const form = useRef<HTMLFormElement>(null);
+  const timeZoneOptions = useMemo(() => listTimeZoneOptions(savedTimeZone), [savedTimeZone]);
+
+  useEffect(() => {
+    let ignore = false;
+    setIsLoading(true);
+    setLoadFailed(false);
+    async function load(): Promise<void> {
+      try {
+        const stored = await readVisualPnlTimeZonePreference(repositories.metadata);
+        if (ignore) return;
+        setSavedTimeZone(stored);
+        setTimeZone(stored ?? '');
+      } catch {
+        if (!ignore) setLoadFailed(true);
+      } finally {
+        if (!ignore) setIsLoading(false);
+      }
+    }
+    void load();
+    return () => { ignore = true; };
+  }, [repositories, loadAttempt]);
+
+  useEffect(() => {
+    const tapped = refocusAfterRetry.current;
+    if (isLoading || tapped === null) return;
+    const target = loadFailed ? form.current?.querySelector<HTMLElement>('.kairos-error-state button') : document.getElementById('kairos-daily-results-time-zone');
+    if (target === tapped) return;
+    refocusAfterRetry.current = null;
+    target?.focus();
+  }, [isLoading, loadFailed]);
+
+  function retryLoad(): void {
+    const active = document.activeElement;
+    refocusAfterRetry.current = active?.closest('.kairos-error-state') != null ? active : null;
+    setLoadAttempt(current => current + 1);
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    if (isSaving) return;
+    setFeedback(null);
+    setIsSaving(true);
+
+    try {
+      const result = await writeVisualPnlTimeZonePreference(
+        repositories.metadata,
+        timeZone,
+        new Date().toISOString(),
+      );
+      if (!result.ok) {
+        setFeedback({ kind: 'error', message: 'Enter a valid time zone, such as Australia/Sydney or UTC.' });
+        return;
+      }
+      setSavedTimeZone(result.timeZone);
+      setLoadFailed(false);
+      setFeedback({ kind: 'success', message: 'Time zone saved.' });
+    } catch {
+      setFeedback({ kind: 'error', message: 'Kairos could not save your time zone. Your stored setting was not changed.' });
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <section className="kairos-route kairos-settings" aria-labelledby="kairos-settings-title">
+      <PageHeader eyebrow="Preferences" title="Settings" titleId="kairos-settings-title" intro="Choose how Kairos looks and which day your trades count on." />
+
+      <form ref={form} className="kairos-settings-card" onSubmit={handleSubmit} noValidate>
+        <div>
+          <h2>Time zone for your results</h2>
+          <p>Choose which calendar day Kairos uses when grouping closed trades. When you first open Kairos, it starts with this device's time zone and never changes it after that.</p>
+        </div>
+
+        <Field label="Time zone" id="kairos-daily-results-time-zone" wide
+          hint="Pick your place from the list, for example Australia/Sydney, America/New_York, Europe/London, or UTC.">
+          {control => <>
+          <input
+            {...control}
+            name="timeZone"
+            value={timeZone}
+            onChange={(event) => { setTimeZone(event.target.value); setFeedback(null); }}
+            placeholder="Australia/Sydney"
+            autoComplete="off"
+            spellCheck={false}
+            disabled={isLoading || isSaving}
+            list={timeZoneOptions.length > 0 ? 'kairos-time-zone-options' : undefined}
+          />
+          {timeZoneOptions.length > 0 ? <datalist id="kairos-time-zone-options">{timeZoneOptions.map(zone => <option key={zone} value={zone} />)}</datalist> : null}
+          </>}
+        </Field>
+
+        <div className="kairos-settings-card__actions">
+          <Button type="submit" busy={isSaving} disabled={isLoading}>
+            {isSaving ? 'Saving…' : 'Save time zone'}
+          </Button>
+          <span>{savedTimeZone === null ? 'Not configured' : `Current: ${savedTimeZone}`}</span>
+        </div>
+        {/* T-053d (D221): offered whenever the saved zone is not this device's (the shell saves it at first open). */}
+        {!isLoading && !loadFailed && savedTimeZone !== readDeviceTimeZone() ? <DeviceTimeZoneButton metadata={repositories.metadata} onSaved={(zone) => { setSavedTimeZone(zone); setTimeZone(zone); setFeedback({ kind: 'success', message: 'Time zone saved.' }); }} /> : null}
+
+        {loadFailed ? <ErrorState message="Kairos could not load your time zone." onRetry={retryLoad} /> : null}
+        {feedback ? (
+          <p className={`kairos-settings-card__feedback kairos-settings-card__feedback--${feedback.kind}`} role={feedback.kind === 'error' ? 'alert' : 'status'}>
+            {feedback.message}
+          </p>
+        ) : null}
+      </form>
+
+      <ThemePicker />
+      {/* D220: the checklist and mistakes lists moved to Analysis › Discipline. */}
+      <p className="kairos-settings__moved">Your checklist and mistakes list are in <SettingsLink to="/analysis?view=discipline">Analysis › Discipline</SettingsLink>.</p>
+    </section>
+  );
+}

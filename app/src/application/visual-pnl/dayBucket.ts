@@ -1,0 +1,154 @@
+import { visualPnlMondayFirstWeekday } from './dayKeyCalendar';
+
+export type VisualPnlDayKeyBlockReason =
+  | 'missing-close-time'
+  | 'invalid-close-time'
+  | 'invalid-time-zone'
+  | 'missing-calendar-part';
+
+export type VisualPnlDayKeyProjection =
+  | Readonly<{
+      available: true;
+      dayKey: string;
+      timeZone: string;
+      basis: 'closed-at';
+    }>
+  | Readonly<{
+      available: false;
+      dayKey: null;
+      timeZone: string;
+      basis: 'closed-at';
+      reason: VisualPnlDayKeyBlockReason;
+    }>;
+
+function blocked(timeZone: string, reason: VisualPnlDayKeyBlockReason): VisualPnlDayKeyProjection {
+  return Object.freeze({
+    available: false,
+    dayKey: null,
+    timeZone,
+    basis: 'closed-at' as const,
+    reason,
+  });
+}
+
+function canonicalInstant(value: string): Date | null {
+  const parsed = Date.parse(value);
+  if (!Number.isFinite(parsed)) return null;
+  const instant = new Date(parsed);
+  return instant.toISOString() === value ? instant : null;
+}
+
+/** Making a formatter costs far more than using one, and a dashboard reads thousands of trades: one per time zone and use (null: the zone is refused). */
+const DAY_FORMATTERS = new Map<string, Intl.DateTimeFormat | null>();
+const HOUR_FORMATTERS = new Map<string, Intl.DateTimeFormat | null>();
+const CLOCK_FORMATTERS = new Map<string, Intl.DateTimeFormat | null>();
+const FORMATTERS_KEPT = 32;
+function formatterFor(cache: Map<string, Intl.DateTimeFormat | null>, timeZone: string, make: () => Intl.DateTimeFormat): Intl.DateTimeFormat | null {
+  const kept = cache.get(timeZone);
+  if (kept !== undefined) return kept;
+  let made: Intl.DateTimeFormat | null;
+  try { made = make(); } catch { made = null; }
+  if (cache.size >= FORMATTERS_KEPT) cache.clear();
+  cache.set(timeZone, made);
+  return made;
+}
+
+/**
+ * Projects a closed trade instant into an explicit calendar-day key.
+ *
+ * The caller must supply the time-zone policy. This module never falls back to
+ * the runtime/device time zone, so day grouping cannot silently change between
+ * devices. The instant remains the stored canonical UTC timestamp; only the
+ * calendar projection is zone-aware.
+ */
+export function projectVisualPnlDayKey(
+  closedAt: string | null,
+  timeZone: string,
+): VisualPnlDayKeyProjection {
+  if (closedAt === null) return blocked(timeZone, 'missing-close-time');
+
+  const instant = canonicalInstant(closedAt);
+  if (instant === null) return blocked(timeZone, 'invalid-close-time');
+
+  const formatter = formatterFor(DAY_FORMATTERS, timeZone, () => new Intl.DateTimeFormat('en', {
+    calendar: 'iso8601',
+    numberingSystem: 'latn',
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }));
+  if (formatter === null) return blocked(timeZone, 'invalid-time-zone');
+
+  const values = new Map(
+    formatter
+      .formatToParts(instant)
+      .filter((part) => part.type === 'year' || part.type === 'month' || part.type === 'day')
+      .map((part) => [part.type, part.value]),
+  );
+
+  const year = values.get('year');
+  const month = values.get('month');
+  const day = values.get('day');
+  if (year === undefined || month === undefined || day === undefined) {
+    return blocked(timeZone, 'missing-calendar-part');
+  }
+
+  return Object.freeze({
+    available: true,
+    dayKey: `${year}-${month}-${day}`,
+    timeZone,
+    basis: 'closed-at' as const,
+  });
+}
+
+/**
+ * P30: the hour (0–23, 24-hour clock) an instant falls in, in `timeZone`.
+ * Like the day key, it never falls back to the device time zone; null for a
+ * missing or non-canonical instant or an invalid time zone.
+ */
+export function projectVisualPnlHourOfDay(instant: string | null, timeZone: string): number | null {
+  if (instant === null) return null;
+  const at = canonicalInstant(instant);
+  if (at === null) return null;
+  // hourCycle h23: with hour12 false some engines write midnight as "24".
+  const formatter = formatterFor(HOUR_FORMATTERS, timeZone, () => new Intl.DateTimeFormat('en', { numberingSystem: 'latn', timeZone, hour: '2-digit', hourCycle: 'h23' }));
+  if (formatter === null) return null;
+  const value = formatter.formatToParts(at).find((part) => part.type === 'hour')?.value;
+  if (value === undefined || !/^\d{1,2}$/.test(value)) return null;
+  const hour = Number.parseInt(value, 10);
+  return hour >= 0 && hour <= 23 ? hour : null;
+}
+
+/**
+ * P34: the clock time ("20:30", 24-hour) an instant shows in `timeZone`. Never the device time zone; null for a
+ * missing or non-canonical instant or an invalid time zone.
+ */
+export function projectVisualPnlClockTime(instant: string | null, timeZone: string): string | null {
+  if (instant === null) return null;
+  const at = canonicalInstant(instant);
+  if (at === null) return null;
+  // One formatter per zone, kept (a spreadsheet of 10,000 trades asks 20,000 times).
+  const formatter = formatterFor(CLOCK_FORMATTERS, timeZone, () => new Intl.DateTimeFormat('en', { numberingSystem: 'latn', timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }));
+  if (formatter === null) return null;
+  let parts: Intl.DateTimeFormatPart[];
+  try {
+    parts = formatter.formatToParts(at);
+  } catch {
+    return null;
+  }
+  const hour = parts.find((part) => part.type === 'hour')?.value;
+  const minute = parts.find((part) => part.type === 'minute')?.value;
+  if (hour === undefined || minute === undefined || !/^\d{1,2}$/.test(hour) || !/^\d{2}$/.test(minute)) return null;
+  return `${hour.padStart(2, '0')}:${minute}`;
+}
+
+/** U5 (D206): hours in one time-of-day block, six blocks a day (00–03, 04–07, … 20–23), shared by Patterns and the heatmap. */
+export const VISUAL_PNL_HOURS_PER_BLOCK = 4;
+
+/** When a trade opened, in `timeZone`: weekday (Monday 0) and hour; null when the time is missing or can't be read (never the device zone). */
+export function projectVisualPnlOpening(openedAt: string | null, timeZone: string): Readonly<{ weekday: number; hour: number }> | null {
+  const day = projectVisualPnlDayKey(openedAt, timeZone);
+  const hour = projectVisualPnlHourOfDay(openedAt, timeZone);
+  return !day.available || hour === null ? null : Object.freeze({ weekday: visualPnlMondayFirstWeekday(day.dayKey), hour });
+}

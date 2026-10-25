@@ -1,0 +1,15 @@
+/* U15 (D260): a trade's own page. The picture, then its parts as cards; what changes it last. */
+.kairos-trade-page { display: grid; gap: var(--kairos-space-4); min-width: 0; }
+.kairos-trade-page__part { display: grid; justify-items: start; gap: var(--kairos-space-3); min-width: 0; }
+.kairos-trade-page__part h2 { margin: 0; font-size: var(--kairos-font-size-lg); }
+.kairos-trade-page__part p { margin: 0; overflow-wrap: anywhere; }
+.kairos-trade-page__notice { display: flex; flex-wrap: wrap; align-items: center; gap: var(--kairos-space-3); margin: 0; }
+.kairos-trade-page__notice p { margin: 0; }
+.kairos-trade-page__chart { margin: 0; }
+/* U15 (D263, D264, D265): the "…" sheet, the plan's changes, Notes, and the edit page. */
+.kairos-trade-page__menu { display: grid; gap: var(--kairos-space-3); justify-items: stretch; }
+.kairos-trade-page__plan-changes { margin: 0; padding-left: var(--kairos-space-4); display: grid; gap: var(--kairos-space-1); overflow-wrap: anywhere; }
+.kairos-trade-notes form { display: grid; gap: var(--kairos-space-3); justify-items: start; width: 100%; min-width: 0; }
+.kairos-trade-notes form > div, .kairos-trade-notes .kairos-form-field { width: 100%; min-width: 0; }
+.kairos-trade-notes__error { display: flex; flex-wrap: wrap; align-items: center; gap: var(--kairos-space-2); color: var(--kairos-state-error); }
+.kairos-trade-edit { display: grid; gap: var(--kairos-space-4); min-width: 0; }
