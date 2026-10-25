@@ -229,3 +229,64 @@ on every trader's device.
 
 Until O8, the Worker and its migrations are deployed by hand, with the same steps in the same order from this folder
 after `npx wrangler login`.
+
+## Invite codes: the owner's code tool (D279)
+
+The owner makes, lists and revokes invite codes from a terminal on their own computer, signed in with their own
+Cloudflare login. There is no web page for it, and CI never runs it.
+
+### Once
+
+1. Install Node 22 (the repository's README, "Run locally") and get the repository.
+2. In `app/backend/activation-worker`: `npm ci`, then `npx wrangler login` (it opens Cloudflare in the browser).
+3. The live database needs migration 0002, which CI adds after owner step O8. Before that, the tool says so.
+
+### Commands
+
+Run them in `app/backend/activation-worker`. They work on the live database `kairos-activation-db`.
+
+- `npm run codes -- make 5 --label "Friends"`, with `--devices 3` and `--days 30` when wanted
+  - Makes 1 to 100 new codes and prints them once, with their ids. Write them down then: Kairos keeps only a
+    fingerprint (SHA-256), so no one can show a code again, the tool included.
+  - `--label` is required: who the codes are for, 1 to 40 letters (A to Z), digits, spaces, dots, dashes or underscores.
+  - `--devices`: how many devices each code works on, 1 to 10 (3 if not given).
+  - `--days`: how long a code can wait for its first use, 1 to 365 (no end date if not given). After its first use,
+    its other devices keep working whatever the date.
+- `npm run codes -- list`, or `list --label "Friends"`
+  - Each code: its id, its label ("added by hand" for codes made before the tool), the day it was made, its first-use
+    date, its status, "used on 2 of 3 devices", and each device with its number, name, since, last seen and removed.
+  - It never shows a code or a fingerprint.
+- `npm run codes -- revoke <id>`
+  - Shows the code and asks you to type `yes`. Then no new device can use it, and its devices go back to the invite
+    screen at their next daily check, with their journals kept (D278).
+- `npm run codes -- free <id> --device <n>`
+  - Removes device `<n>` (the number `list` shows) from code `<id>`, after you type `yes`. Its place is free for
+    another device, and that device goes back to the invite screen at its next daily check, with its journal kept.
+
+First time: run `list`, revoke any short code that was added by hand, then `make 1 --label "Ana"` for each person and
+send each person their own code privately.
+
+### Trying it without touching the live database
+
+Add `--local` to any command. It works on a local copy in `.wrangler/state` (not in git). Make that copy once with
+`npx wrangler d1 migrations apply kairos-activation-db --local`.
+
+### How it works
+
+- `scripts/codeAdmin.mjs` holds the checks, the SQL and the words, with no input or output. It uses the code rules in
+  `src/inviteCode.mjs`. `test/code-tool.test.ts` runs it in the Workers runtime on a test D1, with `/activate` and the
+  device routes.
+- `scripts/codes.mjs` reads the command line, asks before a change, and runs this package's own wrangler with Node
+  (no shell): `wrangler d1 execute kairos-activation-db --remote|--local --json --command=<SQL>`.
+- wrangler 4.141.0's `d1 execute` takes no SQL parameters, so every value is checked before it goes into the SQL:
+  ids are whole numbers above 0, labels match the pattern above, devices are 1 to 10, days 1 to 365, fingerprints are
+  64 hex digits, and times come from the computer's clock. Anything else is refused before any SQL is made.
+- It uses `--command`, not `--file`: with `--remote`, wrangler sends a file through D1's import, which pauses the
+  database while it runs and answers only how many queries and rows it handled, never the rows (read in wrangler
+  4.141.0's code). `--command` answers each statement's rows, local and remote alike, as CI's deploy steps use it.
+- Each change is one SQL statement, so it happens whole or not at all. `make` prints the codes only after wrangler
+  confirms they were saved. If it can't confirm, they are not shown: run `list`, revoke any code with that label made
+  just then, and make new ones.
+- The count "used on 2 of 3" is D1's count of the code's devices not removed, the same count `/devices` answers.
+- If wrangler asks for `CLOUDFLARE_API_TOKEN`, you are not signed in: run `npx wrangler login`. If your login has more
+  than one Cloudflare account, wrangler asks for `CLOUDFLARE_ACCOUNT_ID` (UNVERIFIED: not tried with a real login).
