@@ -1,4 +1,4 @@
-/** Test support: an activation key pair and receipt tokens signed the way the activation Worker signs (worker.js:108-141). */
+/** Test support: an activation key pair and receipt tokens signed the way the activation Worker signs (activation-worker/src/receipt.ts createSignedReceipt). */
 export const ACTIVATION_ID = '7f0c7c55-8a53-4c61-9d0b-5a8d6d0e2b11';
 
 export const GOOD_PAYLOAD = { proofVersion: 1, purpose: 'kairos-activation', receiptVersion: 1, activationId: ACTIVATION_ID, issuedAt: '2026-09-20T10:00:00.000Z' };

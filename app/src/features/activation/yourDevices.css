@@ -1,0 +1,53 @@
+/* T-062f (D283): "Your devices" on Profile. Rows: the device's name and when, then "This device" or "Remove". */
+.kairos-your-devices:focus {
+  outline: none;
+}
+
+.kairos-your-devices__used:focus-visible {
+  outline: 2px solid var(--kairos-state-focus);
+  outline-offset: var(--kairos-space-1);
+}
+
+.kairos-your-devices__list {
+  display: grid;
+  gap: var(--kairos-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.kairos-your-devices__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--kairos-space-2) var(--kairos-space-3);
+  padding: var(--kairos-space-3) 0;
+  border-top: 1px solid var(--kairos-border-subtle);
+}
+
+.kairos-your-devices__text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 12rem;
+}
+
+.kairos-your-devices__name {
+  color: var(--kairos-text-primary);
+  font-weight: var(--kairos-font-weight-semibold);
+}
+
+.kairos-your-devices__details,
+.kairos-your-devices__this {
+  color: var(--kairos-text-secondary);
+  font-size: var(--kairos-font-size-sm);
+}
+
+.kairos-your-devices__this {
+  font-weight: var(--kairos-font-weight-medium);
+}
+
+.kairos-your-devices .kairos-your-devices__problem {
+  color: var(--kairos-state-error);
+}

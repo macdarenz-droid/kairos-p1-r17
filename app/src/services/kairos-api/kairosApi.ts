@@ -6,6 +6,8 @@
  */
 import type { StoredActivationReceiptLoadResult } from '../activation/ActivationReceiptRepository';
 import type { ActivationReceipt } from '../activation/activationTypes';
+// T-062f: the device token is the activation service's (the activation Worker reads it too); this client sends it.
+import { kairosDeviceToken } from '../activation/deviceToken';
 
 /** A request still running after this long is given up and reads as 'transport-failed'. */
 export const KAIROS_API_REQUEST_TIMEOUT_MS = 20_000;
@@ -40,15 +42,6 @@ export function parseKairosApiBaseUrl(raw: string | undefined): string | null {
   try { url = new URL(candidate); } catch { return null; }
   if (url.protocol !== 'https:' || url.username !== '' || url.password !== '' || url.search !== '' || url.hash !== '' || url.pathname !== '/') return null;
   return url.origin;
-}
-
-/** v1.<base64url of the receipt's signed payload>.<its signature>; the server checks the signature. Null when unusable. */
-export function kairosDeviceToken(receipt: ActivationReceipt): string | null {
-  if (!/^[A-Za-z0-9_-]+$/.test(receipt.verifierSignature) || receipt.verifierPayload === '') return null;
-  let binary = '';
-  for (const byte of new TextEncoder().encode(receipt.verifierPayload)) binary += String.fromCharCode(byte);
-  const token = `v1.${btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')}.${receipt.verifierSignature}`;
-  return token.length <= 1024 ? token : null;
 }
 
 /** Reads the receipt stored on this device (ActivationReceiptRepository.load); a missing or damaged one reads as null. */

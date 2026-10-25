@@ -8,7 +8,8 @@ import { kairosDatabase } from '../data/database';
 import { createTradePictureCandleBrowserDeps } from './tradePictureCandleBrowserDeps';
 import { ReviewTradeLink } from './ReviewTradeLink';
 import { kairosRepositories } from '../data/repositories';
-import { ActivationReceiptRepository } from '../services/activation';
+import { ActivationReceiptRepository, kairosDeviceToken, parseActivationDeploymentConfig, RemoteActivationAdapter } from '../services/activation';
+import type { YourDevicesPort } from '../features/activation/YourDevicesCard';
 import * as kairosApiModule from '../services/kairos-api/kairosApi';
 import { createNewsApiPort, type NewsApiPort } from '../services/kairos-api/newsApi';
 
@@ -31,6 +32,28 @@ const QA_ROUTES: RouteObject[] = import.meta.env.VITE_BUILD_ID === 'qa-e2e' ? [{
 /** U1: the app's Kairos server client (address from VITE_KAIROS_API_URL, device header from this device's receipt), the same for every screen that talks to the server. */
 function kairosApiClientFrom(kairosApi: typeof import('../services/kairos-api/kairosApi')) {
   return kairosApi.createKairosApiClient({ baseUrl: kairosApi.parseKairosApiBaseUrl(import.meta.env.VITE_KAIROS_API_URL), readReceipt: kairosApi.storedReceiptReader(new ActivationReceiptRepository(kairosRepositories.metadata)) });
+}
+
+/**
+ * T-062f (D283): Profile's "Your devices": the activation Worker's /devices and /devices/remove, next to /activate, with
+ * this device's token read from its stored receipt at each call (as kairosApiClientFrom's device header). Null when this
+ * build can't check invite codes (D284: such a build never gets past the invite screen anyway).
+ */
+function yourDevicesPort(): YourDevicesPort | null {
+  const config = parseActivationDeploymentConfig({ endpoint: import.meta.env.VITE_KAIROS_ACTIVATION_ENDPOINT, publicKeySpkiBase64: import.meta.env.VITE_KAIROS_ACTIVATION_PUBLIC_KEY_SPKI });
+  if (!config.ok) return null;
+  let adapter: RemoteActivationAdapter;
+  try { adapter = new RemoteActivationAdapter({ endpoint: config.config.endpoint }); } catch { return null; }
+  const receipts = new ActivationReceiptRepository(kairosRepositories.metadata);
+  const port: YourDevicesPort = {
+    readToken: async () => {
+      const stored = await receipts.load();
+      return stored.status === 'stored' ? kairosDeviceToken(stored.receipt) : null;
+    },
+    listDevices: (token, options) => adapter.listDevices(token, options),
+    removeDevice: (token, deviceId, options) => adapter.removeDevice(token, deviceId, options),
+  };
+  return Object.freeze(port);
 }
 
 /** D269: the Kairos server's news routes, one port for Home's "Today" and the News page (its client is in the first script already, for market data). */
@@ -140,7 +163,8 @@ export const appRoutes = [
         const [{ ProfileRoute }, kairosApi] = await Promise.all([import('./ProfileRoute'), import('../services/kairos-api/kairosApi')]);
         const client = kairosApiClientFrom(kairosApi);
         const onlineServices = kairosApi.createKairosApiHealthPort(client);
-        return { Component: function ProfileWithOnlineServicesRoute() { return <ProfileRoute onlineServices={onlineServices} />; } };
+        const devices = yourDevicesPort() ?? undefined;
+        return { Component: function ProfileWithOnlineServicesRoute() { return <ProfileRoute onlineServices={onlineServices} devices={devices} />; } };
       } },
       { path: '*', element: <NotFoundRoute /> },
     ],

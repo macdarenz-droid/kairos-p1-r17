@@ -1,5 +1,6 @@
 /*
- * Screenshots of 6 key screens (D207) in the 5 themes (T-049j, D184), compared on every pull request.
+ * Screenshots of 6 key screens (D207) in the 5 themes (T-049j, D184), compared on every pull request, and (T-062e) the
+ * invite screen a fresh install opens on, in the theme it starts with.
  *
  * Updating the references (never to make an unexplained change pass):
  * 1. On Linux x64, in app/: `npx playwright install chromium`, then
@@ -45,3 +46,16 @@ for (const theme of THEMES) {
     });
   }
 }
+
+// T-062e (D282): the invite screen with the logo, before any code is typed. A fresh install starts in Kairos Depth.
+test('gate in kairos-depth', async ({ page }) => {
+  await page.route(url => url.protocol === 'https:', route => route.abort());
+  await page.goto('/');
+  await expect(page.getByRole('heading', { level: 1, name: 'Welcome to Kairos' })).toBeVisible();
+  await expect(page.getByLabel('Invite code')).toBeVisible();
+  const logo = page.locator('.kairos-activation__logo');
+  await expect.poll(() => logo.evaluate(image => (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0)).toBe(true);
+  await page.evaluate(() => document.fonts.ready);
+  await expect.poll(() => page.evaluate(() => [...document.fonts].some(face => face.family.replace(/["']/g, '') === 'Inter Variable' && face.status === 'loaded'))).toBe(true);
+  await expect(page).toHaveScreenshot('gate-kairos-depth.png');
+});

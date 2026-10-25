@@ -169,6 +169,8 @@ export function SetupScreen({ db, deviceTimeZone, languages, now = wallClock }: 
     1: {
       title: 'Your time zone',
       body: <>
+        {/* D281: a new or cleared device starts empty; the backup comes back before anything else is set. */}
+        <p>Moving from another device? Bring your journal back first: <Link to="/backup">Backup and restore</Link>.</p>
         {zone !== '' && !changingZone ? <p>Kairos uses {saved?.timeZone !== null && saved?.timeZone !== undefined ? 'your saved' : "this phone's"} time zone: <strong>{zone}</strong>. Your days and months follow it.</p> : null}
         {changingZone ? <Field label="Time zone" id={ZONE_FIELD} hint="Your place, for example Asia/Manila, Europe/London or UTC.">
           {control => <input {...control} value={zone} autoComplete="off" onChange={event => setZone(event.target.value)} />}

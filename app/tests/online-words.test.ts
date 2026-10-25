@@ -56,7 +56,7 @@ describe('describeOnlineServices', () => {
   it('says the services work and what it knows about this device', () => {
     const sentences = {
       recognised: 'This device is recognised.',
-      'not-sent': 'This device did not send its activation.',
+      'not-sent': "This device isn't activated.",
       'not-recognised': 'The server did not recognise this device.',
       'not-checked': 'The server cannot check devices yet.',
     } as const;

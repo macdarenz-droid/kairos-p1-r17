@@ -19,28 +19,16 @@
   box-shadow: var(--kairos-glow-subtle);
 }
 
-.kairos-activation__brand {
-  width: var(--kairos-control-lg);
-  height: var(--kairos-control-lg);
-  display: grid;
-  place-items: center;
-  margin-bottom: var(--kairos-space-6);
-  border: 1px solid var(--kairos-border-active);
-  border-radius: var(--kairos-radius-lg);
-  background: var(--kairos-accent-soft);
-  color: var(--kairos-accent-primary);
-  font-size: var(--kairos-font-size-xl);
-  font-weight: var(--kairos-font-weight-bold);
-  box-shadow: var(--kairos-glow-active);
-}
-
-.kairos-activation__eyebrow {
-  margin: 0 0 var(--kairos-space-2);
-  color: var(--kairos-accent-primary);
-  font-size: var(--kairos-font-size-xs);
-  font-weight: var(--kairos-font-weight-semibold);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+/*
+ * D282: the app icon; it carries the name "Kairos Trading Journal" itself. The image is a rounded tile on a black
+ * square, so the clip keeps only the tile, on light themes too.
+ */
+.kairos-activation__logo {
+  display: block;
+  width: 96px;
+  height: 96px;
+  margin-bottom: var(--kairos-space-5);
+  clip-path: inset(4.5% round 20%);
 }
 
 .kairos-activation h1 {
@@ -51,7 +39,10 @@
 
 .kairos-activation__intro,
 .kairos-activation__status,
-.kairos-activation__feedback {
+.kairos-activation__feedback,
+.kairos-activation__hint,
+.kairos-activation__steps,
+.kairos-activation__journal p {
   color: var(--kairos-text-secondary);
   font-size: var(--kairos-font-size-sm);
   line-height: var(--kairos-line-height-relaxed);
@@ -77,10 +68,14 @@
 }
 
 .kairos-activation__form input,
-.kairos-activation__form button {
+.kairos-activation__submit {
   min-height: var(--kairos-control-lg);
   border-radius: var(--kairos-radius-md);
   font: inherit;
+}
+
+.kairos-activation__hint {
+  margin: 0;
 }
 
 .kairos-activation__form input {
@@ -96,12 +91,12 @@
 }
 
 .kairos-activation__form input:focus-visible,
-.kairos-activation__form button:focus-visible {
+.kairos-activation__submit:focus-visible {
   outline: 2px solid var(--kairos-state-focus);
   outline-offset: var(--kairos-space-1);
 }
 
-.kairos-activation__form button {
+.kairos-activation__submit {
   margin-top: var(--kairos-space-2);
   padding: 0 var(--kairos-space-5);
   border: 1px solid var(--kairos-border-active);
@@ -112,18 +107,100 @@
   box-shadow: var(--kairos-glow-active);
 }
 
-.kairos-activation__form button:disabled,
-.kairos-activation__form input:disabled {
+.kairos-activation__submit[aria-disabled="true"],
+.kairos-activation__form input:read-only {
   cursor: not-allowed;
   opacity: 0.62;
 }
 
-.kairos-activation__feedback[role="alert"] {
+.kairos-activation__feedback[role="alert"],
+.kairos-activation .kairos-activation__problem {
   color: var(--kairos-state-error);
+}
+
+/* "Lost access?": the button, then its four steps. */
+.kairos-activation__help {
+  display: grid;
+  justify-items: start;
+  gap: var(--kairos-space-3);
+  margin-top: var(--kairos-space-5);
+}
+
+.kairos-activation__help .kairos-button {
+  min-height: var(--kairos-control-md);
+}
+
+.kairos-activation__steps {
+  display: grid;
+  gap: var(--kairos-space-2);
+  margin: 0;
+  padding-left: var(--kairos-space-5);
+}
+
+.kairos-activation__steps[hidden] {
+  display: none;
+}
+
+/* The journal still on this device, and its copy. */
+.kairos-activation__journal {
+  display: grid;
+  justify-items: start;
+  gap: var(--kairos-space-3);
+  margin-top: var(--kairos-space-5);
+  padding-top: var(--kairos-space-5);
+  border-top: 1px solid var(--kairos-border-subtle);
+}
+
+.kairos-activation__journal p {
+  margin: 0;
+}
+
+/*
+ * D278: the note when the daily check ends this device's invite during a session. Without it the host is an empty
+ * status line with no box; with it, a card above the bottom bar (as the update prompt), above "+ Log trade" when that
+ * shows, and beside the side menu on wide screens. When the update prompt shows too, the note rises above it by the
+ * prompt's height (`--kairos-activation-ended-rise`, measured in ActivationGate.tsx), so both stay in view.
+ */
+.kairos-activation-ended p {
+  margin: 0;
+}
+
+.kairos-activation-ended[data-shown] {
+  position: fixed;
+  z-index: 25;
+  right: var(--kairos-space-4);
+  bottom: calc(var(--kairos-layout-navigation-height) + env(safe-area-inset-bottom, 0px) + var(--kairos-space-3) + var(--kairos-activation-ended-rise, 0px));
+  left: var(--kairos-space-4);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--kairos-space-3);
+  padding: var(--kairos-space-3) var(--kairos-space-4);
+  border: 1px solid var(--kairos-border-default);
+  border-radius: var(--kairos-radius-lg);
+  background: var(--kairos-surface-raised);
+  color: var(--kairos-text-primary);
+  font-family: var(--kairos-font-sans);
+  font-size: var(--kairos-font-size-sm);
+  line-height: var(--kairos-line-height-relaxed);
+}
+
+.kairos-activation-ended[data-shown] p {
+  flex: 1 1 16rem;
+}
+
+:root:has(.kairos-log-trade) .kairos-activation-ended[data-shown] {
+  bottom: calc(var(--kairos-log-trade-bottom) + var(--kairos-control-lg) + var(--kairos-space-2) + var(--kairos-activation-ended-rise, 0px));
 }
 
 @media (min-width: 48rem) {
   .kairos-activation__card {
     width: 28rem;
+  }
+
+  .kairos-activation-ended[data-shown] {
+    right: var(--kairos-space-6);
+    bottom: calc(var(--kairos-space-6) + var(--kairos-activation-ended-rise, 0px));
+    left: calc(13rem + var(--kairos-space-6));
   }
 }

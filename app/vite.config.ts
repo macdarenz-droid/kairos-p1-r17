@@ -3,6 +3,23 @@ import type { Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import packageJson from './package.json' with { type: 'json' };
 import { buildKairosServiceWorker, listKairosPublicPrecacheFiles } from './src/pwa/serviceWorkerBuild.ts';
+import { describeActivationBuildProblem } from './src/services/activation/activationDeployment.ts';
+
+/** Stops a build without usable activation settings (D284): that release would lock every trader out. `npm run dev` is not checked. */
+function kairosActivationSettingsPlugin(): Plugin {
+  let env: Readonly<Record<string, string | undefined>> = {};
+  return {
+    name: 'kairos-activation-settings',
+    apply: 'build',
+    configResolved(config) {
+      env = config.env;
+    },
+    async buildStart() {
+      const problem = await describeActivationBuildProblem(env);
+      if (problem) this.error(problem);
+    },
+  };
+}
 
 /** Emits `sw.js` for each build, with that build's own file list and cache name. */
 function kairosServiceWorkerPlugin(): Plugin {
@@ -41,7 +58,7 @@ function kairosServiceWorkerPlugin(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), kairosServiceWorkerPlugin()],
+  plugins: [kairosActivationSettingsPlugin(), react(), kairosServiceWorkerPlugin()],
   define: {
     __KAIROS_APP_VERSION__: JSON.stringify(packageJson.version),
   },
@@ -52,6 +69,6 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/testing/setup.ts',
     restoreMocks: true,
-    exclude: [...configDefaults.exclude, 'e2e/**', 'backend/kairos-api/**'],
+    exclude: [...configDefaults.exclude, 'e2e/**', 'backend/kairos-api/**', 'backend/activation-worker/**'],
   },
 });

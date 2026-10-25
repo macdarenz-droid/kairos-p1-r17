@@ -1,26 +1,93 @@
-import type { ActivationAdapter } from './ActivationAdapter';
+import type { ActivationAdapter, ActivationDevicesAdapter } from './ActivationAdapter';
 import type { ActivationReceiptRepository } from './ActivationReceiptRepository';
 import type { ActivationReceiptVerifier } from './ActivationReceiptVerifier';
 import { loadVerifiedPersistedActivation } from './activationPersistence';
+import { inviteCodeKey } from './inviteCode';
 import {
   initialActivationSnapshot,
   reduceActivationState,
 } from './activationState';
 import type {
+  ActivationCheckOutcome,
+  ActivationCheckRecord,
+  ActivationEnded,
+  ActivationIdentity,
   ActivationRequest,
   ActivationSnapshot,
   ActivationValidationResult,
 } from './activationTypes';
+import { kairosDeviceToken } from './deviceToken';
+
+/**
+ * D285: the daily check's record on this device (`device.activation.check.v1`). The application layer keeps it
+ * (`application/activation/activationCheck.ts`), so each write is one atomic metadata write; the coordinator decides
+ * when to ask and what an answer means.
+ */
+export interface ActivationCheckStore {
+  /** The record, or null when there is none or it is damaged (read as never checked). Throws when it can't be read. */
+  load(): Promise<ActivationCheckRecord | null>;
+  /**
+   * The server knows the `checked` receipt and it is in use: the time of the answer, and no `ended`. Saved only while
+   * that same receipt is stored; false (nothing saved) when another one is, or none.
+   */
+  saveActive(checkedAt: string, checked: ActivationIdentity): Promise<boolean>;
+  /**
+   * One atomic metadata write (D278): the `checked` receipt is deleted and why is saved; with no receipt stored, only
+   * why. False, and nothing saved, when another receipt is stored: an old tab never ends a newer activation.
+   */
+  endThisDevice(ended: ActivationEnded, checkedAt: string, checked: ActivationIdentity): Promise<boolean>;
+  /** A new activation: `ended` goes, and the time of the last answer stays. */
+  clearEnded(): Promise<void>;
+}
 
 export interface ActivationCoordinatorDependencies {
   readonly adapter: ActivationAdapter;
   readonly repository: ActivationReceiptRepository;
   readonly verifier: ActivationReceiptVerifier;
+  /** This device's name from the Worker's fixed list (describeThisDevice, D275); without it the server reads "Other device". */
+  readonly deviceLabel?: string;
+  /** A new request id: 8 to 64 letters, digits and dashes (the Worker's rule). Tests pass their own. */
+  readonly newRequestId?: () => string;
+  /** D278: the Worker's /devices/check. Without it (or `checks`), this device is never checked. */
+  readonly devices?: Pick<ActivationDevicesAdapter, 'checkDevice'>;
+  /** D285: where the daily check keeps its record. */
+  readonly checks?: ActivationCheckStore;
 }
 
-const REACTIVATE_MESSAGE = 'Activation needs to be completed again.';
-const VERIFY_UNAVAILABLE_MESSAGE = 'Activation verification is temporarily unavailable.';
-const SAVE_FAILED_MESSAGE = 'Activation could not be saved on this device.';
+/** What the daily check needs to know about this moment: the time, and whether the device is online and Kairos is on screen. */
+export interface ActivationCheckInput {
+  readonly now: Date;
+  readonly online: boolean;
+  readonly visible: boolean;
+}
+
+/** D278: at most one check a day. */
+const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
+/**
+ * After a try that changed nothing (no answer, one Kairos can't read, a device the server doesn't know, or nothing
+ * saved), this session waits an hour before asking again, however often the device comes back online or on screen.
+ * Kept in memory only: the next start may ask at once.
+ */
+const RETRY_PAUSE_MS = 60 * 60 * 1000;
+
+/** Due when never answered, a day or more ago, or (a clock moved back) in the future. */
+function isCheckDue(record: ActivationCheckRecord | null, now: Date): boolean {
+  if (record === null) return true;
+  const elapsed = now.getTime() - Date.parse(record.checkedAt);
+  return elapsed >= CHECK_INTERVAL_MS || elapsed < 0;
+}
+
+const isActiveStatus = (status: ActivationSnapshot['status']): boolean => status === 'active-online' || status === 'active-offline';
+
+/** 128 random bits as 32 hex digits. getRandomValues works in every browser Kairos runs in, secure page or not. */
+function randomRequestId(): string {
+  return Array.from(globalThis.crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+// Notes for this device's own checks; refusals from the server carry a `reason` instead (D281).
+const REACTIVATE_MESSAGE = 'Type your invite code again to open Kairos on this device.';
+const VERIFY_UNAVAILABLE_MESSAGE = "Kairos couldn't check this device's invite right now. Close Kairos and open it again.";
+const SAVE_FAILED_MESSAGE = "Your code worked, but Kairos couldn't save that on this device. Try again.";
 
 /**
  * Application-layer owner for activation startup and first-activation sequencing.
@@ -29,6 +96,17 @@ const SAVE_FAILED_MESSAGE = 'Activation could not be saved on this device.';
 export class ActivationCoordinator {
   private snapshot: ActivationSnapshot = initialActivationSnapshot;
   private validationInFlight = false;
+  /**
+   * D275: the request id for the code being tried. Kept through retries of the same code (the same code to the Worker,
+   * inviteCode.ts), so an answer lost on a slow network never costs a second place; replaced for another code, and
+   * dropped once the code has worked.
+   */
+  private pendingRequest: { readonly codeKey: string; readonly requestId: string } | null = null;
+  private checkInFlight = false;
+  /** When this session's last try changed nothing (epoch ms), for the retry pause. */
+  private lastFailedTryAt: number | null = null;
+  /** D278: this session's invite ended; it carries on, and nothing is asked again until the next start. */
+  private endedThisSession = false;
 
   constructor(private readonly dependencies: ActivationCoordinatorDependencies) {}
 
@@ -61,7 +139,7 @@ export class ActivationCoordinator {
           };
           break;
         case 'missing':
-          this.snapshot = initialActivationSnapshot;
+          this.snapshot = await this.startWithoutReceipt();
           break;
         case 'corrupt':
         case 'rejected':
@@ -76,7 +154,7 @@ export class ActivationCoordinator {
       this.snapshot = {
         status: 'error',
         receipt: null,
-        message: 'Activation state could not be loaded.',
+        message: "Kairos couldn't read this device's invite. Close Kairos and open it again.",
       };
     }
 
@@ -93,7 +171,7 @@ export class ActivationCoordinator {
     this.snapshot = reduceActivationState(this.snapshot, { type: 'START_VALIDATION' });
 
     try {
-      const remoteResult = await this.dependencies.adapter.validateInvite(request, options);
+      const remoteResult = await this.dependencies.adapter.validateInvite(this.withDevice(request), options);
       if (!remoteResult.ok) {
         this.snapshot = reduceActivationState(this.snapshot, {
           type: 'VALIDATION_FINISHED',
@@ -119,6 +197,11 @@ export class ActivationCoordinator {
         return this.getSnapshot();
       }
 
+      // Saved on this device: the next code starts a new request.
+      this.pendingRequest = null;
+      // D278: typing a code again brings everything back. The receipt is saved first: while it is stored, Kairos opens
+      // whatever `ended` says, so a failed clear changes nothing now, and the next check's answer replaces it.
+      await this.dependencies.checks?.clearEnded().catch(() => undefined);
       const verifiedSuccess: ActivationValidationResult = {
         ok: true,
         receipt: proofResult.receipt,
@@ -131,6 +214,78 @@ export class ActivationCoordinator {
     } finally {
       this.validationInFlight = false;
     }
+  }
+
+  /** The request as posted: the code's request id (D275) and this device's name. */
+  private withDevice(request: ActivationRequest): ActivationRequest {
+    const codeKey = inviteCodeKey(request.inviteCode);
+    if (this.pendingRequest?.codeKey !== codeKey) {
+      this.pendingRequest = { codeKey, requestId: (this.dependencies.newRequestId ?? randomRequestId)() };
+    }
+    const { deviceLabel } = this.dependencies;
+    return { ...request, requestId: this.pendingRequest.requestId, ...(deviceLabel === undefined ? {} : { deviceLabel }) };
+  }
+
+  /**
+   * D278: once a day, when online and on screen, asks the activation Worker whether this device is still in use. It never
+   * delays opening and is never needed to open. On `removed` or `revoked`, this device's receipt is deleted and the
+   * reason saved in one atomic metadata write: this session carries on, and the next start shows the invite screen. A
+   * failed or unreadable answer, or a device the server doesn't know, changes nothing and saves nothing, so the server's
+   * own mistake never locks anyone out.
+   */
+  async checkThisDevice({ now, online, visible }: ActivationCheckInput): Promise<ActivationCheckOutcome> {
+    const { devices, checks } = this.dependencies;
+    const receipt = this.snapshot.receipt;
+    if (!online || !visible || devices === undefined || checks === undefined || !Number.isFinite(now.getTime())) return 'skipped';
+    if (this.checkInFlight || this.endedThisSession || !isActiveStatus(this.snapshot.status) || receipt === null) return 'skipped';
+    const token = kairosDeviceToken(receipt);
+    if (token === null) return 'skipped';
+    const sinceFailedTry = this.lastFailedTryAt === null ? null : now.getTime() - this.lastFailedTryAt;
+    if (sinceFailedTry !== null && sinceFailedTry >= 0 && sinceFailedTry < RETRY_PAUSE_MS) return 'not-due';
+
+    this.checkInFlight = true;
+    try {
+      let record: ActivationCheckRecord | null;
+      try {
+        record = await checks.load();
+      } catch {
+        return 'skipped';
+      }
+      if (!isCheckDue(record, now)) return 'not-due';
+
+      const answer = await devices.checkDevice(token).catch(() => null);
+      if (answer === null || !answer.ok) return this.changedNothing(now);
+      const checkedAt = now.toISOString();
+      // The answer is about the receipt this session holds, which another tab may have replaced since (fix r1).
+      const checked: ActivationIdentity = { activationId: receipt.activationId, issuedAt: receipt.issuedAt };
+      if (answer.status === 'active') {
+        // Not saved (another receipt is stored, or storage failed): the next try or start asks again.
+        return await checks.saveActive(checkedAt, checked).catch(() => false) ? this.answered('active') : this.changedNothing(now);
+      }
+      if (!(await checks.endThisDevice(answer.status, checkedAt, checked).catch(() => false))) return this.changedNothing(now);
+      this.endedThisSession = true;
+      return this.answered(answer.status);
+    } finally {
+      this.checkInFlight = false;
+    }
+  }
+
+  private changedNothing(now: Date): ActivationCheckOutcome {
+    this.lastFailedTryAt = now.getTime();
+    return 'unchanged';
+  }
+
+  private answered(outcome: ActivationCheckOutcome): ActivationCheckOutcome {
+    this.lastFailedTryAt = null;
+    return outcome;
+  }
+
+  /** No receipt on this device: the invite screen, with D278's words when the daily check ended this device's invite. */
+  private async startWithoutReceipt(): Promise<ActivationSnapshot> {
+    const record = await this.dependencies.checks?.load().catch(() => null);
+    if (record?.ended === 'removed') return { status: 'activation-required', receipt: null, message: null, reason: 'device-removed' };
+    if (record?.ended === 'revoked') return { status: 'activation-required', receipt: null, message: null, reason: 'code-revoked' };
+    return initialActivationSnapshot;
   }
 
   async clearActivation(): Promise<ActivationSnapshot> {
@@ -151,9 +306,11 @@ function proofFailureSnapshot(
     };
   }
 
+  // A receipt that fails its check is an answer Kairos can't read: the server's problem, in the server's words (D281).
   return {
     status: 'error',
     receipt: null,
-    message: 'Activation service returned an invalid proof.',
+    message: null,
+    reason: 'service-error',
   };
 }

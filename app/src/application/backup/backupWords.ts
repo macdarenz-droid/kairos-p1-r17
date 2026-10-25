@@ -1,4 +1,4 @@
-/** T-054a: the backup words shared by the page and the reminder card. */
+/** T-054a: the backup words shared by the page and the reminder card (and, T-062e, the crash screen and the invite screen). */
 
 import type { BackupReminder } from './backupReminder';
 import type { RunBackupResult } from './runBackup';
@@ -35,4 +35,14 @@ export function describeBackupFailure(result: Exclude<RunBackupResult, { ok: tru
       }
     }
   }
+}
+
+/**
+ * The words after "Download a copy of my data" (D230), on the crash screen and the invite screen (D281). `failed` marks
+ * a copy that was not made; a file that was handed over but not noted is not a failure.
+ */
+export function describeDataCopy(result: RunBackupResult): Readonly<{ message: string; failed: boolean }> {
+  if (result.ok) return { message: `Downloaded ${result.file.fileName}.`, failed: false };
+  if (result.reason === 'record-failed') return { message: describeBackupFailure(result) ?? '', failed: false };
+  return { message: 'Kairos could not make a copy. Nothing was changed.', failed: true };
 }

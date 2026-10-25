@@ -29,25 +29,17 @@ export function reduceActivationState(
       if (event.result.ok) {
         return { status: 'active-online', receipt: event.result.receipt, message: null };
       }
+      // D281: each reason has its own words, which the gate owns (activationWords.ts); the snapshot carries the reason.
       if (event.result.reason === 'network-unavailable') {
-        return {
-          status: 'network-unavailable',
-          receipt: state.receipt,
-          message: 'Internet is required for first activation.',
-        };
+        return { status: 'network-unavailable', receipt: state.receipt, message: null, reason: 'network-unavailable' };
       }
       if (event.result.reason === 'service-error') {
-        return {
-          status: 'error',
-          receipt: state.receipt,
-          message: 'Activation service is temporarily unavailable.',
-        };
+        return { status: 'error', receipt: state.receipt, message: null, reason: 'service-error' };
       }
-      return {
-        status: 'rejected',
-        receipt: null,
-        message: 'This invite could not be activated.',
-      };
+      if (event.result.reason === 'already-used' && event.result.deviceLimit !== undefined) {
+        return { status: 'rejected', receipt: null, message: null, reason: 'already-used', deviceLimit: event.result.deviceLimit };
+      }
+      return { status: 'rejected', receipt: null, message: null, reason: event.result.reason };
 
     case 'RESTORE_VERIFIED_RECEIPT':
       return { status: 'active-online', receipt: event.receipt, message: null };

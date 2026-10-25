@@ -105,6 +105,8 @@ export async function openKairos(page: Page, options: Readonly<{ theme?: string;
   if (options.setup === 'show') return;
   await page.getByRole('button', { name: 'Skip for now' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Home' })).toBeVisible();
+  // The pointer leaves the button it pressed, so a later screen never shows what lies under that spot as hovered.
+  await page.mouse.move(0, 0);
 }
 
 export type EdgeContrast = Readonly<{ againstFill: number; againstOutside: number }>;
