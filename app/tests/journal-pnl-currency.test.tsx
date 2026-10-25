@@ -6,7 +6,7 @@ import { createKairosDatabaseSnapshot, parseKairosBackup, prepareKairosRestore, 
 import { saveManualTrade, type SaveManualTradeInput } from '../src/application/trades';
 import { updateOpenManualTrade } from '../src/application/trades/updateOpenManualTrade';
 import { listJournalHistory, listJournalVisualPnlDailySummary } from '../src/application/journal';
-import { loadHomeYourTrades } from '../src/application/dashboard/homeDashboardYourTradesQuery';
+import { homeYourTradesAllTime } from './fixtures/homeYourTrades';
 import { renderTradePage } from './fixtures/tradePage';
 
 let db: KairosDatabase;
@@ -26,7 +26,7 @@ it('persists explicit currency and computes exact matching-fee net P&L after rel
   const saved = (await listJournalHistory(db))[0];
   expect(saved.trade.grossPnlCurrency).toBe('USDT');
   expect(saved.metrics).toMatchObject({ grossPnl: '40', netPnl: '39.7', netPnlCurrency: 'USDT' });
-  expect((await loadHomeYourTrades(db))[0]).toMatchObject({ amount: '39.7', currency: 'USDT' });
+  expect((await homeYourTradesAllTime(db))[0]).toMatchObject({ amount: '39.7', currency: 'USDT' });
   expect(JSON.stringify(await listJournalVisualPnlDailySummary(db, 'Australia/Melbourne'))).toContain('39.7');
 });
 it.each([undefined, null, '', '   '])('keeps unknown currency %s unknown without deriving it from BTCUSDT or USDT fees', async grossPnlCurrency => {

@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { loadHomeYourTrades } from '../src/application/dashboard/homeDashboardYourTradesQuery';
+import { homeYourTradesAllTime } from './fixtures/homeYourTrades';
 import { listJournalHistory } from '../src/application/journal';
 import { createKairosDatabase, openKairosDatabase, type KairosDatabase } from '../src/data/database';
 import { TradeForm, TRADE_FORM_MODE_STORAGE_KEY, type TradeFormKind } from '../src/features/journal/TradeForm';
@@ -40,7 +40,7 @@ describe('quick log on the trade form', () => {
     const executions = (await db.tradeExecutions.toArray()).map(row => [row.type, row.price, row.quantity]).sort();
     expect(executions).toEqual([['entry', '100', '2'], ['exit', '120', '2']]);
     expect(await db.tradeFees.count()).toBe(0);
-    expect((await loadHomeYourTrades(db))[0]).toMatchObject({ amount: '40', resultLabel: 'Profit', currency: null });
+    expect((await homeYourTradesAllTime(db))[0]).toMatchObject({ amount: '40', resultLabel: 'Profit', currency: null });
     expect(screen.getByLabelText(/Symbol/)).toHaveValue('');
     expect(screen.getByLabelText(/Entry price/)).toHaveValue('');
     expect(screen.getByLabelText(/^Opened/)).toHaveValue('');
@@ -53,7 +53,7 @@ describe('quick log on the trade form', () => {
     quickLog('short');
     fireEvent.click(screen.getByRole('button', { name: 'Save trade' }));
     await screen.findByRole('status');
-    expect((await loadHomeYourTrades(db))[0]).toMatchObject({ amount: '-40', resultLabel: 'Loss' });
+    expect((await homeYourTradesAllTime(db))[0]).toMatchObject({ amount: '-40', resultLabel: 'Loss' });
   });
 
   it('saves a practice trade that stays out of the journal', async () => {

@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
 import { afterEach, describe, expect, it } from 'vitest';
-import { loadHomeYourTrades } from '../src/application/dashboard/homeDashboardYourTradesQuery';
+import { homeYourTradesAllTime } from './fixtures/homeYourTrades';
 import { loadGoalsProgress, writeGoalsPreference } from '../src/application/goals';
 import { getJournalHistoryEntry, JOURNAL_HISTORY_SOURCES, listJournalHistory, listJournalVisualPnlDailySummary } from '../src/application/journal';
 import { loadTradeReview } from '../src/application/journal/loadTradeReview';
@@ -57,7 +57,7 @@ describe('P29.2 journal history source scope', () => {
     await writeGoalsPreference(metadata, { tradesPerMonthTarget: '5', maxTradesPerDay: '1' }, '2026-09-18T12:00:00.000Z');
     const daily = await listJournalVisualPnlDailySummary(db, 'UTC');
     expect(daily.days.map(day => day.dayKey)).toEqual(['2026-09-17']);
-    const home = await loadHomeYourTrades(db);
+    const home = await homeYourTradesAllTime(db);
     expect(home.map(trade => trade.id)).toEqual([real]);
     const goals = await loadGoalsProgress(db, '2026-09-18T12:00:00.000Z');
     expect(goals.kind).toBe('ready');

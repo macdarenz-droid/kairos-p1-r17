@@ -95,9 +95,19 @@ test('(c) log a closed trade, find it in Your Trades and open it in Analysis', a
 
   await page.goto('/');
   await page.getByRole('button', { name: 'Your Trades' }).click();
+  // T-061d (D270): the trade closed on 20 September, before this month (the real clock): "All time" shows it, and the
+  // bubble itself opens the trade's page (no "View trade" panel). The address keeps the view and the period.
+  const yourTrades = page.getByRole('region', { name: 'Your Trades' });
+  await yourTrades.getByRole('group', { name: 'Trades closed in' }).getByRole('button', { name: 'All time' }).click();
+  await expect(page).toHaveURL(/\/\?view=trades&period=all$/);
+  const bubble = yourTrades.getByRole('link', { name: /^BTCUSDT long, closed 20 Sep(?: 2026)?, result after fees \+150 USDT$/ });
+  await expect(bubble).toHaveAttribute('data-movement', 'positive');
+  const yourTradesAxe = await new AxeBuilder({ page }).include('.kairos-your-trades').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(yourTradesAxe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await expect(page.getByRole('link', { name: 'View trade' })).toHaveCount(0);
   // The bubbles float, so a normal click never settles; dispatch the click directly.
-  await page.getByRole('button', { name: /BTCUSDT, long, Profit/ }).dispatchEvent('click');
-  await page.getByRole('link', { name: 'View trade' }).or(page.getByRole('button', { name: 'View trade' })).first().click();
+  await bubble.dispatchEvent('click');
 
   // U15 (D260): the trade's own page, then the same trade on the market chart.
   await expect(page).toHaveURL(/\/journal\/trades\//);
@@ -107,6 +117,13 @@ test('(c) log a closed trade, find it in Your Trades and open it in Analysis', a
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   const tradePageAxe = await new AxeBuilder({ page }).include('main').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
   expect(tradePageAxe.violations.map(violation => `${violation.id}: ${violation.nodes.slice(0, 3).map(node => node.target.join(' ')).join(' | ')}`)).toEqual([]);
+  // D270: Back returns to the same bubbles: "Your Trades", all time.
+  await page.goBack();
+  await expect(page).toHaveURL(/\/\?view=trades&period=all$/);
+  await expect(yourTrades.getByRole('group', { name: 'Trades closed in' }).getByRole('button', { name: 'All time' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(bubble).toBeVisible();
+  await page.goForward();
+  await expect(page.getByRole('heading', { level: 1, name: 'BTCUSDT · Long' })).toBeVisible();
   await page.getByRole('link', { name: 'See it on the market chart' }).click();
   await expect(page).toHaveURL(/\/analysis\?trade=/);
   await expect(page.getByText('Recorded result')).toBeVisible();

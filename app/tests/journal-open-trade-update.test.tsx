@@ -5,7 +5,7 @@ import { createKairosDatabase, type KairosDatabase } from '../src/data/database'
 import { saveManualTrade } from '../src/application/trades';
 import { updateOpenManualTrade, type UpdateOpenManualTradeInput } from '../src/application/trades/updateOpenManualTrade';
 import { listJournalHistory } from '../src/application/journal';
-import { loadHomeYourTrades } from '../src/application/dashboard/homeDashboardYourTradesQuery';
+import { homeYourTradesAllTime } from './fixtures/homeYourTrades';
 import { savePracticeTrade } from '../src/application/practice';
 import type { TradeExecutionId } from '../src/domain/trades';
 import { renderTradePage, tradePageHeading, tradePagePart } from './fixtures/tradePage';
@@ -34,16 +34,17 @@ describe('existing open manual trade updates', () => {
     expect(after.plans).toEqual(before.plans);
     expect(after.executions.find(e => e.id === before.executions[0].id)).toEqual(before.executions[0]);
     expect(after.executions).toHaveLength(2);
-    expect((await loadHomeYourTrades(db))[0]).toMatchObject({ amount: '40', currency: null, resultLabel: 'Profit' });
+    expect((await homeYourTradesAllTime(db))[0]).toMatchObject({ amount: '40', currency: null, resultLabel: 'Profit' });
   });
   it('keeps a partial exit open and later closes it with the remaining exit without replacing any fill', async () => {
     let expected = await start();
     expect((await updateOpenManualTrade(db, { expected, status: 'open', closedAt: null, executions: [exit('0.5')], fees: [] })).ok).toBe(true);
-    expect((await loadHomeYourTrades(db))[0]).toMatchObject({ status: 'open', amount: null });
+    // T-061d (D270): Home shows closed trades only; the trade still open is not there yet.
+    expect(await homeYourTradesAllTime(db)).toEqual([]);
     expected = (await listJournalHistory(db))[0];
     expect((await updateOpenManualTrade(db, { expected, status: 'closed', closedAt, executions: [exit('1.5')], fees: [] })).ok).toBe(true);
     expect(await db.trades.count()).toBe(1); expect(await db.tradeExecutions.count()).toBe(3);
-    expect((await loadHomeYourTrades(db))[0]).toMatchObject({ amount: '40' });
+    expect((await homeYourTradesAllTime(db))[0]).toMatchObject({ amount: '40' });
   });
   it('rejects a stale or duplicate open update even if updatedAt is the same millisecond', async () => {
     const expected = await start();
@@ -61,7 +62,7 @@ describe('existing open manual trade updates', () => {
     expect(await facts()).toEqual(before); failure.mockRestore();
     expect((await updateOpenManualTrade(db, input)).ok).toBe(true);
     expect(await db.tradeExecutions.count()).toBe(2); expect(await db.tradeFees.count()).toBe(1);
-    expect((await loadHomeYourTrades(db))[0]).toMatchObject({ amount: null, currency: null });
+    expect((await homeYourTradesAllTime(db))[0]).toMatchObject({ amount: null, currency: null });
   });
   it.each(['missing', 'closed', 'import'])('does not change a %s trade', async state => {
     const expected = await start();
@@ -95,7 +96,8 @@ describe('existing open manual trade updates', () => {
   it('does not invent a realized result when the user closes with incomplete fills', async () => {
     const expected = await start();
     expect((await updateOpenManualTrade(db, { expected, status: 'closed', closedAt, executions: [], fees: [] })).ok).toBe(true);
-    expect((await loadHomeYourTrades(db))[0]).toMatchObject({ status: 'closed', amount: null, resultLabel: 'Not available' });
+    // T-061d (D270): Home's read holds closed trades only, so being there means closed.
+    expect((await homeYourTradesAllTime(db))[0]).toMatchObject({ amount: null, resultLabel: 'Not available' });
   });
 });
 
